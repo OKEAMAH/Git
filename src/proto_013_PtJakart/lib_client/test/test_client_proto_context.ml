@@ -60,12 +60,9 @@ let gen_batch_transfer_operation_encoding =
 let tests =
   [
     QCheck2.Test.make
-      ~name:"test_batch_transfer_operation_encoding_roundtrip"
+      ~name:"batch_transfer_operation_encoding_roundtrip"
       gen_batch_transfer_operation_encoding
       (binary_roundtrip Client_proto_context.batch_transfer_operation_encoding);
   ]
 
-let () =
-  Alcotest.run
-    "Client proto context"
-    [(Protocol.name ^ ": Encodings", qcheck_wrap tests)]
+let () = Alcotest.run "" [(Protocol.name ^ ": encodings", qcheck_wrap tests)]

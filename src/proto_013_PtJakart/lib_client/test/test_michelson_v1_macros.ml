@@ -1337,6 +1337,6 @@ let wrap (n, f) =
 
 let () =
   Alcotest_lwt.run
-    "tezos-lib-client"
+    ""
     [(Protocol.name ^ ": micheline v1 macros", List.map wrap tests)]
   |> Lwt_main.run
