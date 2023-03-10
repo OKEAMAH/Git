@@ -130,8 +130,33 @@ module Impl : Pvm.S = struct
 
   module Backend = Make_backend (Wasm_2_0_0_proof_format.Tree)
 
-  let eval_many ~reveal_builtins ~write_debug =
-    Backend.compute_step_many ~reveal_builtins ~write_debug
+  let eval_many ~reveal_builtins ~write_debug ?stop_at_snapshot ~max_steps state
+      =
+    let _wm = write_debug in
+    let open Lwt.Syntax in
+    let start_timestamp = Sys.time () in
+    let* () =
+      Interpreter_event.pvm_compute_step_many_begins
+        ~timestamp:start_timestamp
+        ~stop_at_snapshot
+        ~max_steps
+    in
+    let* res =
+      Backend.compute_step_many
+        ~reveal_builtins
+        ~write_debug
+        ?stop_at_snapshot
+        ~max_steps
+        state
+    in
+    let end_timestamp = Sys.time () in
+    let+ () =
+      Interpreter_event.pvm_compute_step_many_ends
+        ~timestamp:end_timestamp
+        ~stop_at_snapshot
+        ~max_steps
+    in
+    res
 end
 
 include Impl

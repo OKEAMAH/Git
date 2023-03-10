@@ -316,6 +316,14 @@ type full_tx_setup = {
   mint_and_deposit_contract : string;
 }
 
+let wait_for_pvm_compute_step_many_begins node =
+  Sc_rollup_node.wait_for node "sc_rollup_node_pvm_compute_step_many_begins.v0"
+  @@ fun json -> Option.some @@ JSON.(json |-> "timestamp" |> as_float)
+
+let wait_for_pvm_compute_step_many_ends node =
+  Sc_rollup_node.wait_for node "sc_rollup_node_pvm_compute_step_many_ends.v0"
+  @@ fun json -> Option.some @@ JSON.(json |-> "timestamp" |> as_float)
+
 let setup_tx_kernel_and_dac ?installer ?installee ~commitment_period
     ~challenge_window protocol =
   let open Tezos_crypto.Signature in
@@ -379,7 +387,7 @@ let setup_tx_kernel_and_dac ?installer ?installee ~commitment_period
          sc_rollup_address
   in
   let init_level = JSON.(genesis_info |-> "level" |> as_int) in
-  let* () = Sc_rollup_node.run sc_rollup_node [] in
+  let* () = Sc_rollup_node.run ~event_level:`Debug sc_rollup_node [] in
   let sc_rollup_client = Sc_rollup_client.create ~protocol sc_rollup_node in
   let* level =
     Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node init_level
@@ -682,6 +690,17 @@ let test_tx_kernel_60k_txs protocol =
   in
   (* Send transfer *)
   let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+  let _ =
+    let tot_spent = ref 0.0 in
+    let rec go () =
+      let* begin_time = wait_for_pvm_compute_step_many_begins sc_rollup_node in
+      let* end_time = wait_for_pvm_compute_step_many_ends sc_rollup_node in
+      tot_spent := !tot_spent +. (end_time -. begin_time) ;
+      Format.printf "Spent time in the PVM execution so far %.2f" !tot_spent ;
+      go ()
+    in
+    go ()
+  in
   let* () = send_message client (sf "hex:[%S]" (hex_encode raw_operation)) in
   let level = level + 1 in
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node level in

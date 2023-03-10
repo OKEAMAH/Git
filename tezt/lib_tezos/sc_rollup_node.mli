@@ -107,7 +107,8 @@ val check_error : ?exit_code:int -> ?msg:Base.rex -> t -> unit Lwt.t
 
 (** [run node arguments ] launches the given smart contract rollup node
     with the given arguments . *)
-val run : t -> string list -> unit Lwt.t
+val run :
+  ?event_level:Daemon.Level.default_level -> t -> string list -> unit Lwt.t
 
 (** Wait until a node terminates and return its status. If the node is not
    running, make the test fail. *)
