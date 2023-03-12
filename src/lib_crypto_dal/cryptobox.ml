@@ -798,12 +798,14 @@ module Inner = struct
   end)
 
   let encoded_share_size t =
-    (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4289
-       Improve shard size computation *)
-    let share_scalar_len =
-      t.erasure_encoded_polynomial_length / t.number_of_shards
-    in
-    (share_scalar_len * Scalar.size_in_bytes) + 4
+    (* This encoding has not a fixed size since it depends on the DAL
+       parameters, so we must supply a default value share with the shard
+       length from the DAL cryptobox configuration record [t].
+       So we provide a default value for a share (filled with zero scalars) to
+       [Data_encoding.Binary.length]. The length of a share is the one from the
+       configuration record [t]: [t.shard_length]. *)
+    let share = Array.make t.shard_length Scalar.(copy zero) in
+    Data_encoding.Binary.length Encoding.share_encoding share
 
   (* Let w be a primitive [t.erasure_encoded_polynomial_length]-th root of unity, where
      [t.max_polynomial_length] and [t.erasure_encoded_polynomial_length = t.redundancy_factor * t.max_polynomial_length] divide
