@@ -4178,23 +4178,23 @@ let test_loser_vs_loser ~kind ~inputs ~final_level =
 
   if not !game_started then Test.fail "Conflict not started" ;
 
-  (*   let* first_op_deposit_json = *)
-  (*     RPC.Client.call client *)
-  (*     @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap1_key () *)
-  (*   in *)
-  (*   let* second_op_deposit_json = *)
-  (*     RPC.Client.call client *)
-  (*     @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap2_key () *)
-  (*   in *)
+  let* first_op_deposit_json =
+    RPC.Client.call client
+    @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap1_key ()
+  in
+  let* second_op_deposit_json =
+    RPC.Client.call client
+    @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap2_key ()
+  in
 
-  (*   Check.( *)
-  (*     (first_op_deposit_json = Tez.zero) *)
-  (*       Tez.typ *)
-  (*       ~error_msg:"expecting loss for first dishonest participant = %R, got %L") ; *)
-  (*   Check.( *)
-  (*     (second_op_deposit_json = Tez.zero) *)
-  (*       Tez.typ *)
-  (*       ~error_msg:"expecting loss for second dishonest participant = %R, got %L") ; *)
+  Check.(
+    (first_op_deposit_json = Tez.zero)
+      Tez.typ
+      ~error_msg:"expecting loss for first dishonest participant = %R, got %L") ;
+  Check.(
+    (second_op_deposit_json = Tez.zero)
+      Tez.typ
+      ~error_msg:"expecting loss for second dishonest participant = %R, got %L") ;
   unit
 
 let register ~kind ~protocols =
@@ -4410,11 +4410,11 @@ let register ~protocols =
     ~kernel_name:"no_parse_bad_fingerprint"
     ~internal:false ;
   test_accuser protocols ;
-  (*   test_loser_vs_loser *)
-  (*     ~kind:"arith" *)
-  (*     ~inputs:(inputs_for 30) *)
-  (*     ~final_level:80 *)
-  (*     protocols ; *)
+  test_loser_vs_loser
+    ~kind:"arith"
+    ~inputs:(inputs_for 30)
+    ~final_level:80
+    protocols ;
   (*   test_loser_vs_loser *)
   (*     ~kind:"wasm_2_0_0" *)
   (*     ~inputs:(inputs_for 30) *)

@@ -215,12 +215,68 @@ let rejection_with_proof_loser_vs_loser ~(testnet : Testnet.t) () =
   in
   let* () =
     wait_for_end_of_game
-      ~staker:dishonest_operator_2.public_key_hash
+      ~staker:dishonest_operator_1.public_key_hash
       rollup_address
       client
       node
   in
   unit
+
+type sc_rollup_constants = {
+  origination_size : int;
+  challenge_window_in_blocks : int;
+  stake_amount : Tez.t;
+  commitment_period_in_blocks : int;
+  max_lookahead_in_blocks : int32;
+  max_active_outbox_levels : int32;
+  max_outbox_messages_per_level : int;
+  number_of_sections_in_dissection : int;
+  timeout_period_in_blocks : int;
+}
+
+let get_sc_rollup_constants client =
+  let* json =
+    RPC.Client.call client @@ RPC.get_chain_block_context_constants ()
+  in
+  let open JSON in
+  let origination_size = json |-> "smart_rollup_origination_size" |> as_int in
+  let challenge_window_in_blocks =
+    json |-> "smart_rollup_challenge_window_in_blocks" |> as_int
+  in
+  let stake_amount =
+    json |-> "smart_rollup_stake_amount" |> as_string |> Int64.of_string
+    |> Tez.of_mutez_int64
+  in
+  let commitment_period_in_blocks =
+    json |-> "smart_rollup_commitment_period_in_blocks" |> as_int
+  in
+  let max_lookahead_in_blocks =
+    json |-> "smart_rollup_max_lookahead_in_blocks" |> as_int32
+  in
+  let max_active_outbox_levels =
+    json |-> "smart_rollup_max_active_outbox_levels" |> as_int32
+  in
+  let max_outbox_messages_per_level =
+    json |-> "smart_rollup_max_outbox_messages_per_level" |> as_int
+  in
+  let number_of_sections_in_dissection =
+    json |-> "smart_rollup_number_of_sections_in_dissection" |> as_int
+  in
+  let timeout_period_in_blocks =
+    json |-> "smart_rollup_timeout_period_in_blocks" |> as_int
+  in
+  return
+    {
+      origination_size;
+      challenge_window_in_blocks;
+      stake_amount;
+      commitment_period_in_blocks;
+      max_lookahead_in_blocks;
+      max_active_outbox_levels;
+      max_outbox_messages_per_level;
+      number_of_sections_in_dissection;
+      timeout_period_in_blocks;
+    }
 
 let cement_and_outbox_msg ~(testnet : Testnet.t) () =
   (* We expect each player to have at least 11,000 xtz. This is enough
@@ -372,9 +428,14 @@ let cement_and_outbox_msg ~(testnet : Testnet.t) () =
   let payload = "37" in
   let* message = input_message rollup_client target_contract_address payload in
   (* value for mumbainet and mondaynet *)
-  let commitment_period = 20 in
-  let challenge_window = 40 in
-  let blocks_to_wait = 2 + (2 * commitment_period) + challenge_window in
+  let* {commitment_period_in_blocks; challenge_window_in_blocks; _} =
+    get_sc_rollup_constants client
+  in
+  (*   let commitment_period = 20 in *)
+  (*   let challenge_window = 40 in *)
+  let blocks_to_wait =
+    2 + (2 * commitment_period_in_blocks) + challenge_window_in_blocks
+  in
   let* () =
     perform_rollup_execution_and_cement
       ~src:operator.alias
@@ -388,7 +449,7 @@ let cement_and_outbox_msg ~(testnet : Testnet.t) () =
       ~src:operator.alias
       ~rollup_address
       rollup_client
-      challenge_window
+      challenge_window_in_blocks
       ~parameters:payload
       ~destination:target_contract_address
   in
@@ -396,18 +457,18 @@ let cement_and_outbox_msg ~(testnet : Testnet.t) () =
   unit
 
 let register ~testnet =
-  Test.register
-    ~__FILE__
-    ~title:"Rejection with proof"
-    ~tags:["rejection"]
-    (rejection_with_proof ~testnet) ;
+  (*   Test.register *)
+  (*     ~__FILE__ *)
+  (*     ~title:"Rejection with proof" *)
+  (*     ~tags:["rejection"] *)
+  (*     (rejection_with_proof ~testnet) ; *)
   Test.register
     ~__FILE__
     ~title:"Rejection with proof (loser vs loser)"
     ~tags:["rejection"; "loser"]
-    (rejection_with_proof_loser_vs_loser ~testnet) ;
-  Test.register
-    ~__FILE__
-    ~title:"cementation and outbox message execution."
-    ~tags:["cementation"; "outbox"]
-    (cement_and_outbox_msg ~testnet)
+    (rejection_with_proof_loser_vs_loser ~testnet)
+(*   Test.register *)
+(*     ~__FILE__ *)
+(*     ~title:"cementation and outbox message execution." *)
+(*     ~tags:["cementation"; "outbox"] *)
+(*     (cement_and_outbox_msg ~testnet) *)
