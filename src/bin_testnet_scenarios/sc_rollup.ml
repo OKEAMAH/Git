@@ -148,9 +148,101 @@ let rejection_with_proof ~(testnet : Testnet.t) () =
      result? *)
   unit
 
+let get_staked_on_commitment rollup_address staker client =
+  let* json =
+    RPC.Client.call client
+    @@ RPC
+       .get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment
+         ~sc_rollup:rollup_address
+         staker
+  in
+  return JSON.(json |-> "hash" |> as_string_opt)
+
+let rec wait_for_staker rollup_address staker client node =
+  Lwt.catch
+    (fun () ->
+      let* staked = get_staked_on_commitment rollup_address staker client in
+      match staked with
+      | Some _hash -> unit
+      | None ->
+          let* _ = Node.wait_for_level node (Node.get_level node + 1) in
+          wait_for_staker rollup_address staker client node)
+    (fun _ ->
+      let* _ = Node.wait_for_level node (Node.get_level node + 1) in
+      wait_for_staker rollup_address staker client node)
+
+let rec wait_for_recoverable rollup_address staker client node =
+  Lwt.catch
+    (fun () ->
+      let* staked = get_staked_on_commitment rollup_address staker client in
+      match staked with
+      | None -> unit
+      | Some _hash ->
+          let* _ = Node.wait_for_level node (Node.get_level node + 1) in
+          wait_for_recoverable rollup_address staker client node)
+    (fun _ -> unit)
+
+let recover_bond ~(testnet : Testnet.t) () =
+  (* We expect the operator to have at least 11,000 xtz. This is
+     enough to originate a rollup (1.68 xtz), and commit (10,000 xtz
+     for both player). *)
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* snapshot = Helpers.download testnet.snapshot "snapshot" in
+  let* client, node = Helpers.setup_octez_node ~testnet snapshot in
+  let* operator1 = Client.gen_and_show_keys client in
+  let* operator2 = Client.gen_and_show_keys client in
+  let* () =
+    Lwt.join
+      [
+        Helpers.wait_for_funded_key node client min_balance operator1;
+        Helpers.wait_for_funded_key node client min_balance operator2;
+      ]
+  in
+  let* rollup_address = originate_new_rollup ~src:operator1.alias client in
+  let* rollup_node1, _rollup_node2 =
+    Lwt.both
+      (setup_l2_node
+         ~testnet
+         ~operator:operator1.alias
+         client
+         node
+         rollup_address)
+      (setup_l2_node
+         ~testnet
+         ~operator:operator2.alias
+         client
+         node
+         rollup_address)
+  in
+  let* () =
+    wait_for_staker rollup_address operator1.public_key_hash client node
+  in
+  let* () = Sc_rollup_node.kill rollup_node1 in
+  let* () =
+    wait_for_recoverable rollup_address operator1.public_key_hash client node
+  in
+  let*! _ =
+    Client.Sc_rollup.submit_recover_bond
+      ~rollup:rollup_address
+      ~src:operator1.public_key_hash
+      ~fee:Tez.one
+      ~staker:operator1.public_key_hash
+      ~wait:"1"
+      client
+  in
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4929
+     Should the scenario checks if the game ended with the expected
+     result? *)
+  unit
+
 let register ~testnet =
   Test.register
     ~__FILE__
     ~title:"Rejection with proof"
     ~tags:["rejection"]
-    (rejection_with_proof ~testnet)
+    (rejection_with_proof ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"Recover bond"
+    ~tags:["recover"]
+    (recover_bond ~testnet)
