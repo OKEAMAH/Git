@@ -60,6 +60,14 @@ let load_parameters parameters =
       return_unit
   | Some _ -> fail [Dal_initialisation_twice]
 
+module UInt32 = Unsigned.UInt32
+
+type uint32 = UInt32.t
+
+let uint32_to_int = UInt32.to_int
+
+let int_to_uint32 = UInt32.of_int
+
 (* FIXME https://gitlab.com/tezos/tezos/-/issues/3400
 
    An integrity check is run to ensure the validity of the files. *)
@@ -149,12 +157,14 @@ module Inner = struct
 
   type share = Scalar.t array
 
-  type shard = {index : int; share : share}
+  type shard = {index : Unsigned.uint32; share : share}
 
   type shards_proofs_precomputation = scalar array * shard_proof array array
 
   module Encoding = struct
     open Data_encoding
+
+    let uint32_encoding = ranged_int 0 Unsigned.UInt32.(to_int max_int)
 
     let fr_encoding =
       conv
@@ -179,7 +189,7 @@ module Inner = struct
       conv
         (fun {index; share} -> (index, share))
         (fun (index, share) -> {index; share})
-        (tup2 int31 share_encoding)
+        (tup2 uint32_encoding share_encoding)
 
     let shards_proofs_precomputation_encoding =
       tup2 (array fr_encoding) (array (array g1_encoding))
@@ -288,28 +298,28 @@ module Inner = struct
   let make_domain n = Domains.build n
 
   type t = {
-    redundancy_factor : int;
-    slot_size : int;
-    page_size : int;
-    number_of_shards : int;
+    redundancy_factor : uint32;
+    slot_size : uint32;
+    page_size : uint32;
+    number_of_shards : uint32;
     (* Maximum length of the polynomial representation of a slot, also called [polynomial_length]
        in the comments. *)
-    max_polynomial_length : int;
+    max_polynomial_length : uint32;
     (* Length of the erasure-encoded polynomial representation of a slot,
        also called [erasure_encoded_polynomial_length] in the comments. *)
-    erasure_encoded_polynomial_length : int;
+    erasure_encoded_polynomial_length : uint32;
     domain_polynomial_length : Domains.t;
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
     domain_2_times_polynomial_length : Domains.t;
     domain_erasure_encoded_polynomial_length : Domains.t;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
-    shard_length : int;
+    shard_length : uint32;
     (* Length of a shard in terms of scalar elements. *)
-    pages_per_slot : int;
+    pages_per_slot : uint32;
     (* Number of slot pages. *)
-    page_length : int;
-    page_length_domain : int;
-    remaining_bytes : int;
+    page_length : uint32;
+    page_length_domain : uint32;
+    remaining_bytes : uint32;
     (* Log of the number of evaluations that constitute an erasure encoded
        polynomial. *)
     srs : srs;
@@ -360,8 +370,10 @@ module Inner = struct
       (* [domain_from_factors] computes the power of two to be used in the
          decomposition N = 2^k * factors >= domain_size where [factors] is an
          element of [combinations_factors]. *)
-      let domain_from_factors (factors : int list) : int * int list =
-        let prod_factors = List.fold_left ( * ) 1 factors in
+      let domain_from_factors (factors : uint32 list) : uint32 * uint32 list =
+        let prod_factors =
+          List.fold_left Unsigned.UInt32.mul Unsigned.UInt32.one factors
+        in
         let rec get_next_power_of_two k =
           if prod_factors lsl k >= domain_size then 1 lsl k
           else get_next_power_of_two (k + 1)
@@ -1560,8 +1572,8 @@ module Inner = struct
 
   (* Parses the [slot_page] to get the evaluations that it contains. The
      evaluation points are given by the [slot_page_index]. *)
-  let verify_page t commitment ~page_index page proof =
-    if page_index < 0 || page_index >= t.pages_per_slot then
+  let verify_page t commitment ~(page_index : uint32) page proof =
+    if page_index < UInt32.zero || page_index >= t.pages_per_slot then
       Error `Segment_index_out_of_range
     else
       let expected_page_length = t.page_size in
@@ -1584,16 +1596,16 @@ module Inner = struct
                     0
                     scalar_bytes_amount ;
                   Scalar.of_bytes_exn dst
-              | i when i = t.page_length - 1 ->
+              | i when i = uint32_to_int t.page_length - 1 ->
                   (* Store the remaining bytes in the last nonzero coefficient
                      of evaluations. *)
-                  let dst = Bytes.create t.remaining_bytes in
+                  let dst = Bytes.create (uint32_to_int t.remaining_bytes) in
                   Bytes.blit
                     page
                     (i * scalar_bytes_amount)
                     dst
                     0
-                    t.remaining_bytes ;
+                    (uint32_to_int t.remaining_bytes) ;
                   Scalar.of_bytes_exn dst
               | _ -> Scalar.(copy zero))
         in
@@ -1669,7 +1681,7 @@ module Internal_for_tests = struct
   let alter_commitment_proof (proof : commitment_proof) = alter_proof proof
 
   let minimum_number_of_shards_to_reconstruct_slot (t : t) =
-    t.number_of_shards / t.redundancy_factor
+    Unsigned.UInt32.div t.number_of_shards t.redundancy_factor
 
   let select_fft_domain = select_fft_domain
 
@@ -1744,7 +1756,7 @@ module Config = struct
       (fun (slot_size, page_size, redundancy_factor, number_of_shards) ->
         {slot_size; page_size; redundancy_factor; number_of_shards})
       (obj4
-         (req "slot_size" int31)
+         (req "slot_size")
          (req "page_size" int31)
          (req "redundancy_factor" int31)
          (req "number_of_shards" int31))
