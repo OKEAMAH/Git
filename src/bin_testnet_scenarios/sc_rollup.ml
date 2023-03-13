@@ -396,18 +396,18 @@ let cement_and_outbox_msg ~(testnet : Testnet.t) () =
   unit
 
 let register ~testnet =
-  (*   Test.register *)
-  (*     ~__FILE__ *)
-  (*     ~title:"Rejection with proof" *)
-  (*     ~tags:["rejection"] *)
-  (*     (rejection_with_proof ~testnet) *)
-  (*   Test.register *)
-  (*     ~__FILE__ *)
-  (*     ~title:"Rejection with proof (loser vs loser)" *)
-  (*     ~tags:["rejection"; "loser"] *)
-  (*     (rejection_with_proof_loser_vs_loser ~testnet) *)
   Test.register
     ~__FILE__
-    ~title:"cementation and outbox message execution"
+    ~title:"Rejection with proof"
+    ~tags:["rejection"]
+    (rejection_with_proof ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"Rejection with proof (loser vs loser)"
+    ~tags:["rejection"; "loser"]
+    (rejection_with_proof_loser_vs_loser ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"cementation and outbox message execution."
     ~tags:["cementation"; "outbox"]
     (cement_and_outbox_msg ~testnet)
