@@ -235,6 +235,144 @@ let recover_bond ~(testnet : Testnet.t) () =
      result? *)
   unit
 
+let originate_echo_sink rollup_address source client =
+  let prg =
+    Printf.sprintf
+      {|
+          {
+            parameter (or (int %%default) (int %%aux));
+            storage (int :s);
+            code
+              {
+                # Check that SENDER is the rollup address
+                SENDER;
+                PUSH address %S;
+                ASSERT_CMPEQ;
+                # Check that SOURCE is the implicit account used for executing
+                # the outbox message.
+                SOURCE;
+                PUSH address %S;
+                ASSERT_CMPEQ;
+                UNPAIR;
+                IF_LEFT
+                  { SWAP ; DROP; NIL operation }
+                  { SWAP ; DROP; NIL operation };
+                PAIR;
+              }
+          }
+        |}
+      rollup_address
+      source
+  in
+  let* address =
+    Client.originate_contract
+      ~alias:"target"
+      ~amount:(Tez.of_int 100)
+      ~burn_cap:(Tez.of_int 100)
+      ~src:source
+      ~prg
+      ~init:"0"
+      ~wait:"0"
+      client
+  in
+  return address
+
+let echo_input_message client sink_address parameters =
+  let transaction =
+    Sc_rollup_client.{destination = sink_address; entrypoint = None; parameters}
+  in
+  let* answer = Sc_rollup_client.encode_batch client [transaction] in
+  match answer with
+  | None -> failwith "Encoding of batch should not fail."
+  | Some answer -> return answer
+
+let add_echo_message ~src rollup_client client sink_address parameters =
+  let* payload = echo_input_message rollup_client sink_address parameters in
+  let json = Ezjsonm.list Ezjsonm.string [payload] in
+  let msg = "hex:" ^ Ezjsonm.to_string ~minify:true json in
+  Client.Sc_rollup.send_message ~wait:"1" ~src ~msg client
+
+let wait_for_outbox_message_execution ~src ~rollup_address rollup_client
+    outbox_level ~parameters ~sink_address node client =
+  let rec wait_for () =
+    Lwt.catch
+      (fun () ->
+        let* answer =
+          Sc_rollup_client.outbox_proof_single
+            rollup_client
+            ~message_index:0
+            ~outbox_level
+            ~destination:sink_address
+            ~parameters
+        in
+        match answer with
+        | None -> failwith "Unexpected error during proof generation"
+        | Some proof -> return proof)
+      (fun _ ->
+        let* _ = Node.wait_for_level node (Node.get_level node + 1) in
+        wait_for ())
+  in
+  let* Sc_rollup_client.{commitment_hash; proof} = wait_for () in
+  let*! () =
+    Client.Sc_rollup.execute_outbox_message
+      ~burn_cap:(Tez.of_int 10)
+      ~rollup:rollup_address
+      ~src
+      ~commitment_hash
+      ~proof
+      ~wait:"1"
+      client
+  in
+  unit
+
+let execute_outbox_message ~(testnet : Testnet.t) () =
+  (* We expect each player to have at least 11,000 xtz. This is enough
+     to originate a rollup (1.68 xtz for one of the player), commit
+     (10,000 xtz for both player), and play the game (each
+     [Smart_rollup_refute] operation should be relatively cheap). *)
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* snapshot = Helpers.download testnet.snapshot "snapshot" in
+  let* client, node = Helpers.setup_octez_node ~testnet snapshot in
+  let* operator = Client.gen_and_show_keys client in
+  let* () = Helpers.wait_for_funded_key node client min_balance operator in
+  let* rollup_address = originate_new_rollup ~src:operator.alias client in
+  let* rollup_node =
+    setup_l2_node
+      ~testnet
+      ~name:"rollup-node"
+      ~operator:operator.alias
+      client
+      node
+      rollup_address
+  in
+  let rollup_client =
+    Sc_rollup_client.create ~protocol:testnet.protocol rollup_node
+  in
+  let* sink_address =
+    originate_echo_sink rollup_address operator.public_key_hash client
+  in
+  let payload = "37" in
+  let* () =
+    add_echo_message
+      ~src:operator.public_key_hash
+      rollup_client
+      client
+      sink_address
+      payload
+  in
+  let* () =
+    wait_for_outbox_message_execution
+      ~src:operator.alias
+      ~rollup_address
+      rollup_client
+      (Node.get_level node - 1)
+      ~parameters:payload
+      ~sink_address
+      node
+      client
+  in
+  unit
+
 let register ~testnet =
   Test.register
     ~__FILE__
@@ -245,4 +383,9 @@ let register ~testnet =
     ~__FILE__
     ~title:"Recover bond"
     ~tags:["recover"]
-    (recover_bond ~testnet)
+    (recover_bond ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"Execute outbox message"
+    ~tags:["outbox"]
+    (execute_outbox_message ~testnet)
