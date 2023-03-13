@@ -303,7 +303,8 @@ module type TREE = sig
     tree -> ?offset:int -> ?length:int -> key -> (string * tree) list Lwt.t
 end
 
-type wrapped_tree
+type wrapped_tree = Tree.wrapped_tree =
+  | Wrapped_tree : 'tree * 'tree Tree.backend -> wrapped_tree
 
 module Wrapped : TREE with type tree = wrapped_tree
 

@@ -150,9 +150,14 @@ let lazy_mapping to_key enc_value =
 let lazy_dirs contents_encoding =
   let open Tezos_lazy_containers.Lazy_dirs in
   let to_key k = [LMap.string_of_key k] in
+  let unwrap_tree origin =
+    let (Tree.Wrapped_tree (subtree', backend')) = Tree.Wrapped.select origin in
+    Tree.wrap backend' subtree'
+  in
   contramap
     (fun tree ->
-      (LMap.origin tree.contents, LMap.loaded_bindings tree.contents))
+      ( Option.map unwrap_tree (LMap.origin tree.contents),
+        LMap.loaded_bindings tree.contents ))
     (lazy_mapping to_key contents_encoding)
 
 let lazy_fs contents_encoding =

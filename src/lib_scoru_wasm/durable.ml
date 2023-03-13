@@ -101,37 +101,92 @@ let key_contents = function Readonly k | Writeable k -> k
    in order to keep backward compatibility
 *)
 module Backward_compatible = struct
-  module T = Encodings_util.Tree
+  module Inmemory_tree = Encodings_util.Tree
+  module Lazy_fs = Tezos_lazy_containers.Lazy_fs
+  module W = Tezos_tree_encoding.Wrapped
 
   let value_marker = "@"
 
-  (* This function covnerts Lazy_fs to irmin tree *)
-  let encode_to_t subtree =
+  type some_tree =
+    | Some_tree :
+        't * (module Tezos_tree_encoding.TREE with type tree = 't)
+        -> some_tree
+
+  (* This function convert Lazy_fs to irmin tree:
+     if we had underlying tree, we just use it,
+     otherwise we will encode to in-memory tree *)
+  let encode_to_t subtree : some_tree Lwt.t =
     let open Lwt_syntax in
-    let* tree = Encodings_util.empty_tree () in
-    (* Encode it to empty irmin tree *)
-    Encodings_util.Tree_encoding_runner.encode encoding subtree tree
+    match Lazy_fs.origin subtree with
+    (* If we know the origin, we should decode it
+       in order to dump all changed in-memory values,
+       then we can return lookup it *)
+    | Some t ->
+        (* Format.printf "O WE HAVE ORIGIN\n" ; *)
+        (* We could preserve this encoding into current durable,
+            now it just gets thrown away *)
+        (* This part looks so complicated because:
+           1. Durable storage "remembers" during first decode in its origin where it was decoded from.
+           2. When we try to encode subtree in this fuction using in-memory tree:
+              it fails because those "remembered" origin type and in-memory diverge (they match only in tests, in real run - no).
+           3. So the solution is to do the similar thing which was done in old durable: to wrap origin with Wrapped tree on decode,
+              and unwrap on encode. So here we can dispatch on actually methods of original tree.
+           4. However the problem now, that when we try to encode for hashes/subtree/list we face situation,
+              that we can't encode into Wrapped tree, we have to encode into underlying tree.
+        *)
+        Lwt.catch
+          (fun () ->
+            let (Wrapped_tree (underlying, (module M))) = W.select t in
+            let module Underlying_runner = Tezos_tree_encoding.Runner.Make (M) in
+            let+ new_uderlying =
+              Underlying_runner.encode encoding subtree underlying
+            in
+            Some_tree (new_uderlying, (module M)))
+          (fun exn ->
+            Format.printf "EXN: %s\n" (Printexc.to_string exn) ;
+            raise exn)
+    | None ->
+        (* If it happeneded so that we don't know an origin,
+           we will fallback to inmemory tree *)
+        (* Format.printf
+           "Backward_compatible.encode_to_t before Encoding_util.empty_tree\n" ; *)
+        let* tree = Encodings_util.empty_tree () in
+        (* Format.printf
+           "Backward_compatible.encode_to_t before Tree_encoding_runner.encode\n" ; *)
+        (* Encode it to empty irmin tree *)
+        let+ inmemory =
+          Lwt.catch
+            (fun () ->
+              Encodings_util.Tree_encoding_runner.encode encoding subtree tree)
+            (fun exn ->
+              Format.printf "EXN: %s\n" (Printexc.to_string exn) ;
+              raise exn)
+        in
+        Some_tree (inmemory, (module Inmemory_tree))
 
   let hash subtree =
     let open Lwt_syntax in
-    let* tree = encode_to_t subtree in
+    Format.printf "Backward_compatible.hash before encoding to irmin tree\n" ;
+    let* (Some_tree (tree, (module T))) = encode_to_t subtree in
+    Format.printf "Backward_compatible.hash encoded to irmin tree\n" ;
     (* We only need hash of '@' subtree, hence we have to lookup it first.
        This place might is subject for optimization:
        we don't need to encode the WHOLE Lazy_fs subtree,
        it's enough to encode only value to @.
     *)
-    let+ opt = Encodings_util.Tree.find_tree tree [value_marker] in
-    Option.map (fun subtree -> Encodings_util.Tree.hash subtree) opt
+    let+ opt = T.find_tree tree [value_marker] in
+    Format.printf "Backward_compatible.hash found value marker\n" ;
+    Option.map T.hash opt
 
   let list subtree =
     let open Lwt.Syntax in
-    let* tree = encode_to_t subtree in
+    let* (Some_tree (tree, (module T))) = encode_to_t subtree in
     let+ subtrees = T.list tree [] in
     List.map (fun (name, _) -> if name = "@" then "" else name) subtrees
 
   let subtree_name_at subtree index =
     let open Lwt.Syntax in
-    let* tree = encode_to_t subtree in
+    let* (Some_tree (tree, (module T))) = encode_to_t subtree in
     let* list = T.list ~offset:index ~length:1 tree [] in
     let nth = List.nth list 0 in
     match nth with

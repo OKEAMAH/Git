@@ -25,6 +25,8 @@
 
 type 'a t = {content : 'a option; dirs : 'a t Lazy_dirs.t}
 
+val origin : 'a t -> Lazy_map.tree option
+
 val create : ?value:'a -> ?dirs:'a t Lazy_dirs.t -> unit -> 'a t
 
 val find_tree : 'a t -> string list -> 'a t option Lwt.t

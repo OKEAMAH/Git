@@ -195,7 +195,10 @@ let lazy_mapping_with_names to_key field_enc =
         let* names = Tree.list backend input_tree (input_prefix []) in
         let names = List.map fst names in
         let+ tree = subtree backend input_tree input_prefix in
-        (Some tree, names, produce_value));
+        (* Wrap in Tree.Wrapped_tree in order to use in lazy_dirs,
+           which is used in Durable storage implementation,
+           which needs to keep track of the tree which it was decoded from *)
+        (Option.some (Tree.Wrapped_tree (Tree.select backend tree, backend)), names, produce_value));
   }
 
 let lazy_dirs contents_decoding =
@@ -203,6 +206,7 @@ let lazy_dirs contents_decoding =
   let to_key k = [LMap.string_of_key k] in
   map
     (fun (origin, names, produce_value) ->
+      let origin = Option.map Tree.Wrapped.wrap origin in
       let contents = LMap.create ?origin ~produce_value () in
       create ~names:(Names.of_list names) ~contents ())
     (lazy_mapping_with_names to_key contents_decoding)

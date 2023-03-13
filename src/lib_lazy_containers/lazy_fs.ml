@@ -25,6 +25,8 @@
 
 type 'a t = {content : 'a option; dirs : 'a t Lazy_dirs.t}
 
+let origin t = Lazy_dirs.origin t.dirs
+
 let create ?value ?dirs () =
   {
     content = value;

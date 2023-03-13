@@ -29,6 +29,8 @@ module LMap : Lazy_map.S with type key = String.t
 
 type 'a t = {names : Names.t; contents : 'a LMap.t}
 
+val origin : 'a t -> Lazy_map.tree option
+
 val create : ?names:Names.t -> ?contents:'a LMap.t -> unit -> 'a t
 
 val is_empty : 'a t -> bool

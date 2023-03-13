@@ -33,6 +33,8 @@ end)
 
 type 'a t = {names : Names.t; contents : 'a LMap.t}
 
+let origin fs = LMap.origin @@ fs.contents
+
 let create ?names ?contents () =
   let lazy_value x ~default = match x with Some x -> x | None -> default () in
   {

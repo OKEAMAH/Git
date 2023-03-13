@@ -92,7 +92,7 @@ val lazy_mapping :
 val lazy_mapping_with_names :
   ('i -> key) ->
   'a t ->
-  (Tezos_lazy_containers.Lazy_map.tree option * string list * ('i -> 'a Lwt.t))
+  (Tree.wrapped_tree option * string list * ('i -> 'a Lwt.t))
   t
 
 val lazy_dirs : 'a t -> 'a Tezos_lazy_containers.Lazy_dirs.t t

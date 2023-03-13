@@ -71,7 +71,9 @@ let has_upgrade_error_flag durable =
 let get_wasm_version {durable; _} =
   let open Lwt_syntax in
   let* cbv = Durable.find_value_exn durable Constants.version_key in
-  let+ bytes = Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes cbv in
+  let+ bytes =
+    Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes cbv
+  in
   Data_encoding.Binary.of_bytes_exn Wasm_pvm_state.version_encoding bytes
 
 let stack_size_limit = function Wasm_pvm_state.V0 -> 300 | V1 -> 2048
@@ -105,8 +107,15 @@ let mark_for_reboot {reboot_counter; durable; _} =
    the currently running kernel. *)
 let has_fallback_kernel durable =
   let open Lwt_syntax in
+  Format.printf "HAS FALLBACK KERNEL\n" ;
   let* kernel_hash = Durable.hash durable Constants.kernel_key in
   let+ fallback_hash = Durable.hash durable Constants.kernel_fallback_key in
+  Format.printf
+    "HAS FALLBACK KERNEL CMP: %a %a\n"
+    (Fmt.option Context_hash.pp)
+    kernel_hash
+    (Fmt.option Context_hash.pp)
+    fallback_hash ;
   Option.is_some fallback_hash && kernel_hash <> fallback_hash
 
 let initial_boot_state () =

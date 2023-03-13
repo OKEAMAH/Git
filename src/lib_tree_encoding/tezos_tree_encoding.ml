@@ -384,7 +384,8 @@ let either enc_a enc_b =
 
 module type TREE = S
 
-type wrapped_tree = Tree.wrapped_tree
+type wrapped_tree = Tree.wrapped_tree =
+  | Wrapped_tree : 'tree * 'tree Tree.backend -> wrapped_tree
 
 module Wrapped : TREE with type tree = wrapped_tree = Tree.Wrapped
 
@@ -443,7 +444,9 @@ module Encodings_util = struct
 
       include Ctx.Tree
 
-      let select = function Tree t -> t | _ -> raise Incorrect_tree_type
+      let select x =
+        Format.printf "Encodings_util.select\n" ;
+        match x with Tree t -> t | _ -> raise Incorrect_tree_type
 
       let wrap t = Tree t
     end
