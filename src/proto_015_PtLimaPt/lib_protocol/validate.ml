@@ -3258,6 +3258,60 @@ let compute_payload_hash block_state
 
 let finalize_block {info; block_state; _} =
   let open Lwt_tzresult_syntax in
+  (* exhaustive scan of all bigmaps for zero ticket*)
+  let ctxt = info.ctxt in
+  let*! cs = Contract.list ctxt in
+  let elab_conf =
+    Script_ir_translator_config.make
+      ~legacy:true
+      ~keep_extra_types_for_interpreter_logging:false
+      ()
+  in
+  let find_zero_ticket_violations c =
+    match c with
+    | Contract.Originated hash -> (
+        let*! res =
+          let* _, script = Contract.get_script ctxt hash in
+          match script with
+          | None -> return None
+          | Some script ->
+              Logging.(log Info "checking %a" Contract_hash.pp hash) ;
+              let* ( Script_ir_translator.Ex_script
+                       (Script_typed_ir.Script {storage; storage_type; _}),
+                     _ ) =
+                Script_ir_translator.parse_script
+                  ~elab_conf
+                  ~allow_forged_in_storage:true
+                  ctxt
+                  script
+              in
+              let*? has_ticket, _ =
+                Ticket_scanner.type_has_tickets ctxt storage_type
+              in
+              let*! res =
+                Ticket_scanner.tickets_of_value
+                  ~include_lazy:true
+                  ctxt
+                  has_ticket
+                  storage
+              in
+              if Result.is_ok @@ res then return None else return @@ Some hash
+        in
+        match res with
+        | Ok (Some hash) -> Lwt.return (Some hash)
+        | _ -> Lwt.return None)
+    | _ -> Lwt.return None
+  in
+  let*! violations = List.filter_map_s find_zero_ticket_violations cs in
+  (match violations with
+  | [] -> ()
+  | vs ->
+      let list_pp =
+        Format.pp_print_list
+          ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@.")
+          Contract_hash.pp
+      in
+      Logging.(log Fatal "ticket scanner failed on contracts %a" list_pp vs)) ;
   match info.mode with
   | Application {fitness; predecessor_hash; block_data_contents; _} ->
       let* are_endorsements_required = are_endorsements_required info in
