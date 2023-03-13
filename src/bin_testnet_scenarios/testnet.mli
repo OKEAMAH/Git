@@ -28,7 +28,7 @@ type t = {
       (** The url of the network, as passed by to the Octez node with the
           [--network] command-line argument. Fetched from the configuration
           file. *)
-  snapshot : string;
+  snapshot : string option;
       (** The url of the snapshot to use to bootstrap the Octez
           node. Fetched from the configuration file. *)
   protocol : Protocol.t;

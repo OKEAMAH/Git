@@ -23,11 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = {network : string; snapshot : string; protocol : Protocol.t}
+type t = {network : string; snapshot : string option; protocol : Protocol.t}
 
 let get_testnet_config path =
   let conf = JSON.parse_file path in
-  let snapshot = JSON.(conf |-> "snapshot" |> as_string) in
+  let snapshot =
+    try Some JSON.(conf |-> "snapshot" |> as_string) with _ -> None
+  in
   let network = JSON.(conf |-> "network" |> as_string) in
   let protocol =
     match JSON.(conf |-> "protocol" |> as_string) with
