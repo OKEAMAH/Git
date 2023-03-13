@@ -190,8 +190,8 @@ let rejection_with_proof_loser_vs_loser ~(testnet : Testnet.t) () =
       [
         setup_l2_node
           ~testnet
-          ~name:"dishonest-node"
-          ~loser_mode:Format.(sprintf "%d 0 0" fault_level)
+          ~name:"dishonest-node1"
+          ~loser_mode:Format.(sprintf "%d 0 0 dishonest-node1" fault_level)
           ~operator:dishonest_operator_1.alias
           client
           node
@@ -199,7 +199,7 @@ let rejection_with_proof_loser_vs_loser ~(testnet : Testnet.t) () =
         setup_l2_node
           ~testnet
           ~name:"dishonest-node"
-          ~loser_mode:Format.(sprintf "%d 0 0" fault_level)
+          ~loser_mode:Format.(sprintf "%d 0 0 dishonest-node2" fault_level)
           ~operator:dishonest_operator_2.alias
           client
           node
