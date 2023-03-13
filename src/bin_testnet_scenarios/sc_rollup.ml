@@ -154,9 +154,82 @@ let rejection_with_proof ~(testnet : Testnet.t) () =
      result? *)
   unit
 
+let rejection_with_proof_loser_vs_loser ~(testnet : Testnet.t) () =
+  (* We expect each player to have at least 11,000 xtz. This is enough
+     to originate a rollup (1.68 xtz for one of the player), commit
+     (10,000 xtz for both player), and play the game (each
+     [Smart_rollup_refute] operation should be relatively cheap). *)
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* snapshot =
+    match testnet.snapshot with
+    | Some snapshot ->
+        let* snapshot = Helpers.download snapshot "snapshot" in
+        return (Some snapshot)
+    | None -> return None
+  in
+  let* client, node = Helpers.setup_octez_node ~testnet ?snapshot () in
+  let* dishonest_operator_1 = Client.gen_and_show_keys client in
+  let* dishonest_operator_2 = Client.gen_and_show_keys client in
+  let* () =
+    Lwt.join
+      [
+        Helpers.wait_for_funded_key node client min_balance dishonest_operator_1;
+        Helpers.wait_for_funded_key node client min_balance dishonest_operator_2;
+      ]
+  in
+  let* rollup_address =
+    originate_new_rollup ~src:dishonest_operator_1.alias client
+  in
+  let level = Node.get_level node in
+  let fault_level = level + 5 in
+  Log.info
+    "Dishonest operator expected to inject an error at level %d"
+    fault_level ;
+  let* _rollup_nodes =
+    Lwt.all
+      [
+        setup_l2_node
+          ~testnet
+          ~name:"dishonest-node"
+          ~loser_mode:Format.(sprintf "%d 0 0" fault_level)
+          ~operator:dishonest_operator_1.alias
+          client
+          node
+          rollup_address;
+        setup_l2_node
+          ~testnet
+          ~name:"dishonest-node"
+          ~loser_mode:Format.(sprintf "%d 0 0" fault_level)
+          ~operator:dishonest_operator_2.alias
+          client
+          node
+          rollup_address;
+      ]
+  in
+  let* () =
+    wait_for_game
+      ~staker:dishonest_operator_1.public_key_hash
+      rollup_address
+      client
+      node
+  in
+  let* () =
+    wait_for_end_of_game
+      ~staker:dishonest_operator_2.public_key_hash
+      rollup_address
+      client
+      node
+  in
+  unit
+
 let register ~testnet =
+  (*   Test.register *)
+  (*     ~__FILE__ *)
+  (*     ~title:"Rejection with proof" *)
+  (*     ~tags:["rejection"] *)
+  (*     (rejection_with_proof ~testnet) *)
   Test.register
     ~__FILE__
-    ~title:"Rejection with proof"
-    ~tags:["rejection"]
-    (rejection_with_proof ~testnet)
+    ~title:"Rejection with proof (loser vs loser)"
+    ~tags:["rejection"; "loser"]
+    (rejection_with_proof_loser_vs_loser ~testnet)
