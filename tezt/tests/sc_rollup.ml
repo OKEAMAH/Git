@@ -2745,51 +2745,72 @@ let test_refutation protocols ~kind =
     match kind with
     | "arith" ->
         [
-          (* As a reminder, the format of loser modes is a space-separated
-             list of space-separated triples of integers. The first integer
-             is the inbox level of the failure, the second integer is the
-             message index of the failure, and the third integer is the
-             index of the failing tick during the processing of this
-             message. *)
-          ("inbox_proof_at_genesis", (["3 0 0"], inputs_for 10, 80, [], []));
-          ("pvm_proof_at_genesis", (["3 0 1"], inputs_for 10, 80, [], []));
-          ("inbox_proof", (["5 0 0"], inputs_for 10, 80, [], []));
+          (* As a reminder, the format of loser modes is a
+             space-separated list of space-separated triples of
+             integers and a string. The first integer is the inbox
+             level of the failure, the second integer is the message
+             index of the failure, the third integer is the index of
+             the failing tick during the processing of this
+             message. The string replace the message payload.*)
+          ( "inbox_proof_at_genesis",
+            (["3 0 0 inboxproof"], inputs_for 10, 80, [], []) );
+          ( "pvm_proof_at_genesis",
+            (["3 0 1 genesispvm"], inputs_for 10, 80, [], []) );
+          ("inbox_proof", (["5 0 0 inboxproof"], inputs_for 10, 80, [], []));
           ( "inbox_proof_with_new_content",
-            (["5 0 0"], inputs_for 30, 80, [], []) );
+            (["5 0 0 inboxproof2"], inputs_for 30, 80, [], []) );
           (* In "inbox_proof_with_new_content" we add messages after the commitment
              period so the current inbox is not equal to the inbox snapshot-ted at the
              game creation. *)
           ( "inbox_proof_one_empty_level",
-            (["6 0 0"], inputs_for 10, 80, [2], []) );
+            (["6 0 0 emptylvl"], inputs_for 10, 80, [2], []) );
           ( "inbox_proof_many_empty_levels",
-            (["9 0 0"], inputs_for 10, 80, [2; 3; 4], []) );
-          ("pvm_proof_0", (["5 2 1"], inputs_for 10, 80, [], []));
-          ("pvm_proof_1", (["7 2 0"], inputs_for 10, 80, [], []));
-          ("pvm_proof_2", (["7 2 5"], inputs_for 7, 80, [], []));
-          ("pvm_proof_3", (["9 2 5"], inputs_for 7, 80, [4; 5], []));
-          ("timeout", (["5 2 1"], inputs_for 10, 80, [], [35]));
-          ("parallel_games_0", (["3 0 0"; "3 0 1"], inputs_for 10, 80, [], []));
+            (["9 0 0 toomanylvl"], inputs_for 10, 80, [2; 3; 4], []) );
+          ("pvm_proof_0", (["5 2 1 pvmproof0"], inputs_for 10, 80, [], []));
+          ("pvm_proof_1", (["7 2 0 pvmproof1"], inputs_for 10, 80, [], []));
+          ("pvm_proof_2", (["7 2 5 pvmproof2"], inputs_for 7, 80, [], []));
+          ("pvm_proof_3", (["9 2 5 pvmproof3"], inputs_for 7, 80, [4; 5], []));
+          ("timeout", (["5 2 1 timeout"], inputs_for 10, 80, [], [35]));
+          ( "parallel_games_0",
+            (["3 0 0 parallel0"; "3 0 1 parallel1"], inputs_for 10, 80, [], [])
+          );
           ( "parallel_games_1",
-            (["3 0 0"; "3 0 1"; "3 0 0"], inputs_for 10, 200, [], []) );
+            ( ["3 0 0 parallel0"; "3 0 1 parallel1"; "3 0 0 parallel2"],
+              inputs_for 10,
+              200,
+              [],
+              [] ) );
         ]
     | "wasm_2_0_0" ->
         [
           (* First message of an inbox (level 3) *)
-          ("inbox_proof_0", (["3 0 0"], inputs_for 10, 80, [], []));
+          ("inbox_proof_0", (["3 0 0 inboxproof0"], inputs_for 10, 80, [], []));
           (* Fourth message of an inbox (level 3) *)
-          ("inbox_proof_1", (["3 4 0"], inputs_for 10, 80, [], []));
+          ("inbox_proof_1", (["3 4 0 inboxproof1"], inputs_for 10, 80, [], []));
           (* Echo kernel takes around 2,100 ticks to execute *)
           (* Second tick of decoding *)
-          ("pvm_proof_0", (["5 7 11_000_000_001"], inputs_for 10, 80, [], []));
-          ("pvm_proof_1", (["7 7 11_000_001_000"], inputs_for 10, 80, [], []));
+          ( "pvm_proof_0",
+            (["5 7 11_000_000_001 pvmproof0"], inputs_for 10, 80, [], []) );
+          ( "pvm_proof_1",
+            (["7 7 11_000_001_000 pvmproof1"], inputs_for 10, 80, [], []) );
           (* End of evaluation *)
-          ("pvm_proof_2", (["7 7 22_000_002_000"], inputs_for 10, 80, [], []));
+          ( "pvm_proof_2",
+            (["7 7 22_000_002_000 pvmproof2"], inputs_for 10, 80, [], []) );
           (* During padding *)
-          ("pvm_proof_3", (["7 7 22_010_000_000"], inputs_for 10, 80, [], []));
+          ( "pvm_proof_3",
+            (["7 7 22_010_000_000 pvmproof3"], inputs_for 10, 80, [], []) );
           ( "parallel_games_0",
-            (["4 0 0"; "5 7 11_000_000_001"], inputs_for 10, 80, [], []) );
+            ( ["4 0 0 parallel0"; "5 7 11_000_000_001 parallel1"],
+              inputs_for 10,
+              80,
+              [],
+              [] ) );
           ( "parallel_games_1",
-            ( ["4 0 0"; "7 7 22_000_002_000"; "7 7 22_000_002_000"],
+            ( [
+                "4 0 0 parallel0";
+                "7 7 22_000_002_000 parallel1";
+                "7 7 22_000_002_000 parallel2";
+              ],
               inputs_for 10,
               80,
               [],
@@ -2817,7 +2838,7 @@ let test_accuser protocols =
     ~challenge_window:10
     ~commitment_period:10
     ~variant:"pvm_proof_2"
-    (["7 7 22_000_002_000"], inputs_for 10, 80, [], [])
+    (["7 7 22_000_002_000 accuser"], inputs_for 10, 80, [], [])
     protocols
 
 (** Helper to check that the operation whose hash is given is successfully

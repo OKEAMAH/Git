@@ -171,7 +171,7 @@ module Make (PVM : Pvm.S) = struct
           return (state, 1L, failing_ticks')
         in
         match failing_ticks with
-        | xtick :: failing_ticks' ->
+        | (xtick, _payload) :: failing_ticks' ->
             let jump = Int64.(max 0L (pred xtick)) in
             if Compare.Int64.(jump = 0L) then
               (* Insert the failure in the first tick. *)
@@ -247,10 +247,9 @@ module Make (PVM : Pvm.S) = struct
       go fuel start_tick failing_ticks state
 
     (** [mutate input] corrupts the payload of [input] for testing purposes. *)
-    let mutate input =
+    let mutate input payload =
       let payload =
-        Sc_rollup.Inbox_message.unsafe_of_string
-          "\001to the cheater we promise pain and misery"
+        Sc_rollup.Inbox_message.unsafe_of_string ("\001" ^ payload)
       in
       {input with Sc_rollup.payload}
 
@@ -278,7 +277,7 @@ module Make (PVM : Pvm.S) = struct
       continue_with_fuel F.one_tick_consumption fuel state @@ fun fuel state ->
       let>* input, failing_ticks =
         match failing_ticks with
-        | xtick :: failing_ticks' ->
+        | (xtick, payload) :: failing_ticks' ->
             if xtick = tick then
               let*! () =
                 Interpreter_event.intended_failure
@@ -287,7 +286,7 @@ module Make (PVM : Pvm.S) = struct
                   ~message_tick:tick
                   ~internal:false
               in
-              return (mutate input, failing_ticks')
+              return (mutate input payload, failing_ticks')
             else return (input, failing_ticks)
         | [] -> return (input, failing_ticks)
       in
