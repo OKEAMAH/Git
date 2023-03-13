@@ -345,6 +345,13 @@ module Polynomial_impl = struct
 
   let is_zero p = if degree p = -1 then true else false
 
+  let truncate ~len p =
+    (* [len p] returns either [len] or the number of coefficients of [p]
+       (which is the degree of p + 1). When [p] is the zero polynomial its
+       degree is -1 so we have to handle this case independently. *)
+    let len p = if is_zero p then 1 else min len (degree p + 1) in
+    copy ~len:(len p) p
+
   let evaluate p scalar =
     let n = length p in
     let res = Fr.copy scalar in
@@ -462,6 +469,10 @@ module type Polynomial_sig = sig
 
   (** [copy p] returns a copy of a polynomial [p] *)
   val copy : ?offset:int -> ?len:int -> t -> t
+
+  (** [truncate ~len p] returns a new polynomial made of the first [len]
+      coefficients of [p]. *)
+  val truncate : len:int -> t -> t
 
   (** [to_dense_coefficients p] returns the dense representation of
   a polynomial [p], i.e., it converts a C array to an OCaml array *)
