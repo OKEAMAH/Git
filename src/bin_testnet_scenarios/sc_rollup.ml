@@ -222,14 +222,192 @@ let rejection_with_proof_loser_vs_loser ~(testnet : Testnet.t) () =
   in
   unit
 
+let cement_and_outbox_msg ~(testnet : Testnet.t) () =
+  (* We expect each player to have at least 11,000 xtz. This is enough
+     to originate a rollup (1.68 xtz for one of the player), commit
+     (10,000 xtz for both player), and play the game (each
+     [Smart_rollup_refute] operation should be relatively cheap). *)
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* snapshot =
+    match testnet.snapshot with
+    | Some snapshot ->
+        let* snapshot = Helpers.download snapshot "snapshot" in
+        return (Some snapshot)
+    | None -> return None
+  in
+  let* client, node = Helpers.setup_octez_node ~testnet ?snapshot () in
+  let* operator = Client.gen_and_show_keys client in
+  let* () =
+    Lwt.join [Helpers.wait_for_funded_key node client min_balance operator]
+  in
+  let originate_target_contract rollup_address source =
+    let prg =
+      Printf.sprintf
+        {|
+          {
+            parameter (or (int %%default) (int %%aux));
+            storage (int :s);
+            code
+              {
+                # Check that SENDER is the rollup address
+                SENDER;
+                PUSH address %S;
+                ASSERT_CMPEQ;
+                # Check that SOURCE is the implicit account used for executing
+                # the outbox message.
+                SOURCE;
+                PUSH address %S;
+                ASSERT_CMPEQ;
+                UNPAIR;
+                IF_LEFT
+                  { SWAP ; DROP; NIL operation }
+                  { SWAP ; DROP; NIL operation };
+                PAIR;
+              }
+          }
+        |}
+        rollup_address
+        source
+    in
+    let* address =
+      Client.originate_contract
+        ~alias:"target"
+        ~amount:(Tez.of_int 100)
+        ~burn_cap:(Tez.of_int 100)
+        ~src:source
+        ~prg
+        ~init:"0"
+        client
+    in
+    let* () = Client.bake_for_and_wait client in
+    return address
+  in
+  let check_target_contract_execution target_address expected_storage =
+    let* storage = Client.contract_storage target_address client in
+    return
+    @@ Check.(
+         (String.trim storage = expected_storage)
+           string
+           ~error_msg:"Invalid contract storage: expecting '%R', got '%L'.")
+  in
+  let perform_rollup_execution_and_cement ~src client node ~payload
+      ~blocks_to_wait =
+    let* () =
+      let json = Ezjsonm.list Ezjsonm.string [payload] in
+      let msg = "hex:" ^ Ezjsonm.to_string ~minify:true json in
+      Client.Sc_rollup.send_message ~src ~msg client
+    in
+    let* _ = Node.wait_for_level node (Node.get_level node + blocks_to_wait) in
+    unit
+  in
+  let input_message client ?entrypoint contract_address parameters =
+    let transaction =
+      Sc_rollup_client.{destination = contract_address; entrypoint; parameters}
+    in
+    let* answer = Sc_rollup_client.encode_batch client [transaction] in
+    match answer with
+    | None -> failwith "Encoding of batch should not fail."
+    | Some answer -> return answer
+  in
+  let trigger_outbox_message_execution ~src ~rollup_address rollup_client
+      outbox_level ~parameters ~destination =
+    let message_index = 0 in
+    let* outbox =
+      Runnable.run @@ Sc_rollup_client.outbox ~outbox_level rollup_client
+    in
+    Log.info "Outbox is %s" (JSON.encode outbox) ;
+    let expected =
+      JSON.parse ~origin:"trigger_outbox_message_execution"
+      @@ Printf.sprintf
+           {|
+              [ { "outbox_level": %d, "message_index": "%d",
+                  "message":
+                  { "transactions":
+                    [ { "parameters": { "int": "%s" },
+                    "destination": "%s" } ] } } ] |}
+           outbox_level
+           message_index
+           parameters
+           destination
+    in
+    assert (JSON.encode expected = JSON.encode outbox) ;
+    let* answer =
+      Sc_rollup_client.outbox_proof_single
+        rollup_client
+        ~message_index
+        ~outbox_level
+        ~destination
+        ~parameters
+    in
+    match answer with
+    | None -> failwith "Unexpected error during proof generation"
+    | Some {commitment_hash; proof} ->
+        let*! () =
+          Client.Sc_rollup.execute_outbox_message
+            ~burn_cap:(Tez.of_int 10)
+            ~rollup:rollup_address
+            ~src
+            ~commitment_hash
+            ~proof
+            client
+        in
+        Client.bake_for_and_wait client
+  in
+  let* rollup_address = originate_new_rollup ~src:operator.alias client in
+  let* rollup_node =
+    setup_l2_node
+      ~testnet
+      ~name:"rollup-node"
+      ~operator:operator.alias
+      client
+      node
+      rollup_address
+  in
+  let rollup_client =
+    Sc_rollup_client.create ~protocol:testnet.protocol rollup_node
+  in
+  let* target_contract_address =
+    originate_target_contract operator.alias rollup_address
+  in
+  let payload = "37" in
+  let* message = input_message rollup_client target_contract_address payload in
+  (* value for mumbainet and mondaynet *)
+  let commitment_period = 20 in
+  let challenge_window = 40 in
+  let blocks_to_wait = 2 + (2 * commitment_period) + challenge_window in
+  let* () =
+    perform_rollup_execution_and_cement
+      ~src:operator.alias
+      client
+      node
+      ~payload:message
+      ~blocks_to_wait
+  in
+  let* () =
+    trigger_outbox_message_execution
+      ~src:operator.alias
+      ~rollup_address
+      rollup_client
+      challenge_window
+      ~parameters:payload
+      ~destination:target_contract_address
+  in
+  let* () = check_target_contract_execution target_contract_address payload in
+  unit
+
 let register ~testnet =
   (*   Test.register *)
   (*     ~__FILE__ *)
   (*     ~title:"Rejection with proof" *)
   (*     ~tags:["rejection"] *)
   (*     (rejection_with_proof ~testnet) *)
+  (*   Test.register *)
+  (*     ~__FILE__ *)
+  (*     ~title:"Rejection with proof (loser vs loser)" *)
+  (*     ~tags:["rejection"; "loser"] *)
+  (*     (rejection_with_proof_loser_vs_loser ~testnet) *)
   Test.register
     ~__FILE__
-    ~title:"Rejection with proof (loser vs loser)"
-    ~tags:["rejection"; "loser"]
-    (rejection_with_proof_loser_vs_loser ~testnet)
+    ~title:"cementation and outbox message execution"
+    ~tags:["cementation"; "outbox"]
+    (cement_and_outbox_msg ~testnet)
