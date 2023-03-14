@@ -112,6 +112,10 @@ module type S = sig
 
   module Message_id : ITERABLE
 
+  module Message : sig
+    type t
+  end
+
   type message
 
   type time
@@ -199,6 +203,7 @@ module Make (C : CONFIGURATION) :
   module Peer = C.Peer
   module Topic = C.Topic
   module Message_id = C.Message_id
+  module Message = C.Message
 
   type message = C.Message.t
 
@@ -1050,4 +1055,153 @@ module Make (C : CONFIGURATION) :
   end
 
   let remove_peer : Peer.t -> [`Remove_peer] output Monad.t = Remove_peer.handle
+end
+
+module Heart (C : sig
+  module Gossip : S
+
+  module Monad : sig
+    type 'a t
+
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val return : 'a -> 'a t
+
+    val sleep : Gossip.span -> unit t
+  end
+
+  module Stream : sig
+    type 'a t
+
+    val empty : 'a t
+
+    val push : 'a -> 'a t -> unit
+
+    val pop : 'a t -> 'a Monad.t
+  end
+
+  module P2P : sig
+    module Connect_handler : sig
+      val disconnect : Gossip.Peer.t -> unit Monad.t
+
+      type connection = {peer : Gossip.Peer.t; direct : bool; outbound : bool}
+
+      val on_new_connection : connection Stream.t
+    end
+
+    module TRUC (M : sig
+      type message
+
+      val encode : message -> Bytes.t
+
+      val decode : Bytes.t -> message
+
+      val maximum_length : int
+    end) : sig
+      val send : M.message -> bool Monad.t
+
+      val receive : M.message Stream.t
+    end
+  end
+end) : sig
+  type t
+
+  type handle
+
+  type limits := (C.Gossip.Peer.t, C.Gossip.Message_id.t, C.Gossip.span) limits
+
+  type parameters := (C.Gossip.Peer.t, C.Gossip.Message_id.t) parameters
+
+  val make : Random.State.t -> limits -> parameters -> t
+
+  val start : C.Gossip.Topic.t -> t -> t
+
+  val publish : C.Gossip.Message_id.t -> C.Gossip.Message.t -> t -> unit
+
+  val shutdown : t -> unit
+end = struct
+  type handle = unit
+
+  type p2p_message
+
+  type event =
+    | Heartbeat
+    | New_connection of {peer : C.Gossip.Peer.t; direct : bool; outbound : bool}
+    | Disconnection of {peer : C.Gossip.Peer.t}
+    | Received_message of {peer : C.Gossip.Peer.t; message : p2p_message}
+    | Send_message of {peer : C.Gossip.Peer.t option; message : p2p_message}
+    | Publish_message of {
+        message : C.Gossip.Message.t;
+        message_id : C.Gossip.Message_id.t;
+      }
+
+  type state =
+    | Starting
+    | Running of {
+        heartbeat_handle : handle;
+        event_loop_handle : handle;
+        topic : C.Gossip.Topic.t;
+      }
+
+  type t = {
+    gossip : C.Gossip.state;
+    state : state;
+    events_stream : event C.Stream.t;
+  }
+
+  let apply gossip = function
+    | Heartbeat ->
+        let gossip, output = C.Gossip.heartbeat gossip in
+        ignore output ;
+        gossip
+    | New_connection {peer; direct; outbound} ->
+        let gossip, output = C.Gossip.add_peer ~direct ~outbound peer gossip in
+        ignore output ;
+        gossip
+    | _ -> assert false
+
+  let heartbeat span stream =
+    let rec loop () =
+      let open C.Monad in
+      let* () = C.Monad.sleep span in
+      C.Stream.push Heartbeat stream ;
+      loop ()
+    in
+    ignore (loop ()) ;
+    ()
+
+  let event_loop t =
+    let rec loop t =
+      let open C.Monad in
+      let* event = C.Stream.pop t.events_stream in
+      let gossip = apply t.gossip event in
+      let t = {t with gossip} in
+      loop t
+    in
+    ignore (loop t) ;
+    ()
+
+  let make rng limits parameters =
+    {
+      gossip = C.Gossip.make rng limits parameters;
+      state = Starting;
+      events_stream = C.Stream.empty;
+    }
+
+  let start topic t =
+    let span = assert false in
+    let heartbeat_handle = heartbeat span t.events_stream in
+    let event_loop_handle = event_loop t in
+    let state = Running {heartbeat_handle; event_loop_handle; topic} in
+    {t with state}
+
+  let publish message_id message t =
+    C.Stream.push (Publish_message {message; message_id}) t.events_stream
+
+  let shutdown t =
+    match t.state with
+    | Starting -> ()
+    | Running _ ->
+        (* TODO: shutdown loops *)
+        ()
 end
