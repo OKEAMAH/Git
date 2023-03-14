@@ -2780,6 +2780,7 @@ let generate_dune_project_files () =
   Format.fprintf fmt "(lang dune %s)@." dune_lang_version ;
   Format.fprintf fmt "(formatting (enabled_for ocaml))@." ;
   Format.fprintf fmt "(cram enable)@." ;
+  Format.fprintf fmt "(implicit_transitive_deps false)@." ;
   Format.fprintf fmt "(using ctypes 0.1)@." ;
   ( Target.iter_internal_by_opam @@ fun package internals ->
     let has_public_target =
