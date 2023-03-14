@@ -712,7 +712,7 @@ let make_endorse_action state proposal =
   in
   Inject_endorsements {endorsements}
 
-let update_endorsable_payload state proposal preendorsements =
+let may_update_endorsable_payload state proposal preendorsements =
   let prequorum =
     {
       level = proposal.block.shell.level;
@@ -744,7 +744,7 @@ let prequorum_reached_for_current_proposal state preendorsements =
   (* NOTE: in this case the latest proposal is a proposal for the current
      round; see [End_of_round] case *)
   assert (proposal.block.round = state.round_state.current_round) ;
-  let state = update_endorsable_payload state proposal preendorsements in
+  let state = may_update_endorsable_payload state proposal preendorsements in
   let state =
     update_locked_round state proposal.block.round proposal.block.payload_hash
   in
