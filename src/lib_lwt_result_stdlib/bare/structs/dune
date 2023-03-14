@@ -8,5 +8,6 @@
  (libraries
   seqes
   lwt
-  tezos-lwt-result-stdlib.bare.sigs)
+  tezos-lwt-result-stdlib.bare.sigs
+  tezos-lwt-result-stdlib.bare.functor-outputs)
  (js_of_ocaml))

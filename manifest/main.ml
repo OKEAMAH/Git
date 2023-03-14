@@ -501,6 +501,7 @@ let _octez_stdlib_tests =
         bigstring;
         octez_test_helpers |> open_;
         qcheck_alcotest;
+        aches;
       ]
     ~js_compatible:true
 
@@ -549,7 +550,13 @@ let octez_lwt_result_stdlib_bare_structs =
     ~path:"src/lib_lwt_result_stdlib/bare/structs"
     ~internal_name:"bare_structs"
     ~js_compatible:true
-    ~deps:[seqes; lwt; octez_lwt_result_stdlib_bare_sigs]
+    ~deps:
+      [
+        seqes;
+        lwt;
+        octez_lwt_result_stdlib_bare_sigs;
+        octez_lwt_result_stdlib_bare_functor_outputs;
+      ]
     ~opam_with_test:Only_on_64_arch
 
 let octez_lwt_result_stdlib_traced_functor_outputs =
@@ -558,7 +565,12 @@ let octez_lwt_result_stdlib_traced_functor_outputs =
     ~path:"src/lib_lwt_result_stdlib/traced/functor_outputs"
     ~internal_name:"traced_functor_outputs"
     ~js_compatible:true
-    ~deps:[lwt; octez_lwt_result_stdlib_bare_sigs]
+    ~deps:
+      [
+        lwt;
+        octez_lwt_result_stdlib_bare_sigs;
+        octez_lwt_result_stdlib_bare_functor_outputs;
+      ]
     ~opam_with_test:Only_on_64_arch
 
 let octez_lwt_result_stdlib_traced_sigs =
@@ -587,6 +599,7 @@ let octez_lwt_result_stdlib_traced_structs =
         lwt;
         octez_lwt_result_stdlib_traced_sigs;
         octez_lwt_result_stdlib_bare_structs;
+        octez_lwt_result_stdlib_traced_functor_outputs;
       ]
     ~opam_with_test:Only_on_64_arch
 
@@ -920,8 +933,7 @@ let octez_bls12_381_polynomial_internal =
        Octez"
     ~c_library_flags:["-Wall"; "-Wextra"; ":standard"]
     ~preprocess:[pps ppx_repr]
-    ~deps:[bls12_381; ppx_repr; bigstringaf]
-    ~js_compatible:false
+    ~deps:[bls12_381; ppx_repr; bigstringaf; integers; zarith]
     ~foreign_stubs:
       {
         language = C;
@@ -1264,7 +1276,7 @@ let lazy_containers =
     ~synopsis:
       "A collection of lazy containers whose contents is fetched from \
        arbitrary backend on-demand"
-    ~deps:[octez_lwt_result_stdlib; zarith]
+    ~deps:[octez_lwt_result_stdlib; zarith; lwt]
 
 let _lazy_containers_tests =
   tezt
@@ -1790,7 +1802,7 @@ let octez_wasmer =
     "tezos-wasmer"
     ~path:"src/lib_wasmer"
     ~synopsis:"Wasmer bindings for SCORU WASM"
-    ~deps:[ctypes; ctypes_foreign; lwt; lwt_unix; tezos_rust_lib]
+    ~deps:[ctypes; ctypes_foreign; lwt; lwt_unix; tezos_rust_lib; integers]
     ~preprocess:[pps ppx_deriving_show]
     ~flags:(Flags.standard ~disable_warnings:[9; 27] ())
     ~ctypes:

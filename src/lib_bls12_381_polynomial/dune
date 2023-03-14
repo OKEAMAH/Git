@@ -8,7 +8,9 @@
  (libraries
   bls12-381
   ppx_repr
-  bigstringaf)
+  bigstringaf
+  integers
+  zarith)
  (preprocess (pps ppx_repr))
  (foreign_stubs
   (language c)

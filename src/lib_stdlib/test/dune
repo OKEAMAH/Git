@@ -10,7 +10,8 @@
   octez-alcotezt
   bigstring
   tezos-test-helpers
-  qcheck-alcotest)
+  qcheck-alcotest
+  aches)
  (js_of_ocaml)
  (library_flags (:standard -linkall))
  (flags

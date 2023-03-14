@@ -8,5 +8,6 @@
  (libraries
   lwt
   tezos-lwt-result-stdlib.traced.sigs
-  tezos-lwt-result-stdlib.bare.structs)
+  tezos-lwt-result-stdlib.bare.structs
+  tezos-lwt-result-stdlib.traced.functor-outputs)
  (js_of_ocaml))
