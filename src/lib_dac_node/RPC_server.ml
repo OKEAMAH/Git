@@ -133,9 +133,8 @@ let handle_monitor_root_hashes hash_streamer =
   let* () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
   Tezos_rpc.Answer.return_stream {next; shutdown}
 
-let handle_get_certificate ctx root_hash =
+let handle_get_certificate node_store root_hash =
   let open Lwt_result_syntax in
-  let node_store = Node_context.get_node_store ctx Store_sigs.Read_only in
   let+ value_opt = Store.Certificate_store.find node_store root_hash in
   Option.map
     (fun Store.{aggregate_signature; witnesses} ->
@@ -188,11 +187,11 @@ let register_monitor_root_hashes dac_plugin hash_streamer dir =
     (Monitor_services.S.root_hashes dac_plugin)
     (fun () () () -> handle_monitor_root_hashes hash_streamer)
 
-let register_get_certificate ctx dac_plugin =
+let register_get_certificate node_store dac_plugin =
   add_service
     Tezos_rpc.Directory.register1
     (RPC_services.get_certificate dac_plugin)
-    (fun root_hash () () -> handle_get_certificate ctx root_hash)
+    (fun root_hash () () -> handle_get_certificate node_store root_hash)
 
 let register_get_missing_page dac_plugin page_store cctxt =
   add_service
@@ -266,7 +265,7 @@ module Coordinator = struct
          rw_store
          page_store
          cctxt
-    |> register_get_certificate coordinator_node_ctxt dac_plugin
+    |> register_get_certificate ro_store dac_plugin
 end
 
 module Committee_member = struct
@@ -335,7 +334,7 @@ module Legacy = struct
          rw_store
          page_store
          cctxt
-    |> register_get_certificate legacy_node_ctxt dac_plugin
+    |> register_get_certificate ro_store dac_plugin
     |> register_get_missing_page
 end
 
