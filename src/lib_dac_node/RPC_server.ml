@@ -88,7 +88,11 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
           data
   in
   let* signature, witnesses =
-    Signature_manager.sign_root_hash dac_plugin cctxt dac_sk_uris root_hash
+    Signature_manager.Legacy.sign_root_hash
+      dac_plugin
+      cctxt
+      dac_sk_uris
+      root_hash
   in
   let*! external_message =
     External_message.Default.make dac_plugin root_hash signature witnesses
@@ -226,7 +230,6 @@ module Coordinator = struct
       (RPC_services.put_dac_member_signature dac_plugin)
       (fun () dac_member_signature ->
         Signature_manager.Coordinator.handle_put_dac_member_signature
-          Node_context.Coordinator.committee_members
           ctx
           dac_plugin
           ro_node_store
@@ -285,8 +288,7 @@ module Legacy = struct
       Tezos_rpc.Directory.register0
       (RPC_services.put_dac_member_signature dac_plugin)
       (fun () dac_member_signature ->
-        Signature_manager.Coordinator.handle_put_dac_member_signature
-          Node_context.Legacy.committee_members
+        Signature_manager.Legacy.handle_put_dac_member_signature
           ctx
           dac_plugin
           ro_node_store
