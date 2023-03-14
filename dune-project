@@ -1,6 +1,7 @@
 (lang dune 3.0)
 (formatting (enabled_for ocaml))
 (cram enable)
+(implicit_transitive_deps false)
 (using ctypes 0.1)
 (package (name internal-devtools))
 (package (name octez-accuser-PtLimaPt))
