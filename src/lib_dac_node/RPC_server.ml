@@ -184,16 +184,6 @@ let register_monitor_root_hashes dac_plugin hash_streamer dir =
     (Monitor_services.S.root_hashes dac_plugin)
     (fun () () () -> handle_monitor_root_hashes hash_streamer)
 
-let register_put_dac_member_signature ctx dac_plugin cctxt =
-  add_service
-    Tezos_rpc.Directory.register0
-    (RPC_services.put_dac_member_signature dac_plugin)
-    (fun () dac_member_signature ->
-      Signature_manager.Coordinator.handle_put_dac_member_signature
-        ctx
-        cctxt
-        dac_member_signature)
-
 let register_get_certificate ctx dac_plugin =
   add_service
     Tezos_rpc.Directory.register1
@@ -222,15 +212,31 @@ module Coordinator = struct
     in
     return root_hash
 
-  let register_coordinator_post_preimage dac_plugin hash_streamer page_store =
+  let register_post_preimage dac_plugin hash_streamer page_store =
     add_service
       Tezos_rpc.Directory.register0
       (RPC_services.Coordinator.post_preimage dac_plugin)
       (fun () payload ->
         handle_post_preimage dac_plugin page_store hash_streamer payload)
 
-  let dynamic_rpc_dir dac_plugin _ro_store _rw_store page_store cctxt
-      coordinator_node_ctxt =
+  let register_put_dac_member_signature ctx dac_plugin ro_node_store
+      rw_node_store page_store cctxt =
+    add_service
+      Tezos_rpc.Directory.register0
+      (RPC_services.put_dac_member_signature dac_plugin)
+      (fun () dac_member_signature ->
+        Signature_manager.Coordinator.handle_put_dac_member_signature
+          Node_context.Coordinator.committee_members
+          ctx
+          dac_plugin
+          ro_node_store
+          rw_node_store
+          page_store
+          cctxt
+          dac_member_signature)
+
+  let dynamic_rpc_dir dac_plugin ro_store rw_store page_store cctxt
+      (coordinator_node_ctxt : Node_context.t) =
     let modal_node_ctxt =
       match Node_context.mode coordinator_node_ctxt with
       | Coordinator modal_node_ctxt -> modal_node_ctxt
@@ -246,11 +252,17 @@ module Coordinator = struct
       Node_context.Coordinator.public_keys_opt modal_node_ctxt
     in
     Tezos_rpc.Directory.empty
-    |> register_coordinator_post_preimage dac_plugin hash_streamer page_store
+    |> register_post_preimage dac_plugin hash_streamer page_store
     |> register_get_verify_signature dac_plugin public_keys_opt
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
-    |> register_put_dac_member_signature coordinator_node_ctxt dac_plugin cctxt
+    |> register_put_dac_member_signature
+         modal_node_ctxt
+         dac_plugin
+         ro_store
+         rw_store
+         page_store
+         cctxt
     |> register_get_certificate coordinator_node_ctxt dac_plugin
 end
 
@@ -267,7 +279,23 @@ module Observer = struct
 end
 
 module Legacy = struct
-  let dynamic_rpc_dir dac_plugin _ro_store _rw_store page_store cctxt
+  let register_put_dac_member_signature ctx dac_plugin ro_node_store
+      rw_node_store page_store cctxt =
+    add_service
+      Tezos_rpc.Directory.register0
+      (RPC_services.put_dac_member_signature dac_plugin)
+      (fun () dac_member_signature ->
+        Signature_manager.Coordinator.handle_put_dac_member_signature
+          Node_context.Legacy.committee_members
+          ctx
+          dac_plugin
+          ro_node_store
+          rw_node_store
+          page_store
+          cctxt
+          dac_member_signature)
+
+  let dynamic_rpc_dir dac_plugin ro_store rw_store page_store cctxt
       legacy_node_ctxt =
     let modal_node_ctxt =
       match Node_context.mode legacy_node_ctxt with
@@ -298,7 +326,13 @@ module Legacy = struct
     |> register_get_verify_signature dac_plugin public_keys_opt
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
-    |> register_put_dac_member_signature legacy_node_ctxt dac_plugin cctxt
+    |> register_put_dac_member_signature
+         modal_node_ctxt
+         dac_plugin
+         ro_store
+         rw_store
+         page_store
+         cctxt
     |> register_get_certificate legacy_node_ctxt dac_plugin
     |> register_get_missing_page
 end

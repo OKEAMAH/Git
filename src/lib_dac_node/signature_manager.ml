@@ -307,14 +307,11 @@ module Coordinator = struct
          (fun pkh -> Aggregate_signature.Public_key_hash.equal signer_pkh pkh)
          dac_committee
 
-  let handle_put_dac_member_signature ctx cctxt dac_member_signature =
+  let handle_put_dac_member_signature get_committee_members ctx dac_plugin
+      ro_node_store rw_node_store page_store cctxt
+      (Signature_repr.{root_hash; _} as dac_member_signature) =
     let open Lwt_result_syntax in
-    let*? dac_plugin = Node_context.get_dac_plugin ctx in
     let ((module Plugin) : Dac_plugin.t) = dac_plugin in
-    let page_store = Node_context.get_page_store ctx in
-    let Signature_repr.{signer_pkh; root_hash; signature} =
-      dac_member_signature
-    in
     let*! has_payload =
       Page_store.Filesystem.mem dac_plugin page_store root_hash
     in
@@ -326,7 +323,10 @@ module Coordinator = struct
     (* Return an HTTP 404 error when hash provided in signature is unknown *)
     | Ok false -> raise Not_found
     | Ok true ->
-        let*? dac_committee = Node_context.get_committee_members ctx in
+        let Signature_repr.{signer_pkh; root_hash; signature} =
+          dac_member_signature
+        in
+        let dac_committee = get_committee_members ctx in
         let* () =
           fail_unless
             (check_is_dac_member dac_committee signer_pkh)
@@ -342,9 +342,6 @@ module Coordinator = struct
             ~some:return
             pub_key_opt
         in
-        let ro_node_store =
-          Node_context.get_node_store ctx Store_sigs.Read_only
-        in
         let* dac_member_has_signed =
           check_dac_member_has_signed
             dac_plugin
@@ -355,9 +352,6 @@ module Coordinator = struct
         if dac_member_has_signed then return_unit
         else
           let* () = verify_signature dac_plugin pub_key signature root_hash in
-          let rw_node_store =
-            Node_context.get_node_store ctx Store_sigs.Read_write
-          in
           let* () =
             add_dac_member_signature
               dac_plugin
