@@ -115,7 +115,7 @@ val serialized_encoding : serialized Data_encoding.t
 
 val encoding : serialized t Data_encoding.t
 
-val pp : Format.formatter -> 'a t -> unit
+val pp : Format.formatter -> serialized t -> unit
 
 (** The state hash of the machine before the step. This must be checked
     against the value in the refutation game as well as checking the

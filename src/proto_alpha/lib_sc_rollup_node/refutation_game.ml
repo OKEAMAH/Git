@@ -164,6 +164,13 @@ module Make (Interpreter : Interpreter.S) :
 
   let generate_proof node_ctxt game start_state =
     let open Lwt_result_syntax in
+    let*! state_hash = PVM.state_hash start_state in
+    Format.eprintf
+      "PROOF GENERATION: \ngame: %a\nstart state %a\n%!"
+      Data_encoding.Json.pp
+      (Data_encoding.Json.construct Sc_rollup.Game.encoding game)
+      Sc_rollup.State_hash.pp
+      state_hash ;
     (* NOTE: [snapshot_level] and [snapshot_hash] below refer to the level
        before the refutation game starts. In fact, snapshotting of inbox and Dal
        slots histories at [game.start_level] takes the state of the skip list

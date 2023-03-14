@@ -149,12 +149,17 @@ type 'proof t = {pvm_step : 'proof; input_proof : input_proof option}
 
 type serialized = string
 
+let serialize_pvm_step_opt (type state proof output)
+    ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation)
+    (proof : proof) : serialized option =
+  let (module PVM) = pvm in
+  Data_encoding.Binary.to_string_opt PVM.proof_encoding proof
+
 let serialize_pvm_step (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation)
     (proof : proof) : serialized tzresult =
   let open Result_syntax in
-  let (module PVM) = pvm in
-  match Data_encoding.Binary.to_string_opt PVM.proof_encoding proof with
+  match serialize_pvm_step_opt ~pvm proof with
   | Some p -> return p
   | None -> error (Sc_rollup_proof_check "Cannot serialize proof")
 
@@ -178,7 +183,32 @@ let encoding =
        (req "pvm_step" serialized_encoding)
        (opt "input_proof" input_proof_encoding))
 
-let pp ppf _ = Format.fprintf ppf "Refutation game proof"
+let pp_input_proof ppf = function
+  | Inbox_proof {level; message_counter; proof} ->
+      Format.fprintf
+        ppf
+        "level: %a@,message counter: %a@,proof: %a"
+        Raw_level_repr.pp
+        level
+        Z.pp_print
+        message_counter
+        (Format.pp_print_option
+           ~none:(fun ppf () ->
+             Format.pp_print_string ppf "Failed to deserialize proof")
+           Sc_rollup_inbox_repr.pp_proof)
+        (Sc_rollup_inbox_repr.of_serialized_proof proof)
+  | Reveal_proof _reveal_proof -> Format.fprintf ppf "Reveal proof"
+  | First_inbox_message -> Format.fprintf ppf "First inbox message proof"
+
+let pp ppf {pvm_step; input_proof} =
+  Format.fprintf
+    ppf
+    "serialized pvm step: %s@,input proof:@[<v2>%a@]"
+    pvm_step
+    (Format.pp_print_option
+       ~none:(fun ppf () -> Format.pp_print_string ppf "None")
+       pp_input_proof)
+    input_proof
 
 let start_of_pvm_step (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation)

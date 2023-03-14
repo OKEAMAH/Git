@@ -44,18 +44,20 @@ module Simple = struct
       ("num_messages", Data_encoding.int31)
 
   let intended_failure =
-    declare_4
+    declare_6
       ~section
       ~name:"sc_rollup_node_interpreter_intended_failure"
       ~msg:
         "Intended failure at level {level} for message indexed {message_index} \
          and at the tick {message_tick} of message processing (internal = \
-         {internal})."
+         {internal}, message = {payload}, pvm tick {current_tick})."
       ~level:Notice
       ("level", Data_encoding.int31)
       ("message_index", Data_encoding.int31)
       ("message_tick", Data_encoding.int64)
+      ("current_tick", Protocol.Alpha_context.Sc_rollup.Tick.encoding)
       ("internal", Data_encoding.bool)
+      ("payload", Data_encoding.option Data_encoding.(string' Hex))
 end
 
 (** [transition_pvm inbox_level hash tick n] emits the event that a PVM
@@ -64,12 +66,25 @@ end
 let transitioned_pvm inbox_level hash tick num_messages =
   Simple.(emit transitioned_pvm (inbox_level, hash, tick, num_messages))
 
-(** [intended_failure level message_index message_tick internal] emits
-   the event that an intended failure has been injected at some given
-   [level], during the processing of a given [message_index] and at
-   tick [message_tick] during this message processing. [internal] is
-   [true] if the failure is injected in a PVM internal
-   step. [internal] is [false] if the failure is injected in the input
-   to the PVM. *)
-let intended_failure ~level ~message_index ~message_tick ~internal =
-  Simple.(emit intended_failure (level, message_index, message_tick, internal))
+(** [intended_failure level message_index message_tick ?message
+    internal] emits the event that an intended failure has been
+    injected at some given [level], during the processing of a given
+    [message_index] and at tick [message_tick] during this message
+    processing. [internal] is [true] if the failure is injected in a
+    PVM internal step. [internal] is [false] if the failure is
+    injected in the message to the PVM. *)
+let intended_failure ~level ~message_index ~message_tick ~current_tick ?message
+    () =
+  Simple.(
+    emit
+      intended_failure
+      ( level,
+        message_index,
+        message_tick,
+        current_tick,
+        Option.is_none message,
+        Option.map
+          (fun m ->
+            Protocol.Alpha_context.Sc_rollup.Inbox_message.unsafe_to_string
+              m.payload)
+          message ))
