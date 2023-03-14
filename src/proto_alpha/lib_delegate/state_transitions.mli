@@ -42,7 +42,11 @@ val make_consensus_list :
   state -> proposal -> (consensus_key_and_delegate * consensus_content) list
 
 val may_update_proposal :
-  is_proposal_applied:bool -> state -> proposal -> state Lwt.t
+  is_proposal_applied:bool ->
+  ?update_previous_proposal:bool ->
+  state ->
+  proposal ->
+  state Lwt.t
 
 val preendorse : state -> proposal -> (state * action) Lwt.t
 

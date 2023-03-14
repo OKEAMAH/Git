@@ -95,7 +95,8 @@ let make_preendorse_action state proposal =
   in
   Inject_preendorsements {preendorsements}
 
-let update_proposal ~is_proposal_applied state proposal =
+let update_proposal ~is_proposal_applied ?(update_previous_proposal = false)
+    state proposal =
   Events.(emit updating_latest_proposal proposal.block.hash) >>= fun () ->
   let prev_proposal = state.level_state.latest_proposal in
   let is_latest_proposal_applied =
@@ -105,24 +106,34 @@ let update_proposal ~is_proposal_applied state proposal =
     || prev_proposal.block.hash = proposal.block.hash
        && state.level_state.is_latest_proposal_applied
   in
+  let previous_proposal =
+    if update_previous_proposal then Some state.level_state.latest_proposal
+    else None
+  in
   let new_level_state =
     {
       state.level_state with
       is_latest_proposal_applied;
       latest_proposal = proposal;
-      previous_proposal = None;
+      previous_proposal;
     }
   in
   Lwt.return {state with level_state = new_level_state}
 
-let may_update_proposal ~is_proposal_applied state (proposal : proposal) =
+let may_update_proposal ~is_proposal_applied ?update_previous_proposal state
+    (proposal : proposal) =
   assert (
     Compare.Int32.(
       state.level_state.latest_proposal.block.shell.level
       = proposal.block.shell.level)) ;
   if
     Round.(state.level_state.latest_proposal.block.round < proposal.block.round)
-  then update_proposal ~is_proposal_applied state proposal
+  then
+    update_proposal
+      ~is_proposal_applied
+      ?update_previous_proposal
+      state
+      proposal
   else Lwt.return state
 
 let preendorse state proposal =
@@ -270,16 +281,18 @@ let rec handle_proposal ~is_proposal_applied state (new_proposal : proposal) =
           let new_state =
             may_update_endorsable_payload_with_internal_pqc state new_proposal
           in
-          may_update_proposal ~is_proposal_applied new_state new_proposal
-          >>= fun new_state ->
-          (* We necessarily have a previous latest proposal that is on
-             the same level and on an inferior round, we can update
-             the previous proposal. *)
-          let previous_proposal = Some state.level_state.latest_proposal in
-          let new_level_state =
-            {new_state.level_state with previous_proposal}
+          let update_previous_proposal =
+            (* We necessarily have a previous latest proposal that is on
+               the same level and on an inferior round, we can update
+               the previous proposal. *)
+            true
           in
-          let new_state = {new_state with level_state = new_level_state} in
+          may_update_proposal
+            ~is_proposal_applied
+            ~update_previous_proposal
+            new_state
+            new_proposal
+          >>= fun new_state ->
           (* The proposal is valid but maybe we already locked on a payload *)
           match new_state.level_state.locked_round with
           | Some locked_round -> (
