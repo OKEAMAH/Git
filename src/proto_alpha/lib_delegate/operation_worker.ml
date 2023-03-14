@@ -65,21 +65,19 @@ module Events = struct
       ("preendorsements", Data_encoding.int31)
 
   let preendorsements_received =
-    declare_4
+    declare_3
       ~section
       ~name:"preendorsements_received"
       ~level:Debug
       ~msg:
-        "received {count} preendorsements (power: {delta_power}) (total voting \
-         power: {voting_power}, {preendorsements} preendorsements)"
-      ~pp1:pp_int
-      ("count", Data_encoding.int31)
+        "received preendorsements for round {round}; total voting power: \
+         {total_voting_power} out of {nb_preendorsements} preendorsements)"
+      ~pp1:Round.pp
+      ("round", Round.encoding)
       ~pp2:pp_int
-      ("delta_power", Data_encoding.int31)
+      ("total_voting_power", Data_encoding.int31)
       ~pp3:pp_int
-      ("voting_power", Data_encoding.int31)
-      ~pp4:pp_int
-      ("preendorsements", Data_encoding.int31)
+      ("nb_preendorsements", Data_encoding.int31)
 
   let qc_reached =
     declare_2
@@ -137,6 +135,9 @@ module Events = struct
       ()
 end
 
+(* We use the type name [candidate] in this module to avoid confusion with the
+   type [Baker_state.proposal], but "candidate" is just another name for
+   "proposal". *)
 type candidate = {
   hash : Block_hash.t;
   round_watched : Round.t;
@@ -274,81 +275,81 @@ let reset_monitoring state =
       qc_watched.endorsements_received <- Endorsement_set.empty ;
       Lwt.return_unit
 
+let update_pqc_monitoring (pqc_watched : pqc_watched) preendorsements =
+  let preendorsements =
+    List.filter
+      (fun new_preendo ->
+        not
+          (Preendorsement_set.mem
+             new_preendo
+             pqc_watched.preendorsements_received))
+      preendorsements
+  in
+  let candidate = pqc_watched.candidate_watched in
+  let consensus_threshold = pqc_watched.consensus_threshold in
+  let () =
+    List.iter
+      (fun (op : Kind.preendorsement Operation.t) ->
+        let {
+          shell = _;
+          protocol_data =
+            {contents = Single (Preendorsement consensus_content); _};
+          _;
+        } =
+          op
+        in
+        if is_valid_consensus_content candidate consensus_content then (
+          let op_power =
+            pqc_watched.get_preendorsement_voting_power
+              ~slot:consensus_content.slot
+          in
+          pqc_watched.current_voting_power <-
+            pqc_watched.current_voting_power + op_power ;
+          pqc_watched.preendorsements_received <-
+            Preendorsement_set.add op pqc_watched.preendorsements_received ;
+          pqc_watched.preendorsements_count <-
+            pqc_watched.preendorsements_count + 1))
+      preendorsements
+  in
+  if pqc_watched.current_voting_power >= consensus_threshold then
+    Some
+      (Prequorum_reached
+         ( pqc_watched.candidate_watched,
+           Preendorsement_set.elements pqc_watched.preendorsements_received ))
+  else None
+
 let update_monitoring ?(should_lock = true) state ops =
   (if should_lock then Lwt_mutex.with_lock state.lock else fun f -> f ())
   @@ fun () ->
-  (* If no block is watched, don't do anything *)
-  match state.proposal_watched with
-  | None -> Lwt.return_unit
-  | Some
-      (Pqc_watch
-        ({
-           candidate_watched;
-           get_preendorsement_voting_power;
-           consensus_threshold;
-           preendorsements_received;
-           _;
-         } as proposal_watched)) ->
-      let preendorsements = Operation_pool.filter_preendorsements ops in
-      let preendorsements =
-        List.filter
-          (fun new_preendo ->
-            not (Preendorsement_set.mem new_preendo preendorsements_received))
-          preendorsements
-      in
-      let preendorsements_count, voting_power =
-        List.fold_left
-          (fun (count, power) (op : Kind.preendorsement Operation.t) ->
-            let {
-              shell = _;
-              protocol_data =
-                {contents = Single (Preendorsement consensus_content); _};
-              _;
-            } =
-              op
-            in
-            if is_valid_consensus_content candidate_watched consensus_content
-            then (
-              let op_power =
-                get_preendorsement_voting_power ~slot:consensus_content.slot
-              in
-              proposal_watched.current_voting_power <-
-                proposal_watched.current_voting_power + op_power ;
-              proposal_watched.preendorsements_received <-
-                Preendorsement_set.add
-                  op
-                  proposal_watched.preendorsements_received ;
-              proposal_watched.preendorsements_count <-
-                proposal_watched.preendorsements_count + 1 ;
-              (count + 1, power + op_power))
-            else (count, power))
-          (0, 0)
-          preendorsements
-      in
-      if proposal_watched.current_voting_power >= consensus_threshold then (
-        Events.(
-          emit
-            pqc_reached
-            ( proposal_watched.current_voting_power,
-              proposal_watched.preendorsements_count ))
-        >>= fun () ->
-        state.qc_event_stream.push
-          (Some
-             (Prequorum_reached
-                ( candidate_watched,
-                  Preendorsement_set.elements
-                    proposal_watched.preendorsements_received ))) ;
-        (* Once the event has been emitted, we cancel the monitoring *)
-        cancel_monitoring state ;
-        Lwt.return_unit)
-      else
+  let preendorsements = lazy (Operation_pool.filter_preendorsements ops) in
+  let handle_pqc_watch ~canceler pqc_watched =
+    update_pqc_monitoring pqc_watched (Lazy.force preendorsements) |> function
+    | None ->
+        (* No PQC is reached yet *)
         Events.(
           emit
             preendorsements_received
-            ( preendorsements_count,
-              voting_power,
-              proposal_watched.current_voting_power,
-              proposal_watched.preendorsements_count ))
+            ( pqc_watched.candidate_watched.round_watched,
+              pqc_watched.current_voting_power,
+              pqc_watched.preendorsements_count ))
+    | Some pqc_event ->
+        Events.(
+          emit
+            pqc_reached
+            (pqc_watched.current_voting_power, pqc_watched.preendorsements_count))
+        >>= fun () ->
+        (* The PQC is reached yet: notify the event *)
+        state.qc_event_stream.push (Some pqc_event) ;
+        (* call the canceler *)
+        canceler () ;
+        Lwt.return_unit
+  in
+  match state.proposal_watched with
+  | None ->
+      (* If no block is watched, don't do anything *)
+      Lwt.return_unit
+  | Some (Pqc_watch pqc_watched) ->
+      handle_pqc_watch ~canceler:(fun () -> cancel_monitoring state) pqc_watched
   | Some
       (Qc_watch
         ({

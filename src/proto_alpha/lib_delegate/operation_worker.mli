@@ -83,6 +83,4 @@ val monitor_endorsement_quorum :
   candidate ->
   unit Lwt.t
 
-val cancel_monitoring : t -> unit
-
 val shutdown_worker : t -> (unit, exn list) result Lwt.t
