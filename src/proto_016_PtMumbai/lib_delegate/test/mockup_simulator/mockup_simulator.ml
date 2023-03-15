@@ -1160,7 +1160,7 @@ type config = {
 
 let default_config =
   {
-    debug = false;
+    debug = true;
     round0 = 2L;
     (* Rounds should be long enough for the bakers to
        exchange all the necessary messages. *)
