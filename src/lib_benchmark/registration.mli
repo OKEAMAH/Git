@@ -130,6 +130,14 @@ val find_model : Namespace.t -> model_info option
     named [name] and has been registered, else raises the exception {! Model_not_found s} *)
 val find_model_exn : Namespace.t -> model_info
 
+(** [find_local_model s] returns the list of benchmark names whose local model
+    name is [s], if the latter has been registered, else returns [None] *)
+val find_local_model : Namespace.t -> Namespace.t list option
+
+(** [find_local_model s] returns the list of benchmark names whose local model
+    name is [s], if the latter has been registered, else raises the exception {! Model_not_found s} *)
+val find_local_model_exn : Namespace.t -> Namespace.t list
+
 (** [find_models_in_namespace s] returns all registered models which name
     has [s] as a parent namespace. *)
 val find_models_in_namespace : Namespace.t -> (Namespace.t * model_info) list
