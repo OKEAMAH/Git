@@ -272,11 +272,11 @@ pub fn store_block_by_number<Host: Runtime + RawRollupCore>(
 
 pub fn store_current_block<Host: Runtime + RawRollupCore>(
     host: &mut Host,
-    block: L2Block,
+    block: &L2Block,
 ) -> Result<(), Error> {
     let current_block_path = OwnedPath::from(EVM_CURRENT_BLOCK);
-    store_block(host, &block, current_block_path)?;
+    store_block(host, block, current_block_path)?;
     /* When storing the current block's infos we need to store it under the [evm/blocks/<block_number>]
     path as well, thus the following line: */
-    store_block_by_number(host, &block)
+    store_block_by_number(host, block)
 }
