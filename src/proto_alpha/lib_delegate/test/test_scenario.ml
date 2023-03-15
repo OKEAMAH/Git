@@ -587,8 +587,6 @@ let test_scenario_f1 () =
               (3l, bootstrap3);
             ] );
         ];
-      timeout = 30;
-      debug = true;
     }
   in
   run
@@ -649,9 +647,6 @@ let test_scenario_f2 () =
               (4l, bootstrap1);
             ] );
         ];
-      timeout = 60;
-      round0 = 2L;
-      round1 = 3L;
     }
   in
   run
@@ -712,7 +707,7 @@ let test_scenario_m1 () =
       | Baking_state.New_head_proposal {block; _} -> block.shell.level > 4l
       | _ -> false
   end in
-  let config = {default_config with timeout = 60} in
+  let config = default_config in
   run
     ~config
     [
@@ -770,9 +765,6 @@ let test_scenario_m2 () =
               (4l, bootstrap4);
             ] );
         ];
-      round0 = 2L;
-      round1 = 3L;
-      timeout = 60;
     }
   in
   run
@@ -843,9 +835,6 @@ let test_scenario_m3 () =
               (6l, bootstrap1);
             ] );
         ];
-      round0 = 2L;
-      round1 = 3L;
-      timeout = 60;
     }
   in
   run
@@ -1164,7 +1153,6 @@ let test_scenario_m6 () =
               (3l, bootstrap4);
             ] );
         ];
-      timeout = 60;
     }
   in
   run
@@ -1369,7 +1357,6 @@ let test_scenario_m7 () =
               (3l, bootstrap4);
             ] );
         ];
-      timeout = 60;
     }
   in
   run
@@ -1514,7 +1501,6 @@ let test_scenario_m8 () =
               (3l, bootstrap4);
             ] );
         ];
-      timeout = 60;
     }
   in
   run
