@@ -50,6 +50,7 @@ type commands =
   | Reveal_preimage of string option
   | Reveal_metadata
   | Unknown of string
+  | Help
   | Stop
 
 let parse_eval_step = function
@@ -106,9 +107,43 @@ let parse_commands s =
     | ["reveal"; "metadata"] -> Reveal_metadata
     | ["stop"] -> Stop
     | ["bench"] -> Bench
+    | ["help"] -> Help
     | _ -> Unknown s
   in
   go command
+
+(* TODO: we likely want a way to print this in the man page with Clic *)
+let help_text =
+  [
+    "time <command> - runs another command from this list, printing the time \
+     spent in execution.";
+    "show inbox - Displays the messages in the inbox at the current level.";
+    "show outbox at level <level> - Displays the messages in the outbox at the \
+     given level.";
+    "show status - Displays the status of the PVM at the current level.";
+    "show durable storage - Displays the durable storage of the PVM at the \
+     current level.";
+    "show subkeys <path> - Displays the subkeys of the given path.";
+    "show key <key> - Displays the value of the given key.";
+    "show key <key> as <hex|string> - Displays the value of the given key in \
+     the given format.";
+    (* TODO: maybe we should simplify the grammar here *)
+    "show memory at <address> for <length> bytes - Displays the memory at the \
+     given address for the given length.";
+    "show memory at <address> for <length> bytes as string - Displays the \
+     memory at the given address for the given length in the given format.";
+    "show memory at <address> as <int32|int64|uint128|uint256> - Displays the \
+     memory at the given address for the given length in the given format.";
+    "step tick - Steps the PVM by one tick.";
+    "step result - Steps the PVM until the next result is produced.";
+    "step kernel_run - Steps the PVM until the end of the current kernel run.";
+    "step inbox - Steps the PVM until the next input is requested.";
+    "load inputs - Loads the inputs from the inbox into the PVM.";
+    "reveal preimage - Reveals the preimage of the requested hash by the PVM.";
+    "reveal metadata - Reveals the rollups metadata.";
+    "bench - Benchmarks a step of the PVM and displays the resulting data";
+    "stop - Stops the debugger.";
+  ]
 
 let build_metadata config =
   Tezos_protocol_alpha.Protocol.Alpha_context.Sc_rollup.Metadata.(
@@ -581,6 +616,14 @@ let handle_command c config tree inboxes level =
         return ~tree ()
     | Unknown s ->
         let*! () = Lwt_io.eprintf "Unknown command `%s`\n%!" s in
+        return ()
+    | Help ->
+        let*! () = Lwt_io.printf "Usage:\n%!" in
+        let*! () =
+          List.iter_s
+            (fun help_text -> Lwt_io.printf "%s\n%!" help_text)
+            help_text
+        in
         return ()
     | Stop -> return ()
   in

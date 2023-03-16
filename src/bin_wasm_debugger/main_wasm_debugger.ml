@@ -90,6 +90,9 @@ let start version binary file =
 (* REPL main loop: reads an input, does something out of it, then loops. *)
 let repl tree inboxes level config =
   let open Lwt_result_syntax in
+  let*! () =
+    Lwt_io.printf "Starting debugger REPL. Enter command 'help' for usage.\n"
+  in
   let rec loop tree inboxes level =
     let*! () = Lwt_io.printf "> " in
     let* input =
