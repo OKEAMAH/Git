@@ -272,6 +272,7 @@
         "Tx_rollup_services",
         "Dal_services",
         "Alpha_services",
+        "Remove_zero_amount_ticket_migration_for_n",
 
         "Main"
     ]

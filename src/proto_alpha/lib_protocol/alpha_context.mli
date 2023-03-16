@@ -1547,6 +1547,11 @@ module Lazy_storage : sig
   val apply : t -> diffs -> (t * Z.t) tzresult Lwt.t
 end
 
+module Migration_util : sig
+  val evict_big_map_key :
+    t -> Big_map.Id.t -> Script_expr_hash.t list -> t tzresult Lwt.t
+end
+
 (** See the definitions inside the module. *)
 module Origination_nonce : sig
   (** See {!Raw_context.init_origination_nonce}. *)

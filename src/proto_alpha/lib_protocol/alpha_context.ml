@@ -517,6 +517,16 @@ module Sapling = struct
   end
 end
 
+module Migration_util = struct
+  let evict_big_map_key ctxt m ks =
+    let evict_one_key ctxt k =
+      let open Lwt_result_syntax in
+      let* ctxt, _, _ = Storage.Big_map.Contents.remove (ctxt, m) k in
+      return ctxt
+    in
+    List.fold_left_es evict_one_key ctxt ks
+end
+
 module Bond_id = struct
   include Bond_id_repr
   module Internal_for_tests = Contract_storage

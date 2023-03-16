@@ -276,6 +276,7 @@
   Tx_rollup_services
   Dal_services
   Alpha_services
+  Remove_zero_amount_ticket_migration_for_n
   Main))
 
 (library
@@ -562,6 +563,7 @@
   tx_rollup_services.ml tx_rollup_services.mli
   dal_services.ml dal_services.mli
   alpha_services.ml alpha_services.mli
+  remove_zero_amount_ticket_migration_for_n.ml
   main.ml main.mli
   (:src_dir TEZOS_PROTOCOL))
  (action (run %{bin:octez-protocol-compiler} -no-hash-check -warn-error +a .)))
@@ -828,6 +830,7 @@
   tx_rollup_services.ml tx_rollup_services.mli
   dal_services.ml dal_services.mli
   alpha_services.ml alpha_services.mli
+  remove_zero_amount_ticket_migration_for_n.ml
   main.ml main.mli (:src_dir TEZOS_PROTOCOL))
  (action
   (with-stdout-to
@@ -1099,6 +1102,7 @@
   tx_rollup_services.ml tx_rollup_services.mli
   dal_services.ml dal_services.mli
   alpha_services.ml alpha_services.mli
+  remove_zero_amount_ticket_migration_for_n.ml
   main.ml main.mli (:src_dir TEZOS_PROTOCOL))
  (action
   (with-stdout-to

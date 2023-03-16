@@ -365,6 +365,7 @@ let init chain_id ctxt block_header =
     ~predecessor
     ctxt
   >>=? fun ctxt ->
+  Remove_zero_amount_ticket_migration_for_n.init ctxt >>=? fun ctxt ->
   let cache_nonce =
     Alpha_context.Cache.cache_nonce_from_block_header
       block_header
