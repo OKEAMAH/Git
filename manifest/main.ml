@@ -5297,7 +5297,7 @@ module Protocol = Protocol
             ]
       in
       tezt
-        ["canary"]
+        ["canary"; "fueled_eval"]
         ~path:(path // "lib_sc_rollup_node/test")
         ~opam:"tezos-sc-rollup-node-test"
         ~synopsis:"Tests for the smart rollup node library"
