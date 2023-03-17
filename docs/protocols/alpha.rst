@@ -39,7 +39,12 @@ Smart Rollups
 - Refactor WASM PVM to enable breaking changes such as new host functions and
   parameterization of maximum call depth. (MRs :gl:`!7724`, :gl:`!7726`)
 
-- Allow PVMs to upgrade themselves when a new protocol activates. (MRs :gl:`!7729`)
+- Allow PVMs to upgrade themselves when a new protocol activates. (MR :gl:`!7729`)
+
+- The field ``commitment`` in the operation ``Sc_rollup_cement`` is now deprecated.
+  The protocol computes the valid candidate commitment to cement, and cements it.
+  The provided ``commitment`` is omitted by the protocol and unchecked with the
+  found one. (MR :gl:`!7316`)
 
 Zero Knowledge Rollups (ongoing)
 --------------------------------
@@ -57,6 +62,11 @@ Distribution of rollups data through reveal data channel. (MRs :gl:`!7571`)
 
 Breaking Changes
 ----------------
+
+- The operation's result ``Sc_rollup_cement_result`` now have a new field
+  ``commitment``, which is the commitment cemented by the application of
+  the operation ``Sc_rollup_cement``.  (MR :gl:`!7316`)
+
 
 RPC Changes
 -----------
