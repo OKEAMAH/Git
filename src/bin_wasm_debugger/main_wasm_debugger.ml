@@ -112,6 +112,18 @@ let repl tree inboxes level config =
   in
   loop tree (List.to_seq inboxes) level
 
+let execute_commands commands config tree inboxes level =
+  let open Lwt_result_syntax in
+  let rec loop tree inboxes level = function
+    | [] -> return tree
+    | command :: commands ->
+        let* tree, inboxes, level =
+          Commands.handle_command command config tree inboxes level
+        in
+        loop tree inboxes level commands
+  in
+  loop tree (List.to_seq inboxes) level commands
+
 let file_parameter =
   Tezos_clic.parameter (fun _ filename ->
       Repl_helpers.(trap_exn (fun () -> read_file filename)))
@@ -133,6 +145,14 @@ let wasm_param =
 let input_arg =
   let open Tezos_clic in
   arg ~doc:"input file" ~long:"inputs" ~placeholder:"inputs.json" file_parameter
+
+let commands_arg =
+  let open Tezos_clic in
+  arg
+    ~doc:"command file"
+    ~long:"commands"
+    ~placeholder:"commands.json"
+    file_parameter
 
 let rollup_parameter =
   let open Lwt_result_syntax in
@@ -182,9 +202,9 @@ let main_command =
   let open Lwt_result_syntax in
   command
     ~desc:"Start the eval loop"
-    (args3 input_arg rollup_arg preimage_directory_arg)
+    (args4 input_arg rollup_arg preimage_directory_arg commands_arg)
     (wasm_param @@ stop)
-    (fun (inputs, rollup_arg, preimage_directory) wasm_file version ->
+    (fun (inputs, rollup_arg, preimage_directory, commands) wasm_file version ->
       let version =
         Option.value
           ~default:
@@ -205,8 +225,21 @@ let main_command =
         | Some inputs -> Messages.parse_inboxes inputs config
         | None -> return []
       in
-      let+ _tree = repl tree inboxes 0l config in
-      ())
+      match commands with
+      | None ->
+          let+ _tree = repl tree inboxes 0l config in
+          ()
+      | Some commands -> (
+          let open Data_encoding in
+          match Json.from_string commands with
+          | Error err ->
+              failwith
+                "Error parsing command file JSON:\n%S"
+                err
+          | Ok json ->
+              let commands = Json.destruct (list string) json in
+              let+ _tree = execute_commands commands config tree inboxes 0l in
+              ()))
 
 (* List of program commands *)
 let commands = [main_command]
