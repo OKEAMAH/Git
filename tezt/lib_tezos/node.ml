@@ -948,3 +948,17 @@ let get_version node =
     spawn_command node version_flag |> Process.check_and_read_stdout
   in
   return @@ String.trim output
+
+module Event_regression = Daemon.Make (struct
+  let base_default_name = "node-event-regression"
+
+  type persistent_state = unit
+
+  type session_state = unit
+
+  let default_colors = Log.Color.[|FG.cyan; FG.magenta; FG.yellow; FG.green|]
+end)
+
+let create_and_spawn_event_regression ~hooks () =
+  let evr = Event_regression.create ~path:Constant.node_event_regression () in
+  Process.run ~hooks ~name:evr.name ~color:evr.color evr.path []

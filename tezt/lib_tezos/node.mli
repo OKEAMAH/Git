@@ -564,3 +564,10 @@ val upgrade_storage : t -> unit Lwt.t
 
 (** Run [octez-node --version] and return the node's version. *)
 val get_version : t -> string Lwt.t
+
+(** Event regression *)
+
+(** Spawns the event regression binary that outputs the list of events as a
+    string *)
+val create_and_spawn_event_regression :
+  hooks:Process.hooks -> unit -> unit Lwt.t

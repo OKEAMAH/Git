@@ -44,6 +44,8 @@ let dac_node = "./octez-dac-node"
 
 let smart_rollup_node = "./octez-smart-rollup-node"
 
+let node_event_regression = "./octez-node-event-regression"
+
 (* TODO: tezos/tezos#4803
    Can we do better than to depend on script-inputs?
 *)
