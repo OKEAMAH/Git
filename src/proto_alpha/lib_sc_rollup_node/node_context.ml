@@ -583,9 +583,21 @@ let get_full_l2_block node_ctxt block_hash =
   let open Lwt_result_syntax in
   let* block = get_l2_block node_ctxt block_hash in
   let* inbox = get_inbox node_ctxt block.header.inbox_hash
-  and* {messages; _} = get_messages node_ctxt block.header.inbox_witness
+  and* {is_migration_block; predecessor; predecessor_timestamp; messages} =
+    get_messages node_ctxt block.header.inbox_witness
   and* commitment =
     Option.map_es (get_commitment node_ctxt) block.header.commitment_hash
+  in
+  let messages =
+    let open Sc_rollup.Inbox_message in
+    Internal Start_of_level
+    ::
+    (if is_migration_block then
+     [Internal Sc_rollup.Inbox_message.protocol_migration_internal_message]
+    else [])
+    @ Internal (Info_per_level {predecessor; predecessor_timestamp})
+      :: messages
+    @ [Internal End_of_level]
   in
   return {block with content = {Sc_rollup_block.inbox; messages; commitment}}
 
