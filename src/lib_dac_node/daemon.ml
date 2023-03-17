@@ -92,10 +92,18 @@ let run ~data_dir cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
   let* (Configuration.
-          {rpc_address; rpc_port; reveal_data_dir; mode = _; data_dir = _} as
+          {rpc_address; rpc_port; reveal_data_dir; mode; data_dir = _} as
        config) =
     Configuration.load ~data_dir
   in
+  let mode =
+    match mode with
+    | Coordinator _ -> "coordinator"
+    | Committee_member _ -> "committee_member"
+    | Observer _ -> "Observer"
+    | Legacy _ -> "Legacy"
+  in
+  let*! () = Event.(emit operating_mode mode) in
   let* () = Page_store.ensure_reveal_data_dir_exists reveal_data_dir in
   let* ctxt = Node_context.init config cctxt in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4725
