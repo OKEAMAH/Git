@@ -61,4 +61,8 @@ val endorsing_rights_by_first_slot :
   (context * (Consensus_key.pk * int) Slot.Map.t) tzresult Lwt.t
 
 (** Computes the bonus baking reward depending on the endorsing power. *)
-val bonus_baking_reward : context -> endorsing_power:int -> Tez.t tzresult
+val bonus_baking_reward :
+  context ->
+  endorsing_power:int ->
+  baking_reward_bonus_per_slot:Tez.t ->
+  Tez.t tzresult

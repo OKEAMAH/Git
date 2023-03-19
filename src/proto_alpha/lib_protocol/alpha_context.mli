@@ -5362,8 +5362,12 @@ module Fees : sig
 end
 
 module Rewards : sig
-  val get_rewards :
-    context -> (context * Delegate_rewards_repr.value) tzresult Lwt.t
+  type value = {
+    baking_reward_fixed_portion : Tez.t;
+    baking_reward_bonus_per_slot : Tez.t;
+  }
+
+  val get_rewards : context -> (context * value) tzresult Lwt.t
 
   val reset_reward_at_cycle_end : context -> context
 end

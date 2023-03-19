@@ -2531,14 +2531,25 @@ let finalize_application ctxt block_data_contents ~round ~predecessor_hash
     | Some nonce_hash ->
         Nonce.record_hash ctxt {nonce_hash; delegate = block_producer.delegate}
   in
+  let* ( ctxt,
+         {
+           baking_reward_fixed_portion = baking_reward;
+           baking_reward_bonus_per_slot;
+         } ) =
+    Rewards.get_rewards ctxt
+  in
   let* ctxt, reward_bonus =
     if required_endorsements then
       let* ctxt = record_endorsing_participation ctxt in
-      let*? rewards_bonus = Baking.bonus_baking_reward ctxt ~endorsing_power in
+      let*? rewards_bonus =
+        Baking.bonus_baking_reward
+          ctxt
+          ~endorsing_power
+          ~baking_reward_bonus_per_slot
+      in
       return (ctxt, Some rewards_bonus)
     else return (ctxt, None)
   in
-  let baking_reward = Constants.baking_reward_fixed_portion ctxt in
   let* ctxt, baking_receipts =
     Delegate.record_baking_activity_and_pay_rewards_and_fees
       ctxt

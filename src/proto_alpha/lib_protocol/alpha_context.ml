@@ -666,5 +666,6 @@ module Internal_for_tests = struct
 end
 
 module Rewards = struct
+  include Delegate_rewards_repr
   include Delegate_rewards
 end
