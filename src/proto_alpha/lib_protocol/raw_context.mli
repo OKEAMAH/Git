@@ -485,3 +485,7 @@ module Dal : sig
      for the current level. *)
   val init_committee : t -> committee -> t
 end
+
+val get_rewards : t -> Delegate_rewards_repr.t
+
+val set_rewards : t -> Delegate_rewards_repr.t -> t

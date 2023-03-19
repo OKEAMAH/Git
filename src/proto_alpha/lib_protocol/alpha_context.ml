@@ -664,3 +664,7 @@ module Cache = Cache_repr
 module Internal_for_tests = struct
   let to_raw x = x
 end
+
+module Rewards = struct
+  include Delegate_rewards
+end

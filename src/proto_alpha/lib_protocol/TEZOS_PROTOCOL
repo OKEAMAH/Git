@@ -121,6 +121,7 @@
         "Migration_repr",
         "Carbonated_map_costs",
         "Carbonated_map",
+	"Delegate_rewards_repr",
 
         "Raw_context_intf",
         "Raw_context",
@@ -159,6 +160,7 @@
         "Delegate_missed_endorsements_storage",
         "Delegate_slashed_deposits_storage",
         "Delegate_cycles",
+	"Delegate_rewards",
         "Bootstrap_storage",
 
         "Vote_storage",

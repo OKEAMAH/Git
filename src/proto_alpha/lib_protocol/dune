@@ -144,6 +144,7 @@
   Migration_repr
   Carbonated_map_costs
   Carbonated_map
+  Delegate_rewards_repr
   Raw_context_intf
   Raw_context
   Storage_costs
@@ -177,6 +178,7 @@
   Delegate_missed_endorsements_storage
   Delegate_slashed_deposits_storage
   Delegate_cycles
+  Delegate_rewards
   Bootstrap_storage
   Vote_storage
   Ticket_storage
@@ -429,6 +431,7 @@
   migration_repr.ml migration_repr.mli
   carbonated_map_costs.ml carbonated_map_costs.mli
   carbonated_map.ml carbonated_map.mli
+  delegate_rewards_repr.ml delegate_rewards_repr.mli
   raw_context_intf.ml
   raw_context.ml raw_context.mli
   storage_costs.ml storage_costs.mli
@@ -463,6 +466,7 @@
   delegate_missed_endorsements_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   delegate_cycles.ml delegate_cycles.mli
+  delegate_rewards.ml delegate_rewards.mli
   bootstrap_storage.ml bootstrap_storage.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -695,6 +699,7 @@
   migration_repr.ml migration_repr.mli
   carbonated_map_costs.ml carbonated_map_costs.mli
   carbonated_map.ml carbonated_map.mli
+  delegate_rewards_repr.ml delegate_rewards_repr.mli
   raw_context_intf.ml
   raw_context.ml raw_context.mli
   storage_costs.ml storage_costs.mli
@@ -729,6 +734,7 @@
   delegate_missed_endorsements_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   delegate_cycles.ml delegate_cycles.mli
+  delegate_rewards.ml delegate_rewards.mli
   bootstrap_storage.ml bootstrap_storage.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -966,6 +972,7 @@
   migration_repr.ml migration_repr.mli
   carbonated_map_costs.ml carbonated_map_costs.mli
   carbonated_map.ml carbonated_map.mli
+  delegate_rewards_repr.ml delegate_rewards_repr.mli
   raw_context_intf.ml
   raw_context.ml raw_context.mli
   storage_costs.ml storage_costs.mli
@@ -1000,6 +1007,7 @@
   delegate_missed_endorsements_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   delegate_cycles.ml delegate_cycles.mli
+  delegate_rewards.ml delegate_rewards.mli
   bootstrap_storage.ml bootstrap_storage.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli

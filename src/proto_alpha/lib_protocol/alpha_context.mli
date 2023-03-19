@@ -5360,3 +5360,10 @@ module Fees : sig
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
 end
+
+module Rewards : sig
+  val get_rewards :
+    context -> (context * Delegate_rewards_repr.value) tzresult Lwt.t
+
+  val reset_reward_at_cycle_end : context -> context
+end

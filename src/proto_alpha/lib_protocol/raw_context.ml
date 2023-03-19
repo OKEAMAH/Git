@@ -255,6 +255,7 @@ type back = {
      dummy slot headers. *)
   dal_attestation_slot_accountability : Dal_attestation_repr.Accountability.t;
   dal_committee : dal_committee;
+  delegate_rewards : Delegate_rewards_repr.t;
 }
 
 (*
@@ -323,6 +324,8 @@ let[@inline] dictator_proposal_seen ctxt = ctxt.back.dictator_proposal_seen
 
 let[@inline] sampler_state ctxt = ctxt.back.sampler_state
 
+let[@inline] delegate_rewards ctxt = ctxt.back.delegate_rewards
+
 let[@inline] update_back ctxt back = {ctxt with back}
 
 let[@inline] update_remaining_block_gas ctxt remaining_block_gas =
@@ -363,6 +366,9 @@ let[@inline] update_dictator_proposal_seen ctxt dictator_proposal_seen =
 
 let[@inline] update_sampler_state ctxt sampler_state =
   update_back ctxt {ctxt.back with sampler_state}
+
+let[@inline] update_delegate_rewards ctxt delegate_rewards =
+  update_back ctxt {ctxt.back with delegate_rewards}
 
 type error += Too_many_internal_operations (* `Permanent *)
 
@@ -833,6 +839,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
           Dal_attestation_repr.Accountability.init
             ~length:constants.Constants_parametric_repr.dal.number_of_slots;
         dal_committee = empty_dal_committee;
+        delegate_rewards = Delegate_rewards_repr.constant;
       };
   }
 
@@ -1739,3 +1746,7 @@ end = struct
 
   let length local i = Tree.length (tree local) i
 end
+
+let get_rewards = delegate_rewards
+
+let set_rewards = update_delegate_rewards
