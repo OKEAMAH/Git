@@ -184,31 +184,46 @@ let extract_pqc state (new_proposal : proposal) =
         Some (pqc.preendorsements, pqc.round)
       else None
 
+type observed_pqc =
+  | Internal (* inside a proposal *) of prequorum
+  | Mempool of Kind.preendorsement operation list
+
+let may_update_endorsable_payload state proposal pqc =
+  let prequorum =
+    match pqc with
+    | Internal pqc -> pqc
+    | Mempool preendorsements ->
+        {
+          level = proposal.block.shell.level;
+          round = proposal.block.round;
+          block_payload_hash = proposal.block.payload_hash;
+          preendorsements
+          (* preendorsements may be nil when [consensus_threshold] is 0 *);
+        }
+  in
+  match state.level_state.endorsable_payload with
+  | Some endorsable_payload
+    when Round.(endorsable_payload.prequorum.round >= prequorum.round) ->
+      (* [prequorum]'s round is not newer than the round of the existing
+         endorsable payload: no update *)
+      state
+  | _ ->
+      let new_endorsable_payload = {proposal; prequorum} in
+      let level_state =
+        {
+          state.level_state with
+          endorsable_payload = Some new_endorsable_payload;
+        }
+      in
+      {state with level_state}
+
 let may_update_endorsable_payload_with_internal_pqc state
     (new_proposal : proposal) =
-  match
-    (new_proposal.block.prequorum, state.level_state.endorsable_payload)
-  with
-  | None, _ ->
+  match new_proposal.block.prequorum with
+  | None ->
       (* The proposal does not contain a PQC: no need to update *)
       state
-  | Some {round = new_round; _}, Some {prequorum = {round = old_round; _}; _}
-    when Round.(new_round < old_round) ->
-      (* The proposal pqc is outdated, do not update *)
-      state
-  | Some better_prequorum, _ ->
-      assert (
-        Block_payload_hash.(
-          better_prequorum.block_payload_hash = new_proposal.block.payload_hash)) ;
-      assert (
-        Compare.Int32.(better_prequorum.level = new_proposal.block.shell.level)) ;
-      let new_endorsable_payload =
-        Some {proposal = new_proposal; prequorum = better_prequorum}
-      in
-      let new_level_state =
-        {state.level_state with endorsable_payload = new_endorsable_payload}
-      in
-      {state with level_state = new_level_state}
+  | Some pqc -> may_update_endorsable_payload state new_proposal (Internal pqc)
 
 let may_update_is_latest_proposal_applied ~is_proposal_applied state
     new_proposal =
@@ -712,39 +727,14 @@ let make_endorse_action state proposal =
   in
   Inject_endorsements {endorsements}
 
-let may_update_endorsable_payload state proposal preendorsements =
-  let prequorum =
-    {
-      level = proposal.block.shell.level;
-      round = proposal.block.round;
-      block_payload_hash = proposal.block.payload_hash;
-      preendorsements
-      (* preendorsements may be nil when [consensus_threshold] is 0 *);
-    }
-  in
-  let new_endorsable_payload = {proposal; prequorum} in
-  let new_level_state =
-    let level_state_with_new_payload =
-      {state.level_state with endorsable_payload = Some new_endorsable_payload}
-    in
-    match state.level_state.endorsable_payload with
-    | None -> level_state_with_new_payload
-    | Some endorsable_payload ->
-        if
-          Round.(
-            endorsable_payload.prequorum.round
-            < new_endorsable_payload.prequorum.round)
-        then level_state_with_new_payload
-        else state.level_state
-  in
-  {state with level_state = new_level_state}
-
 let prequorum_reached_for_current_proposal state preendorsements =
   let proposal = state.level_state.latest_proposal in
   (* NOTE: in this case the latest proposal is a proposal for the current
      round; see [End_of_round] case *)
   assert (proposal.block.round = state.round_state.current_round) ;
-  let state = may_update_endorsable_payload state proposal preendorsements in
+  let state =
+    may_update_endorsable_payload state proposal (Mempool preendorsements)
+  in
   let state =
     update_locked_round state proposal.block.round proposal.block.payload_hash
   in
@@ -756,22 +746,8 @@ let prequorum_reached_for_current_proposal state preendorsements =
 let handle_unexpected_pqc state (candidate : Operation_worker.candidate)
     preendorsements =
   let handle proposal =
-    let proposal_with_pqc =
-      let prequorum =
-        Some
-          {
-            level = proposal.block.shell.level;
-            round = proposal.block.round;
-            block_payload_hash = proposal.block.payload_hash;
-            preendorsements;
-          }
-      in
-      {proposal with block = {proposal.block with prequorum}}
-    in
-    let new_state =
-      may_update_endorsable_payload_with_internal_pqc state proposal_with_pqc
-    in
-    do_nothing new_state
+    may_update_endorsable_payload state proposal (Mempool preendorsements)
+    |> do_nothing
   in
   let latest_proposal = state.level_state.latest_proposal in
   if Block_hash.(candidate.hash = latest_proposal.block.hash) then
