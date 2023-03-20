@@ -65,41 +65,6 @@ let get_transaction_count proxy_server address =
   in
   return JSON.(transaction_count |-> "result" |> as_int64)
 
-module Account = struct
-  type t = {address : string; private_key : string; genesis_mint_tx : string}
-
-  let accounts =
-    [|
-      {
-        address = "0x6ce4d79d4E77402e1ef3417Fdda433aA744C6e1c";
-        private_key =
-          "0x9722f6cc9ff938e63f8ccb74c3daa6b45837e5c5e3835ac08c44c50ab5f39dc0";
-        genesis_mint_tx =
-          "0x47454e4553495341444452455353000000000000000000000000000000000001";
-      };
-      {
-        address = "0xB53dc01974176E5dFf2298C5a94343c2585E3c54";
-        private_key =
-          "0x3a6a6ca30c1ef1ce605a63a7a1a4ff4c689f8414ca0838bca29423f0ec280ff5";
-        genesis_mint_tx =
-          "0x47454e4553495341444452455353000000000000000000000000000000000002";
-      };
-      {
-        address = "0x9b49c988b5817Be31DfB00F7a5a4671772dCce2B";
-        private_key =
-          "0x0eb9bfa77d6cd145cdc0e3d6f902ee1464aeb5f62b02e38f111c9b60cd3adab5";
-        genesis_mint_tx =
-          "0x47454e4553495341444452455353000000000000000000000000000000000003";
-      };
-    |]
-
-  (** Prefunded account public key in the kernel, has a balance of 9999.
-
-      TODO: https://gitlab.com/tezos/tezos/-/issues/5071
-  *)
-  let prefunded_account_address = accounts.(0).address
-end
-
 (** [next_evm_level ~sc_rollup_node ~node ~client] moves [sc_rollup_node] to
     the [node]'s next level. *)
 let next_evm_level ~sc_rollup_node ~node ~client =
@@ -277,14 +242,14 @@ let test_rpc_getBalance =
   let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
   let* balance =
     Eth_cli.balance
-      ~account:Account.prefunded_account_address
+      ~account:Eth_account.accounts.(0).address
       ~endpoint:evm_proxy_server_endpoint
   in
   Check.((balance = Wei.of_eth_int 9999) Wei.typ)
     ~error_msg:
       (sf
          "Expected balance of %s should be %%R, but got %%L"
-         Account.prefunded_account_address) ;
+         Eth_account.accounts.(0).address) ;
   unit
 
 let test_rpc_getBlockByNumber =
@@ -312,7 +277,9 @@ let test_rpc_getBlockByNumber =
     ~error_msg:"Unexpected block number, should be %%R, but got %%L" ;
   let expected_transactions =
     Array.(
-      map (fun accounts -> accounts.Account.genesis_mint_tx) Account.accounts
+      map
+        (fun accounts -> accounts.Eth_account.genesis_mint_tx)
+        Eth_account.accounts
       |> to_list)
   in
   Check.(block.transactions = expected_transactions)
@@ -331,7 +298,7 @@ let test_rpc_getTransactionCount =
   (* Force a level to got past the genesis block *)
   let* _level = next_evm_level ~sc_rollup_node ~node ~client in
   let* transaction_count =
-    get_transaction_count evm_proxy_server Account.prefunded_account_address
+    get_transaction_count evm_proxy_server Eth_account.accounts.(0).address
   in
   Check.((transaction_count = 0L) int64)
     ~error_msg:"Expected a nonce of %R, but got %L" ;
@@ -372,7 +339,7 @@ let test_l2_transfer =
   let balance account =
     Eth_cli.balance ~account ~endpoint:evm_proxy_server_endpoint
   in
-  let sender, receiver = (Account.accounts.(0), Account.accounts.(1)) in
+  let sender, receiver = (Eth_account.accounts.(0), Eth_account.accounts.(1)) in
   let* sender_balance = balance sender.address in
   let* receiver_balance = balance receiver.address in
   let* sender_nonce = get_transaction_count evm_proxy_server sender.address in
