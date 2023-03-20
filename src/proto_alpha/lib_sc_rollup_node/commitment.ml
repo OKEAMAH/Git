@@ -365,17 +365,24 @@ module Make (PVM : Pvm.S) : Commitment_sig.S with module PVM = PVM = struct
     let* cementable = gather [] latest_cementable_commitment in
     match cementable with
     | [] -> return_nil
-    | first_cementable :: _ ->
+    | first_cementable :: _ -> (
         (* Make sure that the first commitment can be cemented according to the
            Layer 1 node as a failsafe. *)
-        let* green_light =
+        let*! res =
           Plugin.RPC.Sc_rollup.can_be_cemented
             node_ctxt.cctxt
             (node_ctxt.cctxt#chain, `Head 0)
             node_ctxt.rollup_address
             first_cementable
         in
-        if green_light then return cementable else return_nil
+        match res with
+        | Ok true -> return cementable
+        | Ok false ->
+            failwith
+              "The commitment %a cannot be cemented, but another commitment \
+               for this inbox level can. This is a sign of an unrecoverable \
+               fork in the rollup."
+        | Err _ -> return_nil)
 
   let cement_commitment (node_ctxt : _ Node_context.t) ~source commitment_hash =
     let open Lwt_result_syntax in
