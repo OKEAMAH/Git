@@ -439,7 +439,7 @@ let test_scenario_t3 () =
 A similar scenario as described in
 https://gitlab.com/tezos/tezos/-/issues/4675.
 
-Scenario for the variant with [propose_at_round_one = true]:
+Scenario for the variant with [propose_at_round_one = true, propose_at_round_two = None]:
 
 1. There are two nodes: A and B
 2. A is the proposer at the round 0. It sends the proposal, which is
@@ -456,16 +456,32 @@ Scenario for the variant with [propose_at_round_one = true]:
    Both A and B preendorse and endorse: a decision is reached and the
    next level block at round 0 arrives.
 
-When [propose_at_round_one] is false, A's proposal at round 1 is blocked. Node A
-should still be able to repropose at round 2.
+When [propose_at_round_one] is false (and [propose_at_round_two = None], A's
+proposal at round 1 is blocked. Node A should still be able to re-propose at
+round 2.
 
+When [propose_at_round_two = Some b], then the scenario repeats steps 4-5 one
+time, and steps 6-7 are thus delayed by one round. The boolean flag [b] has the
+same goal (for round 2) as [propose_at_round_one] has for round 1. Node A will
+receive the preendorsement from round 0 during round 2. A should propose at
+round 3,
+- either a fresh payload, when [propose_at_round_one = true,
+  propose_at_round_two = Some true] (because the PQC is too old, it is not the
+  previous proposal anymore),
+- or the same payload as at round 0 otherwise.
 *)
-let test_repropose_after_late_pqc ~proposal_at_round_one () =
+let test_repropose_after_late_pqc ~proposal_at_round_one ?proposal_at_round_two
+    () =
   let test_ended = ref false in
   let original_proposal = ref None in
 
+  (* The round at which we check whether A's proposal is of the right kind *)
+  let target_round =
+    match proposal_at_round_two with Some _ -> 3l | None -> 2l
+  in
+
   let check_invalid_block_round ~name round =
-    if Compare.Int32.(round > 2l) then
+    if Compare.Int32.(round > target_round) then
       failwith "%s: did not reach a consensus in time" name
     else (* We were able to progress as expected *)
       return_unit
@@ -492,17 +508,41 @@ let test_repropose_after_late_pqc ~proposal_at_round_one () =
               ~protocol_data
               ~original_proposal
               ~fresh_payload:true
-              ~message:"a new block proposed instead of reproposal"
+              ~message:"a new block proposed instead of a re-proposal"
               ()
             >>=? fun () -> return broadcast_block
           else return (block_hash, block_header, operations, [Block; Block])
-      | 1l, 2l ->
+      | 1l, 2l when target_round != 2l ->
+          if Stdlib.Option.get proposal_at_round_two then
+            verify_payload_hash
+              ~protocol_data
+              ~original_proposal
+              ~fresh_payload:true
+              ~message:"a new block proposed instead of a re-proposal"
+              ()
+            >>=? fun () -> return broadcast_block
+          else return (block_hash, block_header, operations, [Block; Block])
+      | 1l, _ when round = target_round ->
+          let fresh_payload, message, stop =
+            match (proposal_at_round_one, proposal_at_round_two) with
+            | true, Some true ->
+                (* we are round 3 and there were proposals at round 1 and 2; the
+                   PQC at round 0 is too old *)
+                (true, "a re-proposal instead of a fresh payload", true)
+            | _ ->
+                ( false,
+                  "a fresh payload proposed instead of a re-proposal",
+                  false )
+          in
           verify_payload_hash
             ~protocol_data
             ~original_proposal
-            ~message:"a new block proposed instead of reproposal"
+            ~fresh_payload
+            ~message
             ()
-          >>=? fun () -> return broadcast_block
+          >>=? fun () ->
+          if stop then test_ended := true ;
+          return broadcast_block
       | _ ->
           check_invalid_block_round ~name:"Node A" round >>=? fun () ->
           return broadcast_block
@@ -527,14 +567,21 @@ let test_repropose_after_late_pqc ~proposal_at_round_one () =
       >>=? fun is_preendorsement_round0 ->
       op_is_preendorsement ~level:1l ~round:1l op_hash op
       >>=? fun is_preendorsement_round1 ->
+      op_is_preendorsement ~level:1l ~round:2l op_hash op
+      >>=? fun is_preendorsement_round2 ->
+      let r0_dur = Int64.to_float default_config.round0 in
       if is_preendorsement_round0 then
         let delay =
-          let r0_dur = Int64.to_float default_config.round0 in
-          Delay (r0_dur +. 0.3)
+          if target_round = 2l then Delay (r0_dur +. 0.3)
+          else
+            let r1_dur = Int64.to_float default_config.round1 in
+            Delay (r0_dur +. r1_dur +. 0.3)
         in
         return (op_hash, op, [delay; Pass])
-      else if is_preendorsement_round1 then
-        failwith "Node B: unexpected preendorsement emitted for round 1"
+      else if
+        is_preendorsement_round1
+        || (target_round = 3l && is_preendorsement_round2)
+      then failwith "Node B: unexpected preendorsement emitted for round 1 or 2"
       else return (op_hash, op, [Pass; Pass])
 
     let stop_on_event _ = !test_ended
@@ -562,6 +609,33 @@ let test_repropose_after_late_pqc ~proposal_at_round_one () =
   in
   (* Node A = bootstrap1, Node B = bootstrap2 *)
   run ~config [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
+
+let tests_repropose_after_late_pqc =
+  List.map
+    (fun (proposal_at_round_one, proposal_at_round_two) ->
+      let message =
+        Format.asprintf
+          "re-propose on late pqc (r1 = %b, r2 = %a)"
+          proposal_at_round_one
+          (Format.pp_print_option
+             ~none:(fun fmt () -> Format.fprintf fmt "None")
+             (fun fmt -> Format.fprintf fmt "Some %b"))
+          proposal_at_round_two
+      in
+      Tezos_base_test_helpers.Tztest.tztest
+        message
+        `Quick
+        (test_repropose_after_late_pqc
+           ~proposal_at_round_one
+           ?proposal_at_round_two))
+    [
+      (true, None);
+      (true, Some false);
+      (true, Some true);
+      (false, None);
+      (false, Some false);
+      (false, Some true);
+    ]
 
 (*
 
@@ -1678,15 +1752,8 @@ let tests =
     tztest "scenario m6" `Quick test_scenario_m6;
     tztest "scenario m7" `Quick test_scenario_m7;
     tztest "scenario m8" `Quick test_scenario_m8;
-    tztest
-      "repropose on late pqc"
-      `Quick
-      (test_repropose_after_late_pqc ~proposal_at_round_one:true);
-    tztest
-      "repropose on late pqc, variant"
-      `Quick
-      (test_repropose_after_late_pqc ~proposal_at_round_one:false);
   ]
+  @ tests_repropose_after_late_pqc
 
 let () =
   Alcotest_lwt.run "lib_delegate" [(Protocol.name ^ ": scenario", tests)]
