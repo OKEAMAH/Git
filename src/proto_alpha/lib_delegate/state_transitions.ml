@@ -751,47 +751,46 @@ let prequorum_reached_for_current_proposal state preendorsements =
   let state = update_current_phase state Awaiting_endorsements in
   (state, make_endorse_action state proposal)
 
+(* If the PQC matches the latest proposal or the previous proposal, we update
+   our endorsable payload to be able to repropose with the late PQC. *)
 let handle_unexpected_pqc state (candidate : Operation_worker.candidate)
     preendorsements =
-  let latest_proposal = state.level_state.latest_proposal in
-  let previous_proposal_opt = state.level_state.previous_proposal in
-  match previous_proposal_opt with
-  | Some previous_proposal
-    when Block_hash.(candidate.hash = previous_proposal.block.hash) ->
-      (* If the PQC matches the previous proposal, we update our
-         endorsable payload to be able to repropose with the late
-         PQC. *)
-      let previous_proposal_with_pqc =
-        let previous_prequorum =
+  let handle proposal =
+    let proposal_with_pqc =
+      let prequorum =
+        Some
           {
-            level = previous_proposal.block.shell.level;
-            round = previous_proposal.block.round;
-            block_payload_hash = previous_proposal.block.payload_hash;
+            level = proposal.block.shell.level;
+            round = proposal.block.round;
+            block_payload_hash = proposal.block.payload_hash;
             preendorsements;
           }
-        in
-        {
-          previous_proposal with
-          block =
-            {previous_proposal.block with prequorum = Some previous_prequorum};
-        }
       in
-      let new_state =
-        may_update_endorsable_payload_with_internal_pqc
-          state
-          previous_proposal_with_pqc
-      in
-      do_nothing new_state
-  | None | Some _ ->
-      Events.(
-        emit
-          unexpected_prequorum_received
-          ( candidate.hash,
-            latest_proposal.block.hash,
-            Option.map
-              (fun p -> p.block.hash)
-              state.level_state.previous_proposal ))
-      >>= fun () -> do_nothing state
+      {proposal with block = {proposal.block with prequorum}}
+    in
+    let new_state =
+      may_update_endorsable_payload_with_internal_pqc state proposal_with_pqc
+    in
+    do_nothing new_state
+  in
+  let latest_proposal = state.level_state.latest_proposal in
+  if Block_hash.(candidate.hash = latest_proposal.block.hash) then
+    handle latest_proposal
+  else
+    match state.level_state.previous_proposal with
+    | Some previous_proposal
+      when Block_hash.(candidate.hash = previous_proposal.block.hash) ->
+        handle previous_proposal
+    | None | Some _ ->
+        Events.(
+          emit
+            unexpected_prequorum_received
+            ( candidate.hash,
+              latest_proposal.block.hash,
+              Option.map
+                (fun p -> p.block.hash)
+                state.level_state.previous_proposal ))
+        >>= fun () -> do_nothing state
 
 let prequorum_reached_when_awaiting_preendorsements state candidate
     preendorsements =
