@@ -63,11 +63,9 @@ Distribution of rollups data through reveal data channel. (MRs :gl:`!7571`)
 Breaking Changes
 ----------------
 
-- The field ``commitment`` in the operation ``Sc_rollup_cement`` is now deprecated.
-  The protocol computes the valid candidate commitment to cement, and cements it.
-  The provided ``commitment`` is omitted by the protocol and unchecked with the
-  found one. In the next protocol, the field will be removed from the
-  operation. (MR :gl:`!7316`)
+- The operation's result ``Sc_rollup_cement_result`` now have a new field
+  ``commitment``, which is the commitment cemented by the application of
+  the operation ``Sc_rollup_cement``.  (MR :gl:`!7316`)
 
 
 RPC Changes
