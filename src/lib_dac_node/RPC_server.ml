@@ -238,20 +238,12 @@ module Coordinator = struct
           dac_member_signature)
 
   let dynamic_rpc_dir dac_plugin ro_store rw_store page_store cctxt
-      (coordinator_node_ctxt : Node_context.t) =
-    let modal_node_ctxt =
-      match Node_context.mode coordinator_node_ctxt with
-      | Coordinator modal_node_ctxt -> modal_node_ctxt
-      (* We only pass [Node_context.t] values whose mode is [Coordinator _] to
-         this function. *)
-      | _ -> assert false
-    in
-
+      (coordinator_node_ctxt : Node_context.Coordinator.t) =
     let hash_streamer =
-      modal_node_ctxt.Node_context.Coordinator.hash_streamer
+      coordinator_node_ctxt.Node_context.Coordinator.hash_streamer
     in
     let public_keys_opt =
-      Node_context.Coordinator.public_keys_opt modal_node_ctxt
+      Node_context.Coordinator.public_keys_opt coordinator_node_ctxt
     in
     Tezos_rpc.Directory.empty
     |> register_post_preimage dac_plugin hash_streamer page_store
@@ -259,7 +251,7 @@ module Coordinator = struct
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
     |> register_put_dac_member_signature
-         modal_node_ctxt
+         coordinator_node_ctxt
          dac_plugin
          ro_store
          rw_store
@@ -297,21 +289,16 @@ module Legacy = struct
           dac_member_signature)
 
   let dynamic_rpc_dir dac_plugin ro_store rw_store page_store cctxt
-      legacy_node_ctxt =
-    let modal_node_ctxt =
-      match Node_context.mode legacy_node_ctxt with
-      | Legacy modal_node_ctxt -> modal_node_ctxt
-      (* We only pass [Node_context.t] values whose mode is [Coordinator _] to
-         this function. *)
-      | _ -> assert false
+      (legacy_node_ctxt : Node_context.Legacy.t) =
+    let hash_streamer = legacy_node_ctxt.Node_context.Legacy.hash_streamer in
+    let public_keys_opt =
+      Node_context.Legacy.public_keys_opt legacy_node_ctxt
     in
-    let hash_streamer = modal_node_ctxt.Node_context.Legacy.hash_streamer in
-    let public_keys_opt = Node_context.Legacy.public_keys_opt modal_node_ctxt in
     let secret_key_uris_opt =
-      Node_context.Legacy.secret_key_uris_opt modal_node_ctxt
+      Node_context.Legacy.secret_key_uris_opt legacy_node_ctxt
     in
     let register_get_missing_page =
-      match modal_node_ctxt.coordinator_cctxt with
+      match legacy_node_ctxt.coordinator_cctxt with
       | None -> fun dir -> dir
       | Some cctxt ->
           fun dir ->
@@ -328,7 +315,7 @@ module Legacy = struct
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
     |> register_put_dac_member_signature
-         modal_node_ctxt
+         legacy_node_ctxt
          dac_plugin
          ro_store
          rw_store
@@ -346,26 +333,26 @@ let start ~rpc_address ~rpc_port node_ctxt =
   let cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
   let register_dynamic_rpc dac_plugin =
     match Node_context.mode node_ctxt with
-    | Coordinator _ ->
+    | Coordinator coordinator_node_ctxt ->
         Coordinator.dynamic_rpc_dir
           dac_plugin
           ro_store
           rw_store
           page_store
           cctxt
-          node_ctxt
-    | Committee_member _ ->
+          coordinator_node_ctxt
+    | Committee_member _committee_member_node_ctxt ->
         Committee_member.dynamic_rpc_dir dac_plugin page_store
     | Observer {coordinator_cctxt; _} ->
         Observer.dynamic_rpc_dir dac_plugin coordinator_cctxt page_store
-    | Legacy _ ->
+    | Legacy legacy_node_ctxt ->
         Legacy.dynamic_rpc_dir
           dac_plugin
           ro_store
           rw_store
           page_store
           cctxt
-          node_ctxt
+          legacy_node_ctxt
   in
   let dir =
     Tezos_rpc.Directory.register_dynamic_directory
