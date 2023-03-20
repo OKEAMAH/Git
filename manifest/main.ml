@@ -4664,7 +4664,7 @@ end = struct
             ("test_ticket_operations_diff", true);
             ("test_ticket_scanner", true);
             ("test_ticket_storage", true);
-            ("test_timelock", true);
+            ("test_timelock", N.(number <= 016));
             ("test_typechecking", true);
             ("test_lambda_normalization", N.(number >= 016));
           ]
