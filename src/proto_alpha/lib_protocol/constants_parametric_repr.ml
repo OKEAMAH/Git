@@ -168,6 +168,7 @@ type t = {
   dal : dal;
   sc_rollup : sc_rollup;
   zk_rollup : zk_rollup;
+  timelock_enable : bool;
 }
 
 let tx_rollup_encoding =
@@ -364,7 +365,9 @@ let encoding =
               ( ( c.cache_script_size,
                   c.cache_stake_distribution_cycles,
                   c.cache_sampler_state_cycles ),
-                (c.tx_rollup, (c.dal, (c.sc_rollup, c.zk_rollup))) ) ) ) ) ))
+                ( c.tx_rollup,
+                  (c.dal, (c.sc_rollup, (c.zk_rollup, c.timelock_enable))) ) )
+            ) ) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
              blocks_per_commitment,
@@ -403,7 +406,8 @@ let encoding =
                  ( ( cache_script_size,
                      cache_stake_distribution_cycles,
                      cache_sampler_state_cycles ),
-                   (tx_rollup, (dal, (sc_rollup, zk_rollup))) ) ) ) ) ) ->
+                   (tx_rollup, (dal, (sc_rollup, (zk_rollup, timelock_enable))))
+                 ) ) ) ) ) ->
       {
         preserved_cycles;
         blocks_per_cycle;
@@ -447,6 +451,7 @@ let encoding =
         dal;
         sc_rollup;
         zk_rollup;
+        timelock_enable;
       })
     (merge_objs
        (obj10
@@ -506,4 +511,8 @@ let encoding =
                       tx_rollup_encoding
                       (merge_objs
                          (obj1 (req "dal_parametric" dal_encoding))
-                         (merge_objs sc_rollup_encoding zk_rollup_encoding))))))))
+                         (merge_objs
+                            sc_rollup_encoding
+                            (merge_objs
+                               zk_rollup_encoding
+                               (obj1 (req "timelock_enable" bool)))))))))))

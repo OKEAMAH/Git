@@ -297,6 +297,8 @@ let[@inline] sc_rollup ctxt = ctxt.back.constants.sc_rollup
 
 let[@inline] zk_rollup ctxt = ctxt.back.constants.zk_rollup
 
+let[@inline] timelock_enable ctxt = ctxt.back.constants.timelock_enable
+
 let[@inline] recover ctxt = ctxt.back.context
 
 let[@inline] fees ctxt = ctxt.back.fees
@@ -986,6 +988,7 @@ let prepare_first_block ~level ~timestamp ctxt =
         then new_proof_of_work_threshold
         else c.proof_of_work_threshold
       in
+      let timelock_enable = false in
       let constants =
         Constants_parametric_repr.
           {
@@ -1035,6 +1038,7 @@ let prepare_first_block ~level ~timestamp ctxt =
             dal;
             sc_rollup;
             zk_rollup;
+            timelock_enable;
           }
       in
       add_constants ctxt constants >>= fun ctxt -> return ctxt)

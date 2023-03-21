@@ -82,6 +82,10 @@ type error += Tx_rollup_addresses_disabled of Script.location
 
 type error += Sc_rollup_disabled of Script.location
 
+(* Timelock errors *)
+
+type error += Timelock_disabled of Script.location
+
 (* Zero Knowledge rollup errors *)
 
 type error += Zk_rollup_disabled of Script.location

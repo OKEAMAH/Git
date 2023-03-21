@@ -883,6 +883,7 @@ module Constants : sig
       dal : dal;
       sc_rollup : sc_rollup;
       zk_rollup : zk_rollup;
+      timelock_enable : bool;
     }
 
     val encoding : t Data_encoding.t
@@ -906,6 +907,8 @@ module Constants : sig
   val tx_rollup : context -> Parametric.tx_rollup
 
   val sc_rollup : context -> Parametric.sc_rollup
+
+  val timelock_enable : context -> bool
 
   val preserved_cycles : context -> int
 

@@ -274,6 +274,7 @@ let constants_mainnet =
         origination_size = 4_000;
         min_pending_to_process = 10;
       };
+    timelock_enable = false;
   }
 
 (* Sandbox and test networks's Dal cryptobox are computed by this function:
@@ -335,6 +336,7 @@ let constants_sandbox =
     endorsing_reward_per_slot (* 2_604 mutez *);
     max_slashing_period = 2;
     frozen_deposits_percentage = 5;
+    timelock_enable = true;
   }
 
 let constants_test =
@@ -384,6 +386,7 @@ let constants_test =
       (* not 10 so that multiplication and
          divisions do not easily get
          intermingled *);
+    timelock_enable = true;
   }
 
 let test_commitments =

@@ -189,6 +189,7 @@ type t = {
   dal : dal;
   sc_rollup : sc_rollup;
   zk_rollup : zk_rollup;
+  timelock_enable : bool;
 }
 
 val encoding : t Data_encoding.encoding

@@ -605,8 +605,12 @@ let rec parse_ty :
     | Prim (loc, T_key_hash, [], annot) ->
         check_type_annot loc annot >|? fun () -> return ctxt key_hash_t
     | Prim (loc, T_chest_key, [], annot) ->
+        error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+        >>? fun () ->
         check_type_annot loc annot >|? fun () -> return ctxt chest_key_t
     | Prim (loc, T_chest, [], annot) ->
+        error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+        >>? fun () ->
         check_type_annot loc annot >|? fun () -> return ctxt chest_t
     | Prim (loc, T_timestamp, [], annot) ->
         check_type_annot loc annot >|? fun () -> return ctxt timestamp_t
@@ -2315,7 +2319,9 @@ let rec parse_data :
       traced_fail
         (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
   (* Time lock*)
-  | Chest_key_t, Bytes (_, bytes) -> (
+  | Chest_key_t, Bytes (loc, bytes) -> (
+      error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+      >>?= fun () ->
       Gas.consume ctxt Typecheck_costs.chest_key >>?= fun ctxt ->
       match
         Data_encoding.Binary.of_bytes_opt
@@ -2326,7 +2332,9 @@ let rec parse_data :
       | None -> fail_parse_data ())
   | Chest_key_t, expr ->
       traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr))
-  | Chest_t, Bytes (_, bytes) -> (
+  | Chest_t, Bytes (loc, bytes) -> (
+      error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+      >>?= fun () ->
       Gas.consume ctxt (Typecheck_costs.chest ~bytes:(Bytes.length bytes))
       >>?= fun ctxt ->
       match
@@ -4343,10 +4351,10 @@ and parse_instr :
   (* Timelocks *)
   | ( Prim (loc, I_OPEN_CHEST, [], _),
       Item_t (Chest_key_t, Item_t (Chest_t, Item_t (Nat_t, rest))) ) ->
-      if legacy then
-        let instr = {apply = (fun k -> IOpen_chest (loc, k))} in
-        typed ctxt loc instr (Item_t (or_bytes_bool_t, rest))
-      else tzfail (Deprecated_instruction I_OPEN_CHEST)
+      error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+      >>?= fun () ->
+      let instr = {apply = (fun k -> IOpen_chest (loc, k))} in
+      typed ctxt loc instr (Item_t (or_bytes_bool_t, rest))
   (* Events *)
   | Prim (loc, I_EMIT, [], annot), Item_t (data, rest) ->
       check_packable ~legacy loc data >>?= fun () ->
@@ -4433,7 +4441,13 @@ and parse_instr :
       Item_t (t, _) ) ->
       let t = serialize_ty_for_error t in
       tzfail (Undefined_unop (loc, name, t))
-  | Prim (loc, ((I_UPDATE | I_SLICE | I_OPEN_CHEST) as name), [], _), stack ->
+  | Prim (loc, (I_OPEN_CHEST as name), [], _), stack ->
+      error_unless (Constants.timelock_enable ctxt) (Timelock_disabled loc)
+      >>?= fun () ->
+      Lwt.return
+        (let stack = serialize_stack_for_error ctxt stack in
+         error (Bad_stack (loc, name, 3, stack)))
+  | Prim (loc, ((I_UPDATE | I_SLICE) as name), [], _), stack ->
       Lwt.return
         (let stack = serialize_stack_for_error ctxt stack in
          error (Bad_stack (loc, name, 3, stack)))
