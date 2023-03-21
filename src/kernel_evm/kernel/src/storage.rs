@@ -48,6 +48,9 @@ const HASH_MAX_SIZE: usize = 32;
 // TRANSACTION_HASH_SIZE * 64 = 2048.
 const MAX_TRANSACTION_HASHES_AT_ONCE: usize = TRANSACTION_HASH_SIZE * 64;
 
+// Arbitrary number of transaction per block, that can be adjusted later.
+const MAX_TRANSACTION_NUMBER: usize = 256;
+
 pub fn read_smart_rollup_address<Host: Runtime + RawRollupCore>(
     host: &mut Host,
 ) -> Result<[u8; 20], Error> {
@@ -212,15 +215,35 @@ pub fn read_current_block_number<Host: Runtime + RawRollupCore>(
     }
 }
 
+fn read_chunked_value<Host: Runtime>(
+    host: &mut Host,
+    path: &OwnedPath,
+    max_size: usize,
+) -> Result<Vec<u8>, Error> {
+    let length = usize::min(host.store_value_size(path)?, max_size);
+
+    let mut buffer = Vec::new();
+    let mut offset = 0;
+
+    while offset < length {
+        let mut bytes = host
+            .store_read(path, offset, MAX_TRANSACTION_HASHES_AT_ONCE)
+            .map_err(Error::from)?;
+
+        offset += &bytes.len();
+        buffer.append(&mut bytes);
+    }
+    Ok(buffer)
+}
+
 fn read_nth_block_transactions<Host: Runtime>(
     host: &mut Host,
     block_path: &OwnedPath,
 ) -> Result<Vec<TransactionHash>, Error> {
     let path = concat(block_path, &EVM_BLOCKS_TRANSACTIONS)?;
 
-    let transactions_bytes = host
-        .store_read(&path, 0, MAX_TRANSACTION_HASHES_AT_ONCE)
-        .map_err(Error::from)?;
+    let transactions_bytes =
+        read_chunked_value(host, &path, MAX_TRANSACTION_NUMBER * TRANSACTION_HASH_SIZE)?;
 
     Ok(transactions_bytes
         .chunks(TRANSACTION_HASH_SIZE)
@@ -257,6 +280,32 @@ fn store_block_hash<Host: Runtime + RawRollupCore>(
 ) -> Result<(), Error> {
     let path = concat(block_path, &EVM_BLOCKS_HASH)?;
     host.store_write(&path, block_hash, 0).map_err(Error::from)
+}
+
+fn store_chunked_value<Host: Runtime>(
+    host: &mut Host,
+    path: &OwnedPath,
+    value: &[u8],
+    max_size: usize,
+) -> Result<(), Error> {
+    let length = usize::min(value.len(), max_size);
+
+    let mut offset = 0;
+
+    while offset < length {
+        let limit = if offset + MAX_TRANSACTION_HASHES_AT_ONCE < length {
+            offset + MAX_TRANSACTION_HASHES_AT_ONCE
+        } else {
+            length
+        };
+
+        let to_write = &value[offset..limit];
+
+        host.store_write(path, to_write, offset)
+            .map_err(Error::from)?;
+        offset += limit;
+    }
+    Ok(())
 }
 
 fn store_block_transactions<Host: Runtime + RawRollupCore>(
@@ -355,4 +404,38 @@ pub fn store_transaction_receipts<Host: Runtime + RawRollupCore>(
         store_transaction_receipt(&receipt_path, host, receipt)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use mock_runtime::host::MockHost;
+
+    #[test]
+    // Test a value bigger than 2048 can be stored
+    fn test_store_and_read_big_value() {
+        let mut host = MockHost::default();
+
+        let mut value = [0u8; MAX_TRANSACTION_HASHES_AT_ONCE * 2];
+
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..value.len() {
+            value[i] = i as u8; // truncates the value
+        }
+
+        let path = OwnedPath::from(RefPath::assert_from(b"/big_value"));
+
+        let max_size = MAX_TRANSACTION_HASHES_AT_ONCE * 4;
+
+        match store_chunked_value(&mut host, &path, &value, max_size) {
+            Ok(()) => (),
+            Err(e) => panic!("Storing the value failed with {:?}", e),
+        };
+
+        match read_chunked_value(&mut host, &path, max_size) {
+            Ok(read_value) => assert_eq!(read_value, value.to_vec()),
+            Err(e) => panic!("Reading the value failed with {:?}", e),
+        }
+    }
 }
