@@ -90,6 +90,19 @@ type remote_configuration = {
   page_store : Filesystem.t;
 }
 
+type stream_page = {hash : Dac_plugin.hash; content : bytes}
+
+type streaming_configuration = {
+  stream : stream_page Data_streamer.t;
+  page_store : Filesystem.t;
+}
+
+(** A [Page_store] implementation backed by the local filesystem, where
+    every time a page is successfully saved, it is also sent to clients
+    of the DAC node via a data streamer. *)
+module Streaming_page_store :
+  S with type configuration = streaming_configuration
+
 (** A [Page_store] implementation backed by the local filesystem, which
    uses a connection to a Dac node to retrieve pages that are not
    saved locally. *)

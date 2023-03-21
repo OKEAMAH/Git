@@ -253,6 +253,34 @@ end)
       content
 end
 
+type stream_page = {hash : Dac_plugin.hash; content : bytes}
+
+type streaming_configuration = {
+  stream : stream_page Data_streamer.t;
+  page_store : Filesystem.t;
+}
+
+(** A [Page_store] implementation backed by the local filesystem, where
+    every time a page is successfully saved, it is also sent to clients
+    of the DAC node via a data streamer. *)
+module Streaming_page_store :
+  S with type configuration = streaming_configuration = struct
+  type t = streaming_configuration
+
+  type configuration = streaming_configuration
+
+  let init {stream; page_store} = {stream; page_store}
+
+  let mem plugin {page_store; _} hash = Filesystem.mem plugin page_store hash
+
+  let load plugin {page_store; _} hash = Filesystem.load plugin page_store hash
+
+  let save plugin {page_store; stream} ~hash ~content =
+    let open Lwt_result_syntax in
+    let+ () = Filesystem.save plugin page_store ~hash ~content in
+    Data_streamer.publish stream {hash; content}
+end
+
 type remote_configuration = {
   cctxt : Dac_node_client.cctxt;
   page_store : Filesystem.t;
