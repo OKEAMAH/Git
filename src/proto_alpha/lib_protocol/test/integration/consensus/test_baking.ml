@@ -427,8 +427,13 @@ let test_committee_sampling () =
     10_000
     [(792_000_000_000L, (9_830, 9_970)); (8_000_000_000L, (40, 160))]
 
+let test_fail () =
+  (Environment.wrap_tzresult @@ Tez_repr.(zero -? one)) >>?= fun _tez ->
+  return_unit
+
 let tests =
   [
+    Tztest.tztest "fail" `Quick test_fail;
     Tztest.tztest "cycle" `Quick test_cycle;
     Tztest.tztest
       "test_bake_n_cycles for 12 cycles"
