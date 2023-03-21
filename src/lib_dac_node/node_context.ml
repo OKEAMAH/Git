@@ -36,6 +36,7 @@ module Coordinator = struct
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
            This could be problematic in case coordinator and member/observer
            use two different plugins that bind different underlying hashes. *)
+    page_streamer : Page_store.stream_page Data_streamer.t;
   }
 
   let get_all_committee_members_public_keys committee_members_addresses cctxt =
@@ -55,7 +56,8 @@ module Coordinator = struct
       get_all_committee_members_public_keys committee_members_addresses cctxt
     in
     let hash_streamer = Data_streamer.init () in
-    {committee_members; hash_streamer}
+    let page_streamer = Data_streamer.init () in
+    {committee_members; hash_streamer; page_streamer}
 
   let public_keys_opt t =
     List.map
@@ -116,6 +118,7 @@ module Legacy = struct
     coordinator_cctxt : Dac_node_client.cctxt option;
     hash_streamer : Dac_plugin.hash Data_streamer.t;
     committee_member_opt : Wallet_account.Legacy.t option;
+    page_streamer : Page_store.stream_page Data_streamer.t;
   }
 
   let get_all_committee_members_keys committee_members_addresses ~threshold
@@ -183,7 +186,14 @@ module Legacy = struct
         dac_cctxt_config
     in
     let hash_streamer = Data_streamer.init () in
-    {committee_members; coordinator_cctxt; hash_streamer; committee_member_opt}
+    let page_streamer = Data_streamer.init () in
+    {
+      committee_members;
+      coordinator_cctxt;
+      hash_streamer;
+      committee_member_opt;
+      page_streamer;
+    }
 
   let public_keys_opt t =
     List.map

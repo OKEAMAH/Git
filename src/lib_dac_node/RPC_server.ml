@@ -129,6 +129,14 @@ let handle_monitor_root_hashes hash_streamer =
   let* () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
   Tezos_rpc.Answer.return_stream {next; shutdown}
 
+(* Handler for subscribing to the streaming of root hashes via
+   GET monitor/root_hashes RPC call. *)
+let handle_monitor_saved_pages hash_streamer =
+  let stream, stopper = Data_streamer.handle_subscribe hash_streamer in
+  let shutdown () = Lwt_watcher.shutdown stopper in
+  let next () = Lwt_stream.get stream in
+  Tezos_rpc.Answer.return_stream {next; shutdown}
+
 let handle_get_certificate ctx root_hash =
   let open Lwt_result_syntax in
   let node_store = Node_context.get_node_store ctx Store_sigs.Read_only in
@@ -183,6 +191,12 @@ let register_monitor_root_hashes dac_plugin hash_streamer dir =
     dir
     (Monitor_services.S.root_hashes dac_plugin)
     (fun () () () -> handle_monitor_root_hashes hash_streamer)
+
+let register_monitor_saved_pages dac_plugin hash_streamer dir =
+  Tezos_rpc.Directory.gen_register
+    dir
+    (Monitor_services.S.saved_pages dac_plugin)
+    (fun () () () -> handle_monitor_saved_pages hash_streamer)
 
 let register_put_dac_member_signature ctx dac_plugin cctxt =
   add_service
@@ -247,6 +261,9 @@ module Coordinator = struct
     let hash_streamer =
       modal_node_ctxt.Node_context.Coordinator.hash_streamer
     in
+    let page_streamer =
+      modal_node_ctxt.Node_context.Coordinator.page_streamer
+    in
     let public_keys_opt =
       Node_context.Coordinator.public_keys_opt modal_node_ctxt
     in
@@ -260,6 +277,7 @@ module Coordinator = struct
     |> register_monitor_root_hashes dac_plugin hash_streamer
     |> register_put_dac_member_signature node_ctxt dac_plugin cctxt
     |> register_get_certificate node_ctxt dac_plugin
+    |> register_monitor_saved_pages dac_plugin page_streamer
 end
 
 module Committee_member = struct
@@ -286,6 +304,7 @@ module Legacy = struct
       | _ -> assert false
     in
     let hash_streamer = modal_node_ctxt.Node_context.Legacy.hash_streamer in
+    let page_streamer = modal_node_ctxt.Node_context.Legacy.page_streamer in
     let public_keys_opt = Node_context.Legacy.public_keys_opt modal_node_ctxt in
     let secret_key_uris_opt =
       Node_context.Legacy.secret_key_uris_opt modal_node_ctxt
@@ -305,6 +324,7 @@ module Legacy = struct
     |> register_put_dac_member_signature node_ctxt dac_plugin cctxt
     |> register_get_certificate node_ctxt dac_plugin
     |> register_get_missing_page node_ctxt dac_plugin
+    |> register_monitor_saved_pages dac_plugin page_streamer
 end
 
 let start ~rpc_address ~rpc_port node_ctxt =

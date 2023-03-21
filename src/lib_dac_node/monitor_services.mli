@@ -28,16 +28,34 @@ module S : sig
   val root_hashes :
     Dac_plugin.t ->
     ([`GET], unit, unit, unit, unit, Dac_plugin.hash) Tezos_rpc.Service.service
+
+  (** Define RPC GET /monitor/root_hashes. *)
+  val saved_pages :
+    Dac_plugin.t ->
+    ( [`GET],
+      unit,
+      unit,
+      unit,
+      unit,
+      Page_store.stream_page )
+    Tezos_rpc.Service.service
 end
 
 (** [root_hashes streamed_cctxt dac_plugin] returns a stream of root hashes
     and a stopper for it.
-    
+
     Stream is produced by calling RPC GET /monitor/root_hashes.
 *)
 val root_hashes :
   #Tezos_rpc.Context.streamed ->
   Dac_plugin.t ->
   (Dac_plugin.hash Lwt_stream.t * Tezos_rpc.Context.stopper)
+  Error_monad.tzresult
+  Lwt.t
+
+val saved_pages :
+  #Tezos_rpc.Context.streamed ->
+  Dac_plugin.t ->
+  (Page_store.stream_page Lwt_stream.t * Tezos_rpc.Context.stopper)
   Error_monad.tzresult
   Lwt.t

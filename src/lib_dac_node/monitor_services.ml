@@ -23,6 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+let streamed_page_encoding ((module P) : Dac_plugin.t) :
+    Page_store.stream_page Data_encoding.t =
+  Data_encoding.(
+    conv
+      (fun Page_store.{hash; content} -> (hash, content))
+      (fun (hash, content) -> {hash; content})
+      (obj2 (req "hash" P.encoding) (req "content" @@ bytes' Hex)))
+
 module S = struct
   let root_hashes ((module P) : Dac_plugin.t) =
     Tezos_rpc.Service.get_service
@@ -32,11 +40,26 @@ module S = struct
       ~query:Tezos_rpc.Query.empty
       ~output:P.encoding
       Tezos_rpc.Path.(open_root / "monitor" / "root_hashes")
+
+  let saved_pages plugin =
+    Tezos_rpc.Service.get_service
+      ~description:"Monitor the pages saved by another dac node"
+      ~query:Tezos_rpc.Query.empty
+      ~output:(streamed_page_encoding plugin)
+      Tezos_rpc.Path.(open_root / "monitor" / "pages")
 end
 
 let root_hashes dac_node_cctxt dac_plugin =
   Tezos_rpc.Context.make_streamed_call
     (S.root_hashes dac_plugin)
+    dac_node_cctxt
+    ()
+    ()
+    ()
+
+let saved_pages dac_node_cctxt dac_plugin =
+  Tezos_rpc.Context.make_streamed_call
+    (S.saved_pages dac_plugin)
     dac_node_cctxt
     ()
     ()

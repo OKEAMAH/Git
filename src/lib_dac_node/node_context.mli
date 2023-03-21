@@ -38,9 +38,10 @@ module Coordinator : sig
         (** The [Dac_plugin.hash Data_streamer.t] that the [Coordinator] node
             use to advertise root hashes to [Committee_member] and [Observer]
             nodes. *)
-        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
-           This could be problematic in case coordinator and member/observer
-           use two different plugins that bind different underlying hashes. *)
+    (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
+       This could be problematic in case coordinator and member/observer
+       use two different plugins that bind different underlying hashes. *)
+    page_streamer : Page_store.stream_page Data_streamer.t;
   }
 
   (** [public_keys_opt t] returns the list of public keys associated with the
@@ -98,6 +99,7 @@ module Legacy : sig
     committee_member_opt : Wallet_account.Legacy.t option;
         (** The legacy account wallet of the committee member simulated by the
             legacy DAC node, if any. *)
+    page_streamer : Page_store.stream_page Data_streamer.t;
   }
 
   (** [public_keys_opt t] returns the list of optional public keys associated
@@ -178,6 +180,6 @@ val get_node_store : t -> 'a Store_sigs.mode -> 'a Store.Irmin_store.t
 val get_committee_members :
   t -> Tezos_crypto.Aggregate_signature.public_key_hash list tzresult
 
-(** [get_coordinator_client ctx] returns the Coordinator client if it 
+(** [get_coordinator_client ctx] returns the Coordinator client if it
     is available. *)
 val get_coordinator_client : t -> Dac_node_client.cctxt tzresult
