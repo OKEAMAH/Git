@@ -44,9 +44,9 @@ const TRANSACTION_RECEIPT_STATUS: RefPath = RefPath::assert_from(b"/status");
 
 const HASH_MAX_SIZE: usize = 32;
 
-// We can read/store at most [128] transaction hashes per block.
-// TRANSACTION_HASH_SIZE * 128 = 4096.
-const MAX_TRANSACTION_HASHES: usize = TRANSACTION_HASH_SIZE * 128;
+// We can read/store a maximum of [64] transaction hashes at once.
+// TRANSACTION_HASH_SIZE * 64 = 2048.
+const MAX_TRANSACTION_HASHES_AT_ONCE: usize = TRANSACTION_HASH_SIZE * 64;
 
 pub fn read_smart_rollup_address<Host: Runtime + RawRollupCore>(
     host: &mut Host,
@@ -219,7 +219,7 @@ fn read_nth_block_transactions<Host: Runtime>(
     let path = concat(block_path, &EVM_BLOCKS_TRANSACTIONS)?;
 
     let transactions_bytes = host
-        .store_read(&path, 0, MAX_TRANSACTION_HASHES)
+        .store_read(&path, 0, MAX_TRANSACTION_HASHES_AT_ONCE)
         .map_err(Error::from)?;
 
     Ok(transactions_bytes
