@@ -133,9 +133,11 @@ let handle_monitor_root_hashes hash_streamer =
 (* Handler for subscribing to the streaming of root hashes via
    GET monitor/root_hashes RPC call. *)
 let handle_monitor_saved_pages hash_streamer =
+  let open Lwt_syntax in
   let stream, stopper = Data_streamer.handle_subscribe hash_streamer in
   let shutdown () = Lwt_watcher.shutdown stopper in
   let next () = Lwt_stream.get stream in
+  let* () = Event.(emit handle_new_subscription_to_page_streamer ()) in
   Tezos_rpc.Answer.return_stream {next; shutdown}
 
 let handle_get_certificate ctx root_hash =

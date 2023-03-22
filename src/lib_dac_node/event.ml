@@ -185,6 +185,16 @@ let handle_new_subscription_to_hash_streamer =
     ~level:Notice
     ()
 
+let handle_new_subscription_to_page_streamer =
+  declare_0
+    ~section
+    ~name:"handle_new_subscription_to_page_streamer"
+    ~msg:
+      "Subscription of another dac node to the page streamer handled \
+       successfully."
+    ~level:Notice
+    ()
+
 let subscribed_to_root_hashes_stream =
   declare_0
     ~section
@@ -208,6 +218,14 @@ let received_root_hash_processed =
     ~msg:"Finished processing previously received root hash {root_hash}"
     ~level:Notice
     ("root_hash", Data_encoding.string)
+
+let received_page_saved =
+  declare_1
+    ~section
+    ~name:"dac_node_received_page_saved"
+    ~msg:"Received and saved page {page_hash} via the streaming channel."
+    ~level:Notice
+    ("page_hash", Data_encoding.string)
 
 let new_hash_pushed_to_data_streamer =
   declare_1
@@ -295,3 +313,6 @@ let fetched_missing_page ((module P) : Dac_plugin.t) =
     ~msg:"Successfully fetched missing page for hash: {hash}"
     ~level:Notice
     ("hash", P.encoding)
+
+let emit_received_page_saved ((module P) : Dac_plugin.t) hash =
+  emit received_page_saved (P.to_hex hash)

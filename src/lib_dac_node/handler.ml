@@ -133,7 +133,9 @@ let new_page ctxt coordinator_cctxt =
     in
 
     match result with
-    | Ok _ -> return ()
+    | Ok _ ->
+        let*! () = Event.emit_received_page_saved dac_plugin hash in
+        return ()
     | Error errs ->
         let msg = Format.asprintf "%a" Error_monad.pp_print_trace errs in
         let*! () = Lwt_io.eprintf "%s" msg in
