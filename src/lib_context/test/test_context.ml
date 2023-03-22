@@ -693,8 +693,96 @@ module Generic_memory =
     end)
     (Tezos_context_memory.Context)
 
+module Test_tree = struct
+  module Context_encoding = Tezos_context_encoding.Context_binary
+
+  module Disk_store = struct
+    let name = "Disk"
+
+    module Maker = Irmin_pack_unix.Maker (Context_encoding.Conf)
+    include Maker.Make (Context_encoding.Schema)
+    module Schema = Context_encoding.Schema
+  end
+
+  module Memory_store = struct
+    let name = "Memory"
+
+    include Irmin_mem.Make (Context_encoding.Schema)
+    module Schema = Context_encoding.Schema
+  end
+
+  module Make (S : sig
+    val name : string
+
+    include Irmin.Generic_key.S with module Schema = Context_encoding.Schema
+  end) =
+  struct
+    let init_size = 500_000
+
+    let nb_adds = 600_000
+
+    let test_add tree i =
+      let k = string_of_int i in
+      let v = Bytes.of_string k in
+      let l = min i 10 in
+      (* E.g., path for i = 100 is [90; 91; 92; 93; 94; 95; 96; 97; 98; 99] *)
+      let path = Stdlib.List.init l (fun j -> string_of_int (i - l + j)) in
+      S.Tree.add tree path ?metadata:None v
+
+    let run_test tree nb =
+      let open Lwt_syntax in
+      let s1 = Unix.gettimeofday () in
+      let+ tree = List.fold_left_s test_add tree (range 1 nb) in
+      let s2 = Unix.gettimeofday () in
+      (s2 -. s1, tree)
+
+    let init_tree ~set_tree size =
+      let path =
+        Filename.(
+          concat (get_temp_dir_name ()) "bench_irmin_tree"
+          ^ string_of_int (Random.bits ()))
+      in
+      let* repo = S.Repo.v (Irmin_pack.config path) in
+      let* index = S.main repo in
+      let* empty = S.tree index in
+      let* _t_disk1, tree = run_test empty size in
+      let+ () =
+        if set_tree then
+          S.set_tree_exn ~info:(fun () -> S.Info.v 0L) index [] tree
+        else Lwt.return_unit
+      in
+      tree
+
+    let test ~set_tree _ () =
+      let open Lwt_syntax in
+      let* tree = init_tree ~set_tree init_size in
+      let* time, _tree = run_test tree nb_adds in
+      Format.eprintf
+        "(%s) Add in %s tree: %f@."
+        S.name
+        (if set_tree then "set" else "unset")
+        time ;
+      return_unit
+  end
+
+  module Memory = Make (Memory_store)
+  module Disk = Make (Disk_store)
+
+  let tests =
+    Alcotest_lwt.
+      [
+        test_case "tree (memory no set)" `Quick @@ Memory.test ~set_tree:false;
+        test_case "tree (memory set)" `Quick @@ Memory.test ~set_tree:true;
+        test_case "tree (disk no set)" `Quick @@ Disk.test ~set_tree:false;
+        test_case "tree (disk set)" `Quick @@ Disk.test ~set_tree:true;
+      ]
+end
+
 let () =
   Lwt_main.run
     (Alcotest_lwt.run
        "tezos-context"
-       [("context", List.concat [Generic_disk.tests; Generic_memory.tests])])
+       [
+         ("context", List.concat [Generic_disk.tests; Generic_memory.tests]);
+         ("bench", Test_tree.tests);
+       ])
