@@ -1508,7 +1508,7 @@ end
 module Tx_rollup = struct
   module Indexed_context =
     Make_indexed_subcontext
-      (Make_subcontext (Registered) (Raw_context)
+      (Make_subcontext (Ghost) (Raw_context)
          (struct
            let name = ["tx_rollup"]
          end))
@@ -1516,7 +1516,7 @@ module Tx_rollup = struct
 
   module State =
     Indexed_context.Make_carbonated_map
-      (Registered)
+      (Ghost)
       (struct
         let name = ["state"]
       end)
@@ -1524,7 +1524,7 @@ module Tx_rollup = struct
 
   module Level_context =
     Make_indexed_subcontext
-      (Make_subcontext (Registered) (Indexed_context.Raw_context)
+      (Make_subcontext (Ghost) (Indexed_context.Raw_context)
          (struct
            let name = ["tx_level"]
          end))
@@ -1532,7 +1532,7 @@ module Tx_rollup = struct
 
   module Inbox =
     Level_context.Make_carbonated_map
-      (Registered)
+      (Ghost)
       (struct
         let name = ["inbox"]
       end)
@@ -1544,7 +1544,7 @@ module Tx_rollup = struct
 
   module Revealed_withdrawals =
     Level_context.Make_carbonated_map
-      (Registered)
+      (Ghost)
       (struct
         let name = ["withdrawals"]
       end)
@@ -1552,7 +1552,7 @@ module Tx_rollup = struct
 
   module Commitment =
     Level_context.Make_carbonated_map
-      (Registered)
+      (Ghost)
       (struct
         let name = ["commitment"]
       end)
@@ -1560,7 +1560,7 @@ module Tx_rollup = struct
 
   module Bond_indexed_context =
     Make_indexed_subcontext
-      (Make_subcontext (Registered) (Indexed_context.Raw_context)
+      (Make_subcontext (Ghost) (Indexed_context.Raw_context)
          (struct
            let name = ["bond"]
          end))
@@ -1568,7 +1568,7 @@ module Tx_rollup = struct
 
   module Commitment_bond =
     Bond_indexed_context.Make_carbonated_map
-      (Registered)
+      (Ghost)
       (struct
         let name = ["commitment"]
       end)

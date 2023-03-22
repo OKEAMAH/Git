@@ -900,6 +900,7 @@ let prepare_first_block ~level ~timestamp ctxt =
       set_cycle_eras ctxt cycle_eras >>=? fun ctxt ->
       add_constants ctxt param.constants >|= ok
   | Mumbai_016 ->
+      Context.remove ctxt ["tx_rollup"] >>= fun ctxt ->
       get_previous_protocol_constants ctxt >>= fun c ->
       let tx_rollup =
         Constants_parametric_repr.
