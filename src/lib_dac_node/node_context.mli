@@ -42,6 +42,7 @@ module Coordinator : sig
        This could be problematic in case coordinator and member/observer
        use two different plugins that bind different underlying hashes. *)
     page_streamer : Page_store.stream_page Data_streamer.t;
+    streaming_page_store : Page_store.Streaming_page_store.t;
   }
 
   (** [public_keys_opt t] returns the list of public keys associated with the
@@ -100,6 +101,7 @@ module Legacy : sig
         (** The legacy account wallet of the committee member simulated by the
             legacy DAC node, if any. *)
     page_streamer : Page_store.stream_page Data_streamer.t;
+    streaming_page_store : Page_store.Streaming_page_store.t;
   }
 
   (** [public_keys_opt t] returns the list of optional public keys associated

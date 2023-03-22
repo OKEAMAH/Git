@@ -70,10 +70,7 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
            Tezt for testing streaming of root hashes should also use
            the new endpoint. *)
         let* root_hash =
-          Merkle_tree.V0.Filesystem.serialize_payload
-            dac_plugin
-            ~page_store
-            data
+          Merkle_tree.V0.Streaming.serialize_payload dac_plugin ~page_store data
         in
         let () = Data_streamer.publish hash_streamer root_hash in
         let*! () =
@@ -84,7 +81,11 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
         Hash_chain.V0.serialize_payload
           dac_plugin
           ~for_each_page:(fun (hash, content) ->
-            Page_store.Filesystem.save dac_plugin page_store ~hash ~content)
+            Page_store.Streaming_page_store.save
+              dac_plugin
+              page_store
+              ~hash
+              ~content)
           data
   in
   let* signature, witnesses =
@@ -231,7 +232,7 @@ module Coordinator = struct
   let handle_post_preimage dac_plugin page_store hash_streamer payload =
     let open Lwt_result_syntax in
     let* root_hash =
-      Pages_encoding.Merkle_tree.V0.Filesystem.serialize_payload
+      Pages_encoding.Merkle_tree.V0.Streaming.serialize_payload
         dac_plugin
         ~page_store
         payload
@@ -271,7 +272,10 @@ module Coordinator = struct
     let cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
 
     Tezos_rpc.Directory.empty
-    |> register_coordinator_post_preimage dac_plugin hash_streamer page_store
+    |> register_coordinator_post_preimage
+         dac_plugin
+         hash_streamer
+         modal_node_ctxt.streaming_page_store
     |> register_get_verify_signature dac_plugin public_keys_opt
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
@@ -316,7 +320,7 @@ module Legacy = struct
          dac_plugin
          cctxt
          secret_key_uris_opt
-         page_store
+         modal_node_ctxt.streaming_page_store
          hash_streamer
     |> register_get_verify_signature dac_plugin public_keys_opt
     |> register_get_preimage dac_plugin page_store

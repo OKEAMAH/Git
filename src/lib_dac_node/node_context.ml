@@ -37,6 +37,7 @@ module Coordinator = struct
            This could be problematic in case coordinator and member/observer
            use two different plugins that bind different underlying hashes. *)
     page_streamer : Page_store.stream_page Data_streamer.t;
+    streaming_page_store : Page_store.Streaming_page_store.t;
   }
 
   let get_all_committee_members_public_keys committee_members_addresses cctxt =
@@ -47,7 +48,7 @@ module Coordinator = struct
           cctxt)
       committee_members_addresses
 
-  let init coordinator_config cctxt =
+  let init coordinator_config cctxt page_store =
     let open Lwt_result_syntax in
     let Configuration.Coordinator.{committee_members_addresses; _} =
       coordinator_config
@@ -57,7 +58,10 @@ module Coordinator = struct
     in
     let hash_streamer = Data_streamer.init () in
     let page_streamer = Data_streamer.init () in
-    {committee_members; hash_streamer; page_streamer}
+    let streaming_page_store =
+      Page_store.Streaming_page_store.init {page_store; stream = page_streamer}
+    in
+    {committee_members; hash_streamer; page_streamer; streaming_page_store}
 
   let public_keys_opt t =
     List.map
@@ -119,6 +123,7 @@ module Legacy = struct
     hash_streamer : Dac_plugin.hash Data_streamer.t;
     committee_member_opt : Wallet_account.Legacy.t option;
     page_streamer : Page_store.stream_page Data_streamer.t;
+    streaming_page_store : Page_store.Streaming_page_store.t;
   }
 
   let get_all_committee_members_keys committee_members_addresses ~threshold
@@ -156,7 +161,7 @@ module Legacy = struct
     in
     return wallet_accounts
 
-  let init legacy_config cctxt =
+  let init legacy_config cctxt page_store =
     let open Lwt_result_syntax in
     let Configuration.Legacy.
           {
@@ -187,12 +192,16 @@ module Legacy = struct
     in
     let hash_streamer = Data_streamer.init () in
     let page_streamer = Data_streamer.init () in
+    let streaming_page_store =
+      Page_store.Streaming_page_store.init {page_store; stream = page_streamer}
+    in
     {
       committee_members;
       coordinator_cctxt;
       hash_streamer;
       committee_member_opt;
       page_streamer;
+      streaming_page_store;
     }
 
   let public_keys_opt t =
@@ -225,11 +234,11 @@ type t = {
   mode : mode;
 }
 
-let init_mode Configuration.{mode; _} cctxt =
+let init_mode Configuration.{mode; _} cctxt page_store =
   let open Lwt_result_syntax in
   match mode with
   | Coordinator config ->
-      let+ mode_node_ctxt = Coordinator.init config cctxt in
+      let+ mode_node_ctxt = Coordinator.init config cctxt page_store in
       Coordinator mode_node_ctxt
   | Committee_member config ->
       let+ mode_node_ctxt = Committee_member.init config cctxt in
@@ -238,7 +247,7 @@ let init_mode Configuration.{mode; _} cctxt =
       let+ mode_node_ctxt = Observer.init config in
       Observer mode_node_ctxt
   | Legacy config ->
-      let+ mode_node_ctxt = Legacy.init config cctxt in
+      let+ mode_node_ctxt = Legacy.init config cctxt page_store in
       Legacy mode_node_ctxt
 
 let init config cctxt =
@@ -248,13 +257,16 @@ let init config cctxt =
       Store_sigs.Read_write
       (Configuration.data_dir_path config store_path_prefix)
   in
-  let+ mode = init_mode config cctxt in
+  let page_store =
+    Page_store.Filesystem.init (Configuration.reveal_data_dir config)
+  in
+
+  let+ mode = init_mode config cctxt page_store in
   {
     status = Starting;
     reveal_data_dir = Configuration.reveal_data_dir config;
     tezos_node_cctxt = cctxt;
-    page_store =
-      Page_store.Filesystem.init (Configuration.reveal_data_dir config);
+    page_store;
     node_store;
     mode;
   }
