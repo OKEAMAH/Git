@@ -37,4 +37,8 @@ val wait_for_funded_key :
     Octez node from the snapshot stored at [snapshot_path], and waits
     for it to be bootstrapped. *)
 val setup_octez_node :
-  testnet:Testnet.t -> ?runner:Runner.t -> string -> (Client.t * Node.t) Lwt.t
+  testnet:Testnet.t ->
+  ?runner:Runner.t ->
+  ?snapshot:string ->
+  unit ->
+  (Client.t * Node.t) Lwt.t

@@ -108,8 +108,7 @@ let eth_transfer ~(testnet : Testnet.t) () =
   (* We expect the operator 11,000 xtz. This is enough to originate a rollup
      (1.68 xtz) and commit (10,000 xtz) and post the messages through the batcher. *)
   let min_balance = Tez.(of_mutez_int 11_000_000_000) in
-  let* snapshot = Helpers.download testnet.snapshot "snapshot" in
-  let* client, node = Helpers.setup_octez_node ~testnet snapshot in
+  let* client, node = Helpers.setup_octez_node ~testnet () in
   let* operator = Client.gen_and_show_keys client in
   let* () = Helpers.wait_for_funded_key node client min_balance operator in
   let* _rollup_address, rollup_node, evm_proxy_server =
@@ -148,7 +147,7 @@ let eth_transfer ~(testnet : Testnet.t) () =
       ~evm_proxy_server_endpoint
   in
   Log.info "Operation injected and applied in the kernel with hash %s" tx_hash ;
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4929
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4929g
      Should the scenario checks if the transfer ended with the expected
      result (correct balance for both, updated nonce for the sender)? *)
   unit
