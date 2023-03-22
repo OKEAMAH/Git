@@ -124,6 +124,28 @@ let new_head ctxt =
     handler
     (Tezos_shell_services.Monitor_services.heads cctxt `Main)
 
+let new_page ctxt coordinator_cctxt =
+  let open Lwt_result_syntax in
+  let handler dac_plugin _stopper Page_store.{hash; content} =
+    let page_store = Node_context.get_page_store ctxt in
+    let*! result =
+      Page_store.Filesystem.save dac_plugin page_store ~hash ~content
+    in
+
+    match result with
+    | Ok _ -> return ()
+    | Error errs ->
+        let msg = Format.asprintf "%a" Error_monad.pp_print_trace errs in
+        let*! () = Lwt_io.eprintf "%s" msg in
+        let*! () = Lwt_io.(flush stderr) in
+        return ()
+  in
+  let*? dac_plugin = Node_context.get_dac_plugin ctxt in
+  let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
+  make_stream_daemon
+    (handler dac_plugin)
+    (Monitor_services.saved_pages coordinator_cctxt dac_plugin)
+
 (** Handlers specific to a [Committee_member]. A [Committee_member] is
     responsible for
     {ul
@@ -361,13 +383,22 @@ let handlers node_ctxt =
   match Node_context.mode node_ctxt with
   | Coordinator _ -> return [new_head node_ctxt]
   | Committee_member ctxt ->
+      let coordinator_cctxt = ctxt.coordinator_cctxt in
       return
         [
           new_head node_ctxt;
+          new_page node_ctxt coordinator_cctxt;
           Committee_member.new_root_hash ctxt wallet_cctxt plugin page_store;
         ]
   | Observer ctxt ->
-      return [new_head node_ctxt; Observer.new_root_hash ctxt plugin page_store]
+      let coordinator_cctxt = ctxt.coordinator_cctxt in
+
+      return
+        [
+          new_head node_ctxt;
+          new_page node_ctxt coordinator_cctxt;
+          Observer.new_root_hash ctxt plugin page_store;
+        ]
   | Legacy ctxt ->
       let coordinator_cctxt_opt = ctxt.Node_context.Legacy.coordinator_cctxt in
       let root_hash_handler =
@@ -381,4 +412,10 @@ let handlers node_ctxt =
                  page_store)
         |> Option.to_list
       in
-      return @@ [new_head node_ctxt] @ root_hash_handler
+      let page_hash_handler =
+        coordinator_cctxt_opt
+        |> Option.map (fun coordinator_cctxt ->
+               new_page node_ctxt coordinator_cctxt)
+        |> Option.to_list
+      in
+      return @@ [new_head node_ctxt] @ root_hash_handler @ page_hash_handler
