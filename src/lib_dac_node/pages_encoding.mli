@@ -158,6 +158,9 @@ module Merkle_tree : sig
 
     module Remote : Dac_codec with type page_store = Page_store.Remote.t
 
+    module Streaming :
+      Dac_codec with type page_store = Page_store.Streaming_page_store.t
+
     module Fake : Dac_codec with type page_store = Page_store.Fake.t
   end
 

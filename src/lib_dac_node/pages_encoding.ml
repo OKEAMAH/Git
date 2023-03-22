@@ -554,12 +554,16 @@ module Merkle_tree = struct
       Make_buffered (Page_store.Filesystem) (V0_metadata) (V0_page_size)
     module Remote =
       Make_buffered (Page_store.Remote) (V0_metadata) (V0_page_size)
+    module Streaming =
+      Make_buffered (Page_store.Streaming_page_store) (V0_metadata)
+        (V0_page_size)
     module Fake = Make_buffered (Page_store.Fake) (V0_metadata) (V0_page_size)
   end
 
   module V0 = struct
     module Filesystem = Make (V0_Buffered.Filesystem)
     module Remote = Make (V0_Buffered.Remote)
+    module Streaming = Make (V0_Buffered.Streaming)
     module Fake = Make (V0_Buffered.Fake)
   end
 
