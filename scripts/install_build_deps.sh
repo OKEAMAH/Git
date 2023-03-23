@@ -107,3 +107,13 @@ fi
 
 "$script_dir"/install_sapling_parameters.sh
 
+
+# install kernels dependencies if asked
+if [ -n "$dev" ]; then
+    "$script_dir"/install_build_deps.kernels.sh ||
+        echo "\
+
+It is recommended to act on the missing dependencies and call ${script_dir}install_build_deps.kernels.sh again.
+Note that this is not strictly required to use the octez suite."
+fi
+
