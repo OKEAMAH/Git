@@ -124,12 +124,24 @@ pub trait Runtime {
     #[cfg(feature = "alloc")]
     fn store_read_all(&self, path: &impl Path) -> Result<Vec<u8>, RuntimeError>;
 
-    /// Write the bytes given by `src` to storage at `path`, starting `at_offset`.
+    /// Write the bytes given by `src` to storage at `path`, starting
+    /// `at_offset`. Fails if `src.len() > MAX_FILE_CHUNK_SIZE`.
     fn store_write<T: Path>(
         &mut self,
         path: &T,
         src: &[u8],
         at_offset: usize,
+    ) -> Result<(), RuntimeError>;
+
+    /// Write the bytes given by `src` to storage at `path`, starting from `0`.
+    /// Contrary to `store_write`, it can write more than `MAX_FILE_CHUNK_SIZE`.
+    /// Note that if any value exists at `path`, it will be removed
+    /// beforehand.
+    #[cfg(feature = "proto-nairobi")]
+    fn store_write_all<T: Path>(
+        &mut self,
+        path: &T,
+        src: &[u8],
     ) -> Result<(), RuntimeError>;
 
     /// Delete `path` from storage.
@@ -408,6 +420,38 @@ where
             Ok(_) => Ok(()),
             Err(e) => Err(RuntimeError::HostErr(e)),
         }
+    }
+
+    #[cfg(feature = "proto-nairobi")]
+    fn store_write_all<T: Path>(
+        &mut self,
+        path: &T,
+        value: &[u8],
+    ) -> Result<(), RuntimeError> {
+        use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
+        let length = value.len();
+        let mut offset = 0;
+
+        // Removing the value first prevents some cases where a value already
+        // exists in the storage at the given path and is bigger than the one
+        // being written. Keeping the old value would lead to a situation where
+        // ```
+        // let () = host.store_write_all(path, value)?;
+        // let value_read = host.store_read_all(path)?;
+        // value != value_read
+        // ```
+        // due to remaining bytes from the previous value.
+        //
+        // `store_delete_value` always succeeds even if the path does not
+        // exists, hence there is no need to check the value exists beforehand.
+        Runtime::store_delete_value(self, path)?;
+
+        while offset < length {
+            let limit = usize::min(offset + MAX_FILE_CHUNK_SIZE, length);
+            Runtime::store_write(self, path, &value[offset..limit], offset)?;
+            offset += limit;
+        }
+        Ok(())
     }
 
     fn store_delete<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
@@ -926,6 +970,35 @@ mod tests {
             Err(RuntimeError::HostErr(Error::InputOutputTooLarge)),
             result
         );
+    }
+
+    #[test]
+    fn store_write_all() {
+        const PATH: RefPath<'static> = RefPath::assert_from("/a/simple/path".as_bytes());
+        const VALUE_FIRST_HALF: [u8; MAX_FILE_CHUNK_SIZE] = [b'a'; MAX_FILE_CHUNK_SIZE];
+        const VALUE_SECOND_HALF: [u8; MAX_FILE_CHUNK_SIZE] = [b'b'; MAX_FILE_CHUNK_SIZE];
+
+        let mut mock = MockSmartRollupCore::new();
+        mock.expect_store_write()
+            .withf(|path_ptr, path_size, at_offset, src_ptr, src_size| {
+                let path_slice = unsafe { from_raw_parts(*path_ptr, *path_size) };
+                let output_slice = unsafe { from_raw_parts(*src_ptr, *src_size) };
+                let correct_value = if *at_offset == MAX_FILE_CHUNK_SIZE {
+                    output_slice == VALUE_SECOND_HALF
+                } else {
+                    VALUE_FIRST_HALF == output_slice
+                };
+
+                correct_value && PATH.as_bytes() == path_slice
+            })
+            .return_const(0);
+
+        // Act
+        let value = &vec![VALUE_FIRST_HALF, VALUE_SECOND_HALF].concat();
+        let result = mock.store_write_all(&PATH, value);
+
+        // Assert
+        assert_eq!(Ok(()), result);
     }
 
     #[test]
