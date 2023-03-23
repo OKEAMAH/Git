@@ -742,7 +742,12 @@ module Test_tree = struct
           concat (get_temp_dir_name ()) "bench_irmin_tree"
           ^ string_of_int (Random.bits ()))
       in
-      let* repo = S.Repo.v (Irmin_pack.config path) in
+      let* repo =
+        S.Repo.v
+          (Irmin_pack.config
+             ~indexing_strategy:Irmin_pack.Indexing_strategy.minimal
+             path)
+      in
       let* index = S.main repo in
       let* empty = S.tree index in
       let* _t_disk1, tree = run_test empty size in
