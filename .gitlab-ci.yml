@@ -3,6 +3,7 @@
 # General setup
 default:
   interruptible: true
+  tags: ["reserved-to-margebot"]
 
 # Basic configuration to guard against double-pipelines
 workflow:
