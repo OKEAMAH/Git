@@ -58,14 +58,13 @@ module Simple = struct
       ("internal", Data_encoding.bool)
 
   let pvm_compute_step_many_begins =
-    declare_3
+    declare_2
       ~section
       ~name:"sc_rollup_node_pvm_compute_step_many_begins"
       ~msg:
-        "PVM starts executing compute_step_many at {timestamp}, with params \
-         stop_at_snapshot: {stop_at_snapshot} and max_steps: {max_steps}"
+        "PVM starts executing compute_step_many with params stop_at_snapshot: \
+         {stop_at_snapshot} and max_steps: {max_steps}"
       ~level:Debug
-      ("timestamp", Data_encoding.float)
       ("stop_at_snapshot", Data_encoding.(option bool))
       ("max_steps", Data_encoding.int64)
 
@@ -74,10 +73,11 @@ module Simple = struct
       ~section
       ~name:"sc_rollup_node_pvm_compute_step_many_ends"
       ~msg:
-        "PVM ends executing compute_step_many at {timestamp}, with params \
-         stop_at_snapshot: {stop_at_snapshot} and max_steps: {max_steps}"
+        "PVM ends executing compute_step_many after {elapsed_time}, with \
+         params stop_at_snapshot: {stop_at_snapshot} and max_steps: \
+         {max_steps}"
       ~level:Debug
-      ("timestamp", Data_encoding.float)
+      ("elapsed_time", Data_encoding.float)
       ("stop_at_snapshot", Data_encoding.(option bool))
       ("max_steps", Data_encoding.int64)
 end
@@ -99,12 +99,11 @@ let intended_failure ~level ~message_index ~message_tick ~internal =
   Simple.(emit intended_failure (level, message_index, message_tick, internal))
 
 (* This event is emitted when Interpreter is about to invoke PMV.compute_step_many *)
-let pvm_compute_step_many_begins ~timestamp ~stop_at_snapshot ~max_steps =
-  Simple.(
-    emit pvm_compute_step_many_begins (timestamp, stop_at_snapshot, max_steps))
+let pvm_compute_step_many_begins ~stop_at_snapshot ~max_steps =
+  Simple.(emit pvm_compute_step_many_begins (stop_at_snapshot, max_steps))
 
 (* This event is emitted when an invocation of PMV.compute_step_many has finished,
    and control flow has been returned to Interpreter *)
-let pvm_compute_step_many_ends ~timestamp ~stop_at_snapshot ~max_steps =
+let pvm_compute_step_many_ends ~elapsed_time ~stop_at_snapshot ~max_steps =
   Simple.(
-    emit pvm_compute_step_many_ends (timestamp, stop_at_snapshot, max_steps))
+    emit pvm_compute_step_many_ends (elapsed_time, stop_at_snapshot, max_steps))

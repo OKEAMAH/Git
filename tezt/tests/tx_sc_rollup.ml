@@ -194,9 +194,7 @@ struct
       list_encode txs_encodings
 
     let batch_repr (batch : transactions_batch) =
-      let signature =
-        batch.aggregated_signature |> Bls.to_bytes |> Bytes.to_string
-      in
+      let signature = Bls.to_string batch.aggregated_signature in
       batch.encoded_transactions ^ signature
   end
 
@@ -318,11 +316,11 @@ type full_tx_setup = {
 
 let wait_for_pvm_compute_step_many_begins node =
   Sc_rollup_node.wait_for node "sc_rollup_node_pvm_compute_step_many_begins.v0"
-  @@ fun json -> Option.some @@ JSON.(json |-> "timestamp" |> as_float)
+  @@ fun _json -> Option.some ()
 
 let wait_for_pvm_compute_step_many_ends node =
   Sc_rollup_node.wait_for node "sc_rollup_node_pvm_compute_step_many_ends.v0"
-  @@ fun json -> Option.some @@ JSON.(json |-> "timestamp" |> as_float)
+  @@ fun json -> Option.some @@ JSON.(json |-> "elapsed_time" |> as_float)
 
 let setup_tx_kernel_and_dac ?installer ?installee ~commitment_period
     ~challenge_window protocol =
@@ -693,9 +691,9 @@ let test_tx_kernel_60k_txs protocol =
   let _ =
     let tot_spent = ref 0.0 in
     let rec go () =
-      let* begin_time = wait_for_pvm_compute_step_many_begins sc_rollup_node in
-      let* end_time = wait_for_pvm_compute_step_many_ends sc_rollup_node in
-      tot_spent := !tot_spent +. (end_time -. begin_time) ;
+      let* _ = wait_for_pvm_compute_step_many_begins sc_rollup_node in
+      let* elapsed_time = wait_for_pvm_compute_step_many_ends sc_rollup_node in
+      tot_spent := !tot_spent +. elapsed_time ;
       Format.printf "Spent time in the PVM execution so far %.2f" !tot_spent ;
       go ()
     in
@@ -731,5 +729,5 @@ let test_tx_kernel_60k_txs =
     test_tx_kernel_60k_txs
 
 let register ~protocols =
-  (* test_tx_kernel_e2e protocols ; *)
+  test_tx_kernel_e2e protocols ;
   test_tx_kernel_60k_txs protocols

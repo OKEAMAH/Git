@@ -132,12 +132,10 @@ module Impl : Pvm.S = struct
 
   let eval_many ~reveal_builtins ~write_debug ?stop_at_snapshot ~max_steps state
       =
-    let _wm = write_debug in
     let open Lwt.Syntax in
     let start_timestamp = Sys.time () in
     let* () =
       Interpreter_event.pvm_compute_step_many_begins
-        ~timestamp:start_timestamp
         ~stop_at_snapshot
         ~max_steps
     in
@@ -152,7 +150,7 @@ module Impl : Pvm.S = struct
     let end_timestamp = Sys.time () in
     let+ () =
       Interpreter_event.pvm_compute_step_many_ends
-        ~timestamp:end_timestamp
+        ~elapsed_time:(end_timestamp -. start_timestamp)
         ~stop_at_snapshot
         ~max_steps
     in
