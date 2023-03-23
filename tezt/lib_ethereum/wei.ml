@@ -51,6 +51,12 @@ let ( * ) = Z.mul
 
 let ( / ) = Z.div
 
+let compare = Z.compare
+
+module Compare = struct
+  include Z.Compare
+end
+
 let typ =
   Check.comparable
     (fun fmt t -> Format.fprintf fmt "%s" (to_string t))

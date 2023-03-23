@@ -66,5 +66,24 @@ val ( * ) : t -> t -> t
 (** Division. This doesn't perform any bound checks. *)
 val ( / ) : t -> t -> t
 
+(** [compare x y] returns 0 if x equals y, -1 if x is smaller than y, and 1 if x
+    is greater than y. *)
+val compare : t -> t -> int
+
+(** [Compare] implements the operator of arithmetic comparison of Wei values. *)
+module Compare : sig
+  val ( = ) : t -> t -> bool
+
+  val ( < ) : t -> t -> bool
+
+  val ( > ) : t -> t -> bool
+
+  val ( <= ) : t -> t -> bool
+
+  val ( >= ) : t -> t -> bool
+
+  val ( <> ) : t -> t -> bool
+end
+
 (** The wei {!Check.typ}. *)
 val typ : t Check.typ
