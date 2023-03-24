@@ -140,7 +140,11 @@ module Make (C : AUTOMATON_CONFIG) :
     | Ignore_PX_score_too_low : Score.t -> [`Prune] output
     | No_PX : [`Prune] output
     | PX : Peer.Set.t -> [`Prune] output
-    | Publish_message : Peer.Set.t -> [`Publish] output
+    | Publish_message : {
+        advertise_peers : Peer.Set.t;
+        subscribed : bool;
+      }
+        -> [`Publish] output
     | Already_subscribed : [`Join] output
     | Joining_topic : {to_graft : Peer.Set.t} -> [`Join] output
     | Not_subscribed : [`Leave] output
@@ -820,18 +824,19 @@ module Make (C : AUTOMATON_CONFIG) :
       let open Monad.Syntax in
       let* () = put_message_in_cache message_id message in
       let*! mesh_opt = find_mesh topic in
-      let* peers =
+      let* advertise_peers =
         match mesh_opt with
         | Some peers -> return peers
         | None -> get_peers_for_unsubscribed_topic topic
       in
-      let peers =
+      let advertise_peers =
         Option.fold
-          ~none:peers
-          ~some:(fun peer -> Peer.Set.remove peer peers)
+          ~none:advertise_peers
+          ~some:(fun peer -> Peer.Set.remove peer advertise_peers)
           sender
       in
-      Publish_message peers |> return
+      Publish_message {advertise_peers; subscribed = Option.is_some mesh_opt}
+      |> return
   end
 
   let publish : publish -> [`Publish] output Monad.t =

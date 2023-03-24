@@ -239,7 +239,11 @@ module type AUTOMATON = sig
     | Ignore_PX_score_too_low : Score.t -> [`Prune] output
     | No_PX : [`Prune] output
     | PX : Peer.Set.t -> [`Prune] output
-    | Publish_message : Peer.Set.t -> [`Publish] output
+    | Publish_message : {
+        advertise_peers : Peer.Set.t;
+        subscribed : bool;
+      }
+        -> [`Publish] output
     | Already_subscribed : [`Join] output
     | Joining_topic : {to_graft : Peer.Set.t} -> [`Join] output
     | Not_subscribed : [`Leave] output
@@ -457,4 +461,11 @@ module type WORKER = sig
   (** [inject state msg_id msg topic] is used to inject a message [msg] with
       ID [msg_id] and that belongs to [topic] to the network. *)
   val inject : t -> GS.Message_id.t -> GS.Message.t -> GS.Topic.t -> unit
+
+  (** [join t topics] dynamically joins [topics] while the worker is running. *)
+  val join : t -> GS.Topic.t list -> unit
+
+  (** [leave t topics] dynamically leaves [topics] while the worker is
+      running. *)
+  val leave : t -> GS.Topic.t list -> unit
 end
