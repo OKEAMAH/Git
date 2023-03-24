@@ -360,6 +360,29 @@ let test_contract_error_opening ~protocol () =
   assert (b_init && b_guess && b_result) ;
   unit
 
+let test_feature_flag ~protocol () =
+  let base = Either.right (protocol, None) in
+  let parameters = [(["timelock_enable"], `Bool false)] in
+  let* parameter_file = Protocol.write_parameter_file ~base parameters in
+  let* client = Client.init_mockup ~protocol ~parameter_file () in
+  let prg =
+    sf
+      "./src/%s/lib_protocol/test/integration/michelson/contracts/timelock_flip.tz"
+      (Protocol.directory protocol)
+  in
+  let result =
+    Client.spawn_originate_contract
+      ~amount:Tez.zero
+      ~alias:"timelock"
+      ~src:Constant.bootstrap1.alias
+      ~burn_cap:(Tez.of_int 1)
+      ~init:"0xaa"
+      ~prg
+      client
+  in
+  let msg = rex "Cannot use timelock feature as it is disabled." in
+  Process.check_error ~exit_code:1 ~msg result
+
 let register ~protocols =
   List.iter
     (fun (title, test_function) ->
@@ -374,4 +397,5 @@ let register ~protocols =
       ("Incorrect guess test on timelock", test_contract_incorrect_guess);
       ("Guess too late test on timelock", test_contract_guess_too_late);
       ("Error opening test on timelock", test_contract_error_opening);
+      ("Feature flag sets to false prevents timelock usage", test_feature_flag);
     ]

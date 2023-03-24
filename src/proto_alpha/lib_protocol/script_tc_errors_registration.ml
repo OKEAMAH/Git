@@ -823,4 +823,13 @@ let () =
     ~description:"Ticket can only be created by a smart contract"
     (obj1 (req "ticketer" Destination.encoding))
     (function Unexpected_ticket_owner t -> Some t | _ -> None)
-    (fun t -> Unexpected_ticket_owner t)
+    (fun t -> Unexpected_ticket_owner t) ;
+  (* Timelock feature flag disabled *)
+  register_error_kind
+    `Permanent
+    ~id:"michelson_v1.timelock_disabled"
+    ~title:"Timelock is disabled"
+    ~description:"Cannot use timelock feature as it is disabled."
+    (obj1 (req "location" Script.location_encoding))
+    (function Timelock_disabled loc -> Some loc | _ -> None)
+    (fun loc -> Timelock_disabled loc)
