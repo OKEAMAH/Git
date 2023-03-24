@@ -56,6 +56,30 @@ module Simple = struct
       ("message_index", Data_encoding.int31)
       ("message_tick", Data_encoding.int64)
       ("internal", Data_encoding.bool)
+
+  let pvm_compute_step_many_begins =
+    declare_2
+      ~section
+      ~name:"sc_rollup_node_pvm_compute_step_many_begins"
+      ~msg:
+        "PVM starts executing compute_step_many with params stop_at_snapshot: \
+         {stop_at_snapshot} and max_steps: {max_steps}"
+      ~level:Debug
+      ("stop_at_snapshot", Data_encoding.(option bool))
+      ("max_steps", Data_encoding.int64)
+
+  let pvm_compute_step_many_ends =
+    declare_3
+      ~section
+      ~name:"sc_rollup_node_pvm_compute_step_many_ends"
+      ~msg:
+        "PVM ends executing compute_step_many after {elapsed_time}, with \
+         params stop_at_snapshot: {stop_at_snapshot} and max_steps: \
+         {max_steps}"
+      ~level:Debug
+      ("elapsed_time", Data_encoding.float)
+      ("stop_at_snapshot", Data_encoding.(option bool))
+      ("max_steps", Data_encoding.int64)
 end
 
 (** [transition_pvm inbox_level hash tick n] emits the event that a PVM
@@ -73,3 +97,13 @@ let transitioned_pvm inbox_level hash tick num_messages =
    to the PVM. *)
 let intended_failure ~level ~message_index ~message_tick ~internal =
   Simple.(emit intended_failure (level, message_index, message_tick, internal))
+
+(* This event is emitted when Interpreter is about to invoke PMV.compute_step_many *)
+let pvm_compute_step_many_begins ~stop_at_snapshot ~max_steps =
+  Simple.(emit pvm_compute_step_many_begins (stop_at_snapshot, max_steps))
+
+(* This event is emitted when an invocation of PMV.compute_step_many has finished,
+   and control flow has been returned to Interpreter *)
+let pvm_compute_step_many_ends ~elapsed_time ~stop_at_snapshot ~max_steps =
+  Simple.(
+    emit pvm_compute_step_many_ends (elapsed_time, stop_at_snapshot, max_steps))
