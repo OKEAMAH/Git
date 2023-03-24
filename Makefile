@@ -90,7 +90,7 @@ endif
 # Targets 'all', 'release', 'experimental-release' and 'static' define different
 # default lists of executables to build but they all can be overridden from the command-line.
 .PHONY: all
-all:
+all: kernels
 	@$(MAKE) build OCTEZ_EXECUTABLES?="$(ALL_EXECUTABLES)"
 
 .PHONY: release
@@ -473,4 +473,24 @@ clean: coverage-clean clean-old-names
 
 .PHONY: build-kernels
 build-kernels:
-	make -f kernels.mk build-kernels
+	${MAKE} -f kernels.mk build-kernels
+
+
+define KERNELS_WARNING_MESSAGE
+
+Failed to build smart rollup kernels. This is allowed as it is not strictly
+required to run the octez suite. However, you will not be able to use some
+smart rollup related features and the associated integration tests.
+
+If you wish to change that, you can use the script `scripts/install_build_deps.kernels.sh`
+to install missing dependencies and re-run `make kernels`.
+
+endef
+export KERNELS_WARNING_MESSAGE
+
+# This is allowed to fail because it is used in `all`.
+.PHONY: kernels
+kernels:
+	@${MAKE} -f kernels.mk build-deps && ${MAKE} -f kernels.mk build-kernels || \
+	echo "$$KERNELS_WARNING_MESSAGE"
+
