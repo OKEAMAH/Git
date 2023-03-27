@@ -212,6 +212,92 @@ let wait_for_timeout_detected sc_node =
   let other = JSON.(json |-> "other" |> as_string) in
   Some other
 
+(** A script that receives [(pair address sc_rollup_parameters_ty)] as a parameter
+    and transfers them to the [sc_rollup] as is. The transfer will
+    appear as an internal message targeting this specific rollup in
+    the rollups' inbox. *)
+let originate_deposit_smart_contract ~src ~sc_rollup_parameters_ty client =
+  let prg =
+    Format.asprintf
+      {|
+{
+  parameter (pair address %s) ;
+  storage unit ;
+  code
+    {
+       UNPAIR ;
+       DIP { NIL operation };
+       UNPAIR ;
+       CONTRACT %s ;
+       ASSERT_SOME;
+       SWAP;
+       DIP { PUSH mutez 0 };
+       TRANSFER_TOKENS;
+       CONS;
+       PAIR;
+    }
+} |}
+      sc_rollup_parameters_ty
+      sc_rollup_parameters_ty
+  in
+  let* address =
+    Client.originate_contract
+      ~alias:"source"
+      ~amount:(Tez.of_int 100)
+      ~burn_cap:(Tez.of_int 100)
+      ~src
+      ~prg
+      ~init:"Unit"
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  return address
+
+(** A script that receives [PAIR (ticket_content amount) sc_rollup] as
+    a parameter and mint [amount] ticket with content [ticket_content]
+    of type [sc_rollup_ticket_y] and send it to the [sc_rollup]. The
+    transfer will appear as an internal message targeting this
+    specific rollup in the rollups' inbox. *)
+let originate_minter_smart_contract ~src ~sc_rollup_ticket_ty client =
+  let prg =
+    Format.asprintf
+      {|
+{
+  parameter (pair (pair %s nat) (contract (ticket %s)) );
+  storage unit;
+  code
+    {
+      UNPAIR;
+      UNPAIR;
+      UNPAIR;
+      TICKET;
+      ASSERT_SOME;
+      PUSH mutez 0;
+      SWAP;
+      TRANSFER_TOKENS;
+      NIL operation;
+      SWAP;
+      CONS;
+      PAIR
+    }
+}
+|}
+      sc_rollup_ticket_ty
+      sc_rollup_ticket_ty
+  in
+  let* address =
+    Client.originate_contract
+      ~alias:"source"
+      ~amount:(Tez.of_int 100)
+      ~burn_cap:(Tez.of_int 100)
+      ~src
+      ~prg
+      ~init:"Unit"
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  return address
+
 (* Configuration of a rollup node
    ------------------------------
 
@@ -262,6 +348,38 @@ let test_l1_scenario ?regression ~kind ?boot_sector ?commitment_period
   in
   let* sc_rollup = originate_sc_rollup ~kind ?boot_sector ~src tezos_client in
   scenario sc_rollup tezos_node tezos_client
+
+let test_l1_migration_scenario ?parameters_ty ?(src = Constant.bootstrap1.alias)
+    ?variant ?(tags = []) ~kind ~migrate_from ~migrate_to ~scenario_prior
+    ~scenario_after ~description () =
+  let tags = kind :: "migration" :: tags in
+  Test.register
+    ~__FILE__
+    ~tags
+    ~title:(format_title_scenario kind {variant; tags; description})
+  @@ fun () ->
+  let* tezos_node, tezos_client =
+    setup_l1 ~commitment_period:10 ~challenge_window:10 ~timeout:10 migrate_from
+  in
+  let* sc_rollup = originate_sc_rollup ?parameters_ty ~kind ~src tezos_client in
+  let* prior_res = scenario_prior tezos_client ~sc_rollup in
+  let current_level = Node.get_level tezos_node in
+  let migration_level = current_level + 1 in
+  let* () = Node.terminate tezos_node in
+  let patch_config =
+    Node.Config_file.set_sandbox_network_with_user_activated_upgrades
+      [(migration_level, migrate_to)]
+  in
+  let nodes_args =
+    Node.[Synchronisation_threshold 0; History_mode Archive; No_bootstrap_peers]
+  in
+  let* () = Node.run ~patch_config tezos_node nodes_args in
+  let* () = Node.wait_for_ready tezos_node in
+  let* () =
+    repeat migration_level (fun () -> Client.bake_for_and_wait tezos_client)
+  in
+  let* () = scenario_after tezos_client ~sc_rollup prior_res in
+  unit
 
 let test_full_scenario ?supports ?regression ~kind ?mode ?boot_sector
     ?commitment_period ?(parameters_ty = "string") ?challenge_window ?timeout
@@ -331,7 +449,8 @@ let get_staked_on_commitment ~sc_rollup ~staker client =
   | Some hash -> return hash
   | None -> failwith (Format.sprintf "hash is missing %s" __LOC__)
 
-let cement_commitment ?(src = "bootstrap1") ?fail ~sc_rollup ~hash client =
+let cement_commitment ?(src = Constant.bootstrap1.alias) ?fail ~sc_rollup ~hash
+    client =
   let p =
     Client.Sc_rollup.cement_commitment ~hooks ~dst:sc_rollup ~src ~hash client
   in
@@ -2992,6 +3111,50 @@ let timeout ?expect_failure ~sc_rollup ~staker1 ~staker2 client =
   in
   Client.bake_for_and_wait client
 
+let start_refute client ~source ~opponent ~sc_rollup ~player_commitment_hash
+    ~opponent_commitment_hash =
+  let module M = Operation.Manager in
+  let refutation = M.Start {player_commitment_hash; opponent_commitment_hash} in
+  bake_operation_via_rpc client
+  @@ M.make ~source
+  @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation ()
+
+let move_refute ?number_of_sections_in_dissection client ~source ~opponent
+    ~sc_rollup ~state_hash =
+  let module M = Operation.Manager in
+  let* number_of_sections_in_dissection =
+    match number_of_sections_in_dissection with
+    | Some n -> return n
+    | None ->
+        let* {number_of_sections_in_dissection; _} =
+          get_sc_rollup_constants client
+        in
+        return number_of_sections_in_dissection
+  in
+  let rec aux i acc =
+    if i = number_of_sections_in_dissection - 1 then
+      List.rev (M.{state_hash = None; tick = i} :: acc)
+    else aux (i + 1) (M.{state_hash = Some state_hash; tick = i} :: acc)
+  in
+  let refutation =
+    M.Move {choice_tick = 0; refutation_step = Dissection (aux 0 [])}
+  in
+  bake_operation_via_rpc client
+  @@ M.make ~source
+  @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation ()
+
+(* let proof_refute ?proof client ~source ~opponent ~sc_rollup = *)
+(*   let module M = Operation.Manager in *)
+(*   let proof = *)
+(*     match proof with *)
+(*     | Some p -> p *)
+(*     | None -> M.{pvm_step = ""; input_proof = None} *)
+(*   in *)
+(*   let refutation = M.Move {choice_tick = 0; refutation_step = Proof proof} in *)
+(*   bake_operation_via_rpc client *)
+(*   @@ M.make ~source *)
+(*   @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation () *)
+
 (** Given a commitment tree constructed by {test_forking_scenario}, this function:
     - tests different (failing and non-failing) cementation of commitments
       and checks the returned error for each situation (in case of failure);
@@ -3030,18 +3193,14 @@ let test_no_cementation_if_parent_not_lcc_or_if_disputed_commit =
      loses the dispute, and the branch c32 --- c321 dies. *)
 
   (* [operator1] starts a dispute. *)
-  let module M = Operation.Manager in
   let* () =
-    let refutation =
-      M.Start {player_commitment_hash = c32; opponent_commitment_hash = c31}
-    in
-    bake_operation_via_rpc client
-    @@ M.make ~source:operator2
-    @@ M.sc_rollup_refute
-         ~sc_rollup
-         ~opponent:operator1.public_key_hash
-         ~refutation
-         ()
+    start_refute
+      client
+      ~source:operator2
+      ~opponent:operator1.public_key_hash
+      ~sc_rollup
+      ~player_commitment_hash:c32
+      ~opponent_commitment_hash:c31
   in
   (* [operator1] will not play and will be timeout-ed. *)
   let timeout_period = constants.timeout_period_in_blocks in
@@ -3071,9 +3230,6 @@ let test_valid_dispute_dissection =
   let* constants = get_sc_rollup_constants client in
   let challenge_window = constants.challenge_window_in_blocks in
   let commitment_period = constants.commitment_period_in_blocks in
-  let number_of_sections_in_dissection =
-    constants.number_of_sections_in_dissection
-  in
   let* () =
     (* Be able to cement both c1 and c2 *)
     repeat (challenge_window + commitment_period) (fun () ->
@@ -3085,12 +3241,13 @@ let test_valid_dispute_dissection =
   let source = operator2 in
   let opponent = operator1.public_key_hash in
   let* () =
-    let refutation =
-      M.Start {player_commitment_hash = c32; opponent_commitment_hash = c31}
-    in
-    bake_operation_via_rpc client
-    @@ M.make ~source
-    @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation ()
+    start_refute
+      client
+      ~source
+      ~opponent
+      ~sc_rollup
+      ~player_commitment_hash:c32
+      ~opponent_commitment_hash:c31
   in
   (* Construct a valid dissection with valid initial hash of size
      [sc_rollup.number_of_sections_in_dissection]. The state hash below is
@@ -3101,21 +3258,9 @@ let test_valid_dispute_dissection =
      produced logs. *)
   let state_hash = "srs11Z9V76SGd97kGmDQXV8tEF67C48GMy77RuaHdF1kWLk6UTmMfj" in
 
-  let rec aux i acc =
-    if i = number_of_sections_in_dissection - 1 then
-      List.rev ({M.state_hash = None; tick = i} :: acc)
-    else aux (i + 1) ({M.state_hash = Some state_hash; tick = i} :: acc)
-  in
   (* Inject a valid dissection move *)
-  let refutation =
-    M.Move {choice_tick = 0; refutation_step = Dissection (aux 0 [])}
-  in
+  let* () = move_refute client ~source ~opponent ~sc_rollup ~state_hash in
 
-  let* () =
-    bake_operation_via_rpc client
-    @@ M.make ~source
-    @@ M.sc_rollup_refute ~sc_rollup ~opponent ~refutation ()
-  in
   (* We cannot cement neither c31, nor c32 because refutation game hasn't
      ended. *)
   cement [c31; c32] ~fail:"Attempted to cement a disputed commitment"
@@ -3155,16 +3300,13 @@ let test_timeout =
   let module M = Operation.Manager in
   (* [operator2] starts a dispute, but won't be playing then. *)
   let* () =
-    let refutation =
-      M.Start {player_commitment_hash = c32; opponent_commitment_hash = c31}
-    in
-    bake_operation_via_rpc client
-    @@ M.make ~source:operator2
-    @@ M.sc_rollup_refute
-         ~sc_rollup
-         ~opponent:operator1.public_key_hash
-         ~refutation
-         ()
+    start_refute
+      client
+      ~source:operator2
+      ~opponent:operator1.public_key_hash
+      ~sc_rollup
+      ~player_commitment_hash:c32
+      ~opponent_commitment_hash:c31
   in
   (* Get exactly to the block where we are able to timeout. *)
   let* () =
@@ -3402,21 +3544,15 @@ let test_refutation_reward_and_punishment ~kind =
   let module M = Operation.Manager in
   (* [operator1] starts a dispute, but will never play. *)
   let* () =
-    let refutation =
-      M.Start
-        {
-          player_commitment_hash = operator1_commitment;
-          opponent_commitment_hash = operator2_commitment;
-        }
-    in
-    bake_operation_via_rpc client
-    @@ M.make ~source:operator1
-    @@ M.sc_rollup_refute
-         ~sc_rollup
-         ~opponent:operator2.public_key_hash
-         ~refutation
-         ()
+    start_refute
+      client
+      ~source:operator1
+      ~opponent:operator2.public_key_hash
+      ~sc_rollup
+      ~player_commitment_hash:operator1_commitment
+      ~opponent_commitment_hash:operator2_commitment
   in
+
   (* Get exactly to the block where we are able to timeout. *)
   let* () =
     repeat (timeout_period + 1) (fun () -> Client.bake_for_and_wait client)
@@ -3563,52 +3699,6 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
            string
            ~error_msg:"Invalid contract storage: expecting '%R', got '%L'.")
   in
-  let originate_source_contract () =
-    (* A script that receives bytes as a parameter and transfers them
-       to the rollup as is. The transfer will appear as an internal
-       message targetting this specific rollup in the rollups'
-       inbox. *)
-    let prg =
-      Format.asprintf
-        {|
-      {
-        parameter (bytes %%default);
-        storage (unit);
-
-        code
-          {
-            CAR;
-            PUSH address "%s";
-            CONTRACT bytes;
-            IF_NONE { PUSH string "Invalid address"; FAILWITH; }
-                    {
-                      PUSH mutez 0;
-                      DIG 2;
-                      TRANSFER_TOKENS;
-                      NIL operation;
-                      SWAP;
-                      CONS;
-                      PUSH unit Unit;
-                      SWAP;
-                      PAIR;
-                    }
-          }
-      } |}
-        sc_rollup
-    in
-    let* address =
-      Client.originate_contract
-        ~alias:"source"
-        ~amount:(Tez.of_int 100)
-        ~burn_cap:(Tez.of_int 100)
-        ~src
-        ~prg
-        ~init:"Unit"
-        client
-    in
-    let* () = Client.bake_for_and_wait client in
-    return address
-  in
   let perform_rollup_execution_and_cement source_address target_address =
     let* payload = input_message sc_client target_address in
     let* () =
@@ -3622,7 +3712,7 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
             ~storage_limit:100000
             ~giver:"bootstrap1"
             ~receiver:source_address
-            ~arg:payload
+            ~arg:(Format.sprintf "pair %s %s" sc_rollup payload)
             client
     in
     let blocks_to_wait =
@@ -3725,7 +3815,12 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
             Process.check_error ~msg process)
   in
   let* target_contract_address = originate_target_contract () in
-  let* source_contract_address = originate_source_contract () in
+  let* source_contract_address =
+    originate_deposit_smart_contract
+      ~src
+      ~sc_rollup_parameters_ty:"bytes"
+      client
+  in
   let* () =
     perform_rollup_execution_and_cement
       source_contract_address
@@ -4209,6 +4304,390 @@ let test_recover_bond_of_stakers =
   in
   unit
 
+(* Test to continue to send messages after a migration. *)
+let test_migration_inbox ~kind ~migrate_from ~migrate_to =
+  let sc_rollup_parameters_ty = "unit" in
+  let tags = ["message"; "inbox"]
+  and description = "testing to send inbox operation post migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* minter_address =
+      originate_deposit_smart_contract
+        ~src:Constant.bootstrap1.alias
+        ~sc_rollup_parameters_ty
+        tezos_client
+    in
+    let* () =
+      Client.transfer
+        ~amount:Tez.(of_int 100)
+        ~burn_cap:Tez.(of_int 100)
+        ~storage_limit:100000
+        ~giver:Constant.bootstrap1.alias
+        ~receiver:minter_address
+        ~arg:(Format.sprintf "Pair %S Unit" sc_rollup)
+        tezos_client
+    in
+    return minter_address
+  and scenario_after tezos_client ~sc_rollup minter_address =
+    let* () = send_messages 2 tezos_client in
+    let* () =
+      Client.transfer
+        ~amount:Tez.(of_int 100)
+        ~burn_cap:Tez.(of_int 100)
+        ~storage_limit:100000
+        ~giver:Constant.bootstrap1.alias
+        ~receiver:minter_address
+        ~arg:(Format.sprintf "Pair %S Unit" sc_rollup)
+        tezos_client
+    in
+    unit
+  in
+  test_l1_migration_scenario
+    ~parameters_ty:sc_rollup_parameters_ty
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
+(* Test to continue to send messages after a migration. *)
+let test_migration_ticket_inbox ~kind ~migrate_from ~migrate_to =
+  let parameters_ticket_ty = "unit" in
+  let parameters_ty = Format.sprintf "(ticket %s)" parameters_ticket_ty in
+  let tags = ["message"; "inbox"]
+  and description =
+    "testing to send internal message with ticket post migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* minter_address =
+      originate_minter_smart_contract
+        ~src:Constant.bootstrap1.alias
+        ~sc_rollup_ticket_ty:parameters_ticket_ty
+        tezos_client
+    in
+    let* () =
+      Client.transfer
+        ~amount:Tez.(of_int 100)
+        ~burn_cap:Tez.(of_int 100)
+        ~storage_limit:100000
+        ~giver:Constant.bootstrap1.alias
+        ~receiver:minter_address
+        ~arg:(Format.sprintf "Pair (Pair Unit 10) %S" sc_rollup)
+        tezos_client
+    in
+    return minter_address
+  and scenario_after tezos_client ~sc_rollup minter_address =
+    let* () =
+      Client.transfer
+        ~amount:Tez.(of_int 100)
+        ~burn_cap:Tez.(of_int 100)
+        ~storage_limit:100000
+        ~giver:Constant.bootstrap1.alias
+        ~receiver:minter_address
+        ~arg:(Format.sprintf "Pair (Pair Unit 10) %S" sc_rollup)
+        tezos_client
+    in
+    unit
+  in
+  test_l1_migration_scenario
+    ~parameters_ty
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
+(* Test to cement a commitment pre-migration. *)
+let test_migration_cement ~kind ~migrate_from ~migrate_to =
+  let tags = ["commitment"; "cement"]
+  and description = "Test to cement a commitment made pre migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* {commitment_period_in_blocks = commitment_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat (commitment_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* hash =
+      publish_dummy_commitment
+        ~number_of_ticks:1
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let commitment : Sc_rollup_client.commitment =
+      {
+        compressed_state = Constant.sc_rollup_compressed_state;
+        inbox_level;
+        predecessor;
+        number_of_ticks = 1;
+      }
+    in
+    return (hash, commitment)
+  and scenario_after tezos_client ~sc_rollup
+      (hash, (commitment : Sc_rollup_client.commitment)) =
+    let* {challenge_window_in_blocks = challenge_window; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* current_level = Client.level tezos_client in
+    let missing_blocks_to_cement =
+      commitment.inbox_level + challenge_window - current_level + 2
+    in
+    let* () =
+      repeat missing_blocks_to_cement (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    cement_commitment ~sc_rollup ~hash tezos_client
+  in
+  test_l1_migration_scenario
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
+(* Test to cement a commitment pre-migration. *)
+let test_migration_recover ~kind ~migrate_from ~migrate_to =
+  let tags = ["commitment"; "cement"; "recover"]
+  and description = "Test recover bond with cementation made pre-migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* {commitment_period_in_blocks = commitment_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat (commitment_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* hash =
+      publish_dummy_commitment
+        ~number_of_ticks:1
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let commitment : Sc_rollup_client.commitment =
+      {
+        compressed_state = Constant.sc_rollup_compressed_state;
+        inbox_level;
+        predecessor;
+        number_of_ticks = 1;
+      }
+    in
+    let* {challenge_window_in_blocks = challenge_window; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* current_level = Client.level tezos_client in
+    let missing_blocks_to_cement =
+      commitment.inbox_level + challenge_window - current_level + 2
+    in
+    let* () =
+      repeat missing_blocks_to_cement (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    cement_commitment ~sc_rollup ~hash tezos_client
+  and scenario_after tezos_client ~sc_rollup () =
+    let*! () =
+      let recover_bond_fee = 1_000_000 in
+      Client.Sc_rollup.submit_recover_bond
+        ~hooks
+        ~rollup:sc_rollup
+        ~src:Constant.bootstrap2.alias
+        ~fee:(Tez.of_mutez_int recover_bond_fee)
+        ~staker:Constant.bootstrap1.alias
+        tezos_client
+    in
+    Client.bake_for_and_wait tezos_client
+  in
+  test_l1_migration_scenario
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
+(* Test to refute a commitment pre-migration. *)
+let test_migration_refute ~kind ~migrate_from ~migrate_to =
+  let tags = ["refutation"]
+  and description = "Refuting a commitment pre-migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* {commitment_period_in_blocks = commitment_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat (commitment_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* hash1 =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:1
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let* hash2 =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:2
+        ~src:Constant.bootstrap2.public_key_hash
+        tezos_client
+    in
+    return (hash1, hash2)
+  and scenario_after tezos_client ~sc_rollup
+      (player_commitment_hash, opponent_commitment_hash) =
+    let* {timeout_period_in_blocks = timeout_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* () =
+      start_refute
+        tezos_client
+        ~sc_rollup
+        ~source:Constant.bootstrap1
+        ~opponent:Constant.bootstrap2.public_key_hash
+        ~player_commitment_hash
+        ~opponent_commitment_hash
+    in
+    (* TODO: what is this state hash ? *)
+    let state_hash =
+      match kind with
+      | "arith" -> "srs136U2KJweAXf7Excw61Zeu5R5L7mi2TCb1WKkowQJ6UdHJ2VZWS"
+      | "wasm_2_0_0" -> "srs11y1ZCJfeWnHzoX3rAjcTXiphwg8NvqQhvishP3PU68jgSREuk6"
+      | _ -> failwith "incorrect kind"
+    in
+    let* () =
+      move_refute
+        ~number_of_sections_in_dissection:3
+        tezos_client
+        ~source:Constant.bootstrap1
+        ~opponent:Constant.bootstrap2.public_key_hash
+        ~sc_rollup
+        ~state_hash
+    in
+    let* () =
+      repeat (timeout_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* () =
+      timeout
+        ~sc_rollup
+        ~staker1:Constant.bootstrap1.public_key_hash
+        ~staker2:Constant.bootstrap2.public_key_hash
+        tezos_client
+    in
+    unit
+  in
+  test_l1_migration_scenario
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
+(* Test to refute a commitment pre-migration. *)
+let test_cont_refute_pre_migration ~kind ~migrate_from ~migrate_to =
+  let tags = ["refutation"]
+  and description =
+    "Refuting a commitment pre-migration when the game started pre-migration."
+  and scenario_prior tezos_client ~sc_rollup =
+    let* {commitment_period_in_blocks = commitment_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* predecessor, starting_level =
+      last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
+    in
+    let inbox_level = starting_level + commitment_period in
+    let* () =
+      repeat (commitment_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* player_commitment_hash =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:1
+        ~src:Constant.bootstrap1.public_key_hash
+        tezos_client
+    in
+    let* opponent_commitment_hash =
+      publish_dummy_commitment
+        ~inbox_level
+        ~predecessor
+        ~sc_rollup
+        ~number_of_ticks:2
+        ~src:Constant.bootstrap2.public_key_hash
+        tezos_client
+    in
+    let* () =
+      start_refute
+        tezos_client
+        ~sc_rollup
+        ~source:Constant.bootstrap1
+        ~opponent:Constant.bootstrap2.public_key_hash
+        ~player_commitment_hash
+        ~opponent_commitment_hash
+    in
+    unit
+  and scenario_after tezos_client ~sc_rollup () =
+    let* {timeout_period_in_blocks = timeout_period; _} =
+      get_sc_rollup_constants tezos_client
+    in
+    let* () =
+      repeat (timeout_period + 1) (fun () ->
+          Client.bake_for_and_wait tezos_client)
+    in
+    let* () =
+      timeout
+        ~sc_rollup
+        ~staker1:Constant.bootstrap1.public_key_hash
+        ~staker2:Constant.bootstrap2.public_key_hash
+        tezos_client
+    in
+    unit
+  in
+  test_l1_migration_scenario
+    ~kind
+    ~migrate_from
+    ~migrate_to
+    ~scenario_prior
+    ~scenario_after
+    ~tags
+    ~description
+    ()
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -4374,3 +4853,15 @@ let register ~protocols =
   (* Shared tezts - will be executed for both PVMs. *)
   register ~kind:"wasm_2_0_0" ~protocols ;
   register ~kind:"arith" ~protocols
+
+let register_migration ~kind ~migrate_from ~migrate_to =
+  test_migration_inbox ~kind ~migrate_from ~migrate_to ;
+  test_migration_ticket_inbox ~kind ~migrate_from ~migrate_to ;
+  test_migration_cement ~kind ~migrate_from ~migrate_to ;
+  test_migration_recover ~kind ~migrate_from ~migrate_to ;
+  test_migration_refute ~kind ~migrate_from ~migrate_to ;
+  test_cont_refute_pre_migration ~kind ~migrate_from ~migrate_to
+
+let register_migration ~migrate_from ~migrate_to =
+  register_migration ~kind:"arith" ~migrate_from ~migrate_to ;
+  register_migration ~kind:"wasm_2_0_0" ~migrate_from ~migrate_to
