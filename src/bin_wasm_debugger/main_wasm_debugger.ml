@@ -229,17 +229,10 @@ let main_command =
       | None ->
           let+ _tree = repl tree inboxes 0l config in
           ()
-      | Some commands -> (
-          let open Data_encoding in
-          match Json.from_string commands with
-          | Error err ->
-              failwith
-                "Error parsing command file JSON:\n%S"
-                err
-          | Ok json ->
-              let commands = Json.destruct (list string) json in
-              let+ _tree = execute_commands commands config tree inboxes 0l in
-              ()))
+      | Some commands ->
+          let commands = String.trim commands |> String.split_on_char '\n' in
+          let+ _tree = execute_commands commands config tree inboxes 0l in
+          ())
 
 (* List of program commands *)
 let commands = [main_command]
