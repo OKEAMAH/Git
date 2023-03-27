@@ -26,7 +26,7 @@
 let path = "eth"
 
 let spawn_command command decode =
-  let process = Process.spawn path command in
+  let process = Process.spawn "npm" (["exec"; "--"; path] @ command) in
   let* output = Process.check_and_read_stdout process in
   return (JSON.parse ~origin:"eth_spawn_command" output |> decode)
 
