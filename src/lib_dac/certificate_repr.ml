@@ -37,19 +37,39 @@ type t = {
       *)
 }
 
+type c = {certificate : bytes}
+
 let encoding ((module P) : Dac_plugin.t) =
-  let obj_enc =
+  let obj_encoding =
     Data_encoding.(
       obj3
         (req "root_hash" P.encoding)
         (req "aggregate_signature" Tezos_crypto.Aggregate_signature.encoding)
         (req "witnesses" z))
   in
-
+  let fields_encoding =
+    Data_encoding.(
+      conv
+        (function
+          | {root_hash; aggregate_signature; witnesses} ->
+              (root_hash, aggregate_signature, witnesses))
+        (fun (root_hash, aggregate_signature, witnesses) ->
+          {root_hash; aggregate_signature; witnesses})
+        obj_encoding)
+  in
+  let to_bytes certificate =
+    Data_encoding.Binary.to_bytes_exn fields_encoding certificate
+  in
   Data_encoding.(
-    conv
-      (fun {root_hash; aggregate_signature; witnesses} ->
-        (root_hash, aggregate_signature, witnesses))
-      (fun (root_hash, aggregate_signature, witnesses) ->
-        {root_hash; aggregate_signature; witnesses})
-      obj_enc)
+    conv_with_guard
+      (fun ({root_hash; aggregate_signature; witnesses} as certificate) ->
+        ((root_hash, aggregate_signature, witnesses), to_bytes certificate))
+      (fun ((root_hash, aggregate_signature, witnesses), certificate) ->
+        if
+          not
+          @@ Bytes.equal
+               (to_bytes {root_hash; aggregate_signature; witnesses})
+               certificate
+        then Error "Certificate is not valid"
+        else Ok {root_hash; aggregate_signature; witnesses})
+      (merge_objs obj_encoding (obj1 (req "certificate" (bytes' Hex)))))
