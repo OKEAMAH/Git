@@ -271,9 +271,14 @@ let sign ?magic_bytes ~check_high_watermark ~require_auth
   let* name, _pkh, sk_uri = Client_keys.get_key cctxt pkh in
   let*! () = Events.(emit signing_data) name in
   let sign = Client_keys.sign cctxt sk_uri in
-  if check_high_watermark then
-    High_watermark.mark_if_block_or_endorsement cctxt pkh data sign
-  else sign data
+  let now = Time.System.now () in
+  let* x =  if check_high_watermark then
+              High_watermark.mark_if_block_or_endorsement cctxt pkh data sign
+            else sign data
+  in
+  let _then = Time.System.now () in
+  let*! () = Events.(emit finish_signing_data) (name, (Format.asprintf "%a" (Ptime.Span.pp) (Ptime.diff _then now))) in
+  return x
 
 let deterministic_nonce (cctxt : #Client_context.wallet)
     Signer_messages.Deterministic_nonce.Request.{pkh; data; signature}

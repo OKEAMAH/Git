@@ -280,6 +280,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     consensus_key
     injection_level
   >>=? fun seed_nonce_opt ->
+  Events.(emit debug_trace) __LOC__ >>= fun () ->
   let seed_nonce_hash = Option.map fst seed_nonce_opt in
   let user_activated_upgrades =
     state.global_state.config.user_activated_upgrades
@@ -313,6 +314,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   >>= fun () ->
   let chain = `Hash state.global_state.chain_id in
   let pred_block = `Hash (predecessor.hash, 0) in
+  Events.(emit debug_trace) __LOC__ >>= fun () ->
   let* pred_resulting_context_hash =
     Shell_services.Blocks.resulting_context_hash
       cctxt
@@ -320,9 +322,18 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
       ~block:pred_block
       ()
   in
+  let now' = Time.System.now () in
   let* pred_live_blocks =
     Chain_services.Blocks.live_blocks cctxt ~chain ~block:pred_block ()
   in
+  let _then' = Time.System.now () in
+  Events.(emit debug_trace)
+    (Format.asprintf
+       "live blocks took %a@."
+       Ptime.Span.pp
+       (Ptime.diff _then' now'))
+  >>= fun () ->
+  let now = Time.System.now () in
   Block_forge.forge
     cctxt
     ~chain_id
@@ -341,6 +352,13 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
+  let _then = Time.System.now () in
+  let time = Format.asprintf "%a" Ptime.Span.pp (Ptime.diff _then now) in
+  Events.(
+    emit
+      end_forging_block
+      (Int32.succ predecessor.shell.level, round, delegate, time))
+  >>= fun () ->
   sign_block_header state consensus_key unsigned_block_header
   >>=? fun signed_block_header ->
   (match seed_nonce_opt with

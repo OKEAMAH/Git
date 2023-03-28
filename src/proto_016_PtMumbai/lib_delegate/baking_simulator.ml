@@ -81,9 +81,11 @@ let begin_construction ~timestamp ~protocol_data ~force_apply
     pred_block chain_id =
   protect (fun () ->
       let {Baking_state.shell = pred_shell; hash = pred_hash; _} = pred_block in
+      Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
       abstract_index.checkout_fun pred_resulting_context_hash >>= function
       | None -> fail Failed_to_checkout_context
       | Some context ->
+          Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
           let header : Tezos_base.Block_header.shell_header =
             Tezos_base.Block_header.
               {
@@ -106,6 +108,7 @@ let begin_construction ~timestamp ~protocol_data ~force_apply
                 block_header_data = protocol_data;
               }
           in
+          Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
           Lifted_protocol.begin_validation
             context
             chain_id
@@ -114,6 +117,7 @@ let begin_construction ~timestamp ~protocol_data ~force_apply
             ~cache:`Lazy
           >>=? fun validation_state ->
           (if force_apply then
+           Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
            Lifted_protocol.begin_application
              context
              chain_id

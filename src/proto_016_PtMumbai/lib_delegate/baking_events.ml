@@ -682,6 +682,32 @@ module Actions = struct
       ("round", Round.encoding)
       ("delegate", Baking_state.consensus_key_and_delegate_encoding)
 
+  let end_forging_block =
+    declare_4
+      ~section
+      ~name:"end_forging_block"
+      ~level:Info
+      ~msg:
+        "END forging block at level {level}, round {round} for {delegate} in \
+         {time}"
+      ~pp1:pp_int32
+      ~pp2:Round.pp
+      ~pp3:Baking_state.pp_consensus_key_and_delegate
+      ~pp4:Format.pp_print_string
+      ("level", Data_encoding.int32)
+      ("round", Round.encoding)
+      ("delegate", Baking_state.consensus_key_and_delegate_encoding)
+      ("time", Data_encoding.string)
+
+  let debug_trace =
+    declare_1
+      ~section
+      ~name:"debug_trace"
+      ~level:Info
+      ~msg:"{msg}"
+      ~pp1:Format.pp_print_string
+      ("msg", Data_encoding.string)
+
   let injecting_block =
     declare_3
       ~section

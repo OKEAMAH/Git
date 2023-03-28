@@ -208,6 +208,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
     ~(pred_info : Baking_state.block_info) ~pred_resulting_context_hash
     ~force_apply ~round ~context_index ~payload_round ~operation_pool cctxt =
   let open Lwt_result_syntax in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* incremental =
     Baking_simulator.begin_construction
       ~timestamp
@@ -218,6 +219,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
       pred_info
       chain_id
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* {Operation_selection.operations; validation_result; operations_hash; _} =
     Operation_selection.filter_operations_with_simulation
       incremental
@@ -225,6 +227,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
       ~hard_gas_limit_per_block
       operation_pool
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* changed =
     check_protocol_changed
       ~level:(Int32.succ pred_info.shell.level)
@@ -232,6 +235,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
       ~validation_result
       ~incremental
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   if changed then
     (* Fallback to processing via node, which knows both old and new protocol. *)
     filter_via_node
@@ -255,6 +259,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
         ~round
         ~locked_round:None
     in
+    Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
     let operations = List.map (List.map convert_operation) operations in
     let payload_hash =
       let operation_hashes =
@@ -296,6 +301,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
     ~pred_resulting_context_hash ~force_apply ~round ~ordered_pool
     ~context_index ~payload_hash cctxt =
   let open Lwt_result_syntax in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* incremental =
     Baking_simulator.begin_construction
       ~timestamp
@@ -306,6 +312,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
       pred_info
       chain_id
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   (* We still need to filter endorsements. Two endorsements could be
      referring to the same slot. *)
   let* incremental, ordered_pool =
@@ -314,6 +321,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
       ordered_pool
   in
   let operations = Operation_pool.ordered_to_list_list ordered_pool in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let operations_hash =
     Operation_list_list_hash.compute
       (List.map
@@ -326,6 +334,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
   let incremental =
     {incremental with header = {incremental.header with operations_hash}}
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* validation_result = Baking_simulator.finalize_construction incremental in
   let validation_result = Option.map fst validation_result in
   let* changed =
@@ -346,6 +355,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
       ~payload_hash
       cctxt
   else
+    Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
     let locked_round_when_no_validation_result =
       (* [locked_round] will not be used in [finalize_block_header] if there is
          a [validation_result] *)
@@ -358,6 +368,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
             | _ -> None)
           (Option.value (List.hd operations) ~default:[])
     in
+    Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
     let* shell_header =
       finalize_block_header
         ~shell_header:incremental.header
@@ -378,6 +389,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
     ~pred_live_blocks ~timestamp ~round ~liquidity_baking_toggle_vote
     ~user_activated_upgrades fees_config ~force_apply ~seed_nonce_hash
     ~payload_round simulation_mode simulation_kind constants =
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let open Lwt_result_syntax in
   let hard_gas_limit_per_block =
     constants.Constants.Parametric.hard_gas_limit_per_block
@@ -398,6 +410,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
   let* shell_header, operations, payload_hash =
     match (simulation_mode, simulation_kind) with
     | Baking_state.Node, Filter operation_pool ->
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         let faked_protocol_data =
           forge_faked_protocol_data
             ~payload_round
@@ -405,6 +418,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~liquidity_baking_toggle_vote
             ()
         in
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         filter_via_node
           ~chain_id
           ~faked_protocol_data
@@ -416,6 +430,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           ~operation_pool
           cctxt
     | Node, Apply {ordered_pool; payload_hash} ->
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         let faked_protocol_data =
           forge_faked_protocol_data
             ~payload_hash
@@ -424,6 +439,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~liquidity_baking_toggle_vote
             ()
         in
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         apply_via_node
           ~chain_id
           ~faked_protocol_data
@@ -433,6 +449,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           ~payload_hash
           cctxt
     | Local context_index, Filter operation_pool ->
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         let faked_protocol_data =
           forge_faked_protocol_data
             ~payload_round
@@ -440,6 +457,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~liquidity_baking_toggle_vote
             ()
         in
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         filter_with_context
           ~chain_id
           ~faked_protocol_data
@@ -456,6 +474,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           ~operation_pool
           cctxt
     | Local context_index, Apply {ordered_pool; payload_hash} ->
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         let faked_protocol_data =
           forge_faked_protocol_data
             ~payload_hash
@@ -464,6 +483,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~liquidity_baking_toggle_vote
             ()
         in
+        Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
         apply_with_context
           ~chain_id
           ~faked_protocol_data
@@ -478,6 +498,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           ~payload_hash
           cctxt
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let* contents =
     Baking_pow.mine
       ~proof_of_work_threshold:constants.proof_of_work_threshold
@@ -491,6 +512,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           liquidity_baking_toggle_vote;
         })
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let unsigned_block_header =
     {
       Block_header.shell = shell_header;

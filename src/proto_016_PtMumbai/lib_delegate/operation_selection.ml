@@ -222,18 +222,22 @@ let filter_operations_with_simulation initial_inc fees_config
   } =
     fees_config
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   filter_valid_operations_up_to_quota
     initial_inc
     (Prioritized_operation_set.operations consensus, consensus_quota)
   >>= fun (inc, consensus) ->
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   filter_valid_operations_up_to_quota
     inc
     (Prioritized_operation_set.operations votes, votes_quota)
   >>= fun (inc, votes) ->
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   filter_valid_operations_up_to_quota
     inc
     (Prioritized_operation_set.operations anonymous, anonymous_quota)
   >>= fun (inc, anonymous) ->
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   (* Sort the managers *)
   let prioritized_managers =
     prioritize_managers
@@ -243,12 +247,14 @@ let filter_operations_with_simulation initial_inc fees_config
       ~minimal_nanotez_per_byte
       managers
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   filter_valid_operations_up_to_quota
     inc
     ( PrioritizedManagerSet.elements prioritized_managers
       |> List.map (fun {op; _} -> Prioritized_operation.packed op),
       managers_quota )
   >>= fun (inc, managers) ->
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let operations = [consensus; votes; anonymous; managers] in
   let operations_hash =
     Operation_list_list_hash.compute
@@ -257,9 +263,12 @@ let filter_operations_with_simulation initial_inc fees_config
            Operation_list_hash.compute (List.map Operation.hash_packed sl))
          operations)
   in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   let inc = {inc with header = {inc.header with operations_hash}} in
+  Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
   Baking_simulator.finalize_construction inc >>=? function
   | Some (validation_result, block_header_metadata) ->
+      Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
       return
         {
           validation_result = Some validation_result;
@@ -268,6 +277,7 @@ let filter_operations_with_simulation initial_inc fees_config
           operations_hash;
         }
   | None ->
+      Baking_events.Actions.(emit debug_trace) __LOC__ >>= fun () ->
       return
         {
           validation_result = None;

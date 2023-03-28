@@ -74,6 +74,17 @@ module Handler = struct
       ~msg:"signing data for key {key}"
       ("key", Data_encoding.string)
 
+  let finish_signing_data =
+    declare_2
+      ~section
+      ~level
+      ~name:"finish_signing_data"
+      ~msg:"finished signing data for key {key} in {time}"
+      ("key", Data_encoding.string)
+      ~pp1:Format.pp_print_string
+      ("time", Data_encoding.string)
+      ~pp2:Format.pp_print_string
+
   let request_for_deterministic_nonce =
     declare_2
       ~section
