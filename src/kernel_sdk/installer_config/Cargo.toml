@@ -1,0 +1,38 @@
+[package]
+name = "installer_config"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# [dependencies.tezos_smart_rollup_core]
+# path = "../tezos_smart_rollup_core"
+
+tezos_data_encoding = "0.4"
+tezos_data_encoding_derive = { version = "0.4" }
+
+[dependencies.tezos_smart_rollup_host]
+path = "../tezos_smart_rollup_host"
+default-features = false
+
+[dependencies.tezos_smart_rollup_core]
+path = "../tezos_smart_rollup_core"
+default-features = false
+
+[dependencies.nom]
+version = "6.1"
+default-features = false
+
+[dependencies.tezos_data_encoding]
+version = "0.4"
+optional = true
+
+[dependencies.tezos_data_encoding_derive]
+version = "0.4"
+optional = true
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = ["tezos_data_encoding", "tezos_data_encoding_derive"]
+testing = []

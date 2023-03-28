@@ -17,5 +17,6 @@ members = [
   "tezos_smart_rollup_entrypoint",
   # UX
   "installer_kernel",
-  "installer_client"
+  "installer_client",
+  "installer_config",
 ]
