@@ -45,7 +45,7 @@ type model_info = {model : Model.packed_model; from : local_model_location list}
 
 type parameter_info = Namespace.t list
 
-type local_model_benchmark_names = Namespace.Set.t
+type local_model_info = Namespace.Set.t
 (*---------------------------------------------------------------------------*)
 (* Table initialization *)
 
@@ -57,8 +57,7 @@ let model_table : model_info Name_table.t = Name_table.create 51
 
 (* An abstract local model name maps to a set of benchmark names that refer to
    it *)
-let local_model_table : local_model_benchmark_names Name_table.t =
-  Name_table.create 51
+let local_model_table : local_model_info Name_table.t = Name_table.create 51
 
 (* A parameter name maps to the list of abstract models that contain it *)
 let parameter_table : parameter_info Name_table.t = Name_table.create 51
