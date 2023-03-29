@@ -77,6 +77,7 @@ module type Testable_durable_sig = sig
 end
 
 module CBV = Tezos_lazy_containers.Chunked_byte_vector
+module ICBV = Tezos_lazy_containers.Immutable_chunked_byte_vector
 
 (* Adapter of snapshotted durable interface
    with additional cbv type, which it doesn't have *)
@@ -112,12 +113,12 @@ module Current : Testable_durable_sig = struct
     let* cbv = find_value tree key in
     match cbv with
     | None -> Lwt.return None
-    | Some cbv -> Lwt.map Option.some (CBV.to_bytes cbv)
+    | Some cbv -> Lwt.map Option.some (ICBV.to_bytes cbv)
 
   let find_value_exn tree key =
     let open Lwt_syntax in
     let* cbv = find_value_exn tree key in
-    CBV.to_bytes cbv
+    ICBV.to_bytes cbv
 end
 
 (* Returns Ok () or Error (string * string) with diverged hashes *)
@@ -175,21 +176,28 @@ end) : Testable_durable_sig with type t = Snapshot.t * Current.t = struct
      Without this function there are two different sets of
      exceptions:
        Tezos_scoru_wasm_durable_snapshot.Durable.Value_not_found
-       Tezos_scoru_wasm.Durable.Value_not_found
+       Tezos_scoru_wasm_test_helpers.Inmemory_durable.Value_not_found
      even though essentially it's the same exception.
   *)
   let convert_to_snapshot_durable_exception (e : exn) =
-    Tezos_scoru_wasm_durable_snapshot.Durable.(
-      match e with
-      | Tezos_scoru_wasm.Durable.Invalid_key k -> Invalid_key k
-      | Tezos_scoru_wasm.Durable.Index_too_large i -> Index_too_large i
-      | Tezos_scoru_wasm.Durable.Value_not_found -> Value_not_found
-      | Tezos_scoru_wasm.Durable.Tree_not_found -> Tree_not_found
-      | Tezos_scoru_wasm.Durable.Out_of_bounds b -> Out_of_bounds b
-      | Tezos_scoru_wasm.Durable.Durable_empty -> Durable_empty
-      | Tezos_scoru_wasm.Durable.Readonly_value -> Readonly_value
-      | Tezos_scoru_wasm.Durable.IO_too_large -> IO_too_large
-      | e -> e)
+    match e with
+    | Tezos_scoru_wasm.Durable.Invalid_key k ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Invalid_key k
+    | Tezos_scoru_wasm.Durable.Index_too_large i ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Index_too_large i
+    | Tezos_scoru_wasm.Durable.Value_not_found ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Value_not_found
+    | Tezos_scoru_wasm.Durable.Tree_not_found ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Tree_not_found
+    | Tezos_scoru_wasm.Durable.Out_of_bounds b ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Out_of_bounds b
+    | Tezos_scoru_wasm.Durable.Readonly_value ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.Readonly_value
+    | Tezos_scoru_wasm.Durable.IO_too_large ->
+        Tezos_scoru_wasm_durable_snapshot.Durable.IO_too_large
+    | Tezos_lazy_containers.Immutable_chunked_byte_vector.Bounds ->
+        Tezos_lazy_containers.Chunked_byte_vector.Bounds
+    | e -> e
 
   let ensure_same_outcome (type a) ~(pp : Format.formatter -> a -> unit)
       ~(eq : a -> a -> bool) (f_s : unit -> (a * Snapshot.t) Lwt.t)

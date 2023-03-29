@@ -38,27 +38,7 @@ open Tztest_helper
 (* Use context-binary for testing. *)
 module Context = Tezos_context_memory.Context_binary
 module Vector = Tezos_lazy_containers.Lazy_vector.Int32Vector
-
-let empty_tree () =
-  let open Lwt_syntax in
-  let* index = Context.init "/tmp" in
-  let empty_store = Context.empty index in
-  return @@ Context.Tree.empty empty_store
-
-type Tezos_tree_encoding.tree_instance += Tree of Context.tree
-
-module Tree : Tezos_tree_encoding.TREE with type tree = Context.tree = struct
-  type tree = Context.tree
-
-  include Context.Tree
-
-  let select = function
-    | Tree t -> t
-    | _ -> raise Tezos_tree_encoding.Incorrect_tree_type
-
-  let wrap t = Tree t
-end
-
+module Tree = Tezos_scoru_wasm_helpers.Encodings_util.Tree
 module Tree_encoding_runner = Tezos_tree_encoding.Runner.Make (Tree)
 
 let current_tick_encoding =

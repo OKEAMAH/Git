@@ -527,7 +527,9 @@ module Aux = struct
       let* bytes = guard (fun () -> Durable.find_value durable key) in
       match bytes with
       | Some bytes ->
-          let size = Tezos_lazy_containers.Chunked_byte_vector.length bytes in
+          let size =
+            Tezos_lazy_containers.Immutable_chunked_byte_vector.length bytes
+          in
           return (Int64.to_int32 size)
       | None -> fail Error.Store_not_a_value
 

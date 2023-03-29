@@ -509,7 +509,9 @@ let show_key_gen tree key kind =
       Format.printf "Key not found\n%!" ;
       return_unit
   | Some v ->
-      let+ str_value = Tezos_lazy_containers.Chunked_byte_vector.to_string v in
+      let+ str_value =
+        Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string v
+      in
       Format.printf "%s\n%!" @@ show_value kind str_value
 
 (* [show_key tree key] looks for the given [key] in the durable storage and

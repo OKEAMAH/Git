@@ -59,14 +59,6 @@ exception IO_too_large
 (** [encoding] is a [Tezos_tree_encoding] for [t]. *)
 val encoding : t Tezos_tree_encoding.t
 
-val of_storage :
-  default:t -> Tezos_webassembly_interpreter.Durable_storage.t -> t
-
-(** @raise Durable_empty *)
-val of_storage_exn : Tezos_webassembly_interpreter.Durable_storage.t -> t
-
-val to_storage : t -> Tezos_webassembly_interpreter.Durable_storage.t
-
 (** [key] is the type that indexes [t]. It enforces several constraints:
     - a key's length is bounded.
     - a key is a series of non-empty steps, where

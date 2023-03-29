@@ -58,6 +58,11 @@ val raw : key -> bytes t
     @raises Decode_error when decoding of the value fails *)
 val value_option : key -> 'a Data_encoding.t -> 'a option t
 
+(** [scope_option key dec] tries to retrieve the subtree under
+    the given [key] by checking if such subtree exists,
+    or return [None] if [key] is missing. *)
+val scope_option : key -> 'a t -> 'a option t
+
 (** [value ?default key data_encoding] retrieves the value at a
     given [key] by decoding its raw value using the provided
     [data_encoding].
@@ -85,7 +90,12 @@ val scope : key -> 'a t -> 'a t
     This function is primarily useful when providing a [~produce_value]
     function to [Lazy_map.create]. *)
 val lazy_mapping :
-  ('i -> key) -> 'a t -> (Tree.wrapped_tree option * ('i -> 'a Lwt.t)) t
+  ('i -> key) -> 'a t -> (Tree.wrapped_tree * ('i -> 'a Lwt.t)) t
+
+(** [lazy_mapping_with_names to_key decoder] does the same as [lazy_mapping]
+    but also eagerly decodes names of subtrees. *)
+val lazy_mapping_with_names :
+  ('i -> key) -> 'a t -> (Tree.wrapped_tree * string list * ('i -> 'a Lwt.t)) t
 
 (** [delayed f] produces a tree decoder that delays evaluation of [f ()] until
     the decoder is actually needed. This is required to allow for directly

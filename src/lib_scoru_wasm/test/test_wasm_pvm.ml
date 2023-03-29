@@ -112,12 +112,12 @@ let should_run_debug_kernel ~version () =
 
 let add_value ?(content = "a very long value") tree key_steps =
   let open Tezos_lazy_containers in
-  let value = Chunked_byte_vector.of_string content in
+  let value = Immutable_chunked_byte_vector.of_string content in
   Tree_encoding_runner.encode
     Tezos_tree_encoding.(
       scope
         ("durable" :: List.append key_steps ["@"])
-        Chunked_byte_vector.encoding)
+        Immutable_chunked_byte_vector.encoding)
     value
     tree
 
@@ -322,7 +322,7 @@ let assert_store_value tree path expected_value =
   let* durable = wrap_as_durable_storage tree in
   let durable = Durable.of_storage_exn durable in
   let* value = Durable.find_value durable (Durable.key_of_string_exn path) in
-  let+ value = Option.map_s Chunked_byte_vector.to_string value in
+  let+ value = Option.map_s Immutable_chunked_byte_vector.to_string value in
   assert (Option.equal String.equal value expected_value)
 
 (* store_move *)
@@ -977,7 +977,9 @@ let test_durable_store_io ~version () =
   let*! value =
     Durable.find_value_exn durable (Durable.key_of_string_exn "/to/value")
   in
-  let*! value = Tezos_lazy_containers.Chunked_byte_vector.to_string value in
+  let*! value =
+    Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string value
+  in
   let expected = String.sub content read_offset 1 in
   assert (expected = value) ;
   return_unit
@@ -1047,7 +1049,9 @@ let assert_fallback_kernel tree expected_kernel =
   let durable = Durable.of_storage_exn durable in
   let* value = Durable.find_value durable Constants.kernel_fallback_key in
   let+ value =
-    Option.map_s Tezos_lazy_containers.Chunked_byte_vector.to_string value
+    Option.map_s
+      Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string
+      value
   in
   assert (Option.equal String.equal value expected_kernel)
 
@@ -1057,7 +1061,9 @@ let assert_kernel tree expected_kernel =
   let durable = Durable.of_storage_exn durable in
   let* value = Durable.find_value durable Constants.kernel_key in
   let+ value =
-    Option.map_s Tezos_lazy_containers.Chunked_byte_vector.to_string value
+    Option.map_s
+      Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string
+      value
   in
   assert (Option.equal String.equal value expected_kernel)
 
@@ -1241,7 +1247,7 @@ let test_pvm_reboot_counter ~version ~pvm_max_reboots () =
            storage"
     | Some value ->
         let*! value =
-          Tezos_lazy_containers.Chunked_byte_vector.to_bytes value
+          Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes value
         in
         (* WASM Values in memories are encoded in little-endian order. *)
         return @@ Bytes.get_int32_le value 0
@@ -1455,7 +1461,9 @@ let test_kernel_reboot_gen ~version ~reboots ~expected_reboots ~pvm_max_reboots
         "Evaluation error: couldn't find the reboot counter in the durable \
          storage"
   | Some value ->
-      let*! value = Tezos_lazy_containers.Chunked_byte_vector.to_bytes value in
+      let*! value =
+        Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes value
+      in
       (* WASM Values in memories are encoded in little-endian order. *)
       let value = Bytes.get_int32_le value 0 in
       assert (value = expected_reboots) ;

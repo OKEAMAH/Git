@@ -201,6 +201,10 @@ val value : ?default:'a -> key -> 'a Data_encoding.t -> 'a t
     branch [key]. *)
 val scope : key -> 'a t -> 'a t
 
+(** [scope_option key enc] moves the given encoder [enc] to encode value under a
+    branch [key] if the given value is Some, otherwise it removes the [key] from the tree. *)
+val scope_option : key -> 'a t -> 'a option t
+
 (** [case tag enc inj proj] returns a partial encoder that represents a case
     in a sum-type. The encoder hides the (existentially bound) type of the
     parameter to the specific case, provided converter functions [inj] and
@@ -236,37 +240,10 @@ val delayed : (unit -> 'a t) -> 'a t
     the left case of [Either.t], and [enc_b] for the [Right] case. *)
 val either : 'a t -> 'b t -> ('a, 'b) Either.t t
 
-module type TREE = sig
-  type tree
+module type TREE = Tree.S
 
-  type key := string list
-
-  type value := bytes
-
-  (** @raise Incorrect_tree_type *)
-  val select : Tree.tree_instance -> tree
-
-  val wrap : tree -> Tree.tree_instance
-
-  val remove : tree -> key -> tree Lwt.t
-
-  val add : tree -> key -> value -> tree Lwt.t
-
-  val add_tree : tree -> key -> tree -> tree Lwt.t
-
-  val find : tree -> key -> value option Lwt.t
-
-  val find_tree : tree -> key -> tree option Lwt.t
-
-  val hash : tree -> Context_hash.t
-
-  val length : tree -> key -> int Lwt.t
-
-  val list :
-    tree -> ?offset:int -> ?length:int -> key -> (string * tree) list Lwt.t
-end
-
-type wrapped_tree
+type wrapped_tree = Tree.wrapped_tree =
+  | Wrapped_tree : 'tree * 'tree Tree.backend -> wrapped_tree
 
 module Wrapped : TREE with type tree = wrapped_tree
 
@@ -435,4 +412,50 @@ module CBV_encoding : sig
 
   module Make (CBV : CBV_sig) :
     S with type cbv := CBV.t and type chunk := CBV.chunk
+end
+
+module Lazy_dirs_encoding : sig
+  module type Lazy_dirs_sig = sig
+    type 'a t
+
+    module Names : Stdlib.Set.S with type elt = String.t
+
+    module Map : Lazy_map_encoding.Lazy_map_sig with type key = String.t
+
+    val contents : 'a t -> 'a Map.t
+
+    val create : ?names:Names.t -> ?contents:'a Map.t -> unit -> 'a t
+
+    val remove : 'a t -> Names.elt -> 'a t
+  end
+
+  module type S = sig
+    type 'a dirs
+
+    val lazy_dirs : 'a t -> 'a dirs t
+  end
+
+  module Make (Dirs : Lazy_dirs_sig) : S with type 'a dirs := 'a Dirs.t
+end
+
+module Lazy_fs_encoding : sig
+  module type Lazy_fs_sig = sig
+    type 'a t
+
+    module Dirs : Lazy_dirs_encoding.Lazy_dirs_sig
+
+    val dirs : 'a t -> 'a t Dirs.t
+
+    val content : 'a t -> 'a option
+
+    val create : ?value:'a -> ?dirs:'a t Dirs.t -> Tree.wrapped_tree -> 'a t
+  end
+
+  module type S = sig
+    type 'a fs
+
+    val lazy_fs : 'a t -> 'a fs t
+  end
+
+  module Make (Fs : Lazy_fs_sig) : S with type 'a fs := 'a Fs.t
 end

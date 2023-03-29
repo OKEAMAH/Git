@@ -344,7 +344,7 @@ let test_fast_exec_reveal ~version () =
     Durable.(find_value_exn durable (key_of_string_exn "/foo"))
   in
   let* written_value =
-    Tezos_lazy_containers.Chunked_byte_vector.to_string written_value
+    Tezos_lazy_containers.Immutable_chunked_byte_vector.to_string written_value
   in
   assert (String.equal written_value example_preimage) ;
 

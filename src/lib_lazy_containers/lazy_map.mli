@@ -62,9 +62,9 @@ module type S = sig
       mutation. *)
   val to_string : ('a -> string) -> 'a t -> string
 
-  (** [create ?values ?produce_value ?origin num_elements] produces a
-      lazy map with [num_elements] entries where each is created using
-      [produce_value]. [values] may be provided to supply an initial
+  (** [create ?values ?produce_value ?origin] produces a
+      lazy map with [produce_value] and [origin].
+      [values] may be provided to supply an initial
       set of entries.
 
       {b Note:} This function is intended to be used [produce_value]

@@ -450,7 +450,7 @@ let wrap_as_durable_storage tree =
   let open Lwt.Syntax in
   let+ tree =
     Tree_encoding_runner.decode
-      Tezos_tree_encoding.(scope ["durable"] wrapped_tree)
+      Tezos_tree_encoding.(scope ["durable"] Durable.encoding)
       tree
   in
   Tezos_webassembly_interpreter.Durable_storage.of_tree tree
@@ -465,12 +465,7 @@ let has_stuck_flag tree =
 let make_durable list_key_vals =
   let open Lwt_syntax in
   let* tree = empty_tree () in
-  let* tree =
-    Tree_encoding_runner.encode
-      (Tezos_tree_encoding.value ["durable"; "@"; "keep_me"] Data_encoding.bool)
-      true
-      tree
-  in
+  let* tree = Wasm.initial_state V0 tree in
   let* durable = wrap_as_durable_storage tree in
   let+ tree =
     List.fold_left

@@ -41,8 +41,8 @@ let value_store_key_too_large =
 
 let equal_chunks c1 c2 =
   let open Lwt.Syntax in
-  let* c1 = Chunked_byte_vector.to_string c1 in
-  let* c2 = Chunked_byte_vector.to_string c2 in
+  let* c1 = Immutable_chunked_byte_vector.to_string c1 in
+  let* c2 = Immutable_chunked_byte_vector.to_string c2 in
   Lwt.return @@ assert (String.equal c1 c2)
 
 (* Test checking that if [key] is missing, [store_has key] returns [false] *)
@@ -514,14 +514,14 @@ let test_durable_find_value () =
   assert (Option.is_some r) ;
   let* x =
     match r with
-    | Some y -> Chunked_byte_vector.to_string y
+    | Some y -> Immutable_chunked_byte_vector.to_string y
     | None -> assert false
   in
   assert (x = "a very long value") ;
   let* v =
     Durable.find_value_exn durable @@ Durable.key_of_string_exn "/hello/value"
   in
-  let* x = Chunked_byte_vector.to_string v in
+  let* x = Immutable_chunked_byte_vector.to_string v in
   assert (x = "a very long value") ;
   let* r =
     Durable.find_value durable @@ Durable.key_of_string_exn "/hello/other"
@@ -563,7 +563,7 @@ let test_durable_count_subtrees_and_list () =
   let* () = assert_subtree_count tree 2 "/hello/you" in
   let* () = assert_subtree_count tree 1 "/hello/you/too" in
   let* () = assert_subtree_count tree 0 "/bye" in
-  let* () = assert_list tree [""; "hello"; "long"] "" in
+  let* () = assert_list tree ["hello"; "long"; "readonly"] "" in
   let* () = assert_list tree [""; "world"; "you"] "/hello" in
   let* () = assert_list tree [""; "too"] "/hello/you" in
   let* () = assert_list tree [""] "/hello/you/too" in
@@ -580,7 +580,7 @@ let test_durable_count_subtrees_and_list () =
    the tree that existed previously at [to_key] *)
 let test_store_copy ~version () =
   let open Lwt_syntax in
-  let value () = Chunked_byte_vector.of_string "a very long value" in
+  let value () = Immutable_chunked_byte_vector.of_string "a very long value" in
   (*
   Store the following tree:
     /durable/a/short/path/_ = "a very long value"
@@ -1008,7 +1008,7 @@ let test_store_write ~version () =
   let* value =
     Durable.find_value_exn tree @@ Durable.key_of_string_exn existing_key
   in
-  let* result = Chunked_byte_vector.to_string value in
+  let* result = Immutable_chunked_byte_vector.to_string value in
   (* We started writing at an offset into the value. *)
   let expected_write_bytes =
     (String.sub contents 0 @@ Int32.to_int write_offset) ^ contents
@@ -1065,12 +1065,13 @@ let test_store_write ~version () =
   let* value =
     Durable.find_value_exn tree @@ Durable.key_of_string_exn new_key
   in
-  let* result = Chunked_byte_vector.to_string value in
+  let* result = Immutable_chunked_byte_vector.to_string value in
   assert (contents = result) ;
   return_ok_unit
 
 let test_store_create ~version =
   let open Lwt_syntax in
+  let open Tezos_scoru_wasm_helpers.Encodings_util in
   (*
      The durable storage is initialized with the following tree:
       /durable/a/path/@ = "a value of sorts"
@@ -1119,10 +1120,10 @@ let test_store_create ~version =
   let* new_value =
     Durable.find_value_exn tree @@ Durable.key_of_string_exn new_key
   in
-  let new_value_size_length = Chunked_byte_vector.length new_value in
+  let new_value_size_length = Immutable_chunked_byte_vector.length new_value in
   assert (Int64.of_int32 valid_size = new_value_size_length) ;
   let expected_value = String.make (Int32.to_int valid_size) '\000' in
-  let* value_as_string = Chunked_byte_vector.to_string new_value in
+  let* value_as_string = Immutable_chunked_byte_vector.to_string new_value in
   assert (expected_value = value_as_string) ;
 
   (* Check that creating an already existing value returns 1 and doesn't
@@ -1156,9 +1157,14 @@ let test_store_create ~version =
   (* Check the vector has been allocated, with a length but no chunks. Note that
      this test relies a lot on the encoding of values and chunked byte
      vectors, and will fail if one or both fails. *)
-  let wrapped_tree =
-    Tezos_webassembly_interpreter.Durable_storage.to_tree_exn durable
+  let* tree = empty_tree () in
+  let* wrapped_tree =
+    Tree_encoding_runner.encode
+      Durable.encoding
+      (Tezos_webassembly_interpreter.Durable_storage.to_tree_exn durable)
+      tree
   in
+
   (* The value is located under the "@" subkey. *)
   let value_key =
     List.append
@@ -1166,26 +1172,22 @@ let test_store_create ~version =
       |> Durable.Internal_for_tests.key_to_list)
       ["@"]
   in
-  let* encoded_value_tree =
-    Tezos_tree_encoding.Wrapped.find_tree wrapped_tree value_key
-  in
+  let* encoded_value_tree = Tree.find_tree wrapped_tree value_key in
   let encoded_value_tree =
     match encoded_value_tree with
     | None -> Stdlib.failwith "The value has not been encoded"
     | Some tree -> tree
   in
-  let* encoded_value = Tezos_tree_encoding.Wrapped.list encoded_value_tree [] in
+  let* encoded_value = Tree.list encoded_value_tree [] in
   assert (
     List.for_all (fun (key, _) -> key = "length") encoded_value
     && encoded_value <> []) ;
   (* Chunks are encoded under the subkey "contents" *)
-  let* encoded_chunks =
-    Tezos_tree_encoding.Wrapped.list wrapped_tree (value_key @ ["contents"])
-  in
+  let* encoded_chunks = Tree.list wrapped_tree (value_key @ ["contents"]) in
   assert (encoded_chunks = []) ;
 
   (* Check the value will be loaded with zero values. *)
-  let value_size_in_durable = Chunked_byte_vector.length value in
+  let value_size_in_durable = Immutable_chunked_byte_vector.length value in
   assert (value_size_in_durable = Int64.of_int32 contents_size) ;
 
   (* Creating a value of an invalid size (> 2GB) should fail *)

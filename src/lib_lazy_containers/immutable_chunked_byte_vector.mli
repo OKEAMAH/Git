@@ -127,3 +127,6 @@ val loaded_chunks : t -> (int64 * Chunk.t option) list
 
 (** [encoding] is a [Tezos_tree_encoding] for [t]. *)
 val encoding : t Tezos_tree_encoding.t
+
+(** [to_chunked_byte_vector cbv] converts [t] to [Chunked_byte_vector.t] *)
+val to_chunked_byte_vector : t -> Chunked_byte_vector.t

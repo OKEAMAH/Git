@@ -65,6 +65,11 @@ val raw : key -> bytes t
     value stored at [key] if [None] is provided. *)
 val value_option : key -> 'a Data_encoding.t -> 'a option t
 
+(** [scope_option key enc] encodes the value under subtree of the given [key]
+    using the provided [enc] encoder for the value, or remove any previous
+    value stored at [key] if [None] is provided. *)
+val scope_option : key -> 'a t -> 'a option t
+
 (** [value key enc] encodes the value at a given [key] using the provided
     [enc] encoder for the value. *)
 val value : key -> 'a Data_encoding.t -> 'a t

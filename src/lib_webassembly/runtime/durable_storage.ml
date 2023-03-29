@@ -1,4 +1,7 @@
-type t = Tezos_tree_encoding.wrapped_tree option
+type t =
+  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
+  Tezos_lazy_containers.Lazy_fs.t
+  option
 
 exception Durable_empty
 

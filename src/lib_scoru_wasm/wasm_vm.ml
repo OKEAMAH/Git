@@ -25,6 +25,7 @@
 
 module Wasm = Tezos_webassembly_interpreter
 open Wasm_pvm_state.Internal_state
+open Tezos_lazy_containers
 
 let version_for_protocol : Pvm_input_kind.protocol -> Wasm_pvm_state.version =
   function
@@ -70,7 +71,9 @@ let has_upgrade_error_flag durable =
 let get_wasm_version {durable; _} =
   let open Lwt_syntax in
   let* cbv = Durable.find_value_exn durable Constants.version_key in
-  let+ bytes = Tezos_lazy_containers.Chunked_byte_vector.to_bytes cbv in
+  let+ bytes =
+    Tezos_lazy_containers.Immutable_chunked_byte_vector.to_bytes cbv
+  in
   Data_encoding.Binary.of_bytes_exn Wasm_pvm_state.version_encoding bytes
 
 let stack_size_limit = function Wasm_pvm_state.V0 -> 300 | V1 -> 60_000
@@ -214,7 +217,7 @@ let unsafe_next_tick_state ~version ~stack_size_limit host_funcs
       let* m =
         Tezos_webassembly_interpreter.Decode.module_step
           ~allow_floats:false
-          kernel
+          (Immutable_chunked_byte_vector.to_chunked_byte_vector kernel)
           m
       in
       return (Decode m)

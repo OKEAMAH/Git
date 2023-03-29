@@ -160,6 +160,20 @@ let subtree backend tree prefix =
   in
   subtree
 
+let scope_option key value =
+  {
+    decode =
+      (fun backend tree prefix ->
+        let open Lwt.Syntax in
+        let value_prefix = append_key prefix key in
+        let* subtree_opt = Tree.find_tree backend tree (value_prefix []) in
+        match subtree_opt with
+        | Some _ ->
+            let+ content = value.decode backend tree value_prefix in
+            Some content
+        | None -> Lwt.return_none);
+  }
+
 let scope key {decode} =
   {
     decode =
@@ -178,7 +192,19 @@ let lazy_mapping to_key field_enc =
             input_prefix
         in
         let+ tree = subtree backend input_tree input_prefix in
-        (Some (Tree.Wrapped_tree (tree, backend)), produce_value));
+        (Tree.Wrapped_tree (tree, backend), produce_value));
+  }
+
+let lazy_mapping_with_names to_key field_enc =
+  {
+    decode =
+      (fun backend input_tree input_prefix ->
+        let open Lwt_syntax in
+        let* wrapped, produce_value =
+          (lazy_mapping to_key field_enc).decode backend input_tree input_prefix
+        in
+        let+ names = Tree.list backend input_tree (input_prefix []) in
+        (wrapped, List.map fst names, produce_value));
   }
 
 let case_lwt tag decode extract = Case {tag; decode; extract}

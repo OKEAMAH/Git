@@ -71,7 +71,6 @@ struct
   (* Create new tree with passed list of key values *)
   let initialize_tree (kvs : (key * string) list) =
     let open Lwt_syntax in
-    let open Tezos_scoru_wasm_durable_snapshot in
     let ro, wo =
       List.partition
         (fun (k, _) -> Option.equal String.equal (List.hd k) (Some "readonly"))
@@ -79,18 +78,29 @@ struct
     in
     let ro = List.map (fun (k, v) -> (Durable_operation.key_to_str k, v)) ro in
     let wo = List.map (fun (k, v) -> (Durable_operation.key_to_str k, v)) wo in
-    (* Create Durable_storage out of WO keys.
-       Basically taking advantage of Current durable encoding
-    *)
-    let* init_wo = Lwt.map Durable.of_storage_exn @@ make_durable wo in
+
+    (* Create Durable_storage out of WO keys. *)
+    let* tree = empty_tree () in
+    let* tree = Wasm.initial_state V0 tree in
+    let module Snapshotted = Tezos_scoru_wasm_durable_snapshot.Durable in
+    let* init_durable = Tree_encoding_runner.decode Snapshotted.encoding tree in
+    let* init_wo =
+      List.fold_left
+        (fun acc (key, value) ->
+          let* tree = acc in
+          let key = Snapshotted.key_of_string_exn key in
+          Snapshotted.write_value_exn tree key 0L value)
+        (Lwt.return init_durable)
+        wo
+    in
     (* Add RO keys in the tree *)
     let* init_tezos_durable =
       Lwt_list.fold_left_s
         (fun dur (k, v) ->
-          Durable.set_value_exn
+          Snapshotted.set_value_exn
             ~edit_readonly:true
             dur
-            (Durable.key_of_string_exn k)
+            (Snapshotted.key_of_string_exn k)
             v)
         init_wo
         ro
@@ -98,7 +108,7 @@ struct
     (* Encode tree to the irmin one *)
     let* init_tree = empty_tree () in
     Tree_encoding_runner.encode
-      Tezos_scoru_wasm_durable_snapshot.Durable.encoding
+      Snapshotted.encoding
       init_tezos_durable
       init_tree
 

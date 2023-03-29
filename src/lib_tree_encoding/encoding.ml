@@ -114,6 +114,16 @@ let value_option key encoding =
         | None -> Tree.remove backend tree (prefix key));
   }
 
+let scope_option key value_enc =
+  {
+    encode =
+      (fun backend v prefix tree ->
+        let value_prefix = append_key prefix key in
+        match v with
+        | Some v -> value_enc.encode backend v value_prefix tree
+        | None -> Tree.remove backend tree (value_prefix []));
+  }
+
 let scope key {encode} =
   {
     encode =
@@ -135,7 +145,7 @@ let lazy_mapping to_key enc_value =
                 (prefix [])
                 (Tree.select backend @@ Tree.wrap origin_backend origin)
               (* Will fetch a tree of the same type as backend or throw an error.
-                 Basically checking that origin's backend and encoding backeds are the same *)
+                 Basically checking that origin's tree and encoding's tree are the same *)
           | None -> Tree.remove backend tree (prefix [])
         in
         List.fold_left_s

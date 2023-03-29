@@ -309,3 +309,11 @@ end
 module Encoding = Tezos_tree_encoding.CBV_encoding.Make (Enc_intf)
 
 let encoding = Encoding.cbv Chunk.encoding
+
+let to_chunked_byte_vector v =
+  Chunked_byte_vector.create
+    ?origin:(origin v)
+    ~get_chunk:(fun i ->
+      Lwt.map (fun x -> Chunked_byte_vector.Chunk.of_bytes @@ Bytes.of_string x)
+      @@ get_chunk i v)
+    v.length

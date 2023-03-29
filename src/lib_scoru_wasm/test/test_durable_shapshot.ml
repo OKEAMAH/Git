@@ -228,8 +228,8 @@ let tests : unit Alcotest_lwt.test_case trace =
   List.append
     [
       tztest "Do several operations on durable" `Quick test_several_operations;
-      stress_test_desceding ~init_size:2000 ~rounds:3000;
-      stress_test_uniform ~init_size:2000 ~rounds:20000;
+      stress_test_desceding ~init_size:2000 ~rounds:30000;
+      stress_test_uniform ~init_size:2000 ~rounds:50000;
       stress_strcture_ops ~init_size:2000 ~rounds:3000;
     ]
     (stress_each_op ())
