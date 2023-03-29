@@ -27,21 +27,8 @@ open Tezos_gossipsub
 open Gossipsub_intf
 module M = QCheck2.Gen
 
-(* The sampling monad. Used to construct QCheck2 generators. *)
-module SamplingM = struct
-  type 'a t = Random.State.t -> 'a
-
-  let bind m f rng_state = f (m rng_state) rng_state
-
-  let ( let* ) = bind
-
-  let return x : 'a t = fun _rng_state -> x
-
-  let int exclusive_bound rng_state = Random.State.int rng_state exclusive_bound
-end
-
 (* We need monadic sequences to represent {!Fragments}. *)
-module SeqM = Seqes.Monadic.Make1 (SamplingM)
+module SeqM = Seqes.Monadic.Make1 (M)
 
 (* In the signature of {!GS} below, the [Time.t = int] constraint is required
    to be able to pretty-print the time obtained from
@@ -207,19 +194,52 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
       | Par of raw list
       | Seq of raw list (* [raw SeqM.t]? TODO *)
 
-    type t = raw SamplingM.t
+    type t = raw M.t
 
     let raw_of_list l = Thread (List.to_seq l |> Seq.map input |> SeqM.of_seq)
 
     let of_list l =
-      SamplingM.return (Thread (List.to_seq l |> Seq.map input |> SeqM.of_seq))
+      M.return (Thread (List.to_seq l |> Seq.map input |> SeqM.of_seq))
 
+    (* Smart [raw] constructors *)
+
+    let empty_raw = Thread SeqM.empty
+
+    let seq rs =
+      match rs with
+      | [] -> empty_raw
+      | [raw] -> raw
+      | _ ->
+          let flattened =
+            List.fold_right
+              (fun raw acc ->
+                match raw with Seq rs -> rs @ acc | _ -> raw :: acc)
+              rs
+              []
+          in
+          Seq flattened
+
+    let par rs =
+      match rs with
+      | [] -> empty_raw
+      | [raw] -> raw
+      | _ ->
+          let flattened =
+            List.fold_right
+              (fun raw acc ->
+                match raw with Par rs -> rs @ acc | _ -> raw :: acc)
+              rs
+              []
+          in
+          Par flattened
+
+    (* Sample the next event from a [raw]. *)
     let rec next :
         raw ->
-        ((event * raw) option -> (event * raw) option SamplingM.t) ->
-        (event * raw) option SamplingM.t =
+        ((event * raw) option -> (event * raw) option M.t) ->
+        (event * raw) option M.t =
      fun raw k ->
-      let open SamplingM in
+      let open M in
       match raw with
       | Thread seq -> (
           let* opt = SeqM.uncons seq in
@@ -229,68 +249,81 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
       | Seq [] -> k None
       | Seq (hd :: rest) ->
           next hd (function
-              | Some (event, hd') -> k (Some (event, Seq (hd' :: rest)))
-              | None -> next (Seq rest) k)
+              | Some (event, hd') -> k (Some (event, seq (hd' :: rest)))
+              | None -> next (seq rest) k)
       | Par [] -> k None
       | Par parallel_components -> (
           let length = List.length parallel_components in
-          let* index = int length in
+          let* index = int_bound (length - 1) in
           let rev_prefix, tail = List.rev_split_n index parallel_components in
           match tail with
           | [] -> assert false
           | fragment :: rest ->
               next fragment (function
-                  | None -> next (Par (List.rev_append rev_prefix rest)) k
+                  | None -> next (par (List.rev_append rev_prefix rest)) k
                   | Some (elt, fragment') ->
                       k
                         (Some
                            ( elt,
-                             Par
+                             par
                                (List.rev_append rev_prefix (fragment' :: rest))
                            ))))
 
-    let next : raw -> (event * raw) option SamplingM.t =
-     fun fragment -> next fragment SamplingM.return
+    let next : raw -> (event * raw) option M.t =
+     fun fragment -> next fragment M.return
+
+    (* Combinators *)
 
     let of_input_gen gen f : t =
-     fun rng_state ->
-      let x = M.generate1 ~rand:rng_state gen in
+      let+ x = gen in
       raw_of_list (f x)
 
-    let bind_gen : 'a M.t -> ('a -> t) -> t =
-     fun gen f rng_state ->
-      let x = M.generate1 ~rand:rng_state gen in
-      f x rng_state
-
-    let tick : t =
-      Thread ([Elapse 1] |> List.to_seq |> SeqM.of_seq) |> SamplingM.return
+    let tick : t = Thread ([Elapse 1] |> List.to_seq |> SeqM.of_seq) |> M.return
 
     let repeat : int -> t -> t =
-     fun n fragment rng_state ->
-      let fragments : raw list =
-        List.init ~when_negative_length:() n (fun _ -> fragment rng_state)
-        |> WithExceptions.Result.get_ok ~loc:__LOC__
-      in
-      Seq fragments
+     fun n fragment ->
+      let+ rs = M.list_repeat n fragment in
+      seq rs
 
     let repeat_at_most : int -> t -> t =
-     fun n fragment -> bind_gen (M.int_bound n) @@ fun n -> repeat n fragment
+     fun n fragment ->
+      let* n = M.int_bound n in
+      repeat n fragment
 
     let ( @% ) : t -> t -> t =
-     fun x y rng_state -> Seq [x rng_state; y rng_state]
+     fun x y ->
+      let+ x and+ y in
+      seq [x; y]
 
     let interleave : t list -> t =
-     fun fs rng_state -> Par (List.map (fun f -> f rng_state) fs)
+     fun fs ->
+      let+ rs = M.flatten_l fs in
+      par rs
 
     let fork : int -> t -> t =
-     fun n fragment rng_state ->
-      let frags =
-        List.repeat n fragment |> List.map (fun fragment -> fragment rng_state)
-      in
-      Par frags
+     fun n fragment ->
+      let frags = List.repeat n fragment in
+      interleave frags
 
     let fork_at_most n fragment =
-      bind_gen (M.int_bound n) @@ fun n -> fork n fragment
+      let* n = M.int_bound n in
+      fork n fragment
+
+    (* Shrinking *)
+
+    (*
+       fold_zip (fun rev_prefix elt tail acc -> (List.rev rev_prefix, elt, tail) :: acc) [1;2;3] [];;
+       - : (int list * int * int list) list =  [([1; 2], 3, []); ([1], 2, [3]); ([], 1, [2; 3])]
+     *)
+    let fold_zip :
+        ('a list -> 'a -> 'a list -> 'acc -> 'acc) -> 'a list -> 'acc -> 'acc =
+     fun f l acc ->
+      let rec loop l rev_prefix acc =
+        match l with
+        | [] -> acc
+        | hd :: tl -> loop tl (hd :: rev_prefix) (f rev_prefix hd tl acc)
+      in
+      loop l [] acc
 
     (*
        fold_over_sublists (fun l acc -> l :: acc) [1;2;3] [];;
@@ -299,36 +332,57 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
     let fold_over_sublists :
         ('a list -> 'acc -> 'acc) -> 'a list -> 'acc -> 'acc =
      fun f l acc ->
-      let rec loop l rev_prefix acc =
-        match l with
-        | [] -> f (List.rev rev_prefix) acc
-        | hd :: tl ->
-            loop tl (hd :: rev_prefix) (f (List.rev_append rev_prefix tl) acc)
-      in
-      loop l [] acc
+      fold_zip
+        (fun rev_prefix _elt tail -> f (List.rev_append rev_prefix tail))
+        l
+        acc
+
+    (* We only shrink leaf [Par] nodes, i.e. [Par] nodes that do not
+       contain [Par] nodes as subterms *)
+
+    let rec par_free : raw -> bool =
+     fun raw ->
+      match raw with
+      | Thread _ -> true
+      | Par _ -> false
+      | Seq rs -> List.for_all par_free rs
 
     let rec shrink_raw : raw -> raw Seq.t =
      fun raw ->
       match raw with
-      | Thread _ -> List.to_seq [raw]
-      | Par [] -> Seq.empty
-      | Par components ->
-          shrink_parallel components @@ fun components ->
+      | Thread _ ->
+          (* Can't shrink a thread *)
+          Seq.return raw
+      | Par components when List.for_all par_free components ->
+          (* We try to shrink leaf-level [Par] by dropping one component *)
           fold_over_sublists
-            (fun subcomponents acc -> Seq.cons (Par subcomponents) acc)
+            (fun subcomponents acc -> Seq.cons (par subcomponents) acc)
+            components
+            Seq.empty
+      | Par components ->
+          (* If the [Par] is not leaf-level, we try to shrink each component
+             one after the other. *)
+          fold_zip
+            (fun rev_prefix elt tail acc ->
+              Seq.flat_map
+                (fun shrunk_elt ->
+                  Seq.cons
+                    (par (List.rev_append rev_prefix (shrunk_elt :: tail)))
+                    acc)
+                (shrink_raw elt))
             components
             Seq.empty
       | Seq components ->
-          shrink_parallel components @@ fun components ->
-          List.to_seq [Seq components]
+          (* For [Seq] nodes, we shrink all components in parallel. *)
+          List.to_seq components |> Seq.map shrink_raw |> Seq.transpose
+          |> Seq.flat_map (fun components ->
+                 Seq.return (seq (List.of_seq components)))
 
-    and shrink_parallel (components : raw list) f : raw Seq.t =
-      List.map shrink_raw components
-      |> List.to_seq |> Seq.transpose
-      |> Seq.flat_map (fun components -> f (List.of_seq components))
+    (* Construction of the trace generator. *)
 
+    (* Evaluate a [raw] on an initial state yields a trace. *)
     let raw_to_trace state raw =
-      let open SamplingM in
+      let open M in
       let seq = SeqM.M.unfold next raw in
       let* _, _, rev_trace =
         SeqM.fold_left
@@ -346,18 +400,13 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
       return (List.rev rev_trace)
 
     let raw_generator (fragment : t) : raw M.t =
-      M.make_primitive ~gen:fragment ~shrink:shrink_raw
-
-    let trace_generator state raw =
-      M.make_primitive
-        ~gen:(fun rng_state -> raw_to_trace state raw rng_state)
-        ~shrink:(fun _ -> Seq.empty)
+      M.set_shrink shrink_raw fragment
   end
 
   let run state fragment : trace t =
     let open M in
     let* raw = Fragment.raw_generator fragment in
-    Fragment.trace_generator state raw
+    Fragment.raw_to_trace state raw
 
   let check_fold (type e inv) (f : transition -> inv -> (inv, e) result) init
       trace : (unit, e * trace) result =
