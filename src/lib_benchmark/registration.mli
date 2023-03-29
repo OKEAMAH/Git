@@ -41,11 +41,11 @@ type benchmark_info = Benchmark.t
 
 (** We only register abstract models. For each of them, we store the model
     itself, as well as each of its occurences in benchmarks *)
-type model_info = {model : Model.packed_model; from : local_model_info list}
+type model_info = {model : Model.packed_model; from : local_model_location list}
 
 (** We only store the name of the benchmark and the local name of the model,
     as it is enough information to retrieve the associated model *)
-and local_model_info = {bench_name : Namespace.t; local_model_name : string}
+and local_model_location = {bench_name : Namespace.t; local_model_name : string}
 
 (** For each parameter, we register the list of models (by name) in which
     they occur *)
