@@ -502,6 +502,23 @@ let wait_for_signature_pushed_to_coordinator dac_node signature =
     "new_signature_pushed_to_coordinator.v0"
     (fun json -> if JSON.(json |> as_string) = signature then Some () else None)
 
+let wait_for_received_signature dac_node root_hash committee_member signature =
+  let (`Hex root_hash) = root_hash in
+  let signature = Tezos_crypto.Aggregate_signature.to_b58check signature in
+  Dac_node.wait_for dac_node "received_signature.v0" (fun json ->
+      let event_root_hash = JSON.(json |-> "root_hash" |> as_string) in
+      let event_committee_member =
+        JSON.(json |-> "committee_member" |> as_string)
+      in
+      let event_signature = JSON.(json |-> "signature" |> as_string) in
+
+      if
+        event_root_hash = root_hash
+        && event_committee_member = committee_member
+        && event_signature = signature
+      then Some ()
+      else None)
+
 let wait_for_received_root_hash_processed dac_node root_hash =
   Dac_node.wait_for
     dac_node
@@ -1038,7 +1055,6 @@ module Legacy = struct
     let observer_2_promise_2 =
       wait_for_received_root_hash observer_2 expected_rh_2
     in
-
     (* Start running [observer_1]. From now on we expect [observer_1] to
        monitor streamed root hashes produced by [coordinator]. [coordinator]
        produces and pushes them as a side effect of serializing dac payload. *)
@@ -1537,14 +1553,105 @@ module Full_infrastructure = struct
     let* () = all_nodes_have_processed_root_hash in
     (* 4. Check that all pages can be retrieved by committee members
           and observers using the GET preimage endpoint.
-
-       Note that using check_downloaded_preimage will request pages from the
-       coordinator node for each observer and committee_member node.
-       This might be inefficient *)
+          Note that using check_downloaded_preimage will request pages from the
+          coordinator node for each observer and committee_member node.
+          This might be inefficient. *)
     Lwt_list.iter_s
       (fun dac_node ->
         check_downloaded_preimage coordinator_node dac_node expected_rh)
       (committee_members_nodes @ observer_nodes)
+
+  let test_e2e_scenario_from_posting_payload_to_signature_aggregation
+      Scenarios.
+        {
+          coordinator_node;
+          committee_members_nodes;
+          observer_nodes;
+          committee_members;
+          _;
+        } =
+    (* 0. Coordinator node is already running when the this function is
+          executed by the test
+       1. Run committee members and observers
+       2. Post a preimage to coordinator
+       3. Wait until all committee members reply with a signature
+       4. Check that the certificate can be retrieved from the coordinator
+    *)
+    let payload, expected_rh = sample_payload "preimage" in
+    let push_promise =
+      wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh
+    in
+    let wait_for_node_subscribed_to_data_streamer () =
+      wait_for_handle_new_subscription_to_hash_streamer coordinator_node
+    in
+    (* Initialize configuration of all nodes. *)
+    let* _ =
+      Lwt_list.iter_s
+        (fun committee_member_node ->
+          let* _ = Dac_node.init_config committee_member_node in
+          return ())
+        committee_members_nodes
+    in
+    let* _ =
+      Lwt_list.iter_s
+        (fun observer_node ->
+          let* _ = Dac_node.init_config observer_node in
+          return ())
+        observer_nodes
+    in
+    let wait_for_signatures =
+      List.map
+        (fun committee_member ->
+          let rh = `Hex expected_rh in
+          let signature =
+            bls_sign_hex_hash committee_member (`Hex expected_rh)
+          in
+          wait_for_received_signature
+            coordinator_node
+            rh
+            committee_member.aggregate_public_key_hash
+            signature)
+        committee_members
+    in
+    (* 1. Run committee member and observer nodes.
+       Because the event resolution loop in the Daemon always resolves
+       all promises matching an event filter, when a new even is received,
+       we cannot wait for multiple subscription to the hash streamer, as
+       events of this kind are indistinguishable one from the other.
+       Instead, we wait for the subscription of one observer/committe_member
+       node to be notified before running the next node. *)
+    let* () =
+      Lwt_list.iter_s
+        (fun node ->
+          let node_is_subscribed =
+            wait_for_node_subscribed_to_data_streamer ()
+          in
+          let* () = Dac_node.run ~wait_ready:true node in
+          node_is_subscribed)
+        (committee_members_nodes @ observer_nodes)
+    in
+    (* 2. Post a preimage to the coordinator. *)
+    let* () =
+      coordinator_serializes_payload coordinator_node ~payload ~expected_rh
+    in
+    (* Assert [coordinator] emitted event that [expected_rh] was pushed
+       to the data_streamer. *)
+    let* () = push_promise in
+    (* 3. Wait until all committee nodes have replied with a signature. *)
+    let* () = Lwt.join wait_for_signatures in
+    (* 4. Check that the certificate is available in the coordinator node. *)
+    let* _witnesses, certificate, _root_hash =
+      RPC.call
+        coordinator_node
+        (Dac_rpc.get_certificate ~hex_root_hash:(`Hex expected_rh))
+    in
+    let () =
+      assert_verify_aggregate_signature
+        committee_members
+        (`Hex expected_rh)
+        certificate
+    in
+    return ()
 end
 
 let register ~protocols =
@@ -1642,4 +1749,12 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"]
     "committee members and observers download pages from coordinator"
     Full_infrastructure.test_download_and_retrieval_of_pages
+    protocols ;
+  scenario_with_full_dac_infrastructure
+    ~observers:0
+    ~committee_members:1
+    ~tags:["dac"; "dac_node"]
+    "Full e2e workflow from posting payload to retrieving certificate"
+    Full_infrastructure
+    .test_e2e_scenario_from_posting_payload_to_signature_aggregation
     protocols
