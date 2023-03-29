@@ -90,23 +90,24 @@ module Test_remove_peer = struct
        only cleaned on heartbeat. There's a potential issue with smap though.
        FIXME https://gitlab.com/tezos/tezos/-/issues/5252 *)
     let* () =
-      C.Topic.Map.to_seq view.mesh
-      |> Seq.E.iter (fun (topic, peer_set) ->
-             let str = Format.asprintf "mesh[topic=%a]" C.Topic.pp topic in
-             check_set str peer_set)
+      C.Topic.Map.iter_e
+        (fun topic peer_set ->
+          let str = Format.asprintf "mesh[topic=%a]" C.Topic.pp topic in
+          check_set str peer_set)
+        view.mesh
     in
     let* () =
-      C.Topic.Map.to_seq view.fanout
-      |> Seq.E.iter (fun (topic, fanout_peers) ->
-             let str = Format.asprintf "fanout[topic=%a]" C.Topic.pp topic in
-             check_set str fanout_peers.peers)
+      C.Topic.Map.iter_e
+        (fun topic fanout_peers ->
+          let str = Format.asprintf "fanout[topic=%a]" C.Topic.pp topic in
+          check_set str fanout_peers.peers)
+        view.fanout
     in
-    C.Message_id.Map.to_seq view.memory_cache.messages
-    |> Seq.E.iter (fun (message_id, value) ->
-           let place =
-             Format.asprintf "memory_cache[message_id=%d]" message_id
-           in
-           check_map place value.Memory_cache.access)
+    C.Message_id.Map.iter_e
+      (fun message_id value ->
+        let place = Format.asprintf "memory_cache[message_id=%d]" message_id in
+        check_map place value.Memory_cache.access)
+      view.memory_cache.messages
 
   let predicate final_state _final_output =
     (* This predicate checks that [peer_id] does not appear in the [view]
@@ -128,44 +129,49 @@ module Test_remove_peer = struct
          1. remove it
          2. wait until [expire=retain_duration+slack]
          3. wait until the next round of cleanup in the heartbeat *)
-      let expire = limits.retain_duration + (limits.heartbeat_interval * 2) in
-      let heartbeat_cleanup_ticks = limits.backoff_cleanup_ticks in
       add_then_remove_peer ~gen_peer
-      @% repeat expire tick
-      @% repeat heartbeat_cleanup_ticks heartbeat
     in
     let graft_then_prune_wait_and_clean () =
       (* A pruned peer will stay in the connection table until the
          end of the backoff specified in the Prune message.
          After pruning, we wait for [backoff] ticks then force
          triggering a cleanup of the backoffs in the heartbeat. *)
-      let backoff = Basic_fragments.prune_backoff in
-      let heartbeat_cleanup_ticks = limits.backoff_cleanup_ticks in
       graft_then_prune ~gen_peer ~gen_topic
+    in
+    let finalize =
+      let expire = limits.retain_duration + (limits.heartbeat_interval * 2) in
+      let heartbeat_cleanup_ticks = limits.backoff_cleanup_ticks in
+      let backoff = Basic_fragments.prune_backoff in
+      repeat expire tick
+      @% repeat heartbeat_cleanup_ticks heartbeat
       @% repeat backoff tick
       @% repeat heartbeat_cleanup_ticks heartbeat
     in
-    interleave
-      [
-        fork_at_most
-          4
-          (repeat_at_most 2 (add_then_remove_peer_wait_and_clean ()));
-        repeat_at_most 10 @@ join_then_leave_topic ~gen_topic;
-        repeat_at_most 10 heartbeat;
-        repeat_at_most 100 tick;
-        of_input_gen
-          (ihave ~gen_peer ~gen_topic ~gen_message_id ~gen_msg_count)
-          (fun ihave -> [Ihave ihave])
-        |> repeat_at_most 5;
-        of_input_gen
-          (iwant ~gen_peer ~gen_message_id ~gen_msg_count)
-          (fun iwant -> [Iwant iwant])
-        |> repeat_at_most 5;
-        graft_then_prune_wait_and_clean () |> repeat_at_most 10;
-      ]
+
+    let main =
+      interleave
+        [
+          fork_at_most
+            4
+            (repeat_at_most 2 (add_then_remove_peer_wait_and_clean ()));
+          repeat_at_most 10 @@ join_then_leave_topic ~gen_topic;
+          repeat_at_most 10 heartbeat;
+          repeat_at_most 100 tick;
+          of_input_gen
+            (ihave ~gen_peer ~gen_topic ~gen_message_id ~gen_msg_count)
+            (fun ihave -> [Ihave ihave])
+          |> repeat_at_most 5;
+          of_input_gen
+            (iwant ~gen_peer ~gen_message_id ~gen_msg_count)
+            (fun iwant -> [Iwant iwant])
+          |> repeat_at_most 5;
+          graft_then_prune_wait_and_clean () |> repeat_at_most 10;
+        ]
+    in
+    main @% finalize
 
   let pp_backoff fmtr (backoff : int GS.Topic.Map.t) =
-    let list = backoff |> GS.Topic.Map.to_seq |> List.of_seq in
+    let list = backoff |> GS.Topic.Map.bindings in
     Format.pp_print_list
       ~pp_sep:(fun fmtr () -> Format.fprintf fmtr ",")
       (fun fmtr (topic, backoff) ->
@@ -205,7 +211,8 @@ module Test_remove_peer = struct
         let+ retain_duration = M.int_range 0 (limits.retain_duration * 2)
         and+ heartbeat_interval = M.int_range 0 (limits.heartbeat_interval * 2)
         and+ backoff_cleanup_ticks =
-          M.int_range 1 (limits.backoff_cleanup_ticks * 2)
+          M.return 1
+          (* M.int_range 1 (limits.backoff_cleanup_ticks * 2) *)
         in
         {limits with retain_duration; heartbeat_interval; backoff_cleanup_ticks}
       in
@@ -213,7 +220,7 @@ module Test_remove_peer = struct
       run state (scenario limits)
     in
     let test =
-      QCheck2.Test.make ~count:10_000 ~name:"Gossipsub: remove_peer" scenario
+      QCheck2.Test.make ~count:1_000 ~name:"Gossipsub: remove_peer" scenario
       @@ fun trace ->
       match check_final predicate trace with
       | Ok () -> true

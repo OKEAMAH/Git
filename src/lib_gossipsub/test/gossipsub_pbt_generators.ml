@@ -329,7 +329,7 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
        fold_over_sublists (fun l acc -> l :: acc) [1;2;3] [];;
        - : int list list = [[1; 2]; [1; 3]; [2; 3]]
      *)
-    let fold_over_sublists :
+    let _fold_over_sublists :
         ('a list -> 'acc -> 'acc) -> 'a list -> 'acc -> 'acc =
      fun f l acc ->
       fold_zip
@@ -347,38 +347,50 @@ module Make (GS : AUTOMATON with type Time.t = int) = struct
       | Par _ -> false
       | Seq rs -> List.for_all par_free rs
 
-    let rec shrink_raw : raw -> raw Seq.t =
-     fun raw ->
-      match raw with
-      | Thread _ ->
-          (* Can't shrink a thread *)
-          Seq.return raw
-      | Par components when List.for_all par_free components ->
-          (* We try to shrink leaf-level [Par] by dropping one component *)
-          fold_over_sublists
-            (fun subcomponents acc -> Seq.cons (par subcomponents) acc)
-            components
-            Seq.empty
-      | Par components ->
-          (* If the [Par] is not leaf-level, we try to shrink each component
-             one after the other. *)
-          fold_zip
-            (fun rev_prefix elt tail acc ->
-              Seq.flat_map
-                (fun shrunk_elt ->
-                  Seq.cons
-                    (par (List.rev_append rev_prefix (shrunk_elt :: tail)))
-                    acc)
-                (shrink_raw elt))
-            components
-            Seq.empty
-      | Seq components ->
-          (* For [Seq] nodes, we shrink all components in parallel. *)
-          List.to_seq components |> Seq.map shrink_raw |> Seq.transpose
-          |> Seq.flat_map (fun components ->
-                 Seq.return (seq (List.of_seq components)))
+    let c = ref 0
 
-    (* Construction of the trace generator. *)
+    let shrink_raw : int -> int -> raw -> raw Seq.t =
+     fun max_depth _depth raw ->
+      let () = incr c in
+      let () = Format.printf "shrinking %d@." !c in
+      if !c > 50_000 then Seq.return raw
+      else
+        match raw with
+        | Thread _ ->
+            (* Can't shrink a thread *)
+            Seq.return raw
+        | Par [] -> Seq.return raw
+        | Par elts ->
+            if List.for_all par_free elts then
+              let len = Int.min (List.length elts - 1) max_depth in
+              let seq = List.to_seq elts in
+              Stdlib.Seq.init len (fun i -> Stdlib.Seq.take i seq) |> Seq.concat
+            else Seq.return raw
+        (* fold_zip
+         *   (fun rev_prefix elt tail acc ->
+         *
+         *   ) *)
+        (* | Par components ->
+         *     (\* If the [Par] is not leaf-level, we try to shrink each component
+         *        one after the other. *\)
+         *     fold_zip
+         *       (fun rev_prefix elt tail acc ->
+         *         Seq.flat_map
+         *           (fun shrunk_elt ->
+         *             Seq.cons
+         *               (par (List.rev_append rev_prefix (shrunk_elt :: tail)))
+         *               acc)
+         *           (shrink_raw max_depth (depth + 1) elt))
+         *       components
+         *       Seq.empty *)
+        | Seq [] -> Seq.return raw
+        | Seq elts ->
+            let len = Int.min (List.length elts - 1) max_depth in
+            (* let len = 2 in *)
+            let seq = List.to_seq elts in
+            Stdlib.Seq.init len (fun i -> Stdlib.Seq.take i seq) |> Seq.concat
+
+    let shrink_raw raw = shrink_raw 20 0 raw
 
     (* Evaluate a [raw] on an initial state yields a trace. *)
     let raw_to_trace state raw =
