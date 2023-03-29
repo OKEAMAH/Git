@@ -805,30 +805,38 @@ let bake_levels ?hook n client =
   let* () = match hook with None -> unit | Some hook -> hook i in
   Client.bake_for_and_wait client
 
-(** Bake [at_least] levels.
-    Then continues baking until the rollup node updates the lpc,
-    waiting for the rollup node to catch up to the client's level.
-    Returns the level at which the lpc was updated. *)
-let bake_until_lpc_updated ?hook ?(at_least = 0) ~timeout client sc_rollup_node
-    =
+let bake_until_event event_name ?hook ?(at_least = 0) ~timeout client
+    sc_rollup_node =
   let rec bake_loop i =
     let* () = match hook with None -> unit | Some hook -> hook i in
     let* () = Client.bake_for_and_wait client in
     bake_loop (i + 1)
   in
   let* () = bake_levels ?hook at_least client in
-  let* lpc_updated_level =
+  let* updated_level =
     Lwt.pick
       [
         Lwt_unix.timeout timeout;
         bake_loop 0;
-        ( Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_node_lpc_updated.v0"
-        @@ fun json -> JSON.(json |-> "level" |> as_int_opt) );
+        ( Sc_rollup_node.wait_for sc_rollup_node event_name @@ fun json ->
+          JSON.(json |-> "level" |> as_int_opt) );
       ]
   in
   (* Let the sc rollup node catch up *)
   let* _ = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
-  return lpc_updated_level
+  return updated_level
+
+(** Bake [at_least] levels.
+    Then continues baking until the rollup node updates the lpc,
+    waiting for the rollup node to catch up to the client's level.
+    Returns the level at which the lpc was updated. *)
+let bake_until_lpc_updated = bake_until_event "sc_rollup_node_lpc_updated.v0"
+
+(** Bake [at_least] levels.
+    Then continues baking until the rollup node updates the lcc,
+    waiting for the rollup node to catch up to the client's level.
+    Returns the level at which the lcc was updated. *)
+let bake_until_lcc_updated = bake_until_event "sc_rollup_node_lcc_updated.v0"
 
 (* Rollup node batcher *)
 let sc_rollup_node_batcher sc_rollup_node sc_rollup_client sc_rollup node client
@@ -3640,7 +3648,7 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
       description = "output exec";
     }
   @@ fun protocol rollup_node sc_client sc_rollup _node client ->
-  let* () = Sc_rollup_node.run rollup_node [] in
+  let* () = Sc_rollup_node.run ~event_level:`Debug rollup_node [] in
   let src = Constant.bootstrap1.public_key_hash in
   let src2 = Constant.bootstrap2.public_key_hash in
   let originate_target_contract () =
@@ -3865,7 +3873,15 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
       source_contract_address
       target_contract_address
   in
-  let* () = Client.bake_for_and_wait client in
+  let rec bake_until_lcc_updated_for_level level =
+    let* inbox_level =
+      bake_until_lcc_updated ~at_least:1 ~timeout:3.0 client rollup_node
+    in
+    if inbox_level < level then bake_until_lcc_updated_for_level level else unit
+  in
+  (* We wait until the lcc is at least the commitment for inbox level 8,
+     to avoid making the regressions flaky *)
+  let* () = bake_until_lcc_updated_for_level 8 in
   let* () =
     trigger_outbox_message_execution ?expected_l1_error target_contract_address
   in
