@@ -533,7 +533,12 @@ module Infer_cmd = struct
       ~desc:"Name of the local model for which to infer parameter"
       (Tezos_clic.parameter
          ~autocomplete:(fun _ ->
-           Lwt.return_ok (Registration.all_local_model_names ()))
+           let res =
+             List.map
+               Namespace.to_string
+               (Registration.all_local_model_names ())
+           in
+           Lwt.return_ok res)
          (fun _ str -> Lwt.return_ok str))
 
   let regression_param =
@@ -849,7 +854,12 @@ module List_cmd = struct
       ~desc:"Name of the local model"
       (Tezos_clic.parameter
          ~autocomplete:(fun _ ->
-           Registration.all_local_model_names () |> Lwt.return_ok)
+           let res =
+             List.map
+               Namespace.to_string
+               (Registration.all_local_model_names ())
+           in
+           Lwt.return_ok res)
          (fun _ str -> Lwt.return_ok str))
 
   let parameter_param () =
@@ -975,10 +985,9 @@ module List_cmd = struct
     Tezos_clic.fixed ["list"; "all"; "local"; "models"]
 
   let handler_all_local_models () () =
-    let module S = String.Set in
-    S.iter
-      (fun name -> Format.fprintf Format.std_formatter "%s\n" name)
-      (Registration.all_local_model_names () |> S.of_list) ;
+    List.iter
+      (fun name -> Format.fprintf Format.std_formatter "%a\n" Namespace.pp name)
+      (Registration.all_local_model_names ()) ;
     Lwt_result_syntax.return_unit
 
   let group =

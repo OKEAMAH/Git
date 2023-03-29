@@ -93,7 +93,7 @@ val all_local_models : unit -> (Namespace.t * local_model_info) list
 
 (** Returns the list of all local model names as they appear in registered
     benchmarks *)
-val all_local_model_names : unit -> string list
+val all_local_model_names : unit -> Namespace.t list
 
 (* -------------------------------------------------------------------------- *)
 (* Search functions *)

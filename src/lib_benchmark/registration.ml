@@ -182,10 +182,7 @@ let all_local_models () =
   |> List.of_seq
   |> List.sort (fun (s, _) (s', _) -> Namespace.compare s s')
 
-let all_local_model_names () =
-  Name_table.to_seq_keys local_model_table
-  |> Seq.fold_left (fun acc x -> Namespace.to_string x :: acc) []
-  |> List.filter (fun s -> not (String.equal s "*"))
+let all_local_model_names () = all_local_models () |> List.map fst
 
 let all_custom_commands () = !clic_table
 
