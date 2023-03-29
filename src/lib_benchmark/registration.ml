@@ -36,9 +36,12 @@ exception Parameter_not_found of Free_variable.t
 
 type benchmark_info = Benchmark.t
 
-type model_info = {model : Model.packed_model; from : local_model_location list}
+type local_model_location = {
+  bench_name : Namespace.t;
+  local_model_name : string;
+}
 
-and local_model_location = {bench_name : Namespace.t; local_model_name : string}
+type model_info = {model : Model.packed_model; from : local_model_location list}
 
 type parameter_info = Namespace.t list
 
