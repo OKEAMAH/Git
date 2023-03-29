@@ -258,6 +258,11 @@ module Benchmark_cmd = struct
       benchmark_handler
 end
 
+let autocomplete_local_model_names _ =
+  Registration.all_local_model_names ()
+  |> List.map Namespace.to_string
+  |> Lwt.return_ok
+
 module Infer_cmd = struct
   (* -------------------------------------------------------------------------- *)
   (* Handling options for the "infer parameters" command *)
@@ -532,13 +537,7 @@ module Infer_cmd = struct
       ~name:"LOCAL-MODEL-NAME"
       ~desc:"Name of the local model for which to infer parameter"
       (Tezos_clic.parameter
-         ~autocomplete:(fun _ ->
-           let res =
-             List.map
-               Namespace.to_string
-               (Registration.all_local_model_names ())
-           in
-           Lwt.return_ok res)
+         ~autocomplete:autocomplete_local_model_names
          (fun _ str -> Lwt.return_ok str))
 
   let regression_param =
@@ -853,13 +852,7 @@ module List_cmd = struct
       ~name:"LOCAL-MODEL-NAME"
       ~desc:"Name of the local model"
       (Tezos_clic.parameter
-         ~autocomplete:(fun _ ->
-           let res =
-             List.map
-               Namespace.to_string
-               (Registration.all_local_model_names ())
-           in
-           Lwt.return_ok res)
+         ~autocomplete:autocomplete_local_model_names
          (fun _ str -> Lwt.return_ok str))
 
   let parameter_param () =
