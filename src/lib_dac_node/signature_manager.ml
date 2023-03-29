@@ -290,7 +290,8 @@ let check_is_dac_member dac_committee signer_pkh =
 
 let handle_put_dac_member_signature get_committee_members ctx dac_plugin
     ro_node_store rw_node_store page_store cctxt
-    (Signature_repr.{root_hash; _} as dac_member_signature) =
+    (Signature_repr.{root_hash; signer_pkh; signature} as dac_member_signature)
+    =
   let open Lwt_result_syntax in
   let ((module Plugin) : Dac_plugin.t) = dac_plugin in
   let*! has_payload =
@@ -303,9 +304,6 @@ let handle_put_dac_member_signature get_committee_members ctx dac_plugin
   (* Return an HTTP 404 error when hash provided in signature is unknown *)
   | Ok false -> raise Not_found
   | Ok true ->
-      let Signature_repr.{signer_pkh; root_hash; signature} =
-        dac_member_signature
-      in
       let dac_committee = get_committee_members ctx in
       let* () =
         fail_unless
@@ -339,6 +337,14 @@ let handle_put_dac_member_signature get_committee_members ctx dac_plugin
             rw_node_store
             dac_committee
             dac_member_signature.root_hash
+        in
+        let*! () =
+          Event.(
+            emit_received_signature
+              dac_plugin
+              dac_member_signature.root_hash
+              signer_pkh
+              signature)
         in
         return_unit
 

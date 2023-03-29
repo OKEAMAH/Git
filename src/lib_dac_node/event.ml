@@ -244,6 +244,19 @@ let new_signature_pushed_to_coordinator =
     ~level:Notice
     ("signature", Tezos_crypto.Aggregate_signature.encoding)
 
+let received_signature =
+  declare_3
+    ~section
+    ~name:"received_signature"
+    ~msg:
+      "New signature for {root_hash} received from {committee_member}: \
+       {signature}"
+    ~level:Notice
+    ("root_hash", Data_encoding.string)
+    ( "committee_member",
+      Tezos_crypto.Aggregate_signature.Public_key_hash.encoding )
+    ("signature", Tezos_crypto.Aggregate_signature.encoding)
+
 let no_committee_member_address =
   declare_0
     ~section
@@ -287,6 +300,10 @@ let emit_received_root_hash_processed ((module P) : Dac_plugin.t) hash =
 
 let emit_processing_root_hash_failed ((module P) : Dac_plugin.t) hash errors =
   emit processing_root_hash_failed (P.to_hex hash, errors)
+
+let emit_received_signature ((module P) : Dac_plugin.t) root_hash
+    committee_member signature =
+  emit received_signature (P.to_hex root_hash, committee_member, signature)
 
 let emit_signature_pushed_to_coordinator signature =
   emit new_signature_pushed_to_coordinator signature

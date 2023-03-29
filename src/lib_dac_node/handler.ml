@@ -174,18 +174,21 @@ module Committee_member = struct
       in
       match payload_result with
       | Ok _ ->
-          let*! () =
-            Event.emit_received_root_hash_processed dac_plugin root_hash
-          in
           let committee_member =
             ctxt.Node_context.Committee_member.committee_member
           in
-          push_payload_signature
-            dac_plugin
-            coordinator_cctxt
-            wallet_cctxt
-            committee_member
-            root_hash
+          let* () =
+            push_payload_signature
+              dac_plugin
+              coordinator_cctxt
+              wallet_cctxt
+              committee_member
+              root_hash
+          in
+          let*! () =
+            Event.emit_received_root_hash_processed dac_plugin root_hash
+          in
+          return ()
       | Error errs ->
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
               Improve handling of errors. *)
