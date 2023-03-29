@@ -177,6 +177,11 @@ let all_parameters () =
   |> List.sort (fun (p1, _) (p2, _) -> Namespace.compare p1 p2)
   |> List.map (fun (a, b) -> (Free_variable.of_namespace a, b))
 
+let all_local_models () =
+  Name_table.to_seq local_model_table
+  |> List.of_seq
+  |> List.sort (fun (s, _) (s', _) -> Namespace.compare s s')
+
 let all_local_model_names () =
   Name_table.to_seq_keys local_model_table
   |> Seq.fold_left (fun acc x -> Namespace.to_string x :: acc) []

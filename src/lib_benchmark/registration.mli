@@ -54,6 +54,8 @@ type model_info = {model : Model.packed_model; from : local_model_location list}
     they occur *)
 type parameter_info = Namespace.t list
 
+type local_model_info = Namespace.Set.t
+
 (* -------------------------------------------------------------------------- *)
 (* Registration functions *)
 
@@ -85,6 +87,9 @@ val all_tags : unit -> string list
 (** Returns the list of all the model names
     Same as [all_models () |> List.map fst] *)
 val all_model_names : unit -> Namespace.t list
+
+(** Returns the list of all local models *)
+val all_local_models : unit -> (Namespace.t * local_model_info) list
 
 (** Returns the list of all local model names as they appear in registered
     benchmarks *)
