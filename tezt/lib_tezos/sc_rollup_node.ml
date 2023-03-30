@@ -245,6 +245,10 @@ let wait_for_level ?timeout sc_node level =
         ~where:("level >= " ^ string_of_int level)
         promise
 
+let wait_sync sc_node ~timeout =
+  let node_level = Node.get_level sc_node.persistent_state.node in
+  wait_for_level ~timeout sc_node node_level
+
 let handle_event sc_node {name; value; timestamp = _} =
   match name with
   | "smart_rollup_node_is_ready.v0" -> set_ready sc_node
@@ -328,7 +332,7 @@ let run ?event_level ?event_sections_levels node arguments =
   let* () = wait_for_ready node in
   return ()
 
-let change_node_and_restart sc_rollup_node node =
+let change_node_and_restart ?event_level sc_rollup_node node =
   let* () = terminate sc_rollup_node in
   sc_rollup_node.persistent_state.node <- node ;
-  run sc_rollup_node []
+  run ?event_level sc_rollup_node []
