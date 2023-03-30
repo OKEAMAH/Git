@@ -77,7 +77,7 @@ module Make (Interpreter : Interpreter.S) = struct
       Pkh_map.empty
       ongoing_games
 
-  let on_process Layer1.{hash; _} state =
+  let on_process Layer1.{hash; level} state =
     let node_ctxt = state.node_ctxt in
     let head_block = `Hash (hash, 0) in
     let open Lwt_result_syntax in
@@ -111,7 +111,7 @@ module Make (Interpreter : Interpreter.S) = struct
               let other = conflict.Sc_rollup.Refutation_storage.other in
               Pkh_table.replace state.pending_opponents other () ;
               let game = Pkh_map.find_opt other ongoing_game_map in
-              Player.init_and_play node_ctxt ~self ~conflict ~game)
+              Player.init_and_play node_ctxt ~self ~conflict ~game ~level)
             new_conflicts
         in
         let*! () =
@@ -121,7 +121,7 @@ module Make (Interpreter : Interpreter.S) = struct
               match Pkh_map.find opponent ongoing_game_map with
               | Some game ->
                   Pkh_table.remove state.pending_opponents opponent ;
-                  Player.play worker game
+                  Player.play worker game ~level
               | None ->
                   (* Kill finished players: those who don't aren't
                      playing against pending opponents that don't have
