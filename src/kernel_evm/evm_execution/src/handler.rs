@@ -63,12 +63,12 @@ pub struct ExecutionOutcome {
 /// (like an error). The same circumstances (eg running out of gas) are not errors as
 /// such for the users of the toplevel transaction functions called by `run_transaction`.
 /// At that point same errors just indicate a failed transaction.
-///
-/// TODO: add logs to the outcome. See issue: <https://gitlab.com/tezos/tezos/-/issues/4870>
 fn map_execution_outcome(
     gas_used: u64,
     result: Result<(ExitReason, Option<H160>, Vec<u8>), EthereumError>,
 ) -> Result<ExecutionOutcome, EthereumError> {
+    // TODO: https://gitlab.com/tezos/tezos/-/issues/4870
+    // Add logs to the outcome of transaction execution.
     match result {
         Ok((reason, new_address, _)) => Ok(ExecutionOutcome {
             gas_used,
@@ -243,8 +243,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     ) -> Result<(), EthereumError> {
         debug_msg!(self.host, "Executing a transfer");
 
-        // TODO let transfers cost gas
-        // issue: https://gitlab.com/tezos/tezos/-/issues/5118
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/5118
+        // Let transfers cost gas.
+        //
+        // Beware that this cost doesn't double the cost of transfer transactions.
+        // That cost is handled at the `transfer` function below.
 
         if value == U256::zero() {
             // Nothing to transfer so succeeds by default
@@ -283,8 +286,8 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         let address = self.create_address(scheme);
 
-        // TODO: mark `caller` and `address` as hot for gas calculation
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4866
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4866
+        // Mark `caller` and `address` as hot for gas calculation
 
         if self.evm_account_storage.transaction_depth() >= MAXIMUM_TRANSACTION_DEPTH {
             return Err(EthereumError::MachineExitError(ExitError::CallTooDeep));
@@ -298,9 +301,9 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         begin_transaction(self.host, self.evm_account_storage)?;
 
-        // TODO: check that target address isn't already in use (must contain no code and a zero
-        // nonce)
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4865
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4865
+        // Check that target address isn't already in use (must contain no code and a zero
+        // nonce).
 
         if let Err(error) = self.execute_transfer(caller, address, value, gas_limit) {
             debug_msg!(
@@ -333,26 +336,25 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     r
                 );
 
-                // TODO: Verify the odd situations of:
-                //  - Succeed with STOP instruction (or just stopped because of
-                //    no more instructions). That doesn't return anything, so
-                //    we end up with an empty contract.
-                //  - Succeed with "suicide" - that doesn't produce a useful
-                //    contract either.
-                // issue: https://gitlab.com/tezos/tezos/-/issues/4867
+                // TODO: https://gitlab.com/tezos/tezos/-/issues/4867
+                // Verify the kind of success we got from running the contract initialization.
+                //
+                // Success with STOP or SUICIDE does not count as they both return an empty
+                // contract. Alternatively, check that we have non-zero length return value.
 
                 let code_out = runtime.machine().return_value();
 
-                // TODO: EIP-3541 check first byte of `code_out`. If it is 0xEF,
-                // we should cancel deployment.
-                // issue: https://gitlab.com/tezos/tezos/-/issues/4867
+                // TODO: https://gitlab.com/tezos/tezos/-/issues/4867
+                // EIP-3541
+                //
+                // Check if thei first byte of `code_out` is 0xEF and cancel deployment if so.
 
                 // NOTE: If necessary for the rollup we can check the size of the
                 // contract as well to prevent contracts too large.
                 // (No issue for this - this may not be an issue at all..)
 
-                // TODO: Check gas vs cost of deploying the contract
-                // issue: https://gitlab.com/tezos/tezos/-/issues/5118
+                // TODO: https://gitlab.com/tezos/tezos/-/issues/5118
+                // Gas cost of contract deployment. Cost of writing code bytes.
 
                 commit_transaction(self.host, self.evm_account_storage)?;
 
@@ -425,16 +427,16 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             return Err(EthereumError::MachineExitError(ExitError::CallTooDeep));
         }
 
-        // TODO: check gas
-        // issue: https://gitlab.com/tezos/tezos/-/issues/5120
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/5120
+        // Check that there is enough gas to do the contract call
 
-        // TODO: add transfer to gas (if it is there)
-        // issue: https://gitlab.com/tezos/tezos/-/issues/5121
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/5121
+        // Transfer funds as part of the contract call.
 
         begin_transaction(self.host, self.evm_account_storage)?;
 
-        // TODO: touch address - mark as hot for gas calculation
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4866
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4866
+        // Touch address. Mark the address as hot for gas calculation.
 
         if let Some(transfer) = transfer {
             if let Err(error) = self.execute_transfer(
@@ -514,8 +516,8 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                         self.host,
                         "Contract execution suicided (success). Committing transaction."
                     );
-                    // TODO: transfer to beneficiary and erase contract
-                    // issue: https://gitlab.com/tezos/tezos/-/issues/4902
+                    // TODO: https://gitlab.com/tezos/tezos/-/issues/4902
+                    // Transfer contract funds to beneficiary.
 
                     commit_transaction(self.host, self.evm_account_storage)?;
                     Ok((r, vec![]))
@@ -605,8 +607,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         begin_transaction(self.host, self.evm_account_storage)?;
 
         self.increment_nonce(from)?;
-
-        // TODO gas cost - it costs a fixed amount transferring funds
 
         let transfer_cost = self.config.gas_transaction_call;
 
@@ -744,8 +744,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
     }
 
     fn code(&self, address: H160) -> Vec<u8> {
-        // TODO: mark address as hot
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4866
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4866
+        // Mark address as hot for _later_ gas calculation.
 
         self.get_account(address)
             .and_then(|a| a.code(self.host).ok())
@@ -819,6 +819,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
 
     fn is_cold(&self, address: H160, index: Option<H256>) -> bool {
         // TODO: https://gitlab.com/tezos/tezos/-/issues/4866
+        // Use hot/cold storage to return correct value. Don't just use
+        // a default value.
         false // STUB until issue above has been fixed
     }
 
@@ -842,7 +844,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         topics: Vec<H256>,
         data: Vec<u8>,
     ) -> Result<(), ExitError> {
-        // TODO: issue: https://gitlab.com/tezos/tezos/-/issues/4870
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4870
+        // Do proper logging as part of transaction. Also write logs as debug message.
         Ok(()) // STUB until issue above has been fixed
     }
 
@@ -908,7 +911,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         &mut self,
         _feedback: Self::CreateFeedback,
     ) -> Result<(), ExitError> {
-        // TODO: issue: https://gitlab.com/tezos/tezos/-/issues/4872
+        // TODO: https://gitlab.com/tezos/tezos/-/issues/4872
+        // Write out feedback. Also write out as debug message.
         Ok(()) // this is a stub
     }
 }

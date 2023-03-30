@@ -9,7 +9,6 @@
 use crate::address::EthereumAddress;
 use crate::basic::{GasLimit, GasPrice, Wei, H256, U256};
 use crate::signatures::EthereumEIP1559Transaction;
-//TODO: make decoding typed so to be a bit more general
 use primitive_types::U256 as PTU256;
 
 fn rlp_decode_step(mut input: String) -> (String, String) {

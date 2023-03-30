@@ -117,7 +117,6 @@ pub mod blocks {
     ) -> Result<H256, EvmBlockStorageError> {
         let block_path = to_block_hash_path(block_number)?;
         let block_hash = host.store_read(&block_path, 0, 32)?;
-        // TODO consider more accurately
         Ok(H256::from_slice(&block_hash[..]))
     }
 

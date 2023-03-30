@@ -275,10 +275,7 @@ impl EthereumTransactionCommon {
             )
         }
     }
-    /// Find the caller address from r and s of the common data
-    /// for an Ethereum transaction, ie, what address is associated
-    /// with the signature of the message.
-    /// TODO <https://gitlab.com/tezos/tezos/-/milestones/115>
+
     pub fn caller(&self) -> EthereumAddress {
         let mes = self.message();
         let (sig, ri) = self.signature();
@@ -444,8 +441,8 @@ pub struct EthereumEIP1559Transaction {
     /// in the case of contract creation, as an endowment
     /// to the newly created account
     pub value: Wei,
-    //TODO: needs to have an accessList.
-    // pub access_list: Vec<(EthereumAddress, Vec<U256>)>,
+    // TODO: https://gitlab.com/tezos/tezos/-/issues/4889
+    // Needs to have an access_list field.
     /// the transaction data. In principle this can be large
     pub data: Vec<u8>,
     /// Signature x-axis part of point on elliptic curve. See yellow paper, appendix F
@@ -481,10 +478,6 @@ impl EthereumEIP1559Transaction {
         let ri = RecoveryId::parse(v).unwrap();
         (Signature { r, s }, ri)
     }
-    /// Find the caller address from r and s of the common data
-    /// for an Ethereum transaction, ie, what address is associated
-    /// with the signature of the message.
-    /// TODO <https://gitlab.com/tezos/tezos/-/milestones/115>
 
     pub fn caller(&self) -> EthereumAddress {
         let mes = self.message();

@@ -39,9 +39,9 @@ pub struct BlockConstants {
 
 impl BlockConstants {
     /// Return the first block of the chain (genisis).
-    /// TODO find suitable values for gas_limit et.c.
-    /// To be done in <https://gitlab.com/tezos/tezos/-/milestones/114>.
     pub fn first_block() -> Self {
+        // TODO: https://gitlab.com/tezos/tezos/-/milestones/114
+        // Find suitable default values for gas limit, fee, etc.
         Self {
             gas_price: GasPrice::one(),
             number: U256::zero(),

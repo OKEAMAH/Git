@@ -107,8 +107,8 @@ where
         gas_limit.unwrap_or(0_u64),
     );
 
-    // TODO: check gas_limit vs caller balance. Make sure caller has
-    // enough funds to pay for gas.
+    // TODO: https://gitlab.com/tezos/tezos/-/issues/5271
+    // Prepay for gas up to `gas_limit` and refund after transaction has been executed.
 
     if call_data.is_empty() {
         // This is a transfer transaction

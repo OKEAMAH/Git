@@ -57,10 +57,12 @@ impl Encodable for EthereumAddress {
         if !self.0.is_zero() {
             s.append(&self.0);
         } else {
-            // we should make the distinction between 0 and null
-            // but we don't, null is encoded as 0
-            // which is a pb, as the 0x0 address can bu used, to burn stuff
             // TODO: https://gitlab.com/tezos/tezos/-/issues/5075
+            // Make it possible to have null address distinct from address 0x0
+            //
+            // Contract create transactions have a null address in the `to` field
+            // of a transaction. The 0x0 address on the other hand is actually a
+            // valid address that can be called and transferred to.
             s.append_empty_data();
         }
     }

@@ -5,9 +5,8 @@
 
 //! Basic Ethereum types for computation
 //!
-//! Many of the functions in this module (all the `one` and `zero`) can be made
-//! constant, but the underlying library and functions we use are not constant.
-//! TODO: <https://gitlab.com/tezos/tezos/-/milestones/114>
+//! This module is mainly for adding serialization to the types found in the
+//! Rust `primitive_types` crate.
 use crate::EthereumError;
 use core::ops::{Add, Div, Mul, Sub};
 use crypto::hash::BlockHash;
