@@ -36,7 +36,7 @@ module Worker : Worker.T
 type worker = Worker.infinite Worker.queue Worker.t
 
 module type S = sig
-  (** [init_and_play node_ctxt ~self ~conflict ~game]
+  (** [init_and_play node_ctxt ~self ~conflict ~game ~level]
       initializes  a new refutation game player for signer [self].
       After initizialization, the worker will play the next move
       depending on the [game] state.
@@ -48,12 +48,13 @@ module type S = sig
     self:public_key_hash ->
     conflict:Sc_rollup.Refutation_storage.conflict ->
     game:Sc_rollup.Game.t option ->
+    level:int32 ->
     unit tzresult Lwt.t
 
-  (** [play worker game] makes the [worker] play the next move depending
+  (** [play worker game ~level] makes the [worker] play the next move depending
       on the [game] state for their conflict.
   *)
-  val play : worker -> Sc_rollup.Game.t -> unit Lwt.t
+  val play : worker -> Sc_rollup.Game.t -> level:int32 -> unit Lwt.t
 
   (** Shutdown a refutaiton game player. *)
   val shutdown : worker -> unit Lwt.t

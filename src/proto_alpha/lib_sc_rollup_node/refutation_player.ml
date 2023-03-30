@@ -31,6 +31,7 @@ module Types = struct
     node_ctxt : Node_context.rw;
     self : public_key_hash;
     opponent : public_key_hash;
+    mutable last_move_cache : (Sc_rollup.Game.game_state * int32) option;
   }
 
   type parameters = {
@@ -52,9 +53,10 @@ module type S = sig
     self:public_key_hash ->
     conflict:Sc_rollup.Refutation_storage.conflict ->
     game:Sc_rollup.Game.t option ->
+    level:int32 ->
     unit tzresult Lwt.t
 
-  val play : worker -> Sc_rollup.Game.t -> unit Lwt.t
+  val play : worker -> Sc_rollup.Game.t -> level:int32 -> unit Lwt.t
 
   val shutdown : worker -> unit Lwt.t
 
@@ -64,10 +66,10 @@ end
 module Make (Interpreter : Interpreter.S) : S = struct
   open Refutation_game.Make (Interpreter)
 
-  let on_play game Types.{node_ctxt; self; opponent} =
+  let on_play game Types.{node_ctxt; self; opponent; _} =
     play node_ctxt ~self game opponent
 
-  let on_play_opening conflict Types.{node_ctxt; self; opponent = _} =
+  let on_play_opening conflict (Types.{node_ctxt; self; _} : Types.state) =
     play_opening_move node_ctxt self conflict
 
   module Handlers = struct
@@ -87,7 +89,9 @@ module Make (Interpreter : Interpreter.S) : S = struct
     type launch_error = error trace
 
     let on_launch _w _name Types.{node_ctxt; self; conflict} =
-      return Types.{node_ctxt; self; opponent = conflict.other}
+      return
+        Types.
+          {node_ctxt; self; opponent = conflict.other; last_move_cache = None}
 
     let on_error (type a b) _w st (r : (a, b) Request.t) (errs : b) :
         unit tzresult Lwt.t =
@@ -140,10 +144,31 @@ module Make (Interpreter : Interpreter.S) : S = struct
     in
     Lwt.return worker
 
-  let play w game =
+  (* Play if:
+      - There's a new game state to play against or
+      - The current level is past the buffer for re-playing in the
+        same game state.
+  *)
+  let should_move ~level game last_move_cache =
+    match last_move_cache with
+    | None -> true
+    | Some (last_move_game_state, last_move_level) ->
+        (not
+           (Sc_rollup.Game.game_state_equal
+              game.Sc_rollup.Game.game_state
+              last_move_game_state))
+        || Int32.(
+             sub level last_move_level
+             > of_int Configuration.refutation_player_buffer_levels)
+
+  let play w game ~(level : int32) =
     let open Lwt_syntax in
-    let* (_pushed : bool) = Worker.Queue.push_request w (Request.Play game) in
-    return_unit
+    let state = Worker.state w in
+    if should_move ~level game state.last_move_cache then (
+      state.last_move_cache <- Some (game.Sc_rollup.Game.game_state, level) ;
+      let* (_pushed : bool) = Worker.Queue.push_request w (Request.Play game) in
+      return_unit)
+    else return_unit
 
   let play_opening w conflict =
     let open Lwt_syntax in
@@ -152,13 +177,13 @@ module Make (Interpreter : Interpreter.S) : S = struct
     in
     return_unit
 
-  let init_and_play node_ctxt ~self ~conflict ~game =
+  let init_and_play node_ctxt ~self ~conflict ~game ~level =
     let open Lwt_result_syntax in
     let* worker = init node_ctxt ~self ~conflict in
     let*! () =
       match game with
       | None -> play_opening worker conflict
-      | Some game -> play worker game
+      | Some game -> play worker game ~level
     in
     return_unit
 
