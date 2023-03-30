@@ -3750,6 +3750,14 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
     let* () = Client.bake_for_and_wait client in
     return address
   in
+  let rec bake_until_lcc_updated_for_level ?(at_least = 0) level =
+    let* inbox_level =
+      bake_until_lcc_updated ~at_least ~timeout:3.0 client rollup_node
+    in
+    Log.info "inbox_level: %d" inbox_level ;
+    if inbox_level < level then bake_until_lcc_updated_for_level level else unit
+  in
+
   let perform_rollup_execution_and_cement source_address target_address =
     let* payload = input_message sc_client target_address in
     let* () =
@@ -3770,7 +3778,12 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
     let blocks_to_wait =
       3 + (2 * commitment_period) + challenge_window - earliness
     in
-    repeat blocks_to_wait @@ fun () -> Client.bake_for client
+    let* () =
+      repeat blocks_to_wait @@ fun () -> Client.bake_for_and_wait client
+    in
+    (* We wait until the lcc is at least the commitment for inbox level 8,
+       to avoid making the regressions flaky *)
+    bake_until_lcc_updated_for_level 8
   in
   let trigger_outbox_message_execution ?expected_l1_error address =
     let outbox_level = 5 in
@@ -3873,15 +3886,6 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
       source_contract_address
       target_contract_address
   in
-  let rec bake_until_lcc_updated_for_level level =
-    let* inbox_level =
-      bake_until_lcc_updated ~at_least:1 ~timeout:3.0 client rollup_node
-    in
-    if inbox_level < level then bake_until_lcc_updated_for_level level else unit
-  in
-  (* We wait until the lcc is at least the commitment for inbox level 8,
-     to avoid making the regressions flaky *)
-  let* () = bake_until_lcc_updated_for_level 8 in
   let* () =
     trigger_outbox_message_execution ?expected_l1_error target_contract_address
   in
