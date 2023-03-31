@@ -104,6 +104,7 @@ let pp_limits fmtr (l : (GS.Peer.t, GS.Message_id.t, GS.span) limits) =
     degree_optimal;
     publish_threshold;
     do_px;
+    peers_to_px;
     accept_px_threshold;
     unsubscribe_backoff;
     graft_flood_backoff;
@@ -130,6 +131,7 @@ let pp_limits fmtr (l : (GS.Peer.t, GS.Message_id.t, GS.span) limits) =
      degree_optimal = %d;@;\
      publish_threshold = %f;@;\
      do_px = %b;@;\
+     peers_to_px = %d;@;\
      accept_px_threshold = %f;@;\
      unsubscribe_backoff = %a;@;\
      graft_flood_backoff = %a;@;\
@@ -150,6 +152,7 @@ let pp_limits fmtr (l : (GS.Peer.t, GS.Message_id.t, GS.span) limits) =
     degree_optimal
     publish_threshold
     do_px
+    peers_to_px
     accept_px_threshold
     GS.Span.pp
     unsubscribe_backoff
