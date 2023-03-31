@@ -96,6 +96,16 @@ let assert_mesh_size ~__LOC__ ~topic ~expected_size state =
       ~error_msg:"Expected %R, got %L"
       ~__LOC__)
 
+let peers_of_graft_messages graft_messages =
+  graft_messages
+  |> List.map (fun (GS.{peer; _} : GS.graft) -> peer)
+  |> Peer.Set.of_list |> Peer.Set.elements
+
+let peers_of_prune_messages prune_messages =
+  prune_messages
+  |> List.map (fun (GS.{peer; _} : GS.prune) -> peer)
+  |> Peer.Set.of_list |> Peer.Set.elements
+
 let many_peers limits = (4 * limits.degree_optimal) + 1
 
 let make_peers ~number =
@@ -673,11 +683,9 @@ let test_mesh_addition rng limits parameters =
     ~expected_size:(limits.degree_optimal - 2)
     state ;
   (* Heartbeat. *)
-  let state, Heartbeat {to_graft; _} = GS.heartbeat state in
+  let state, Heartbeat {graft_messages; _} = GS.heartbeat state in
   (* There should be two grafting requests to fill the mesh. *)
-  let peers_to_graft =
-    to_graft |> Peer.Map.bindings |> List.map (fun (peer, _topic) -> peer)
-  in
+  let peers_to_graft = peers_of_graft_messages graft_messages in
   Check.(
     (List.length peers_to_graft = 2)
       int
@@ -726,11 +734,9 @@ let test_mesh_subtraction rng limits parameters =
   in
   assert_mesh_size ~__LOC__ ~topic ~expected_size:peer_number state ;
   (* Heartbeat. *)
-  let state, Heartbeat {to_prune; _} = GS.heartbeat state in
+  let state, Heartbeat {prune_messages; _} = GS.heartbeat state in
   (* There should be enough prune requests to bring back the mesh size to [degree_optimal]. *)
-  let peers_to_prune =
-    to_prune |> Peer.Map.bindings |> List.map (fun (peer, _topic) -> peer)
-  in
+  let peers_to_prune = peers_of_prune_messages prune_messages in
   Check.(
     (List.length peers_to_prune = peer_number - limits.degree_optimal)
       int
@@ -789,10 +795,9 @@ let test_do_not_graft_within_backoff_period rng limits parameters =
          (fun state i ->
            Time.elapse 1 ;
            Log.info "%d time tick(s) elapsed..." i ;
-           let state, Heartbeat {to_graft; _} = GS.heartbeat state in
-           let grafts = Peer.Map.bindings to_graft in
+           let state, Heartbeat {graft_messages; _} = GS.heartbeat state in
            Check.(
-             (List.length grafts = 0)
+             (List.length graft_messages = 0)
                int
                ~error_msg:"Expected %R, got %L"
                ~__LOC__) ;
@@ -802,9 +807,12 @@ let test_do_not_graft_within_backoff_period rng limits parameters =
   (* After elapsing one more second,
      the backoff should be cleared and the graft should be emitted. *)
   Time.elapse 1 ;
-  let _state, Heartbeat {to_graft; _} = GS.heartbeat state in
-  let grafts = Peer.Map.bindings to_graft in
-  Check.((List.length grafts = 1) int ~error_msg:"Expected %R, got %L" ~__LOC__) ;
+  let _state, Heartbeat {graft_messages; _} = GS.heartbeat state in
+  Check.(
+    (List.length graft_messages = 1)
+      int
+      ~error_msg:"Expected %R, got %L"
+      ~__LOC__) ;
   unit
 
 (* Tests that the node leaving a topic introduces a backoff period,
@@ -852,10 +860,9 @@ let test_unsubscribe_backoff rng limits parameters =
          (fun state i ->
            Time.elapse 1 ;
            Log.info "%d time tick(s) elapsed..." i ;
-           let state, Heartbeat {to_graft; _} = GS.heartbeat state in
-           let grafts = Peer.Map.bindings to_graft in
+           let state, Heartbeat {graft_messages; _} = GS.heartbeat state in
            Check.(
-             (List.length grafts = 0)
+             (List.length graft_messages = 0)
                int
                ~error_msg:"Expected %R, got %L"
                ~__LOC__) ;
@@ -865,9 +872,12 @@ let test_unsubscribe_backoff rng limits parameters =
   (* After elapsing one more second,
      the backoff should be cleared and the graft should be emitted. *)
   Time.elapse 1 ;
-  let _state, Heartbeat {to_graft; _} = GS.heartbeat state in
-  let grafts = Peer.Map.bindings to_graft in
-  Check.((List.length grafts = 1) int ~error_msg:"Expected %R, got %L" ~__LOC__) ;
+  let _state, Heartbeat {graft_messages; _} = GS.heartbeat state in
+  Check.(
+    (List.length graft_messages = 1)
+      int
+      ~error_msg:"Expected %R, got %L"
+      ~__LOC__) ;
   unit
 
 (* Tests that only grafts for outbound peers are accepted when the mesh is full.
@@ -995,11 +1005,9 @@ let test_do_not_remove_too_many_outbound_peers rng limits parameters =
     ~expected_size:(limits.degree_high + limits.degree_out)
     state ;
   (* Run heartbeat. *)
-  let _state, Heartbeat {to_prune; _} = GS.heartbeat state in
+  let _state, Heartbeat {prune_messages; _} = GS.heartbeat state in
   (* There should be enough prune requests to bring back the mesh size to [degree_optimal]. *)
-  let peers_to_prune =
-    to_prune |> Peer.Map.bindings |> List.map (fun (peer, _topics) -> peer)
-  in
+  let peers_to_prune = peers_of_prune_messages prune_messages in
   Check.(
     (List.length peers_to_prune
     = limits.degree_high + limits.degree_out - limits.degree_optimal)
@@ -1068,19 +1076,15 @@ let test_add_outbound_peers_if_min_is_not_satisfied rng limits parameters =
   (* At this point the mesh is filled with [degree_high] inbound peers. *)
   assert_mesh_size ~__LOC__ ~topic ~expected_size:limits.degree_high state ;
   (* Heartbeat. *)
-  let state, Heartbeat {to_prune; to_graft; _} = GS.heartbeat state in
+  let state, Heartbeat {prune_messages; graft_messages} = GS.heartbeat state in
   (* The outbound peers should have been additionally added. *)
   assert_mesh_size
     ~__LOC__
     ~topic
     ~expected_size:(limits.degree_high + limits.degree_out)
     state ;
-  let peers_to_prune =
-    to_prune |> Peer.Map.bindings |> List.map (fun (peer, _topics) -> peer)
-  in
-  let peers_to_graft =
-    to_graft |> Peer.Map.bindings |> List.map (fun (peer, _topics) -> peer)
-  in
+  let peers_to_prune = peers_of_prune_messages prune_messages in
+  let peers_to_graft = peers_of_graft_messages graft_messages in
   Check.(
     (List.length peers_to_prune = 0)
       int

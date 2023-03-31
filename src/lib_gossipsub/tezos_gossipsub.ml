@@ -149,9 +149,8 @@ module Make (C : AUTOMATON_CONFIG) :
     | Not_joined : [`Leave] output
     | Leaving_topic : {to_prune : Peer.Set.t} -> [`Leave] output
     | Heartbeat : {
-        to_graft : Topic.Set.t Peer.Map.t;
-        to_prune : Topic.Set.t Peer.Map.t;
-        noPX_peers : Peer.Set.t;
+        graft_messages : graft list;
+        prune_messages : prune list;
       }
         -> [`Heartbeat] output
     | Peer_added : [`Add_peer] output
@@ -1052,6 +1051,48 @@ module Make (C : AUTOMATON_CONFIG) :
       |> update remove_peer to_prune
       |> set_mesh
 
+    let prepare_graft_and_prune_messages connections rng do_px peers_to_px
+        backoff to_graft to_prune noPX_peers =
+      let filter peer_to_prune peer connection =
+        (not (Peer.equal peer_to_prune peer))
+        && Score.(connection.score >= zero)
+      in
+      let graft_messages =
+        Peer.Map.fold
+          (fun peer topicset graft_messages ->
+            Topic.Set.fold
+              (fun topic graft_messages ->
+                ({peer; topic} : graft) :: graft_messages)
+              topicset
+              graft_messages)
+          to_graft
+          []
+      in
+      let prune_messages =
+        Peer.Map.fold
+          (fun peer topicset prune_messages ->
+            Topic.Set.fold
+              (fun topic prune_messages ->
+                let px =
+                  if do_px && not (Peer.Set.mem peer noPX_peers) then
+                    (* select peers for peer exchange *)
+                    select_connections_peers
+                      connections
+                      rng
+                      topic
+                      ~filter:(filter peer)
+                      ~max:peers_to_px
+                    |> List.to_seq
+                  else Seq.empty
+                in
+                {peer; topic; px; backoff} :: prune_messages)
+              topicset
+              prune_messages)
+          to_prune
+          []
+      in
+      (graft_messages, prune_messages)
+
     (* Mesh maintenance. For each topic, do in order:
 
        - Prune all peers with negative score, do not enable peer exchange for
@@ -1197,6 +1238,8 @@ module Make (C : AUTOMATON_CONFIG) :
          pruned, grafted, and those for which no peer exchange should be done
          performed, accumulated from the maintenance for other mesh topics. *)
       let maintain_topic_mesh topic peers (to_prune, to_graft, noPX_peers) =
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5324
+           Optimize to directly build the desired output. *)
         let to_prune, peers, noPX_peers =
           (* Drop all peers with negative score, without PX *)
           Peer.Set.fold
@@ -1303,7 +1346,23 @@ module Make (C : AUTOMATON_CONFIG) :
       in
       (* Update mesh for grafted and pruned peers *)
       let* () = update_mesh mesh ~to_graft ~to_prune in
-      return (to_graft, to_prune, noPX_peers)
+
+      (* Prepare graft and prune messages, by selecting px peers for pruned peers *)
+      let*! do_px in
+      let*! peers_to_px in
+      let graft_messages, prune_messages =
+        prepare_graft_and_prune_messages
+          connections
+          rng
+          do_px
+          peers_to_px
+          prune_backoff
+          to_graft
+          to_prune
+          noPX_peers
+      in
+
+      return (graft_messages, prune_messages)
 
     let update_fanout fanout ~to_add ~to_remove =
       let update f topic_peers_list fanout =
@@ -1441,7 +1500,7 @@ module Make (C : AUTOMATON_CONFIG) :
          higher than [degree_high], then select peers to graft or prune
          respectively, so that the new number of peers per topic becomes
          [degree_optimal]. *)
-      let* to_graft, to_prune, noPX_peers = maintain_mesh in
+      let* graft_messages, prune_messages = maintain_mesh in
 
       (* Maintain our fanout for topics we are publishing to, but we have not
          joined. *)
@@ -1451,7 +1510,7 @@ module Make (C : AUTOMATON_CONFIG) :
       let*! message_cache in
       let* () = Message_cache.shift message_cache |> set_message_cache in
 
-      Heartbeat {to_graft; to_prune; noPX_peers} |> return
+      Heartbeat {graft_messages; prune_messages} |> return
   end
 
   let heartbeat : [`Heartbeat] output Monad.t = Heartbeat.handle

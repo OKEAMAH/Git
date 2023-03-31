@@ -322,13 +322,10 @@ module type AUTOMATON = sig
         (** When successfully leaving a topic, the set of pruned peers for that
             topic is returned. *)
     | Heartbeat : {
-        to_graft : Topic.Set.t Peer.Map.t;
-            (** The set of topics per peer that have been grafted. *)
-        to_prune : Topic.Set.t Peer.Map.t;
-            (** The set of topics per peer that have been pruned. *)
-        noPX_peers : Peer.Set.t;
-            (** Set of peers for which peer exchange (PX) will not be
-                proposed. *)
+        graft_messages : graft list;
+            (** The list of graft messages to be sent. The order is arbitrary. *)
+        prune_messages : prune list;
+            (** The list of prune messages to be sent. The order is arbitrary. *)
       }
         -> [`Heartbeat] output
     | Peer_added : [`Add_peer] output
