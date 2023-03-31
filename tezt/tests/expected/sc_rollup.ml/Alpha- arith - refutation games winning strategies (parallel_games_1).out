@@ -3,7 +3,7 @@
 {
   "opponent": "tz1faswCTDciRzE4oJ9jn2Vm2dvjeyA9fUzU",
   "start_tick": "0",
-  "end_tick": "18",
+  "end_tick": "1",
   "dissection": [
     {
       "state": "srs136U2KJweAXf7Excw61Zeu5R5L7mi2TCb1WKkowQJ6UdHJ2VZWS",
@@ -12,74 +12,6 @@
     {
       "state": "srs11a79oWyLSNtvZZ2UG64HmZ5stmsuKeM3FXeFiBuri4448u5ytJ",
       "tick": "1"
-    },
-    {
-      "state": "srs11pDgVCfUaZhPk4TbocmELkAyQHxyYCjn7LwcKQ3bVYrVbsFdUZ",
-      "tick": "2"
-    },
-    {
-      "state": "srs12AQMNyzmAxPMeXC59NtSh93NAJsdBLsxMNjMaHeCkvsHaX5BSC",
-      "tick": "3"
-    },
-    {
-      "state": "srs127Pa34557wcLvkGzpBXPAupVf67frvtNH9nGf77CQzBhwTmJ86",
-      "tick": "4"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "5"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "6"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "7"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "8"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "9"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "10"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "11"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "12"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "13"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "14"
-    },
-    {
-      "state": "srs12xx5R5HfumpEziXmGP7bGBs62TovXtAHmovvLqAfqfos6QsuRT",
-      "tick": "15"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "16"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "17"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "18"
     }
   ]
 }
@@ -246,7 +178,7 @@
 {
   "opponent": "tz1b7tUupMgCNw2cCLpKTkSD1NZzB5TkP2sv",
   "start_tick": "0",
-  "end_tick": "18",
+  "end_tick": "1",
   "dissection": [
     {
       "state": "srs136U2KJweAXf7Excw61Zeu5R5L7mi2TCb1WKkowQJ6UdHJ2VZWS",
@@ -255,74 +187,6 @@
     {
       "state": "srs11a79oWyLSNtvZZ2UG64HmZ5stmsuKeM3FXeFiBuri4448u5ytJ",
       "tick": "1"
-    },
-    {
-      "state": "srs11pDgVCfUaZhPk4TbocmELkAyQHxyYCjn7LwcKQ3bVYrVbsFdUZ",
-      "tick": "2"
-    },
-    {
-      "state": "srs12AQMNyzmAxPMeXC59NtSh93NAJsdBLsxMNjMaHeCkvsHaX5BSC",
-      "tick": "3"
-    },
-    {
-      "state": "srs127Pa34557wcLvkGzpBXPAupVf67frvtNH9nGf77CQzBhwTmJ86",
-      "tick": "4"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "5"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "6"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "7"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "8"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "9"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "10"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "11"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "12"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "13"
-    },
-    {
-      "state": "srs139BjMyU9kA3AQxGfvYAmCf94M8mhpvY7LEwVUkksRx1E6ULL5X",
-      "tick": "14"
-    },
-    {
-      "state": "srs12xx5R5HfumpEziXmGP7bGBs62TovXtAHmovvLqAfqfos6QsuRT",
-      "tick": "15"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "16"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "17"
-    },
-    {
-      "state": "srs11geNrn9VDnHZFU7MKf3oqQWoLJtxWW1pCUhoXtgGbKu6GvaFCu",
-      "tick": "18"
     }
   ]
 }
