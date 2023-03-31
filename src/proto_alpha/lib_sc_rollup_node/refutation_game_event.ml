@@ -109,11 +109,15 @@ module Simple = struct
       ~msg:
         "Computed dissection against {opponent} between ticks {start_tick} and \
          {end_tick}: {dissection}."
-      ~level:Debug
+      ~level:Notice
       ("opponent", Signature.Public_key_hash.encoding)
       ("start_tick", Sc_rollup.Tick.encoding)
       ("end_tick", Sc_rollup.Tick.encoding)
       ("dissection", Data_encoding.list dissection_chunk_encoding)
+      ~pp4:(fun ppf d ->
+        Data_encoding.Json.pp
+          ppf
+          Data_encoding.(Json.construct (list dissection_chunk_encoding) d))
 end
 
 let timeout address = Simple.(emit timeout address)
