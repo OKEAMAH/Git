@@ -2921,31 +2921,31 @@ let test_refutation protocols ~kind =
              index of the failing tick during the processing of this
              message. *)
           ( "inbox_proof_at_genesis",
-            (["3 0 0"], inputs_for 10, 80, [], [], [], `Priority_honest) );
+            (["3 0 0"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           ( "pvm_proof_at_genesis",
-            (["3 0 1"], inputs_for 10, 80, [], [], [], `Priority_honest) );
+            (["3 0 1"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           ( "inbox_proof",
             (["5 0 0"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           ( "inbox_proof_with_new_content",
-            (["5 0 0"], inputs_for 30, 80, [], [], [], `Priority_honest) );
+            (["5 0 0"], inputs_for 30, 80, [], [], [], `Priority_loser) );
           (* In "inbox_proof_with_new_content" we add messages after the commitment
              period so the current inbox is not equal to the inbox snapshot-ted at the
              game creation. *)
           ( "inbox_proof_one_empty_level",
-            (["6 0 0"], inputs_for 10, 80, [2], [], [], `Priority_honest) );
+            (["6 0 0"], inputs_for 10, 80, [2], [], [], `Priority_loser) );
           ( "inbox_proof_many_empty_levels",
             (["9 0 0"], inputs_for 10, 80, [2; 3; 4], [], [], `Priority_loser)
           );
           ( "pvm_proof_0",
-            (["5 2 1"], inputs_for 10, 80, [], [], [], `Priority_honest) );
+            (["5 2 1"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           ( "pvm_proof_1",
-            (["7 2 0"], inputs_for 10, 80, [], [], [], `Priority_honest) );
+            (["7 2 0"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           ( "pvm_proof_2",
             (["7 2 5"], inputs_for 7, 80, [], [], [], `Priority_loser) );
           ( "pvm_proof_3",
-            (["9 2 5"], inputs_for 7, 80, [4; 5], [], [], `Priority_honest) );
+            (["9 2 5"], inputs_for 7, 80, [4; 5], [], [], `Priority_loser) );
           ( "timeout",
-            (["5 2 1"], inputs_for 10, 80, [], [35], [], `Priority_honest) );
+            (["5 2 1"], inputs_for 10, 80, [], [35], [], `Priority_loser) );
           ( "reset_honest_during_game",
             ( ["5 2 1"],
               inputs_for 10,
@@ -2955,7 +2955,7 @@ let test_refutation protocols ~kind =
               [("sc_rollup_node_conflict_detected.v0", 2)],
               `Priority_loser ) );
           ( "parallel_games_0",
-            (["3 0 0"; "3 0 1"], inputs_for 10, 80, [], [], [], `Priority_honest)
+            (["3 0 0"; "3 0 1"], inputs_for 10, 80, [], [], [], `Priority_loser)
           );
           ( "parallel_games_1",
             ( ["3 0 0"; "3 0 1"; "3 0 0"],
@@ -2973,7 +2973,7 @@ let test_refutation protocols ~kind =
             (["3 0 0"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           (* Fourth message of an inbox (level 3) *)
           ( "inbox_proof_1",
-            (["3 4 0"], inputs_for 10, 80, [], [], [], `Priority_honest) );
+            (["3 4 0"], inputs_for 10, 80, [], [], [], `Priority_loser) );
           (* Echo kernel takes around 2,100 ticks to execute *)
           (* Second tick of decoding *)
           ( "pvm_proof_0",
@@ -2983,7 +2983,7 @@ let test_refutation protocols ~kind =
               [],
               [],
               [],
-              `Priority_honest ) );
+              `Priority_loser ) );
           ( "pvm_proof_1",
             ( ["7 7 11_000_001_000"],
               inputs_for 10,
@@ -3000,7 +3000,7 @@ let test_refutation protocols ~kind =
               [],
               [],
               [],
-              `Priority_honest ) );
+              `Priority_loser ) );
           (* During padding *)
           ( "pvm_proof_3",
             ( ["7 7 22_010_000_000"],
@@ -3009,7 +3009,7 @@ let test_refutation protocols ~kind =
               [],
               [],
               [],
-              `Priority_honest ) );
+              `Priority_loser ) );
           ( "parallel_games_0",
             ( ["4 0 0"; "5 7 11_000_000_001"],
               inputs_for 10,
@@ -3025,7 +3025,7 @@ let test_refutation protocols ~kind =
               [],
               [],
               [],
-              `Priority_honest ) );
+              `Priority_loser ) );
         ]
     | _ -> assert false
   in
