@@ -99,6 +99,13 @@ val to_bytes : t -> bytes Lwt.t
     [length_delta] is too large. *)
 val grow : t -> int64 -> t
 
+(** [shrink vector length_delta] creates a new byte vector of length decreased
+    by [length_delta] and without the no longer accessible chunks.
+
+    {b Note:} This function may be dangerous to use in a tick if
+    [length_delta] is too large. *)
+val shrink : t -> int64 -> t
+
 (** [length vector] returns the length of [vector] in bytes. *)
 val length : t -> int64
 

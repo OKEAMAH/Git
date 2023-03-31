@@ -35,6 +35,8 @@ open QCheck2
 open Tezos_tree_encoding
 
 module type S = sig
+  exception Bounds
+
   module Chunk : sig
     type t
 
@@ -67,6 +69,8 @@ module type S = sig
   val to_bytes : t -> bytes Lwt.t
 
   val grow : t -> int64 -> unit
+
+  val shrink : t -> int64 -> unit
 
   val length : t -> int64
 
@@ -201,6 +205,40 @@ module Tests (CBV : S) = struct
         in
         check1 && check2 && check3)
 
+  let shrink_works =
+    Test.make
+      ~name:(to_name "shrink works")
+      Gen.(pair string small_int)
+      (fun (init_str, shrink_len) ->
+        let open Lwt.Syntax in
+        Lwt_main.run
+        @@ Lwt.catch
+             (fun () ->
+               let expected_len =
+                 min
+                   (String.length init_str - shrink_len)
+                   (String.length init_str)
+               in
+               let shrink_len = Int64.of_int shrink_len in
+               let vector = of_string init_str in
+               let check_contents len =
+                 Lwt_list.for_all_p (fun i ->
+                     let index = Int64.of_int i in
+                     let+ v = load_byte vector index in
+                     v = Char.code (String.get init_str i))
+                 @@ List.init len Fun.id
+               in
+               let* check_before_shrink =
+                 check_contents (String.length init_str)
+               in
+               shrink vector shrink_len ;
+               let+ check_after_shrink = check_contents expected_len in
+               let check_length = Int64.(length vector = of_int expected_len) in
+               check_before_shrink && check_after_shrink && check_length)
+             (function
+               | Bounds -> Lwt.return (String.length init_str < shrink_len)
+               | _ -> Lwt.return false))
+
   let can_write_after_grow =
     Test.make
       ~name:(to_name "can write after grow")
@@ -249,6 +287,7 @@ module Tests (CBV : S) = struct
            create_works;
            store_load_byte_works;
            grow_works;
+           shrink_works;
            can_write_after_grow;
            load_bytes_works_no_offset;
            to_bytes_works;
@@ -265,6 +304,8 @@ end)
 (* This is basically adapter from immutable vector to mutable interface *)
 module Immutable_CBV = Tests (struct
   module Immutable = Immutable_chunked_byte_vector
+
+  exception Bounds = Immutable.Bounds
 
   let name = "Immutable CBV"
 
@@ -288,6 +329,8 @@ module Immutable_CBV = Tests (struct
   let to_bytes t = Immutable.to_bytes !t
 
   let grow t size = t := Immutable.grow !t size
+
+  let shrink t size = t := Immutable.shrink !t size
 
   let length t = Immutable.length !t
 

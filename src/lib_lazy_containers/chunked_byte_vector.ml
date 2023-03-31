@@ -126,6 +126,17 @@ let grow vector size_delta =
       Vector.grow chunk_count_delta vector.chunks ;
     vector.length <- new_size)
 
+let shrink vector size_delta =
+  if 0L < size_delta && size_delta <= vector.length then (
+    let new_size = Int64.sub vector.length size_delta in
+    let new_chunks = Chunk.num_needed new_size in
+    let current_chunks = Vector.num_elements vector.chunks in
+    let chunk_count_delta = Int64.sub current_chunks new_chunks in
+    if Int64.compare chunk_count_delta 0L > 0 then
+      Vector.shrink chunk_count_delta vector.chunks ;
+    vector.length <- new_size)
+  else if size_delta > vector.length then raise Bounds
+
 let allocate length =
   let res = create 0L in
   grow res length ;

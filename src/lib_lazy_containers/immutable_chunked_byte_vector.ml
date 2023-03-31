@@ -157,6 +157,21 @@ let grow vector size_delta =
     else {vector with length = new_size}
   else vector
 
+let shrink vector size_delta =
+  if 0L < size_delta && size_delta <= vector.length then
+    let new_size = Int64.sub vector.length size_delta in
+    let new_chunks = Chunk.num_needed new_size in
+    let current_chunks = Vector.num_elements vector.chunks in
+    let chunk_count_delta = Int64.sub current_chunks new_chunks in
+    if Int64.compare chunk_count_delta 0L > 0 then
+      {
+        length = new_size;
+        chunks = Vector.shrink chunk_count_delta vector.chunks;
+      }
+    else {vector with length = new_size}
+  else if size_delta > vector.length then raise Bounds
+  else vector
+
 let allocate length = grow (create 0L) length
 
 let of_bytes bytes =
