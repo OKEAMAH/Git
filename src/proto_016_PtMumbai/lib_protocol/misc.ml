@@ -89,3 +89,26 @@ let rec remove_elem_from_list nb = function
   | [] -> []
   | _ :: _ as l when Compare.Int.(nb <= 0) -> l
   | _ :: tl -> remove_elem_from_list (nb - 1) tl
+
+type error += Debug_location of string
+
+let () =
+  register_error_kind
+    `Permanent
+    ~id:"debug"
+    ~title:"debug"
+    ~description:
+      "debug"
+    ~pp:(fun ppf s ->
+      Format.fprintf
+        ppf
+        "At line %s" s)
+    Data_encoding.(obj1 (req "location" (string Plain)))
+    (function Debug_location s -> Some s | _ -> None)
+    (fun s -> Debug_location s)
+
+let log_location ~__LOC__ = Logging.(log Debug) "At line %s" __LOC__
+
+let record_trace_debug ~__LOC__ err = log_location ~__LOC__; record_trace (Debug_location __LOC__) err
+
+let trace_debug ~__LOC__ err = log_location ~__LOC__; trace (Debug_location __LOC__) err

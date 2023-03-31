@@ -2500,10 +2500,12 @@ let may_start_new_cycle ctxt =
       (ctxt, balance_updates, deactivated)
 
 let apply_liquidity_baking_subsidy ctxt ~toggle_vote =
+  Misc.log_location ~__LOC__;
   Liquidity_baking.on_subsidy_allowed
     ctxt
     ~toggle_vote
     (fun ctxt liquidity_baking_cpmm_contract_hash ->
+  Misc.log_location ~__LOC__;
       let liquidity_baking_cpmm_contract =
         Contract.Originated liquidity_baking_cpmm_contract_hash
       in
@@ -2649,9 +2651,12 @@ let apply_liquidity_baking_subsidy ctxt ~toggle_vote =
                let ctxt = Gas.set_unlimited ctxt in
                return (ctxt, [Successful_manager_result result])))
       >|= function
-      | Ok (ctxt, results) -> Ok (ctxt, results)
+      | Ok (ctxt, results) ->
+  Misc.log_location ~__LOC__;
+        Ok (ctxt, results)
       | Error _ ->
           (* Do not fail if something bad happens during CPMM contract call. *)
+  Misc.log_location ~__LOC__;
           let ctxt = Gas.set_unlimited backtracking_ctxt in
           Ok (ctxt, []))
 

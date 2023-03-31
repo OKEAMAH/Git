@@ -267,6 +267,9 @@ let () =
 let begin_application ctxt chain_id mode ~predecessor =
   let open Lwt_result_syntax in
   let open Alpha_context in
+
+
+  Misc.log_location ~__LOC__;
   let* ( ctxt,
          migration_balance_updates,
          migration_operation_results,
@@ -278,6 +281,7 @@ let begin_application ctxt chain_id mode ~predecessor =
   let predecessor_fitness = predecessor.fitness in
   match mode with
   | Application block_header ->
+  Misc.log_location ~__LOC__;
       Apply.begin_application
         ctxt
         chain_id
@@ -287,6 +291,7 @@ let begin_application ctxt chain_id mode ~predecessor =
         block_header
   | Partial_validation _ -> tzfail Cannot_apply_in_partial_validation
   | Construction {predecessor_hash; timestamp; block_header_data; _} ->
+  Misc.log_location ~__LOC__;
       let*? predecessor_round = Fitness.round_from_raw predecessor_fitness in
       Apply.begin_full_construction
         ctxt
@@ -300,6 +305,7 @@ let begin_application ctxt chain_id mode ~predecessor =
         ~timestamp
         block_header_data.contents
   | Partial_construction {predecessor_hash; _} ->
+  Misc.log_location ~__LOC__;
       Apply.begin_partial_construction
         ctxt
         chain_id

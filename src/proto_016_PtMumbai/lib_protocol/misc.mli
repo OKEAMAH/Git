@@ -49,3 +49,11 @@ val remove_prefix : prefix:string -> string -> string option
 
 (** [remove nb list] remove the first [nb] elements from the list [list]. *)
 val remove_elem_from_list : int -> 'a list -> 'a list
+
+type error += Debug_location of string
+
+val record_trace_debug : __LOC__:string -> 'a tzresult -> 'a tzresult
+
+val trace_debug : __LOC__:string -> 'a tzresult Lwt.t  -> 'a tzresult Lwt.t 
+
+val log_location : __LOC__:string -> unit
