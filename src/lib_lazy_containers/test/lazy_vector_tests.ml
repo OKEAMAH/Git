@@ -243,6 +243,32 @@ let check_overflow () =
          let _ = IntVector.concat v v in
          Lwt.return_unit))
 
+let shrink_works =
+  Test.make
+    ~name:"shrink works"
+    Gen.(pair (gen int) nat)
+    (fun (map, len) ->
+      let open Lwt.Syntax in
+      Lwt_main.run
+      @@ Lwt.catch
+           (fun () ->
+             let map2 = IntVector.shrink len map in
+             let+ check_values_in_shrink_map =
+               Lwt_list.for_all_p (fun i ->
+                   let+ v = IntVector.get i map2
+                   and+ v' = IntVector.get i map in
+                   v = v')
+               @@ List.init (IntVector.num_elements map2) Fun.id
+             in
+             let check_shrink_map_length =
+               max (IntVector.num_elements map - len) 0
+               = IntVector.num_elements map2
+             in
+             check_values_in_shrink_map && check_shrink_map_length)
+           (function
+             | Bounds -> Lwt.return (IntVector.num_elements map < len)
+             | _ -> Lwt.return false))
+
 let tests =
   [
     to_alcotest of_list_constructs_correctly;
@@ -252,6 +278,7 @@ let tests =
     to_alcotest drop_works;
     ("concat works lazily", `Quick, concat_works);
     ("check size overflow", `Quick, check_overflow);
+    to_alcotest shrink_works;
   ]
 
 let () = Alcotest.run "Lazy structs tests" [("Lazy_vector", tests)]

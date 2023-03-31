@@ -88,6 +88,8 @@ module type S = sig
 
   val grow : ?default:(unit -> 'a) -> key -> 'a t -> 'a t
 
+  val shrink : key -> 'a t -> 'a t
+
   val drop : 'a t -> 'a t
 
   val pop : 'a t -> ('a * 'a t) Lwt.t
@@ -250,6 +252,19 @@ module Make_no_enc (Key : KeyS) = struct
       let map, _ = append_opt (Option.map (fun f -> f ()) default) map in
       grow ?default Key.(pred delta) map
 
+  (* Same as `unsafe_drop`, doesn't check for bounds and must used in a context
+     where it has be done already. *)
+  let unsafe_drop_last map =
+    let values = Map.remove (Key.pred map.num_elements) map.values in
+    {map with num_elements = Key.pred map.num_elements; values}
+
+  let rec shrink delta map =
+    if map.num_elements < delta then raise Bounds
+    else if Key.(delta <= zero) then map
+    else
+      let map = unsafe_drop_last map in
+      shrink Key.(pred delta) map
+
   let to_list map =
     let open Lwt.Syntax in
     let rec unroll acc index =
@@ -332,6 +347,8 @@ module Mutable = struct
 
     val grow : ?default:(unit -> 'a) -> key -> 'a t -> unit
 
+    val shrink : key -> 'a t -> unit
+
     val append : 'a -> 'a t -> key
 
     val cons : 'a -> 'a t -> unit
@@ -368,6 +385,8 @@ module Mutable = struct
 
     let grow ?default delta map_ref =
       map_ref := Vector.grow ?default delta !map_ref
+
+    let shrink delta map_ref = map_ref := Vector.shrink delta !map_ref
 
     let append elt map_ref =
       let new_map, i = Vector.append elt !map_ref in

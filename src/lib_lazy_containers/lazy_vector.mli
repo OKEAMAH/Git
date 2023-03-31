@@ -155,6 +155,14 @@ module type S = sig
       large. *)
   val grow : ?default:(unit -> 'a) -> key -> 'a t -> 'a t
 
+  (** [shrink delta vector] creates a new lazy vector that has [delta] less
+      items than [vector]. It retains all values that have previously been
+      created and removes the last [delta] one.
+
+      {b Note:} This function may be dangerous to use in a tick, if
+      [delta] is unbounded. *)
+  val shrink : key -> 'a t -> 'a t
+
   (** [drop vector] removes the head from [vector] without returning it. It
       doesn't read the value before removing it.
 
@@ -251,6 +259,8 @@ module Mutable : sig
     val set : key -> 'a -> 'a t -> unit
 
     val grow : ?default:(unit -> 'a) -> key -> 'a t -> unit
+
+    val shrink : key -> 'a t -> unit
 
     val append : 'a -> 'a t -> key
 
