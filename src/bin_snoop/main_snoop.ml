@@ -586,14 +586,7 @@ let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
       Format.fprintf ppf "%a@." Codegen.pp_module result)
 
 let solution_print_cmd out_fn solution_fns =
-  let oc = Option.map open_out out_fn in
-  let ppf =
-    Option.fold
-      ~none:Format.std_formatter
-      ~some:Format.formatter_of_out_channel
-      oc
-  in
-  Fun.protect ~finally:(fun () -> Option.iter close_out oc) @@ fun () ->
+  stdout_or_file out_fn @@ fun ppf ->
   List.iter
     (fun solution_fn ->
       let solution = Codegen.load_solution solution_fn in
