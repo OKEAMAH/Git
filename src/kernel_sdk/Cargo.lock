@@ -448,6 +448,7 @@ name = "installer_kernel"
 version = "0.1.0"
 dependencies = [
  "blst",
+ "installer_config",
  "tezos_smart_rollup_core",
  "tezos_smart_rollup_encoding",
  "tezos_smart_rollup_entrypoint",
@@ -1250,7 +1251,10 @@ dependencies = [
  "blst",
  "clap",
  "hex",
+ "installer_config",
+ "tezos_data_encoding",
  "tezos_smart_rollup_encoding",
+ "tezos_smart_rollup_host",
  "thiserror",
  "wasm-gen",
 ]

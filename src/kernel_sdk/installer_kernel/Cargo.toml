@@ -34,3 +34,7 @@ default-features = false
 [dependencies.tezos_smart_rollup_entrypoint]
 path = "../tezos_smart_rollup_entrypoint"
 default-features = false
+
+[dependencies.installer_config]
+path = "../installer_config"
+default-features = false

@@ -10,8 +10,20 @@ mod preimages;
 use clap::Parser;
 use commands::Cli;
 use commands::Commands;
+use installer_config::instr::ConfigInstruction;
+use installer_config::instr::ConfigProgram;
+use installer_config::instr::RawPath;
 use std::path::Path;
+use tezos_smart_rollup_host::path::Path as OtherPath;
+// use tezos_smart_rollup_host::path::Path;
+use tezos_smart_rollup_host::path::RefPath;
 use thiserror::Error;
+
+// Path that we write the kernel to, before upgrading.
+const PREPARE_KERNEL_PATH: RefPath = RefPath::assert_from(b"/installer/kernel/boot.wasm");
+
+// Path of currently running kernel.
+const KERNEL_BOOT_PATH: RefPath = RefPath::assert_from(b"/kernel/boot.wasm");
 
 fn main() -> Result<(), ClientError> {
     match Cli::parse().command {
@@ -25,7 +37,17 @@ fn main() -> Result<(), ClientError> {
             let preimages_dir = Path::new(&preimages_dir);
 
             let root_hash = preimages::content_to_preimages(upgrade_to, preimages_dir)?;
-            let kernel = installer::with_reveal_hash(&root_hash);
+
+            let kernel = installer::with_config_program(ConfigProgram(vec![
+                ConfigInstruction::reveal_instr(
+                    root_hash.as_ref(),
+                    RawPath(PREPARE_KERNEL_PATH.as_bytes()),
+                ),
+                ConfigInstruction::move_instr(
+                    RawPath(PREPARE_KERNEL_PATH.as_bytes()),
+                    RawPath(KERNEL_BOOT_PATH.as_bytes()),
+                ),
+            ]));
 
             output::save_kernel(output, &kernel).map_err(ClientError::SaveInstaller)?;
         }

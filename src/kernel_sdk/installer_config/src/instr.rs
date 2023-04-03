@@ -80,6 +80,22 @@ pub enum ConfigInstruction<'a> {
     Delete(DeleteInstruction<'a>),
 }
 
+impl<'a> ConfigInstruction<'a> {
+    pub fn reveal_instr(
+        hash: &'a [u8; PREIMAGE_HASH_SIZE],
+        to: RawPath<'a>,
+    ) -> ConfigInstruction<'a> {
+        ConfigInstruction::Reveal(RevealInstruction {
+            hash: ValueSource::Value(RawBytes(hash)),
+            to,
+        })
+    }
+
+    pub fn move_instr(from: RawPath<'a>, to: RawPath<'a>) -> ConfigInstruction<'a> {
+        ConfigInstruction::Move(MoveInstruction { from, to })
+    }
+}
+
 #[cfg(feature = "alloc")]
 mod encoding {
     // Custom encodings of reference types
@@ -118,7 +134,7 @@ mod encoding {
     }
 
     #[derive(Debug)]
-    pub struct ConfigProgram<'a>(Vec<ConfigInstruction<'a>>);
+    pub struct ConfigProgram<'a>(pub Vec<ConfigInstruction<'a>>);
 
     // Encode all commands with appended number of commands at the end.
     // It makes possible for the installer_kernel to

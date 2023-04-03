@@ -7,11 +7,7 @@ name = "tezos_smart_rollup_installer"
 version = "0.1.0"
 edition = "2021"
 authors = ["TriliTech <contact@trili.tech>"]
-include = [
-  "build.rs",
-  "src/*",
-  "../installer_kernel/src/*"
-]
+include = ["build.rs", "src/*", "../installer_kernel/src/*"]
 
 [[bin]]
 name = "smart-rollup-installer"
@@ -36,3 +32,12 @@ version = "1.0"
 
 [dependencies.wasm-gen]
 version = "0.1.4"
+
+[dependencies.installer_config]
+path = "../installer_config"
+
+[dependencies.tezos_data_encoding]
+version = "0.4"
+
+[dependencies.tezos_smart_rollup_host]
+path = "../tezos_smart_rollup_host"

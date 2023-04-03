@@ -2,3 +2,4 @@
 
 pub mod instr;
 pub mod nom;
+pub mod size;
