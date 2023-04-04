@@ -61,6 +61,10 @@ Smart Rollups
   The provided ``commitment`` is omitted by the protocol and unchecked with the
   found one. (MR :gl:`!7316`)
 
+- PVM evaluation time reduced by removing a quadratic behaviour. (MR :gl:`!6948`)
+
+- Bug leading to an inconsistent execution fixed. (MR :gl:`!8083`)
+
 Zero Knowledge Rollups (ongoing)
 --------------------------------
 
@@ -175,6 +179,13 @@ Internal
 
 - Michelson: ``IConst`` constructor renamed into ``IPush``. (MR :gl:`!7954`)
 
+- Michelson: hand-edited cost functions moved from michelson_v1_gas_costs_generated.ml to
+  michelson_v1_gas_costs.ml. (MR :gl:`!7530`)
+
+- Michelson: annotations consistently checked at the beginning of ``parse_ty``. (MR :gl:`!8104`)
+
+- Michelson: simplify ``ty_traverse``. (MR :gl:`!8145`)
+
 - Refactor and simplify consensus operation validation. (MR :gl:`!7720`)
 
 - Better documentation for the ``Token`` module (MR :gl:`!7609`)
@@ -189,3 +200,9 @@ Internal
 
 - Validate: add preendorsement power and locked round checks during
   block finalization in ``Partial_validation`` mode. (MR :gl:`!7949`)
+
+- More precise gas model reduces cost of checking ``ed25519`` and ``secp256k1`` signatures. (MR :gl:`!7591`)
+
+- Cleanups and optimizations around Delegates, Stake, Frozen_deposits. (MR :gl:`!8023`)
+
+- ``fold_right`` on lists removed from environment. (MR :gl:`!8143`)
