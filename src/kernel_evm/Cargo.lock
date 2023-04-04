@@ -66,6 +66,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "benchmark-kernel"
+version = "0.1.0"
+dependencies = [
+ "evm-execution",
+ "hex",
+ "nom",
+ "primitive-types",
+ "rlp",
+ "tezos_data_encoding",
+ "tezos_smart_rollup_core",
+ "tezos_smart_rollup_debug",
+ "tezos_smart_rollup_encoding",
+ "tezos_smart_rollup_entrypoint",
+ "tezos_smart_rollup_host",
+ "thiserror",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

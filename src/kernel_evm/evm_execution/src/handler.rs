@@ -1148,7 +1148,6 @@ mod test {
         }
     }
 
-
     #[test]
     fn contract_call_produces_correct_output() {
         let mut mock_runtime = MockHost::default();
