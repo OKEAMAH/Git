@@ -1,0 +1,33 @@
+instructions:
+  - copy:
+      from: /from/path
+      to: /to/path/hello
+
+  - move:
+      from: /move/path/from
+      to: /move/path/to
+
+  - delete: /delete/path
+
+  - set: /path/to/set
+    value:
+      literal: 50
+      type: i32_le
+
+  - set: /path/to/set2
+    value:
+      literal: 120
+      type: u32_be
+
+  - set: /path/to/set2
+    value:
+      literal: BLpk434sfasdlkfjsad12348
+      type: b58
+
+  - set: /path/to/set/r3
+    value:
+      literal: 4f3423facd
+      type: hex
+
+  - reveal: aea02c3232443
+    to: /path/reveal/to

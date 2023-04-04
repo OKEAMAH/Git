@@ -4,13 +4,13 @@
 
 use nom::combinator::{complete, map, map_res};
 use nom::multi::length_data;
-use nom::number::complete::{u32, u8};
+use nom::number::complete::u32;
 use nom::sequence::tuple;
 use nom::{error::ErrorKind, number::Endianness};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
-use crate::instr::{
+use super::instr::{
     ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RawBytes,
     RawPath, RevealInstruction, SetInstruction,
 };
@@ -31,10 +31,6 @@ pub trait NomReader<'a>: Sized {
 
 pub fn size(input: NomInput) -> NomResult<u32> {
     u32(Endianness::Big)(input)
-}
-
-pub fn short_size(input: NomInput) -> NomResult<u8> {
-    u8(input)
 }
 
 // Copy-pasted from tezos_data_encoding and returning error tweaked

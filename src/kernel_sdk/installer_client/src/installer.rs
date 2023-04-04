@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use installer_config::instr::ConfigProgram;
+use installer_config::binary::ConfigProgram;
 use tezos_data_encoding::enc::BinWriter;
 use wasm_gen::write_custom_section;
 

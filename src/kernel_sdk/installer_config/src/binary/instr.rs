@@ -153,16 +153,6 @@ mod encoding {
     }
 }
 
-// If we want to be able to parse config programs from text files,
-// we have to parametrise value dependent types with V type of value
-// and then define following type as an instance of V.
-// pub enum ReadableValue {
-//     B58(String),
-//     Hex(String),
-// }
-
-// pub struct TextualProgramm<'a>(Vec<ConfigInstruction<'a, ReadableValue>>);
-
 #[cfg(test)]
 mod test {
     use std::fmt::Debug;
@@ -170,7 +160,7 @@ mod test {
     #[cfg(feature = "alloc")]
     use tezos_data_encoding::enc::BinWriter;
 
-    use crate::nom::NomReader;
+    use super::super::nom::NomReader;
 
     // I have to pass `out` here because for some reason
     // borrow checker complaines about this line:
@@ -192,7 +182,7 @@ mod test {
     #[cfg(feature = "alloc")]
     #[test]
     fn roundtrip_encdec() {
-        use crate::instr::{
+        use super::{
             ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction,
             RawBytes, RawPath, RevealInstruction, SetInstruction,
         };

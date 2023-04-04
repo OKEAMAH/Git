@@ -5,7 +5,7 @@
 use tezos_smart_rollup_core::MAX_OUTPUT_SIZE;
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
-use crate::instr::{
+use super::instr::{
     ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RawBytes,
     RawPath, RevealInstruction, SetInstruction,
 };

@@ -1,4 +1,4 @@
-use installer_config::instr::ConfigInstruction;
+use installer_config::binary::ConfigInstruction;
 use tezos_smart_rollup_host::{path::RefPath, runtime::Runtime};
 
 use crate::preimage::reveal_root_hash;

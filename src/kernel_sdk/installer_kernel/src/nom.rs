@@ -25,7 +25,7 @@ pub fn decode_size(host: &impl Runtime, offset: usize) -> Result<u32, &'static s
     host.store_read_slice(&KERNEL_BOOT_PATH, offset, &mut size_buffer)
         .map_err(|_| "Couldn't read from kernel boot path")?;
 
-    installer_config::nom::size(&size_buffer)
+    installer_config::binary::size(&size_buffer)
         .map_err(|_| "Couldn't decode size")
         .map(completed)
 }

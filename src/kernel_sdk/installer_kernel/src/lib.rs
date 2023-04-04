@@ -22,9 +22,8 @@ mod nom;
 mod preimage;
 
 use core::panic::PanicInfo;
-use installer_config::instr::ConfigInstruction;
-use installer_config::nom::NomReader;
-use installer_config::size::EncodingSize;
+use installer_config::binary::NomReader;
+use installer_config::binary::{ConfigInstruction, EncodingSize};
 use nom::{completed, decode_size, read_config_program_size};
 use tezos_smart_rollup_host::path::RefPath;
 use tezos_smart_rollup_host::runtime::Runtime;

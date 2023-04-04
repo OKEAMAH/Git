@@ -1,0 +1,14 @@
+instructions:
+- copy:
+    from: /hello/path
+    to: /to/path
+- move:
+    from: /hello/path
+    to: /to/path
+- delete: /path
+- set: /path
+  value:
+    literal: 1000
+    type: u32_le
+- reveal: 109aefeh
+  to: /path

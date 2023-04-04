@@ -31,8 +31,22 @@ optional = true
 version = "0.4"
 optional = true
 
+[dependencies.serde]
+version = "1.0"
+optional = true
+features = ["derive"]
+
+[dependencies.serde_yaml]
+version = "0.9"
+optional = true
+
 [features]
 default = ["std"]
 std = ["alloc"]
-alloc = ["tezos_data_encoding", "tezos_data_encoding_derive"]
+alloc = [
+    "tezos_data_encoding",
+    "tezos_data_encoding_derive",
+    "serde",
+    "serde_yaml",
+]
 testing = []
