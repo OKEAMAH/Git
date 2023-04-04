@@ -136,9 +136,7 @@ fn validate_transaction<Host: Runtime>(
     // For now, we consider there's no gas to pay
     let gas = Wei::zero();
 
-    if !tx.is_valid() {
-        Err(Error::Transfer(TransferError::InvalidSignature))
-    } else if sender_nonce != nonce {
+    if sender_nonce != nonce {
         Err(Error::Transfer(TransferError::InvalidNonce))
     } else if sender_balance < gas {
         Err(Error::Transfer(TransferError::NotEnoughBalance))
