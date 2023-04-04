@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 TriliTech <contact@trili.tech>
+//
+// SPDX-License-Identifier: MIT
+
 #[cfg(feature = "alloc")]
 pub use encoding::*;
 #[cfg(feature = "alloc")]

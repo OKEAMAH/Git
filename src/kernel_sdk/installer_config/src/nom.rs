@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 TriliTech <contact@trili.tech>
+//
+// SPDX-License-Identifier: MIT
+
 use nom::combinator::{complete, map, map_res};
 use nom::multi::length_data;
 use nom::number::complete::{u32, u8};

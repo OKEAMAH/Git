@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 TriliTech <contact@trili.tech>
+//
+// SPDX-License-Identifier: MIT
+
 use tezos_smart_rollup_core::MAX_OUTPUT_SIZE;
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
@@ -11,6 +15,10 @@ const fn max(a: usize, b: usize) -> usize {
     [a, b][(a < b) as usize]
 }
 
+/// This trait is auxiliary one,
+/// which is needed to estimate maximum possible size of config instruction,
+/// in order to allocate buffer of statically known size,
+/// which would fit one instruction.
 pub trait EncodingSize {
     const MAX_SIZE: usize;
 }
