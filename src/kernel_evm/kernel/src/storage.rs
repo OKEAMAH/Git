@@ -377,6 +377,129 @@ fn chunked_transaction_len_path(
     concat(chunked_transaction_path, &CHUNKED_TRANSACTION_LEN).map_err(Error::from)
 }
 
+fn transaction_chunk_path(
+    chunked_transaction_path: &OwnedPath,
+    i: u16,
+) -> Result<OwnedPath, Error> {
+    let raw_i_path: Vec<u8> = format!("/{}", i).into();
+    let i_path = OwnedPath::try_from(raw_i_path)?;
+    concat(chunked_transaction_path, &i_path).map_err(Error::from)
+}
+
+fn is_transaction_complete<Host: Runtime>(
+    host: &mut Host,
+    chunked_transaction_path: &OwnedPath,
+    len: u16,
+) -> Result<bool, Error> {
+    let n_subkeys = host.store_count_subkeys(chunked_transaction_path)? as u16;
+    Ok(n_subkeys >= len)
+}
+
+fn chunked_transaction_len_by_path<Host: Runtime>(
+    host: &mut Host,
+    chunked_transaction_path: &OwnedPath,
+) -> Result<u16, Error> {
+    let chunked_transaction_len_path =
+        chunked_transaction_len_path(chunked_transaction_path)?;
+    let mut buffer = [0u8; 2];
+    store_read_slice(host, &chunked_transaction_len_path, &mut buffer, 2)?;
+    Ok(u16::from_le_bytes(buffer))
+}
+
+pub fn chunked_transaction_len<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+) -> Result<u16, Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+    chunked_transaction_len_by_path(host, &chunked_transaction_path)
+}
+
+fn store_transaction_chunk_data<Host: Runtime>(
+    host: &mut Host,
+    transaction_chunk_path: &OwnedPath,
+    data: Vec<u8>,
+) -> Result<(), Error> {
+    match host.store_has(transaction_chunk_path)? {
+        Some(ValueType::Value | ValueType::ValueWithSubtree) => Ok(()),
+        _ => {
+            if data.len() > 2048 {
+                // It comes from an input so it's maximum 4096 bytes (with the message header).
+                let (data1, data2) = data.split_at(2048);
+                host.store_write(transaction_chunk_path, data1, 0)?;
+                host.store_write(transaction_chunk_path, data2, 2048)
+            } else {
+                host.store_write(transaction_chunk_path, &data, 0)
+            }?;
+            Ok(())
+        }
+    }
+}
+
+fn read_transaction_chunk_data<Host: Runtime>(
+    host: &mut Host,
+    transaction_chunk_path: &OwnedPath,
+) -> Result<Vec<u8>, Error> {
+    let data_size = host.store_value_size(transaction_chunk_path)?;
+
+    if data_size > 2048 {
+        let mut data1 = host.store_read(transaction_chunk_path, 0, 2048)?;
+        let mut data2 = host.store_read(transaction_chunk_path, 2048, 2048)?;
+        let _ = &mut data1.append(&mut data2);
+        Ok(data1)
+    } else {
+        Ok(host.store_read(transaction_chunk_path, 0, 2048)?)
+    }
+}
+
+fn get_full_transaction<Host: Runtime>(
+    host: &mut Host,
+    chunked_transaction_path: &OwnedPath,
+    len: u16,
+    missing_data: &[u8],
+) -> Result<Vec<u8>, Error> {
+    let mut buffer = Vec::new();
+    for i in 0..len {
+        let transaction_chunk_path = transaction_chunk_path(chunked_transaction_path, i)?;
+        // If the transaction is complete and a chunk doesn't exist, it means that it is
+        // the last missing chunk, that was not tored in the storage.
+        match host.store_has(&transaction_chunk_path)? {
+            None => buffer.extend_from_slice(missing_data),
+            Some(_) => {
+                let mut data =
+                    read_transaction_chunk_data(host, &transaction_chunk_path)?;
+                let _ = &mut buffer.append(&mut data);
+            }
+        }
+    }
+    Ok(buffer)
+}
+
+/// Store the transaction chunk in the storage. Returns the full transaction
+/// if the last chunk to store is the last missing chunk.
+pub fn store_transaction_chunk<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+    i: u16,
+    data: Vec<u8>,
+) -> Result<Option<Vec<u8>>, Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+    let len = chunked_transaction_len_by_path(host, &chunked_transaction_path)?;
+
+    if is_transaction_complete(host, &chunked_transaction_path, len)? {
+        let data = get_full_transaction(host, &chunked_transaction_path, len, &data)?;
+        host.store_delete(&chunked_transaction_path)?;
+        Ok(Some(data))
+    } else {
+        let transaction_chunk_path =
+            transaction_chunk_path(&chunked_transaction_path, i)?;
+        store_transaction_chunk_data(host, &transaction_chunk_path, data)?;
+
+        Ok(None)
+    }
+
+    // TODO: there is yet nothing to verify the numbr of chunks is minimal.
+}
+
 pub fn create_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
