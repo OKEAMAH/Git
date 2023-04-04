@@ -236,11 +236,7 @@ and 'kind protocol_data = {
   signature : Signature.t option;
 }
 
-and _ contents_list =
-  | Single : 'kind contents -> 'kind contents_list
-  | Cons :
-      'kind Kind.manager contents * 'rest Kind.manager contents_list
-      -> ('kind * 'rest) Kind.manager contents_list
+and _ contents_list = Single : 'kind contents -> 'kind contents_list
 
 and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
@@ -298,8 +294,16 @@ and _ contents =
       -> Kind.drain_delegate contents
   | Failing_noop : string -> Kind.failing_noop contents
   | Manager_operation :
-      'kind manager_operation_contents
+      'kind manager_operation_contents_list
       -> 'kind Kind.manager contents
+
+and _ manager_operation_contents_list =
+  | MSingle :
+      'kind manager_operation_contents
+      -> 'kind manager_operation_contents_list
+  | MCons :
+      'kind manager_operation_contents * 'rest manager_operation_contents_list
+      -> ('kind * 'rest) manager_operation_contents_list
 
 and 'kind manager_operation_contents = {
   source : Signature.public_key_hash;
@@ -460,9 +464,16 @@ type packed_operation = {
 let pack ({shell; protocol_data} : _ operation) : packed_operation =
   {shell; protocol_data = Operation_data protocol_data}
 
-let rec contents_list_to_list : type a. a contents_list -> _ = function
+let rec manager_operation_contents_list_to_list :
+    type a. a manager_operation_contents_list -> _ = function
+  | MSingle _ as o -> [Contents (Manager_operation o)]
+  | MCons (o, os) ->
+      Contents (Manager_operation (MSingle o))
+      :: manager_operation_contents_list_to_list os
+
+let contents_list_to_list : type a. a contents_list -> _ = function
+  | Single (Manager_operation os) -> manager_operation_contents_list_to_list os
   | Single o -> [Contents o]
-  | Cons (o, os) -> Contents o :: contents_list_to_list os
 
 let to_list = function Contents_list l -> contents_list_to_list l
 
@@ -474,11 +485,13 @@ let of_list_internal contents =
     | [] -> Ok acc
     | Contents o :: os -> (
         match (o, acc) with
-        | ( Manager_operation _,
-            Contents_list (Single (Manager_operation _) as rest) ) ->
-            (of_list_internal [@tailcall]) (Contents_list (Cons (o, rest))) os
-        | Manager_operation _, Contents_list (Cons _ as rest) ->
-            (of_list_internal [@tailcall]) (Contents_list (Cons (o, rest))) os
+        | ( Manager_operation (MSingle o),
+            Contents_list (Single (Manager_operation rest)) ) ->
+            (of_list_internal [@tailcall])
+              (Contents_list (Single (Manager_operation (MCons (o, rest)))))
+              os
+        | Manager_operation (MCons _), _ ->
+            Error "Unexpected MCons in of_list_internal"
         | _ ->
             Error
               "Operation list of length > 1 should only contain manager \
@@ -1327,14 +1340,12 @@ module Encoding = struct
       (req "gas_limit" (check_size 10 Gas_limit_repr.Arith.n_integral_encoding))
       (req "storage_limit" (check_size 10 n))
 
-  let extract : type kind. kind Kind.manager contents -> _ = function
-    | Manager_operation
-        {source; fee; counter; gas_limit; storage_limit; operation = _} ->
+  let extract : type kind. kind manager_operation_contents -> _ = function
+    | {source; fee; counter; gas_limit; storage_limit; operation = _} ->
         (source, fee, counter, gas_limit, storage_limit)
 
   let rebuild (source, fee, counter, gas_limit, storage_limit) operation =
-    Manager_operation
-      {source; fee; counter; gas_limit; storage_limit; operation}
+    {source; fee; counter; gas_limit; storage_limit; operation}
 
   let make_manager_case tag (type kind)
       (Manager_operations.MCase mcase : kind Manager_operations.case) =
@@ -1345,16 +1356,20 @@ module Encoding = struct
         encoding = merge_objs manager_encoding mcase.encoding;
         select =
           (function
-          | Contents (Manager_operation ({operation; _} as op)) -> (
+          | Contents (Manager_operation (MSingle ({operation; _} as op))) -> (
               match mcase.select (Manager operation) with
               | None -> None
-              | Some operation -> Some (Manager_operation {op with operation}))
+              | Some operation ->
+                  Some (Manager_operation (MSingle {op with operation})))
           | _ -> None);
         proj =
           (function
-          | Manager_operation {operation; _} as op ->
-              (extract op, mcase.proj operation));
-        inj = (fun (op, contents) -> rebuild op (mcase.inj contents));
+          | Manager_operation (MSingle ({operation; _} as op)) ->
+              (extract op, mcase.proj operation)
+          | Manager_operation (MCons _) -> assert false);
+        inj =
+          (fun (op, contents) ->
+            Manager_operation (MSingle (rebuild op (mcase.inj contents))));
       }
 
   let reveal_case = make_manager_case 107 Manager_operations.reveal_case
@@ -1546,11 +1561,13 @@ module Encoding = struct
       | Signature_prefix _ :: _ -> Error "Signature prefix must appear last"
       | Actual_contents (Contents o) :: os -> (
           match (o, acc) with
-          | ( Manager_operation _,
-              Contents_list (Single (Manager_operation _) as rest) ) ->
-              (loop [@tailcall]) (Contents_list (Cons (o, rest))) os
-          | Manager_operation _, Contents_list (Cons _ as rest) ->
-              (loop [@tailcall]) (Contents_list (Cons (o, rest))) os
+          | ( Manager_operation (MSingle o),
+              Contents_list (Single (Manager_operation rest)) ) ->
+              (loop [@tailcall])
+                (Contents_list (Single (Manager_operation (MCons (o, rest)))))
+                os
+          | Manager_operation (MCons _), _ ->
+              Error "Unexpected MCons in contents_and_signature_prefix"
           | _ ->
               Error
                 "Operation list of length > 1 should only contain manager \
@@ -1717,7 +1734,6 @@ let acceptable_pass (op : packed_operation) =
   | Single (Activate_account _) -> Some anonymous_pass
   | Single (Drain_delegate _) -> Some anonymous_pass
   | Single (Manager_operation _) -> Some manager_pass
-  | Cons (Manager_operation _, _ops) -> Some manager_pass
 
 (** [compare_by_passes] orders two operations in the reverse order of
    their acceptable passes. *)
@@ -1803,7 +1819,6 @@ let check_signature (type kind) key chain_id (op : kind operation) =
             | Double_preendorsement_evidence _ | Double_baking_evidence _
             | Activate_account _ | Drain_delegate _ | Manager_operation _ ) ->
             Generic_operation
-        | Cons (Manager_operation _, _ops) -> Generic_operation
       in
       check ~watermark signature
 
@@ -1873,6 +1888,25 @@ let equal_manager_operation_kind :
   | Zk_rollup_update _, Zk_rollup_update _ -> Some Eq
   | Zk_rollup_update _, _ -> None
 
+let rec equal_manager_operation_contents_kind_list :
+    type a b.
+    a manager_operation_contents_list ->
+    b manager_operation_contents_list ->
+    (a, b) eq option =
+ fun op1 op2 ->
+  match (op1, op2) with
+  | MSingle op1, MSingle op2 ->
+      equal_manager_operation_kind op1.operation op2.operation
+  | MSingle _, MCons _ -> None
+  | MCons _, MSingle _ -> None
+  | MCons (op1, ops1), MCons (op2, ops2) -> (
+      match equal_manager_operation_kind op1.operation op2.operation with
+      | None -> None
+      | Some Eq -> (
+          match equal_manager_operation_contents_kind_list ops1 ops2 with
+          | None -> None
+          | Some Eq -> Some Eq))
+
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
  fun op1 op2 ->
@@ -1904,26 +1938,16 @@ let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
   | Drain_delegate _, _ -> None
   | Failing_noop _, Failing_noop _ -> Some Eq
   | Failing_noop _, _ -> None
-  | Manager_operation op1, Manager_operation op2 -> (
-      match equal_manager_operation_kind op1.operation op2.operation with
+  | Manager_operation ops1, Manager_operation ops2 -> (
+      match equal_manager_operation_contents_kind_list ops1 ops2 with
       | None -> None
       | Some Eq -> Some Eq)
   | Manager_operation _, _ -> None
 
-let rec equal_contents_kind_list :
+let equal_contents_kind_list :
     type a b. a contents_list -> b contents_list -> (a, b) eq option =
  fun op1 op2 ->
-  match (op1, op2) with
-  | Single op1, Single op2 -> equal_contents_kind op1 op2
-  | Single _, Cons _ -> None
-  | Cons _, Single _ -> None
-  | Cons (op1, ops1), Cons (op2, ops2) -> (
-      match equal_contents_kind op1 op2 with
-      | None -> None
-      | Some Eq -> (
-          match equal_contents_kind_list ops1 ops2 with
-          | None -> None
-          | Some Eq -> Some Eq))
+  match (op1, op2) with Single op1, Single op2 -> equal_contents_kind op1 op2
 
 let equal : type a b. a operation -> b operation -> (a, b) eq option =
  fun op1 op2 ->
@@ -2120,22 +2144,22 @@ let cumulate_fee_and_gas_of_manager :
     type kind.
     kind Kind.manager contents_list ->
     Tez_repr.t * Gas_limit_repr.Arith.integral =
- fun op ->
+ fun (Single (Manager_operation op)) ->
   let add_without_error acc y =
     match Tez_repr.(acc +? y) with
     | Ok v -> v
     | Error _ -> (* This cannot happen *) acc
   in
   let rec loop :
-      type kind. 'a -> 'b -> kind Kind.manager contents_list -> 'a * 'b =
+      type kind. 'a -> 'b -> kind manager_operation_contents_list -> 'a * 'b =
    fun fees_acc gas_limit_acc -> function
-    | Single (Manager_operation {fee; gas_limit; _}) ->
+    | MSingle {fee; gas_limit; _} ->
         let total_fees = add_without_error fees_acc fee in
         let total_gas_limit =
           Gas_limit_repr.Arith.add gas_limit_acc gas_limit
         in
         (total_fees, total_gas_limit)
-    | Cons (Manager_operation {fee; gas_limit; _}, manops) ->
+    | MCons ({fee; gas_limit; _}, manops) ->
         let fees_acc = add_without_error fees_acc fee in
         let gas_limit_acc = Gas_limit_repr.Arith.add gas_limit gas_limit_acc in
         loop fees_acc gas_limit_acc manops
@@ -2157,8 +2181,8 @@ let weight_manager :
   let fee, glimit = cumulate_fee_and_gas_of_manager op in
   let source =
     match op with
-    | Cons (Manager_operation {source; _}, _) -> source
-    | Single (Manager_operation {source; _}) -> source
+    | Single (Manager_operation (MCons ({source; _}, _))) -> source
+    | Single (Manager_operation (MSingle {source; _})) -> source
   in
   let fee_f = Q.of_int64 (Tez_repr.to_mutez fee) in
   if Gas_limit_repr.Arith.(glimit = Gas_limit_repr.Arith.zero) then
@@ -2225,9 +2249,6 @@ let weight_of : packed_operation -> operation_weight =
   | Single (Drain_delegate {delegate; _}) ->
       W (Anonymous, Weight_drain_delegate delegate)
   | Single (Manager_operation _) as ops ->
-      let manweight, src = weight_manager ops in
-      W (Manager, Weight_manager (manweight, src))
-  | Cons (Manager_operation _, _) as ops ->
       let manweight, src = weight_manager ops in
       W (Manager, Weight_manager (manweight, src))
 

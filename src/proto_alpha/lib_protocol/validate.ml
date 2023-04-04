@@ -1899,17 +1899,18 @@ module Manager = struct
         kind Kind.manager contents_list ->
         unit tzresult =
      fun expected_source previous_counter -> function
-      | Single (Manager_operation {operation = Reveal _key; _}) ->
+      | Single (Manager_operation (MSingle {operation = Reveal _key; _})) ->
           error Incorrect_reveal_position
-      | Cons (Manager_operation {operation = Reveal _key; _}, _res) ->
+      | Single (Manager_operation (MCons ({operation = Reveal _key; _}, _res)))
+        ->
           error Incorrect_reveal_position
-      | Single (Manager_operation {source; counter; _}) ->
+      | Single (Manager_operation (MSingle {source; counter; _})) ->
           check_source_and_counter
             ~expected_source
             ~source
             ~previous_counter
             ~counter
-      | Cons (Manager_operation {source; counter; _}, rest) ->
+      | Single (Manager_operation (MCons ({source; counter; _}, rest))) ->
           let open Result_syntax in
           let* () =
             check_source_and_counter
@@ -1918,7 +1919,10 @@ module Manager = struct
               ~previous_counter
               ~counter
           in
-          check_batch_tail_sanity source counter rest
+          check_batch_tail_sanity
+            source
+            counter
+            (Single (Manager_operation rest))
     in
     let check_batch :
         type kind.
@@ -1926,19 +1930,26 @@ module Manager = struct
         (public_key_hash * public_key option * Manager_counter.t) tzresult =
      fun contents_list ->
       match contents_list with
-      | Single (Manager_operation {source; operation = Reveal key; counter; _})
-        ->
+      | Single
+          (Manager_operation
+            (MSingle {source; operation = Reveal key; counter; _})) ->
           ok (source, Some key, counter)
-      | Single (Manager_operation {source; counter; _}) ->
+      | Single (Manager_operation (MSingle {source; counter; _})) ->
           ok (source, None, counter)
-      | Cons
-          (Manager_operation {source; operation = Reveal key; counter; _}, rest)
-        ->
-          check_batch_tail_sanity source counter rest >>? fun () ->
-          ok (source, Some key, counter)
-      | Cons (Manager_operation {source; counter; _}, rest) ->
-          check_batch_tail_sanity source counter rest >>? fun () ->
-          ok (source, None, counter)
+      | Single
+          (Manager_operation
+            (MCons ({source; operation = Reveal key; counter; _}, rest))) ->
+          check_batch_tail_sanity
+            source
+            counter
+            (Single (Manager_operation rest))
+          >>? fun () -> ok (source, Some key, counter)
+      | Single (Manager_operation (MCons ({source; counter; _}, rest))) ->
+          check_batch_tail_sanity
+            source
+            counter
+            (Single (Manager_operation rest))
+          >>? fun () -> ok (source, None, counter)
     in
     let open Lwt_result_syntax in
     let*? source, revealed_key, first_counter = check_batch contents_list in
@@ -2028,11 +2039,10 @@ module Manager = struct
         record_trace Gas.Gas_limit_too_high
 
   let check_contents (type kind) vi batch_state
-      (contents : kind Kind.manager contents) ~consume_gas_for_sig_check
+      (contents : kind manager_operation_contents) ~consume_gas_for_sig_check
       remaining_block_gas =
     let open Lwt_result_syntax in
-    let (Manager_operation
-          {source; fee; counter = _; operation; gas_limit; storage_limit}) =
+    let {source; fee; counter = _; operation; gas_limit; storage_limit} =
       contents
     in
     let*? () = check_gas_limit vi ~gas_limit in
@@ -2150,7 +2160,7 @@ module Manager = struct
    fun vi batch_state contents_list ~consume_gas_for_sig_check remaining_gas ->
     let open Lwt_result_syntax in
     match contents_list with
-    | Single contents ->
+    | Single (Manager_operation (MSingle contents)) ->
         let* batch_state =
           check_contents
             vi
@@ -2160,7 +2170,7 @@ module Manager = struct
             remaining_gas
         in
         return batch_state.total_gas_used
-    | Cons (contents, tail) ->
+    | Single (Manager_operation (MCons (contents, tail))) ->
         let* batch_state =
           check_contents
             vi
@@ -2172,7 +2182,7 @@ module Manager = struct
         check_contents_list
           vi
           batch_state
-          tail
+          (Single (Manager_operation tail))
           ~consume_gas_for_sig_check:None
           remaining_gas
 
@@ -2207,8 +2217,8 @@ module Manager = struct
       (operation : kind Kind.manager operation) =
     let source =
       match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
+      | Single (Manager_operation (MSingle {source; _}))
+      | Single (Manager_operation (MCons ({source; _}, _))) ->
           source
     in
     (* One-operation-per-manager-per-block restriction (1M) *)
@@ -2225,8 +2235,8 @@ module Manager = struct
       (operation : kind Kind.manager operation) =
     let source =
       match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
+      | Single (Manager_operation (MSingle {source; _}))
+      | Single (Manager_operation (MCons ({source; _}, _))) ->
           source
     in
     function
@@ -2237,8 +2247,8 @@ module Manager = struct
       (operation : kind Kind.manager operation) =
     let source =
       match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
+      | Single (Manager_operation (MSingle {source; _}))
+      | Single (Manager_operation (MCons ({source; _}, _))) ->
           source
     in
     let managers_seen =
@@ -2272,8 +2282,8 @@ module Manager = struct
       (operation : kind Kind.manager operation) =
     let source =
       match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
+      | Single (Manager_operation (MSingle {source; _}))
+      | Single (Manager_operation (MCons ({source; _}, _))) ->
           source
     in
     let managers_seen =
@@ -2489,18 +2499,6 @@ let check_operation ?(check_signature = true) info (type kind)
           remaining_gas
       in
       return_unit
-  | Cons (Manager_operation _, _) ->
-      let remaining_gas =
-        Gas.Arith.fp (Constants.hard_gas_limit_per_block info.ctxt)
-      in
-      let* (_remaining_gas : Gas.Arith.fp) =
-        Manager.check_manager_operation
-          info
-          ~check_signature
-          operation
-          remaining_gas
-      in
-      return_unit
   | Single (Failing_noop _) -> tzfail Validate_errors.Failing_noop_error
 
 let check_operation_conflict (type kind) operation_conflict_state oph
@@ -2562,11 +2560,6 @@ let check_operation_conflict (type kind) operation_conflict_state oph
         operation_conflict_state
         oph
         operation
-  | Cons (Manager_operation _, _) ->
-      Manager.check_manager_operation_conflict
-        operation_conflict_state
-        oph
-        operation
   | Single (Failing_noop _) -> (* Nothing to do *) ok_unit
 
 let add_valid_operation operation_conflict_state oph (type kind)
@@ -2607,8 +2600,6 @@ let add_valid_operation operation_conflict_state oph (type kind)
       Anonymous.add_vdf_revelation operation_conflict_state oph
   | Single (Manager_operation _) ->
       Manager.add_manager_operation operation_conflict_state oph operation
-  | Cons (Manager_operation _, _) ->
-      Manager.add_manager_operation operation_conflict_state oph operation
   | Single (Failing_noop _) -> (* Nothing to do *) operation_conflict_state
 
 (* Hypothesis:
@@ -2645,8 +2636,6 @@ let remove_operation operation_conflict_state (type kind)
   | Single (Vdf_revelation _) ->
       Anonymous.remove_vdf_revelation operation_conflict_state
   | Single (Manager_operation _) ->
-      Manager.remove_manager_operation operation_conflict_state operation
-  | Cons (Manager_operation _, _) ->
       Manager.remove_manager_operation operation_conflict_state operation
   | Single (Failing_noop _) -> (* Nothing to do *) operation_conflict_state
 
@@ -2830,14 +2819,6 @@ let validate_operation ?(check_signature = true)
           let operation_state = add_vdf_revelation operation_state oph in
           return {info; operation_state; block_state}
       | Single (Manager_operation _) ->
-          Manager.validate_manager_operation
-            ~check_signature
-            info
-            operation_state
-            block_state
-            oph
-            operation
-      | Cons (Manager_operation _, _) ->
           Manager.validate_manager_operation
             ~check_signature
             info

@@ -4614,11 +4614,7 @@ and 'kind protocol_data = {
   signature : signature option;
 }
 
-and _ contents_list =
-  | Single : 'kind contents -> 'kind contents_list
-  | Cons :
-      'kind Kind.manager contents * 'rest Kind.manager contents_list
-      -> ('kind * 'rest) Kind.manager contents_list
+and _ contents_list = Single : 'kind contents -> 'kind contents_list
 
 and _ contents =
   | Preendorsement : consensus_content -> Kind.preendorsement contents
@@ -4674,8 +4670,16 @@ and _ contents =
       -> Kind.drain_delegate contents
   | Failing_noop : string -> Kind.failing_noop contents
   | Manager_operation :
-      'kind manager_operation_contents
+      'kind manager_operation_contents_list
       -> 'kind Kind.manager contents
+
+and _ manager_operation_contents_list =
+  | MSingle :
+      'kind manager_operation_contents
+      -> 'kind manager_operation_contents_list
+  | MCons :
+      'kind manager_operation_contents * 'rest manager_operation_contents_list
+      -> ('kind * 'rest) manager_operation_contents_list
 
 and 'kind manager_operation_contents = {
   source : public_key_hash;

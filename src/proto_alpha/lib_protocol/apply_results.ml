@@ -932,8 +932,17 @@ type 'kind contents_result =
     }
       -> Kind.drain_delegate contents_result
   | Manager_operation_result :
-      'kind manager_operation_contents_result
+      'kind manager_operation_contents_result_list
       -> 'kind Kind.manager contents_result
+
+and _ manager_operation_contents_result_list =
+  | MRSingle :
+      'kind manager_operation_contents_result
+      -> 'kind manager_operation_contents_result_list
+  | MRCons :
+      'kind manager_operation_contents_result
+      * 'rest manager_operation_contents_result_list
+      -> ('kind * 'rest) manager_operation_contents_result_list
 
 and 'kind manager_operation_contents_result = {
   balance_updates : Receipt.balance_updates;
@@ -1732,10 +1741,6 @@ let contents_and_result_encoding =
 
 type 'kind contents_result_list =
   | Single_result : 'kind contents_result -> 'kind contents_result_list
-  | Cons_result :
-      'kind Kind.manager contents_result
-      * 'rest Kind.manager contents_result_list
-      -> ('kind * 'rest) Kind.manager contents_result_list
 
 type packed_contents_result_list =
   | Contents_result_list :
@@ -1743,23 +1748,44 @@ type packed_contents_result_list =
       -> packed_contents_result_list
 
 let contents_result_list_encoding =
-  let rec to_list = function
-    | Contents_result_list (Single_result o) -> [Contents_result o]
-    | Contents_result_list (Cons_result (o, os)) ->
-        Contents_result o :: to_list (Contents_result_list os)
+  let rec manager_contents_result_list_to_list :
+      type a. a manager_contents_result_list -> _ = function
+    | MRSingle _ as r -> [Contents_result (Manager_result r)]
+    | MRCons (r, rs) ->
+        Contents_result (Manager_result (MRSingle r))
+        :: manager_contents_result_list_to_list rs
   in
-  let rec of_list = function
+  let contents_list_to_list : type a. a contents_result_list -> _ = function
+    | Single_result (Manager_operation_result rs) ->
+        manager_contents_result_list_to_list rs
+    | Single_result r -> [Contents_result r]
+  in
+  let rec to_list = function
+    | Contents_result_list l -> contents_list_to_list l
+  in
+  let of_list contents =
+    let rec of_list_internal acc = function
+      | [] -> Ok acc
+      | Contents_result o :: os -> (
+          match (o, acc) with
+          | ( Manager_operation_result (MRSingle o),
+              Contents_result_list
+                (Single_result (Manager_operation_result rest)) ) ->
+              (of_list_internal [@tailcall])
+                (Contents_result_list
+                   (Single_result (Manager_operation_result (MRCons (o, rest)))))
+                os
+          | Manager_operation_result (MRCons _), _ ->
+              Error "Unexpected MRCons in of_list_internal"
+          | _ ->
+              Error
+                "Operation result list of length > 1 should only contain \
+                 manager operation results.")
+    in
+    match List.rev contents with
     | [] -> Error "cannot decode empty operation result"
-    | [Contents_result o] -> Ok (Contents_result_list (Single_result o))
-    | Contents_result o :: os -> (
-        of_list os >>? fun (Contents_result_list os) ->
-        match (o, os) with
-        | Manager_operation_result _, Single_result (Manager_operation_result _)
-          ->
-            Ok (Contents_result_list (Cons_result (o, os)))
-        | Manager_operation_result _, Cons_result _ ->
-            Ok (Contents_result_list (Cons_result (o, os)))
-        | _ -> Error "cannot decode ill-formed operation result")
+    | Contents_result r :: rs ->
+        of_list_internal (Contents_result_list (Single_result r)) rs
   in
   def "operation.alpha.contents_list_result"
   @@ conv_with_guard to_list of_list (list contents_result_encoding)
@@ -1768,11 +1794,6 @@ type 'kind contents_and_result_list =
   | Single_and_result :
       'kind Alpha_context.contents * 'kind contents_result
       -> 'kind contents_and_result_list
-  | Cons_and_result :
-      'kind Kind.manager Alpha_context.contents
-      * 'kind Kind.manager contents_result
-      * 'rest Kind.manager contents_and_result_list
-      -> ('kind * 'rest) Kind.manager contents_and_result_list
 
 type packed_contents_and_result_list =
   | Contents_and_result_list :
@@ -1783,8 +1804,6 @@ let contents_and_result_list_encoding =
   let rec to_list = function
     | Contents_and_result_list (Single_and_result (op, res)) ->
         [Contents_and_result (op, res)]
-    | Contents_and_result_list (Cons_and_result (op, res, rest)) ->
-        Contents_and_result (op, res) :: to_list (Contents_and_result_list rest)
   in
   let rec of_list = function
     | [] -> Error "cannot decode empty combined operation result"
@@ -1794,8 +1813,6 @@ let contents_and_result_list_encoding =
         of_list rest >>? fun (Contents_and_result_list rest) ->
         match (op, rest) with
         | Manager_operation _, Single_and_result (Manager_operation _, _) ->
-            Ok (Contents_and_result_list (Cons_and_result (op, res, rest)))
-        | Manager_operation _, Cons_and_result (_, _, _) ->
             Ok (Contents_and_result_list (Cons_and_result (op, res, rest)))
         | _ -> Error "cannot decode ill-formed combined operation result")
   in
@@ -2414,13 +2431,6 @@ let rec kind_equal_list :
   match (contents, res) with
   | Single op, Single_result res -> (
       match kind_equal op res with None -> None | Some Eq -> Some Eq)
-  | Cons (op, ops), Cons_result (res, ress) -> (
-      match kind_equal op res with
-      | None -> None
-      | Some Eq -> (
-          match kind_equal_list ops ress with
-          | None -> None
-          | Some Eq -> Some Eq))
   | _ -> None
 
 let rec pack_contents_list :
@@ -2431,42 +2441,15 @@ let rec pack_contents_list :
  fun contents res ->
   match (contents, res) with
   | Single op, Single_result res -> Single_and_result (op, res)
-  | Cons (op, ops), Cons_result (res, ress) ->
-      Cons_and_result (op, res, pack_contents_list ops ress)
-  | ( Single (Manager_operation _),
-      Cons_result (Manager_operation_result _, Single_result _) ) ->
-      .
-  | ( Cons (_, _),
-      Single_result (Manager_operation_result {operation_result = Failed _; _})
-    ) ->
-      .
-  | ( Cons (_, _),
-      Single_result (Manager_operation_result {operation_result = Skipped _; _})
-    ) ->
-      .
-  | ( Cons (_, _),
-      Single_result (Manager_operation_result {operation_result = Applied _; _})
-    ) ->
-      .
-  | ( Cons (_, _),
-      Single_result
-        (Manager_operation_result {operation_result = Backtracked _; _}) ) ->
-      .
-  | Single _, Cons_result _ -> .
 
 let rec unpack_contents_list :
     type kind.
     kind contents_and_result_list ->
     kind contents_list * kind contents_result_list = function
   | Single_and_result (op, res) -> (Single op, Single_result res)
-  | Cons_and_result (op, res, rest) ->
-      let ops, ress = unpack_contents_list rest in
-      (Cons (op, ops), Cons_result (res, ress))
 
 let rec to_list = function
   | Contents_result_list (Single_result o) -> [Contents_result o]
-  | Contents_result_list (Cons_result (o, os)) ->
-      Contents_result o :: to_list (Contents_result_list os)
 
 let operation_data_and_metadata_encoding =
   def "operation.alpha.operation_with_metadata"

@@ -225,11 +225,7 @@ and 'kind protocol_data = {
     - the list is not empty, and
     - if the list has several elements then it only contains manager
       operations. *)
-and _ contents_list =
-  | Single : 'kind contents -> 'kind contents_list
-  | Cons :
-      'kind Kind.manager contents * 'rest Kind.manager contents_list
-      -> ('kind * 'rest) Kind.manager contents_list
+and _ contents_list = Single : 'kind contents -> 'kind contents_list
 
 (** A value of type [contents] an operation related to whether
     consensus, governance or contract management. *)
@@ -322,13 +318,22 @@ and _ contents =
      and which will always fail at [apply]. This allows end-users to
      sign arbitrary messages which have no computational semantics. *)
   | Failing_noop : string -> Kind.failing_noop contents
-  (* Manager_operation: Operations, emitted and signed by
+  (* Manager_operation: Batches of operations, emitted and signed by
      a (revealed) implicit account, that describe management and
      interactions between contracts (whether implicit or
      smart). *)
   | Manager_operation :
-      'kind manager_operation_contents
+      'kind manager_operation_contents_list
       -> 'kind Kind.manager contents
+
+(* A batch of manager operations *)
+and _ manager_operation_contents_list =
+  | MSingle :
+      'kind manager_operation_contents
+      -> 'kind manager_operation_contents_list
+  | MCons :
+      'kind manager_operation_contents * 'rest manager_operation_contents_list
+      -> ('kind * 'rest) manager_operation_contents_list
 
 (** The contents of a manager operation. *)
 and 'kind manager_operation_contents = {
