@@ -93,7 +93,7 @@ Rollups inbox
 
 The inbox is unique and contains two kinds of messages: *external*
 messages are pushed through a Layer 1 manager operation while
-*internal* messages are pushed by Layer 1 smart contracts or the
+*internal* messages are pushed by Layer 1 smart contracts or by the
 protocol itself.  All messages (external and internal) pushed to the
 inbox also contain the Layer 1 level and a counter. The counter is
 reset at each Layer 1 level.
@@ -178,13 +178,14 @@ communicate with the rollup through internal messages.
 Processing
 ^^^^^^^^^^
 Each time a Tezos block is finalized, a rollup reacts to three kinds
-of events: the beginning of the block, the input messages contained in
-that block, and the end of the block. A **rollup node** implements this
-reactive process: it downloads the Tezos block and interprets it
-according to the semantics of the PVM. This interpretation can require
-updating a state, downloading data from other sources, or performing
-some cryptographic verifications. The state of the rollup contains
-an **outbox**, that is a sequence of latent calls to Layer 1 contracts.
+of events: the beginning of the block, the input messages possibly
+contained in that block, and the end of the block. A **rollup node**
+implements this reactive process: it downloads the Tezos block and
+interprets it according to the semantics of the PVM. This
+interpretation can require updating a state, downloading data from
+other sources, or performing some cryptographic verifications. The
+state of the rollup contains an **outbox**, that is a sequence of
+latent calls to Layer 1 contracts.
 
 The behavior of the rollup node is deterministic and fully specified
 by a reference implementation of the PVM embedded in the
