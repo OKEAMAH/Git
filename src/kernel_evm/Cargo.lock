@@ -712,6 +712,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "kernel-min"
+version = "0.1.0"
+dependencies = [
+ "evm-execution",
+ "hex",
+ "nom",
+ "primitive-types",
+ "rlp",
+ "tezos_data_encoding",
+ "tezos_smart_rollup_core",
+ "tezos_smart_rollup_debug",
+ "tezos_smart_rollup_encoding",
+ "tezos_smart_rollup_entrypoint",
+ "tezos_smart_rollup_host",
+ "thiserror",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
