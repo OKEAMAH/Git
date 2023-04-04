@@ -55,6 +55,10 @@ workflow:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"'
       variables:
         PIPELINE_TYPE: 'schedule_extended_tests'
+    # Allow 'Flake test pipelines' launched through the Web UI or the API.
+    - if: '($CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web") && $TZ_FLAKE_TEST != "" && $TZ_FLAKE_TEST_TESTS != ""'
+      variables:
+        PIPELINE_TYPE: 'flake_test'
     # Disallow all other pipelines
     - when: never
 
@@ -159,6 +163,9 @@ trigger:
   - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES
       !~ /nomadic-margebot/
     when: manual
+  # These flake tests do not require a trigger job, whereas 'tezt' does for 'build_x86_64'
+  - if: '$TZ_FLAKE_TEST == "unit" || $TZ_FLAKE_TEST == "unit_js"'
+    when: never
   - when: always
   allow_failure: false
   timeout: "10m"
@@ -171,6 +178,9 @@ trigger:
 include:
   # /!\ These rules should be be mutually exclusive and kept in sync
   # with the corresponding 'if'-rules on the workflow rules above.
+
+  # Variables for Flake tests
+  - local: .gitlab/ci/pipelines/flake_test_variables.yml
 
   # Common templates
   - local: .gitlab/ci/jobs/shared/templates.yml
@@ -224,3 +234,8 @@ include:
   - local: .gitlab/ci/pipelines/schedule_extended_test.yml
     rules:
       - if: '$CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"'
+
+  # API/Web pipeline for Flake tests
+  - local: .gitlab/ci/pipelines/flake_test.yml
+    rules:
+      - if: '($CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web") && $TZ_FLAKE_TEST != "" && $TZ_FLAKE_TEST_TESTS != ""'
