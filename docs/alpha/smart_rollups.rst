@@ -124,6 +124,11 @@ does not have any payload associated to it, while “Info per level”
 provides to the kernel the timestamp and block hash of the predecessor
 of the current Tezos block.
 
+If the Tezos block is the first block of a protocol, then the Layer 1
+pushes another message "Protocol migration" just after the "Info per
+level". This message provides the new protocol version
+(i.e. "<proto-name>_<NNN>").
+
 A rollup is identified by an address and has an associated Michelson
 type (defined at origination time). Any Layer 1 smart contract can
 perform a transfer to this address with a payload of this type. This
