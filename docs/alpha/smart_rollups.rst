@@ -194,9 +194,11 @@ by a reference implementation of the PVM embedded in the
 protocol. Notice that the PVM implementation is meant for
 verification, not performance: for this reason, a rollup node does not
 normally run a PVM to process inputs but a **fast execution engine**
-(e.g., based on the Wasmer runtime for the WASM PVM in the case of the rollup node
-distributed with Octez). This fast execution engine implements the
-exact same semantics as the PVM.
+(e.g., based on the Wasmer runtime for the WASM PVM in the case of the
+rollup node distributed with Octez). This fast execution engine
+implements the exact same semantics as the PVM. The PVM is only ever
+used by the rollup node when it needs to produce a proof during the
+last step of the refutation mechanism.
 
 Commitments
 ^^^^^^^^^^^
