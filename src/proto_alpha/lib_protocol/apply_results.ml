@@ -931,12 +931,15 @@ type 'kind contents_result =
       allocated_destination_contract : bool;
     }
       -> Kind.drain_delegate contents_result
-  | Manager_operation_result : {
-      balance_updates : Receipt.balance_updates;
-      operation_result : 'kind manager_operation_result;
-      internal_operation_results : packed_internal_operation_result list;
-    }
+  | Manager_operation_result :
+      'kind manager_operation_contents_result
       -> 'kind Kind.manager contents_result
+
+and 'kind manager_operation_contents_result = {
+  balance_updates : Receipt.balance_updates;
+  operation_result : 'kind manager_operation_result;
+  internal_operation_results : packed_internal_operation_result list;
+}
 
 type packed_contents_result =
   | Contents_result : 'kind contents_result -> packed_contents_result
