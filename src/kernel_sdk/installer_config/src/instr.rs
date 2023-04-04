@@ -55,22 +55,15 @@ pub struct DeleteInstruction<'a> {
 
 #[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
-pub enum ValueSource<'a> {
-    Path(RawPath<'a>),
-    Value(RawBytes<'a>),
-}
-
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
-#[derive(Debug, PartialEq, Eq)]
 pub struct SetInstruction<'a> {
-    pub value: ValueSource<'a>,
+    pub value: RawBytes<'a>,
     pub to: RawPath<'a>,
 }
 
 #[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
 pub struct RevealInstruction<'a> {
-    pub hash: ValueSource<'a>,
+    pub hash: RawBytes<'a>,
     pub to: RawPath<'a>,
 }
 
@@ -90,7 +83,7 @@ impl<'a> ConfigInstruction<'a> {
         to: RawPath<'a>,
     ) -> ConfigInstruction<'a> {
         ConfigInstruction::Reveal(RevealInstruction {
-            hash: ValueSource::Value(RawBytes(hash)),
+            hash: RawBytes(hash),
             to,
         })
     }
@@ -161,7 +154,7 @@ mod encoding {
 }
 
 // If we want to be able to parse config programs from text files,
-// we have to parametrise ValueSource struct with V type of value
+// we have to parametrise value dependent types with V type of value
 // and then define following type as an instance of V.
 // pub enum ReadableValue {
 //     B58(String),
@@ -201,7 +194,7 @@ mod test {
     fn roundtrip_encdec() {
         use crate::instr::{
             ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction,
-            RawBytes, RawPath, RevealInstruction, SetInstruction, ValueSource,
+            RawBytes, RawPath, RevealInstruction, SetInstruction,
         };
         let path1 = RawPath("/aaa/bb/c".as_bytes());
         let path2 = RawPath("/xxx/cc/ad".as_bytes());
@@ -231,27 +224,9 @@ mod test {
         );
 
         roundtrip(
-            &ValueSource::Path(RawPath("/ccc/xx".as_bytes())),
-            &mut vec![],
-        );
-
-        roundtrip(
-            &ValueSource::Value(RawBytes("any bytes".as_bytes())),
-            &mut vec![],
-        );
-
-        roundtrip(
             &SetInstruction {
                 to: RawPath("/pp".as_bytes()),
-                value: ValueSource::Path(RawPath("/ooo/bbb".as_bytes())),
-            },
-            &mut vec![],
-        );
-
-        roundtrip(
-            &SetInstruction {
-                to: RawPath("/pp".as_bytes()),
-                value: ValueSource::Value(RawBytes("hello value".as_bytes())),
+                value: RawBytes("hello value".as_bytes()),
             },
             &mut vec![],
         );
@@ -259,9 +234,7 @@ mod test {
         roundtrip(
             &RevealInstruction {
                 to: RawPath("/fldl/sfjisfkj".as_bytes()),
-                hash: ValueSource::Value(RawBytes(
-                    "some hash should be 33 bytes".as_bytes(),
-                )),
+                hash: RawBytes("some hash should be 33 bytes".as_bytes()),
             },
             &mut vec![],
         );
@@ -269,7 +242,7 @@ mod test {
         roundtrip(
             &ConfigInstruction::Set(SetInstruction {
                 to: RawPath("/pp".as_bytes()),
-                value: ValueSource::Value(RawBytes("hello value".as_bytes())),
+                value: RawBytes("hello value".as_bytes()),
             }),
             &mut vec![],
         );
@@ -277,9 +250,7 @@ mod test {
         roundtrip(
             &ConfigInstruction::Reveal(RevealInstruction {
                 to: RawPath("/fldl/sfjisfkj".as_bytes()),
-                hash: ValueSource::Value(RawBytes(
-                    "some hash should be 33 bytes".as_bytes(),
-                )),
+                hash: RawBytes("some hash should be 33 bytes".as_bytes()),
             }),
             &mut vec![],
         );

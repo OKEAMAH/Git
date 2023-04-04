@@ -12,7 +12,7 @@ use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
 use crate::instr::{
     ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RawBytes,
-    RawPath, RevealInstruction, SetInstruction, ValueSource,
+    RawPath, RevealInstruction, SetInstruction,
 };
 
 // Those types and helpers copy paseted from tezos_data_encoding.
@@ -70,30 +70,11 @@ impl<'a> NomReader<'a> for RawBytes<'a> {
     }
 }
 
-impl<'a> NomReader<'a> for ValueSource<'a> {
-    fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
-        (|input| {
-            let (input, tag) = u8(input)?;
-            let (input, variant) = if tag == 0 {
-                (map(<RawPath<'a> as NomReader>::nom_read, ValueSource::Path))(input)?
-            } else if tag == 1 {
-                (map(<RawBytes<'a> as NomReader>::nom_read, ValueSource::Value))(input)?
-            } else {
-                return Err(nom::Err::Error(nom::error::Error {
-                    input,
-                    code: ErrorKind::Tag,
-                }));
-            };
-            Ok((input, variant))
-        })(bytes)
-    }
-}
-
 impl<'a> NomReader<'a> for SetInstruction<'a> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
             nom::sequence::tuple((
-                <ValueSource<'a> as NomReader>::nom_read,
+                <RawBytes<'a> as NomReader>::nom_read,
                 <RawPath<'a> as NomReader>::nom_read,
             )),
             |(value, to)| SetInstruction { value, to },
@@ -105,7 +86,7 @@ impl<'a> NomReader<'a> for RevealInstruction<'a> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
             nom::sequence::tuple((
-                <ValueSource<'a> as NomReader>::nom_read,
+                <RawBytes<'a> as NomReader>::nom_read,
                 <RawPath<'a> as NomReader>::nom_read,
             )),
             |(hash, to)| RevealInstruction { hash, to },
