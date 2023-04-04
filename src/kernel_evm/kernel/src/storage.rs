@@ -360,3 +360,31 @@ pub fn store_transaction_receipts<Host: Runtime>(
     }
     Ok(())
 }
+
+const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
+const CHUNKED_TRANSACTION_LEN: RefPath = RefPath::assert_from(b"/len");
+
+fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath, Error> {
+    let hash = hex::encode(tx_hash);
+    let raw_chunked_transaction_path: Vec<u8> = format!("/{}", hash).into();
+    let chunked_transaction_path = OwnedPath::try_from(raw_chunked_transaction_path)?;
+    concat(&CHUNKED_TRANSACTIONS, &chunked_transaction_path).map_err(Error::from)
+}
+
+fn chunked_transaction_len_path(
+    chunked_transaction_path: &OwnedPath,
+) -> Result<OwnedPath, Error> {
+    concat(chunked_transaction_path, &CHUNKED_TRANSACTION_LEN).map_err(Error::from)
+}
+
+pub fn create_chunked_transaction<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+    len: u16,
+) -> Result<(), Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+    let chunked_transaction_len_path =
+        chunked_transaction_len_path(&chunked_transaction_path)?;
+    host.store_write(&chunked_transaction_len_path, &u16::to_le_bytes(len), 0)
+        .map_err(Error::from)
+}
