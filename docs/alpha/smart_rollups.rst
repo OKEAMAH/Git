@@ -133,7 +133,9 @@ A rollup is identified by an address and has an associated Michelson
 type (defined at origination time). Any Layer 1 smart contract can
 perform a transfer to this address with a payload of this type. This
 transfer is realized as an internal message pushed to the rollups
-inbox.
+inbox. Any tickets in the transfer payload are immediately set by and
+for the Layer 1 as being owned by the rollup address. The kernel uses
+these tickets as it sees fit.
 
 Finally, after the application of the operations of the Tezos block,
 the Layer 1 pushes one final internal message “End of
