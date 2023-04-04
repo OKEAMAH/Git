@@ -86,8 +86,10 @@ There are two channels of communication to interact with smart rollups:
    manager operation while *internal* messages are pushed by Layer 1
    smart contracts or the protocol itself.
 
-#. a **reveal data channel** allows the rollup to retrieve data
-   coming from data sources external to the Layer 1.
+#. a **reveal data channel** allows each rollup to retrieve data
+   coming from data sources external to the Layer 1. Rollups requests
+   data through that channel to the runner of that rollup kernel
+   (i.e. the smart rollup node).
 
 
 External messages
