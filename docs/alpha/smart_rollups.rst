@@ -81,19 +81,25 @@ Inputs
 There are two channels of communication to interact with smart rollups:
 
 #. a global **rollups inbox** allows the Layer 1 to transmit
-   information to all the rollups. This unique inbox contains two
-   kinds of messages: *external* messages are pushed through a Layer 1
-   manager operation while *internal* messages are pushed by Layer 1
-   smart contracts or the protocol itself.
+   information to all the rollups.
 
 #. a **reveal data channel** allows each rollup to retrieve data
    coming from data sources external to the Layer 1. Rollups requests
    data through that channel to the runner of that rollup kernel
    (i.e. the smart rollup node).
 
+Rollups inbox
+"""""""""""""
+
+The inbox is unique and contains two kinds of messages: *external*
+messages are pushed through a Layer 1 manager operation while
+*internal* messages are pushed by Layer 1 smart contracts or the
+protocol itself.  All messages (external and internal) pushed to the
+inbox also contain the Layer 1 level and a counter. The counter is
+reset at each Layer 1 level.
 
 External messages
-"""""""""""""""""
+'''''''''''''''''
 
 Anyone can push a message to the rollups inbox. This message is a mere
 sequence of bytes following no particular underlying format. The
@@ -107,7 +113,7 @@ using the Octez client (see command ``send smart rollup message
 of a smart rollup node. More details can be found in :ref:`sending_external_inbox_message_alpha`.
 
 Internal messages
-"""""""""""""""""
+'''''''''''''''''
 
 Contrary to external messages, which are submitted by the end users,
 internal messages are constructed by the Layer 1.
