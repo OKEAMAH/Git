@@ -487,6 +487,7 @@ dependencies = [
  "hex",
  "num-traits",
  "primitive-types",
+ "tezos_data_encoding",
  "tezos_ethereum",
  "tezos_smart_rollup_core",
  "tezos_smart_rollup_debug",
