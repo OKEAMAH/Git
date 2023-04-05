@@ -266,3 +266,10 @@ Platform developers are also provided reference materials for internal APIs of O
    releases/releases
    releases/version-16
    releases/history
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Appendix
+   :hidden:
+
+   general_index
