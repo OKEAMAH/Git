@@ -455,6 +455,8 @@ The rollup node can then be run with:
                     with operators "${OPERATOR_ADDR}" \
                     --data-dir "${ROLLUP_NODE_DIR}"
 
+where ``${OCLIENT_DIR}`` is the data directory of the Octez client.
+
 The log should show that the rollup node follows the Layer 1 chain and
 processes the inbox of each level.
 
