@@ -25,7 +25,6 @@ use tezos_smart_rollup_encoding::michelson::{MichelsonPair, MichelsonString};
 /// An external message is a batch of transactions. Each transaction
 /// may be either a series of signed operations or a single Ethereum
 /// transaction.
-/// TODO: remove tx_account_storage
 
 pub fn process_inbox_message<'a, Host: Runtime>(
     host: &mut Host,
@@ -33,7 +32,7 @@ pub fn process_inbox_message<'a, Host: Runtime>(
     level: u32,
     message: &'a [u8],
 ) -> Result<(), ApplicationError<'a>> {
-    // debug_msg!(host, "Processing an inbox message at level {}", level);
+    debug_msg!(host, "Processing an inbox message at level {}", level);
 
     let precompiles = evm_execution::precompiles::precompile_set();
 
@@ -118,7 +117,7 @@ where
         Some(e.value.value.into()),
     )?;
 
-    debug_msg!(host, "Transaction executed, gas used: {}", outcome.gas_used);
+    debug_msg!(host, "Transaction executed, outcome: {:?}", outcome);
 
     Ok(())
 }

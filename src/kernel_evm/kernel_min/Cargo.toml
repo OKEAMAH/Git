@@ -39,6 +39,6 @@ path = "../../kernel_sdk/tezos_smart_rollup_encoding"
 path = "../../kernel_sdk/tezos_smart_rollup_entrypoint"
 
 [features]
-default = ["evm_kernel"]
+default = ["evm_kernel_min"]
 testing = []
-evm_kernel = []
+evm_kernel_min = []

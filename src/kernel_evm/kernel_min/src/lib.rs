@@ -80,13 +80,13 @@ pub fn evm_kernel_run<Host: Runtime>(host: &mut Host) {
             }
         }
         Ok(None) => {}
-        Err(_) => todo!("handle runtime errors"),
+        Err(e) => debug_msg!(host, "Failed to read inputs {:?}", e),
     }
 }
 
 /// Define the `kernel_run` for the transactions kernel.
-#[cfg(feature = "evm_kernel")]
-pub mod evm_kernel {
+#[cfg(feature = "evm_kernel_min")]
+pub mod evm_kernel_min {
     use tezos_smart_rollup_entrypoint::kernel_entry;
     kernel_entry!(crate::evm_kernel_run);
 }
