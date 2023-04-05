@@ -452,13 +452,16 @@ dependencies = [
 name = "installer_config"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "nom",
  "serde",
  "serde_yaml",
+ "tezos_crypto_rs",
  "tezos_data_encoding",
  "tezos_data_encoding_derive",
  "tezos_smart_rollup_core",
  "tezos_smart_rollup_host",
+ "thiserror",
 ]
 
 [[package]]
@@ -1283,6 +1286,7 @@ dependencies = [
  "clap",
  "hex",
  "installer_config",
+ "serde_yaml",
  "tezos_data_encoding",
  "tezos_smart_rollup_encoding",
  "tezos_smart_rollup_host",

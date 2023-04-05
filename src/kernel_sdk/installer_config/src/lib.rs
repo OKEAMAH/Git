@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-#![cfg_attr(not(feature = "std"), no_std)]
+// #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod binary;
 #[cfg(feature = "alloc")]

@@ -5,9 +5,12 @@
 use tezos_smart_rollup_core::MAX_OUTPUT_SIZE;
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
-use super::instr::{
-    ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RawBytes,
-    RawPath, RevealInstruction, SetInstruction,
+use super::{
+    instr::{
+        ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RefBytes,
+        RefRawPath, RevealInstruction, SetInstruction,
+    },
+    RefConfigInstruction,
 };
 
 // https://stackoverflow.com/questions/53619695/calculating-maximum-value-of-a-set-of-constant-expressions-at-compile-time
@@ -23,40 +26,50 @@ pub trait EncodingSize {
     const MAX_SIZE: usize;
 }
 
-impl<'a> EncodingSize for RawPath<'a> {
+impl<'a> EncodingSize for RefRawPath<'a> {
     const MAX_SIZE: usize = 4 + PATH_MAX_SIZE;
 }
 
-impl<'a> EncodingSize for RawBytes<'a> {
+impl<'a> EncodingSize for RefBytes<'a> {
     const MAX_SIZE: usize = 4 + MAX_OUTPUT_SIZE;
 }
 
-impl<'a> EncodingSize for CopyInstruction<'a> {
-    const MAX_SIZE: usize = RawPath::MAX_SIZE * 2;
+impl<P: EncodingSize> EncodingSize for CopyInstruction<P> {
+    const MAX_SIZE: usize = P::MAX_SIZE * 2;
 }
 
-impl<'a> EncodingSize for MoveInstruction<'a> {
-    const MAX_SIZE: usize = RawPath::MAX_SIZE * 2;
+impl<P: EncodingSize> EncodingSize for MoveInstruction<P> {
+    const MAX_SIZE: usize = P::MAX_SIZE * 2;
 }
 
-impl<'a> EncodingSize for DeleteInstruction<'a> {
-    const MAX_SIZE: usize = RawPath::MAX_SIZE;
+impl<P: EncodingSize> EncodingSize for DeleteInstruction<P> {
+    const MAX_SIZE: usize = P::MAX_SIZE;
 }
 
-impl<'a> EncodingSize for SetInstruction<'a> {
-    const MAX_SIZE: usize = RawPath::MAX_SIZE + RawBytes::MAX_SIZE;
+impl<P: EncodingSize, B: EncodingSize> EncodingSize for SetInstruction<P, B> {
+    const MAX_SIZE: usize = P::MAX_SIZE + B::MAX_SIZE;
 }
 
-impl<'a> EncodingSize for RevealInstruction<'a> {
-    const MAX_SIZE: usize = RawBytes::MAX_SIZE + RawPath::MAX_SIZE;
+impl<P: EncodingSize, B: EncodingSize> EncodingSize for RevealInstruction<P, B> {
+    const MAX_SIZE: usize = P::MAX_SIZE + B::MAX_SIZE;
 }
 
-impl<'a> EncodingSize for ConfigInstruction<'a> {
+impl<P: EncodingSize, B: EncodingSize> EncodingSize for ConfigInstruction<P, B> {
     const MAX_SIZE: usize = 1 + max(
-        max(SetInstruction::MAX_SIZE, RevealInstruction::MAX_SIZE),
         max(
-            max(CopyInstruction::MAX_SIZE, MoveInstruction::MAX_SIZE),
-            DeleteInstruction::MAX_SIZE,
+            SetInstruction::<P, B>::MAX_SIZE,
+            RevealInstruction::<P, B>::MAX_SIZE,
+        ),
+        max(
+            max(
+                CopyInstruction::<P>::MAX_SIZE,
+                MoveInstruction::<P>::MAX_SIZE,
+            ),
+            DeleteInstruction::<P>::MAX_SIZE,
         ),
     );
+}
+
+impl<'a> EncodingSize for RefConfigInstruction<'a> {
+    const MAX_SIZE: usize = ConfigInstruction::<RefRawPath<'a>, RefBytes<'a>>::MAX_SIZE;
 }

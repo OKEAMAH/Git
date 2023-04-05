@@ -5,9 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# [dependencies.tezos_smart_rollup_core]
-# path = "../tezos_smart_rollup_core"
-
 tezos_data_encoding = "0.4"
 tezos_data_encoding_derive = { version = "0.4" }
 
@@ -40,6 +37,19 @@ features = ["derive"]
 version = "0.9"
 optional = true
 
+[dependencies.hex]
+version = "0.4.3"
+optional = true
+
+[dependencies.tezos_crypto_rs]
+version = "0.4"
+default-features = false
+optional = true
+
+[dependencies.thiserror]
+version = "1.0"
+optional = true
+
 [features]
 default = ["std"]
 std = ["alloc"]
@@ -48,5 +58,8 @@ alloc = [
     "tezos_data_encoding_derive",
     "serde",
     "serde_yaml",
+    "hex",
+    "tezos_crypto_rs",
+    "thiserror",
 ]
 testing = []

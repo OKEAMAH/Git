@@ -22,8 +22,8 @@ mod nom;
 mod preimage;
 
 use core::panic::PanicInfo;
-use installer_config::binary::NomReader;
-use installer_config::binary::{ConfigInstruction, EncodingSize};
+use installer_config::binary::EncodingSize;
+use installer_config::binary::{NomReader, RefConfigInstruction};
 use nom::{completed, decode_size, read_config_program_size};
 use tezos_smart_rollup_host::path::RefPath;
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -64,7 +64,7 @@ fn install_kernel(
     host: &mut impl Runtime,
     config_program_size: usize,
 ) -> Result<(), &'static str> {
-    let mut config_instruction_buffer = [0; ConfigInstruction::MAX_SIZE];
+    let mut config_instruction_buffer = [0; RefConfigInstruction::MAX_SIZE];
 
     let kernel_size = host
         .store_value_size(&KERNEL_BOOT_PATH)
@@ -84,9 +84,10 @@ fn install_kernel(
             &mut instr_offset,
             &mut config_instruction_buffer[..instr_size],
         )?;
-        let instr = ConfigInstruction::nom_read(&config_instruction_buffer[..instr_size])
-            .map_err(|_| "Couldn't decode config instruction")
-            .map(completed)?;
+        let instr =
+            RefConfigInstruction::nom_read(&config_instruction_buffer[..instr_size])
+                .map_err(|_| "Couldn't decode config instruction")
+                .map(completed)?;
         handle_instruction(host, instr)?;
     }
 

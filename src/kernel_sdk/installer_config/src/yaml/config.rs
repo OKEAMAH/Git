@@ -2,20 +2,22 @@
 //
 // SPDX-License-Identifier: MIT
 
+use std::io::Read;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct CopyArgs {
-    from: String,
-    to: String,
+pub(crate) struct CopyArgs {
+    pub(crate) from: String,
+    pub(crate) to: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct MoveArgs {
-    from: String,
-    to: String,
+pub(crate) struct MoveArgs {
+    pub(crate) from: String,
+    pub(crate) to: String,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -60,9 +62,9 @@ pub enum Value {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct SetArgs {
-    set: String,
-    value: Value,
+pub(crate) struct SetArgs {
+    pub(crate) set: String,
+    pub(crate) value: Value,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -77,7 +79,7 @@ pub struct RevealArgs {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(try_from = "raw_encodings::InstrSerDeser")]
 #[serde(into = "raw_encodings::InstrSerDeser")]
-pub enum Instr {
+pub(crate) enum Instr {
     Copy(CopyArgs),
     Move(MoveArgs),
     Delete(String),
@@ -94,9 +96,18 @@ pub enum Instr {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Instructions {
-    #[serde(with = "serde_yaml::with::singleton_map_recursive")]
-    instructions: Vec<Instr>,
+pub struct InstallerConfig {
+    pub(crate) instructions: Vec<Instr>,
+}
+
+impl InstallerConfig {
+    pub fn from_string(s: &str) -> serde_yaml::Result<InstallerConfig> {
+        serde_yaml::from_str(s)
+    }
+
+    pub fn from_reader<R: Read>(rdr: R) -> serde_yaml::Result<InstallerConfig> {
+        serde_yaml::from_reader(rdr)
+    }
 }
 
 mod raw_encodings {
@@ -298,18 +309,18 @@ mod raw_encodings {
 mod test {
 
     use crate::yaml::{
-        instr::{Instr, SetArgs, Value},
+        config::{Instr, SetArgs, Value},
         RevealArgs,
     };
 
     use super::IntEncoding::*;
     use super::StringEncoding::*;
-    use super::{CopyArgs, Instructions, MoveArgs};
+    use super::{CopyArgs, InstallerConfig, MoveArgs};
     use std::fs::read_to_string;
 
     #[test]
     fn encode() {
-        let instructions = Instructions {
+        let instructions = InstallerConfig {
             instructions: vec![
                 Instr::Copy(CopyArgs {
                     from: "/hello/path".to_owned(),
@@ -375,8 +386,8 @@ mod test {
     #[test]
     fn decode_full() {
         let source_yaml = read_to_string("resources/config_example2.yml").unwrap();
-        let instrs = serde_yaml::from_str::<Instructions>(&source_yaml).unwrap();
-        let expected_instrs = Instructions {
+        let instrs = serde_yaml::from_str::<InstallerConfig>(&source_yaml).unwrap();
+        let expected_instrs = InstallerConfig {
             instructions: vec![
                 Instr::Copy(CopyArgs {
                     from: "/from/path".to_owned(),

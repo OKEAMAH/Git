@@ -2,247 +2,101 @@
 //
 // SPDX-License-Identifier: MIT
 
-#[cfg(feature = "alloc")]
-pub use encoding::*;
-#[cfg(feature = "alloc")]
-use tezos_data_encoding::enc::BinWriter;
-use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
-use tezos_smart_rollup_host::path::RefPath;
+pub use atomic::*;
 
-// RefPath is not used directly because it's tricky
-// to define instances for remote types
 #[derive(Debug, PartialEq, Eq)]
-pub struct RawPath<'a>(pub &'a [u8]);
-
-#[allow(clippy::from_over_into)]
-impl<'a> Into<RefPath<'a>> for RawPath<'a> {
-    fn into(self) -> RefPath<'a> {
-        RefPath::assert_from(self.0)
-    }
+pub struct CopyInstruction<P> {
+    pub from: P,
+    pub to: P,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct RawBytes<'a>(pub &'a [u8]);
-
-#[allow(clippy::from_over_into)]
-impl<'a> Into<[u8; PREIMAGE_HASH_SIZE]> for RawBytes<'a> {
-    fn into(self) -> [u8; PREIMAGE_HASH_SIZE] {
-        self.0.try_into().unwrap()
-    }
+pub struct MoveInstruction<P> {
+    pub from: P,
+    pub to: P,
 }
 
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
-pub struct CopyInstruction<'a> {
-    pub from: RawPath<'a>,
-    pub to: RawPath<'a>,
-}
-
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
-#[derive(Debug, PartialEq, Eq)]
-pub struct MoveInstruction<'a> {
-    pub from: RawPath<'a>,
-    pub to: RawPath<'a>,
-}
-
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
-#[derive(Debug, PartialEq, Eq)]
-pub struct DeleteInstruction<'a> {
-    pub path: RawPath<'a>,
+pub struct DeleteInstruction<P> {
+    pub path: P,
 }
 
 // Value dependent instructions start here
 
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
-pub struct SetInstruction<'a> {
-    pub value: RawBytes<'a>,
-    pub to: RawPath<'a>,
+pub struct SetInstruction<P, B> {
+    pub value: B,
+    pub to: P,
 }
 
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
-pub struct RevealInstruction<'a> {
-    pub hash: RawBytes<'a>,
-    pub to: RawPath<'a>,
+pub struct RevealInstruction<P, B> {
+    pub hash: B,
+    pub to: P,
 }
 
-#[cfg_attr(feature = "alloc", derive(BinWriter))]
 #[derive(Debug, PartialEq, Eq)]
-pub enum ConfigInstruction<'a> {
-    Set(SetInstruction<'a>),
-    Reveal(RevealInstruction<'a>),
-    Copy(CopyInstruction<'a>),
-    Move(MoveInstruction<'a>),
-    Delete(DeleteInstruction<'a>),
+pub enum ConfigInstruction<P, B> {
+    Set(SetInstruction<P, B>),
+    Reveal(RevealInstruction<P, B>),
+    Copy(CopyInstruction<P>),
+    Move(MoveInstruction<P>),
+    Delete(DeleteInstruction<P>),
 }
 
-impl<'a> ConfigInstruction<'a> {
-    pub fn reveal_instr(
-        hash: &'a [u8; PREIMAGE_HASH_SIZE],
-        to: RawPath<'a>,
-    ) -> ConfigInstruction<'a> {
-        ConfigInstruction::Reveal(RevealInstruction {
-            hash: RawBytes(hash),
-            to,
-        })
-    }
+mod atomic {
+    use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
+    use tezos_smart_rollup_host::path::RefPath;
 
-    pub fn move_instr(from: RawPath<'a>, to: RawPath<'a>) -> ConfigInstruction<'a> {
-        ConfigInstruction::Move(MoveInstruction { from, to })
-    }
-}
+    // RefPath is not used directly because it's tricky
+    // to define instances for remote types
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct RefRawPath<'a>(pub &'a [u8]);
 
-#[cfg(feature = "alloc")]
-mod encoding {
-    // Custom encodings of reference types
-
-    use super::*;
-    use tezos_data_encoding::enc::{put_bytes, BinError, BinResult, BinWriter};
-
-    // TODO this function, perhaps, should be exposed from use tezos_data_encoding::enc
-    // now it's just copy-pasted here
-    fn put_size(size: usize, out: &mut Vec<u8>) -> BinResult {
-        let size = u32::try_from(size).map_err(|_| {
-            BinError::custom(format!(
-                "Expected {} but got {}",
-                (u32::MAX >> 2) as usize,
-                size
-            ))
-        })?;
-        put_bytes(&size.to_be_bytes(), out);
-        Ok(())
-    }
-
-    impl<'a> BinWriter for RawPath<'a> {
-        fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-            put_size(self.0.len(), output)?;
-            put_bytes(self.0, output);
-            Ok(())
+    #[allow(clippy::from_over_into)]
+    impl<'a> Into<RefPath<'a>> for RefRawPath<'a> {
+        fn into(self) -> RefPath<'a> {
+            RefPath::assert_from(self.0)
         }
     }
 
-    impl<'a> BinWriter for RawBytes<'a> {
-        fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-            put_size(self.0.len(), output)?;
-            put_bytes(self.0, output);
-            Ok(())
-        }
-    }
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct RefBytes<'a>(pub &'a [u8]);
 
-    #[derive(Debug)]
-    pub struct ConfigProgram<'a>(pub Vec<ConfigInstruction<'a>>);
-
-    // Encode all commands with appended number of commands at the end.
-    // It makes possible for the installer_kernel to
-    // parse commands at the end of the kernel binary.
-    impl<'a> BinWriter for ConfigProgram<'a> {
-        fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-            let initial_size = output.len();
-            for i in 0..self.0.len() {
-                let mut current_instr = vec![];
-                self.0[i].bin_write(&mut current_instr)?;
-                // Put size of the instruction encoding first,
-                // in order to make a decoding easier
-                put_size(current_instr.len(), output)?;
-                output.extend_from_slice(&current_instr);
-            }
-            put_size(output.len() - initial_size, output)?;
-            Ok(())
+    #[allow(clippy::from_over_into)]
+    impl<'a> Into<[u8; PREIMAGE_HASH_SIZE]> for RefBytes<'a> {
+        fn into(self) -> [u8; PREIMAGE_HASH_SIZE] {
+            self.0.try_into().unwrap()
         }
     }
 }
 
-#[cfg(test)]
-mod test {
-    use std::fmt::Debug;
+pub struct RefConfigInstruction<'a>(
+    pub(crate) ConfigInstruction<RefRawPath<'a>, RefBytes<'a>>,
+);
 
-    #[cfg(feature = "alloc")]
-    use tezos_data_encoding::enc::BinWriter;
-
-    use super::super::nom::NomReader;
-
-    // I have to pass `out` here because for some reason
-    // borrow checker complaines about this line:
-    //    `T::nom_read(out).unwrap()`
-    // saying that `out` is dropped but still borrowed in this line,
-    // despite the faact `decoded` should be dropped on leaving the function
-    #[cfg(feature = "alloc")]
-    fn roundtrip<'a, T: Debug + PartialEq + Eq + BinWriter + NomReader<'a>>(
-        orig: &T,
-        out: &'a mut Vec<u8>,
-    ) {
-        orig.bin_write(out).unwrap();
-
-        let decoded = T::nom_read(out).unwrap();
-        assert!(decoded.0.is_empty());
-        assert_eq!(*orig, decoded.1);
+impl<'a> RefConfigInstruction<'a> {
+    pub fn get_instr(&self) -> &ConfigInstruction<RefRawPath<'a>, RefBytes<'a>> {
+        &self.0
     }
 
-    #[cfg(feature = "alloc")]
-    #[test]
-    fn roundtrip_encdec() {
-        use super::{
-            ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction,
-            RawBytes, RawPath, RevealInstruction, SetInstruction,
-        };
-        let path1 = RawPath("/aaa/bb/c".as_bytes());
-        let path2 = RawPath("/xxx/cc/ad".as_bytes());
-        roundtrip(&path1, &mut vec![]);
-        roundtrip(&RawBytes("hello".as_bytes()), &mut vec![]);
-
-        roundtrip(
-            &CopyInstruction {
-                from: path2,
-                to: path1,
-            },
-            &mut vec![],
-        );
-        roundtrip(
-            &MoveInstruction {
-                from: RawPath("/d".as_bytes()),
-                to: RawPath("/cc".as_bytes()),
-            },
-            &mut vec![],
-        );
-
-        roundtrip(
-            &DeleteInstruction {
-                path: RawPath("/pp".as_bytes()),
-            },
-            &mut vec![],
-        );
-
-        roundtrip(
-            &SetInstruction {
-                to: RawPath("/pp".as_bytes()),
-                value: RawBytes("hello value".as_bytes()),
-            },
-            &mut vec![],
-        );
-
-        roundtrip(
-            &RevealInstruction {
-                to: RawPath("/fldl/sfjisfkj".as_bytes()),
-                hash: RawBytes("some hash should be 33 bytes".as_bytes()),
-            },
-            &mut vec![],
-        );
-
-        roundtrip(
-            &ConfigInstruction::Set(SetInstruction {
-                to: RawPath("/pp".as_bytes()),
-                value: RawBytes("hello value".as_bytes()),
-            }),
-            &mut vec![],
-        );
-
-        roundtrip(
-            &ConfigInstruction::Reveal(RevealInstruction {
-                to: RawPath("/fldl/sfjisfkj".as_bytes()),
-                hash: RawBytes("some hash should be 33 bytes".as_bytes()),
-            }),
-            &mut vec![],
-        );
+    pub fn into_instr(self) -> ConfigInstruction<RefRawPath<'a>, RefBytes<'a>> {
+        self.0
     }
 }
+
+// impl<'a> ConfigInstruction<'a> {
+//     pub fn reveal_instr(
+//         hash: &'a [u8; PREIMAGE_HASH_SIZE],
+//         to: RawPath<'a>,
+//     ) -> ConfigInstruction<'a> {
+//         ConfigInstruction::Reveal(RevealInstruction {
+//             hash: RawBytes(hash),
+//             to,
+//         })
+//     }
+
+//     pub fn move_instr(from: RawPath<'a>, to: RawPath<'a>) -> ConfigInstruction<'a> {
+//         ConfigInstruction::Move(MoveInstruction { from, to })
+//     }
+// }

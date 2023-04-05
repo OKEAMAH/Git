@@ -41,3 +41,6 @@ version = "0.4"
 
 [dependencies.tezos_smart_rollup_host]
 path = "../tezos_smart_rollup_host"
+
+[dependencies.serde_yaml]
+version = "0.9"

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use installer_config::binary::ConfigProgram;
+use installer_config::binary::InstallerConfigProgram;
 use tezos_data_encoding::enc::BinWriter;
 use wasm_gen::write_custom_section;
 
@@ -21,7 +21,7 @@ const INSTALLER_KERNEL: &[u8] = include_bytes!("../../installer.wasm");
 ///
 /// For more information about which instructions config might contain,
 /// see in `installer_kernel/src/instr.rs`.
-pub fn with_config_program(config_programm: ConfigProgram) -> Vec<u8> {
+pub fn with_config_program(config_programm: InstallerConfigProgram) -> Vec<u8> {
     let mut installer = INSTALLER_KERNEL.to_vec();
 
     let mut config_programm_encoded = vec![];

@@ -1,4 +1,4 @@
-use installer_config::binary::ConfigInstruction;
+use installer_config::binary::{ConfigInstruction, RefConfigInstruction};
 use tezos_smart_rollup_host::{path::RefPath, runtime::Runtime};
 
 use crate::preimage::reveal_root_hash;
@@ -21,9 +21,9 @@ pub fn read_instruction(
 
 pub fn handle_instruction(
     host: &mut impl Runtime,
-    instr: ConfigInstruction,
+    instr: RefConfigInstruction,
 ) -> Result<(), &'static str> {
-    match instr {
+    match instr.into_instr() {
         ConfigInstruction::Set(instr) => {
             let to: RefPath = instr.to.into();
             Runtime::store_write(host, &to, instr.value.0, 0)

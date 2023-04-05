@@ -11,9 +11,10 @@ use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
 use super::instr::{
-    ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RawBytes,
-    RawPath, RevealInstruction, SetInstruction,
+    ConfigInstruction, CopyInstruction, DeleteInstruction, MoveInstruction, RefBytes,
+    RefRawPath, RevealInstruction, SetInstruction,
 };
+use super::RefConfigInstruction;
 
 // Those types and helpers copy paseted from tezos_data_encoding.
 // As it's required to parse refs, lifetime 'a added to NomReader
@@ -48,107 +49,101 @@ fn bounded_size(max: usize) -> impl FnMut(NomInput) -> NomResult<u32> {
     }
 }
 
-impl<'a> NomReader<'a> for RawPath<'a> {
+impl<'a> NomReader<'a> for RefRawPath<'a> {
     fn nom_read(input: &'a [u8]) -> NomResult<Self> {
         map_res(
             complete(nom::multi::length_data(bounded_size(PATH_MAX_SIZE))),
-            |bytes| Ok::<RawPath<'_>, NomError<'_>>(RawPath(bytes)),
+            |bytes| Ok::<RefRawPath<'_>, NomError<'_>>(RefRawPath(bytes)),
         )(input)
     }
 }
 
-impl<'a> NomReader<'a> for RawBytes<'a> {
+impl<'a> NomReader<'a> for RefBytes<'a> {
     fn nom_read(input: &'a [u8]) -> NomResult<Self> {
         map_res(
             complete(length_data(bounded_size(MAX_FILE_CHUNK_SIZE))),
-            |bytes| Ok::<RawBytes<'_>, NomError<'_>>(RawBytes(bytes)),
+            |bytes| Ok::<RefBytes<'_>, NomError<'_>>(RefBytes(bytes)),
         )(input)
     }
 }
 
-impl<'a> NomReader<'a> for SetInstruction<'a> {
+impl<'a, P: NomReader<'a>, B: NomReader<'a>> NomReader<'a> for SetInstruction<P, B> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
             nom::sequence::tuple((
-                <RawBytes<'a> as NomReader>::nom_read,
-                <RawPath<'a> as NomReader>::nom_read,
+                <B as NomReader>::nom_read,
+                <P as NomReader>::nom_read,
             )),
             |(value, to)| SetInstruction { value, to },
         )(bytes)
     }
 }
 
-impl<'a> NomReader<'a> for RevealInstruction<'a> {
+impl<'a, P: NomReader<'a>, B: NomReader<'a>> NomReader<'a> for RevealInstruction<P, B> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
             nom::sequence::tuple((
-                <RawBytes<'a> as NomReader>::nom_read,
-                <RawPath<'a> as NomReader>::nom_read,
+                <B as NomReader>::nom_read,
+                <P as NomReader>::nom_read,
             )),
             |(hash, to)| RevealInstruction { hash, to },
         )(bytes)
     }
 }
 
-impl<'a> NomReader<'a> for CopyInstruction<'a> {
+impl<'a, P: NomReader<'a>> NomReader<'a> for CopyInstruction<P> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
-            tuple((
-                <RawPath<'a> as NomReader>::nom_read,
-                <RawPath<'a> as NomReader>::nom_read,
-            )),
+            tuple((<P as NomReader>::nom_read, <P as NomReader>::nom_read)),
             |(from, to)| CopyInstruction { from, to },
         )(bytes)
     }
 }
 
-impl<'a> NomReader<'a> for MoveInstruction<'a> {
+impl<'a, P: NomReader<'a>> NomReader<'a> for MoveInstruction<P> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         map(
-            tuple((
-                <RawPath<'a> as NomReader>::nom_read,
-                <RawPath<'a> as NomReader>::nom_read,
-            )),
+            tuple((<P as NomReader>::nom_read, <P as NomReader>::nom_read)),
             |(from, to)| MoveInstruction { from, to },
         )(bytes)
     }
 }
 
-impl<'a> NomReader<'a> for DeleteInstruction<'a> {
+impl<'a, P: NomReader<'a>> NomReader<'a> for DeleteInstruction<P> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
-        map(<RawPath<'a> as NomReader>::nom_read, |path| {
-            DeleteInstruction { path }
+        map(<P as NomReader>::nom_read, |path| DeleteInstruction {
+            path,
         })(bytes)
     }
 }
 
-impl<'a> NomReader<'a> for ConfigInstruction<'a> {
+impl<'a, P: NomReader<'a>, B: NomReader<'a>> NomReader<'a> for ConfigInstruction<P, B> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         (|input| {
             let (input, tag) = nom::number::complete::u8(input)?;
             let (input, variant) = if tag == 0 {
                 (map(
-                    <SetInstruction<'a> as NomReader>::nom_read,
+                    <SetInstruction<P, B> as NomReader>::nom_read,
                     ConfigInstruction::Set,
                 ))(input)?
             } else if tag == 1 {
                 (map(
-                    <RevealInstruction<'a> as NomReader>::nom_read,
+                    <RevealInstruction<P, B> as NomReader>::nom_read,
                     ConfigInstruction::Reveal,
                 ))(input)?
             } else if tag == 2 {
                 (map(
-                    <CopyInstruction<'a> as NomReader>::nom_read,
+                    <CopyInstruction<P> as NomReader>::nom_read,
                     ConfigInstruction::Copy,
                 ))(input)?
             } else if tag == 3 {
                 (map(
-                    <MoveInstruction<'a> as NomReader>::nom_read,
+                    <MoveInstruction<P> as NomReader>::nom_read,
                     ConfigInstruction::Move,
                 ))(input)?
             } else if tag == 4 {
                 (map(
-                    <DeleteInstruction<'a> as NomReader>::nom_read,
+                    <DeleteInstruction<P> as NomReader>::nom_read,
                     ConfigInstruction::Delete,
                 ))(input)?
             } else {
@@ -159,5 +154,12 @@ impl<'a> NomReader<'a> for ConfigInstruction<'a> {
             };
             Ok((input, variant))
         })(bytes)
+    }
+}
+
+impl<'a> NomReader<'a> for RefConfigInstruction<'a> {
+    fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
+        <ConfigInstruction<RefRawPath<'a>, RefBytes<'a>> as NomReader>::nom_read(bytes)
+            .map(|(rest, x)| (rest, RefConfigInstruction(x)))
     }
 }
