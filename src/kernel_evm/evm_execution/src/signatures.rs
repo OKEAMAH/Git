@@ -241,11 +241,22 @@ pub struct EthereumTransactionCommon {
 impl EthereumTransactionCommon {
     /// Extracts the Keccak encoding of a message from an EthereumTransactionCommon
     pub fn message(&self) -> Message {
-        let to_sign = EthereumTransactionCommon {
-            v: self.chain_id,
-            r: H256::zero(),
-            s: H256::zero(),
-            ..self.clone()
+        let to_sign = if self.v >= U256::from(35) {
+            // EIP 155
+            EthereumTransactionCommon {
+                v: self.chain_id,
+                r: H256::zero(),
+                s: H256::zero(),
+                ..self.clone()
+            }
+        } else {
+            // pre EIP 155
+            EthereumTransactionCommon {
+                v: U256::zero(),
+                r: H256::zero(),
+                s: H256::zero(),
+                ..self.clone()
+            }
         };
         let bytes = to_sign.rlp_bytes();
         let hash: [u8; 32] = Keccak256::digest(bytes).into();
@@ -265,7 +276,13 @@ impl EthereumTransactionCommon {
         let mut s = Scalar([0; 8]);
         let _ = s.set_b32(&s1);
         // recompute parity from v and chain_id
-        let ri = self.v - (self.chain_id * U256::from(2) + U256::from(35));
+        let ri = if self.v > U256::from(35) {
+            // EIP 155
+            self.v - (self.chain_id * U256::from(2) + U256::from(35))
+        } else {
+            // legacy
+            self.v - U256::from(27)
+        };
         if let Ok(ri) = RecoveryId::parse(ri.into()) {
             (Signature { r, s }, ri)
         } else {
@@ -371,9 +388,11 @@ impl Decodable for EthereumTransactionCommon {
             // in a rlp encoded unsigned eip-155 transaction, v is used to store the chainid
             // in a rlp encoded signed eip-155 transaction, v is {0,1} + CHAIN_ID * 2 + 35
             let chain_id: U256 = if v > U256::from(35) {
+                // EIP 155
                 (v - U256::from(35)) / U256::from(2)
             } else {
-                v
+                // pre EIP 155
+                U256::from(1)
             };
             Ok(Self {
                 chain_id,
@@ -395,7 +414,12 @@ impl Decodable for EthereumTransactionCommon {
 
 impl Encodable for EthereumTransactionCommon {
     fn rlp_append(&self, stream: &mut RlpStream) {
-        stream.begin_list(9);
+        if self.v != U256::zero() {
+            stream.begin_list(9);
+        } else {
+            // if v=0 then it was not an eip155
+            stream.begin_list(6);
+        }
         stream.append(&self.nonce);
         stream.append_internal(&self.gas_price);
         stream.append_internal(&self.gas_limit);
@@ -407,9 +431,12 @@ impl Encodable for EthereumTransactionCommon {
         } else {
             stream.append_iter(self.data.iter().cloned());
         }
-        stream.append(&self.v);
-        stream.append_internal(&self.r);
-        stream.append_internal(&self.s);
+        if self.v != U256::zero() {
+            // only for eip 155
+            stream.append(&self.v);
+            stream.append_internal(&self.r);
+            stream.append_internal(&self.s);
+        }
         assert!(stream.is_finished());
     }
 }
@@ -634,6 +661,45 @@ mod test {
         assert_eq!(H256::zero(), decoded_transaction.r, "testing r");
         assert_eq!(H256::zero(), decoded_transaction.s, "testing s");
         assert_eq!(expected_transaction, decoded_transaction)
+    }
+
+    #[test]
+    fn test_decoding_not_eip_155() {
+        // decoding of a transaction that is not eip 155, ie v = 28 / 27
+        // initial transaction:
+        // {
+        //     "nonce": "0x0",
+        //     "gasPrice": "0x10000000000",
+        //     "gasLimit": "0x25000",
+        //     "value": "0x0",
+        //     "data": "0x608060405234801561001057600080fd5b50602a600081905550610150806100286000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100a1565b60405180910390f35b610073600480360381019061006e91906100ed565b61007e565b005b60008054905090565b8060008190555050565b6000819050919050565b61009b81610088565b82525050565b60006020820190506100b66000830184610092565b92915050565b600080fd5b6100ca81610088565b81146100d557600080fd5b50565b6000813590506100e7816100c1565b92915050565b600060208284031215610103576101026100bc565b5b6000610111848285016100d8565b9150509291505056fea26469706673582212204d6c1853cec27824f5dbf8bcd0994714258d22fc0e0dc8a2460d87c70e3e57a564736f6c63430008120033",
+        //     "chainId": 0
+        // }
+        // private key: 0xe75f4c63daecfbb5be03f65940257f5b15e440e6cf26faa126ce68741d5d0f78
+        let signed_tx = "f901cc8086010000000000830250008080b90178608060405234801561001057600080fd5b50602a600081905550610150806100286000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100a1565b60405180910390f35b610073600480360381019061006e91906100ed565b61007e565b005b60008054905090565b8060008190555050565b6000819050919050565b61009b81610088565b82525050565b60006020820190506100b66000830184610092565b92915050565b600080fd5b6100ca81610088565b81146100d557600080fd5b50565b6000813590506100e7816100c1565b92915050565b600060208284031215610103576101026100bc565b5b6000610111848285016100d8565b9150509291505056fea26469706673582212204d6c1853cec27824f5dbf8bcd0994714258d22fc0e0dc8a2460d87c70e3e57a564736f6c634300081200331ca06d851632958801b6919ba534b4b1feb1bdfaabd0d42890bce200a11ac735d58da0219b058d7169d7a4839c5cdd555b0820b545797365287a81ba409419912de7b1";
+        let r = H256::from_string_unsafe(
+            "6d851632958801b6919ba534b4b1feb1bdfaabd0d42890bce200a11ac735d58d",
+        );
+        let s = H256::from_string_unsafe(
+            "219b058d7169d7a4839c5cdd555b0820b545797365287a81ba409419912de7b1",
+        );
+        let caller =
+            EthereumAddress::from("3dbeca6e9a6f0677e3c7b5946fc8adbb1b071e0a".to_string());
+
+        let tx = hex::decode(signed_tx).unwrap();
+        let decoder = Rlp::new(&tx);
+        let decoded = EthereumTransactionCommon::decode(&decoder);
+        assert!(decoded.is_ok(), "testing the decoding went ok");
+        let decoded_transaction = decoded.unwrap();
+        assert_eq!(
+            U256::one(),
+            decoded_transaction.chain_id,
+            "testing chain_id"
+        );
+        assert_eq!(U256::from(28), decoded_transaction.v, "testing v");
+        assert_eq!(r, decoded_transaction.r, "testing r");
+        assert_eq!(s, decoded_transaction.s, "testing s");
+        assert_eq!(caller, decoded_transaction.caller(), "testing caller");
     }
 
     #[test]
