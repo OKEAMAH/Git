@@ -25,7 +25,7 @@
 
 open Distributed_plonk
 open Communication
-module Plonk_Worker = Worker.Make (Distributed_prover.Main_Kzg)
+module Plonk_Worker = Worker.Make (Distributed_prover.Main_Pack)
 module APlonk_Worker = Worker.Make (Distributed_prover.Main_Pack)
 
 (** Executable for running a worker.  *)
