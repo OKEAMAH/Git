@@ -1330,40 +1330,44 @@ module Encoding = struct
           (function
           | Contents_result
               (Manager_operation_result
-                ({operation_result = Applied res; _} as op)) -> (
+                (MRSingle ({operation_result = Applied res; _} as op))) -> (
               match res_case.select (Successful_manager_result res) with
               | Some res ->
                   Some
                     (Manager_operation_result
-                       {op with operation_result = Applied res})
+                       (MRSingle {op with operation_result = Applied res}))
               | None -> None)
           | Contents_result
               (Manager_operation_result
-                ({operation_result = Backtracked (res, errs); _} as op)) -> (
+                (MRSingle
+                  ({operation_result = Backtracked (res, errs); _} as op))) -> (
               match res_case.select (Successful_manager_result res) with
               | Some res ->
                   Some
                     (Manager_operation_result
-                       {op with operation_result = Backtracked (res, errs)})
+                       (MRSingle
+                          {op with operation_result = Backtracked (res, errs)}))
               | None -> None)
           | Contents_result
               (Manager_operation_result
-                ({operation_result = Skipped kind; _} as op)) -> (
+                (MRSingle ({operation_result = Skipped kind; _} as op))) -> (
               match equal_manager_kind kind res_case.kind with
               | None -> None
               | Some Eq ->
                   Some
                     (Manager_operation_result
-                       {op with operation_result = Skipped kind}))
+                       (MRSingle {op with operation_result = Skipped kind})))
           | Contents_result
               (Manager_operation_result
-                ({operation_result = Failed (kind, errs); _} as op)) -> (
+                (MRSingle ({operation_result = Failed (kind, errs); _} as op)))
+            -> (
               match equal_manager_kind kind res_case.kind with
               | None -> None
               | Some Eq ->
                   Some
                     (Manager_operation_result
-                       {op with operation_result = Failed (kind, errs)}))
+                       (MRSingle
+                          {op with operation_result = Failed (kind, errs)})))
           | Contents_result (Preendorsement_result _) -> None
           | Contents_result (Endorsement_result _) -> None
           | Contents_result (Dal_attestation_result _) -> None
@@ -1378,21 +1382,24 @@ module Encoding = struct
           | Contents_result Proposals_result -> None);
         mselect;
         proj =
-          (fun (Manager_operation_result
+          (function
+          | Manager_operation_result
+              (MRSingle
+                {
+                  balance_updates = bus;
+                  operation_result = r;
+                  internal_operation_results = rs;
+                }) ->
+              (bus, r, rs));
+        inj =
+          (fun (bus, r, rs) ->
+            Manager_operation_result
+              (MRSingle
                  {
                    balance_updates = bus;
                    operation_result = r;
                    internal_operation_results = rs;
-                 }) ->
-            (bus, r, rs));
-        inj =
-          (fun (bus, r, rs) ->
-            Manager_operation_result
-              {
-                balance_updates = bus;
-                operation_result = r;
-                internal_operation_results = rs;
-              });
+                 }));
       }
 
   let reveal_case =
@@ -1401,7 +1408,8 @@ module Encoding = struct
       Manager_result.reveal_case
       (function
         | Contents_and_result
-            ((Manager_operation {operation = Reveal _; _} as op), res) ->
+            (Manager_operation (MRSingle {operation = Reveal _; _} as op), res)
+          ->
             Some (op, res)
         | _ -> None)
 
