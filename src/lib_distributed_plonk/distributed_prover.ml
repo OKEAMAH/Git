@@ -283,6 +283,8 @@ module Make_common (MP : Plonk_for_distribution.Main_protocol.S) = struct
           commitment_wires,
           randomness.beta_perm,
           randomness.gamma_perm,
+          randomness.beta_rc,
+          randomness.gamma_rc,
           randomness.delta ) )
 
   let distributed_prover_main ~workers ~inputs
@@ -296,7 +298,7 @@ module Make_common (MP : Plonk_for_distribution.Main_protocol.S) = struct
         (hash_verifier_inputs (to_verifier_inputs pp inputs))
         pp
     in
-    let* pp_proof, _transcript, (perm_and_plook, wires_cm, _, _, _) =
+    let* pp_proof, _transcript, (perm_and_plook, wires_cm, _, _, _, _, _) =
       distributed_prover ~workers ~pp_prove:pp_distributed_prove_main pp ~inputs
     in
     return {perm_and_plook; wires_cm; pp_proof}
@@ -417,7 +419,7 @@ module Super_impl (PI : Aplonk.Pi_parameters.S) = struct
     let commit_to_answers_map = commit_to_answers_map input_commit_infos in
     let* ( (pp_proof, PP.{answers; batch; alpha; x; r; cms_answers; t_answers}),
            _transcript,
-           (perm_and_plook, wires_cm, beta, gamma, delta) ) =
+           (perm_and_plook, wires_cm, beta, gamma, beta_rc, gamma_rc, delta) ) =
       distributed_prover
         ~workers
         ~pp_prove:
@@ -433,8 +435,8 @@ module Super_impl (PI : Aplonk.Pi_parameters.S) = struct
           gamma_perm = gamma;
           beta_plook = Scalar.one;
           gamma_plook = Scalar.one;
-          beta_rc = Scalar.one;
-          gamma_rc = Scalar.one;
+          beta_rc;
+          gamma_rc;
           delta;
         }
       in
@@ -448,6 +450,8 @@ module Super_impl (PI : Aplonk.Pi_parameters.S) = struct
           alpha;
           beta;
           gamma;
+          beta_rc;
+          gamma_rc;
           delta;
           x;
           r;
