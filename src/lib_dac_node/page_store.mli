@@ -58,7 +58,7 @@ module type S = sig
   val save :
     Dac_plugin.t ->
     t ->
-    hash:Dac_plugin.hash ->
+    hash:Dac_plugin.raw_hash ->
     content:bytes ->
     unit tzresult Lwt.t
 

@@ -50,13 +50,12 @@ let make_unix_cctxt ~scheme ~host ~port =
    hash of the protocol that the coordinator was using when the page hash
    was computed.
 *)
-let get_preimage (plugin : Dac_plugin.t) (cctxt : #cctxt) ~page_hash =
-  cctxt#call_service (RPC_services.get_preimage plugin) ((), page_hash) () ()
+let get_preimage (cctxt : #cctxt) ~page_hash =
+  cctxt#call_service RPC_services.get_preimage ((), page_hash) () ()
 
-let post_store_preimage (plugin : Dac_plugin.t) (cctxt : #cctxt) ~payload
-    ~pagination_scheme =
+let post_store_preimage (cctxt : #cctxt) ~payload ~pagination_scheme =
   cctxt#call_service
-    (RPC_services.post_store_preimage plugin)
+    RPC_services.post_store_preimage
     ()
     ()
     (payload, pagination_scheme)
@@ -80,10 +79,6 @@ let get_certificate (plugin : Dac_plugin.t) (cctxt : #cctxt) ~root_page_hash =
     ()
 
 module Coordinator = struct
-  let post_preimage (plugin : Dac_plugin.t) (cctxt : #cctxt) ~payload =
-    cctxt#call_service
-      (RPC_services.Coordinator.post_preimage plugin)
-      ()
-      ()
-      payload
+  let post_preimage (cctxt : #cctxt) ~payload =
+    cctxt#call_service RPC_services.Coordinator.post_preimage () () payload
 end

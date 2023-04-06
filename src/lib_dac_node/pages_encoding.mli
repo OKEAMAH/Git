@@ -68,7 +68,7 @@ module type Dac_codec = sig
     Dac_plugin.t ->
     page_store:page_store ->
     bytes ->
-    Dac_plugin.hash tzresult Lwt.t
+    Dac_plugin.raw_hash tzresult Lwt.t
 
   (** [deserialize_payload dac_plugin page_store hash] deserializes a payload
       from [hash] using some hash-based encoding scheme. Any payload serialized
@@ -174,9 +174,9 @@ module Hash_chain : sig
   module V0 : sig
     val serialize_payload :
       Dac_plugin.t ->
-      for_each_page:(Dac_plugin.hash * bytes -> unit tzresult Lwt.t) ->
+      for_each_page:(Dac_plugin.raw_hash * bytes -> unit tzresult Lwt.t) ->
       bytes ->
-      Dac_plugin.hash tzresult Lwt.t
+      Dac_plugin.raw_hash tzresult Lwt.t
 
     val make_hash_chain :
       Dac_plugin.t -> bytes -> ((Dac_plugin.hash * bytes) list, 'a) result

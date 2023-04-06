@@ -31,9 +31,46 @@ let hash_to_hex hash = Hex.of_bytes hash
 
 type supported_hashes = Blake2B
 
+type raw_hash = bytes
+
+let raw_hash_to_bytes = Fun.id
+
 let non_proto_encoding_unsafe = Data_encoding.bytes' Hex
 
+let raw_hash_to_hex hash =
+  let (`Hex hash) =
+    (* The [encoding] of a hash here never, so [to_string_exn] is safe. *)
+    Hex.of_string
+    @@ Data_encoding.Binary.to_string_exn non_proto_encoding_unsafe hash
+  in
+  hash
+
+let raw_hash_of_hex hex =
+  let open Option_syntax in
+  let* hash = Hex.to_bytes (`Hex hex) in
+  Data_encoding.Binary.of_bytes_opt non_proto_encoding_unsafe hash
+
+let scheme_of_raw_hash _raw_hash = Blake2B
+
+let equal _rh1 _rh2 = true
+
+let raw_hash_rpc_arg =
+  let construct = raw_hash_to_hex in
+  let destruct hash =
+    match raw_hash_of_hex hash with
+    | None -> Error "Cannot parse reveal hash"
+    | Some reveal_hash -> Ok reveal_hash
+  in
+  Tezos_rpc.Arg.make
+    ~descr:"A reveal hash"
+    ~name:"reveal_hash"
+    ~destruct
+    ~construct
+    ()
+
 module type T = sig
+  val raw_hash_to_hash : raw_hash -> hash
+
   val encoding : hash Data_encoding.t
 
   val equal : hash -> hash -> bool

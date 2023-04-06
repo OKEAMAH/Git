@@ -61,6 +61,7 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
     hash_streamer (data, pagination_scheme) =
   let open Lwt_result_syntax in
   let open Pages_encoding in
+  let ((module P) : Dac_plugin.t) = dac_plugin in
   let* root_hash =
     match pagination_scheme with
     | Pagination_scheme.Merkle_tree_V0 ->
@@ -77,14 +78,18 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
         in
         let () = Data_streamer.publish hash_streamer root_hash in
         let*! () =
-          Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
+          Event.emit_root_hash_pushed_to_data_streamer root_hash
         in
         return root_hash
     | Pagination_scheme.Hash_chain_V0 ->
         Hash_chain.V0.serialize_payload
           dac_plugin
           ~for_each_page:(fun (hash, content) ->
-            Page_store.Filesystem.save dac_plugin page_store ~hash ~content)
+            Page_store.Filesystem.save
+              dac_plugin
+              page_store
+              ~hash
+              ~content)
           data
   in
   let* signature, witnesses =
@@ -154,7 +159,7 @@ let register_post_store_preimage ctx cctxt dac_sk_uris page_store hash_streamer
   directory
   |> add_service
        Tezos_rpc.Directory.register0
-       (RPC_services.post_store_preimage ctx)
+       (RPC_services.post_store_preimage)
        (fun () input ->
          handle_post_store_preimage
            ctx
@@ -175,7 +180,7 @@ let register_get_verify_signature dac_plugin public_keys_opt directory =
 let register_get_preimage dac_plugin page_store =
   add_service
     Tezos_rpc.Directory.register1
-    (RPC_services.get_preimage dac_plugin)
+    (RPC_services.get_preimage)
     (fun hash () () -> handle_get_preimage dac_plugin page_store hash)
 
 let register_monitor_root_hashes dac_plugin hash_streamer dir =
@@ -205,7 +210,7 @@ let register_get_missing_page ctx dac_plugin =
   | Legacy _ | Observer _ ->
       add_service
         Tezos_rpc.Directory.register1
-        (RPC_services.get_missing_page dac_plugin)
+        (RPC_services.get_missing_page)
         (fun root_hash () () ->
           let open Lwt_result_syntax in
           let page_store = Node_context.get_page_store ctx in
@@ -231,7 +236,7 @@ module Coordinator = struct
   let register_coordinator_post_preimage dac_plugin hash_streamer page_store =
     add_service
       Tezos_rpc.Directory.register0
-      (RPC_services.Coordinator.post_preimage dac_plugin)
+      (RPC_services.Coordinator.post_preimage)
       (fun () payload ->
         handle_post_preimage dac_plugin page_store hash_streamer payload)
 

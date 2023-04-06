@@ -46,7 +46,7 @@ let () =
     (fun b58_hash -> Could_not_serialize_rollup_external_message b58_hash)
 
 type t = {
-  root_hash : Dac_plugin.hash;
+  root_hash : Dac_plugin.raw_hash;
   signature : Tezos_crypto.Aggregate_signature.signature;
   witnesses : Z.t;
       (** TODO: https://gitlab.com/tezos/tezos/-/issues/4853
@@ -86,17 +86,20 @@ struct
             (fun msg -> msg);
         ])
 
-  let make ((module P) : Dac_plugin.t) root_hash signature witnesses =
+  let make root_hash signature witnesses =
     let open Lwt_result_syntax in
     let message = {root_hash; signature; witnesses} in
     let res =
-      Data_encoding.Binary.to_bytes (dac_message_encoding P.encoding) message
+      Data_encoding.Binary.to_bytes
+        (dac_message_encoding Dac_plugin.non_proto_encoding_unsafe)
+        message
     in
     match res with
     | Ok bytes -> return bytes
     | Error _ ->
         tzfail
-        @@ Could_not_serialize_rollup_external_message (P.to_hex root_hash)
+        @@ Could_not_serialize_rollup_external_message
+             (Dac_plugin.raw_hash_to_hex root_hash)
 
   let of_bytes dac_hash_encoding encoded_message =
     Data_encoding.Binary.of_bytes_opt

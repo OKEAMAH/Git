@@ -41,6 +41,10 @@ end) : Dac_plugin.T = struct
   let of_hex hex =
     Protocol.Sc_rollup_reveal_hash.of_hex hex |> Option.map of_reveal_hash
 
+  let raw_hash_to_hash raw_hash =
+    let hex = Dac_plugin.raw_hash_to_hex raw_hash in
+    match of_hex hex with Some hash -> hash | None -> Stdlib.failwith "error"
+
   let to_hex hash = to_reveal_hash hash |> Protocol.Sc_rollup_reveal_hash.to_hex
 
   let encoding =

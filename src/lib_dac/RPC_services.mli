@@ -2,13 +2,12 @@
   It returns the base58 encoded root page hash 
   and the raw bytes. *)
 val post_store_preimage :
-  Dac_plugin.t ->
   ( [`POST],
-    'a,
-    'a,
+    unit,
+    unit,
     unit,
     Bytes.t * Pagination_scheme.t,
-    Dac_plugin.hash * Bytes.t )
+    Dac_plugin.raw_hash * Bytes.t )
   Tezos_rpc.Service.service
 
 (** GET dac/verify_signature endpoint requests the DAL node to verify
@@ -22,10 +21,9 @@ val get_verify_signature :
     single page, from cctxt. When the request succeeds, the raw page will be
     returned as a sequence of bytes. *)
 val get_preimage :
-  Dac_plugin.t ->
   ( [`GET],
     'a,
-    'a * Dac_plugin.hash,
+    'a * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -43,7 +41,7 @@ val get_certificate :
   Dac_plugin.t ->
   ( [`GET],
     'a,
-    'a * Dac_plugin.hash,
+    'a * Dac_plugin.raw_hash,
     unit,
     unit,
     Certificate_repr.t option )
@@ -53,10 +51,9 @@ val get_certificate :
   from a Coordinator node. The missing page is then saved to a 
   page store before returning the page as a response. *)
 val get_missing_page :
-  Dac_plugin.t ->
   ( [`GET],
     'a,
-    'a * Dac_plugin.hash,
+    'a * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -69,6 +66,11 @@ module Coordinator : sig
     On the backend side it also pushes root page hash of the preimage to all
     the subscribed DAC Members and Observers. *)
   val post_preimage :
-    Dac_plugin.t ->
-    ([`POST], 'a, 'a, unit, Bytes.t, Dac_plugin.hash) Tezos_rpc.Service.service
+    ( [`POST],
+      'a,
+      'a,
+      unit,
+      Bytes.t,
+      Dac_plugin.raw_hash )
+    Tezos_rpc.Service.service
 end

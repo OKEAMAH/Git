@@ -36,17 +36,31 @@ val hash_to_bytes : hash -> bytes
 
 val hash_to_hex : hash -> Hex.t
 
+type raw_hash
+
+val raw_hash_to_bytes : raw_hash -> bytes
+
+val raw_hash_to_hex : raw_hash -> string
+
 (** Protocol independent encoding of Dac_plugin.hash values.
     Only use in situations where the plugin is not available,
     and for reporting purposes (e.g. when emitting an event or registering
     an error). *)
-val non_proto_encoding_unsafe : hash Data_encoding.t
+val non_proto_encoding_unsafe : raw_hash Data_encoding.t
 
 (** FIXME: https://gitlab.com/tezos/tezos/-/issues/4856
     Fix static supported_hashes type *)
 type supported_hashes = Blake2B
 
+val scheme_of_raw_hash : raw_hash -> supported_hashes
+
+val equal : raw_hash -> raw_hash -> bool
+
+val raw_hash_rpc_arg : raw_hash Tezos_rpc.Arg.arg
+
 module type T = sig
+  val raw_hash_to_hash : raw_hash -> hash
+
   (** The encoding of reveal hashes. *)
   val encoding : hash Data_encoding.t
 
