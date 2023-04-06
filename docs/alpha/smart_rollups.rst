@@ -133,9 +133,10 @@ A rollup is identified by an address and has an associated Michelson
 type (defined at origination time). Any Layer 1 smart contract can
 perform a transfer to this address with a payload of this type. This
 transfer is realized as an internal message pushed to the rollups
-inbox. Any tickets in the transfer payload are immediately set by and
-for the Layer 1 as being owned by the rollup address. The kernel uses
-these tickets as it sees fit.
+inbox. Any tickets in the payload are immediately set by and for the
+Layer 1 as being owned by the rollup. All rollup sees the transfer as
+internal messages, but only the rollup owning the tickets can transfer
+them in the Layer 1, using an **outbox** message.
 
 Finally, after the application of the operations of the Tezos block,
 the Layer 1 pushes one final internal message “End of
@@ -186,8 +187,8 @@ implements this reactive process: it downloads the Tezos block and
 interprets it according to the semantics of the PVM. This
 interpretation can require updating a state, downloading data from
 other sources, or performing some cryptographic verifications. The
-state of the rollup contains an **outbox**, that is a sequence of
-latent calls to Layer 1 contracts.
+state of the rollup contains an outbox, that is a sequence of latent
+calls to Layer 1 contracts.
 
 The behavior of the rollup node is deterministic and fully specified
 by a reference implementation of the PVM embedded in the
