@@ -77,13 +77,13 @@ let put_dac_member_signature dac_plugin =
     ~output:Data_encoding.empty
     Tezos_rpc.Path.(open_root / "dac_member_signature")
 
-let get_certificate ((module P) : Dac_plugin.t) =
+let get_certificate hash_encoding (rpc_arg : Dac_plugin.hash Resto.Arg.t) =
   Tezos_rpc.Service.get_service
     ~description:
       "Retrieve the Dac certificate associated with the given root page hash"
     ~query:Tezos_rpc.Query.empty
-    ~output:(Data_encoding.option (Certificate_repr.encoding (module P)))
-    Tezos_rpc.Path.(open_root / "certificates" /: P.hash_rpc_arg)
+    ~output:(Data_encoding.option (Certificate_repr.encoding hash_encoding))
+    Tezos_rpc.Path.(open_root / "certificates" /: rpc_arg)
 
 let get_missing_page ((module P) : Dac_plugin.t) =
   Tezos_rpc.Service.get_service
@@ -105,7 +105,7 @@ module Coordinator = struct
   (** [Coordinator]'s endpoint for serializing dac payload. In addition to
     returning a root page hash, it also pushes it to the subscribed [Observer]s
     and [Dac_member]s. *)
-  let post_preimage ((module P) : Dac_plugin.t) =
+  let post_preimage hash_encoding =
     Tezos_rpc.Service.post_service
       ~description:
         "Stores the preimage in a sequence of pages. Returns a root page hash \
@@ -113,6 +113,6 @@ module Coordinator = struct
          of root page hash to subscribed committee members and observers. "
       ~query:Tezos_rpc.Query.empty
       ~input:Data_encoding.bytes
-      ~output:P.encoding
+      ~output:hash_encoding
       Tezos_rpc.Path.(open_root / "preimage")
 end

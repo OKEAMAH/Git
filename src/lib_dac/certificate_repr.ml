@@ -37,11 +37,11 @@ type t = {
       *)
 }
 
-let encoding ((module P) : Dac_plugin.t) =
+let encoding hash_encoding =
   let obj_enc =
     Data_encoding.(
       obj3
-        (req "root_hash" P.encoding)
+        (req "root_hash" hash_encoding)
         (req "aggregate_signature" Tezos_crypto.Aggregate_signature.encoding)
         (req "witnesses" z))
   in

@@ -72,17 +72,17 @@ let put_dac_member_signature (plugin : Dac_plugin.t) (cctxt : #cctxt) ~signature
     ()
     signature
 
-let get_certificate (plugin : Dac_plugin.t) (cctxt : #cctxt) ~root_page_hash =
+let get_certificate (cctxt : #cctxt) hash_encoding rpc_arg ~root_page_hash =
   cctxt#call_service
-    (RPC_services.get_certificate plugin)
+    (RPC_services.get_certificate hash_encoding rpc_arg)
     ((), root_page_hash)
     ()
     ()
 
 module Coordinator = struct
-  let post_preimage (plugin : Dac_plugin.t) (cctxt : #cctxt) ~payload =
+  let post_preimage hash_encoding (cctxt : #cctxt) ~payload =
     cctxt#call_service
-      (RPC_services.Coordinator.post_preimage plugin)
+      (RPC_services.Coordinator.post_preimage hash_encoding)
       ()
       ()
       payload

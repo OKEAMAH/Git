@@ -31,7 +31,9 @@ let hash_to_hex hash = Hex.of_bytes hash
 
 type supported_hashes = Blake2B
 
-let non_proto_encoding_unsafe = Data_encoding.bytes' Hex
+let non_proto_encoding_unsafe = Data_encoding.(Fixed.bytes 33)
+
+let to_hash_unsafe = Fun.id
 
 module type T = sig
   val encoding : hash Data_encoding.t

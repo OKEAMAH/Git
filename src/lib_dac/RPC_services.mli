@@ -1,5 +1,5 @@
 (** POST dac/store_preimage to post a payload using a given [pagination_scheme].
-  It returns the base58 encoded root page hash 
+  It returns the base58 encoded root page hash
   and the raw bytes. *)
 val post_store_preimage :
   Dac_plugin.t ->
@@ -31,7 +31,7 @@ val get_preimage :
     Bytes.t )
   Tezos_rpc.Service.service
 
-(** PUT dac/member_signature endpoint stores the [signature] 
+(** PUT dac/member_signature endpoint stores the [signature]
   generated from signing [hex_root_hash] by [dac_member_pkh]. *)
 val put_dac_member_signature :
   Dac_plugin.t ->
@@ -40,7 +40,8 @@ val put_dac_member_signature :
 (** GET dac/certificate endpoint returns the DAC certificate for the
   provided [root_page_hash]. *)
 val get_certificate :
-  Dac_plugin.t ->
+  Dac_plugin.hash Data_encoding.t ->
+  Dac_plugin.hash Resto.Arg.t ->
   ( [`GET],
     'a,
     'a * Dac_plugin.hash,
@@ -49,8 +50,8 @@ val get_certificate :
     Certificate_repr.t option )
   Tezos_rpc.Service.service
 
-(**  GET dac/missing_page/[page_hash] Observer fetches the missing page 
-  from a Coordinator node. The missing page is then saved to a 
+(**  GET dac/missing_page/[page_hash] Observer fetches the missing page
+  from a Coordinator node. The missing page is then saved to a
   page store before returning the page as a response. *)
 val get_missing_page :
   Dac_plugin.t ->
@@ -64,11 +65,11 @@ val get_missing_page :
 
 module Coordinator : sig
   (** POST dac/preimage sends a [payload] to the DAC
-    [Coordinator]. It returns a hex encoded root page hash, 
+    [Coordinator]. It returns a hex encoded root page hash,
     produced by [Merkle_tree_V0] pagination scheme.
     On the backend side it also pushes root page hash of the preimage to all
     the subscribed DAC Members and Observers. *)
   val post_preimage :
-    Dac_plugin.t ->
+    Dac_plugin.hash Data_encoding.t ->
     ([`POST], 'a, 'a, unit, Bytes.t, Dac_plugin.hash) Tezos_rpc.Service.service
 end

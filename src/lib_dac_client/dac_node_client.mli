@@ -45,8 +45,8 @@ val make_unix_cctxt : scheme:string -> host:string -> port:int -> cctxt
 val get_preimage :
   Dac_plugin.t -> #cctxt -> page_hash:Dac_plugin.hash -> bytes tzresult Lwt.t
 
-(** [post_store_preimage cctxt ~payload ~pagination_scheme] posts a [payload] to dac/store_preimage 
-    using a given [pagination_scheme]. It returns the base58 encoded root page hash 
+(** [post_store_preimage cctxt ~payload ~pagination_scheme] posts a [payload] to dac/store_preimage
+    using a given [pagination_scheme]. It returns the base58 encoded root page hash
     and the raw bytes. *)
 val post_store_preimage :
   Dac_plugin.t ->
@@ -72,8 +72,9 @@ val put_dac_member_signature :
 (** [get_certificate cctxt ~root_page_hash] fetches the DAC certificate for the
     provided [root_page_hash]. *)
 val get_certificate :
-  Dac_plugin.t ->
   #cctxt ->
+  Dac_plugin.hash Data_encoding.t ->
+  Dac_plugin.hash Resto.Arg.t ->
   root_page_hash:Dac_plugin.hash ->
   Certificate_repr.t option tzresult Lwt.t
 
@@ -84,5 +85,8 @@ module Coordinator : sig
   On the backend side it also pushes root page hash of the preimage to all
   the subscribed DAC Members and Observers. *)
   val post_preimage :
-    Dac_plugin.t -> #cctxt -> payload:bytes -> Dac_plugin.hash tzresult Lwt.t
+    Dac_plugin.hash Data_encoding.t ->
+    #cctxt ->
+    payload:bytes ->
+    Dac_plugin.hash tzresult Lwt.t
 end

@@ -36,6 +36,8 @@ val hash_to_bytes : hash -> bytes
 
 val hash_to_hex : hash -> Hex.t
 
+val to_hash_unsafe : bytes -> hash
+
 (** Protocol independent encoding of Dac_plugin.hash values.
     Only use in situations where the plugin is not available,
     and for reporting purposes (e.g. when emitting an event or registering

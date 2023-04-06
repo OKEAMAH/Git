@@ -351,7 +351,7 @@ module Demo_client = struct
       (args1 data_dir_arg)
       (prefixes ["get"; "certificate"; "from"; "coordinator"]
       @@ coordinator_rpc_param
-      @@ prefixes ["for "; "root"; "hash"]
+      @@ prefixes ["for"; "root"; "hash"]
       @@ hex_root_hash_param @@ stop)
       (fun _data_dir_arg
            (coordinator_rpc_addr, coordinator_rpc_port)

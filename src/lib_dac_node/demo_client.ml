@@ -23,15 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let proto_hash =
-  Protocol_hash.of_b58check_exn
-    "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
-
-let plugin =
-  match Dac_plugin.get proto_hash with
-  | Some plugin -> plugin
-  | None -> assert false
-
 let payload_from_file filename =
   let open Lwt_result_syntax in
   let*! raw_payload = Lwt_utils_unix.read_file filename in
@@ -49,14 +40,33 @@ let send_payload host port hex_payload =
     Dac_node_client.make_unix_cctxt ~scheme:"http" ~host ~port
   in
   let* hash =
-    Dac_node_client.Coordinator.post_preimage plugin coordinator_cctxt ~payload
+    Dac_node_client.Coordinator.post_preimage
+      Dac_plugin.non_proto_encoding_unsafe
+      coordinator_cctxt
+      ~payload
   in
-  let ((module P) : Dac_plugin.t) = plugin in
-  return @@ P.to_hex hash
+  let (`Hex hex_hash) = Dac_plugin.hash_to_hex hash in
+  return @@ hex_hash
+
+let hash_rpc_arg =
+  let construct hash = Hex.show @@ Dac_plugin.hash_to_hex hash in
+  let destruct hex =
+    let hex = `Hex hex in
+    match Hex.to_bytes hex |> Option.map Dac_plugin.to_hash_unsafe with
+    | None -> Error "Cannot parse reveal hash"
+    | Some reveal_hash -> Ok reveal_hash
+  in
+  Tezos_rpc.Arg.make
+    ~descr:"A reveal hash"
+    ~name:"reveal_hash"
+    ~destruct
+    ~construct
+    ()
 
 let certificate_encoding =
-  let ((module P) : Dac_plugin.t) = plugin in
-  let untagged = Certificate_repr.encoding plugin in
+  let untagged =
+    Certificate_repr.encoding Dac_plugin.non_proto_encoding_unsafe
+  in
   Data_encoding.(
     union
       ~tag_size:`Uint8
@@ -66,17 +76,18 @@ let certificate_encoding =
 
 let get_certificate host port root_hash =
   let open Lwt_result_syntax in
-  let ((module P) : Dac_plugin.t) = plugin in
+  let root_page_hash =
+    Hex.to_bytes_exn (`Hex root_hash) |> Dac_plugin.to_hash_unsafe
+  in
   let coordinator_cctxt =
     Dac_node_client.make_unix_cctxt ~scheme:"http" ~host ~port
   in
-  let* root_page_hash =
-    match P.of_hex root_hash with
-    | Some rh -> return rh
-    | None -> failwith "root hash is not in hex format"
-  in
   let* certificate =
-    Dac_node_client.get_certificate plugin coordinator_cctxt ~root_page_hash
+    Dac_node_client.get_certificate
+      ~root_page_hash
+      coordinator_cctxt
+      Dac_plugin.non_proto_encoding_unsafe
+      hash_rpc_arg
   in
   match certificate with
   | None -> failwith "Could not retrieve certificate"

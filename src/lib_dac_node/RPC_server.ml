@@ -194,11 +194,12 @@ let register_put_dac_member_signature ctx dac_plugin cctxt =
         cctxt
         dac_member_signature)
 
-let register_get_certificate ctx dac_plugin =
+let register_get_certificate node_store dac_plugin =
+  let ((module P) : Dac_plugin.t) = dac_plugin in
   add_service
     Tezos_rpc.Directory.register1
-    (RPC_services.get_certificate dac_plugin)
-    (fun root_hash () () -> handle_get_certificate ctx root_hash)
+    (RPC_services.get_certificate P.encoding P.hash_rpc_arg)
+    (fun root_hash () () -> handle_get_certificate node_store root_hash)
 
 let register_get_missing_page ctx dac_plugin =
   match Node_context.mode ctx with
@@ -228,10 +229,11 @@ module Coordinator = struct
     in
     return root_hash
 
-  let register_coordinator_post_preimage dac_plugin hash_streamer page_store =
+  let register_post_preimage dac_plugin hash_streamer page_store =
+    let ((module P) : Dac_plugin.t) = dac_plugin in
     add_service
       Tezos_rpc.Directory.register0
-      (RPC_services.Coordinator.post_preimage dac_plugin)
+      (RPC_services.Coordinator.post_preimage P.encoding)
       (fun () payload ->
         handle_post_preimage dac_plugin page_store hash_streamer payload)
 
@@ -254,7 +256,7 @@ module Coordinator = struct
     let cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
 
     Tezos_rpc.Directory.empty
-    |> register_coordinator_post_preimage dac_plugin hash_streamer page_store
+    |> register_post_preimage dac_plugin hash_streamer page_store
     |> register_get_verify_signature dac_plugin public_keys_opt
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
