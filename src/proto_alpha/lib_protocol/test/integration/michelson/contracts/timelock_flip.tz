@@ -76,12 +76,14 @@ code { UNPAIR 5;
                                      DUP 4;
                                      COMPARE;
                                      EQ;
-                                     IF { # If they are equal we store 0x00
+                                     IF { # If they are equal we wtore 0x00
                                           PUSH bytes 0x00}
                                         { # else we store 0x01
                                           PUSH bytes 0x01}}
-                                   { # We store 0x10 in case of either failure
-                                     PUSH bytes 0x10};
+                                   { IF { # We store 0x11 for the first type of failure
+                                          PUSH bytes 0x11}
+                                        { # We store 0x10 for the second type of failure
+                                          PUSH bytes 0x10}};
                            DIG 3;
                            PAIR;
                            DIG 2;
