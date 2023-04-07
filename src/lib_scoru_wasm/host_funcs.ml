@@ -183,7 +183,7 @@ module Aux = struct
           | Some key -> (
               let* bytes = Durable.find_value durable key in
               match bytes with
-              | Some bytes ->
+              | Some (Data bytes | Commitment bytes) ->
                   let size =
                     Tezos_lazy_containers.Chunked_byte_vector.length bytes
                   in
@@ -201,7 +201,7 @@ module Aux = struct
     check_key_length key_length ;
     let* key = Memory.load_bytes memory key_offset key_length in
     let key = Durable.key_of_string_exn key in
-    let* value = Durable.read_value_exn durable key value_offset max_bytes in
+    let* (Data value | Commitment value) = Durable.read_value_exn durable key value_offset max_bytes in
     let+ () = Memory.store_bytes memory dest value in
     Int32.of_int (String.length value)
 
@@ -217,7 +217,7 @@ module Aux = struct
       let* key = Memory.load_bytes memory key_offset key_length in
       let* payload = Memory.load_bytes memory src num_bytes in
       let key = Durable.key_of_string_exn key in
-      let+ durable = Durable.write_value_exn durable key value_offset payload in
+      let+ durable = Durable.write_value_exn durable key value_offset (Data payload) in
       (durable, 0l)
 
   let store_get_nth_key ~durable ~memory ~key_offset ~key_length ~index ~dst

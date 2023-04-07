@@ -250,7 +250,7 @@ module Make (T : Tezos_tree_encoding.TREE) :
                  imports_offset = 0l;
                })
       | Decode m ->
-          let* kernel = Durable.find_value_exn durable Constants.kernel_key in
+          let* (Data kernel | Commitment kernel) = Durable.find_value_exn durable Constants.kernel_key in
           let* m = Tezos_webassembly_interpreter.Decode.module_step kernel m in
           return (Decode m)
       | Link {ast_module; externs; imports_offset}

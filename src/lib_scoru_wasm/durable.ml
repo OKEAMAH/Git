@@ -30,6 +30,14 @@ module Storage = Tezos_webassembly_interpreter.Durable_storage
 
 type t = T.tree
 
+type tagged_chunk_byte_vector =
+  | Data of Tezos_lazy_containers.Chunked_byte_vector.t
+  | Commitment of Tezos_lazy_containers.Chunked_byte_vector.t
+
+type tag = Data | Commitment
+
+type tagged_string = Data of string | Commitment of string
+
 exception Invalid_key of string
 
 exception Index_too_large of int
@@ -95,14 +103,16 @@ let find_value tree key =
   | None -> Lwt.return_none
   | Some subtree ->
       let+ value = Runner.decode E.chunked_byte_vector subtree in
-      Some value
+      Some (Data value : tagged_chunk_byte_vector)
 
 let find_value_exn tree key =
   let open Lwt.Syntax in
   let* opt = T.find_tree tree @@ to_value_key key in
   match opt with
   | None -> raise Not_found
-  | Some subtree -> Runner.decode E.chunked_byte_vector subtree
+  | Some subtree ->
+      let+ value = Runner.decode E.chunked_byte_vector subtree in
+      (Data value : tagged_chunk_byte_vector)
 
 (** helper function used in the copy/move *)
 let find_tree_exn tree key =
@@ -142,7 +152,7 @@ let hash_exn tree key =
 (* The maximum size of bytes allowed to be read/written at once. *)
 let max_store_io_size = 4096L
 
-let write_value_exn tree key offset bytes =
+let write_value_exn tree key offset (Data bytes | Commitment bytes) =
   let open Lwt.Syntax in
   let open Tezos_lazy_containers in
   let num_bytes = Int64.of_int @@ String.length bytes in
@@ -165,12 +175,12 @@ let write_value_exn tree key offset bytes =
   in
   Runner.encode encoding value tree
 
-let read_value_exn tree key offset num_bytes =
+let read_value_exn tree (key : key) offset num_bytes =
   let open Lwt.Syntax in
   let open Tezos_lazy_containers in
   assert (num_bytes <= max_store_io_size) ;
 
-  let* value = find_value_exn tree key in
+  let* (Commitment value | Data value) = find_value_exn tree key in
   let vec_len = Chunked_byte_vector.length value in
 
   if offset < 0L || offset >= vec_len then
@@ -180,4 +190,4 @@ let read_value_exn tree key offset num_bytes =
     Int64.(num_bytes |> add offset |> min vec_len |> Fun.flip sub offset)
   in
   let+ bytes = Chunked_byte_vector.load_bytes value offset num_bytes in
-  Bytes.to_string bytes
+  Data (Bytes.to_string bytes)

@@ -105,12 +105,6 @@ val hash_exn : t -> key -> Context_hash.t Lwt.t
 
 type tagged_string = Data of string | Commitment of string
 
-(** [set_value_exn durable key str] installs the value [str] in
-    [durable] under [key], replacing any previous contents under this
-    key without fetching it. *)
-val set_value_exn :
-  t -> ?edit_readonly:bool -> tag:tag -> key -> tagged_string -> t Lwt.t
-
 (** [write_value durable key offset bytes] writes [bytes] to [key],
     starting at the given [offset].
 
@@ -127,9 +121,3 @@ val write_value_exn : t -> key -> int64 -> tagged_string -> t Lwt.t
     @raise Out_of_bounds when [offset] is larger than the value.
 *)
 val read_value_exn : t -> key -> int64 -> int64 -> tagged_string Lwt.t
-
-module Internal_for_tests : sig
-  val key_is_readonly : key -> bool
-
-  val key_to_list : key -> string list
-end
