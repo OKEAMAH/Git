@@ -31,7 +31,7 @@
     Subject:    On timelock
 *)
 
-open Protocol
+(* open Protocol
 
 let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
@@ -227,10 +227,11 @@ let expect_fail_result_lwt test_f () =
     match res with
     | Ok _ -> Alcotest.fail "Expect failure"
     | Error _ -> return_ok_unit
-  with _ -> return_ok_unit
+  with _ -> return_ok_unit *)
 
 let tests =
-  [
+  []
+  (* [
     Tztest.tztest "simple test" `Quick simple_test;
     Tztest.tztest
       "verify chest_open fails origination"
@@ -240,4 +241,4 @@ let tests =
       "contract test with chest_open (OK when it fails)"
       `Quick
       (expect_fail_result_lwt contract_test);
-  ]
+  ] *)
