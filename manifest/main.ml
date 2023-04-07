@@ -1275,6 +1275,7 @@ let octez_plonk =
         data_encoding;
         octez_bls12_381_polynomial |> open_;
         octez_plompiler |> open_;
+        str
       ]
     ~preprocess:[pps ppx_repr]
 
@@ -1506,10 +1507,8 @@ let octez_distributed_plonk_test =
         octez_plonk;
         octez_plonk_aggregation;
         octez_plonk_distribution;
-        octez_plonk_test_helpers;
         octez_aplonk;
       ]
-    ~modules:["distribution_helpers"]
     ~bisect_ppx:No
 
 let _octez_distributed_plonk_test_main =
