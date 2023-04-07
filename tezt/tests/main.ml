@@ -214,6 +214,7 @@ let register_protocol_specific_because_regression_tests () =
   Ticket_receipt_and_rpc.register ~protocols:[Mumbai; Alpha] ;
   Tx_rollup.register ~protocols:[Lima] ;
   Tx_rollup_l2_node.register ~protocols:[Lima] ;
+  Timelock.register ~protocols:[Alpha] ;
   Timelock_disabled.register ~protocols:[Lima; Mumbai] ;
   Views.register [Mumbai; Alpha] ;
   Zk_rollup.register ~protocols:[Mumbai; Alpha]
