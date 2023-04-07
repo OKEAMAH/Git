@@ -52,12 +52,12 @@ module type Dac_codec = sig
     Dac_plugin.t ->
     page_store:page_store ->
     bytes ->
-    Dac_plugin.hash tzresult Lwt.t
+    Dac_plugin.raw_hash tzresult Lwt.t
 
   val deserialize_payload :
     Dac_plugin.t ->
     page_store:page_store ->
-    Dac_plugin.hash ->
+    Dac_plugin.raw_hash ->
     bytes tzresult Lwt.t
 end
 
@@ -72,12 +72,15 @@ module type Buffered_dac_codec = sig
     Dac_plugin.t -> page_store:page_store -> t -> bytes -> unit tzresult Lwt.t
 
   val finalize :
-    Dac_plugin.t -> page_store:page_store -> t -> Dac_plugin.hash tzresult Lwt.t
+    Dac_plugin.t ->
+    page_store:page_store ->
+    t ->
+    Dac_plugin.raw_hash tzresult Lwt.t
 
   val deserialize_payload :
     Dac_plugin.t ->
     page_store:page_store ->
-    Dac_plugin.hash ->
+    Dac_plugin.raw_hash ->
     bytes tzresult Lwt.t
 end
 
@@ -214,7 +217,9 @@ module Merkle_tree = struct
 
     (** [page_data] is either [Cont_data] or [Hash_data] where each represents
         data not bound in size for [Contents] or [Hashes] page respectively. *)
-    type page_data = Cont_data of bytes | Hash_data of Dac_plugin.hash list
+    type page_data =
+      | Cont_data of bytes
+      | Hash_data of Dac_plugin.raw_hash list
 
     type t = page_data Stack.t
 
@@ -262,10 +267,10 @@ module Merkle_tree = struct
     (** Serialization function for a single page. It converts a page to a
         sequence of bytes using [page_encoding]. It also checks that the
         serialized page does not exceed [page_size] bytes. *)
-    let serialize_page dac_plugin page =
+    let serialize_page _dac_plugin page =
       match
         Data_encoding.Binary.to_bytes
-          (Data_encoding.check_size C.max_page_size (page_encoding dac_plugin))
+          (Data_encoding.check_size C.max_page_size (Dac_plugin.non_proto_encoding_unsafe))
           page
       with
       | Ok raw_page -> Ok raw_page
@@ -280,7 +285,8 @@ module Merkle_tree = struct
          a sequence of serialized hashes for `Hashes` pages. The preamble
          bytes is part of the sequence of bytes which is hashed.
       *)
-      let hash = hash dac_plugin serialized_page in
+      let ((module P) : Dac_plugin.t) = dac_plugin in
+      let hash = P.hash_to_raw @@ hash dac_plugin serialized_page in
       let* () = S.save dac_plugin page_store ~hash ~content:serialized_page in
       return hash
 
@@ -469,9 +475,11 @@ module Merkle_tree = struct
 
     (** Deserialization function for a single page. A sequence of bytes is
         converted to a page using [page_encoding]. *)
-    let deserialize_page dac_plugin raw_page =
+    let deserialize_page _dac_plugin raw_page =
       match
-        Data_encoding.Binary.of_bytes (page_encoding dac_plugin) raw_page
+        Data_encoding.Binary.of_bytes
+          Dac_plugin.non_proto_encoding_unsafe
+          raw_page
       with
       | Ok page -> Ok page
       | Error _ -> Result_syntax.tzfail Cannot_deserialize_page
@@ -569,7 +577,7 @@ end
 
 module Hash_chain = struct
   module V0 = struct
-    type page = {succ_hash : Dac_plugin.hash; content : string}
+    type page = {succ_hash : Dac_plugin.raw_hash; content : string}
 
     let hash ((module P) : Dac_plugin.t) bytes =
       P.hash_bytes ~scheme:Blake2B [bytes]
@@ -577,10 +585,13 @@ module Hash_chain = struct
     let content_limit =
       (4 * 1024) - 100 (* We reserve 100 bytes for the continuation hash. *)
 
-    let serialize_page ((module P) : Dac_plugin.t) page =
-      Format.asprintf "%s hash:%s" page.content (P.to_hex page.succ_hash)
+    let serialize_page page =
+      Format.asprintf
+        "%s hash:%s"
+        page.content
+        (Dac_plugin.raw_hash_to_hex page.succ_hash)
 
-    let link_chunks dac_plugin chunks : (Dac_plugin.hash * bytes) list =
+    let link_chunks dac_plugin chunks : (Dac_plugin.raw_hash * bytes) list =
       let rec link_chunks_rev linked_pages rev_pages =
         match rev_pages with
         | [] -> linked_pages
@@ -589,7 +600,7 @@ module Hash_chain = struct
               match linked_pages with
               | [] -> chunk
               | (succ_hash, _) :: _ ->
-                  serialize_page dac_plugin {succ_hash; content = chunk}
+                  serialize_page {succ_hash; content = chunk}
             in
             let page = Bytes.of_string page in
             let hash = hash dac_plugin page in

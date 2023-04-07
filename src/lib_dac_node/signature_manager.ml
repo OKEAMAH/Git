@@ -117,10 +117,14 @@ let compute_signatures_with_witnesses rev_indexed_signatures =
     ([], Z.zero)
     rev_indexed_signatures
 
-let sign_root_hash ((module P) : Dac_plugin.t) cctxt dac_sk_uris root_hash =
+let sign_root_hash cctxt dac_sk_uris root_hash =
   let open Lwt_result_syntax in
-  let bytes_to_sign = Data_encoding.Binary.to_bytes_opt P.encoding root_hash in
-  let root_hash = P.to_hex root_hash in
+  let bytes_to_sign =
+    Data_encoding.Binary.to_bytes_opt
+      Dac_plugin.non_proto_encoding_unsafe
+      root_hash
+  in
+  let root_hash = Dac_plugin.raw_hash_to_hex root_hash in
   match bytes_to_sign with
   | None -> tzfail @@ Cannot_convert_root_page_hash_to_bytes root_hash
   | Some bytes_to_sign -> (
@@ -136,15 +140,18 @@ let sign_root_hash ((module P) : Dac_plugin.t) cctxt dac_sk_uris root_hash =
       | None -> tzfail @@ Cannot_compute_aggregate_signature root_hash
       | Some signature -> return @@ (signature, witnesses))
 
-let verify ((module P) : Dac_plugin.t) ~public_keys_opt root_page_hash signature
-    witnesses =
+let verify ~public_keys_opt root_page_hash signature witnesses =
   let open Lwt_result_syntax in
   let hash_as_bytes =
-    Data_encoding.Binary.to_bytes_opt P.encoding root_page_hash
+    Data_encoding.Binary.to_bytes_opt
+      Dac_plugin.non_proto_encoding_unsafe
+      root_page_hash
   in
   match hash_as_bytes with
   | None ->
-      tzfail @@ Cannot_convert_root_page_hash_to_bytes (P.to_hex root_page_hash)
+      tzfail
+      @@ Cannot_convert_root_page_hash_to_bytes
+           (Dac_plugin.raw_hash_to_hex root_page_hash)
   | Some bytes ->
       let* pk_msg_list =
         public_keys_opt
@@ -156,7 +163,7 @@ let verify ((module P) : Dac_plugin.t) ~public_keys_opt root_page_hash signature
                    if is_witness then
                      tzfail
                      @@ Public_key_for_witness_not_available
-                          (i, P.to_hex root_page_hash)
+                          (i, Dac_plugin.raw_hash_to_hex root_page_hash)
                    else return None
                | Some public_key ->
                    if is_witness then return @@ Some (public_key, None, bytes)
@@ -256,11 +263,12 @@ module Coordinator = struct
       (function Unknown_root_hash hash -> Some hash | _ -> None)
       (fun hash -> Unknown_root_hash hash)
 
-  let verify_signature ((module P) : Dac_plugin.t) pk signature root_hash =
-    let root_hash_bytes = Dac_plugin.hash_to_bytes root_hash in
+  let verify_signature pk signature root_hash =
+    let root_hash_bytes = Dac_plugin.raw_hash_to_bytes root_hash in
     fail_unless
       (Aggregate_signature.check pk signature root_hash_bytes)
-      (Signature_verification_failed (pk, signature, P.to_hex root_hash))
+      (Signature_verification_failed
+         (pk, signature, Dac_plugin.raw_hash_to_hex root_hash))
 
   let add_dac_member_signature ((module Plugin) : Dac_plugin.t) signature_store
       Signature_repr.{root_hash; signer_pkh; signature} =
@@ -283,8 +291,7 @@ module Coordinator = struct
         Option.map (fun signature -> (index, signature)) signature_opt)
       dac_members_pk
 
-  let update_aggregate_sig_store ((module P) : Dac_plugin.t) node_store
-      dac_members_pk_opt root_hash =
+  let update_aggregate_sig_store node_store dac_members_pk_opt root_hash =
     let open Lwt_result_syntax in
     let* rev_indexed_signature =
       rev_find_indexed_signatures node_store dac_members_pk_opt root_hash
@@ -298,7 +305,7 @@ module Coordinator = struct
     | None ->
         tzfail
         @@ Cannot_compute_aggregate_signature
-             (Hex.show @@ Dac_plugin.hash_to_hex root_hash)
+             (Dac_plugin.raw_hash_to_hex root_hash)
     | Some aggregate_signature ->
         let* () =
           Store.Certificate_store.add
@@ -309,7 +316,7 @@ module Coordinator = struct
         return @@ aggregate_signature
 
   let check_dac_member_has_signed ((module P) : Dac_plugin.t) signature_store
-      root_hash dac_member_pkh =
+      (root_hash : Dac_plugin.raw_hash) dac_member_pkh =
     let open Lwt_result_syntax in
     let* dac_member_has_signed =
       Store.Signature_store.mem
@@ -340,7 +347,7 @@ module Coordinator = struct
     | Error _ ->
         tzfail
         @@ Page_store.Cannot_read_page_from_page_storage
-             (Plugin.to_hex root_hash)
+             (Dac_plugin.raw_hash_to_hex root_hash)
     (* Return an HTTP 404 error when hash provided in signature is unknown *)
     | Ok false -> raise Not_found
     | Ok true ->
@@ -372,7 +379,7 @@ module Coordinator = struct
         in
         if dac_member_has_signed then return_unit
         else
-          let* () = verify_signature dac_plugin pub_key signature root_hash in
+          let* () = verify_signature pub_key signature root_hash in
           let rw_node_store =
             Node_context.get_node_store ctx Store_sigs.Read_write
           in
@@ -384,7 +391,6 @@ module Coordinator = struct
           in
           let* _aggregate_sig =
             update_aggregate_sig_store
-              dac_plugin
               rw_node_store
               dac_committee
               dac_member_signature.root_hash

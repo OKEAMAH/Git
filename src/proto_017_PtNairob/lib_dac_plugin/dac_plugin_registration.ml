@@ -47,6 +47,10 @@ end) : Dac_plugin.T = struct
 
   let to_hex hash = to_reveal_hash hash |> Protocol.Sc_rollup_reveal_hash.to_hex
 
+  let hash_to_raw hash =
+    let hex = to_hex hash in
+    Dac_plugin.hex_to_raw_hash hex
+
   let encoding =
     let binary =
       Data_encoding.conv

@@ -77,26 +77,20 @@ let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
             data
         in
         let () = Data_streamer.publish hash_streamer root_hash in
-        let*! () =
-          Event.emit_root_hash_pushed_to_data_streamer root_hash
-        in
+        let*! () = Event.emit_root_hash_pushed_to_data_streamer root_hash in
         return root_hash
     | Pagination_scheme.Hash_chain_V0 ->
         Hash_chain.V0.serialize_payload
           dac_plugin
           ~for_each_page:(fun (hash, content) ->
-            Page_store.Filesystem.save
-              dac_plugin
-              page_store
-              ~hash
-              ~content)
+            Page_store.Filesystem.save dac_plugin page_store ~hash ~content)
           data
   in
   let* signature, witnesses =
-    Signature_manager.sign_root_hash dac_plugin cctxt dac_sk_uris root_hash
+    Signature_manager.sign_root_hash cctxt dac_sk_uris root_hash
   in
   let*! external_message =
-    External_message.Default.make dac_plugin root_hash signature witnesses
+    External_message.Default.make root_hash signature witnesses
   in
   match external_message with
   | Ok external_message -> return @@ (root_hash, external_message)
@@ -109,17 +103,14 @@ let handle_get_verify_signature dac_plugin public_keys_opt encoded_l1_message =
     let* encoded_l1_message in
     let* as_bytes = Hex.to_bytes @@ `Hex encoded_l1_message in
     let ((module P) : Dac_plugin.t) = dac_plugin in
-    External_message.Default.of_bytes P.encoding as_bytes
+    External_message.Default.of_bytes
+      Dac_plugin.non_proto_encoding_unsafe
+      as_bytes
   in
   match external_message with
   | None -> tzfail @@ Cannot_deserialize_external_message
   | Some {root_hash; signature; witnesses} ->
-      Signature_manager.verify
-        dac_plugin
-        ~public_keys_opt
-        root_hash
-        signature
-        witnesses
+      Signature_manager.verify ~public_keys_opt root_hash signature witnesses
 
 let handle_get_preimage dac_plugin page_store hash =
   Page_store.Filesystem.load dac_plugin page_store hash
@@ -151,7 +142,7 @@ let handle_get_missing_page cctxt page_store dac_plugin root_hash =
         Retrieve missing page from dac committee via "flooding". *)
     Page_store.Remote.load dac_plugin remote_store root_hash
   in
-  let*! () = Event.(emit (fetched_missing_page dac_plugin) root_hash) in
+  let*! () = Event.(emit fetched_missing_page root_hash) in
   return preimage
 
 let register_post_store_preimage ctx cctxt dac_sk_uris page_store hash_streamer
@@ -159,7 +150,7 @@ let register_post_store_preimage ctx cctxt dac_sk_uris page_store hash_streamer
   directory
   |> add_service
        Tezos_rpc.Directory.register0
-       (RPC_services.post_store_preimage)
+       RPC_services.post_store_preimage
        (fun () input ->
          handle_post_store_preimage
            ctx
@@ -180,13 +171,13 @@ let register_get_verify_signature dac_plugin public_keys_opt directory =
 let register_get_preimage dac_plugin page_store =
   add_service
     Tezos_rpc.Directory.register1
-    (RPC_services.get_preimage)
+    RPC_services.get_preimage
     (fun hash () () -> handle_get_preimage dac_plugin page_store hash)
 
-let register_monitor_root_hashes dac_plugin hash_streamer dir =
+let register_monitor_root_hashes _dac_plugin hash_streamer dir =
   Tezos_rpc.Directory.gen_register
     dir
-    (Monitor_services.S.root_hashes dac_plugin)
+    Monitor_services.S.root_hashes
     (fun () () () -> handle_monitor_root_hashes hash_streamer)
 
 let register_put_dac_member_signature ctx dac_plugin cctxt =
@@ -199,10 +190,10 @@ let register_put_dac_member_signature ctx dac_plugin cctxt =
         cctxt
         dac_member_signature)
 
-let register_get_certificate ctx dac_plugin =
+let register_get_certificate ctx =
   add_service
     Tezos_rpc.Directory.register1
-    (RPC_services.get_certificate dac_plugin)
+    RPC_services.get_certificate
     (fun root_hash () () -> handle_get_certificate ctx root_hash)
 
 let register_get_missing_page ctx dac_plugin =
@@ -210,7 +201,7 @@ let register_get_missing_page ctx dac_plugin =
   | Legacy _ | Observer _ ->
       add_service
         Tezos_rpc.Directory.register1
-        (RPC_services.get_missing_page)
+        RPC_services.get_missing_page
         (fun root_hash () () ->
           let open Lwt_result_syntax in
           let page_store = Node_context.get_page_store ctx in
@@ -228,15 +219,13 @@ module Coordinator = struct
         payload
     in
     let () = Data_streamer.publish hash_streamer root_hash in
-    let*! () =
-      Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
-    in
+    let*! () = Event.emit_root_hash_pushed_to_data_streamer root_hash in
     return root_hash
 
   let register_coordinator_post_preimage dac_plugin hash_streamer page_store =
     add_service
       Tezos_rpc.Directory.register0
-      (RPC_services.Coordinator.post_preimage)
+      RPC_services.Coordinator.post_preimage
       (fun () payload ->
         handle_post_preimage dac_plugin page_store hash_streamer payload)
 
@@ -264,7 +253,7 @@ module Coordinator = struct
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
     |> register_put_dac_member_signature node_ctxt dac_plugin cctxt
-    |> register_get_certificate node_ctxt dac_plugin
+    |> register_get_certificate node_ctxt
 end
 
 module Committee_member = struct
@@ -308,7 +297,7 @@ module Legacy = struct
     |> register_get_preimage dac_plugin page_store
     |> register_monitor_root_hashes dac_plugin hash_streamer
     |> register_put_dac_member_signature node_ctxt dac_plugin cctxt
-    |> register_get_certificate node_ctxt dac_plugin
+    |> register_get_certificate node_ctxt
     |> register_get_missing_page node_ctxt dac_plugin
 end
 

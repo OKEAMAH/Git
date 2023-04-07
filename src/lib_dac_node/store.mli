@@ -38,7 +38,7 @@ end
 module Signature_store :
   Store_sigs.Nested_map
     with type 'a store = 'a Irmin_store.t
-     and type primary_key = Dac_plugin.hash
+     and type primary_key = Dac_plugin.raw_hash
      and type secondary_key = Tezos_crypto.Aggregate_signature.public_key_hash
      and type value = Tezos_crypto.Aggregate_signature.signature
 
@@ -52,5 +52,5 @@ type certificate_store_value = {
 module Certificate_store :
   Store_sigs.Map
     with type 'a store = 'a Irmin_store.t
-     and type key = Dac_plugin.hash
+     and type key = Dac_plugin.raw_hash
      and type value = certificate_store_value

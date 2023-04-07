@@ -142,7 +142,7 @@ module Committee_member = struct
       committee_member.Wallet_account.Committee_member.public_key_hash
     in
     let secret_key_uri = committee_member.secret_key_uri in
-    let bytes_to_sign = Dac_plugin.hash_to_bytes root_hash in
+    let bytes_to_sign = Dac_plugin.raw_hash_to_bytes root_hash in
     let* signature =
       Tezos_client_base.Client_keys.aggregate_sign
         wallet_cctxt
@@ -165,7 +165,7 @@ module Committee_member = struct
       ctxt.Node_context.Committee_member.coordinator_cctxt
     in
     let handler dac_plugin remote_store _stopper root_hash =
-      let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
+      let*! () = Event.emit_new_root_hash_received root_hash in
       let*! payload_result =
         Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
           dac_plugin
@@ -175,7 +175,7 @@ module Committee_member = struct
       match payload_result with
       | Ok _ ->
           let*! () =
-            Event.emit_received_root_hash_processed dac_plugin root_hash
+            Event.emit_received_root_hash_processed root_hash
           in
           let committee_member =
             ctxt.Node_context.Committee_member.committee_member
@@ -190,7 +190,7 @@ module Committee_member = struct
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
               Improve handling of errors. *)
           let*! () =
-            Event.emit_processing_root_hash_failed dac_plugin root_hash errs
+            Event.emit_processing_root_hash_failed root_hash errs
           in
           return ()
     in
@@ -200,7 +200,7 @@ module Committee_member = struct
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt dac_plugin)
+      (Monitor_services.root_hashes coordinator_cctxt)
 end
 
 (** Handlers specific to an [Observer]. An [Observer] is responsible for
@@ -215,7 +215,7 @@ module Observer = struct
     let open Lwt_result_syntax in
     let coordinator_cctxt = ctxt.Node_context.Observer.coordinator_cctxt in
     let handler dac_plugin remote_store _stopper root_hash =
-      let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
+      let*! () = Event.emit_new_root_hash_received root_hash in
       let*! payload_result =
         Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
           dac_plugin
@@ -225,14 +225,14 @@ module Observer = struct
       match payload_result with
       | Ok _ ->
           let*! () =
-            Event.emit_received_root_hash_processed dac_plugin root_hash
+            Event.emit_received_root_hash_processed root_hash
           in
           return ()
       | Error errs ->
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
              Improve handling of errors. *)
           let*! () =
-            Event.emit_processing_root_hash_failed dac_plugin root_hash errs
+            Event.emit_processing_root_hash_failed root_hash errs
           in
           return ()
     in
@@ -242,7 +242,7 @@ module Observer = struct
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt dac_plugin)
+      (Monitor_services.root_hashes coordinator_cctxt)
 end
 
 (** Handlers specific to a [Legacy] DAC node. If no
@@ -276,7 +276,7 @@ module Legacy = struct
     let signer_pkh = committee_member.public_key_hash in
     match secret_key_uri_opt with
     | Some secret_key_uri ->
-        let bytes_to_sign = Dac_plugin.hash_to_bytes root_hash in
+        let bytes_to_sign = Dac_plugin.raw_hash_to_bytes root_hash in
         let* signature =
           Tezos_client_base.Client_keys.aggregate_sign
             wallet_cctxt
@@ -306,7 +306,7 @@ module Legacy = struct
     let committee_member_opt = ctxt.Node_context.Legacy.committee_member_opt in
     let open Lwt_result_syntax in
     let handler dac_plugin remote_store _stopper root_hash =
-      let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
+      let*! () = Event.emit_new_root_hash_received root_hash in
       let*! payload_result =
         Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
           dac_plugin
@@ -316,7 +316,7 @@ module Legacy = struct
       match payload_result with
       | Ok _ -> (
           let*! () =
-            Event.emit_received_root_hash_processed dac_plugin root_hash
+            Event.emit_received_root_hash_processed root_hash
           in
           match committee_member_opt with
           | Some committee_member ->
@@ -337,7 +337,7 @@ module Legacy = struct
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
               Improve handling of errors. *)
           let*! () =
-            Event.emit_processing_root_hash_failed dac_plugin root_hash errs
+            Event.emit_processing_root_hash_failed root_hash errs
           in
           return ()
     in
@@ -347,7 +347,7 @@ module Legacy = struct
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt dac_plugin)
+      (Monitor_services.root_hashes coordinator_cctxt)
 end
 
 let handlers node_ctxt =

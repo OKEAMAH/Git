@@ -54,6 +54,18 @@ let scheme_of_raw_hash _raw_hash = Blake2B
 
 let equal _rh1 _rh2 = true
 
+let hex_to_raw_hash : string -> raw_hash = function
+  | hex -> (
+      let hash = Hex.to_bytes (`Hex hex) in
+      match hash with
+      | Some hash -> (
+          match
+            Data_encoding.Binary.of_bytes_opt non_proto_encoding_unsafe hash
+          with
+          | Some raw_hash -> raw_hash
+          | _ -> Stdlib.failwith "error while decoding")
+      | None -> Stdlib.failwith "error")
+
 let raw_hash_rpc_arg =
   let construct = raw_hash_to_hex in
   let destruct hash =
@@ -70,6 +82,8 @@ let raw_hash_rpc_arg =
 
 module type T = sig
   val raw_hash_to_hash : raw_hash -> hash
+
+  val hash_to_raw : hash -> raw_hash
 
   val encoding : hash Data_encoding.t
 

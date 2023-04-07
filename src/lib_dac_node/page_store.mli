@@ -30,8 +30,8 @@ type error +=
   | Cannot_write_page_to_page_storage of {hash : string; content : bytes}
   | Cannot_read_page_from_page_storage of string
   | Incorrect_page_hash of {
-      expected : Dac_plugin.hash;
-      actual : Dac_plugin.hash;
+      expected : Dac_plugin.raw_hash;
+      actual : Dac_plugin.raw_hash;
     }
 
 (** [S] is the module type defining the backend required for
@@ -67,12 +67,12 @@ module type S = sig
       It can fail with error [Cannot_read_from_page_storage hash_as_string],
       if it was not possible to check that the page exists for any reason
       related to the page storage backend implementation. *)
-  val mem : Dac_plugin.t -> t -> Dac_plugin.hash -> bool tzresult Lwt.t
+  val mem : Dac_plugin.t -> t -> Dac_plugin.raw_hash -> bool tzresult Lwt.t
 
   (** [load dac_plugin t hash] returns [content] of the storage backend [t]
       represented by a key. When reading fails it returns a
       [Cannot_read_page_from_page_storage] error. *)
-  val load : Dac_plugin.t -> t -> Dac_plugin.hash -> bytes tzresult Lwt.t
+  val load : Dac_plugin.t -> t -> Dac_plugin.raw_hash -> bytes tzresult Lwt.t
 end
 
 (** [Filesystem] is an implementation of the page store backed up by
@@ -114,7 +114,7 @@ module Internal_for_tests : sig
     type remote_context
 
     val fetch :
-      Dac_plugin.t -> remote_context -> Dac_plugin.hash -> bytes tzresult Lwt.t
+      Dac_plugin.t -> remote_context -> Dac_plugin.raw_hash -> bytes tzresult Lwt.t
   end)
   (P : S) :
     S

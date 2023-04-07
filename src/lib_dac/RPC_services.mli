@@ -38,7 +38,6 @@ val put_dac_member_signature :
 (** GET dac/certificate endpoint returns the DAC certificate for the
   provided [root_page_hash]. *)
 val get_certificate :
-  Dac_plugin.t ->
   ( [`GET],
     'a,
     'a * Dac_plugin.raw_hash,

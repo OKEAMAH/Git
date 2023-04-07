@@ -78,7 +78,7 @@ module type Dac_codec = sig
   val deserialize_payload :
     Dac_plugin.t ->
     page_store:page_store ->
-    Dac_plugin.hash ->
+    Dac_plugin.raw_hash ->
     bytes tzresult Lwt.t
 end
 
@@ -108,7 +108,7 @@ module type Buffered_dac_codec = sig
       The serialization logic is dependent on the encoding scheme. [buffer] is
       emptied after this call. *)
   val finalize :
-    Dac_plugin.t -> page_store:page_store -> t -> Dac_plugin.hash tzresult Lwt.t
+    Dac_plugin.t -> page_store:page_store -> t -> Dac_plugin.raw_hash tzresult Lwt.t
 
   (** [deserialize_payload dac_plugin page_store hash] deserializes a payload
       from [hash]  using some hash-based encoding scheme.
@@ -117,7 +117,7 @@ module type Buffered_dac_codec = sig
   val deserialize_payload :
     Dac_plugin.t ->
     page_store:page_store ->
-    Dac_plugin.hash ->
+    Dac_plugin.raw_hash ->
     bytes tzresult Lwt.t
 end
 
@@ -179,6 +179,6 @@ module Hash_chain : sig
       Dac_plugin.raw_hash tzresult Lwt.t
 
     val make_hash_chain :
-      Dac_plugin.t -> bytes -> ((Dac_plugin.hash * bytes) list, 'a) result
+      Dac_plugin.t -> bytes -> ((Dac_plugin.raw_hash * bytes) list, 'a) result
   end
 end

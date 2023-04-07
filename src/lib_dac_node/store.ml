@@ -38,9 +38,9 @@ module Signature_store =
       let path = ["coordinator"; "signature_store"]
     end)
     (struct
-      type key = Dac_plugin.hash
+      type key = Dac_plugin.raw_hash
 
-      let to_path_representation key = Hex.show @@ Dac_plugin.hash_to_hex key
+      let to_path_representation key = Dac_plugin.raw_hash_to_hex key
     end)
     (struct
       type key = Tezos_crypto.Aggregate_signature.public_key_hash
@@ -70,9 +70,9 @@ module Certificate_store =
       let path = ["coordinator"; "certificate_store"]
     end)
     (struct
-      type key = Dac_plugin.hash
+      type key = Dac_plugin.raw_hash
 
-      let to_path_representation key = Hex.show @@ Dac_plugin.hash_to_hex key
+      let to_path_representation key = Dac_plugin.raw_hash_to_hex key
     end)
     (struct
       type value = certificate_store_value

@@ -71,9 +71,9 @@ let put_dac_member_signature (plugin : Dac_plugin.t) (cctxt : #cctxt) ~signature
     ()
     signature
 
-let get_certificate (plugin : Dac_plugin.t) (cctxt : #cctxt) ~root_page_hash =
+let get_certificate (_plugin : Dac_plugin.t) (cctxt : #cctxt) ~root_page_hash =
   cctxt#call_service
-    (RPC_services.get_certificate plugin)
+    (RPC_services.get_certificate)
     ((), root_page_hash)
     ()
     ()

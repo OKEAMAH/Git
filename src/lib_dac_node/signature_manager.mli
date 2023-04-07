@@ -34,10 +34,9 @@ type error +=
    returns an aggregate signature over [root_hash] and a bitmap of witnesses where
    empty elements of [dac_sk_uris_opt] are 0 and non-empty elements are 1. *)
 val sign_root_hash :
-  Dac_plugin.t ->
   #Client_context.wallet ->
   Client_keys.aggregate_sk_uri option trace ->
-  Dac_plugin.hash ->
+  Dac_plugin.raw_hash ->
   (Tezos_crypto.Aggregate_signature.signature * Z.t, tztrace) result Lwt.t
 
 (** [verify dac_plugin public_keys_opt root_hash aggregate_signature witnesses] verifies
@@ -45,9 +44,8 @@ val sign_root_hash :
     dac members is given by applying the [witnesses] bitmap against [public_keys_opt]
  *)
 val verify :
-  Dac_plugin.t ->
   public_keys_opt:Tezos_crypto.Aggregate_signature.public_key option trace ->
-  Dac_plugin.hash ->
+  Dac_plugin.raw_hash ->
   Tezos_crypto.Aggregate_signature.signature ->
   Z.t ->
   (bool, tztrace) result Lwt.t

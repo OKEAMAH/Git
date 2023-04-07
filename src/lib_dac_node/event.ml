@@ -268,17 +268,17 @@ let emit_protocol_plugin_not_resolved current_protocol next_protocol =
     ( proto_short_hash_string current_protocol,
       proto_short_hash_string next_protocol )
 
-let emit_new_root_hash_received ((module P) : Dac_plugin.t) hash =
-  emit new_root_hash_received (P.to_hex hash)
+let emit_new_root_hash_received hash =
+  emit new_root_hash_received (Dac_plugin.raw_hash_to_hex hash)
 
 let emit_root_hash_pushed_to_data_streamer hash =
   emit new_hash_pushed_to_data_streamer (Dac_plugin.raw_hash_to_hex hash)
 
-let emit_received_root_hash_processed ((module P) : Dac_plugin.t) hash =
-  emit received_root_hash_processed (P.to_hex hash)
+let emit_received_root_hash_processed hash =
+  emit received_root_hash_processed (Dac_plugin.raw_hash_to_hex hash)
 
-let emit_processing_root_hash_failed ((module P) : Dac_plugin.t) hash errors =
-  emit processing_root_hash_failed (P.to_hex hash, errors)
+let emit_processing_root_hash_failed hash errors =
+  emit processing_root_hash_failed (Dac_plugin.raw_hash_to_hex hash, errors)
 
 let emit_signature_pushed_to_coordinator signature =
   emit new_signature_pushed_to_coordinator signature
@@ -288,10 +288,10 @@ let emit_no_committee_member_address = emit no_committee_member_address
 let emit_cannot_retrieve_keys_from_address address =
   emit cannot_retrieve_keys_from_address address
 
-let fetched_missing_page ((module P) : Dac_plugin.t) =
+let fetched_missing_page =
   declare_1
     ~section
     ~name:"missing_page_fetched"
     ~msg:"Successfully fetched missing page for hash: {hash}"
     ~level:Notice
-    ("hash", P.encoding)
+    ("hash", Dac_plugin.non_proto_encoding_unsafe)

@@ -93,7 +93,7 @@ let put_dac_member_signature dac_plugin =
     ~output:Data_encoding.empty
     Tezos_rpc.Path.(open_root / "dac_member_signature")
 
-let get_certificate ((module P) : Dac_plugin.t) =
+let get_certificate =
   Tezos_rpc.Service.get_service
     ~description:
       "Retrieve the Dac certificate associated with the given root page hash"

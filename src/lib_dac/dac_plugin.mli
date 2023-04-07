@@ -58,8 +58,12 @@ val equal : raw_hash -> raw_hash -> bool
 
 val raw_hash_rpc_arg : raw_hash Tezos_rpc.Arg.arg
 
+val hex_to_raw_hash : string -> raw_hash
+
 module type T = sig
   val raw_hash_to_hash : raw_hash -> hash
+
+  val hash_to_raw : hash -> raw_hash
 
   (** The encoding of reveal hashes. *)
   val encoding : hash Data_encoding.t

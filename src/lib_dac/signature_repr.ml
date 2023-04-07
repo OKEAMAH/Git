@@ -26,7 +26,7 @@
 
 (** Representation of committee member signature. *)
 type t = {
-  root_hash : Dac_plugin.hash;
+  root_hash : Dac_plugin.raw_hash;
   signature : Tezos_crypto.Aggregate_signature.t;
   signer_pkh : Tezos_crypto.Aggregate_signature.public_key_hash;
 }
@@ -40,7 +40,7 @@ let encoding ((module P) : Dac_plugin.t) =
       (fun (root_hash, signature, signer_pkh) ->
         {root_hash; signature; signer_pkh})
       (obj3
-         (req "root_hash" P.encoding)
+         (req "root_hash" Dac_plugin.non_proto_encoding_unsafe)
          (req "signature" Tezos_crypto.Aggregate_signature.encoding)
          (req
             "signer_pkh"

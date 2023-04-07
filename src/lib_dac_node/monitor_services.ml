@@ -24,20 +24,15 @@
 (*****************************************************************************)
 
 module S = struct
-  let root_hashes ((module P) : Dac_plugin.t) =
+  let root_hashes =
     Tezos_rpc.Service.get_service
       ~description:
         "Monitor a stream of root hashes that are produced by another dac node \
          responsible for the serialization of the dac payload (coordinator).  "
       ~query:Tezos_rpc.Query.empty
-      ~output:P.encoding
+      ~output:Dac_plugin.non_proto_encoding_unsafe
       Tezos_rpc.Path.(open_root / "monitor" / "root_hashes")
 end
 
-let root_hashes dac_node_cctxt dac_plugin =
-  Tezos_rpc.Context.make_streamed_call
-    (S.root_hashes dac_plugin)
-    dac_node_cctxt
-    ()
-    ()
-    ()
+let root_hashes dac_node_cctxt =
+  Tezos_rpc.Context.make_streamed_call S.root_hashes dac_node_cctxt () () ()
