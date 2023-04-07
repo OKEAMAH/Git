@@ -66,27 +66,31 @@ val key_of_string_exn : string -> key
 
 val key_of_string_opt : string -> key option
 
+type tagged_chunk_byte_vector =
+  | Data of Tezos_lazy_containers.Chunked_byte_vector.t
+  | Commitment of Tezos_lazy_containers.Chunked_byte_vector.t
+
+type tag = Data | Commitment
+
 (** [find_value durable key] optionally looks for the value encoded at [key]
     in [durable]. *)
-val find_value :
-  t -> key -> Tezos_lazy_containers.Chunked_byte_vector.t option Lwt.t
+val find_value : t -> key -> tagged_chunk_byte_vector option Lwt.t
 
 (** raise @Not_found *)
-val find_value_exn :
-  t -> key -> Tezos_lazy_containers.Chunked_byte_vector.t Lwt.t
+val find_value_exn : t -> key -> tagged_chunk_byte_vector Lwt.t
 
-(** [copy_tree_exn tree from_key to_key] produces a new tree in which a copy of 
+(** [copy_tree_exn tree from_key to_key] produces a new tree in which a copy of
     the entire subtree at from_key is copied to to_key.*)
 val copy_tree_exn : t -> key -> key -> t Lwt.t
 
-(** [move_tree_exn tree from_key to_key] produces a new tree in which  
+(** [move_tree_exn tree from_key to_key] produces a new tree in which
     the entire subtree at from_key is moved to to_key.*)
 val move_tree_exn : t -> key -> key -> t Lwt.t
 
 (** [count_subtrees durable key] returns the number of subtrees under [key]. *)
 val count_subtrees : t -> key -> int Lwt.t
 
-(** [subtree_name_at durable key n] returns the name of the n_th subtree 
+(** [subtree_name_at durable key n] returns the name of the n_th subtree
     under [key]. *)
 val subtree_name_at : t -> key -> int -> string Lwt.t
 
@@ -95,10 +99,17 @@ val delete : t -> key -> t Lwt.t
 
 (** [hash_exn durable key] retrieves the tree hash of the value at the given [key].
     This is not the same as the hash of the value.
-
     @raise Not_found when [key] is not found
 *)
 val hash_exn : t -> key -> Context_hash.t Lwt.t
+
+type tagged_string = Data of string | Commitment of string
+
+(** [set_value_exn durable key str] installs the value [str] in
+    [durable] under [key], replacing any previous contents under this
+    key without fetching it. *)
+val set_value_exn :
+  t -> ?edit_readonly:bool -> tag:tag -> key -> tagged_string -> t Lwt.t
 
 (** [write_value durable key offset bytes] writes [bytes] to [key],
     starting at the given [offset].
@@ -107,7 +118,7 @@ val hash_exn : t -> key -> Context_hash.t Lwt.t
 
     @raise Out_of_bounds
 *)
-val write_value_exn : t -> key -> int64 -> string -> t Lwt.t
+val write_value_exn : t -> key -> int64 -> tagged_string -> t Lwt.t
 
 (** [read_value durable key offset max_bytes] reads up to [max_bytes]
     bytes from the value at [key], starting at the given [offset].
@@ -115,4 +126,10 @@ val write_value_exn : t -> key -> int64 -> string -> t Lwt.t
     @raise Not_found when [key] is not found.
     @raise Out_of_bounds when [offset] is larger than the value.
 *)
-val read_value_exn : t -> key -> int64 -> int64 -> string Lwt.t
+val read_value_exn : t -> key -> int64 -> int64 -> tagged_string Lwt.t
+
+module Internal_for_tests : sig
+  val key_is_readonly : key -> bool
+
+  val key_to_list : key -> string list
+end
