@@ -3310,8 +3310,7 @@ let commands_rw () =
               cctxt#message "Timelock chest verified, message is: %s" m
           | Bogus_opening ->
               cctxt#error "Error opening: incorrect proof or unlocked value."
-          | Bogus_cipher ->
-              cctxt#error "Error decrypting."
+          | Bogus_cipher -> cctxt#error "Error decrypting."
         in
         return_unit);
   ]
