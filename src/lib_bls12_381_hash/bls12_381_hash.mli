@@ -16,16 +16,35 @@ module Permutation : sig
         linear_layer : Bls12_381.Fr.t array array;
       }
 
-      (** Parameters for Poseidon with a state size of [3] for a security of
-        128bits.
-        FIXME: The linear layer and the round constants are not standard
+      (** [compute_number_of_rounds width security_level] returns [(r_f, r_p)]
+          where [r_f] is the number of full rounds and [r_p] is the number of
+          partial rounds necessary to reach a security level of [security_level] for
+          an instantiation of Poseidon with a state size of [width].
+          Based on the attacks described in
+          https://eprint.iacr.org/2019/458.pdf, section Attack Details.
       *)
+      val compute_number_of_rounds : int -> int -> int * int
+
+      (** [generate_round_constants r_f r_p width seed] generates a list of
+          pseudo random (seeded with [seed]) scalar field elements to be used as
+          round constants for an instantiation of Poseidon with a state size of
+          [width], [r_f] full rounds and [r_p] partial rounds. *)
+      val generate_round_constants :
+        int -> int -> int -> Bytes.t -> Bls12_381.Fr.t array
+
+      (** Parameters for Poseidon with a state size of [2] for a security of
+          128bits.
+          FIXME: The linear layer and the round constants are not standard. *)
+      val security_128_state_size_2 : t
+
+      (** Parameters for Poseidon with a state size of [3] for a security of
+          128bits.
+          FIXME: The linear layer and the round constants are not standard. *)
       val security_128_state_size_3 : t
 
       (** Parameters for Poseidon with a state size of [5] for a security of
-        256bits.
-        FIXME: The linear layer and the round constants are not standard
-    *)
+          256bits.
+          FIXME: The linear layer and the round constants are not standard. *)
       val security_256_state_size_5 : t
     end
 
