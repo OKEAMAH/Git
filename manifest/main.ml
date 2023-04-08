@@ -1007,6 +1007,7 @@ let octez_bls12_381_hash =
             "caml_anemoi_stubs";
             "caml_poseidon_stubs";
             "caml_griffin_stubs";
+            "blst_fr_pentaroot";
             "rescue";
             "anemoi";
             "poseidon";
