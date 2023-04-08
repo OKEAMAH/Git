@@ -114,6 +114,8 @@ let conf_libev = opam_only "conf-libev" V.True
 
 let conf_rust = opam_only "conf-rust" V.True
 
+let digestif = external_lib "digestif" V.True
+
 let ctypes = external_lib ~js_compatible:true "ctypes" V.(at_least "0.18.0")
 
 let ctypes_foreign =
@@ -993,7 +995,7 @@ let octez_bls12_381_hash =
       "Implementation of some cryptographic hash primitives using the scalar \
        field of BLS12-381"
     ~c_library_flags:["-Wall"; "-Wextra"; ":standard"; "-lpthread"]
-    ~deps:[bls12_381; bisect_ppx]
+    ~deps:[bls12_381; bisect_ppx; digestif]
     ~js_compatible:false
     ~foreign_stubs:
       {

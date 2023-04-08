@@ -6,7 +6,8 @@
  (public_name octez-bls12-381-hash)
  (instrumentation (backend bisect_ppx))
  (libraries
-  bls12-381)
+  bls12-381
+  digestif)
  (library_flags (:standard -linkall))
  (foreign_stubs
   (language c)

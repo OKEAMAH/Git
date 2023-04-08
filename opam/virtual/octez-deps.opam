@@ -32,6 +32,7 @@ depends: [
   "ctypes-foreign" { >= "0.18.0" }
   "ctypes_stubs_js"
   "data-encoding" { >= "0.7.1" & < "1.0.0" }
+  "digestif"
   "dune-configurator"
   "eqaf"
   "ezjsonm" { >= "1.1.0" }
