@@ -3,6 +3,7 @@
 
 #include "blst.h"
 #include "blst_misc.h"
+#include "blst_fr_pentaroot.h"
 
 typedef struct rescue_ctxt_s {
   // Containts the state, the MDS and the constants

@@ -3,6 +3,7 @@
 
 #include "blst.h"
 #include "blst_misc.h"
+#include "blst_fr_pentaroot.h"
 #include <string.h>
 
 typedef struct anemoi_ctxt_s {

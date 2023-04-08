@@ -2,6 +2,7 @@
 #define GRIFFIN_H
 
 #include "blst.h"
+#include "blst_fr_pentaroot.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
