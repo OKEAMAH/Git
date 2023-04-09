@@ -678,12 +678,19 @@ void anemoi_apply_flystel(anemoi_ctxt_t *ctxt) {
     anemoi_generic_apply_flystel(ctxt);
 }
 
-void anemoi_apply_linear_layer(anemoi_ctxt_t *ctxt) {
-  if (ctxt->l == 1) {
-    anemoi_1_apply_linear_layer(ctxt);
-  }
+void anemoi_apply_pht(anemoi_ctxt_t *ctxt) {
+  blst_fr *state = anemoi_get_state_from_context(ctxt);
+  blst_fr *state_x = state;
+  blst_fr *state_y = state_x + ctxt->l;
 
-  else if (ctxt->l == 2) {
+  for (int i = 0; i < ctxt->l; i++) {
+    blst_fr_add(state_y + i, state_x + i, state_y + i);
+    blst_fr_add(state_x + i, state_y + i, state_x + i);
+  }
+}
+
+void anemoi_apply_linear_layer(anemoi_ctxt_t *ctxt) {
+  if (ctxt->l == 2) {
     anemoi_2_apply_linear_layer(ctxt);
   }
 
@@ -695,9 +702,11 @@ void anemoi_apply_linear_layer(anemoi_ctxt_t *ctxt) {
     anemoi_4_apply_linear_layer(ctxt);
   }
 
-  else {
+  else if (ctxt->l > 4) {
     anemoi_generic_apply_linear_layer(ctxt);
   }
+
+  anemoi_apply_pht(ctxt);
 }
 
 void anemoi_apply_one_round(anemoi_ctxt_t *ctxt, int round) {

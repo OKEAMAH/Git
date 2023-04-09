@@ -27,6 +27,8 @@ void anemoi_apply_linear_layer(anemoi_ctxt_t *ctxt);
 
 void anemoi_apply_flystel(anemoi_ctxt_t *ctxt);
 
+void anemoi_apply_pht(anemoi_ctxt_t *ctxt);
+
 /* Context related functions */
 blst_fr *anemoi_get_state_from_context(anemoi_ctxt_t *ctxt);
 
