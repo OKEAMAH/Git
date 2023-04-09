@@ -150,8 +150,6 @@ type ctxt = Stubs.ctxt
 
 let allocate_ctxt parameters =
   let open Parameters in
-  if parameters.state_size <> 3 then
-    failwith "Only suppporting state size of 3 at the moment" ;
   Stubs.allocate_ctxt
     parameters.linear_layer
     parameters.round_constants
