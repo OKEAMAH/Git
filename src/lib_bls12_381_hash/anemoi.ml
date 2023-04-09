@@ -144,15 +144,6 @@ module Parameters = struct
       round_constants;
     }
 
-  let security_141_state_size_2 =
-    {
-      security = 141;
-      nb_rounds = 20;
-      state_size = 2;
-      linear_layer = Bls12_381.Fr.[|[|one; g|]; [|g; square g + one|]|];
-      round_constants = generate_constants 20 1;
-    }
-
   let security_128_state_size_4 =
     let security = 128 in
     let state_size = 4 in
@@ -264,14 +255,6 @@ let apply_permutation ctxt = Stubs.anemoi_apply_permutation ctxt
 let jive128_1 x y =
   let state = [|x; y|] in
   let ctxt = allocate_ctxt Parameters.security_128_state_size_2 in
-  let () = set_state ctxt state in
-  let () = apply_permutation ctxt in
-  let state = get_state ctxt in
-  Bls12_381.Fr.(x + y + state.(0) + state.(1))
-
-let jive141_1 x y =
-  let state = [|x; y|] in
-  let ctxt = allocate_ctxt Parameters.security_141_state_size_2 in
   let () = set_state ctxt state in
   let () = apply_permutation ctxt in
   let state = get_state ctxt in

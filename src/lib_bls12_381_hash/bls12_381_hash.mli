@@ -140,11 +140,6 @@ module Permutation : sig
     *)
       val security_128_state_size_2 : t
 
-      (** Parameters for the permutation Anemoi for a state size of [m = 2] (i.e.
-        [l = 1]) and 141 bits of security
-    *)
-      val security_141_state_size_2 : t
-
       (** Parameters for the permutation Anemoi for a state size of [m = 4] (i.e.
         [l = 2]) and 128 bits of security given in the paper
     *)
@@ -183,11 +178,6 @@ module Permutation : sig
       [S = (x, y)] and apply Jive on the output. Expected security is 128
       bits *)
     val jive128_1 : Bls12_381.Fr.t -> Bls12_381.Fr.t -> Bls12_381.Fr.t
-
-    (** [jive141_1 x y] calls the permutation Anemoi for [l = 1] with the state
-      [S = (x, y)] and apply Jive on the output. Expected security is 141
-      bits *)
-    val jive141_1 : Bls12_381.Fr.t -> Bls12_381.Fr.t -> Bls12_381.Fr.t
   end
 
   (** {{: https://eprint.iacr.org/2022/403.pdf } Griffin } over the scalar field
