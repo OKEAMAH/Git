@@ -97,17 +97,20 @@ module Parameters = struct
 
   let compute_number_of_rounds state_size security =
     let l = state_size / 2 in
-    let security_margin = 1 + l in
-    let alpha = 5 in
+    let security_margin = min 5 (1 + l) + 2 in
+    let kappa_alpha = 2 in
     let pow_security_2 = Z.pow (Z.of_int 2) security in
     let rec aux r =
-      let num = (2 * l * r) + alpha + 1 + (2 * ((l * r) - 2)) in
+      let num = (4 * l * r) + kappa_alpha in
       let den = 2 * l * r in
       let bin = Z.bin (Z.of_int num) den in
       let bin_square = Z.mul bin bin in
       if Z.gt bin_square pow_security_2 then r else aux (r + 1)
     in
-    max 10 (security_margin + aux 0)
+    let alg_attack = aux 0 in
+    let lft = 8 in
+    let rgt = security_margin + alg_attack in
+    max lft rgt
 
   let get_number_of_rounds p = p.nb_rounds
 

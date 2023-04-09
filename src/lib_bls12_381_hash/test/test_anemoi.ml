@@ -443,28 +443,28 @@ let test_anemoi_generic_with_l_one_is_anemoi_jive128_1 () =
 let test_compute_number_of_rounds () =
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 2 128
-    = 19) ;
+    = 21) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 4 128
-    = 12) ;
+    = 14) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 6 128
-    = 10) ;
+    = 12) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 8 128
-    = 10) ;
+    = 12) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 2 256
-    = 35) ;
+    = 37) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 4 256
-    = 20) ;
+    = 22) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 6 256
-    = 15) ;
+    = 17) ;
   assert (
     Bls12_381_hash.Permutation.Anemoi.Parameters.compute_number_of_rounds 8 256
-    = 14)
+    = 16)
 
 let test_anemoi_generate_constants () =
   let l = 1 in
