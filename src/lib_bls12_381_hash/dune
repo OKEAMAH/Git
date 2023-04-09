@@ -5,6 +5,7 @@
  (name bls12_381_hash)
  (public_name octez-bls12-381-hash)
  (instrumentation (backend bisect_ppx))
+ (modules :standard \ benchmark)
  (libraries
   bls12-381
   digestif)
@@ -22,3 +23,10 @@
    poseidon
    griffin))
  (c_library_flags (-Wall -Wextra :standard -lpthread)))
+
+(executable
+ (name benchmark)
+ (package octez-bls12-381-hash)
+ (modules benchmark)
+ (public_name benchmark)
+ (libraries core_unix.command_unix core core_bench hacl-star octez-bls12-381-hash digestif))
