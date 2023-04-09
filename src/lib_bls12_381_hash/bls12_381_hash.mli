@@ -72,9 +72,30 @@ module Permutation : sig
         nb_of_rounds : int;
       }
 
+      (** [generate_round_constants nb_rounds width seed] generates a list of
+          pseudo random (seeded with [seed]) scalar field elements to be used as
+          round constants for an instantiation of Rescue Prime with a state size of
+          [width] and [nb_rounds] rounds.
+          FIXME: The implementation is the same than
+          {!Poseidon.Parameters.generate_round_constants} at the moment.
+          It should be replaced by the algorithm Algorithm 5 provided
+          in https://eprint.iacr.org/2020/1143.pdf *)
+      val generate_round_constants :
+        int -> int -> Bytes.t -> Bls12_381.Fr.t array
+
+      (** [compute_number_of_rounds width security_level] returns the
+          number of rounds to reach a security level of [security_level]
+          bits for a state size of [width] *)
+      val compute_number_of_rounds : int -> int -> int
+
+      (** Parameters for Rescue with [state_size = 2] and 128 bits of security.
+          FIXME: The linear layer and the round constants are not standard
+      *)
+      val security_128_state_size_2 : t
+
       (** Parameters for Rescue with [state_size = 3] and 128 bits of security.
-        FIXME: The linear layer and the round constants are not standard
-    *)
+          FIXME: The linear layer and the round constants are not standard
+      *)
       val security_128_state_size_3 : t
     end
 

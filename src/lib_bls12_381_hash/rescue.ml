@@ -26,6 +26,57 @@ module Parameters = struct
     nb_of_rounds : int;
   }
 
+  let g = Bls12_381.Fr.of_string "7"
+
+  let alpha = Bls12_381.Fr.of_string "5"
+
+  let alpha_inv =
+    Bls12_381.Fr.of_string
+      "20974350070050476191779096203274386335076221000211055129041463479975432473805"
+
+  let sha256 bs = Hex.to_bytes (`Hex Digestif.SHA256.(to_hex (digest_bytes bs)))
+
+  (* The implementation is the same than provided for Poseidon.
+     It provides seeded pseudo-random round constants.
+     The algorithm should be changed to follow the paper
+     https://eprint.iacr.org/2020/1143.pdf *)
+  let generate_round_constants nb_rounds width seed =
+    let nb_constant = nb_rounds * 2 * width in
+    let rec inner i acc last_elmt bs =
+      if i = nb_constant then acc
+      else
+        let bs = sha256 bs in
+        (* using of_z and not of_bytes_exn because of_z performs a modulo
+            reduction by the scalar field order when of_bytes_exn does not *)
+        let z = Z.of_bits (String.of_bytes bs) in
+        let res = Bls12_381.Fr.of_z z in
+        let x = Bls12_381.Fr.(res + last_elmt) in
+        let acc = x :: acc in
+        inner (i + 1) acc x bs
+    in
+    inner 0 [] Bls12_381.Fr.one seed |> Array.of_list
+
+  (* From Anemoi paper, not sure it is the correct value *)
+  let compute_number_of_rounds width security_level =
+    let fwidth = float_of_int width in
+    let v =
+      float_of_int (security_level + 3) /. (5.5 *. fwidth)
+      |> ceil
+    in
+    ceil (1.5 *. (max 5. v)) |> int_of_float
+
+  let security_128_state_size_2 =
+    let state_size = 2 in
+    let nb_of_rounds = compute_number_of_rounds state_size 128 in
+    let linear_layer = Bls12_381.Fr.[|[|one; g|]; [|g; square g + one|]|] in
+    let round_constants =
+      generate_round_constants
+        nb_of_rounds
+        state_size
+        (Bytes.of_string "NomadicLabs")
+    in
+    {linear_layer; round_constants; state_size; nb_of_rounds}
+
   let state_size_3_mds =
     [|
       [|
