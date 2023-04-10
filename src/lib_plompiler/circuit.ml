@@ -315,14 +315,10 @@ let append_lookup :
   let s, index = use_table s table in
   let wires = [|a; b; c; d; e|] in
   let solver = Lookup {wires; table} in
-  let a, b, c, d, e = Utils.map5 untag (a, b, c, d, e) in
+  let wires = Array.map untag wires in
   let cstr =
     CS.new_constraint
-      ~a
-      ~b
-      ~c
-      ~d
-      ~e
+      ~wires:(Array.to_list wires)
       ~q_plookup:S.one
       ~q_table:(S.of_z (Z.of_int index))
       ~labels:s.labels
@@ -376,9 +372,7 @@ let input : type a. ?kind:input_kind -> a Input.t -> a repr t =
               >* append
                    [|
                      CS.new_constraint
-                       ~a:o
-                       ~b:o
-                       ~c:0
+                       ~wires:[o; o; 0]
                        ~linear:[(0, mone)]
                        ~qm:one
                        "bool";
@@ -437,9 +431,7 @@ let fresh : type a. a Input.t' -> a repr t =
           append
             [|
               CS.new_constraint
-                ~a:o
-                ~b:o
-                ~c:0
+                ~wires:[o; o; 0]
                 ~linear:[(0, mone)]
                 ~qm:one
                 "bool";
@@ -496,9 +488,7 @@ let constant_scalar s =
   append
     [|
       CS.new_constraint
-        ~a:0
-        ~b:0
-        ~c:o
+        ~wires:[0; 0; o]
         ~qc:s
         ~linear:[(2, mone)]
         "constant_scalar";
@@ -523,7 +513,7 @@ module Num = struct
     let*& r = fresh Dummy.scalar in
     (* 0*l + 0*r + 0*0 + 1*l*r -1 = 0 *)
     let gate =
-      [|CS.new_constraint ~a:l ~b:r ~c:0 ~qc:mone ~qm:one "assert_nonzero"|]
+      [|CS.new_constraint ~wires:[l; r; 0] ~qc:mone ~qm:one "assert_nonzero"|]
     in
     let solver = default_solver gate ~to_solve:(W 1) in
     append gate ~solver
@@ -535,9 +525,7 @@ module Num = struct
        let gate =
          [|
            CS.new_constraint
-             ~a:l
-             ~b:r
-             ~c:bit
+             ~wires:[l; r; bit]
              ~qc:mone
              ~linear:[(2, one)]
              ~qm:one
@@ -554,9 +542,7 @@ module Num = struct
        let gate =
          [|
            CS.new_constraint
-             ~a:l
-             ~b:r
-             ~c:bit
+             ~wires:[l; r; bit]
              ~linear:[(2, mone)]
              ~qm:one
              "is_not_zero";
@@ -568,7 +554,7 @@ module Num = struct
   let assert_bool (Scalar l) =
     with_label ~label:"Num.assert_bool"
     @@
-    let gate = [|CS.new_constraint ~a:l ~b:0 ~c:0 ~qbool:one "assert_bool"|] in
+    let gate = [|CS.new_constraint ~wires:[l] ~qbool:one "assert_bool"|] in
     let solver = Skip in
     append gate ~solver
 
@@ -578,9 +564,7 @@ module Num = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~qc
           ~linear:[(0, ql); (1, qr); (2, qo)]
           ~qm
@@ -595,9 +579,7 @@ module Num = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~qc
           ~linear:[(0, ql); (1, qr); (2, qo)]
           ~qm
@@ -610,9 +592,7 @@ module Num = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~qc
           ~linear:[(0, ql); (1, qr); (2, mone)]
           "add";
@@ -624,9 +604,7 @@ module Num = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:0
-          ~c:o
+          ~wires:[l; 0; o]
           ~qc:k
           ~linear:[(0, ql); (2, mone)]
           "add_constant";
@@ -638,9 +616,7 @@ module Num = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~linear:[(0, one); (1, mone); (2, mone)]
           "sub";
       |]
@@ -648,7 +624,7 @@ module Num = struct
 
   let mul ?(qm = one) (Scalar l) (Scalar r) =
     let*& o = fresh Dummy.scalar in
-    append [|CS.new_constraint ~a:l ~b:r ~c:o ~qm ~linear:[(2, mone)] "mul"|]
+    append [|CS.new_constraint ~wires:[l; r; o] ~qm ~linear:[(2, mone)] "mul"|]
     >* ret @@ Scalar o
 
   let div ?(den_coeff = one) (Scalar l) (Scalar r) =
@@ -657,9 +633,7 @@ module Num = struct
        let gate =
          [|
            CS.new_constraint
-             ~a:r
-             ~b:o
-             ~c:l
+             ~wires:[r; o; l]
              ~qm:den_coeff
              ~linear:[(2, mone)]
              "div";
@@ -672,7 +646,9 @@ module Num = struct
   let pow5 (Scalar l) =
     let*& o = fresh Dummy.scalar in
     let gate =
-      [|CS.new_constraint ~a:l ~b:0 ~c:o ~qx5a:one ~linear:[(2, mone)] "pow5"|]
+      [|
+        CS.new_constraint ~wires:[l; 0; o] ~qx5a:one ~linear:[(2, mone)] "pow5";
+      |]
     in
     let solver = Pow5 {a = l; c = o} in
     append gate ~solver >* ret @@ Scalar o
@@ -690,19 +666,13 @@ module Bool = struct
   let assert_true (Bool bit) =
     append
       [|
-        CS.new_constraint
-          ~a:bit
-          ~b:0
-          ~c:0
-          ~qc:mone
-          ~linear:[(0, one)]
-          "assert_true";
+        CS.new_constraint ~wires:[bit] ~qc:mone ~linear:[(0, one)] "assert_true";
       |]
       ~solver:Skip
 
   let assert_false (Bool bit) =
     append
-      [|CS.new_constraint ~a:bit ~b:0 ~c:0 ~linear:[(0, one)] "assert_false"|]
+      [|CS.new_constraint ~wires:[bit] ~linear:[(0, one)] "assert_false"|]
       ~solver:Skip
 
   let band : bool repr -> bool repr -> bool repr t =
@@ -716,7 +686,7 @@ module Bool = struct
     let*& o = fresh Dummy.scalar in
     (* o - l*r = 0 *)
     append
-      [|CS.new_constraint ~a:l ~b:r ~c:o ~qm:mone ~linear:[(2, one)] "band"|]
+      [|CS.new_constraint ~wires:[l; r; o] ~qm:mone ~linear:[(2, one)] "band"|]
     >* ret @@ Bool o
 
   let bnot (Bool b) =
@@ -731,9 +701,7 @@ module Bool = struct
     append
       [|
         CS.new_constraint
-          ~a:b
-          ~b:0
-          ~c:o
+          ~wires:[b; 0; o]
           ~qc:mone
           ~linear:[(0, one); (2, one)]
           "bnot";
@@ -752,9 +720,7 @@ module Bool = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~linear:[(0, one); (1, one); (2, mone)]
           ~qm:mtwo
           "xor";
@@ -772,9 +738,7 @@ module Bool = struct
     append
       [|
         CS.new_constraint
-          ~a:l
-          ~b:r
-          ~c:o
+          ~wires:[l; r; o]
           ~linear:[(0, one); (1, one); (2, mone)]
           ~qm:mone
           "nor";
@@ -797,7 +761,7 @@ module Bool = struct
       let*& v = fresh Dummy.scalar in
       let solver = Swap {b; x; y; u; v} in
       let gate =
-        [|CS.new_constraint ~a:b ~b:x ~c:y ~d:u ~e:v ~qcond_swap:one "swap"|]
+        [|CS.new_constraint ~wires:[b; x; y; u; v] ~qcond_swap:one "swap"|]
       in
       append gate ~solver >* ret @@ pair (Scalar u) (Scalar v)
     in
@@ -858,9 +822,7 @@ let assert_equal : type a. a repr -> a repr -> unit repr t =
         append
           [|
             CS.new_constraint
-              ~a:0
-              ~b
-              ~c:a
+              ~wires:[0; b; a]
               ~linear:[(1, one); (2, mone)]
               "assert_equal";
           |]
@@ -941,12 +903,10 @@ module Ecc = struct
        let gate =
          [|
            CS.new_constraint
-             ~a:x1
-             ~b:x2
-             ~c:x3
+             ~wires:[x1; x2; x3]
              ~qecc_ws_add:one
              "weierstrass-add.1";
-           CS.new_constraint ~a:y1 ~b:y2 ~c:y3 "weierstrass-add.2";
+           CS.new_constraint ~wires:[y1; y2; y3] "weierstrass-add.2";
          |]
        in
        let solver = Ecc_Ws {x1; x2; x3; y1; y2; y3} in
@@ -963,8 +923,8 @@ module Ecc = struct
     let*& y3 = fresh Dummy.scalar in
     let gate =
       [|
-        CS.new_constraint ~a:x1 ~b:x2 ~c:x3 ~qecc_ed_add:one "edwards-add.1";
-        CS.new_constraint ~a:y1 ~b:y2 ~c:y3 "edwards-add.2";
+        CS.new_constraint ~wires:[x1; x2; x3] ~qecc_ed_add:one "edwards-add.1";
+        CS.new_constraint ~wires:[y1; y2; y3] "edwards-add.2";
       |]
     in
     let solver = Ecc_Ed {x1; x2; x3; y1; y2; y3; a; d} in
@@ -983,14 +943,10 @@ module Ecc = struct
     let gate =
       [|
         CS.new_constraint
-          ~a:bit
-          ~b:x2
-          ~c:y2
-          ~d:x1
-          ~e:y1
+          ~wires:[bit; x2; y2; x1; y1]
           ~qecc_ed_cond_add:one
           "edwards-cond-add.1";
-        CS.new_constraint ~a:0 ~b:0 ~c:0 ~d:x3 ~e:y3 "edwards-cond-add.2";
+        CS.new_constraint ~wires:[0; 0; 0; x3; y3] "edwards-cond-add.2";
       |]
     in
     let solver = Ecc_Cond_Ed {x1; x2; x3; y1; y2; y3; bit; a; d} in
@@ -1037,33 +993,27 @@ module Poseidon = struct
     append
       [|
         CS.new_constraint
-          ~a:x0
-          ~b:0
-          ~c:y0
+          ~wires:[x0; 0; y0]
           ~qx5a:mone
           ~qc:(S.negate k_vec.(0).(0))
           ~linear:[(2, minv.(0).(0))]
           ~linear_g:[(1, minv.(0).(1)); (2, minv.(0).(2))]
           "pos128_full.1";
         CS.new_constraint
-          ~a:x1
-          ~b:y1
-          ~c:y2
+          ~wires:[x1; y1; y2]
           ~qx5a:mone
           ~qc:(S.negate k_vec.(1).(0))
           ~linear:[(1, minv.(1).(1)); (2, minv.(1).(2))]
           ~linear_g:[(1, minv.(1).(0))]
           "pos128_full.2";
         CS.new_constraint
-          ~a:x2
-          ~b:y0
-          ~c:y1
+          ~wires:[x2; y0; y1]
           ~qx5a:mone
           ~qc:(S.negate k_vec.(2).(0))
           ~linear:[(1, minv.(2).(0)); (2, minv.(2).(1))]
           ~linear_g:[(1, minv.(2).(2))]
           "pos128_full.3";
-        CS.new_constraint ~a:0 ~b:y2 ~c:0 "pos128_full.4";
+        CS.new_constraint ~wires:[0; y2; 0] "pos128_full.4";
       |]
       ~solver
     >* ret @@ to_list [Scalar y0; Scalar y1; Scalar y2]
@@ -1176,9 +1126,7 @@ module Poseidon = struct
     append
       [|
         CS.new_constraint
-          ~a:x2
-          ~b:0
-          ~c:0
+          ~wires:[x2; 0; 0]
           ~qc:eqs.(0).(0)
           ~qx5a:eqs.(0).(var "x2_5")
           ~linear_g:
@@ -1189,9 +1137,7 @@ module Poseidon = struct
             ]
           "pos128_4partial.1";
         CS.new_constraint
-          ~a
-          ~b:x0
-          ~c:x1
+          ~wires:[a; x0; x1]
           ~qc:eqs.(1).(0)
           ~qx5a:eqs.(1).(var "a_5")
           ~linear:
@@ -1203,9 +1149,7 @@ module Poseidon = struct
           ~linear_g:[(0, eqs.(1).(var "b"))]
           "pos128_4partial.2";
         CS.new_constraint
-          ~a:b
-          ~b:y1
-          ~c:x1
+          ~wires:[b; y1; x1]
           ~qc:eqs.(2).(0)
           ~qx5a:eqs.(2).(var "b_5")
           ~linear:
@@ -1222,9 +1166,7 @@ module Poseidon = struct
             ]
           "pos128_4partial.3";
         CS.new_constraint
-          ~a:c
-          ~b:y0
-          ~c:a
+          ~wires:[c; y0; a]
           ~qc:eqs.(3).(0)
           ~qx5a:eqs.(3).(var "c_5")
           ~linear:
@@ -1241,9 +1183,7 @@ module Poseidon = struct
             ]
           "pos128_4partial.4";
         CS.new_constraint
-          ~a:b
-          ~b:x0
-          ~c:x1
+          ~wires:[b; x0; x1]
           ~qc:eqs.(4).(0)
           ~qx5a:eqs.(4).(var "b_5")
           ~linear:
@@ -1255,9 +1195,7 @@ module Poseidon = struct
           ~linear_g:[(0, eqs.(4).(var "c")); (1, eqs.(4).(var "a"))]
           "pos128_4partial.5";
         CS.new_constraint
-          ~a:c
-          ~b:a
-          ~c:b
+          ~wires:[c; a; b]
           ~qc:eqs.(5).(0)
           ~qx5a:eqs.(5).(var "c_5")
           ~linear:
@@ -1273,7 +1211,7 @@ module Poseidon = struct
               (2, eqs.(5).(var "x1"));
             ]
           "pos128_4partial.6";
-        CS.new_constraint ~a:y2 ~b:x0 ~c:x1 "pos128_4partial.7";
+        CS.new_constraint ~wires:[y2; x0; x1] "pos128_4partial.7";
       |]
       ~solver
     >* ret @@ to_list [Scalar y0; Scalar y1; Scalar y2]
@@ -1322,25 +1260,19 @@ module Anemoi = struct
     append
       [|
         CS.new_constraint
-          ~a:y0
-          ~b:y0
-          ~c:w
+          ~wires:[y0; y0; w]
           ~qc:gamma
           ~qm:beta
           ~qx5c:one
           ~linear_g:[(0, mone)]
           "anemoi.1";
         CS.new_constraint
-          ~a:x0
-          ~b:y0
-          ~c:w
+          ~wires:[x0; y0; w]
           ~linear:[(1, one); (2, mone)]
           ~linear_g:[(0, mone)]
           "anemoi.2";
         CS.new_constraint
-          ~a:v
-          ~b:v
-          ~c:w
+          ~wires:[v; v; w]
           ~qc:S.(kx + delta + (g * ky))
           ~qm:beta
           ~qx5c:one
@@ -1348,9 +1280,7 @@ module Anemoi = struct
           ~linear_g:[(0, mone)]
           "anemoi.3";
         CS.new_constraint
-          ~a:x1
-          ~b:y1
-          ~c:v
+          ~wires:[x1; y1; v]
           ~qc:S.(negate ky)
           ~linear:[(0, S.(negate g)); (1, one); (2, mone)]
           "anemoi.4";
@@ -1402,9 +1332,7 @@ module Anemoi = struct
     append
       [|
         CS.new_constraint
-          ~a:y0
-          ~b:w0
-          ~c:x0
+          ~wires:[y0; w0; x0]
           ~qx2b:S.(negate g_beta)
           ~qm:S.(two * g_beta)
           ~linear:[(0, S.(negate g2_p_1)); (1, g2_p_1); (2, S.(negate g))]
@@ -1412,9 +1340,7 @@ module Anemoi = struct
           ~qc:qca
           "anemoi_double.a";
         CS.new_constraint
-          ~a:y1
-          ~b:w1
-          ~c:w0
+          ~wires:[y1; w1; w0]
           ~qx2b:S.(negate g_beta)
           ~qm:S.(two * g_beta)
           ~linear:[(0, S.(negate g2_p_1)); (1, g2); (2, mone)]
@@ -1422,17 +1348,13 @@ module Anemoi = struct
           ~qc:qcb
           "anemoi_double.b";
         CS.new_constraint
-          ~a:y0
-          ~b:x2
-          ~c:y2
+          ~wires:[y0; x2; y2]
           ~linear:[(1, S.(negate g)); (2, one)]
           ~linear_g:[(0, one); (1, mone)]
           ~qc:S.(negate ky2)
           "anemoi_double.c";
         CS.new_constraint
-          ~a:w1
-          ~b:y1
-          ~c:y1
+          ~wires:[w1; y1; y1]
           ~qx5a:g
           ~qx2b:g_beta
           ~linear:[(1, mone)]
@@ -1440,9 +1362,7 @@ module Anemoi = struct
           ~qc:qcd
           "anemoi_double.d";
         CS.new_constraint
-          ~a:w0
-          ~b:y0
-          ~c:x0
+          ~wires:[w0; y0; x0]
           ~qx5a:one
           ~qx2b:beta
           ~linear:[(2, mone)]
@@ -1464,15 +1384,11 @@ module Anemoi = struct
        let gate =
          [|
            CS.new_constraint
-             ~a:0
-             ~b:x1
-             ~c:y1
-             ~d:x0
-             ~e:y0
+             ~wires:[0; x1; y1; x0; y0]
              ~q_anemoi:one
              ~precomputed_advice
              "custom_anemoi.1";
-           CS.new_constraint ~a:0 ~b:0 ~c:0 ~d:x2 ~e:y2 "custom_anemoi.2";
+           CS.new_constraint ~wires:[0; 0; 0; x2; y2] "custom_anemoi.2";
          |]
        in
        let solver = AnemoiCustom {x0; y0; x1; y1; x2; y2; kx1; kx2; ky1; ky2} in
