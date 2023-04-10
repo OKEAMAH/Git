@@ -28,23 +28,15 @@ module CS = Csir.CS
 open Linear_algebra.Make_VectorSpace(S)
 module Tables = Csir.Tables
 
-type wire = A | B | C | D | E
+type wire = W of int
 
 type 'a tagged = Input of 'a | Output of 'a
 
 val untag : 'a tagged -> 'a
 
 type arith_desc = {
-  a : int;
-  b : int;
-  c : int;
-  d : int;
-  e : int;
-  ql : S.t;
-  qr : S.t;
-  qo : S.t;
-  qd : S.t;
-  qe : S.t;
+  wires : int array;
+  linear : S.t array;
   qm : S.t;
   qc : S.t;
   qx5a : S.t;
