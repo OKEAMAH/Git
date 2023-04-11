@@ -218,4 +218,5 @@ let () =
   register_protocol_tests_that_use_supports_correctly () ;
   register_protocol_specific_because_regression_tests () ;
   (* Test.run () should be the last statement, don't register afterwards! *)
+  Tezos_scoru_wasm_regressions.register () ;
   Test.run ()
