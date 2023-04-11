@@ -574,6 +574,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             TransactionContext::new(caller, callee, value.unwrap_or(U256::zero())),
         );
 
+        debug_msg!(self.host, " Final result of contract call : {:?}", result);
         map_execution_outcome(self.gas_used(), result.map(|(x, y)| (x, None, y)))
     }
 
@@ -595,6 +596,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             gas_limit,
         );
 
+        debug_msg!(
+            self.host,
+            " Final result of contract deployement : {:?}",
+            result
+        );
         map_execution_outcome(self.gas_used(), result)
     }
 
