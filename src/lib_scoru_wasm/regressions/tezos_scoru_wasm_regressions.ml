@@ -118,7 +118,7 @@ module Verifier =
   Tezos_protocol_alpha.Protocol.Alpha_context.Sc_rollup.Wasm_2_0_0PVM
   .Protocol_implementation
 
-let version_name = function Wasm_pvm_state.V0 -> "v0"
+let version_name = function Wasm_pvm_state.V0 -> "v0" | V1 -> "v1"
 
 let capture_hash_of tree =
   Regression.capture @@ Context_hash.to_b58check
@@ -244,7 +244,7 @@ let register_gen ~from_binary ~fail_on_stuck ?ticks_per_snapshot ~tag ~inputs
         ~tags:["wasm_2_0_0"; name; tag; version_name version]
         (fun () ->
           let* context = context ~name () in
-          let* tree = initial_tree ~from_binary ?ticks_per_snapshot kernel in
+          let* tree = initial_tree ~version ~from_binary ?ticks_per_snapshot kernel in
           let* tree = set_full_input_step inputs 0l tree in
           let* tree = eval context tree in
           let* is_stuck = Wasm_fast.Internal_for_tests.is_stuck tree in
@@ -295,7 +295,7 @@ let register () =
     ~from_binary:false
     ~ticks_per_snapshot:5_000L
     ~inputs:[]
-    ~versions:[V0]
+    ~versions:[V0; V1]
     ~hash_frequency:137L
     ~proof_frequency:(11L, 23L)
     echo_kernel ;
@@ -304,7 +304,7 @@ let register () =
     ~from_binary:true
     ~ticks_per_snapshot:6_000_000L
     ~inputs:tx_no_verify_inputs
-    ~versions:[V0]
+    ~versions:[V0; V1]
     ~hash_frequency:10_037L
     ~proof_frequency:(3L, 30_893L)
     tx_no_verify_kernel ;
@@ -314,7 +314,7 @@ let register () =
     ~from_binary:false
     ~ticks_per_snapshot:5_000L
     ~inputs:tx_no_verify_inputs
-    ~versions:[V0]
+    ~versions:[V0; V1]
     ~hash_frequency:0L
     ~proof_frequency:(1L, 0L)
     (link_kernel "store_create" ["i32"; "i32"; "i32"] ["i32"]);
@@ -324,7 +324,7 @@ let register () =
     ~from_binary:false
     ~ticks_per_snapshot:5_000L
     ~inputs:tx_no_verify_inputs
-    ~versions:[V0]
+    ~versions:[V0; V1]
     ~hash_frequency:0L
     ~proof_frequency:(1L, 0L)
     (link_kernel "store_delete_value" [ "i32"; "i32"] ["i32"]);
@@ -334,7 +334,7 @@ let register () =
     ~from_binary:false
     ~ticks_per_snapshot:5_000L
     ~inputs:tx_no_verify_inputs
-    ~versions:[V0]
+    ~versions:[V0; V1]
     ~hash_frequency:0L
     ~proof_frequency:(1L, 0L)
     (link_kernel "__internal_store_get_hash" ["i32"; "i32"; "i32"; "i32"] ["i32"])
