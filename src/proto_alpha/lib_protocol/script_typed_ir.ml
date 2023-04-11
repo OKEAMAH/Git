@@ -300,11 +300,39 @@ module Type_size : TYPE_SIZE = struct
   let compound2 loc size1 size2 = of_int loc (1 + size1 + size2)
 end
 
+module type TYPE_ATTRIBUTES = sig
+  type 'a t = private {packable : bool; duplicable : bool}
+
+  val all : 'a t
+
+  val make : packable:bool -> duplicable:bool -> 'a t
+
+  val compound1 : 'a t -> 'b t
+
+  val compound2 : 'a t -> 'b t -> 'c t
+end
+
+module Type_attributes : TYPE_ATTRIBUTES = struct
+  type 'a t = {packable : bool; duplicable : bool}
+
+  let all : 'a t = {packable = true; duplicable = true}
+
+  let make ~packable ~duplicable = {packable; duplicable}
+
+  let compound1 ({packable; duplicable} : 'a t) : 'b t = {packable; duplicable}
+
+  let compound2 (a : 'a t) (b : 'b t) : 'c t =
+    {
+      packable = a.packable && b.packable;
+      duplicable = a.duplicable && b.duplicable;
+    }
+end
+
 type empty_cell = EmptyCell
 
 type end_of_stack = empty_cell * empty_cell
 
-type 'a ty_metadata = {size : 'a Type_size.t} [@@unboxed]
+type 'a ty_metadata = {size : 'a Type_size.t; attributes : 'a Type_attributes.t}
 
 (*
 
@@ -1710,18 +1738,23 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | IHalt loc -> loc
   | ILog (loc, _, _, _, _) -> loc
 
-let meta_basic = {size = Type_size.one}
+let meta_basic = {size = Type_size.one; attributes = Type_attributes.all}
 
-let meta_compound1 loc ({size} : _ ty_metadata) : _ ty_metadata tzresult =
+let meta_compound1 loc ({size; attributes} : _ ty_metadata) :
+    _ ty_metadata tzresult =
   let open Result_syntax in
   let+ size = Type_size.compound1 loc size in
-  {size}
+  let attributes = Type_attributes.compound1 attributes in
+  {size; attributes}
 
-let meta_compound2 loc ({size = size1} : _ ty_metadata)
-    ({size = size2} : _ ty_metadata) : _ ty_metadata tzresult =
+let meta_compound2 loc
+    ({size = size1; attributes = attributes1} : _ ty_metadata)
+    ({size = size2; attributes = attributes2} : _ ty_metadata) :
+    _ ty_metadata tzresult =
   let open Result_syntax in
   let+ size = Type_size.compound2 loc size1 size2 in
-  {size}
+  let attributes = Type_attributes.compound2 attributes1 attributes2 in
+  {size; attributes}
 
 let unit_metadata : unit ty_metadata = meta_basic
 
@@ -1759,7 +1792,11 @@ let sapling_transaction_deprecated_metadata :
 
 let sapling_state_metadata : Sapling.state ty_metadata = meta_basic
 
-let operation_metadata : operation ty_metadata = meta_basic
+let operation_metadata : operation ty_metadata =
+  {
+    size = Type_size.one;
+    attributes = Type_attributes.make ~packable:false ~duplicable:true;
+  }
 
 let bls12_381_g1_metadata : Script_bls.G1.t ty_metadata = meta_basic
 
@@ -1790,7 +1827,9 @@ let lambda_metadata :
     'a ty_metadata ->
     'b ty_metadata ->
     ('a, 'b) lambda ty_metadata tzresult =
-  meta_compound2
+ fun loc {size = size1; attributes = _} {size = size2; attributes = _} ->
+  Type_size.compound2 loc size1 size2 >|? fun size ->
+  {size; attributes = Type_attributes.all}
 
 let option_metadata :
     Script.location -> 'a ty_metadata -> 'a option ty_metadata tzresult =
@@ -1816,16 +1855,30 @@ let big_map_metadata :
     'a ty_metadata ->
     'b ty_metadata ->
     ('a, 'b) big_map ty_metadata tzresult =
-  meta_compound2
+ fun loc
+     {size = size_key; attributes = attributes_key}
+     {size = size_val; attributes = attributes_val} ->
+  Type_size.compound2 loc size_key size_val >|? fun size ->
+  {
+    size;
+    attributes =
+      Type_attributes.make
+        ~packable:false
+        ~duplicable:(attributes_key.duplicable && attributes_val.duplicable);
+  }
 
 let contract_metadata :
     Script.location -> 'a ty_metadata -> 'a typed_contract ty_metadata tzresult
     =
-  meta_compound1
+ fun loc {size; attributes = _} ->
+  Type_size.compound1 loc size >|? fun size ->
+  {size; attributes = Type_attributes.make ~packable:false ~duplicable:true}
 
 let ticket_metadata :
     Script.location -> 'a ty_metadata -> 'a ticket ty_metadata tzresult =
-  meta_compound1
+ fun loc {size; attributes = _} ->
+  Type_size.compound1 loc size >|? fun size ->
+  {size; attributes = Type_attributes.make ~packable:false ~duplicable:false}
 
 let ty_metadata : type a ac. (a, ac) ty -> a ty_metadata = function
   | Unit_t -> unit_metadata

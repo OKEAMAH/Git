@@ -262,7 +262,9 @@ let type_metadata_eq :
     'a ty_metadata ->
     'b ty_metadata ->
     (unit, error_trace) result =
- fun ~error_details {size = size_a} {size = size_b} ->
+ fun ~error_details
+     {size = size_a; attributes = _}
+     {size = size_b; attributes = _} ->
   Type_size.check_eq ~error_details size_a size_b
 
 let default_ty_eq_error loc ty1 ty2 =

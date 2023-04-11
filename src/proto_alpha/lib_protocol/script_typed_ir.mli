@@ -204,7 +204,11 @@ module Type_size : sig
   val to_int : 'a t -> Saturation_repr.mul_safe Saturation_repr.t
 end
 
-type 'a ty_metadata = {size : 'a Type_size.t} [@@unboxed]
+module Type_attributes : sig
+  type 'a t = private {packable : bool; duplicable : bool}
+end
+
+type 'a ty_metadata = {size : 'a Type_size.t; attributes : 'a Type_attributes.t}
 
 module type Boxed_set_OPS = sig
   type t
