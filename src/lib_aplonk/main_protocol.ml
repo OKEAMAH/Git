@@ -248,9 +248,7 @@ struct
        cs.cs; *)
     let public_input_size = public_input_size circuit_name circuit.gates in
     let input_com_sizes = cs.input_com_sizes in
-    let circuit_aggreg =
-      Plonk.Circuit.to_plonk ~public_input_size ~input_com_sizes cs.cs
-    in
+    let circuit_aggreg = Plonk.Circuit.to_plonk cs in
     let agg_circuit_map =
       SMap.singleton ("meta_" ^ circuit_name) (circuit_aggreg, 1)
     in
