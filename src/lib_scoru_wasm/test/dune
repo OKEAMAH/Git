@@ -11,6 +11,7 @@
   tezos-base-test-helpers
   tezos-test-helpers
   tezos-scoru-wasm
+  octez-bls12-381-polynomial
   qcheck-alcotest
   alcotest-lwt
   tezos-scoru-wasm-helpers

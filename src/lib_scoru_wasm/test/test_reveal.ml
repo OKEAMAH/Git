@@ -106,6 +106,61 @@ let to_hex_string ?(tag = "\\00") s =
        (fun ppf e -> fprintf ppf "\\%02x" (Char.code e)))
     (String.to_seq s)
 
+let commit srs p =
+  (*let degree = Octez_bls12_381_polynomial.Polynomial.degree p in
+    let srs_size = Octez_bls12_381_polynomial.Srs.Srs_g1.size srs in
+    if degree >= srs_size then Stdlib.failwith "invalid degree"
+    else*)
+  Octez_bls12_381_polynomial.Srs.Srs_g1.pippenger srs p
+
+(* Converts a string to its polynomial representation for
+   use in the KZG commitment scheme. *)
+let string_to_polynomial s =
+  (* The maximum number of bytes fitting in an Fr.t element. *)
+  let scalar_bytes_amount = Bls12_381.Fr.size_in_bytes - 1 in
+  let b = String.to_bytes s in
+  let size = Bytes.length b in
+  let remaining_bytes = size mod scalar_bytes_amount in
+  (* Maximum number of coefficients of the polynomial,
+     we take the next power of two for the FFT. *)
+  let len =
+    1
+    lsl Z.log2up
+          (Z.of_int
+             ((size / scalar_bytes_amount)
+             + if remaining_bytes <> 0 then 1 else 0))
+  in
+  let offset = ref 0 in
+  let v = Array.init len (fun _ -> Bls12_381.Fr.(copy zero)) in
+  let buf = ref (Bytes.create scalar_bytes_amount) in
+  for i = 0 to (size / scalar_bytes_amount) - 1 do
+    (* TODO check create is not with size 0 in loops from dal cryptobox *)
+    Bytes.blit b !offset !buf 0 scalar_bytes_amount ;
+    offset := !offset + scalar_bytes_amount ;
+    v.(i) <- Bls12_381.Fr.of_bytes_exn !buf
+  done ;
+  if remaining_bytes <> 0 then (
+    Bytes.blit b !offset !buf 0 remaining_bytes ;
+    v.(size / scalar_bytes_amount) <- Bls12_381.Fr.of_bytes_exn !buf) ;
+  (* Interpolate data *)
+  let dom = Octez_bls12_381_polynomial.Domain.build len in
+  Octez_bls12_381_polynomial.Evaluations.interpolation_fft2 dom v
+
+let prove_single srs p z =
+  Octez_bls12_381_polynomial.Polynomial.(
+    division_xn (p - constant (evaluate p z)) 1 (Bls12_381.Fr.negate z))
+  |> fst |> commit srs
+
+let verify_single srs cm ~point ~evaluation proof =
+  let h_secret = Octez_bls12_381_polynomial.Srs.Srs_g2.get srs 1 in
+  Bls12_381.(
+    Pairing.pairing_check
+      [
+        ( G1.(add cm (negate (mul (copy one) evaluation))),
+          G2.(negate (copy one)) );
+        (proof, G2.(add h_secret (negate (mul (copy one) point))));
+      ])
+
 let test_reveal_preimage_gen ~version preimage max_bytes =
   let open Lwt_result_syntax in
   let hash_addr = 120l in
@@ -145,7 +200,6 @@ let test_reveal_preimage_gen ~version preimage max_bytes =
         (* The PVM has reached a point where it’s asking for some preimage. *)
         assert (
           String.equal (String.sub reveal_hash 1 Tezos_crypto.Blake2B.size) hash) ;
-
         return_unit
     | No_input_required | Input_required | Reveal_required _ -> assert false
   in

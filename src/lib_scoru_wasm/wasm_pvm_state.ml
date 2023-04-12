@@ -60,6 +60,7 @@ type output_info = {
   message_index : Z.t;  (** The index of the message in the outbox. *)
 }
 
+(* TODO: rename to reveal_commitment, and switch to Bls12_381.G1.t *)
 type reveal_hash = string
 
 type reveal = Tezos_webassembly_interpreter.Host_funcs.reveal =
