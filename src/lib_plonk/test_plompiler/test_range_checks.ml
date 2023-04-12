@@ -23,64 +23,56 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Lang_core
-include Lang_stdlib
+open Plompiler
+open LibCircuit
+module CS = Plonk.Circuit
+module Hash = Poseidon128.V (LibCircuit)
+module Helpers = Plonk_test.Helpers.Make (Plonk.Main_protocol)
 
-module LibResult : sig
-  include LIB
+open Plonk_test.Helpers.Utils (LibCircuit)
 
-  val get_result : 'a repr t -> 'a Input.t
-end = struct
-  include Result
-  include Lib (Result)
-end
+let s_of_int i = S.of_z (Z.of_int i)
 
-module LibCircuit : sig
-  include LIB
+let random_s bound = S.of_z (Z.of_int (Random.int (1 lsl bound)))
 
-  val deserialize : S.t array -> 'a Input.t -> 'a Input.t
+let hash array =
+  let ctx = Poseidon128.P.init ~input_length:(Array.length array) () in
+  let ctx = Poseidon128.P.digest ctx array in
+  Poseidon128.P.get ctx
 
-  val get_inputs : 'a repr t -> S.t array * int
+let bound1 = 1 + Random.int 28
 
-  type cs_result = {
-    nvars : int;
-    free_wires : int list;
-    cs : Csir.CS.t;
-    public_input_size : int;
-    input_com_sizes : int list;
-    tables : Csir.Table.t list;
-    range_checks : (string * (int * int) list) list;
-    solver : Solver.t;
-  }
-  [@@deriving repr]
+let bound2 = 1 + Random.int 28
 
-  val get_cs : ?optimize:bool -> 'a repr t -> cs_result
-end = struct
-  include Circuit
-  include Lib (Circuit)
-end
+let bound3 = 1 + Random.int 28
 
-module Gadget = struct
-  module type HASH = Hash_sig.HASH
+let bound4 = 1 + Random.int 28
 
-  module Anemoi128 = Gadget_anemoi.Anemoi128
-  module AnemoiJive_128_1 = Gadget_anemoi.Make
-  module Poseidon128 = Gadget_poseidon.Poseidon128
-  module Poseidon252 = Gadget_poseidon.Poseidon252
-  module PoseidonFull = Gadget_poseidon.PoseidonFull
-  module Merkle = Gadget_merkle.Make
-  module Merkle_narity = Gadget_merkle_narity
-  module JubjubEdwards = Gadget_edwards.Jubjub
-  module JubjubWeierstrass = Gadget_weierstrass.Jubjub
-  module Schnorr = Gadget_schnorr.Make
-  module Blake2s = Gadget_blake2s.Blake2s
-end
+let build_circuit x1 x2 x3 x4 y () =
+  let* expected = input ~kind:`Public (Input.scalar y) in
+  let* x1 = input (Input.scalar x1) in
+  let* x2 = input (Input.scalar x2) in
+  let* x3 = input (Input.scalar x3) in
+  let* x4 = input (Input.scalar x4) in
+  Num.range_check ~nb_bits:bound1 x1
+  >* Num.range_check ~nb_bits:bound2 x2
+  >* Num.range_check ~nb_bits:bound3 x3
+  >* Num.range_check ~nb_bits:bound4 x4
+  >* let* out = Hash.digest ~input_length:4 (to_list [x1; x2; x3; x4]) in
+     with_bool_check (equal out expected)
 
-include Gadget
-module Utils = Utils
-module Linear_algebra = Linear_algebra
-module Optimizer = Optimizer
-module Solver = Solver
-module Encodings = Encoding.Encodings
-module Bounded = Bounded
-module Csir = Csir
+let test_range_checks () =
+  let w1 = random_s bound1 in
+  let w2 = random_s bound2 in
+  let w3 = random_s bound3 in
+  let w4 = random_s bound4 in
+  let y = hash [|w1; w2; w3; w4|] in
+  let circuit = build_circuit w1 w2 w3 w4 y () in
+  (* TODO: make optimizer compatible with range checks *)
+  let cs = get_cs ~optimize:true circuit in
+  let plonk_circuit = Plonk.Circuit.to_plonk cs in
+  let private_inputs = Solver.solve cs.solver [|y; w1; w2; w3; w4|] in
+  assert (CS.sat cs.cs [] private_inputs) ;
+  Helpers.test_circuit ~name:"" plonk_circuit private_inputs
+
+let tests = [Alcotest.test_case "Range-check" `Quick test_range_checks]

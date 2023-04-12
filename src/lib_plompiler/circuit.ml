@@ -84,6 +84,8 @@ type state = {
   delayed : state -> state * unit repr;
   tables : string list;
   solver : Solver.t;
+  (* (variable index * bound) *)
+  range_checks : (int * int) list;
   (* label trace *)
   labels : string list;
 }
@@ -505,6 +507,11 @@ module Num = struct
   type nonrec 'a repr = 'a repr
 
   type nonrec 'a t = 'a t
+
+  (* checks that 0 <= (Scalar l) < 2^nb_bits *)
+  let range_check ~nb_bits (Scalar l) s =
+    assert (nb_bits > 0) ;
+    ({s with range_checks = (l, nb_bits) :: s.range_checks}, Unit)
 
   (* l ≠ 0  <=>  ∃ r ≠ 0 : l * r - 1 = 0 *)
   let assert_nonzero (Scalar l) =
@@ -1418,6 +1425,7 @@ let get f =
         solver = Solver.empty_solver;
         delayed = ret Unit;
         check_wires = [];
+        range_checks = [];
         labels = [];
       }
   in
@@ -1447,6 +1455,7 @@ type cs_result = {
   public_input_size : int;
   input_com_sizes : int list;
   tables : Csir.Table.t list;
+  range_checks : (string * (int * int) list) list;
   solver : Solver.t;
 }
 [@@deriving repr]
@@ -1481,6 +1490,34 @@ let get_cs ?(optimize = false) f : cs_result =
       (cs, Solver.append_solver (Updater ti) s.solver, ti.free_wires)
     else (s.cs, s.solver, [])
   in
+  let module IMap = Map.Make (Int) in
+  let pending_rc, range_checks =
+    let cs = Array.concat cs in
+    let pending_rc = IMap.of_seq (List.to_seq s.range_checks) in
+    let get_wire_range_check (pending_rc, all_found_rc) wire =
+      let pending_rc, found_rc =
+        Array.fold_left
+          (fun (pending_rc, found_rc) (i, (constr : CS.raw_constraint)) ->
+            let idx = constr.wires.(Csir.int_of_wire_name wire) in
+            match IMap.find_opt idx pending_rc with
+            | None -> (pending_rc, found_rc)
+            | Some bound ->
+                let pending_rc = IMap.remove idx pending_rc in
+                let found_rc = (i, bound) :: found_rc in
+                (pending_rc, found_rc))
+          (pending_rc, [])
+          (Array.mapi (fun i c -> (i, c)) cs)
+      in
+      (pending_rc, (wire, found_rc) :: all_found_rc)
+    in
+    List.fold_left
+      get_wire_range_check
+      (pending_rc, [])
+      (List.init Csir.nb_wires_arch Csir.wire_name)
+  in
+  assert (IMap.is_empty pending_rc) ;
+  (* remove empty lists from range checks *)
+  let range_checks = List.filter (fun (_, r) -> r <> []) range_checks in
   {
     nvars = s.nvars;
     free_wires;
@@ -1489,4 +1526,5 @@ let get_cs ?(optimize = false) f : cs_result =
     public_input_size = s.pi_size;
     input_com_sizes = List.rev s.input_com_sizes;
     solver;
+    range_checks;
   }
