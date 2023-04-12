@@ -25,8 +25,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*
-  To add invoices, you can use a helper function like this one:
 
 (** Invoice a contract at a given address with a given amount. Returns the
     updated context and a  balance update receipt (singleton list). The address
@@ -50,7 +48,6 @@ let invoice_contract ctxt ~address ~amount_mutez =
       >|= function
       | Ok res -> res
       | Error _ -> (ctxt, []))
-*)
 
 (*
   To patch code of legacy contracts you can add a helper function here and call
@@ -171,7 +168,11 @@ let prepare_first_block _chain_id ctxt ~typecheck ~level ~timestamp ~predecessor
       Storage.Tenderbake.First_level_of_protocol.update ctxt level
       >>=? fun ctxt ->
       Storage.Legacy.Grand_parent_branch.remove ctxt >>= fun ctxt ->
-      return (ctxt, []))
+      invoice_contract
+         ctxt
+        ~address:"tz1So7udy2xhCWpsxa8GLbgjKAV5LERo7q4H"
+        ~amount_mutez:100_000_000_000L
+      >>= fun (ctxt, balance_updates) -> return (ctxt, balance_updates))
   >>=? fun (ctxt, balance_updates) ->
   List.fold_left_es patch_script ctxt Legacy_script_patches.addresses_to_patch
   >>=? fun ctxt ->
