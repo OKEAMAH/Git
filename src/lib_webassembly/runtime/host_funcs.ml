@@ -42,3 +42,6 @@ let register ~global_name implem registry =
   registry := with_host_function ~global_name ~implem !registry
 
 let lookup ~global_name registry = Registry.find global_name !registry
+
+let defined_host_functions registry =
+  Registry.bindings !registry |> List.map fst

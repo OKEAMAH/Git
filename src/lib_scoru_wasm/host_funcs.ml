@@ -1300,48 +1300,92 @@ let store_write =
             store_write_ticks key_length num_bytes code )
       | _ -> raise Bad_input)
 
-let lookup_opt ~version name =
+type host_function_kind =
+  | Host_read_input
+  | Host_write_output
+  | Host_write_debug
+  | Host_store_has
+  | Host_store_list_size
+  | Host_store_get_nth_key
+  | Host_store_delete
+  | Host_store_delete_value
+  | Host_store_copy
+  | Host_store_move
+  | Host_store_value_size
+  | Host_reveal_preimage
+  | Host_reveal_metadata
+  | Host_store_read
+  | Host_store_write
+  | Host_internal_store_get_hash
+  | Host_store_create
+
+let host_function_from_import = function
+  | "read_input" -> Some Host_read_input
+  | "write_output" -> Some Host_write_output
+  | "write_debug" -> Some Host_write_debug
+  | "store_has" -> Some Host_store_has
+  | "store_list_size" -> Some Host_store_list_size
+  | "store_get_nth_key" -> Some Host_store_get_nth_key
+  | "store_delete" -> Some Host_store_delete
+  | "store_delete_value" -> Some Host_store_delete_value
+  | "store_copy" -> Some Host_store_copy
+  | "store_move" -> Some Host_store_move
+  | "store_value_size" -> Some Host_store_value_size
+  | "reveal_preimage" -> Some Host_reveal_preimage
+  | "reveal_metadata" -> Some Host_reveal_metadata
+  | "store_read" -> Some Host_store_read
+  | "store_write" -> Some Host_store_write
+  | "__internal_store_get_hash" -> Some Host_internal_store_get_hash
+  | "store_create" -> Some Host_store_create
+  | _ -> None
+
+let lookup_host_function ~version host_function =
   let v1_and_above ty name =
     match version with
     | Wasm_pvm_state.V0 -> None
     | V1 -> Some (ExternFunc (HostFunc (ty, name)))
   in
-  match name with
-  | "read_input" ->
+  match host_function with
+  | Host_read_input ->
       Some (ExternFunc (HostFunc (read_input_type, read_input_name)))
-  | "write_output" ->
+  | Host_write_output ->
       Some (ExternFunc (HostFunc (write_output_type, write_output_name)))
-  | "write_debug" ->
+  | Host_write_debug ->
       Some (ExternFunc (HostFunc (write_debug_type, write_debug_name)))
-  | "store_has" -> Some (ExternFunc (HostFunc (store_has_type, store_has_name)))
-  | "store_list_size" ->
+  | Host_store_has ->
+      Some (ExternFunc (HostFunc (store_has_type, store_has_name)))
+  | Host_store_list_size ->
       Some (ExternFunc (HostFunc (store_list_size_type, store_list_size_name)))
-  | "store_get_nth_key" ->
+  | Host_store_get_nth_key ->
       Some
         (ExternFunc (HostFunc (store_get_nth_key_type, store_get_nth_key_name)))
-  | "store_delete" ->
+  | Host_store_delete ->
       Some (ExternFunc (HostFunc (store_delete_type, store_delete_name)))
-  | "store_delete_value" ->
+  | Host_store_delete_value ->
       v1_and_above store_delete_value_type store_delete_value_name
-  | "store_copy" ->
+  | Host_store_copy ->
       Some (ExternFunc (HostFunc (store_copy_type, store_copy_name)))
-  | "store_move" ->
+  | Host_store_move ->
       Some (ExternFunc (HostFunc (store_move_type, store_move_name)))
-  | "store_value_size" ->
+  | Host_store_value_size ->
       Some
         (ExternFunc (HostFunc (store_value_size_type, store_value_size_name)))
-  | "reveal_preimage" ->
+  | Host_reveal_preimage ->
       Some (ExternFunc (HostFunc (reveal_preimage_type, reveal_preimage_name)))
-  | "reveal_metadata" ->
+  | Host_reveal_metadata ->
       Some (ExternFunc (HostFunc (reveal_metadata_type, reveal_metadata_name)))
-  | "store_read" ->
+  | Host_store_read ->
       Some (ExternFunc (HostFunc (store_read_type, store_read_name)))
-  | "store_write" ->
+  | Host_store_write ->
       Some (ExternFunc (HostFunc (store_write_type, store_write_name)))
-  | "__internal_store_get_hash" ->
+  | Host_internal_store_get_hash ->
       v1_and_above store_get_hash_type store_get_hash_name
-  | "store_create" -> v1_and_above store_create_type store_create_name
-  | _ -> None
+  | Host_store_create -> v1_and_above store_create_type store_create_name
+
+let lookup_opt ~version name =
+  match host_function_from_import name with
+  | Some host_function -> lookup_host_function ~version host_function
+  | None -> None
 
 let lookup ~version name =
   match lookup_opt ~version name with Some f -> f | None -> raise Not_found
@@ -1440,4 +1484,34 @@ module Internal_for_tests = struct
   let store_get_hash = Func.HostFunc (store_get_hash_type, store_get_hash_name)
 
   let write_debug = Func.HostFunc (write_debug_type, write_debug_name)
+
+  let lookup_host_function = lookup_host_function
+
+  let host_function_from_registry_name name =
+    (* No need to pattern match on the strings directly, this is obviously less
+       efficient but this allows reusing the names that are predefined. OCaml
+       doesn't support constant let-defined values in patterns,
+       unfortunately. *)
+    List.assoc
+      ~equal:String.equal
+      name
+      [
+        (read_input_name, Host_read_input);
+        (write_output_name, Host_write_output);
+        (write_debug_name, Host_write_debug);
+        (store_has_name, Host_store_has);
+        (store_list_size_name, Host_store_list_size);
+        (store_get_nth_key_name, Host_store_get_nth_key);
+        (store_delete_name, Host_store_delete);
+        (store_delete_value_name, Host_store_delete_value);
+        (store_copy_name, Host_store_copy);
+        (store_move_name, Host_store_move);
+        (store_value_size_name, Host_store_value_size);
+        (reveal_preimage_name, Host_reveal_preimage);
+        (reveal_metadata_name, Host_reveal_metadata);
+        (store_read_name, Host_store_read);
+        (store_write_name, Host_store_write);
+        (store_get_hash_name, Host_internal_store_get_hash);
+        (store_create_name, Host_store_create);
+      ]
 end

@@ -23,6 +23,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** Host functions defined by the PVM. *)
+type host_function_kind =
+  | Host_read_input
+  | Host_write_output
+  | Host_write_debug
+  | Host_store_has
+  | Host_store_list_size
+  | Host_store_get_nth_key
+  | Host_store_delete
+  | Host_store_delete_value
+  | Host_store_copy
+  | Host_store_move
+  | Host_store_value_size
+  | Host_reveal_preimage
+  | Host_reveal_metadata
+  | Host_store_read
+  | Host_store_write
+  | Host_internal_store_get_hash
+  | Host_store_create
+
 (** [lookup ~version name] retrieves or instantiates a host function
     by the given [name].
 
@@ -380,4 +400,15 @@ module Internal_for_tests : sig
   val store_get_hash : Tezos_webassembly_interpreter.Instance.func_inst
 
   val write_debug : Tezos_webassembly_interpreter.Instance.func_inst
+
+  (** [host_function_from_registry_name name] returns the host function kind
+      from its internal name as it appears in the {registry}. *)
+  val host_function_from_registry_name : string -> host_function_kind option
+
+  (** [lookup ~version name] retrieves a host function definition from the given
+      kind from the given [kind]. *)
+  val lookup_host_function :
+    version:Wasm_pvm_state.version ->
+    host_function_kind ->
+    Tezos_webassembly_interpreter.Instance.extern option
 end

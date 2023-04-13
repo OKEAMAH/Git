@@ -56,3 +56,7 @@ val lookup : global_name:string -> registry -> host_func
 (** [construct builder] creates a new registry from the blueprint
     encoded in [builder]. *)
 val construct : builder -> registry
+
+(** [defined_host_functions registry] returns the list of host functions defined
+    in the given [registry]. *)
+val defined_host_functions : registry -> string list
