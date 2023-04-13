@@ -270,9 +270,7 @@ module Merkle_tree = struct
     let serialize_page page =
       match
         Data_encoding.Binary.to_bytes
-          (Data_encoding.check_size
-             C.max_page_size
-             Dac_plugin.non_proto_encoding_unsafe)
+          (Data_encoding.check_size C.max_page_size page_encoding)
           page
       with
       | Ok raw_page -> Ok raw_page
