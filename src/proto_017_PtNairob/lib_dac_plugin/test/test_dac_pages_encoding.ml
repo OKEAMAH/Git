@@ -44,12 +44,11 @@
 let dac_plugin = Stdlib.Option.get (Dac_plugin.get Protocol.hash)
 
 module Hashes_map = Map.Make (struct
-  type t = Dac_plugin.hash
+  type t = Dac_plugin.raw_hash
 
   let compare h1 h2 =
-    let (module Dac_plugin) = dac_plugin in
-    let s1 = Dac_plugin.to_hex h1 in
-    let s2 = Dac_plugin.to_hex h2 in
+    let s1 = Dac_plugin.raw_hash_to_hex h1 in
+    let s2 = Dac_plugin.raw_hash_to_hex h2 in
     String.compare s1 s2
 end)
 
@@ -199,11 +198,11 @@ module Hashes_map_backend = struct
 
   type configuration = unit
 
-  type hash = Dac_plugin.hash
+  type hash = Dac_plugin.raw_hash
 
   let init () = ref Hashes_map.empty
 
-  type error += Page_is_missing of Dac_plugin.hash
+  type error += Page_is_missing of Dac_plugin.raw_hash
 
   let save (_plugin : Dac_plugin.t) t ~hash ~content =
     let open Lwt_result_syntax in
@@ -554,12 +553,12 @@ module Hash_chain = struct
     module Pagination_scheme = Pages_encoding.Hash_chain.V0
 
     let deserialize_page page :
-        [`Node of Dac_plugin.hash * string | `Leaf of string] =
+        [`Node of Dac_plugin.raw_hash * string | `Leaf of string] =
       if String.length page > 3996 then
         let content = String.sub page 0 3996 in
         let (module Plugin) = dac_plugin in
         let hash =
-          Stdlib.Option.get
+          Plugin.hash_to_raw @@ Stdlib.Option.get
           @@ Plugin.of_hex (take_after page (3996 + String.length " hash:"))
         in
         `Node (hash, content)
@@ -588,9 +587,13 @@ module Hash_chain = struct
       in
       let (module Plugin) = dac_plugin in
       let expected_hash =
-        Plugin.to_hex @@ Plugin.hash_bytes ~scheme:Blake2B [content]
+        Dac_plugin.raw_hash_to_hex
+        @@ Plugin.hash_to_raw (Plugin.hash_bytes ~scheme:Blake2B [content])
       in
-      Assert.equal_string ~loc:__LOC__ expected_hash (Plugin.to_hex actual_hash)
+      Assert.equal_string
+        ~loc:__LOC__
+        expected_hash
+        (Dac_plugin.raw_hash_to_hex actual_hash)
 
     let test_make_chain_hash_long () =
       let open Lwt_result_syntax in
@@ -604,12 +607,16 @@ module Hash_chain = struct
       let (module Plugin) = dac_plugin in
       let next_hash, content = Stdlib.List.nth pages 1 in
       let* () =
-        Assert.equal_string ~loc:__LOC__ (Plugin.to_hex next_hash) head_succ
+        Assert.equal_string
+          ~loc:__LOC__
+          (Dac_plugin.raw_hash_to_hex next_hash)
+          head_succ
       in
       Assert.equal_string
         ~loc:__LOC__
-        (Plugin.to_hex next_hash)
-        (Plugin.to_hex @@ Plugin.hash_bytes ~scheme:Blake2B [content])
+        (Dac_plugin.raw_hash_to_hex next_hash)
+        (Dac_plugin.raw_hash_to_hex
+        @@ Plugin.hash_to_raw (Plugin.hash_bytes ~scheme:Blake2B [content]))
 
     let test_serialize () =
       let open Lwt_result_syntax in
