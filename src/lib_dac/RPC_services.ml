@@ -72,8 +72,8 @@ let get_verify_signature :
 
 let get_preimage :
     ( [`GET],
-      'a,
-      'a * Dac_plugin.raw_hash,
+      unit,
+      unit * Dac_plugin.raw_hash,
       unit,
       unit,
       Bytes.t )

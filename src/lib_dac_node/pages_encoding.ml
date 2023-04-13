@@ -228,8 +228,8 @@ module Merkle_tree = struct
     let hash ((module P) : Dac_plugin.t) bytes =
       P.hash_bytes [bytes] ~scheme:Blake2B
 
-    let hashes_encoding ((module P) : Dac_plugin.t) =
-      Data_encoding.list P.encoding
+    let hashes_encoding =
+      Data_encoding.list Dac_plugin.non_proto_encoding_unsafe
 
     (** The preamble of a serialized page contains 1 byte denoting the version,
         and 4 bytes encoding the size of the rest of the page. In total, 5
@@ -245,7 +245,7 @@ module Merkle_tree = struct
         either a list of raw bytes (in the case of a payload page), or a list
         of hashes, which occupy 33 bytes each. I.e. 32 bytes for the inner hash
         and 1 byte for the tag identifying the hashing scheme. *)
-    let page_encoding dac_plugin =
+    let page_encoding =
       Data_encoding.(
         union
           ~tag_size:`Uint8
@@ -259,7 +259,7 @@ module Merkle_tree = struct
             case
               ~title:"hashes"
               (Tag V.hashes_version_tag)
-              (hashes_encoding dac_plugin)
+              hashes_encoding
               (function Hashes hashes -> Some hashes | _ -> None)
               (fun hashes -> Hashes hashes);
           ])
@@ -267,10 +267,12 @@ module Merkle_tree = struct
     (** Serialization function for a single page. It converts a page to a
         sequence of bytes using [page_encoding]. It also checks that the
         serialized page does not exceed [page_size] bytes. *)
-    let serialize_page _dac_plugin page =
+    let serialize_page page =
       match
         Data_encoding.Binary.to_bytes
-          (Data_encoding.check_size C.max_page_size (Dac_plugin.non_proto_encoding_unsafe))
+          (Data_encoding.check_size
+             C.max_page_size
+             Dac_plugin.non_proto_encoding_unsafe)
           page
       with
       | Ok raw_page -> Ok raw_page
@@ -278,7 +280,7 @@ module Merkle_tree = struct
 
     let store_page dac_plugin ~page_store raw_page =
       let open Lwt_result_syntax in
-      let*? serialized_page = serialize_page dac_plugin raw_page in
+      let*? serialized_page = serialize_page raw_page in
       (* Hashes are computed from raw pages, each of which consists of a
          preamble of 5 bytes followed by a page payload - a raw sequence
          of bytes from the original payload for `Contents` pages, and a
@@ -475,12 +477,8 @@ module Merkle_tree = struct
 
     (** Deserialization function for a single page. A sequence of bytes is
         converted to a page using [page_encoding]. *)
-    let deserialize_page _dac_plugin raw_page =
-      match
-        Data_encoding.Binary.of_bytes
-          Dac_plugin.non_proto_encoding_unsafe
-          raw_page
-      with
+    let deserialize_page raw_page =
+      match Data_encoding.Binary.of_bytes page_encoding raw_page with
       | Ok page -> Ok page
       | Error _ -> Result_syntax.tzfail Cannot_deserialize_page
 
@@ -506,7 +504,7 @@ module Merkle_tree = struct
         | [] -> return @@ Bytes.concat Bytes.empty retrieved_content
         | hash :: hashes -> (
             let* serialized_page = S.load dac_plugin page_store hash in
-            let*? page = deserialize_page dac_plugin serialized_page in
+            let*? page = deserialize_page serialized_page in
             match page with
             | Hashes page_hashes ->
                 (* Hashes are saved in reverse order. *)
@@ -603,7 +601,8 @@ module Hash_chain = struct
                   serialize_page {succ_hash; content = chunk}
             in
             let page = Bytes.of_string page in
-            let hash = hash dac_plugin page in
+            let ((module P) : Dac_plugin.t) = dac_plugin in
+            let hash = P.hash_to_raw @@ hash dac_plugin page in
             (link_chunks_rev [@tailcall])
               ((hash, page) :: linked_pages)
               rev_chunks

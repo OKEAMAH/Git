@@ -22,8 +22,8 @@ val get_verify_signature :
     returned as a sequence of bytes. *)
 val get_preimage :
   ( [`GET],
-    'a,
-    'a * Dac_plugin.raw_hash,
+    unit,
+    unit * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -33,14 +33,14 @@ val get_preimage :
   generated from signing [hex_root_hash] by [dac_member_pkh]. *)
 val put_dac_member_signature :
   Dac_plugin.t ->
-  ([`PUT], 'a, 'a, unit, Signature_repr.t, unit) Tezos_rpc.Service.service
+  ([`PUT], unit, unit, unit, Signature_repr.t, unit) Tezos_rpc.Service.service
 
 (** GET dac/certificate endpoint returns the DAC certificate for the
   provided [root_page_hash]. *)
 val get_certificate :
   ( [`GET],
-    'a,
-    'a * Dac_plugin.raw_hash,
+    unit,
+    unit * Dac_plugin.raw_hash,
     unit,
     unit,
     Certificate_repr.t option )
@@ -51,8 +51,8 @@ val get_certificate :
   page store before returning the page as a response. *)
 val get_missing_page :
   ( [`GET],
-    'a,
-    'a * Dac_plugin.raw_hash,
+    unit,
+    unit * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -66,8 +66,8 @@ module Coordinator : sig
     the subscribed DAC Members and Observers. *)
   val post_preimage :
     ( [`POST],
-      'a,
-      'a,
+      unit,
+      unit,
       unit,
       Bytes.t,
       Dac_plugin.raw_hash )
