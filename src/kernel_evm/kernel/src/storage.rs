@@ -14,7 +14,7 @@ use crate::error::{Error, StorageError};
 use tezos_ethereum::account::*;
 use tezos_ethereum::eth_gen::{BlockHash, Hash, L2Level};
 use tezos_ethereum::transaction::{
-    TransactionHash, TransactionReceipt, TRANSACTION_HASH_SIZE,
+    TransactionHash, TransactionReceipt, TransactionStatus, TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::wei::Wei;
 
@@ -46,6 +46,7 @@ const TRANSACTION_RECEIPT_TYPE: RefPath = RefPath::assert_from(b"/type");
 const TRANSACTION_RECEIPT_STATUS: RefPath = RefPath::assert_from(b"/status");
 
 const HASH_MAX_SIZE: usize = 32;
+const TRANSACTION_RECEIPT_STATUS_SIZE: usize = 1;
 
 // We can read/store at most [128] transaction hashes per block.
 // TRANSACTION_HASH_SIZE * 128 = 4096.
@@ -359,6 +360,28 @@ pub fn store_transaction_receipts<Host: Runtime>(
         store_transaction_receipt(&receipt_path, host, receipt)?;
     }
     Ok(())
+}
+
+pub fn read_transaction_receipts_status<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+) -> Result<TransactionStatus, Error> {
+    let hash = hex::encode(tx_hash);
+    let raw_receipt_path: Vec<u8> = format!("/{}", &hash).into();
+    let receipt_path = OwnedPath::try_from(raw_receipt_path)?;
+    let receipt_path =
+        concat(&TRANSACTIONS_RECEIPTS, &receipt_path).map_err(Error::from)?;
+    let status_path = concat(&receipt_path, &TRANSACTION_RECEIPT_STATUS)?;
+    let raw_status = host
+        .store_read(&status_path, 0, TRANSACTION_RECEIPT_STATUS_SIZE)
+        .map_err(Error::from)?;
+    match TransactionStatus::try_from(&raw_status) {
+        Err(_) => Err(Error::Storage(StorageError::InvalidEncoding {
+            path: status_path,
+            value: raw_status,
+        })),
+        Ok(status) => Ok(status),
+    }
 }
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
