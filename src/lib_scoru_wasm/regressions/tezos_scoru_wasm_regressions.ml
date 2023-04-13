@@ -291,6 +291,129 @@ let register ?(from_binary = false) ?(fail_on_stuck = true) ?ticks_per_snapshot
         kernel
   | None -> ()
 
+module HostFunctionsDiffs = Set.Make (struct
+  type t = string * string list * string list
+
+  let compare (n, params, res) (n', params', res') =
+    let compare_ty = List.compare String.compare in
+    match String.compare n n' with
+    | 0 -> (
+        match compare_ty params params' with 0 -> compare_ty res res' | n -> n)
+    | n -> n
+end)
+
+let extract_type_from_extern =
+  let module TzWasm = Tezos_webassembly_interpreter in
+  function
+  | TzWasm.Instance.ExternFunc
+      (TzWasm.Func.HostFunc (FuncType (params, res), _)) ->
+      let* params =
+        Tezos_lazy_containers.Lazy_vector.Int32Vector.to_list params
+      in
+      let* res = Tezos_lazy_containers.Lazy_vector.Int32Vector.to_list res in
+      Lwt.return_some
+        ( List.map TzWasm.Types.string_of_value_type params,
+          List.map TzWasm.Types.string_of_value_type res )
+  | _ -> Lwt.return_none
+
+let version_to_string version =
+  List.assoc ~equal:( = ) version Wasm_pvm_state.versions_flip
+  |> Option.value ~default:"unknown version"
+
+let generate_host_functions_diff v_current v_next =
+  let module TzWasm = Tezos_webassembly_interpreter in
+  let host_funcs_per_version version =
+    let registry = Host_funcs.registry ~version ~write_debug:Builtins.Noop in
+    TzWasm.Host_funcs.defined_host_functions registry
+  in
+  (* Finds the type of a host function following this pattern: if the host
+     function doesn't exists in the new version of the registry, it means it has
+     been removed and we check for it in the previous one. *)
+  let get_ty name =
+    let kind =
+      Host_funcs.Internal_for_tests.host_function_from_registry_name name
+      |> Option.value_f ~default:(fun () ->
+             Stdlib.failwith
+               (name
+              ^ " has no defined kind in `Tezos_scoru_wasm.Host_funcs`, the \
+                 associated host function is probably not accessible"))
+    in
+    let extern =
+      match
+        Host_funcs.Internal_for_tests.lookup_host_function ~version:v_next kind
+      with
+      | Some e -> Some e
+      | None ->
+          Host_funcs.Internal_for_tests.lookup_host_function
+            ~version:v_current
+            kind
+    in
+    let* types =
+      Option.fold_s ~some:extract_type_from_extern ~none:None extern
+    in
+    match types with
+    | Some (params, res) -> return (params, res)
+    | None ->
+        (* Note that if the diff has been computed correctly, this case is
+           impossible. *)
+        Stdlib.failwith
+          (Format.sprintf
+             "%s definition not found neither in registry for %s nor %s."
+             name
+             (version_to_string v_current)
+             (version_to_string v_next))
+  in
+
+  let current = host_funcs_per_version v_current |> String_set.of_list in
+  let next = host_funcs_per_version v_next |> String_set.of_list in
+  let hf_diff =
+    String_set.(union (diff current next) (diff next current))
+    |> String_set.to_seq
+  in
+  Seq.S.fold_left
+    (fun map name ->
+      let* params, res = get_ty name in
+      return (HostFunctionsDiffs.add (name, params, res) map))
+    HostFunctionsDiffs.empty
+    hf_diff
+
+let build_version_diffs () =
+  let get_next_version = function
+    | Wasm_pvm_state.V0 -> Some Wasm_pvm_state.V1
+    | V1 -> None
+  in
+  let rec build acc version =
+    match get_next_version version with
+    | None -> List.rev acc
+    | Some next_version -> build ((version, next_version) :: acc) next_version
+  in
+  build [] V0
+
+let register_host_functions_diff (current_version, next_version) =
+  let* diff = generate_host_functions_diff current_version next_version in
+  let register (name, params, res) =
+    let name =
+      let tag = "link_" ^ name in
+      if String.length tag > 32 then String.sub tag 0 32 else tag
+    in
+    register
+      ~name
+      ~fail_on_stuck:false
+      ~from_binary:false
+      ~ticks_per_snapshot:5_000L
+      ~inputs:tx_no_verify_inputs
+      ~versions:[current_version; next_version]
+      ~hash_frequency:0L
+      ~proof_frequency:(1L, 0L)
+      (link_kernel name params res)
+  in
+  HostFunctionsDiffs.iter register diff ;
+  Lwt.return_unit
+
+let build_version_regression_diffs () =
+  let versions = build_version_diffs () in
+  List.iter_s register_host_functions_diff versions
+
 let register () =
   register
     ~name:"echo"
@@ -310,36 +433,5 @@ let register () =
     ~hash_frequency:10_037L
     ~proof_frequency:(3L, 30_893L)
     tx_no_verify_kernel ;
-  register
-    ~name:"link_store_create"
-    ~fail_on_stuck:false
-    ~from_binary:false
-    ~ticks_per_snapshot:5_000L
-    ~inputs:tx_no_verify_inputs
-    ~versions:[V0; V1]
-    ~hash_frequency:0L
-    ~proof_frequency:(1L, 0L)
-    (link_kernel "store_create" ["i32"; "i32"; "i32"] ["i32"]) ;
-  register
-    ~name:"link_store_delete_value"
-    ~fail_on_stuck:false
-    ~from_binary:false
-    ~ticks_per_snapshot:5_000L
-    ~inputs:tx_no_verify_inputs
-    ~versions:[V0; V1]
-    ~hash_frequency:0L
-    ~proof_frequency:(1L, 0L)
-    (link_kernel "store_delete_value" ["i32"; "i32"] ["i32"]) ;
-  register
-    ~name:"link_store_get_hash"
-    ~fail_on_stuck:false
-    ~from_binary:false
-    ~ticks_per_snapshot:5_000L
-    ~inputs:tx_no_verify_inputs
-    ~versions:[V0; V1]
-    ~hash_frequency:0L
-    ~proof_frequency:(1L, 0L)
-    (link_kernel
-       "__internal_store_get_hash"
-       ["i32"; "i32"; "i32"; "i32"]
-       ["i32"])
+  (* Register all the changes of host host functions tests. *)
+  Lwt_main.run (build_version_regression_diffs ())
