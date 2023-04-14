@@ -1109,6 +1109,7 @@ module Make (Context : P) :
         | _, Some Reveal_metadata ->
             (* Should not happen. *)
             assert false
+        | _, Some (Reveal_partial_raw_data _) -> (* TODO *) return ()
         | _, Some (Reveal_raw_data _) ->
             (* Note that, providing a DAC input via a DAL page will interrupt
                the interpretation of the next DAL pages of the same level, as the
@@ -1555,6 +1556,7 @@ module Make (Context : P) :
           error
             "Invalid set_input: expecting a raw data reveal, got an inbox \
              message or a reveal metadata."
+      | PS.Needs_reveal (Reveal_partial_raw_data _), _ -> (* TODO *) error ""
       | PS.Needs_reveal Reveal_metadata, _ ->
           error
             "Invalid set_input: expecting a metadata reveal, got an inbox \

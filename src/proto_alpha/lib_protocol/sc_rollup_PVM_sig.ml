@@ -198,6 +198,12 @@ module Input_hash =
 
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
+  | Reveal_partial_raw_data of {
+      commitment : Bls12_381.G1.t;
+      start : int;
+      length : int;
+    }
+    (* length <= 4_096 bytes *)
   | Reveal_metadata
   | Request_dal_page of Dal_slot_repr.Page.t
 
@@ -289,6 +295,7 @@ let input_request_encoding =
 
 let pp_reveal fmt = function
   | Reveal_raw_data hash -> Sc_rollup_reveal_hash.pp fmt hash
+  | Reveal_partial_raw_data _ -> Format.pp_print_text fmt "" (* TODO *)
   | Reveal_metadata -> Format.pp_print_string fmt "Reveal metadata"
   | Request_dal_page id -> Dal_slot_repr.Page.pp fmt id
 
@@ -313,6 +320,9 @@ let reveal_equal p1 p2 =
   match (p1, p2) with
   | Reveal_raw_data h1, Reveal_raw_data h2 -> Sc_rollup_reveal_hash.equal h1 h2
   | Reveal_raw_data _, _ -> false
+  | Reveal_partial_raw_data r1, Reveal_partial_raw_data r2 ->
+      Bls12_381.G1.eq r1.commitment r2.commitment
+  | Reveal_partial_raw_data _, _ -> false
   | Reveal_metadata, Reveal_metadata -> true
   | Reveal_metadata, _ -> false
   | Request_dal_page a, Request_dal_page b -> Dal_slot_repr.Page.equal a b
