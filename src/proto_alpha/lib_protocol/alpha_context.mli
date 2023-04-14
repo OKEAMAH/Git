@@ -3388,6 +3388,13 @@ module Sc_rollup : sig
 
   type reveal =
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
+    | Reveal_partial_raw_data of {
+        commitment : Bls.Primitive.G1.t;
+        start : int;
+            (* Should be a multiple of {!val:Bls.Primitive.G1.size_in_bytes}. *)
+        length : int;
+            (* Should be a multiple of {!val:Bls.Primitive.size_in_bytes} and less than 4KiB. *)
+      }
     | Reveal_metadata
     | Request_dal_page of Dal.Page.t
 
@@ -3979,6 +3986,8 @@ module Sc_rollup : sig
       val proof_encoding : proof Data_encoding.t
 
       val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
+
+      val reveal_kzg : Bls.Primitive.G1.t -> int -> string option Lwt.t
 
       module Inbox_with_history : sig
         val inbox : Inbox.history_proof

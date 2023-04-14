@@ -258,6 +258,21 @@ module Make (PVM : Pvm.S) = struct
             | None -> abort state fuel current_tick
             | Some fuel ->
                 go fuel (Int64.succ current_tick) failing_ticks next_state)
+        | Needs_reveal (Reveal_partial_raw_data r) -> (
+            let* data =
+              (* TODO invalid *)
+              get_reveal
+                ~data_dir:node_ctxt.data_dir
+                reveal_map
+                (Sc_rollup_reveal_hash.hash_bytes
+                   ~scheme:Sc_rollup_reveal_hash.Blake2B
+                   [Environment.Bls.Primitive.G1.to_bytes r.commitment])
+            in
+            let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
+            match F.consume F.one_tick_consumption fuel with
+            | None -> abort state fuel current_tick
+            | Some fuel ->
+                go fuel (Int64.succ current_tick) failing_ticks next_state)
         | Needs_reveal Reveal_metadata -> (
             let*! next_state =
               PVM.set_input (Reveal (Metadata metadata)) state

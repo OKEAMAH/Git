@@ -388,6 +388,8 @@ module type PVM_with_context_and_state = sig
 
   val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
+  val reveal_kzg : Bls.Primitive.G1.t -> int -> string option Lwt.t
+
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof
 
@@ -464,6 +466,14 @@ let produce ~metadata pvm_and_state commit_inbox_level =
         return (Some inbox_proof, input)
     | Needs_reveal (Reveal_raw_data h) -> (
         let*! res = reveal h in
+        match res with
+        | None -> proof_error "No reveal"
+        | Some data ->
+            return
+              ( Some (Reveal_proof (Raw_data_proof data)),
+                Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
+    | Needs_reveal (Reveal_partial_raw_data r) -> (
+        let*! res = reveal_kzg r.commitment r.start (* TODO invalid *) in
         match res with
         | None -> proof_error "No reveal"
         | Some data ->

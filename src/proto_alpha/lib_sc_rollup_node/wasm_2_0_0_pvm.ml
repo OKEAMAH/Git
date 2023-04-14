@@ -126,6 +126,10 @@ module Impl : Pvm.S = struct
     | Waiting_for_reveal Sc_rollup.Reveal_metadata -> "Waiting for metadata"
     | Waiting_for_reveal (Sc_rollup.Request_dal_page page_id) ->
         Format.asprintf "Waiting for page data %a" Dal.Page.pp page_id
+    | Waiting_for_reveal (Sc_rollup.Reveal_partial_raw_data _) ->
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5507
+           Display the values of the new constructors for the partial reveal. *)
+        "Waiting for reveal partial raw data"
     | Computing -> "Computing"
 
   module Backend = Make_backend (Wasm_2_0_0_proof_format.Tree)

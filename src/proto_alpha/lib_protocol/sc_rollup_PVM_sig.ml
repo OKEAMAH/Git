@@ -233,6 +233,13 @@ module Input_hash =
 
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
+  | Reveal_partial_raw_data of {
+      commitment : Bls.Primitive.G1.t;
+      start : int;
+          (* Should be a multiple of {!val:Bls.Primitive.G1.size_in_bytes}. *)
+      length : int;
+          (* Should be a multiple of {!val:Bls.Primitive.G1.size_in_bytes} and less than 4KiB. *)
+    }
   | Reveal_metadata
   | Request_dal_page of Dal_slot_repr.Page.t
 
@@ -248,7 +255,8 @@ let reveal_encoding =
          (req "input_hash" Sc_rollup_reveal_hash.encoding))
       (function Reveal_raw_data s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Reveal_raw_data s)
-  and case_metadata =
+  in
+  let case_metadata =
     case
       ~title:"Reveal_metadata"
       (Tag 1)
@@ -264,7 +272,32 @@ let reveal_encoding =
       (function Request_dal_page s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Request_dal_page s)
   in
-  union [case_raw_data; case_metadata; case_dal_page]
+  let g1_encoding =
+    Data_encoding.conv_with_guard
+      Bls.Primitive.G1.to_bytes
+      (fun b ->
+        match Bls.Primitive.G1.of_bytes_opt b with
+        | Some p -> Ok p
+        | None -> Error "Bls.Primitive.G1.of_bytes_opt")
+      (Fixed.bytes Hex Bls.Primitive.G1.size_in_bytes)
+  in
+  let case_partial_raw_data =
+    case
+      ~title:"partial raw data"
+      (Tag 3)
+      (obj4
+         (kind "partial_raw_data")
+         (req "commitment" g1_encoding)
+         (req "start" int31)
+         (req "length" int31))
+      (function
+        | Reveal_partial_raw_data {commitment; start; length} ->
+            Some ((), commitment, start, length)
+        | _ -> None)
+      (fun ((), commitment, start, length) ->
+        Reveal_partial_raw_data {commitment; start; length})
+  in
+  union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 (** The PVM's current input expectations:
     - [No_input_required] if the machine is busy and has no need for new input.
@@ -324,6 +357,7 @@ let input_request_encoding =
 
 let pp_reveal fmt = function
   | Reveal_raw_data hash -> Sc_rollup_reveal_hash.pp fmt hash
+  | Reveal_partial_raw_data _ -> Format.pp_print_text fmt "" (* TODO *)
   | Reveal_metadata -> Format.pp_print_string fmt "Reveal metadata"
   | Request_dal_page id -> Dal_slot_repr.Page.pp fmt id
 
@@ -348,6 +382,9 @@ let reveal_equal p1 p2 =
   match (p1, p2) with
   | Reveal_raw_data h1, Reveal_raw_data h2 -> Sc_rollup_reveal_hash.equal h1 h2
   | Reveal_raw_data _, _ -> false
+  | Reveal_partial_raw_data r1, Reveal_partial_raw_data r2 ->
+      Bls.Primitive.G1.eq r1.commitment r2.commitment
+  | Reveal_partial_raw_data _, _ -> false
   | Reveal_metadata, Reveal_metadata -> true
   | Reveal_metadata, _ -> false
   | Request_dal_page a, Request_dal_page b -> Dal_slot_repr.Page.equal a b

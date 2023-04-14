@@ -238,6 +238,9 @@ module Make (Interpreter : Interpreter.S) :
         in
         match res with Ok data -> return @@ Some data | Error _ -> return None
 
+      (* TODO complete *)
+      let reveal_kzg _commitment _index = Lwt.return (Some "")
+
       module Inbox_with_history = struct
         let inbox = snapshot
 
