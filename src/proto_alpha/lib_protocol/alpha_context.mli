@@ -3357,6 +3357,16 @@ module Sc_rollup : sig
 
   type reveal_data =
     | Raw_data of string
+    | Partial_raw_data of {
+        data : string;  (** The data at the given indices. *)
+        proof : Bls.Primitive.G1.t;
+            (** Proof that the data holds the components of a committed
+            vector at the given indices. *)
+        offset_index : int;
+            (** The indices form an increasing contiguous sequence.
+             We keep the first one and can deduce the number of indices with 
+             the length of [data]. *)
+      }
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 

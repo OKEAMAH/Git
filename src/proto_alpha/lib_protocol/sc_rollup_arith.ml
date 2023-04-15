@@ -1212,6 +1212,7 @@ module Make (Context : P) :
         let* () = Next_message.set (Some data) in
         let* () = start_parsing in
         return ()
+    | PS.Partial_raw_data _ -> (* TODO complete *) return ()
     | PS.Metadata metadata ->
         let* () = Metadata.set (Some metadata) in
         let* () = Status.set Waiting_for_input_message in

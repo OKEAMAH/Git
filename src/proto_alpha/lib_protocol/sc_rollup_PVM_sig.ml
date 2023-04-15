@@ -60,6 +60,11 @@ type inbox_message = {
 
 type reveal_data =
   | Raw_data of string
+  | Partial_raw_data of {
+      data : string;
+      proof : Bls.Primitive.G1.t;
+      offset_index : int;
+    }
   | Metadata of Sc_rollup_metadata_repr.t
   | Dal_page of Dal_slot_repr.Page.content option
 
@@ -76,6 +81,7 @@ let pp_inbox_message fmt {inbox_level; message_counter; _} =
 
 let pp_reveal_data fmt = function
   | Raw_data _ -> Format.pp_print_string fmt "raw data"
+  | Partial_raw_data _ -> Format.pp_print_string fmt "partial raw data"
   | Metadata metadata -> Sc_rollup_metadata_repr.pp fmt metadata
   | Dal_page content_opt ->
       Format.pp_print_option
@@ -120,7 +126,8 @@ let reveal_data_encoding =
                Variable.(string Hex))))
       (function Raw_data m -> Some ((), m) | _ -> None)
       (fun ((), m) -> Raw_data m)
-  and case_metadata =
+  in
+  let case_metadata =
     case
       ~title:"metadata"
       (Tag 1)
@@ -136,7 +143,32 @@ let reveal_data_encoding =
       (function Dal_page p -> Some ((), p) | _ -> None)
       (fun ((), p) -> Dal_page p)
   in
-  union [case_raw_data; case_metadata; case_dal_page]
+  let g1_encoding =
+    Data_encoding.conv_with_guard
+      Bls.Primitive.G1.to_bytes
+      (fun b ->
+        match Bls.Primitive.G1.of_bytes_opt b with
+        | Some p -> Ok p
+        | None -> Error "Bls.Primitive.G1.of_bytes_opt")
+      (Fixed.bytes Hex Bls.Primitive.G1.size_in_bytes)
+  in
+  let case_partial_raw_data =
+    case
+      ~title:"partial raw data"
+      (Tag 3)
+      (obj4
+         (kind "partial_raw_data")
+         (req "data" (Variable.string Hex))
+         (req "proof" g1_encoding)
+         (req "offset_index" int31))
+      (function
+        | Partial_raw_data {data; proof; offset_index} ->
+            Some ((), data, proof, offset_index)
+        | _ -> None)
+      (fun ((), data, proof, offset_index) ->
+        Partial_raw_data {data; proof; offset_index})
+  in
+  union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 let input_encoding =
   let open Data_encoding in
@@ -170,6 +202,9 @@ let reveal_data_equal a b =
   match (a, b) with
   | Raw_data a, Raw_data b -> String.equal a b
   | Raw_data _, _ -> false
+  | Partial_raw_data a, Partial_raw_data b ->
+      (* TODO incomplete *) String.equal a.data b.data
+  | Partial_raw_data _, _ -> false
   | Metadata a, Metadata b -> Sc_rollup_metadata_repr.equal a b
   | Metadata _, _ -> false
   | Dal_page a, Dal_page b -> Option.equal Bytes.equal a b
