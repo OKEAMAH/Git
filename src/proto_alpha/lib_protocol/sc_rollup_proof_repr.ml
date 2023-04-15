@@ -51,6 +51,12 @@ let () =
 
 type reveal_proof =
   | Raw_data_proof of string
+  | Partial_raw_data_proof of {
+      commitment : Bls.Primitive.G1.t;
+      data : string;
+      offset_index : int;
+      proof : Bls.Primitive.G1.t;
+    }
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;
@@ -59,7 +65,7 @@ type reveal_proof =
 
 let reveal_proof_encoding =
   let open Data_encoding in
-  let case_raw_data =
+  let case_raw_data_proof =
     case
       ~title:"raw data proof"
       (Tag 0)
@@ -74,7 +80,8 @@ let reveal_proof_encoding =
                 Constants_repr.sc_rollup_message_size_limit)))
       (function Raw_data_proof s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Raw_data_proof s)
-  and case_metadata_proof =
+  in
+  let case_metadata_proof =
     case
       ~title:"metadata proof"
       (Tag 1)
@@ -82,7 +89,7 @@ let reveal_proof_encoding =
       (function Metadata_proof -> Some () | _ -> None)
       (fun () -> Metadata_proof)
   in
-  let case_dal_page =
+  let case_dal_page_proof =
     case
       ~title:"dal page proof"
       (Tag 2)
@@ -95,7 +102,45 @@ let reveal_proof_encoding =
         | _ -> None)
       (fun ((), page_id, proof) -> Dal_page_proof {page_id; proof})
   in
-  union [case_raw_data; case_metadata_proof; case_dal_page]
+  let g1_encoding =
+    Data_encoding.conv_with_guard
+      Bls.Primitive.G1.to_bytes
+      (fun b ->
+        match Bls.Primitive.G1.of_bytes_opt b with
+        | Some p -> Ok p
+        | None -> Error "Bls.Primitive.G1.of_bytes_opt")
+      (Fixed.bytes Hex Bls12_381.G1.compressed_size_in_bytes)
+  in
+  let case_partial_raw_data_proof =
+    case
+      ~title:"partial raw data proof"
+      (Tag 3)
+      (obj5
+         (req "reveal_proof_kind" (constant "partial_raw_data_proof"))
+         (req "commitment" g1_encoding)
+         (req
+            "data"
+            Bounded.(
+              string
+                ~length_kind:`Uint16
+                Hex
+                Constants_repr.sc_rollup_message_size_limit))
+         (req "offset_index" int31)
+         (req "proof" g1_encoding))
+      (function
+        | Partial_raw_data_proof {commitment; data; offset_index; proof} ->
+            Some ((), commitment, data, offset_index, proof)
+        | _ -> None)
+      (fun ((), commitment, data, offset_index, proof) ->
+        Partial_raw_data_proof {commitment; data; offset_index; proof})
+  in
+  union
+    [
+      case_raw_data_proof;
+      case_metadata_proof;
+      case_dal_page_proof;
+      case_partial_raw_data_proof;
+    ]
 
 type input_proof =
   | Inbox_proof of {
@@ -324,6 +369,17 @@ let valid (type state proof output)
             Inbox_message {inbox_level; message_counter; payload})
     | Some (Reveal_proof (Raw_data_proof data)) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Raw_data data))
+    | Some (Reveal_proof (Partial_raw_data_proof proof)) ->
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5512
+           add KZG check, see Dal_proofs.verify for an example *)
+        return_some
+          (Sc_rollup_PVM_sig.Reveal
+             (Partial_raw_data
+                {
+                  data = proof.data;
+                  proof = proof.proof;
+                  offset_index = proof.offset_index;
+                }))
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->

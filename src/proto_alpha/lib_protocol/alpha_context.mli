@@ -3943,6 +3943,12 @@ module Sc_rollup : sig
   module Proof : sig
     type reveal_proof =
       | Raw_data_proof of string
+      | Partial_raw_data_proof of {
+          commitment : Bls.Primitive.G1.t;
+          data : string;
+          offset_index : int;
+          proof : Bls.Primitive.G1.t;
+        }
       | Metadata_proof
       | Dal_page_proof of {
           page_id : Dal.Page.t;
