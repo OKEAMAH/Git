@@ -1225,6 +1225,55 @@ let reveal_preimage_parse_args memories args =
 
 let reveal_preimage = Host_funcs.Reveal_func reveal_preimage_parse_args
 
+let reveal_partial_preimage_name = "tezos_reveal_partial_preimage"
+
+let reveal_partial_preimage_type =
+  let input_types =
+    Types.
+      [
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+      ]
+    |> Vector.of_list
+  in
+  let output_types = Types.[NumType I32Type] |> Vector.of_list in
+  Types.FuncType (input_types, output_types)
+
+let reveal_partial_preimage_parse_args memories args =
+  match args with
+  | Values.
+      [
+        Num (I32 commitment_addr);
+        Num (I32 commitment_size);
+        Num (I32 base);
+        Num (I32 offset_index);
+        Num (I32 max_bytes);
+      ] ->
+      let open Lwt_result_syntax in
+      let*! memory = retrieve_memory memories in
+      let* commitment =
+        Aux.load_bytes ~memory ~addr:commitment_addr ~size:commitment_size
+      in
+      Lwt_result.return
+        ( Host_funcs.(
+            Reveal_partial_raw_data
+              {
+                commitment =
+                  Bls12_381.G1.of_bytes_exn (Bytes.of_string commitment);
+                start =
+                  Int32.to_int base
+                  + (Int32.to_int offset_index * Bls12_381.G1.size_in_bytes);
+                length = Int32.to_int max_bytes;
+              }),
+          Host_funcs.{base; max_bytes} )
+  | _ -> raise Bad_input
+
+let reveal_partial_preimage =
+  Host_funcs.Reveal_func reveal_partial_preimage_parse_args
+
 let reveal_metadata_name = "tezos_reveal_metadata"
 
 let reveal_metadata_type =
@@ -1332,6 +1381,10 @@ let lookup_opt ~version name =
         (ExternFunc (HostFunc (store_value_size_type, store_value_size_name)))
   | "reveal_preimage" ->
       Some (ExternFunc (HostFunc (reveal_preimage_type, reveal_preimage_name)))
+  | "reveal_partial_preimage" ->
+      Some
+        (ExternFunc
+           (HostFunc (reveal_partial_preimage_type, reveal_partial_preimage_name)))
   | "reveal_metadata" ->
       Some (ExternFunc (HostFunc (reveal_metadata_type, reveal_metadata_name)))
   | "store_read" ->
@@ -1362,6 +1415,7 @@ let base =
       (store_move_name, store_move);
       (store_value_size_name, store_value_size);
       (reveal_preimage_name, reveal_preimage);
+      (reveal_partial_preimage_name, reveal_partial_preimage);
       (reveal_metadata_name, reveal_metadata);
       (store_read_name, store_read);
       (store_write_name, store_write);
