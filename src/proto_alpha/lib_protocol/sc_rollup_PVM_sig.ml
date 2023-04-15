@@ -60,6 +60,7 @@ type inbox_message = {
 
 type reveal_data =
   | Raw_data of string
+  | Partial_raw_data of {data : string; proof : Bls12_381.G1.t; index : int}
   | Metadata of Sc_rollup_metadata_repr.t
   | Dal_page of Dal_slot_repr.Page.content option
 
@@ -76,6 +77,7 @@ let pp_inbox_message fmt {inbox_level; message_counter; _} =
 
 let pp_reveal_data fmt = function
   | Raw_data _ -> Format.pp_print_string fmt "raw data"
+  | Partial_raw_data _ -> Format.pp_print_string fmt "partial raw data"
   | Metadata metadata -> Sc_rollup_metadata_repr.pp fmt metadata
   | Dal_page content_opt ->
       Format.pp_print_option
@@ -170,6 +172,9 @@ let reveal_data_equal a b =
   match (a, b) with
   | Raw_data a, Raw_data b -> String.equal a b
   | Raw_data _, _ -> false
+  | Partial_raw_data a, Partial_raw_data b ->
+      (* TODO incomplete *) String.equal a.data b.data
+  | Partial_raw_data _, _ -> false
   | Metadata a, Metadata b -> Sc_rollup_metadata_repr.equal a b
   | Metadata _, _ -> false
   | Dal_page a, Dal_page b -> Option.equal Bytes.equal a b

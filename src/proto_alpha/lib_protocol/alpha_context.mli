@@ -3361,6 +3361,7 @@ module Sc_rollup : sig
 
   type reveal_data =
     | Raw_data of string
+    | Partial_raw_data of {data : string; proof : Bls12_381.G1.t; index : int}
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 
