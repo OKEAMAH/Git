@@ -51,6 +51,12 @@ let () =
 
 type reveal_proof =
   | Raw_data_proof of string
+  | Partial_raw_data_proof of {
+      commitment : Bls12_381.G1.t;
+      data : string;
+      index : int;
+      proof : Bls12_381.G1.t;
+    }
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;
@@ -324,6 +330,12 @@ let valid (type state proof output)
             Inbox_message {inbox_level; message_counter; payload})
     | Some (Reveal_proof (Raw_data_proof data)) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Raw_data data))
+    | Some (Reveal_proof (Partial_raw_data_proof proof)) ->
+        (* TODO: add KZG check, see Dal_proofs.verify for an example *)
+        return_some
+          (Sc_rollup_PVM_sig.Reveal
+             (Partial_raw_data
+                {data = proof.data; proof = proof.proof; index = proof.index}))
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
