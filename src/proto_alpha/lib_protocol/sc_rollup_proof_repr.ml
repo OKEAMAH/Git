@@ -230,6 +230,22 @@ let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
   | Some inbox_proof ->
       Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
 
+module Partial_raw_data_proofs = struct
+  let verify ~commitment:_ ~data ~index ~proof =
+    (* TODO add KZG check *)
+    Ok (Some (Sc_rollup_PVM_sig.Reveal (Partial_raw_data {data; proof; index})))
+
+  let produce ~commitment ~data ~index =
+    (* TODO compute KZG proof *)
+    let proof = Bls12_381.G1.(copy zero) in
+    let open Lwt_result_syntax in
+    return
+      ( Some
+          (Reveal_proof
+             (Partial_raw_data_proof {commitment; data; index; proof})),
+        Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) )
+end
+
 module Dal_proofs = struct
   (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
      The current DAL refutation integration is not resilient to DAL parameters
@@ -330,12 +346,11 @@ let valid (type state proof output)
             Inbox_message {inbox_level; message_counter; payload})
     | Some (Reveal_proof (Raw_data_proof data)) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Raw_data data))
-    | Some (Reveal_proof (Partial_raw_data_proof proof)) ->
-        (* TODO: add KZG check, see Dal_proofs.verify for an example *)
-        return_some
-          (Sc_rollup_PVM_sig.Reveal
-             (Partial_raw_data
-                {data = proof.data; proof = proof.proof; index = proof.index}))
+    | Some
+        (Reveal_proof (Partial_raw_data_proof {commitment; proof; data; index}))
+      ->
+        Partial_raw_data_proofs.verify ~commitment ~proof ~data ~index
+        |> Lwt.return
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
@@ -484,14 +499,15 @@ let produce ~metadata pvm_and_state commit_inbox_level =
             return
               ( Some (Reveal_proof (Raw_data_proof data)),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
-    | Needs_reveal (Reveal_partial_raw_data r) -> (
-        let*! res = reveal_kzg r.commitment r.start (* TODO invalid *) in
+    | Needs_reveal (Reveal_partial_raw_data {commitment; start; length = _})
+      -> (
+        let open Lwt_result_syntax in
+        let*! res = reveal_kzg commitment start (* TODO invalid *) in
         match res with
         | None -> proof_error "No reveal"
         | Some data ->
-            return
-              ( Some (Reveal_proof (Raw_data_proof data)),
-                Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
+            (* TODO : compute index from start and length (should we do it here?) *)
+            Partial_raw_data_proofs.produce ~commitment ~data ~index:0)
     | Needs_reveal Reveal_metadata ->
         return
           ( Some (Reveal_proof Metadata_proof),
