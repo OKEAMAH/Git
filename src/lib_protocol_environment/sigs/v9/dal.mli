@@ -115,3 +115,30 @@ val verify_page :
   page ->
   page_proof ->
   (bool, [> `Segment_index_out_of_range | `Page_length_mismatch]) Result.t
+
+type polynomial
+
+type ('a, 'b) error_container = {given : 'a; expected : 'b}
+
+type proof_single
+
+val proof_single_of_bytes : bytes -> proof_single
+
+val proof_single_to_bytes : proof_single -> bytes
+
+val prove_single :
+  t ->
+  polynomial ->
+  Bls.Primitive.Fr.t ->
+  ( proof_single,
+    [> `Invalid_degree_strictly_less_than_expected of (int, int) error_container]
+  )
+  result
+
+val verify_single :
+  t ->
+  commitment:commitment ->
+  point:Bls.Primitive.Fr.t ->
+  evaluation:Bls.Primitive.Fr.t ->
+  proof:proof_single ->
+  bool

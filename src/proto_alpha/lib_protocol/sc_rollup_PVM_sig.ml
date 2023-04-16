@@ -60,7 +60,7 @@ type inbox_message = {
 
 type reveal_data =
   | Raw_data of string
-  | Partial_raw_data of {data : string; proof : Bls12_381.G1.t; index : int}
+  | Partial_raw_data of {data : string; proof : Dal.proof_single; index : int}
   | Metadata of Sc_rollup_metadata_repr.t
   | Dal_page of Dal_slot_repr.Page.content option
 
@@ -204,7 +204,7 @@ module Input_hash =
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
   | Reveal_partial_raw_data of {
-      commitment : Bls12_381.G1.t;
+      commitment : Dal.commitment;
       start : int;
       length : int;
     }
@@ -326,7 +326,7 @@ let reveal_equal p1 p2 =
   | Reveal_raw_data h1, Reveal_raw_data h2 -> Sc_rollup_reveal_hash.equal h1 h2
   | Reveal_raw_data _, _ -> false
   | Reveal_partial_raw_data r1, Reveal_partial_raw_data r2 ->
-      Bls12_381.G1.eq r1.commitment r2.commitment
+      Dal.Commitment.equal r1.commitment r2.commitment
   | Reveal_partial_raw_data _, _ -> false
   | Reveal_metadata, Reveal_metadata -> true
   | Reveal_metadata, _ -> false

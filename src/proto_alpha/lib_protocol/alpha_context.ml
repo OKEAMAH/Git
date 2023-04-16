@@ -129,6 +129,12 @@ module Dal = struct
   include Dal_slot_repr
   include Raw_context.Dal
 
+  type proof_single = Dal.proof_single
+
+  let proof_single_to_bytes = Dal.proof_single_to_bytes
+
+  let proof_single_of_bytes = Dal.proof_single_of_bytes
+
   module Slot_index = struct
     include Dal_slot_index_repr
   end

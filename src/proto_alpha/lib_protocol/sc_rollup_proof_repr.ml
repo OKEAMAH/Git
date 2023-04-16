@@ -52,10 +52,10 @@ let () =
 type reveal_proof =
   | Raw_data_proof of string
   | Partial_raw_data_proof of {
-      commitment : Bls12_381.G1.t;
+      commitment : Dal.commitment;
       data : string;
       index : int;
-      proof : Bls12_381.G1.t;
+      proof : Dal.proof_single;
     }
   | Metadata_proof
   | Dal_page_proof of {
@@ -231,13 +231,32 @@ let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
       Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
 
 module Partial_raw_data_proofs = struct
-  let verify ~commitment:_ ~data ~index ~proof =
-    (* TODO add KZG check *)
-    Ok (Some (Sc_rollup_PVM_sig.Reveal (Partial_raw_data {data; proof; index})))
+  let verify ~(dal_params : Dal.parameters) ~commitment ~data ~index ~proof =
+    (* TODO complete KZG check *)
+    let open Lwt_result_syntax in
+    let* dal =
+      match Dal.make dal_params with
+      | Ok dal -> return dal
+      | Error (`Fail s) -> proof_error s
+    in
+    let point = Bls.Primitive.Fr.(of_z Z.zero) in
+    if
+      Dal.verify_single
+        dal
+        ~commitment
+        ~point
+        ~evaluation:
+          (Bls.Primitive.Fr.of_bytes_opt (Bytes.of_string data)
+          |> Option.value ~default:Bls.Primitive.Fr.(of_z Z.zero))
+        ~proof
+    then
+      return_some
+        (Sc_rollup_PVM_sig.Reveal (Partial_raw_data {data; proof; index}))
+    else proof_error ""
 
   let produce ~commitment ~data ~index =
-    (* TODO compute KZG proof *)
-    let proof = Bls12_381.G1.(copy zero) in
+    (* TODO compute KZG proof, we need the data *)
+    let proof = Dal.proof_single_of_bytes Bls.Primitive.G1.(to_bytes zero) in
     let open Lwt_result_syntax in
     return
       ( Some
@@ -349,8 +368,12 @@ let valid (type state proof output)
     | Some
         (Reveal_proof (Partial_raw_data_proof {commitment; proof; data; index}))
       ->
-        Partial_raw_data_proofs.verify ~commitment ~proof ~data ~index
-        |> Lwt.return
+        Partial_raw_data_proofs.verify
+          ~dal_params:dal_parameters
+          ~commitment
+          ~proof
+          ~data
+          ~index
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
@@ -415,7 +438,7 @@ module type PVM_with_context_and_state = sig
 
   val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
-  val reveal_kzg : Bls12_381.G1.t -> int -> string option Lwt.t
+  val reveal_kzg : Dal.commitment -> int -> string option Lwt.t
 
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof

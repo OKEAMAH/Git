@@ -416,6 +416,23 @@ val prove_shards :
   polynomial:polynomial ->
   shard_proof array
 
+val prove_single :
+  t ->
+  polynomial ->
+  scalar ->
+  ( page_proof,
+    [> `Invalid_degree_strictly_less_than_expected of (int, int) error_container]
+  )
+  result
+
+val verify_single :
+  t ->
+  commitment:page_proof ->
+  point:scalar ->
+  evaluation:scalar ->
+  proof:page_proof ->
+  bool
+
 module Internal_for_tests : sig
   (** The initialisation parameters can be too large for testing
      purposes. This function creates an unsafe initialisation

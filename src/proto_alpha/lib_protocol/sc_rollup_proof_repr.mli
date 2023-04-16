@@ -49,10 +49,10 @@ type reveal_proof =
       (** The existence of reveal for a given hash when the
           [input_requested] is the [Needs_reveal Reveal_raw_data]. *)
   | Partial_raw_data_proof of {
-      commitment : Bls12_381.G1.t;
+      commitment : Dal.commitment;
       data : string;
       index : int;
-      proof : Bls12_381.G1.t;
+      proof : Dal.proof_single;
     }
   | Metadata_proof
   | Dal_page_proof of {
@@ -186,7 +186,7 @@ module type PVM_with_context_and_state = sig
 
   val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
-  val reveal_kzg : Bls12_381.G1.t -> int -> string option Lwt.t
+  val reveal_kzg : Dal.commitment -> int -> string option Lwt.t
 
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof

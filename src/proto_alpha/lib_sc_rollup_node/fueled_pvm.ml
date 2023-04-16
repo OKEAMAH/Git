@@ -260,7 +260,11 @@ module Make (PVM : Pvm.S) = struct
                 reveal_map
                 (Sc_rollup_reveal_hash.hash_bytes
                    ~scheme:Sc_rollup_reveal_hash.Blake2B
-                   [Bls12_381.G1.to_bytes r.commitment])
+                   [
+                     Data_encoding.Binary.to_bytes_exn
+                       Dal.Slot.Commitment.encoding
+                       r.commitment;
+                   ])
             in
             let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
             match F.consume F.one_tick_consumption fuel with

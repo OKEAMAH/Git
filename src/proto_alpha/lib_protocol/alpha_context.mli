@@ -2922,6 +2922,12 @@ module Dal : sig
 
   val number_of_slots : context -> int
 
+  type proof_single = Dal.proof_single
+
+  val proof_single_of_bytes : bytes -> proof_single
+
+  val proof_single_to_bytes : proof_single -> bytes
+
   (** This module re-exports definitions from {!Dal_slot_index_repr}. *)
   module Slot_index : sig
     type t
@@ -3361,7 +3367,7 @@ module Sc_rollup : sig
 
   type reveal_data =
     | Raw_data of string
-    | Partial_raw_data of {data : string; proof : Bls12_381.G1.t; index : int}
+    | Partial_raw_data of {data : string; proof : Dal.proof_single; index : int}
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 
@@ -3384,7 +3390,7 @@ module Sc_rollup : sig
   type reveal =
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
     | Reveal_partial_raw_data of {
-        commitment : Bls12_381.G1.t;
+        commitment : Dal.Slot.Commitment.t;
         start : int;
         length : int;
       }
@@ -3937,10 +3943,10 @@ module Sc_rollup : sig
     type reveal_proof =
       | Raw_data_proof of string
       | Partial_raw_data_proof of {
-          commitment : Bls12_381.G1.t;
+          commitment : Dal.Slot.Commitment.t;
           data : string;
           index : int;
-          proof : Bls12_381.G1.t;
+          proof : Dal.proof_single;
         }
       | Metadata_proof
       | Dal_page_proof of {
@@ -3986,7 +3992,7 @@ module Sc_rollup : sig
 
       val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
-      val reveal_kzg : Bls12_381.G1.t -> int -> string option Lwt.t
+      val reveal_kzg : Dal.Slot.Commitment.t -> int -> string option Lwt.t
 
       module Inbox_with_history : sig
         val inbox : Inbox.history_proof

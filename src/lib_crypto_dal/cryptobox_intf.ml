@@ -152,4 +152,29 @@ module type VERIFIER = sig
       | `Page_length_mismatch
       | `Page_index_out_of_range ] )
     Result.t
+
+  type polynomial
+
+  type proof_single
+
+  val proof_single_of_bytes : bytes -> proof_single
+
+  val proof_single_to_bytes : proof_single -> bytes
+
+  val prove_single :
+    t ->
+    polynomial ->
+    Bls12_381.Fr.t ->
+    ( proof_single,
+      [> `Invalid_degree_strictly_less_than_expected of
+         (int, int) error_container ] )
+    result
+
+  val verify_single :
+    t ->
+    commitment:commitment ->
+    point:Bls12_381.Fr.t ->
+    evaluation:Bls12_381.Fr.t ->
+    proof:proof_single ->
+    bool
 end

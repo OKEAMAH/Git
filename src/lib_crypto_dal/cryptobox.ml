@@ -1624,6 +1624,34 @@ module Inner = struct
       | Ok false -> Error `Invalid_shard
       | Error e -> Error e
 
+  type proof_single = Bls12_381.G1.t
+
+  (* TODO add _exn suffix *)
+  let proof_single_of_bytes = Bls12_381.G1.of_bytes_exn
+
+  let proof_single_to_bytes = Bls12_381.G1.to_bytes
+
+  let prove_single (t : t) p z :
+      ( Bls12_381.G1.t,
+        [> `Invalid_degree_strictly_less_than_expected of
+           (int, int) error_container ] )
+      result =
+    Octez_bls12_381_polynomial.Polynomial.(
+      division_xn (p - constant (evaluate p z)) 1 (Bls12_381.Fr.negate z))
+    |> fst |> commit t
+
+  let verify_single (t : t) ~commitment ~point ~evaluation ~proof =
+    let h_secret =
+      Octez_bls12_381_polynomial.Srs.Srs_g2.get t.srs.raw.srs_g2 1
+    in
+    Bls12_381.(
+      Pairing.pairing_check
+        [
+          ( G1.(add commitment (negate (mul (copy one) evaluation))),
+            G2.(negate (copy one)) );
+          (proof, G2.(add h_secret (negate (mul (copy one) point))));
+        ])
+
   let prove_page t p page_index =
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Page_index_out_of_range
