@@ -1229,7 +1229,14 @@ let reveal_partial_preimage_name = "tezos_reveal_partial_preimage"
 
 let reveal_partial_preimage_type =
   let input_types =
-    Types.[NumType I32Type; NumType I32Type; NumType I32Type; NumType I32Type]
+    Types.
+      [
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+        NumType I32Type;
+      ]
     |> Vector.of_list
   in
   let output_types = Types.[NumType I32Type] |> Vector.of_list in
@@ -1250,6 +1257,7 @@ let reveal_partial_preimage_parse_args memories args =
       let* commitment =
         Aux.load_bytes ~memory ~addr:commitment_addr ~size:commitment_size
       in
+      Printf.eprintf "\nOKKKKK!!!!\n" ;
       Lwt_result.return
         ( Host_funcs.(
             Reveal_partial_raw_data

@@ -494,18 +494,70 @@ let compute_step_with_debug ~write_debug pvm_state =
     (Host_funcs.registry ~version ~write_debug)
     pvm_state
 
+let pp_interpreter_error out
+    Wasm_pvm_errors.{raw_exception = Truncated raw_exception; explanation} =
+  Format.fprintf
+    out
+    "@[<hv 2>{ raw_exception: %s; explanation: %s }@]"
+    raw_exception
+    (match explanation with
+    | None -> "None"
+    | Some (Truncated s) -> "Some: " ^ s)
+
+let pp_fallback_cause out = function
+  | Wasm_pvm_errors.Decode_cause error ->
+      Format.fprintf out "@[<hv 2>Decode_cause %a@]" pp_interpreter_error error
+  | Wasm_pvm_errors.Link_cause (Truncated error) ->
+      Format.fprintf out "@[<hv 2>Link_cause %s@]" error
+  | Wasm_pvm_errors.Init_cause error ->
+      Format.fprintf out "@[<hv 2>Init_cause %a@]" pp_interpreter_error error
+
+let pp_error_state out = function
+  | Wasm_pvm_errors.Eval_error error ->
+      Format.fprintf out "@[<hv 2>Eval_error %a@]" pp_interpreter_error error
+  | Wasm_pvm_errors.Decode_error error ->
+      Format.fprintf out "@[<hv 2>Decode_error %a@]" pp_interpreter_error error
+  | Wasm_pvm_errors.Link_error (Truncated error) ->
+      Format.fprintf out "@[<hv 2>Link_error %s@]" error
+  | Wasm_pvm_errors.Init_error error ->
+      Format.fprintf out "@[<hv 2>Init_error %a@]" pp_interpreter_error error
+  | Wasm_pvm_errors.Invalid_state (Truncated err) ->
+      Format.fprintf out "@[<hv 2>Invalid_state (%s)@]" err
+  | Wasm_pvm_errors.Unknown_error (Truncated err) ->
+      Format.fprintf out "@[<hv 2>Unknown_error (%s)@]" err
+  | Wasm_pvm_errors.Too_many_ticks ->
+      Format.fprintf out "@[<hv 2>Too_many_ticks@]"
+  | Wasm_pvm_errors.Too_many_reboots ->
+      Format.fprintf out "@[<hv 2>Too_many_reboots@]"
+  | Wasm_pvm_errors.No_fallback_kernel cause ->
+      Format.fprintf
+        out
+        "@[<hv 2>No_fallback_kernel (%a)@]"
+        pp_fallback_cause
+        cause
+
+let print_error_state = Format.asprintf "%a" pp_error_state
+
 let input_request pvm_state =
   match pvm_state.tick_state with
   | Stuck (Decode_error _ | Init_error _ | Link_error _) ->
       (* These stuck states are recovered on the next tick by
          the fallback mechanism. *)
       Wasm_pvm_state.No_input_required
-  | Stuck _ -> Wasm_pvm_state.Input_required
+  | Stuck e ->
+      Format.eprintf "%s" (print_error_state e) ;
+
+      Printf.eprintf "\n Stuck\n" ;
+      Wasm_pvm_state.Input_required
   | Snapshot -> Wasm_pvm_state.No_input_required
-  | Collect -> Wasm_pvm_state.Input_required
+  | Collect ->
+      Printf.eprintf "\n Collect \n" ;
+      Wasm_pvm_state.Input_required
   | Eval {config; _} -> (
       match Tezos_webassembly_interpreter.Eval.is_reveal_tick config with
-      | Some reveal -> Wasm_pvm_state.Reveal_required reveal
+      | Some reveal ->
+          Printf.eprintf "\n reveal required!\n" ;
+          Wasm_pvm_state.Reveal_required reveal
       | None -> Wasm_pvm_state.No_input_required)
   | _ -> Wasm_pvm_state.No_input_required
 
@@ -592,12 +644,19 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
           let info = input_request pvm_state in
           match info with
           | Reveal_required (Reveal_raw_data req) ->
+              Printf.eprintf "\n reveal raw data\n" ;
               let* res = reveal_builtins.Builtins.reveal_preimage req in
+              reveal_step (Bytes.of_string res) pvm_state
+          | Reveal_required (Reveal_partial_raw_data _req) ->
+              (* TODO incomplete *)
+              Printf.eprintf "\n reveal partial raw data \n" ;
+              let* res = reveal_builtins.Builtins.reveal_preimage "" in
               reveal_step (Bytes.of_string res) pvm_state
           | Reveal_required Reveal_metadata ->
               let* res = reveal_builtins.reveal_metadata () in
               reveal_step (Bytes.of_string res) pvm_state
           | _ ->
+              Printf.eprintf "\n missed reveal\n" ;
               compute_step_with_host_functions
                 ~version
                 ~stack_size_limit

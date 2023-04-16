@@ -262,7 +262,8 @@ module Partial_raw_data_proofs = struct
       ( Some
           (Reveal_proof
              (Partial_raw_data_proof {commitment; data; index; proof})),
-        Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) )
+        Some (Sc_rollup_PVM_sig.Reveal (Partial_raw_data {data; proof; index}))
+      )
 end
 
 module Dal_proofs = struct

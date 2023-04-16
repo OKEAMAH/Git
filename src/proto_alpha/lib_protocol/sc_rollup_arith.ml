@@ -1213,7 +1213,11 @@ module Make (Context : P) :
         let* () = Next_message.set (Some data) in
         let* () = start_parsing in
         return ()
-    | PS.Partial_raw_data _ -> (* TODO complete *) return ()
+    | PS.Partial_raw_data {data; _} ->
+        (* TODO complete *)
+        let* () = Next_message.set (Some data) in
+        let* () = start_parsing in
+        return ()
     | PS.Metadata metadata ->
         let* () = Metadata.set (Some metadata) in
         let* () = Status.set Waiting_for_input_message in
@@ -1545,6 +1549,8 @@ module Make (Context : P) :
       | (PS.Initial | PS.First_after _), Some (PS.Inbox_message _ as input)
       | ( PS.Needs_reveal (Reveal_raw_data _),
           Some (PS.Reveal (Raw_data _) as input) )
+      | ( PS.Needs_reveal (Reveal_partial_raw_data _),
+          Some (PS.Reveal (Partial_raw_data _) as input) )
       | PS.Needs_reveal Reveal_metadata, Some (PS.Reveal (Metadata _) as input)
       | ( PS.Needs_reveal (PS.Request_dal_page _),
           Some (PS.Reveal (Dal_page _) as input) ) ->

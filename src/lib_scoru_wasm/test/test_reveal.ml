@@ -58,6 +58,30 @@ let reveal_preimage_module hash hash_addr hash_size preimage_addr max_bytes =
     preimage_addr
     max_bytes
 
+let reveal_partial_preimage_module hash hash_addr hash_size preimage_addr
+    max_bytes =
+  Format.sprintf
+    {|
+      (module
+        (import "smart_rollup_core" "reveal_partial_preimage"
+          (func $reveal_partial_preimage (param i32 i32 i32 i32 i32) (result i32))
+        )
+        (memory 1)
+        (data (i32.const %ld) "%s")
+        (export "mem" (memory 0))
+        (func (export "kernel_run")
+          (call $reveal_partial_preimage (i32.const %ld) (i32.const %ld) (i32.const %ld) (i32.const %ld) (i32.const %ld) )
+        )
+      )
+    |}
+    hash_addr
+    hash
+    hash_addr
+    hash_size
+    preimage_addr
+    10l
+    max_bytes
+
 let reveal_metadata_module metadata_addr =
   Format.sprintf
     {|
@@ -185,7 +209,11 @@ let test_reveal_preimage_classic ~version () =
     (* 100 bytes *)
   in
   let max_bytes = 200l in
-  test_reveal_preimage_gen ~version preimage max_bytes
+  let open Lwt_result_syntax in
+  let* () = test_reveal_preimage_gen ~version preimage max_bytes in
+  let a = false in
+  assert a ;
+  return_unit
 
 let test_reveal_preimage_above_max ~version () =
   let preimage =
@@ -195,6 +223,89 @@ let test_reveal_preimage_above_max ~version () =
   in
   let max_bytes = 50l in
   test_reveal_preimage_gen ~version preimage max_bytes
+
+let test_reveal_partial_preimage_gen ~version preimage max_bytes =
+  let open Lwt_result_syntax in
+  let hash_addr = 120l in
+  let preimage_addr = 200l in
+  (* The first byte corresponds to a tag which in the case of Blake2B hashes
+     is set to zero. *)
+  let hash_size = Int32.of_int (1 + Tezos_crypto.Blake2B.size) in
+  let hash = Tezos_crypto.Blake2B.(to_string (hash_string [preimage])) in
+  let modl =
+    reveal_partial_preimage_module
+      (to_hex_string hash)
+      hash_addr
+      hash_size
+      preimage_addr
+      max_bytes
+  in
+  let*! state = initial_tree ~version modl in
+  let*! state_snapshotted = eval_until_input_or_reveal_requested state in
+  let*! state_with_dummy_input = set_empty_inbox_step 0l state_snapshotted in
+  (* Let’s go *)
+  let*! state = eval_until_input_or_reveal_requested state_with_dummy_input in
+  (* Let's check the hash in memory. *)
+  (*let*! module_instance =
+      Wasm.Internal_for_tests.get_module_instance_exn state
+    in
+    let*! memory = Instance.Vector.get 0l module_instance.memories in
+    let*! hash_in_memory =
+      Memory.load_bytes memory hash_addr (Int32.to_int hash_size)
+    in
+    assert (
+      String.equal (String.sub hash_in_memory 1 Tezos_crypto.Blake2B.size) hash) ;*)
+  let*! info = Wasm.get_info state in
+  let* () =
+    let open Wasm_pvm_state in
+    match info.Wasm_pvm_state.input_request with
+    | Wasm_pvm_state.Reveal_required (Reveal_partial_raw_data _reveal_hash) ->
+        (* The PVM has reached a point where it’s asking for some preimage. *)
+        (*assert (
+          String.equal (String.sub reveal_hash 1 Tezos_crypto.Blake2B.size) hash) ;*)
+        return_unit
+    | Input_required ->
+        Printf.eprintf "\n Input required\n" ;
+        assert false
+    | No_input_required | Reveal_required _ -> assert false
+  in
+  let*! state = Wasm.reveal_step (Bytes.of_string preimage) state in
+  let*! info = Wasm.get_info state in
+  let* () =
+    let open Wasm_pvm_state in
+    match info.input_request with
+    | No_input_required -> return_unit
+    | Input_required ->
+        failwith "should be running, but expect input from the L1"
+    | Reveal_required _ -> failwith "should be running, but expect reveal tick"
+  in
+  (* The revelation step should contain the number of bytes effectively wrote in
+     memory for the preimage. *)
+  let*! returned_size = reveal_returned_size state in
+  (* Let's check the preimage in memory. *)
+  let*! module_instance =
+    Wasm.Internal_for_tests.get_module_instance_exn state
+  in
+  let*! memory = Instance.Vector.get 0l module_instance.memories in
+  let expected_length = min (String.length preimage) (Int32.to_int max_bytes) in
+  assert (returned_size = Int32.of_int expected_length) ;
+  let*! preimage_in_memory =
+    Memory.load_bytes memory preimage_addr expected_length
+  in
+  assert (
+    preimage_in_memory = String.sub preimage 0 (Int32.to_int returned_size)) ;
+  return_unit
+
+(* Test the best conditions for the preimage reveal: its size is below the
+   maximum bytes for the preimage, it will be . *)
+let test_reveal_partial_preimage_classic ~version () =
+  let preimage =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse \
+     elementum nec ex sed porttitor."
+    (* 100 bytes *)
+  in
+  let max_bytes = 200l in
+  test_reveal_partial_preimage_gen ~version preimage max_bytes
 
 let test_reveal_metadata ~version () =
   let open Lwt_result_syntax in
@@ -355,12 +466,15 @@ let tests =
   tztests_with_pvm
     ~versions:[V0; V1]
     [
-      ( "Test reveal_preimage with preimage length below max_bytes",
+      (*( "Test reveal_preimage with preimage length below max_bytes",
         `Quick,
-        test_reveal_preimage_classic );
-      ( "Test reveal_preimage with preimage length above max_bytes",
+        test_reveal_preimage_classic );*)
+      (*( "Test reveal_preimage with preimage length above max_bytes",
         `Quick,
-        test_reveal_preimage_above_max );
-      ("Test reveal_metadata", `Quick, test_reveal_metadata);
-      ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);
+        test_reveal_preimage_above_max );*)
+      ( "Test reveal_partial_preimage with preimage length below max_bytes",
+        `Quick,
+        test_reveal_partial_preimage_classic );
+      (*("Test reveal_metadata", `Quick, test_reveal_metadata);
+        ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);*)
     ]

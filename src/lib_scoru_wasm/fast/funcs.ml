@@ -263,6 +263,27 @@ let make ~version ~reveal_builtins ~write_debug state =
         in
         return result)
   in
+  let reveal_partial_preimage =
+    fn
+      (i32 @-> i32 @-> i32 @-> i32 @-> i32 @-> returning1 i32)
+      (fun hash_addr hash_size dst _ max_bytes ->
+        Lwt.map (Result.fold ~ok:Fun.id ~error:Fun.id)
+        @@ with_mem
+        @@ fun memory ->
+        let open Lwt_result_syntax in
+        let* hash =
+          Host_funcs.Aux.load_bytes ~memory ~addr:hash_addr ~size:hash_size
+        in
+        let*! payload = reveal_builtins.Builtins.reveal_preimage hash in
+        let*! result =
+          Host_funcs.Aux.reveal
+            ~memory
+            ~dst
+            ~max_bytes
+            ~payload:(Bytes.of_string payload)
+        in
+        return result)
+  in
   let reveal_metadata =
     fn
       (i32 @-> i32 @-> returning1 i32)
@@ -291,6 +312,7 @@ let make ~version ~reveal_builtins ~write_debug state =
       ("store_write", store_write);
       ("store_get_nth_key", store_get_nth_key);
       ("reveal_preimage", reveal_preimage);
+      ("reveal_partial_preimage", reveal_partial_preimage);
       ("reveal_metadata", reveal_metadata);
     ]
   in
