@@ -49,14 +49,16 @@ let () =
     (function Sc_rollup_invalid_serialized_inbox_proof -> Some () | _ -> None)
     (fun () -> Sc_rollup_invalid_serialized_inbox_proof)
 
+type partial_raw_data_proof = {
+  commitment : Dal.commitment;
+  data : string;
+  index : int;
+  proof : Dal.proof_single;
+}
+
 type reveal_proof =
   | Raw_data_proof of string
-  | Partial_raw_data_proof of {
-      commitment : Dal.commitment;
-      data : string;
-      index : int;
-      proof : Dal.proof_single;
-    }
+  | Partial_raw_data_proof of partial_raw_data_proof
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;
@@ -101,7 +103,38 @@ let reveal_proof_encoding =
         | _ -> None)
       (fun ((), page_id, proof) -> Dal_page_proof {page_id; proof})
   in
-  union [case_raw_data; case_metadata_proof; case_dal_page]
+  let partial_raw_data_proof =
+    conv
+      (fun {commitment; data; index; proof} -> (commitment, data, index, proof))
+      (fun (commitment, data, index, proof) -> {commitment; data; index; proof})
+      (obj4
+         (req "commitment" Dal.Commitment.encoding)
+         (req "data" (Variable.string Hex))
+         (req "index" int31)
+         (req "proof" Dal.proof_single_encoding)
+         (* TODO: proof_single module with its encoding *))
+  in
+  let case_partial_raw_data_proof =
+    case
+      ~title:"partial raw data proof"
+      (Tag 3)
+      (obj1
+         (req
+            "partial_raw_data_proof"
+            (check_size
+               Constants_repr.sc_rollup_message_size_limit
+               partial_raw_data_proof)))
+      (function Partial_raw_data_proof m -> Some m | _ -> None)
+      (fun m -> Partial_raw_data_proof m)
+  in
+
+  union
+    [
+      case_raw_data;
+      case_metadata_proof;
+      case_dal_page;
+      case_partial_raw_data_proof;
+    ]
 
 type input_proof =
   | Inbox_proof of {

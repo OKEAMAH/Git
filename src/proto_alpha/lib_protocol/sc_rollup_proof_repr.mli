@@ -43,17 +43,19 @@
     is the case, we don't need the input proof at all and the [input_proof]
     parameter in our proof should be [None]. *)
 
+type partial_raw_data_proof = {
+  commitment : Dal.commitment;
+  data : string;
+  index : int;
+  proof : Dal.proof_single;
+}
+
 (** The proof that a reveal is valid. *)
 type reveal_proof =
   | Raw_data_proof of string
       (** The existence of reveal for a given hash when the
           [input_requested] is the [Needs_reveal Reveal_raw_data]. *)
-  | Partial_raw_data_proof of {
-      commitment : Dal.commitment;
-      data : string;
-      index : int;
-      proof : Dal.proof_single;
-    }
+  | Partial_raw_data_proof of partial_raw_data_proof
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;

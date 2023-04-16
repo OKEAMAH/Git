@@ -3942,14 +3942,16 @@ module Sc_rollup : sig
   end
 
   module Proof : sig
+    type partial_raw_data_proof = {
+      commitment : Dal.Slot.Commitment.t;
+      data : string;
+      index : int;
+      proof : Dal.proof_single;
+    }
+
     type reveal_proof =
       | Raw_data_proof of string
-      | Partial_raw_data_proof of {
-          commitment : Dal.Slot.Commitment.t;
-          data : string;
-          index : int;
-          proof : Dal.proof_single;
-        }
+      | Partial_raw_data_proof of partial_raw_data_proof
       | Metadata_proof
       | Dal_page_proof of {
           page_id : Dal.Page.t;
