@@ -3365,9 +3365,11 @@ module Sc_rollup : sig
     payload : Inbox_message.serialized;
   }
 
+  type partial_raw_data = {data : string; proof : Dal.proof_single; index : int}
+
   type reveal_data =
     | Raw_data of string
-    | Partial_raw_data of {data : string; proof : Dal.proof_single; index : int}
+    | Partial_raw_data of partial_raw_data
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 

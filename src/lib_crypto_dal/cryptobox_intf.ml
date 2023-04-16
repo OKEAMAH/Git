@@ -157,6 +157,8 @@ module type VERIFIER = sig
 
   type proof_single
 
+  val proof_single_encoding : proof_single Data_encoding.t
+
   val proof_single_of_bytes : bytes -> proof_single
 
   val proof_single_to_bytes : proof_single -> bytes

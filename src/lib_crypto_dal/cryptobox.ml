@@ -1626,6 +1626,8 @@ module Inner = struct
 
   type proof_single = Bls12_381.G1.t
 
+  let proof_single_encoding = g1_encoding
+
   (* TODO add _exn suffix *)
   let proof_single_of_bytes = Bls12_381.G1.of_bytes_exn
 

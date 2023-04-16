@@ -58,9 +58,11 @@ type inbox_message = {
   payload : Sc_rollup_inbox_message_repr.serialized;
 }
 
+type partial_raw_data = {data : string; proof : Dal.proof_single; index : int}
+
 type reveal_data =
   | Raw_data of string
-  | Partial_raw_data of {data : string; proof : Dal.proof_single; index : int}
+  | Partial_raw_data of partial_raw_data
   | Metadata of Sc_rollup_metadata_repr.t
   | Dal_page of Dal_slot_repr.Page.content option
 
@@ -138,7 +140,31 @@ let reveal_data_encoding =
       (function Dal_page p -> Some ((), p) | _ -> None)
       (fun ((), p) -> Dal_page p)
   in
-  union [case_raw_data; case_metadata; case_dal_page]
+  let partial_raw_data =
+    conv
+      (fun {data; proof; index} -> (data, proof, index))
+      (fun (data, proof, index) -> {data; proof; index})
+      (obj3
+         (req "data" (Variable.string Hex))
+         (req "proof" Dal.proof_single_encoding)
+         (* TODO: proof_single module with its encoding *)
+         (req "index" int31))
+  in
+  let case_partial_raw_data =
+    case
+      ~title:"partial raw data"
+      (Tag 3)
+      (obj2
+         (kind "partial_raw_data")
+         (req
+            "partial_raw_data"
+            (check_size
+               Constants_repr.sc_rollup_message_size_limit
+               partial_raw_data)))
+      (function Partial_raw_data m -> Some ((), m) | _ -> None)
+      (fun ((), m) -> Partial_raw_data m)
+  in
+  union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 let input_encoding =
   let open Data_encoding in
