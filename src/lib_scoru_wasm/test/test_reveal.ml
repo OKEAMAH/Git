@@ -230,11 +230,14 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   let preimage_addr = 200l in
   (* The first byte corresponds to a tag which in the case of Blake2B hashes
      is set to zero. *)
-  let hash_size = Int32.of_int (1 + Tezos_crypto.Blake2B.size) in
-  let hash = Tezos_crypto.Blake2B.(to_string (hash_string [preimage])) in
+  let hash_size = Int32.of_int Bls12_381.G1.size_in_bytes in
+  let hash =
+    Bls12_381.G1.(copy zero) |> Bls12_381.G1.to_bytes |> Bytes.to_string
+  in
+  Printf.eprintf "\n hash = %s \n" (to_hex_string ~tag:"" hash) ;
   let modl =
     reveal_partial_preimage_module
-      (to_hex_string hash)
+      (to_hex_string ~tag:"" hash)
       hash_addr
       hash_size
       preimage_addr
