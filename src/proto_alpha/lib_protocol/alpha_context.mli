@@ -3389,13 +3389,15 @@ module Sc_rollup : sig
 
   module Input_hash : S.HASH
 
+  type reveal_partial_raw_data = {
+    commitment : Dal.Slot.Commitment.t;
+    start : int;
+    length : int;
+  }
+
   type reveal =
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
-    | Reveal_partial_raw_data of {
-        commitment : Dal.Slot.Commitment.t;
-        start : int;
-        length : int;
-      }
+    | Reveal_partial_raw_data of reveal_partial_raw_data
     | Reveal_metadata
     | Request_dal_page of Dal.Page.t
 

@@ -227,14 +227,16 @@ module Input_hash =
       let size = Some 20
     end)
 
+type reveal_partial_raw_data = {
+  commitment : Dal.commitment;
+  start : int;
+  length : int;
+}
+
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
-  | Reveal_partial_raw_data of {
-      commitment : Dal.commitment;
-      start : int;
-      length : int;
-    }
-    (* length <= 4_096 bytes *)
+  | Reveal_partial_raw_data of
+      reveal_partial_raw_data (* length <= 4_096 bytes *)
   | Reveal_metadata
   | Request_dal_page of Dal_slot_repr.Page.t
 
@@ -266,7 +268,31 @@ let reveal_encoding =
       (function Request_dal_page s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Request_dal_page s)
   in
-  union [case_raw_data; case_metadata; case_dal_page]
+  let partial_raw_data =
+    conv
+      (fun {commitment; start; length} -> (commitment, start, length))
+      (fun (commitment, start, length) -> {commitment; start; length})
+      (obj3
+         (req "commitment" Dal.Commitment.encoding)
+         (req "start" int31)
+         (req "length" int31))
+  in
+  let case_partial_raw_data =
+    case
+      ~title:"partial raw data"
+      (Tag 3)
+      (obj2
+         (kind "partial_raw_data")
+         (req
+            "partial_raw_data"
+            (check_size
+               Constants_repr.sc_rollup_message_size_limit
+               partial_raw_data)))
+      (function Reveal_partial_raw_data m -> Some ((), m) | _ -> None)
+      (fun ((), m) -> Reveal_partial_raw_data m)
+  in
+
+  union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 (** The PVM's current input expectations:
     - [No_input_required] if the machine is busy and has no need for new input.
