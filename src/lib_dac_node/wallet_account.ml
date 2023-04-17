@@ -38,7 +38,7 @@ module Coordinator = struct
     in
     let*! () =
       if Wallet_cctxt_helpers.can_verify account_wallet then Lwt.return ()
-      else Event.(emit commit_member_no_public_key pkh)
+      else Event.(emit committee_member_not_in_wallet pkh)
     in
     return {public_key_hash; public_key_opt}
 end

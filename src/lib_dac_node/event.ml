@@ -164,7 +164,7 @@ let committee_member_cannot_sign =
     ~level:Warning
     ("tz4_account", Tezos_crypto.Aggregate_signature.Public_key_hash.encoding)
 
-let commit_member_no_public_key =
+let committee_member_no_public_key =
   declare_1
     ~section
     ~name:"committee_member_no_public_key"
