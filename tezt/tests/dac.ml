@@ -48,6 +48,16 @@ module Scenarios = struct
     observer_nodes : Dac_node.t list;
     rollup_nodes : Sc_rollup_node.t list;
   }
+
+  type coordinator_only = {
+    protocol : Protocol.t;
+    node : Node.t;
+    client : Client.t;
+    dac_node : Dac_node.t;
+    committee_members : Account.aggregate_key list;
+    invalid_committee_members :
+      Tezos_crypto.Aggregate_signature.Public_key_hash.t list;
+  }
 end
 
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3173
@@ -218,7 +228,8 @@ let with_legacy_dac_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
   f dac_node committee_members
 
 let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
-    ?(wait_ready = true) ~threshold ~committee_members tezos_client f =
+    ?(wait_ready = true) ~threshold ~committee_members
+    ?(invalid_committee_members = 0) ?(run_coordinator = true) tezos_client f =
   let range i = List.init i Fun.id in
   let reveal_data_dir =
     Option.map
@@ -239,6 +250,23 @@ let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
       (return [])
       (range committee_members)
   in
+  let invalid_committee_members =
+    range invalid_committee_members
+    |> List.map (fun i ->
+           let raw_string = Int.to_string i in
+           let right = Bytes.of_string raw_string in
+           (* Might fail if more than 2^{21} invalid committee members are used, but
+              this is not a realisitic case. *)
+           let left =
+             Bytes.init
+               (Tezos_crypto.Aggregate_signature.Public_key_hash.size
+              - String.length raw_string)
+               (fun _ -> Char.chr 0)
+           in
+           let raw_bytes = Bytes.concat Bytes.empty [left; right] in
+           Tezos_crypto.Aggregate_signature.Public_key_hash.of_bytes_exn
+             raw_bytes)
+  in
   let dac_node =
     Dac_node.create_coordinator
       ?name
@@ -249,12 +277,19 @@ let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
       ~committee_members:
         (List.map
            (fun (dc : Account.aggregate_key) -> dc.aggregate_public_key_hash)
-           committee_members)
+           committee_members
+        @ List.map
+            (fun pkh ->
+              Tezos_crypto.Aggregate_signature.Public_key_hash.to_b58check pkh)
+            invalid_committee_members)
       ()
   in
   let* _dir = Dac_node.init_config dac_node in
-  let* () = Dac_node.run dac_node ~wait_ready in
-  f dac_node committee_members
+
+  let* () =
+    if run_coordinator then Dac_node.run dac_node ~wait_ready else return ()
+  in
+  f dac_node committee_members invalid_committee_members
 
 let with_committee_member tezos_node coordinator_node ?name ?sc_rollup_node
     ?(pvm_name = "arith") ?(wait_ready = true) ~committee_member tezos_client f
@@ -329,6 +364,44 @@ let with_fresh_rollup ~protocol ?(pvm_name = "arith") tezos_node tezos_client
   let* () = Client.bake_for_and_wait tezos_client in
   f rollup_address sc_rollup_node
 
+let scenario_with_coordinator_only ?(tags = ["dac"; "coordinator"])
+    ?(wait_ready = true) ?(run_coordinator = true) ~committee_members
+    ?(invalid_committee_members = 0) ?commitment_period ?challenge_window
+    ?event_sections_levels ?node_arguments variant scenario =
+  let description = "Testing DAC Coordinator" in
+  test
+    ~__FILE__
+    ~tags
+    (Printf.sprintf "%s (%s)" description variant)
+    (fun protocol ->
+      with_layer1
+        ?commitment_period
+        ?challenge_window
+        ?event_sections_levels
+        ?node_arguments
+        ~protocol
+      @@ fun node client _key ->
+      with_coordinator_node
+        node
+        client
+        ~name:"coordinator"
+        ~threshold:0
+        ~committee_members
+        ~invalid_committee_members
+        ~wait_ready
+        ~run_coordinator
+      @@ fun dac_node committee_members invalid_committee_members ->
+      scenario
+        Scenarios.
+          {
+            protocol;
+            node;
+            client;
+            dac_node;
+            committee_members;
+            invalid_committee_members;
+          })
+
 let scenario_with_full_dac_infrastructure ?(tags = ["dac"; "full"])
     ?(pvm_name = "arith") ~committee_members ~observers ?commitment_period
     ?challenge_window ?event_sections_levels ?node_arguments variant scenario =
@@ -354,7 +427,7 @@ let scenario_with_full_dac_infrastructure ?(tags = ["dac"; "full"])
         ~pvm_name
         ~threshold:0
         ~committee_members
-      @@ fun coordinator_node committee_members ->
+      @@ fun coordinator_node committee_members _invalid_committee_members ->
       let committee_members_nodes =
         List.mapi
           (fun i Account.{aggregate_public_key_hash; _} ->
@@ -485,6 +558,10 @@ let scenario_with_layer1_legacy_and_rollup_nodes
             pvm_name
             threshold
             committee_members))
+
+let wait_for_committee_member_not_in_wallet dac_node tz4_account =
+  Dac_node.wait_for dac_node "committee_member_not_in_wallet.v0" (fun json ->
+      if JSON.(json |> as_string) = tz4_account then Some () else None)
 
 let wait_for_layer1_block_processing dac_node level =
   Dac_node.wait_for dac_node "dac_node_layer_1_new_head.v0" (fun e ->
@@ -1440,6 +1517,39 @@ module Legacy = struct
   end
 end
 
+(** [Coordinator] tezts only test for coordinator node functionalities. *)
+
+module Coordinator = struct
+  let test_startup
+      Scenarios.{dac_node; committee_members; invalid_committee_members; _} =
+    let wait_for_valid_committee_members_not_in_wallet =
+      List.map
+        (fun committee_member ->
+          wait_for_committee_member_not_in_wallet
+            dac_node
+            committee_member.Account.aggregate_public_key_hash)
+        committee_members
+    in
+    let wait_for_invalid_committee_members_not_in_wallet =
+      List.map
+        (fun committee_member ->
+          wait_for_committee_member_not_in_wallet dac_node
+          @@ Tezos_crypto.Aggregate_signature.Public_key_hash.to_b58check
+               committee_member)
+        invalid_committee_members
+    in
+    let wait_for_all_invalid_committee_members_cannot_sign =
+      Lwt.join wait_for_invalid_committee_members_not_in_wallet
+    in
+    let* () = Dac_node.run ~wait_ready:true dac_node in
+    let* () = wait_for_all_invalid_committee_members_cannot_sign in
+    assert (
+      List.for_all
+        Lwt.is_sleeping
+        wait_for_valid_committee_members_not_in_wallet) ;
+    return ()
+end
+
 module Full_infrastructure = struct
   let coordinator_serializes_payload coordinator ~payload ~expected_rh =
     let* actual_rh =
@@ -1642,4 +1752,12 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"]
     "committee members and observers download pages from coordinator"
     Full_infrastructure.test_download_and_retrieval_of_pages
+    protocols ;
+  scenario_with_coordinator_only
+    ~committee_members:1
+    ~invalid_committee_members:1
+    ~tags:["dac"; "dac_node"]
+    ~run_coordinator:false
+    "coordinator checks public key of members before startup"
+    Coordinator.test_startup
     protocols
