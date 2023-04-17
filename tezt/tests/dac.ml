@@ -34,30 +34,34 @@
 
 let hooks = Tezos_regression.hooks
 
-module Scenarios = struct
-  type full = {
-    protocol : Protocol.t;
-    node : Node.t;
-    client : Client.t;
-    key : string;
-    sc_rollup_address : string;
-    sc_rollup_node : Sc_rollup_node.t;
-    coordinator_node : Dac_node.t;
-    committee_members : Account.aggregate_key list;
-    committee_members_nodes : Dac_node.t list;
-    observer_nodes : Dac_node.t list;
-    rollup_nodes : Sc_rollup_node.t list;
-  }
+module Scenario = struct
+  module Full_infrastructure = struct
+    type t = {
+      protocol : Protocol.t;
+      node : Node.t;
+      client : Client.t;
+      key : string;
+      sc_rollup_address : string;
+      sc_rollup_node : Sc_rollup_node.t;
+      coordinator_node : Dac_node.t;
+      committee_members : Account.aggregate_key list;
+      committee_members_nodes : Dac_node.t list;
+      observer_nodes : Dac_node.t list;
+      rollup_nodes : Sc_rollup_node.t list;
+    }
+  end
 
-  type coordinator_only = {
-    protocol : Protocol.t;
-    node : Node.t;
-    client : Client.t;
-    dac_node : Dac_node.t;
-    committee_members : Account.aggregate_key list;
-    invalid_committee_members :
-      Tezos_crypto.Aggregate_signature.Public_key_hash.t list;
-  }
+  module Coordinator_only = struct
+    type t = {
+      protocol : Protocol.t;
+      node : Node.t;
+      client : Client.t;
+      dac_node : Dac_node.t;
+      committee_members : Account.aggregate_key list;
+      invalid_committee_members :
+        Tezos_crypto.Aggregate_signature.Public_key_hash.t list;
+    }
+  end
 end
 
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3173
@@ -381,7 +385,7 @@ let scenario_with_coordinator_only ?(tags = ["dac"; "coordinator"])
         ~invalid_committee_members
       @@ fun dac_node committee_members invalid_committee_members ->
       scenario
-        Scenarios.
+        Scenario.Coordinator_only.
           {
             protocol;
             node;
@@ -461,7 +465,7 @@ let scenario_with_full_dac_infrastructure ?(tags = ["dac"; "full"])
         |> List.split
       in
       scenario
-        Scenarios.
+        Scenario.Full_infrastructure.
           {
             protocol;
             node;
@@ -1509,8 +1513,9 @@ end
 (** [Coordinator] tezts only test for coordinator node functionalities. *)
 
 module Coordinator = struct
-  let test_startup
-      Scenarios.{dac_node; committee_members; invalid_committee_members; _} =
+  open Scenario.Coordinator_only
+
+  let test_startup {dac_node; committee_members; invalid_committee_members; _} =
     let wait_for_valid_committee_members_not_in_wallet =
       List.map
         (fun committee_member ->
@@ -1539,14 +1544,18 @@ module Coordinator = struct
     return ()
 end
 
+module Committee_member = struct end
+
 module Full_infrastructure = struct
+  open Scenario.Full_infrastructure
+
   let coordinator_serializes_payload coordinator ~payload ~expected_rh =
     let* actual_rh =
       RPC.call coordinator (Dac_rpc.Coordinator.post_preimage ~payload)
     in
     return @@ check_valid_root_hash expected_rh actual_rh
 
-  let test_coordinator_post_preimage_endpoint Scenarios.{coordinator_node; _} =
+  let test_coordinator_post_preimage_endpoint {coordinator_node; _} =
     (* 1. Send the [payload] to coordinator.
        2. Assert that it returns [expected_rh].
        3. Assert event that root hash has been pushed to data streamer
@@ -1567,7 +1576,7 @@ module Full_infrastructure = struct
     Lwt.return_unit
 
   let test_download_and_retrieval_of_pages
-      Scenarios.{coordinator_node; committee_members_nodes; observer_nodes; _} =
+      {coordinator_node; committee_members_nodes; observer_nodes; _} =
     (* 0. Start the coordinator node node is already running when the this function is
           executed by the test
        1. Run committee members and observers
