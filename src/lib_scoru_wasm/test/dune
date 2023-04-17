@@ -13,6 +13,7 @@
   tezos-scoru-wasm
   qcheck-alcotest
   alcotest-lwt
+  tezos-embedded-protocol-alpha
   tezos-scoru-wasm-helpers
   tezos_scoru_wasm_test_helpers
   tezos-webassembly-interpreter-extra)

@@ -249,15 +249,15 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   (* Let’s go *)
   let*! state = eval_until_input_or_reveal_requested state_with_dummy_input in
   (* Let's check the hash in memory. *)
-  (*let*! module_instance =
-      Wasm.Internal_for_tests.get_module_instance_exn state
-    in
-    let*! memory = Instance.Vector.get 0l module_instance.memories in
-    let*! hash_in_memory =
-      Memory.load_bytes memory hash_addr (Int32.to_int hash_size)
-    in
-    assert (
-      String.equal (String.sub hash_in_memory 1 Tezos_crypto.Blake2B.size) hash) ;*)
+  let*! module_instance =
+    Wasm.Internal_for_tests.get_module_instance_exn state
+  in
+  let*! memory = Instance.Vector.get 0l module_instance.memories in
+  let*! hash_in_memory =
+    Memory.load_bytes memory hash_addr (Int32.to_int hash_size)
+  in
+  assert (
+    String.equal (String.sub hash_in_memory 1 Tezos_crypto.Blake2B.size) hash) ;
   let*! info = Wasm.get_info state in
   let* () =
     let open Wasm_pvm_state in

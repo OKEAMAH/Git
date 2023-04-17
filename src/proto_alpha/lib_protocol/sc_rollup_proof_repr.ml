@@ -65,6 +65,24 @@ type reveal_proof =
       proof : Dal_slot_repr.History.proof;
     }
 
+let partial_raw_data_proof =
+  let open Data_encoding in
+  conv
+    (fun {commitment; data; index; proof} -> (commitment, data, index, proof))
+    (fun (commitment, data, index, proof) -> {commitment; data; index; proof})
+    (obj4
+       (req "commitment" Dal.Commitment.encoding)
+       (req
+          "data"
+          Bounded.(
+            string
+              ~length_kind:`Uint16
+              Hex
+              Constants_repr.sc_rollup_message_size_limit))
+       (req "index" int31)
+       (req "proof" Dal.proof_single_encoding)
+       (* TODO: proof_single module with its encoding *))
+
 let reveal_proof_encoding =
   let open Data_encoding in
   let case_raw_data =
@@ -89,8 +107,7 @@ let reveal_proof_encoding =
       (obj1 (req "reveal_proof_kind" (constant "metadata_proof")))
       (function Metadata_proof -> Some () | _ -> None)
       (fun () -> Metadata_proof)
-  in
-  let case_dal_page =
+  and case_dal_page =
     case
       ~title:"dal page proof"
       (Tag 2)
@@ -102,32 +119,16 @@ let reveal_proof_encoding =
         | Dal_page_proof {page_id; proof} -> Some ((), page_id, proof)
         | _ -> None)
       (fun ((), page_id, proof) -> Dal_page_proof {page_id; proof})
-  in
-  let partial_raw_data_proof =
-    conv
-      (fun {commitment; data; index; proof} -> (commitment, data, index, proof))
-      (fun (commitment, data, index, proof) -> {commitment; data; index; proof})
-      (obj4
-         (req "commitment" Dal.Commitment.encoding)
-         (req "data" (Variable.string Hex))
-         (req "index" int31)
-         (req "proof" Dal.proof_single_encoding)
-         (* TODO: proof_single module with its encoding *))
-  in
-  let case_partial_raw_data_proof =
+  and case_partial_raw_data_proof =
     case
       ~title:"partial raw data proof"
       (Tag 3)
-      (obj1
-         (req
-            "partial_raw_data_proof"
-            (check_size
-               Constants_repr.sc_rollup_message_size_limit
-               partial_raw_data_proof)))
-      (function Partial_raw_data_proof m -> Some m | _ -> None)
-      (fun m -> Partial_raw_data_proof m)
+      (obj2
+         (req "reveal_proof_kind" (constant "partial_raw_data_proof"))
+         (req "partial_raw_data_proof_content" partial_raw_data_proof))
+      (function Partial_raw_data_proof m -> Some ((), m) | _ -> None)
+      (fun ((), m) -> Partial_raw_data_proof m)
   in
-
   union
     [
       case_raw_data;

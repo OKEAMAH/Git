@@ -108,6 +108,23 @@ let inbox_message_encoding =
        (req "message_counter" n)
        (req "payload" (string Hex)))
 
+let partial_raw_data =
+  let open Data_encoding in
+  conv
+    (fun {data; proof; index} -> (proof, index, data))
+    (fun (proof, index, data) -> {data; proof; index})
+    (obj3
+       (req "proof" Dal.proof_single_encoding)
+       (* TODO: proof_single module with its encoding *)
+       (req "index" int31)
+       (req
+          "data"
+          Bounded.(
+            string
+              ~length_kind:`Uint16
+              Hex
+              Constants_repr.sc_rollup_message_size_limit)))
+
 let reveal_data_encoding =
   let open Data_encoding in
   let kind name = req "reveal_data_kind" (constant name) in
@@ -131,36 +148,20 @@ let reveal_data_encoding =
       (obj2 (kind "metadata") (req "metadata" Sc_rollup_metadata_repr.encoding))
       (function Metadata md -> Some ((), md) | _ -> None)
       (fun ((), md) -> Metadata md)
-  in
-  let case_dal_page =
+  and case_dal_page =
     case
       ~title:"dal page"
       (Tag 2)
       (obj2 (kind "dal_page") (req "dal_page_content" (option (bytes Hex))))
       (function Dal_page p -> Some ((), p) | _ -> None)
       (fun ((), p) -> Dal_page p)
-  in
-  let partial_raw_data =
-    conv
-      (fun {data; proof; index} -> (data, proof, index))
-      (fun (data, proof, index) -> {data; proof; index})
-      (obj3
-         (req "data" (Variable.string Hex))
-         (req "proof" Dal.proof_single_encoding)
-         (* TODO: proof_single module with its encoding *)
-         (req "index" int31))
-  in
-  let case_partial_raw_data =
+  and case_partial_raw_data =
     case
       ~title:"partial raw data"
       (Tag 3)
       (obj2
          (kind "partial_raw_data")
-         (req
-            "partial_raw_data"
-            (check_size
-               Constants_repr.sc_rollup_message_size_limit
-               partial_raw_data)))
+         (req "partial_raw_data_content" partial_raw_data))
       (function Partial_raw_data m -> Some ((), m) | _ -> None)
       (fun ((), m) -> Partial_raw_data m)
   in
@@ -233,6 +234,16 @@ type reveal_partial_raw_data = {
   length : int;
 }
 
+let reveal_partial_raw_data =
+  let open Data_encoding in
+  conv
+    (fun {commitment; start; length} -> (commitment, start, length))
+    (fun (commitment, start, length) -> {commitment; start; length})
+    (obj3
+       (req "commitment" Dal.Commitment.encoding)
+       (req "start" int31)
+       (req "length" int31))
+
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
   | Reveal_partial_raw_data of
@@ -259,39 +270,23 @@ let reveal_encoding =
       (obj1 (kind "reveal_kind"))
       (function Reveal_metadata -> Some () | _ -> None)
       (fun () -> Reveal_metadata)
-  in
-  let case_dal_page =
+  and case_dal_page =
     case
       ~title:"Request_dal_page"
       (Tag 2)
       (obj2 (kind "reveal_kind") (req "page_id" Dal_slot_repr.Page.encoding))
       (function Request_dal_page s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Request_dal_page s)
-  in
-  let partial_raw_data =
-    conv
-      (fun {commitment; start; length} -> (commitment, start, length))
-      (fun (commitment, start, length) -> {commitment; start; length})
-      (obj3
-         (req "commitment" Dal.Commitment.encoding)
-         (req "start" int31)
-         (req "length" int31))
-  in
-  let case_partial_raw_data =
+  and case_partial_raw_data =
     case
-      ~title:"partial raw data"
+      ~title:"Reveal_partial_raw_data"
       (Tag 3)
       (obj2
-         (kind "partial_raw_data")
-         (req
-            "partial_raw_data"
-            (check_size
-               Constants_repr.sc_rollup_message_size_limit
-               partial_raw_data)))
+         (kind "reveal_partial_raw_data")
+         (req "partial_raw_data" reveal_partial_raw_data))
       (function Reveal_partial_raw_data m -> Some ((), m) | _ -> None)
       (fun ((), m) -> Reveal_partial_raw_data m)
   in
-
   union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 (** The PVM's current input expectations:
