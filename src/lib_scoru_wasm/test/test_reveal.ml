@@ -228,12 +228,10 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   let open Lwt_result_syntax in
   let hash_addr = 120l in
   let preimage_addr = 200l in
-  (* The first byte corresponds to a tag which in the case of Blake2B hashes
-     is set to zero. *)
+  (* TODO rename hash to commitment, same for wasm code *)
   let hash_size = Int32.of_int Bls12_381.G1.size_in_bytes in
-  let hash =
-    Bls12_381.G1.(copy zero) |> Bls12_381.G1.to_bytes |> Bytes.to_string
-  in
+  let commitment' = Bls12_381.G1.(copy zero) in
+  let hash = commitment' |> Bls12_381.G1.to_bytes |> Bytes.to_string in
   Printf.eprintf "\n hash = %s \n" (to_hex_string ~tag:"" hash) ;
   let modl =
     reveal_partial_preimage_module
@@ -256,21 +254,17 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   let*! hash_in_memory =
     Memory.load_bytes memory hash_addr (Int32.to_int hash_size)
   in
-  assert (
-    String.equal (String.sub hash_in_memory 1 Tezos_crypto.Blake2B.size) hash) ;
+  assert (String.equal hash_in_memory hash) ;
   let*! info = Wasm.get_info state in
   let* () =
     let open Wasm_pvm_state in
     match info.Wasm_pvm_state.input_request with
-    | Wasm_pvm_state.Reveal_required (Reveal_partial_raw_data _reveal_hash) ->
+    | Wasm_pvm_state.Reveal_required
+        (Reveal_partial_raw_data {commitment; start = _; length = _}) ->
         (* The PVM has reached a point where it’s asking for some preimage. *)
-        (*assert (
-          String.equal (String.sub reveal_hash 1 Tezos_crypto.Blake2B.size) hash) ;*)
+        assert (Bls12_381.G1.eq commitment commitment') ;
         return_unit
-    | Input_required ->
-        Printf.eprintf "\n Input required\n" ;
-        assert false
-    | No_input_required | Reveal_required _ -> assert false
+    | No_input_required | Input_required | Reveal_required _ -> assert false
   in
   let*! state = Wasm.reveal_step (Bytes.of_string preimage) state in
   let*! info = Wasm.get_info state in
