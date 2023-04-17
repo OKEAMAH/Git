@@ -228,8 +228,8 @@ let with_legacy_dac_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
   f dac_node committee_members
 
 let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
-    ?(wait_ready = true) ~threshold ~committee_members
-    ?(invalid_committee_members = 0) ?(run_coordinator = true) tezos_client f =
+    ~threshold ~committee_members ?(invalid_committee_members = 0) tezos_client
+    f =
   let range i = List.init i Fun.id in
   let reveal_data_dir =
     Option.map
@@ -285,15 +285,10 @@ let with_coordinator_node tezos_node ?name ?sc_rollup_node ?(pvm_name = "arith")
       ()
   in
   let* _dir = Dac_node.init_config dac_node in
-
-  let* () =
-    if run_coordinator then Dac_node.run dac_node ~wait_ready else return ()
-  in
   f dac_node committee_members invalid_committee_members
 
 let with_committee_member tezos_node coordinator_node ?name ?sc_rollup_node
-    ?(pvm_name = "arith") ?(wait_ready = true) ~committee_member tezos_client f
-    =
+    ?(pvm_name = "arith") ~committee_member tezos_client f =
   let reveal_data_dir =
     Option.map
       (fun sc_rollup_node ->
@@ -313,12 +308,10 @@ let with_committee_member tezos_node coordinator_node ?name ?sc_rollup_node
       ()
   in
   let* _dir = Dac_node.init_config dac_node in
-  let* () = Dac_node.run dac_node ~wait_ready in
   f dac_node committee_member
 
 let with_observer tezos_node coordinator_node ?name ?sc_rollup_node
-    ?(pvm_name = "arith") ?(wait_ready = true) ~committee_member tezos_client f
-    =
+    ?(pvm_name = "arith") ~committee_member tezos_client f =
   let reveal_data_dir =
     Option.map
       (fun sc_rollup_node ->
@@ -336,7 +329,6 @@ let with_observer tezos_node coordinator_node ?name ?sc_rollup_node
       ()
   in
   let* _dir = Dac_node.init_config dac_node in
-  let* () = Dac_node.run dac_node ~wait_ready in
   f dac_node committee_member
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4706
@@ -365,9 +357,8 @@ let with_fresh_rollup ~protocol ?(pvm_name = "arith") tezos_node tezos_client
   f rollup_address sc_rollup_node
 
 let scenario_with_coordinator_only ?(tags = ["dac"; "coordinator"])
-    ?(wait_ready = true) ?(run_coordinator = true) ~committee_members
-    ?(invalid_committee_members = 0) ?commitment_period ?challenge_window
-    ?event_sections_levels ?node_arguments variant scenario =
+    ~committee_members ?(invalid_committee_members = 0) ?commitment_period
+    ?challenge_window ?event_sections_levels ?node_arguments variant scenario =
   let description = "Testing DAC Coordinator" in
   test
     ~__FILE__
@@ -388,8 +379,6 @@ let scenario_with_coordinator_only ?(tags = ["dac"; "coordinator"])
         ~threshold:0
         ~committee_members
         ~invalid_committee_members
-        ~wait_ready
-        ~run_coordinator
       @@ fun dac_node committee_members invalid_committee_members ->
       scenario
         Scenarios.
@@ -1562,6 +1551,7 @@ module Full_infrastructure = struct
        2. Assert that it returns [expected_rh].
        3. Assert event that root hash has been pushed to data streamer
           was emitted. *)
+    let* () = Dac_node.run coordinator_node ~wait_ready:true in
     let payload = "test_1" in
     let expected_rh =
       "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
@@ -1578,7 +1568,7 @@ module Full_infrastructure = struct
 
   let test_download_and_retrieval_of_pages
       Scenarios.{coordinator_node; committee_members_nodes; observer_nodes; _} =
-    (* 0. Coordinator node is already running when the this function is
+    (* 0. Start the coordinator node node is already running when the this function is
           executed by the test
        1. Run committee members and observers
        2. Post a preimage to coordinator
@@ -1613,6 +1603,8 @@ module Full_infrastructure = struct
           return ())
         observer_nodes
     in
+    (* 0. Run coordiantor node. *)
+    let* () = Dac_node.run coordinator_node ~wait_ready:true in
     (* 1. Run committee member and observer nodes.
        Because the event resolution loop in the Daemon always resolves
        all promises matching an event filter, when a new event is received,
@@ -1757,7 +1749,6 @@ let register ~protocols =
     ~committee_members:1
     ~invalid_committee_members:1
     ~tags:["dac"; "dac_node"]
-    ~run_coordinator:false
     "coordinator checks public key of members before startup"
     Coordinator.test_startup
     protocols
