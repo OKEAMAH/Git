@@ -61,11 +61,40 @@ type t = {
   mode : mode;
   loser_mode : Loser_mode.t;
   dal_node_endpoint : Uri.t option;
+  dac_observer_endpoint : Uri.t option;
+  dac_timeout : Z.t option;
   batcher : int option batcher;
   injector : injector;
   l2_blocks_cache_size : int;
   log_kernel_debug : bool;
 }
+
+type error +=
+  | Missing_mode_operators of {mode : string; missing_operators : string list}
+
+let () =
+  register_error_kind
+    ~id:"sc_rollup.node.missing_mode_operators"
+    ~title:"Missing operators for the chosen mode"
+    ~description:"Missing operators for the chosen mode."
+    ~pp:(fun ppf (mode, missing_operators) ->
+      Format.fprintf
+        ppf
+        "@[<hov>Missing operators %a for mode %s.@]"
+        (Format.pp_print_list
+           ~pp_sep:(fun ppf () -> Format.fprintf ppf ",@ ")
+           Format.pp_print_string)
+        missing_operators
+        mode)
+    `Permanent
+    Data_encoding.(
+      obj2 (req "mode" string) (req "missing_operators" (list string)))
+    (function
+      | Missing_mode_operators {mode; missing_operators} ->
+          Some (mode, missing_operators)
+      | _ -> None)
+    (fun (mode, missing_operators) ->
+      Missing_mode_operators {mode; missing_operators})
 
 let default_data_dir =
   Filename.concat (Sys.getenv "HOME") ".tezos-smart-rollup-node"
@@ -92,7 +121,7 @@ let mutez mutez = {Injector_sigs.mutez}
 
 let tez t = mutez Int64.(mul (of_int t) 1_000_000L)
 
-(* Copied from src/proto_017_PtNairob/lib_plugin/mempool.ml *)
+(* Copied from src/proto_alpha/lib_plugin/mempool.ml *)
 
 let default_minimal_fees = mutez 100L
 
@@ -509,6 +538,8 @@ let encoding : t Data_encoding.t =
            mode;
            loser_mode;
            dal_node_endpoint;
+           dac_observer_endpoint;
+           dac_timeout;
            batcher;
            injector;
            l2_blocks_cache_size;
@@ -524,6 +555,8 @@ let encoding : t Data_encoding.t =
           mode,
           loser_mode ),
         ( dal_node_endpoint,
+          dac_observer_endpoint,
+          dac_timeout,
           batcher,
           injector,
           l2_blocks_cache_size,
@@ -538,6 +571,8 @@ let encoding : t Data_encoding.t =
              mode,
              loser_mode ),
            ( dal_node_endpoint,
+             dac_observer_endpoint,
+             dac_timeout,
              batcher,
              injector,
              l2_blocks_cache_size,
@@ -553,6 +588,8 @@ let encoding : t Data_encoding.t =
         mode;
         loser_mode;
         dal_node_endpoint;
+        dac_observer_endpoint;
+        dac_timeout;
         batcher;
         injector;
         l2_blocks_cache_size;
@@ -596,8 +633,10 @@ let encoding : t Data_encoding.t =
                 test only!)"
              Loser_mode.encoding
              Loser_mode.no_failures))
-       (obj5
+       (obj7
           (opt "DAL node endpoint" Tezos_rpc.Encoding.uri_encoding)
+          (opt "dac-observer-client" Tezos_rpc.Encoding.uri_encoding)
+          (opt "dac-timeout" Data_encoding.z)
           (dft "batcher" batcher_encoding default_batcher)
           (dft "injector" injector_encoding default_injector)
           (dft "l2_blocks_cache_size" int31 default_l2_blocks_cache_size)
@@ -615,8 +654,7 @@ let check_mode config =
     if missing_operators <> [] then
       let mode = string_of_mode config.mode in
       let missing_operators = List.map string_of_purpose missing_operators in
-      tzfail
-        (Sc_rollup_node_errors.Missing_mode_operators {mode; missing_operators})
+      tzfail (Missing_mode_operators {mode; missing_operators})
     else return_unit
   in
   let narrow_purposes purposes =
