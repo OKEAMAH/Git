@@ -38,7 +38,7 @@ module type S = sig
       [signer]. If [config.simulation] is [true] (the default), messages added
       to the batcher are simulated in an incremental simulation context. *)
   val init :
-    Configuration.batcher ->
+    int option Configuration.batcher ->
     signer:public_key_hash ->
     _ Node_context.t ->
     unit tzresult Lwt.t
