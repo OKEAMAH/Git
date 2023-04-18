@@ -42,7 +42,7 @@ module type S = sig
   type status = Pending_batch | Batched of Injector.Inj_operation.hash
 
   val init :
-    Configuration.batcher ->
+    int option Configuration.batcher ->
     signer:public_key_hash ->
     _ Node_context.t ->
     unit tzresult Lwt.t
@@ -74,7 +74,7 @@ module Make (Simulation : Simulation.S) : S = struct
   type state = {
     node_ctxt : Node_context.ro;
     signer : Tezos_crypto.Signature.public_key_hash;
-    conf : Configuration.batcher;
+    conf : int Configuration.batcher;
     messages : Message_queue.t;
     batched : Batched_messages.t;
     mutable simulation_ctxt : Simulation.t option;
@@ -251,6 +251,16 @@ module Make (Simulation : Simulation.S) : S = struct
 
   let init_batcher_state node_ctxt ~signer conf =
     let open Lwt_syntax in
+    let conf =
+      Configuration.
+        {
+          conf with
+          max_batch_size =
+            Option.value
+              conf.max_batch_size
+              ~default:Node_context.protocol_max_batch_size;
+        }
+    in
     return
       {
         node_ctxt;
@@ -267,7 +277,7 @@ module Make (Simulation : Simulation.S) : S = struct
     type parameters = {
       node_ctxt : Node_context.ro;
       signer : Tezos_crypto.Signature.public_key_hash;
-      conf : Configuration.batcher;
+      conf : int option Configuration.batcher;
     }
   end
 
