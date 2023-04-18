@@ -37,6 +37,8 @@ depends: [
   "aches" { >= "1.0.0" }
   "aches-lwt" { >= "1.0.0" }
   "octez-injector"
+  "octez-sc-rollup"
+  "octez-sc-rollup-node"
   "tezos-scoru-wasm"
   "tezos-scoru-wasm-fast"
   "tezos-crypto-dal"

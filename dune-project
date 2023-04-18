@@ -33,6 +33,8 @@
 (package (name octez-polynomial))
 (package (name octez-protocol-compiler))
 (package (name octez-proxy-server))
+(package (name octez-sc-rollup))
+(package (name octez-sc-rollup-node))
 (package (name octez-signer))
 (package (name octez-smart-rollup-client-PtMumbai))
 (package (name octez-smart-rollup-client-PtNairob))

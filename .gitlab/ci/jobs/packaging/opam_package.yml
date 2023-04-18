@@ -369,6 +369,20 @@ opam:octez-proxy-server:
   variables:
     package: octez-proxy-server
 
+opam:octez-sc-rollup:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_6
+  variables:
+    package: octez-sc-rollup
+
+opam:octez-sc-rollup-node:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_opam_batch_1
+  variables:
+    package: octez-sc-rollup-node
+
 opam:octez-signer:
   extends:
     - .opam_template
@@ -481,7 +495,7 @@ opam:tezos-baking-alpha-commands:
 opam:tezos-base:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezos-base
 
@@ -673,7 +687,7 @@ opam:tezos-client-base-unix:
 opam:tezos-client-commands:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_5
+    - .rules_template__trigger_opam_batch_6
   variables:
     package: tezos-client-commands
 
@@ -687,7 +701,7 @@ opam:tezos-client-demo-counter:
 opam:tezos-client-genesis:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_2
+    - .rules_template__trigger_opam_batch_3
   variables:
     package: tezos-client-genesis
 
@@ -1018,7 +1032,7 @@ opam:tezos-mockup-commands:
 opam:tezos-mockup-proxy:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_4
+    - .rules_template__trigger_opam_batch_5
   variables:
     package: tezos-mockup-proxy
 
@@ -1264,7 +1278,7 @@ opam:tezos-protocol-plugin-009-PsFLoren:
 opam:tezos-protocol-plugin-009-PsFLoren-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_1
+    - .rules_template__trigger_opam_batch_2
   variables:
     package: tezos-protocol-plugin-009-PsFLoren-registerer
 
@@ -1387,7 +1401,7 @@ opam:tezos-protocol-plugin-017-PtNairob-registerer:
 opam:tezos-protocol-plugin-alpha:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_3
+    - .rules_template__trigger_opam_batch_4
   variables:
     package: tezos-protocol-plugin-alpha
 
@@ -1681,6 +1695,6 @@ opam:tezt-performance-regression:
 opam:tezt-tezos:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezt-tezos
