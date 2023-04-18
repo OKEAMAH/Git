@@ -32,7 +32,7 @@ let force_switch =
 
 let sc_rollup_address_parameter =
   Tezos_clic.parameter (fun _ s ->
-      match Protocol.Alpha_context.Sc_rollup.Address.of_b58check_opt s with
+      match Sc_rollup_address.of_b58check_opt s with
       | None -> failwith "Invalid smart rollup address"
       | Some addr -> return addr)
 
