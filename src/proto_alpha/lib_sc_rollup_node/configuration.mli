@@ -78,7 +78,7 @@ type injector = {
 }
 
 type t = {
-  sc_rollup_address : Protocol.Alpha_context.Sc_rollup.t;
+  sc_rollup_address : Sc_rollup_address.t;
   sc_rollup_node_operators : operators;
   rpc_addr : string;
   rpc_port : int;

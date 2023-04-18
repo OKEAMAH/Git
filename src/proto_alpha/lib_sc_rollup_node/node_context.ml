@@ -62,6 +62,15 @@ type rw = [`Read | `Write] t
 
 type ro = [`Read] t
 
+let () =
+  if Sc_rollup_address.size <> Protocol.Alpha_context.Sc_rollup.Address.size
+  then
+    Format.ksprintf
+      Stdlib.failwith
+      "Protocol %s is not compatible with rollup addresses of size %d"
+      Protocol.name
+      Sc_rollup_address.size
+
 let get_operator node_ctxt purpose =
   Configuration.Operator_purpose_map.find purpose node_ctxt.operators
 
@@ -287,6 +296,11 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       } as configuration) =
   let open Lwt_result_syntax in
   let*? () = check_config configuration in
+  let rollup_address =
+    (* Convert to protocol rollup address *)
+    Sc_rollup_address.to_bytes rollup_address
+    |> Protocol.Alpha_context.Sc_rollup.Address.of_bytes_exn
+  in
   let* lockfile = lock ~data_dir in
   let dal_cctxt =
     Option.map Dal_node_client.make_unix_cctxt dal_node_endpoint
@@ -316,7 +330,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
   and* genesis_info =
     RPC.Sc_rollup.genesis_info cctxt (cctxt#chain, cctxt#block) rollup_address
   in
-  let*! () = Event.rollup_exists ~addr:configuration.sc_rollup_address ~kind in
+  let*! () = Event.rollup_exists ~addr:rollup_address ~kind in
   let*! () =
     if dal_cctxt = None && protocol_constants.parametric.dal.feature_enable then
       Event.warn_dal_enabled_no_node ()

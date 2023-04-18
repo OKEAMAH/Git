@@ -24,8 +24,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Alpha_context
-
 type mode = Observer | Accuser | Batcher | Maintenance | Operator | Custom
 
 type purpose = Publish | Add_messages | Cement | Timeout | Refute
@@ -53,7 +51,7 @@ type 'a batcher = {
 type injector = {retention_period : int; attempts : int; injection_ttl : int}
 
 type t = {
-  sc_rollup_address : Sc_rollup.t;
+  sc_rollup_address : Sc_rollup_address.t;
   sc_rollup_node_operators : operators;
   rpc_addr : string;
   rpc_port : int;
@@ -575,7 +573,7 @@ let encoding : t Data_encoding.t =
           (req
              "smart-rollup-address"
              ~description:"Smart rollup address"
-             Protocol.Alpha_context.Sc_rollup.Address.encoding)
+             Sc_rollup_address.encoding)
           (req
              "smart-rollup-node-operator"
              ~description:
