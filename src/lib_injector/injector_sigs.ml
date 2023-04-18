@@ -24,7 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type tez = {mutez : int64}
+type tez = {mutez : int64} [@@ocaml.unboxed]
 
 type fee_parameter = {
   minimal_fees : tez;
