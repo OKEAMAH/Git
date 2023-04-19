@@ -503,23 +503,24 @@ let generate_code_for_models sol models codegen_options ~exclusions =
   in
   Codegen.codegen_models models sol transform ~exclusions
 
+let save_code_list_as_a_module save_to code_list =
+  let result = Codegen.make_toplevel_module code_list in
+  stdout_or_file save_to (fun ppf ->
+      Format.fprintf ppf "%a@." Codegen.pp_module result)
+
 let codegen_all_cmd solution_fn regexp codegen_options =
   let () = Format.eprintf "regexp: %s@." regexp in
   let regexp = Str.regexp regexp in
   let ok (name, _) = Str.string_match regexp (Namespace.to_string name) 0 in
   let sol = Codegen.load_solution solution_fn in
   let models = List.filter ok (Registration.all_models ()) in
-  (* no support of exclusions for this command *)
-  let result =
-    Codegen.make_toplevel_module
-    @@ generate_code_for_models
-         sol
-         models
-         codegen_options
-         ~exclusions:String.Set.empty
-  in
-  stdout_or_file codegen_options.save_to (fun ppf ->
-      Format.fprintf ppf "%a@." Codegen.pp_module result)
+  save_code_list_as_a_module codegen_options.Cmdline.save_to
+  @@ generate_code_for_models
+    sol
+    models
+    codegen_options
+    (* no support of exclusions for this command *)
+    ~exclusions:String.Set.empty
 
 let fvs_of_codegen_model model =
   let (Model.Model model) = model in
@@ -564,24 +565,14 @@ let codegen_for_a_solution solution_fn codegen_options ~exclusions =
   in
   generate_code_for_models solution codegen_models codegen_options ~exclusions
 
-let codegen_inferred_cmd solution_fn codegen_options ~exclusions =
-  let result =
-    Codegen.make_toplevel_module
-    @@ codegen_for_a_solution solution_fn codegen_options ~exclusions
-  in
-  stdout_or_file codegen_options.save_to (fun ppf ->
-      Format.fprintf ppf "%a@." Codegen.pp_module result)
-
 let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
-  let result =
-    Codegen.make_toplevel_module
-    @@ List.concat_map
-         (fun solution_fn ->
-           codegen_for_a_solution solution_fn codegen_options ~exclusions)
-         solution_fns
-  in
-  stdout_or_file codegen_options.save_to (fun ppf ->
-      Format.fprintf ppf "%a@." Codegen.pp_module result)
+  save_code_list_as_a_module codegen_options.Cmdline.save_to
+  @@ List.concat_map
+    (fun solution_fn ->
+       codegen_for_a_solution solution_fn codegen_options ~exclusions)
+    solution_fns
+
+let codegen_inferred_cmd solution_fn = codegen_for_solutions_cmd [solution_fn]
 
 let save_solutions_in_text out_fn nsolutions =
   stdout_or_file out_fn @@ fun ppf ->
