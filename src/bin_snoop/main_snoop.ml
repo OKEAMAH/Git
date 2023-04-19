@@ -23,10 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let with_oc filename f =
-  let oc = open_out filename in
-  Fun.protect ~finally:(fun () -> close_out oc) (fun () -> f oc)
-
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4025
    Remove backwards compatible Tezos symlinks. *)
 let () =
@@ -225,14 +221,14 @@ and infer_cmd_full_auto model_name workload_data solver
   let solution =
     List.rev @@ Dep_graph.Graph.fold (fun solved acc -> solved :: acc) graph []
   in
-  ignore @@ infer_cmd_for_measurements
+  ignore @@ infer_for_measurements
     ~model_name
     measurements
     solution
     ~solver
     infer_opts
 
-and infer_cmd_for_measurements ~model_name measurements
+and infer_for_measurements ~model_name measurements
     (solved_list :
       Dep_graph.Solver.Solved.t list (* sorted in the topological order *))
     ~solver (infer_opts : Cmdline.infer_parameters_options) =
@@ -451,9 +447,11 @@ let stdout_or_file fn f =
   match fn with
   | None -> f Format.std_formatter
   | Some fn ->
-      with_oc fn @@ fun oc ->
-      let ppf = Format.formatter_of_out_channel oc in
-      f ppf
+      let with_oc filename f =
+        let oc = open_out filename in
+        Fun.protect ~finally:(fun () -> close_out oc) (fun () -> f oc)
+      in
+      with_oc fn @@ fun oc -> f (Format.formatter_of_out_channel oc)
 
 let codegen_cmd solution_fn model_name codegen_options =
   let sol = Codegen.load_solution solution_fn in
@@ -528,17 +526,14 @@ let fvs_of_codegen_model model =
   let module FV = Model.Def (Costlang.Free_variables) in
   FV.model
 
-let codegen_for_a_solution solution_fn codegen_options ~exclusions =
-  let solution = Codegen.load_solution solution_fn in
-  Format.eprintf "Inference model: %s@." solution.inference_model_name ;
-
+let codegen_for_a_solution solution codegen_options ~exclusions =
   let ( let* ) = Option.bind in
 
   let found_codegen_models =
     let get_codegen_from_bench (bench_name, (module Bench : Benchmark.S)) =
       (* The inference model matches. *)
       let* _model =
-        List.assoc_opt ~equal:( = ) solution.inference_model_name Bench.models
+        List.assoc_opt ~equal:( = ) solution.Codegen.inference_model_name Bench.models
       in
       (* We assume a benchmark has up to one codegen model, *)
       let find_codegen name =
@@ -565,12 +560,16 @@ let codegen_for_a_solution solution_fn codegen_options ~exclusions =
   in
   generate_code_for_models solution codegen_models codegen_options ~exclusions
 
-let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
+let save_codegen_for_solutions solutions codegen_options ~exclusions =
   save_code_list_as_a_module codegen_options.Cmdline.save_to
   @@ List.concat_map
-    (fun solution_fn ->
-       codegen_for_a_solution solution_fn codegen_options ~exclusions)
-    solution_fns
+    (fun solution ->
+       codegen_for_a_solution solution codegen_options ~exclusions)
+    solutions
+
+let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
+  let solutions = List.map Codegen.load_solution solution_fns in
+  save_codegen_for_solutions solutions codegen_options ~exclusions
 
 let codegen_inferred_cmd solution_fn = codegen_for_solutions_cmd [solution_fn]
 
@@ -822,22 +821,22 @@ module Auto_build = struct
       }
     in
     let solution =
-      infer_cmd_for_measurements
+      infer_for_measurements
         ~model_name:local_model_name
         measurements
         solution
         ~solver
         infer_opts
     in
-    let solution_txt = mkfilename ".sol.txt" in
-    save_solutions_in_text (Some solution_txt) [(solution_fn, solution)]
+    save_solutions_in_text (Some (mkfilename ".sol.txt")) [(solution_fn, solution)];
+    solution
 
-  let codegen mkfilename =
+  let codegen mkfilename solution =
     let codegen_options =
       Cmdline.{transform = None; save_to = Some (mkfilename "_non_fp.ml")}
     in
-    codegen_inferred_cmd
-      (mkfilename ".sol")
+    save_codegen_for_solutions
+      [solution]
       codegen_options
       ~exclusions:String.Set.empty ;
     let codegen_options =
@@ -852,8 +851,8 @@ module Auto_build = struct
           save_to = Some (mkfilename ".ml");
         }
     in
-    codegen_inferred_cmd
-      (mkfilename ".sol")
+    save_codegen_for_solutions
+      [solution]
       codegen_options
       ~exclusions:String.Set.empty
 
@@ -945,9 +944,9 @@ module Auto_build = struct
               Filename.concat outdir local_model_name ^ ext
             in
             (* Infernece *)
-            infer mkfilename local_model_name measurements providers ;
+            let solution = infer mkfilename local_model_name measurements providers in
             (* Codegen *)
-            codegen mkfilename)
+            codegen mkfilename solution)
       local_model_names
 end
 
