@@ -298,7 +298,8 @@ let get_plaintext_size chest =
   Bytes.length chest.ciphertext.payload - Crypto_box.tag_length
 
 let open_chest chest chest_key ~time =
-  if time < 0 then failwith "Timelock: trying to open with a negative time"
+  if time < 0 then
+    raise (Invalid_argument "Timelock: trying to open with a negative time")
   else
     let sym_key_opt = puzzle_to_symmetric_key ~time chest.puzzle chest_key in
     match sym_key_opt with
