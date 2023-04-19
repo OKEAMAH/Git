@@ -205,6 +205,24 @@ type anemoi_custom_desc = {
 }
 [@@deriving repr]
 
+let z_repr = Repr.map Repr.string Z.of_string Z.to_string
+
+module Z = struct
+  let t = z_repr
+
+  include Z
+end
+
+type mod_add_desc = {
+  base : Z.t;
+  inp1 : int list;
+  inp2 : int list;
+  out : int list;
+  main_q : int;
+  qs : int list;
+}
+[@@deriving repr]
+
 type solver_desc =
   | Arith of arith_desc
   | Pow5 of pow5_desc
@@ -222,6 +240,7 @@ type solver_desc =
   | AnemoiRound of anemoi_desc
   | AnemoiDoubleRound of anemoi_double_desc
   | AnemoiCustom of anemoi_custom_desc
+  | Mod_Add of mod_add_desc
   | Updater of Optimizer.trace_info
 [@@deriving repr]
 
@@ -396,7 +415,17 @@ let solve_one trace solver =
         Gadget_anemoi.Anemoi128.compute_one_round x1' y1' kx2 ky2
       in
       trace.(x2) <- x2' ;
-      trace.(y2) <- y2') ;
+      trace.(y2) <- y2'
+  | Mod_Add {base; inp1; inp2; out; main_q; qs} ->
+      let n1 =
+        Utils.z_of_limbs ~base @@ List.map (fun w -> trace.(w) |> S.to_z) inp1
+      in
+      ignore n1 ;
+      ignore inp2 ;
+      ignore out ;
+      ignore main_q ;
+      ignore qs ;
+      ()) ;
   trace
 
 let solve : t -> S.t array -> S.t array =

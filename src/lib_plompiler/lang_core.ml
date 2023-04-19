@@ -238,6 +238,10 @@ module type COMMON = sig
       (scalar * scalar) repr t
   end
 
+  module Mod_arith : sig
+    val add : scalar list repr -> scalar list repr -> scalar list repr t
+  end
+
   module Poseidon : sig
     val poseidon128_full_round :
       matrix:S.t array array ->

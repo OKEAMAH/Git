@@ -147,6 +147,15 @@ type anemoi_custom_desc = {
   ky2 : S.t;
 }
 
+type mod_add_desc = {
+  base : Z.t;
+  inp1 : int list;
+  inp2 : int list;
+  out : int list;
+  main_q : int;
+  qs : int list;
+}
+
 type solver_desc =
   | Arith of arith_desc
   | Pow5 of pow5_desc
@@ -164,6 +173,7 @@ type solver_desc =
   | AnemoiRound of anemoi_desc
   | AnemoiDoubleRound of anemoi_double_desc
   | AnemoiCustom of anemoi_custom_desc
+  | Mod_Add of mod_add_desc
   | Updater of Optimizer.trace_info
 
 type solvers

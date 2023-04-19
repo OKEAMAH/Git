@@ -344,6 +344,13 @@ module Ecc = struct
          (s_of_base @@ W.get_v_coordinate out)
 end
 
+module Mod_arith = struct
+  let add n1 n2 =
+    ignore n1 ;
+    ignore n2 ;
+    failwith "TODO"
+end
+
 module Poseidon = struct
   module VS = Linear_algebra.Make_VectorSpace (S)
 
