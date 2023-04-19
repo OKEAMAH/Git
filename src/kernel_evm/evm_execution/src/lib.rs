@@ -817,4 +817,151 @@ mod test {
         // assert_eq!(result, expected_result);
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn static_calls_cannot_update_storage() {
+        let mut mock_runtime = MockHost::default();
+        let block = block::BlockConstants::first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let target = H160::from_low_u64_be(117_u64);
+        let caller = H160::from_low_u64_be(118_u64);
+        let data = [0u8; 32]; // Need some data to make it a contract call
+        let static_call_target = H160::from_low_u64_be(200_u64);
+        let all_the_gas = 2_000_000_u64;
+
+        // contract that stores something in durable storage
+        let static_call_code = vec![
+            Opcode::PUSH2.as_u8(),
+            0xFF,
+            0xFF,
+            Opcode::PUSH1.as_u8(),
+            0,
+            Opcode::SSTORE.as_u8(),
+        ];
+
+        set_account_code(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &static_call_target,
+            &static_call_code,
+        );
+
+        // contract that does static call to contract above
+        let code = vec![
+            Opcode::PUSH1.as_u8(), // push return data size
+            0,
+            Opcode::PUSH1.as_u8(), // push return data offset
+            0,
+            Opcode::PUSH1.as_u8(), // push arg size
+            0,
+            Opcode::PUSH1.as_u8(), // push arg offset
+            0,
+            Opcode::PUSH1.as_u8(), // push address
+            200,
+            Opcode::PUSH2.as_u8(), // push gas
+            0xFF,
+            0xFF,
+            Opcode::STATICCALL.as_u8(),
+        ];
+
+        set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            target,
+            caller,
+            data.to_vec(),
+            Some(all_the_gas),
+            None,
+        );
+
+        // Since we execute an invalid instruction (for a static call that is) we spend
+        // _all_ the gas.
+        let expected_result = Ok(ExecutionOutcome {
+            gas_used: all_the_gas,
+            is_success: false,
+            new_address: None,
+            logs: vec![],
+        });
+
+        // assert that call fails
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn static_calls_fail_when_logging() {
+        let mut mock_runtime = MockHost::default();
+        let block = block::BlockConstants::first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let target = H160::from_low_u64_be(117_u64);
+        let caller = H160::from_low_u64_be(118_u64);
+        let data = [0u8; 32]; // Need some data to make it a contract call
+        let static_call_target = H160::from_low_u64_be(200_u64);
+        let all_the_gas = 2_000_000_u64;
+
+        // contract that does logging
+        let static_call_code = vec![
+            Opcode::PUSH1.as_u8(), // push size
+            1,
+            Opcode::PUSH1.as_u8(), // push address
+            0x1,
+            Opcode::LOG0.as_u8(), // write a zero to log
+        ];
+
+        set_account_code(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &static_call_target,
+            &static_call_code,
+        );
+
+        // contract that does static call to contract above
+        let code = vec![
+            Opcode::PUSH1.as_u8(), // push return data size
+            0,
+            Opcode::PUSH1.as_u8(), // push return data offset
+            0,
+            Opcode::PUSH1.as_u8(), // push arg size
+            0,
+            Opcode::PUSH1.as_u8(), // push arg offset
+            0,
+            Opcode::PUSH1.as_u8(), // push address
+            200,
+            Opcode::PUSH2.as_u8(), // push gas
+            0xFF,
+            0xFF,
+            Opcode::STATICCALL.as_u8(),
+        ];
+
+        set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            target,
+            caller,
+            data.to_vec(),
+            Some(all_the_gas),
+            None,
+        );
+
+        // Since we execute an invalid instruction (for a static call that is), we
+        // expect to spend _all_ the gas.
+        let expected_result = Ok(ExecutionOutcome {
+            gas_used: all_the_gas,
+            is_success: false,
+            new_address: None,
+            logs: vec![],
+        });
+
+        // assert that call fails
+        assert_eq!(result, expected_result);
+    }
 }

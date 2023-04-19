@@ -10,6 +10,7 @@ use debug::debug_msg;
 use evm::Context;
 use host::runtime::Runtime;
 use primitive_types::{H160, U256};
+use tezos_smart_rollup_storage::layer::Mergeable;
 
 /// One transaction level
 ///
@@ -22,24 +23,53 @@ use primitive_types::{H160, U256};
 pub struct TransactionContext {
     /// The context for the transaction - caller/callee, et.c.
     pub context: Context,
+    /// If the current transaction is banned from changing storage of
+    /// the current contract, ie, the call is _static_.
+    pub is_static: bool,
+}
+
+impl Mergeable for TransactionContext {
+    fn merge(&mut self, _other: Self) {
+        // Do nothing for now. In a follow up MR (or commit)
+        // we'll need to merge log records
+    }
+}
+
+impl std::default::Default for TransactionContext {
+    fn default() -> Self {
+        Self {
+            context: Context {
+                address: H160::zero(),
+                caller: H160::zero(),
+                apparent_value: U256::zero(),
+            },
+            is_static: false,
+        }
+    }
 }
 
 #[allow(unused_variables)]
 impl TransactionContext {
     /// Create a new transaction context
-    pub fn new(caller_address: H160, callee_address: H160, apparent_value: U256) -> Self {
+    pub fn new(
+        caller_address: H160,
+        callee_address: H160,
+        apparent_value: U256,
+        is_static: bool,
+    ) -> Self {
         Self {
             context: Context {
                 address: callee_address,
                 caller: caller_address,
                 apparent_value,
             },
+            is_static,
         }
     }
 
     /// Create a transaction context from a SputnikVm context
-    pub fn from_context(context: Context) -> Self {
-        Self { context }
+    pub fn from_context(context: Context, is_static: bool) -> Self {
+        Self { context, is_static }
     }
 }
 

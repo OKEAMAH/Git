@@ -31,7 +31,6 @@ pub fn string_to_sk_and_address(s: String) -> (SecretKey, EthereumAddress) {
 
 /// the type of a transaction
 #[derive(Debug, PartialEq, Eq, Clone)]
-
 pub enum EthereumTransactionType {
     /// transfer
     EthereumTransfer,
@@ -118,6 +117,7 @@ impl EthereumTransactionCommon {
             )
         }
     }
+
     /// Find the caller address from r and s of the common data
     /// for an Ethereum transaction, ie, what address is associated
     /// with the signature of the message.

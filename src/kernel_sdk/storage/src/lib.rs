@@ -55,5 +55,5 @@ impl From<host::runtime::RuntimeError> for StorageError {
     }
 }
 
-mod layer;
+pub mod layer;
 pub mod storage;

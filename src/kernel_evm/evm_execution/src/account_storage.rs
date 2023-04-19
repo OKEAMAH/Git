@@ -4,11 +4,13 @@
 
 //! Ethereum account state and storage
 
+use super::transaction::TransactionContext;
 use const_decoder::Decoder;
 use host::path::{concat, OwnedPath, Path, RefPath};
 use host::runtime::{Runtime, RuntimeError, ValueType};
 use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
+use tezos_smart_rollup_storage::layer::StorageLayerWithContext;
 use tezos_smart_rollup_storage::storage::Storage;
 use thiserror::Error;
 
@@ -460,12 +462,16 @@ impl EthereumAccount {
 }
 
 /// The type of the storage API for accessing the Ethereum World State.
-pub type EthereumAccountStorage = Storage<EthereumAccount>;
+pub type EthereumAccountStorage = Storage<
+    EthereumAccount,
+    StorageLayerWithContext<EthereumAccount, TransactionContext>,
+>;
 
 /// Get the storage API for accessing the Ethereum World State and do transactions
 /// on it.
 pub fn init_account_storage() -> Result<EthereumAccountStorage, AccountStorageError> {
-    Storage::<EthereumAccount>::init(&ACCOUNTS_PATH).map_err(AccountStorageError::from)
+    Storage::<EthereumAccount, StorageLayerWithContext<EthereumAccount, TransactionContext>>::init(&ACCOUNTS_PATH)
+        .map_err(AccountStorageError::from)
 }
 
 #[cfg(test)]
