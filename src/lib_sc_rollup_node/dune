@@ -13,6 +13,10 @@
   cohttp-lwt-unix
   octez-node-config
   prometheus-app
+  tezos-client-base
+  tezos-client-base-unix
+  tezos-rpc-http-server
+  tezos_layer2_store
   octez-crawler
   octez-injector
   octez-sc-rollup)
@@ -23,6 +27,9 @@
   -open Tezos_base
   -open Tezos_stdlib_unix
   -open Tezos_crypto
+  -open Tezos_client_base
+  -open Tezos_client_base_unix
+  -open Tezos_layer2_store
   -open Octez_crawler
   -open Octez_injector
   -open Octez_sc_rollup))

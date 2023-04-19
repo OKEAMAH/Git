@@ -4162,6 +4162,10 @@ let octez_sc_rollup_node_lib =
         cohttp_lwt_unix;
         octez_node_config;
         prometheus_app;
+        octez_client_base |> open_;
+        octez_client_base_unix |> open_;
+        octez_rpc_http_server;
+        octez_layer2_store |> open_;
         octez_crawler |> open_;
         octez_injector |> open_;
         octez_sc_rollup_lib |> open_;
