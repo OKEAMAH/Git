@@ -40,15 +40,13 @@ let test_raw_scenario time () =
   let open Timelock in
   (* Creator creating chest. *)
   let timelock_precomputed_tuple = precompute_timelock ~time () in
-  let locked, proof =
-    proof_of_vdf_tuple rsa2048 ~time timelock_precomputed_tuple
-  in
+  let locked, proof = proof_of_vdf_tuple ~time timelock_precomputed_tuple in
   (* Not creator opening chest. *)
-  assert (verify rsa2048 ~time locked proof) ;
-  let proof_2 = unlock_and_prove rsa2048 ~time locked in
-  assert (verify rsa2048 ~time locked proof_2) ;
-  let sym_key_1 = timelock_proof_to_symmetric_key rsa2048 proof in
-  let sym_key_2 = timelock_proof_to_symmetric_key rsa2048 proof_2 in
+  assert (verify ~time locked proof) ;
+  let proof_2 = unlock_and_prove ~time locked in
+  assert (verify ~time locked proof_2) ;
+  let sym_key_1 = timelock_proof_to_symmetric_key proof in
+  let sym_key_2 = timelock_proof_to_symmetric_key proof_2 in
   assert (sym_key_1 = sym_key_2) ;
   let message = Bytes.of_string "rzersef" in
   let c = encrypt sym_key_2 message in
@@ -59,13 +57,13 @@ let test_raw_scenario time () =
 
 let bench () =
   let open Timelock in
-  let locked = gen_puzzle_unsafe rsa2048 in
+  let locked = gen_puzzle () in
   (* Corresponds to ~1s, increases linearly *)
   let time = 10_000 in
-  let proof = unlock_and_prove rsa2048 ~time locked in
+  let proof = unlock_and_prove ~time locked in
   let start_bench = Unix.gettimeofday () in
   for _i = 0 to 100 do
-    let _ = prove rsa2048 ~time locked proof.vdf_tuple.solution in
+    let _ = prove ~time locked proof.vdf_tuple.solution in
     ()
   done ;
   let end_bench = Unix.gettimeofday () in
@@ -89,7 +87,7 @@ let test_high_level_negative () =
   (* Opening Bogus *)
   (* The opener, opens to garbage *)
   let wrong_time = 1000 in
-  let proof_wrong = unlock_and_prove rsa2048 ~time:wrong_time chest.puzzle in
+  let proof_wrong = unlock_and_prove ~time:wrong_time chest.puzzle in
   let solution_wrong = proof_wrong.vdf_tuple.solution in
   let vdf_wrong = proof_wrong.vdf_tuple.vdf_proof in
   let proof_incorrect_solution =
@@ -120,7 +118,7 @@ let test_low_level_negative () =
   let open Timelock in
   let payload = Bytes.of_string "fdgfnhfd" and time = 10 in
   let chest, chest_key = create_chest_and_chest_key ~payload ~time () in
-  let proof = unlock_and_prove chest.rsa_public ~time chest.puzzle in
+  let proof = unlock_and_prove ~time chest.puzzle in
   let encoding = Data_encoding.(tup2 (tup3 n n n) n) in
   let of_proof x =
     Data_encoding.Binary.to_bytes_exn proof_encoding x

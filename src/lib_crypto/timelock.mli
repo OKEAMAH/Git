@@ -83,13 +83,12 @@ type ciphertext
     the associated time. *)
 type vdf_tuple = {puzzle : puzzle; solution : solution; vdf_proof : vdf_proof}
 
-(** Function taking as input an [rsa_public], a [time] and three strings
-    representing a timelock puzzle, its corresponding solution and a Wesolowski
-    proof and returning Some vdf_tuple if the elements are in the RSA group
-    with rsa_public as modulus and the Wesolowski proof verifies, None
-    otherwise. *)
+(** Function taking as input a [time] and three strings representing a timelock
+    puzzle, its corresponding solution and a Wesolowski proof and returning
+    Some vdf_tuple if the elements are in the RSA group with RSA2048 as modulus
+    and the Wesolowski proof verifies, None otherwise. *)
 val to_vdf_tuple_opt :
-  rsa_public -> time:int -> string -> string -> string -> vdf_tuple option
+  time:int -> string -> string -> string -> vdf_tuple option
 
 (** Function taking as input three strings representing a timelock puzzle, a
     solution and a Wesolowski proof and returning them as vdf_tuple without
@@ -101,40 +100,31 @@ val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
     the randomness linking the vdf_tuple to the timelock puzzle. *)
 type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
 
-(** Default modulus for RSA-based timelock, chosen as 2048 bit RSA modulus
-    challenge "RSA-2048". *)
-val rsa2048 : rsa_public
-
 (** Generates almost uniformly an integer mod n.
     It is in the RSA group with overwhelming probability.
     We use this since we want to lock symmetric keys, not pre-determined
     messages.
 
     @raise Failure if there is not enough entropy available. *)
-val gen_puzzle_unsafe : rsa_public -> puzzle
-
-(** Returns None if [rsa_public] is not rsa2048, otherwise returns
-    Some [gen_puzzle_unsafe] [rsa_public]. *)
-val gen_puzzle_opt : rsa_public -> puzzle option
+val gen_puzzle : unit -> puzzle
 
 (** Generates a symmetric encryption key out of a [timelock_proof].
-    More precisely, computes and hashes solution**randomness mod rsa_public to
+    More precisely, computes and hashes solution**randomness mod rsa2048 to
     a symmetric key for authenticated encryption. *)
-val timelock_proof_to_symmetric_key :
-  rsa_public -> timelock_proof -> symmetric_key
+val timelock_proof_to_symmetric_key : timelock_proof -> symmetric_key
 
 (** Generates a [timelock_proof] by unlocking a timelock [puzzle], given a
-    [time] and an [rsa_public] modulus. The proof certifies that the solution
-    found by unlocking the puzzle is correct. *)
-val unlock_and_prove : rsa_public -> time:int -> puzzle -> timelock_proof
+    [time]. The proof certifies that the solution found by unlocking the puzzle
+    is correct. *)
+val unlock_and_prove : time:int -> puzzle -> timelock_proof
 
 (** Produces a proof certifying that the [solution] indeed corresponds to the
-    opening of the [puzzle] given a [time] and an RSA modulus [rsa_public]. *)
-val prove : rsa_public -> time:int -> puzzle -> solution -> timelock_proof
+    opening of the [puzzle] given a [time]. *)
+val prove : time:int -> puzzle -> solution -> timelock_proof
 
 (** Verifies with the [timelock_proof] that the [puzzle] indeed opens to the
-    [solution] with given a [time:int] and an RSA modulus [rsa_public]. *)
-val verify : rsa_public -> time:int -> puzzle -> timelock_proof -> bool
+    [solution] with given a [time:int]. *)
+val verify : time:int -> puzzle -> timelock_proof -> bool
 
 (** Precomputes a [vdf_tuple] given a [time:int] and optionally a [puzzle].
     If [precompute_path] is given, it will attempt to read the [vdf_tuple]
@@ -148,17 +138,16 @@ val precompute_timelock :
 
 (** Generates a fresh timelock [puzzle] and corresponding [timelock_proof] by
     randomizing a [vdf_tuple] with a freshly generated randomness given a
-    [time:int] and an [rsa_public] modulus. *)
-val proof_of_vdf_tuple :
-  rsa_public -> time:int -> vdf_tuple -> puzzle * timelock_proof
+    [time:int]. *)
+val proof_of_vdf_tuple : time:int -> vdf_tuple -> puzzle * timelock_proof
 
 (** On a claim opening [timelock_proof] of a timelock [puzzle], verifies if the
-    opening is valid, given a [time] and [rsa_public] modulus.
+    opening is valid given a [time].
     If the opening is valid, it is hashed opening using the function
     [timelock_proof_to_symmetric_key] and returned as Some symmetric_key,
     otherwise it returns None. *)
 val puzzle_to_symmetric_key :
-  rsa_public -> time:int -> puzzle -> timelock_proof -> symmetric_key option
+  time:int -> puzzle -> timelock_proof -> symmetric_key option
 
 (** Encrypt some bytes given a symmetric key using authenticated encryption.
     The output contains both a ciphertext and a message authentication code. *)
