@@ -406,6 +406,8 @@ opam:octez-smart-rollup-client-PtNairob:
 
 # Ignoring unreleased package octez-smart-rollup-client-alpha.
 
+# Ignoring unreleased package octez-smart-rollup-node.
+
 opam:octez-smart-rollup-node-PtMumbai:
   extends:
     - .opam_template
@@ -533,7 +535,7 @@ opam:tezos-base-test-helpers:
 opam:tezos-clic:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_6
+    - .rules_template__trigger_opam_batch_7
   variables:
     package: tezos-clic
 
@@ -1688,6 +1690,6 @@ opam:tezt-performance-regression:
 opam:tezt-tezos:
   extends:
     - .opam_template
-    - .rules_template__trigger_opam_batch_7
+    - .rules_template__trigger_opam_batch_6
   variables:
     package: tezt-tezos
