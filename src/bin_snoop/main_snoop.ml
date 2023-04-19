@@ -225,7 +225,7 @@ and infer_cmd_full_auto model_name workload_data solver
   let solution =
     List.rev @@ Dep_graph.Graph.fold (fun solved acc -> solved :: acc) graph []
   in
-  infer_cmd_for_measurements
+  ignore @@ infer_cmd_for_measurements
     ~local_model_name:model_name
     measurements
     solution
@@ -355,8 +355,9 @@ and infer_cmd_for_measurements ~local_model_name:model_name measurements
       (overrides_map, scores_list, report)
       solved_list
   in
-  perform_save_solution model_name map scores_list infer_opts ;
-  match (infer_opts.report, report) with
+  let solution = Codegen.{inference_model_name = model_name; map; scores_list} in
+  perform_save_solution solution infer_opts ;
+  (match (infer_opts.report, report) with
   | Cmdline.NoReport, _ -> ()
   | ReportToStdout, Some report ->
       let s = Report.to_latex report in
@@ -368,7 +369,8 @@ and infer_cmd_for_measurements ~local_model_name:model_name measurements
         let* _nwritten = Lwt_utils_unix.create_file output_file s in
         Lwt.return_unit) ;
       Format.eprintf "Produced report on %s@." output_file
-  | _ -> assert false
+  | _ -> assert false);
+  solution
 
 and solver_of_string solver (infer_opts : Cmdline.infer_parameters_options) =
   match solver with
@@ -388,9 +390,9 @@ and process_output measure model_name problem solution infer_opts =
   perform_csv_export scores_label solution infer_opts ;
   let map = Free_variable.Map.of_seq (List.to_seq solution.mapping) in
   perform_save_solution
-    model_name
-    map
-    [(scores_label, solution.scores)]
+    Codegen.{ inference_model_name= model_name;
+              map;
+              scores_list= [(scores_label, solution.scores)] }
     infer_opts ;
   perform_plot measure model_name problem solution infer_opts
 
@@ -409,17 +411,13 @@ and perform_csv_export scores_label solution
             Inference.(scores_to_csv_column scores_label scores) ;
           Csv.append_columns ~filename solution_csv)
 
-and perform_save_solution inference_model_name
-    (solution : float Free_variable.Map.t)
-    (scores_list : ((string * Namespace.t) * Inference.scores) list)
+and perform_save_solution solution
     (infer_opts : Cmdline.infer_parameters_options) =
   match infer_opts.save_solution with
   | None -> ()
   | Some filename ->
       Codegen.(
-        save_solution
-          {inference_model_name; map = solution; scores_list}
-          filename) ;
+        save_solution solution filename) ;
       Format.eprintf "Saved solution to %s@." filename
 
 and perform_plot measure model_name problem solution
@@ -585,18 +583,22 @@ let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
   stdout_or_file codegen_options.save_to (fun ppf ->
       Format.fprintf ppf "%a@." Codegen.pp_module result)
 
-let solution_print_cmd out_fn solution_fns =
+let save_solution out_fn nsolutions =
   stdout_or_file out_fn @@ fun ppf ->
-  List.iter
-    (fun solution_fn ->
-      let solution = Codegen.load_solution solution_fn in
+  List.iter (fun (n, solution) ->
       Format.fprintf
         ppf
         "@[<2>%s:@ @[%a@]@]@."
-        solution_fn
+        n
         Codegen.pp_solution
         solution)
-    solution_fns
+    nsolutions
+
+let solution_print_cmd out_fn solution_fns =
+  save_solution out_fn
+  @@ List.map (fun solution_fn ->
+      let solution = Codegen.load_solution solution_fn in
+      (solution_fn, solution)) solution_fns
 
 let codegen_check_definitions_cmd files =
   let map =
@@ -815,7 +817,7 @@ module Auto_build = struct
        otherwise it fails at adding columns.
     *)
     if Sys.file_exists csv_export then Unix.unlink csv_export ;
-    let save_solution = mkfilename ".sol" in
+    let solution_fn = mkfilename ".sol" in
     let dot_file = mkfilename ".dot" in
     let infer_opts =
       {
@@ -824,18 +826,20 @@ module Auto_build = struct
         plot = false;
         lasso_positive = true;
         csv_export = Some csv_export;
-        save_solution = Some save_solution;
+        save_solution = Some solution_fn;
         dot_file = Some dot_file;
       }
     in
-    infer_cmd_for_measurements
-      ~local_model_name
-      measurements
-      solution
-      ~solver
-      infer_opts ;
+    let solution =
+      infer_cmd_for_measurements
+        ~local_model_name
+        measurements
+        solution
+        ~solver
+        infer_opts
+    in
     let solution_txt = mkfilename ".sol.txt" in
-    solution_print_cmd (Some solution_txt) [save_solution]
+    save_solution (Some solution_txt) [(solution_fn, solution)]
 
   let codegen mkfilename =
     let codegen_options =
