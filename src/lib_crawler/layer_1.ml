@@ -172,6 +172,8 @@ let iter_heads l1_ctxt f =
     (fun () -> Lwt.no_cancel @@ loop l1_ctxt)
     (function Iter_error e -> Lwt.return_error e | exn -> fail (Exn exn))
 
+let first l1_ctxt = Lwt_stream.peek l1_ctxt.heads
+
 (** [predecessors_of_blocks hashes] given a list of successive block hashes,
     from newest to oldest, returns an associative list that associates a hash to
     its predecessor in this list. *)

@@ -57,6 +57,9 @@ val iter_heads :
   (Block_hash.t * Block_header.t -> unit tzresult Lwt.t) ->
   unit tzresult Lwt.t
 
+(** [first t] returns the first block of the stream if any. *)
+val first : t -> (Block_hash.t * Block_header.t) option Lwt.t
+
 (** {2 Helper functions for the Layer 1 chain} *)
 
 (** [get_predecessor_opt state head] returns the predecessor of block [head],
