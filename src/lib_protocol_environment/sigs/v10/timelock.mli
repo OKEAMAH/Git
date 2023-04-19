@@ -36,7 +36,7 @@ val chest_key_encoding : chest_key Data_encoding.t
 
 (** Result of the opening of a chest.
     The opening can fail in two way which we distinguish to blame the right person.
-    One can provide a false unlocked_value or unlocked_proof, in which case
+    One can provide a false solution or vdf_proof, in which case
     we return [Bogus_opening] and the provider of the chest key is at fault.
     Otherwise, one can lock the wrong key or put garbage in the ciphertext in which case
     we return [Bogus_cipher] and the provider of the chest is at fault.

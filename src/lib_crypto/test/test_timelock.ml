@@ -59,13 +59,13 @@ let test_raw_scenario time () =
 
 let bench () =
   let open Timelock in
-  let locked = gen_locked_value_unsafe rsa2048 in
+  let locked = gen_puzzle_unsafe rsa2048 in
   (* Corresponds to ~1s, increases linearly *)
   let time = 10_000 in
   let proof = unlock_and_prove rsa2048 ~time locked in
   let start_bench = Unix.gettimeofday () in
   for _i = 0 to 100 do
-    let _ = prove rsa2048 ~time locked proof.vdf_tuple.unlocked_value in
+    let _ = prove rsa2048 ~time locked proof.vdf_tuple.solution in
     ()
   done ;
   let end_bench = Unix.gettimeofday () in
@@ -89,14 +89,12 @@ let test_high_level_negative () =
   (* Opening Bogus *)
   (* The opener, opens to garbage *)
   let wrong_time = 1000 in
-  let proof_wrong =
-    unlock_and_prove rsa2048 ~time:wrong_time chest.locked_value
-  in
-  let unlocked_wrong = proof_wrong.vdf_tuple.unlocked_value in
+  let proof_wrong = unlock_and_prove rsa2048 ~time:wrong_time chest.puzzle in
+  let solution_wrong = proof_wrong.vdf_tuple.solution in
   let vdf_wrong = proof_wrong.vdf_tuple.vdf_proof in
-  let proof_incorrect_unlocked =
+  let proof_incorrect_solution =
     {
-      vdf_tuple = {chest_key.vdf_tuple with unlocked_value = unlocked_wrong};
+      vdf_tuple = {chest_key.vdf_tuple with solution = solution_wrong};
       nonce = chest_key.nonce;
     }
   in
@@ -110,7 +108,7 @@ let test_high_level_negative () =
     {vdf_tuple = chest_key.vdf_tuple; nonce = Z.zero}
   in
   let opening_result_wrong_expected = Bogus_opening in
-  let opening_result_wrong = open_chest chest ~time proof_incorrect_unlocked in
+  let opening_result_wrong = open_chest chest ~time proof_incorrect_solution in
   assert (opening_result_wrong = opening_result_wrong_expected) ;
   let opening_result_wrong = open_chest chest ~time proof_incorrect_vdf in
   assert (opening_result_wrong = opening_result_wrong_expected) ;
@@ -122,7 +120,7 @@ let test_low_level_negative () =
   let open Timelock in
   let payload = Bytes.of_string "fdgfnhfd" and time = 10 in
   let chest, chest_key = create_chest_and_chest_key ~payload ~time () in
-  let proof = unlock_and_prove chest.rsa_public ~time chest.locked_value in
+  let proof = unlock_and_prove chest.rsa_public ~time chest.puzzle in
   let encoding = Data_encoding.(tup2 (tup3 n n n) n) in
   let of_proof x =
     Data_encoding.Binary.to_bytes_exn proof_encoding x

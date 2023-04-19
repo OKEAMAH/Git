@@ -550,7 +550,7 @@ let max_priority_arg =
     (Tezos_clic.parameter (fun _ s ->
          try return (int_of_string s) with _ -> fail (Bad_max_priority s)))
 
-let timelock_locked_value_arg =
+let timelock_puzzle_arg =
   Tezos_clic.arg
     ~long:"timelock-locked-valuec"
     ~placeholder:"timelock-locked"
