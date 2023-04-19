@@ -505,7 +505,8 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
 
     return status
 
-  let register node_ctxt =
+  let register (node_ctxt : _ Node_context.t) =
+    let module PVM = (val Pvm_rpc.of_kind node_ctxt.kind) in
     List.fold_left
       (fun dir f -> Tezos_rpc.Directory.merge dir (f node_ctxt))
       Tezos_rpc.Directory.empty
@@ -515,7 +516,7 @@ module Make (Simulation : Simulation.S) (Batcher : Batcher.S) = struct
         Block_directory.build_directory;
         Proof_helpers_directory.build_directory;
         Outbox_directory.build_directory;
-        PVM.RPC.build_directory;
+        PVM.build_directory;
       ]
 
   let start node_ctxt configuration =
