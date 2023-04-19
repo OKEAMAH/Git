@@ -226,13 +226,13 @@ and infer_cmd_full_auto model_name workload_data solver
     List.rev @@ Dep_graph.Graph.fold (fun solved acc -> solved :: acc) graph []
   in
   ignore @@ infer_cmd_for_measurements
-    ~local_model_name:model_name
+    ~model_name
     measurements
     solution
     ~solver
     infer_opts
 
-and infer_cmd_for_measurements ~local_model_name:model_name measurements
+and infer_cmd_for_measurements ~model_name measurements
     (solved_list :
       Dep_graph.Solver.Solved.t list (* sorted in the topological order *))
     ~solver (infer_opts : Cmdline.infer_parameters_options) =
@@ -832,7 +832,7 @@ module Auto_build = struct
     in
     let solution =
       infer_cmd_for_measurements
-        ~local_model_name
+        ~model_name:local_model_name
         measurements
         solution
         ~solver
