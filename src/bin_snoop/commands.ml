@@ -765,7 +765,6 @@ module Codegen_for_solutions_cmd = struct
   include Codegen_cmd
 
   let codegen_for_solutions_handler (json, exclusions, save_to) solutions () =
-    (* XXX code dup from Codegen_inferred_cmd *)
     let transform = Option.map load_fixed_point_parameters json in
     let codegen_options = {transform; save_to} in
     let exclusions =
@@ -826,8 +825,14 @@ end
 
 module Auto_build_cmd = struct
   let auto_build_handler destination_directory bench_names () =
-    (* XXX Nice to check they really exist *)
-    let bench_names = List.map Namespace.of_string bench_names in
+    let bench_names = List.map (fun s ->
+        let n = Namespace.of_string s in
+        if not @@ List.mem_assoc ~equal:Namespace.equal n
+            (Registration.all_benchmarks ()) then (
+          Format.eprintf "Benchmark %a does not exist.@." Namespace.pp n;
+          exit 1);
+        n) bench_names
+    in
     let auto_build_options = {destination_directory} in
     commandline_outcome_ref :=
       Some (Auto_build {bench_names; auto_build_options}) ;
