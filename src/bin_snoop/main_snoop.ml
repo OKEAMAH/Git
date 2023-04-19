@@ -520,18 +520,12 @@ let codegen_all_cmd solution_fn regexp codegen_options =
     (* no support of exclusions for this command *)
     ~exclusions:String.Set.empty
 
-let fvs_of_codegen_model model =
-  let (Model.Model model) = model in
-  let module Model = (val model) in
-  let module FV = Model.Def (Costlang.Free_variables) in
-  FV.model
-
 let codegen_for_a_solution solution codegen_options ~exclusions =
   let ( let* ) = Option.bind in
 
   let found_codegen_models =
     let get_codegen_from_bench (bench_name, (module Bench : Benchmark.S)) =
-      (* The inference model matches. *)
+      (* The inference model must match. *)
       let* _model =
         List.assoc_opt ~equal:( = ) solution.Codegen.inference_model_name Bench.models
       in
@@ -545,14 +539,22 @@ let codegen_for_a_solution solution codegen_options ~exclusions =
     List.filter_map get_codegen_from_bench (Registration.all_benchmarks ())
   in
 
+  let fvs_of_codegen_model model =
+    let (Model.Model model) = model in
+    let module Model = (val model) in
+    let module FV = Model.Def (Costlang.Free_variables) in
+    FV.model
+  in
+
+  let model_fvs_included_in_sol model =
+    let fvs = fvs_of_codegen_model model in
+    Free_variable.Set.for_all
+      (fun fv -> Free_variable.Map.mem fv solution.map)
+      fvs
+  in
+
   (* Model's free variables must be included in the solution's keys *)
   let codegen_models =
-    let model_fvs_included_in_sol model =
-      let fvs = fvs_of_codegen_model model in
-      Free_variable.Set.for_all
-        (fun fv -> Free_variable.Map.mem fv solution.map)
-        fvs
-    in
     List.filter
       (fun (_model_name, {Registration.model; _}) ->
         model_fvs_included_in_sol model)
@@ -570,8 +572,6 @@ let save_codegen_for_solutions solutions codegen_options ~exclusions =
 let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
   let solutions = List.map Codegen.load_solution solution_fns in
   save_codegen_for_solutions solutions codegen_options ~exclusions
-
-let codegen_inferred_cmd solution_fn = codegen_for_solutions_cmd [solution_fn]
 
 let save_solutions_in_text out_fn nsolutions =
   stdout_or_file out_fn @@ fun ppf ->
@@ -975,7 +975,7 @@ let () =
       | Codegen_all {solution; matching; codegen_options} ->
           codegen_all_cmd solution matching codegen_options
       | Codegen_inferred {solution; codegen_options; exclusions} ->
-          codegen_inferred_cmd solution codegen_options ~exclusions
+          codegen_for_solutions_cmd [solution] codegen_options ~exclusions
       | Codegen_for_solutions {solutions; codegen_options; exclusions} ->
           codegen_for_solutions_cmd solutions codegen_options ~exclusions
       | Codegen_check_definitions {files} -> codegen_check_definitions_cmd files
