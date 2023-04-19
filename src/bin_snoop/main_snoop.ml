@@ -583,7 +583,7 @@ let codegen_for_solutions_cmd solution_fns codegen_options ~exclusions =
   stdout_or_file codegen_options.save_to (fun ppf ->
       Format.fprintf ppf "%a@." Codegen.pp_module result)
 
-let save_solution out_fn nsolutions =
+let save_solutions_in_text out_fn nsolutions =
   stdout_or_file out_fn @@ fun ppf ->
   List.iter (fun (n, solution) ->
       Format.fprintf
@@ -595,7 +595,7 @@ let save_solution out_fn nsolutions =
     nsolutions
 
 let solution_print_cmd out_fn solution_fns =
-  save_solution out_fn
+  save_solutions_in_text out_fn
   @@ List.map (fun solution_fn ->
       let solution = Codegen.load_solution solution_fn in
       (solution_fn, solution)) solution_fns
@@ -839,7 +839,7 @@ module Auto_build = struct
         infer_opts
     in
     let solution_txt = mkfilename ".sol.txt" in
-    save_solution (Some solution_txt) [(solution_fn, solution)]
+    save_solutions_in_text (Some solution_txt) [(solution_fn, solution)]
 
   let codegen mkfilename =
     let codegen_options =
