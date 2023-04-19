@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Tezos_hacl
+module Blake2b = Hacl_star.Hacl.Blake2b_32
 
 (* -------- Helpers I/O functions -------- *)
 let add_path r n = r ^ "/" ^ n
@@ -161,9 +162,7 @@ let hash_to_prime rsa_public ~time value key =
       "\xff\x00\xff\x00\xff\x00\xff\x00"
       (Int.to_string time :: List.map Z.to_bits [rsa_public; value; key])
   in
-  let (Hacl.Blake2b.Hash hash_result) =
-    Hacl.Blake2b.direct ~key:personalization (Bytes.of_string s) 32
-  in
+  let hash_result = Blake2b.hash ~key:personalization (Bytes.of_string s) 32 in
   (* Beware, the function nextprime gives a biased distribution,
      using it here is fine as the input is already uniformly distributed *)
   Z.(nextprime (of_bits (Bytes.to_string hash_result)))
@@ -232,8 +231,8 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   match precompute_path with
   | None -> compute_tuple ()
   | Some filepath ->
-      let brsa = Z.to_bits rsa2048 in
-      let file_prefix = Blake2B.(hash_string [brsa] |> to_hex) |> Hex.show in
+      let hash_mod = Blake2b.hash (Z.to_bits rsa2048 |> Bytes.of_string) 32 in
+      let file_prefix = Hex.of_bytes hash_mod |> Hex.show in
       let filename = file_prefix ^ "_" ^ string_of_int time ^ ".json" in
       let file_exists = Sys.file_exists (add_path filepath filename) in
       if file_exists then read_enc filepath filename vdf_tuple_encoding
@@ -260,9 +259,9 @@ let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
 let timelock_proof_to_symmetric_key rsa_public proof =
   let updated = Z.powm proof.vdf_tuple.solution proof.randomness rsa_public in
-  let kdf_key = "Tezoskdftimelockv1" in
-  let to_hash = Z.to_string updated in
-  let hash = Blake2B.(to_bytes @@ hash_string ~key:kdf_key [to_hash]) in
+  let kdf_key = Bytes.of_string "Tezoskdftimelockv1" in
+  let to_hash = Z.to_bits updated |> Bytes.of_string in
+  let hash = Blake2b.hash ~key:kdf_key to_hash 32 in
   Crypto_box.Secretbox.unsafe_of_bytes hash
 
 let puzzle_to_symmetric_key rsa_public ~time puzzle proof =
