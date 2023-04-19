@@ -56,6 +56,18 @@ pub struct ExecutionOutcome {
     pub logs: Vec<Log>,
 }
 
+impl ExecutionOutcome {
+    /// Helper function to create non-succesful execution outcome
+    fn failed(gas_used: u64) -> ExecutionOutcome {
+        ExecutionOutcome {
+            gas_used,
+            is_success: false,
+            new_address: None,
+            logs: vec![],
+        }
+    }
+}
+
 /// Map an execution Result to an ExecutionOutcome
 ///
 /// Some variants of EthereumError should be treated as errors for the purpose of
@@ -76,30 +88,19 @@ fn map_execution_outcome(
             new_address,
             logs: vec![],
         }),
-        Err(EthereumError::EthereumAccountError(_error)) => Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            new_address: None,
-            logs: vec![],
-        }),
-        Err(EthereumError::MachineExitError(_error)) => Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            new_address: None,
-            logs: vec![],
-        }),
-        Err(EthereumError::PrecompileFailed(_error)) => Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            new_address: None,
-            logs: vec![],
-        }),
-        Err(EthereumError::CallRevert) => Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            new_address: None,
-            logs: vec![],
-        }),
+        Err(EthereumError::EthereumAccountError(_error)) => {
+            Ok(ExecutionOutcome::failed(gas_used))
+        }
+        Err(EthereumError::MachineExitError(_error)) => {
+            Ok(ExecutionOutcome::failed(gas_used))
+        }
+        Err(EthereumError::PrecompileFailed(_error)) => {
+            Ok(ExecutionOutcome::failed(gas_used))
+        }
+        Err(EthereumError::CallRevert) => Ok(ExecutionOutcome::failed(gas_used)),
+        Err(EthereumError::FatalMachineError(ExitFatal::CallErrorAsFatal(
+            ExitError::OutOfGas,
+        ))) => Ok(ExecutionOutcome::failed(gas_used)),
         Err(err) => Err(err),
     }
 }
@@ -415,7 +416,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         transfer: Option<Transfer>,
         input: Vec<u8>,
         gas_limit: Option<u64>,
-        is_static: bool,
         transaction_context: TransactionContext,
     ) -> Result<(ExitReason, Vec<u8>), EthereumError> {
         debug_msg!(
@@ -437,31 +437,27 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         begin_transaction(self.host, self.evm_account_storage)?;
 
+        self.set_transaction_context(transaction_context)?;
+
         // TODO: touch address - mark as hot for gas calculation
         // issue: https://gitlab.com/tezos/tezos/-/issues/4866
 
+        let caller = self.borrow_transaction_context()?.context.caller;
+
         if let Some(transfer) = transfer {
-            if let Err(error) = self.execute_transfer(
-                transaction_context.context.caller,
-                address,
-                transfer.value,
-                gas_limit,
-            ) {
+            if let Err(error) =
+                self.execute_transfer(caller, address, transfer.value, gas_limit)
+            {
                 rollback_transaction(self.host, self.evm_account_storage)?;
                 return Err(error);
             }
         }
 
-        self.increment_nonce(transaction_context.context.caller)?;
+        self.increment_nonce(caller)?;
 
-        if let Some(precompile_result) = self.precompiles.execute(
-            self,
-            address,
-            &input,
-            gas_limit,
-            &transaction_context.context,
-            is_static,
-        ) {
+        if let Some(precompile_result) =
+            self.precompiles.execute(self, address, &input, gas_limit)
+        {
             match precompile_result {
                 Ok(precompile_output) => {
                     commit_transaction(self.host, self.evm_account_storage)?;
@@ -487,12 +483,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         } else {
             let code = self.code(address);
 
-            let mut runtime = evm::Runtime::new(
-                Rc::new(code),
-                Rc::new(input),
-                transaction_context.context,
-                self.config,
-            );
+            let context = self.borrow_transaction_context()?.context.clone();
+
+            let mut runtime =
+                evm::Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
 
             let result = self.execute(&mut runtime);
 
@@ -570,8 +564,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             }),
             input,
             gas_limit,
-            is_static,
-            TransactionContext::new(caller, callee, value.unwrap_or(U256::zero())),
+            TransactionContext::new(
+                caller,
+                callee,
+                value.unwrap_or(U256::zero()),
+                is_static,
+            ),
         );
 
         map_execution_outcome(self.gas_used(), result.map(|(x, y)| (x, None, y)))
@@ -719,6 +717,27 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     /// Borrow a reference to the host - needed for eg precompiled contracts
     pub fn borrow_host(&mut self) -> &'_ mut Host {
         self.host
+    }
+
+    /// Check if the current transaction is a static call
+    fn is_static(&mut self) -> Result<bool, EthereumError> {
+        Ok(self.evm_account_storage.current_layer()?.context.is_static)
+    }
+
+    /// Set current transaction context
+    fn set_transaction_context(
+        &mut self,
+        transaction_context: TransactionContext,
+    ) -> Result<(), EthereumError> {
+        self.evm_account_storage.current_layer()?.context = transaction_context;
+        Ok(())
+    }
+
+    /// Borrow a reference to the current transaction context
+    fn borrow_transaction_context(
+        &mut self,
+    ) -> Result<&'_ TransactionContext, EthereumError> {
+        Ok(&self.evm_account_storage.current_layer()?.context)
     }
 }
 
@@ -882,14 +901,16 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         is_static: bool,
         context: Context,
     ) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
-        result_to_capture(self.execute_call(
-            code_address,
-            transfer,
-            input,
-            target_gas,
-            is_static,
-            TransactionContext::from_context(context),
-        ))
+        match self.is_static() {
+            Ok(current_is_static) => result_to_capture(self.execute_call(
+                code_address,
+                transfer,
+                input,
+                target_gas,
+                TransactionContext::from_context(context, is_static || current_is_static),
+            )),
+            Err(err) => Capture::Exit((ethereum_error_to_exit_reason(err, true), vec![])),
+        }
     }
 
     fn pre_validate(
@@ -901,11 +922,14 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         if let Some(cost) = evm::gasometer::static_opcode_cost(opcode) {
             self.gasometer.record_cost(cost)
         } else {
+            let is_static = self.is_static().map_err(|_| {
+                ExitError::Other(Cow::from("Internal error getting is_static flag"))
+            })?;
             let (cost, _target, memory_cost) = evm::gasometer::dynamic_opcode_cost(
                 context.address,
                 opcode,
                 stack,
-                false,
+                is_static,
                 self.config,
                 &self,
             )?;
@@ -1115,7 +1139,8 @@ mod test {
         let input = vec![0_u8];
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = None;
         let code: Vec<u8> = vec![
             Opcode::ORIGIN.as_u8(), // Push the 32(!) byte origin on to stack (this is "the value")
@@ -1136,7 +1161,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1179,7 +1203,8 @@ mod test {
         let input = vec![0_u8];
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = None;
         let code: Vec<u8> = vec![
             Opcode::PUSH32.as_u8(), // Push a 32 byte word onto stack (this is "the value")
@@ -1232,7 +1257,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1284,7 +1308,8 @@ mod test {
         let address = H160::from_low_u64_be(118);
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = None;
         let code: Vec<u8> = vec![
             // get input data, subtract one and prepare as argument to nested call
@@ -1335,7 +1360,6 @@ mod test {
             transfer,
             input.to_vec(),
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1387,7 +1411,8 @@ mod test {
         let address = H160::from_low_u64_be(12389);
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = None;
         let code: Vec<u8> = vec![
             // get input data, subtract one and prepare as argument to nested call
@@ -1438,7 +1463,6 @@ mod test {
             transfer,
             input.to_vec(),
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1479,7 +1503,8 @@ mod test {
         let input: Vec<u8> = vec![0_u8];
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = None;
         let code: Vec<u8> = vec![
             Opcode::PUSH1.as_u8(),
@@ -1505,7 +1530,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1602,7 +1626,7 @@ mod test {
         let gas_limit: Option<u64> = None;
         let is_static = false;
         let transaction_context =
-            TransactionContext::new(caller, address, U256::from(50_u32));
+            TransactionContext::new(caller, address, U256::from(50_u32), is_static);
         let transfer: Option<Transfer> = Some(Transfer {
             source: caller,
             target: address,
@@ -1624,7 +1648,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1667,7 +1690,8 @@ mod test {
         let input = vec![0_u8];
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = Some(Transfer {
             source: caller,
             target: address,
@@ -1689,7 +1713,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 
@@ -1737,7 +1760,8 @@ mod test {
         let input = vec![0_u8];
         let gas_limit: Option<u64> = None;
         let is_static = false;
-        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transaction_context =
+            TransactionContext::new(caller, address, U256::zero(), is_static);
         let transfer: Option<Transfer> = Some(Transfer {
             source: caller,
             target: address,
@@ -1759,7 +1783,6 @@ mod test {
             transfer,
             input,
             gas_limit,
-            is_static,
             transaction_context,
         );
 

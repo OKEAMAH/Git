@@ -13,13 +13,13 @@ use tezos_smart_rollup_host::runtime::Runtime;
 extern crate alloc;
 
 /// Account storage interface
-pub struct Storage<T: From<OwnedPath>> {
+pub struct Storage<T: From<OwnedPath>, L: Layer<T>> {
     prefix: String,
-    layers: Vec<Layer<T>>,
+    layers: Vec<L>,
     phantom: PhantomData<T>,
 }
 
-impl<T: From<OwnedPath>> Storage<T> {
+impl<T: From<OwnedPath>, L: Layer<T>> Storage<T, L> {
     /// Create the initial storage
     pub fn init(name: &impl Path) -> Result<Self, StorageError> {
         let name_bytes = name.as_bytes().to_vec();
@@ -27,7 +27,7 @@ impl<T: From<OwnedPath>> Storage<T> {
         Ok(Self {
             prefix: String::from_utf8(name_bytes)
                 .map_err(|_| StorageError::InvalidAccountsPath)?,
-            layers: vec![Layer::<T>::with_path(name)],
+            layers: vec![L::with_path(name)],
             phantom: PhantomData,
         })
     }
@@ -145,10 +145,20 @@ impl<T: From<OwnedPath>> Storage<T> {
     pub fn transaction_depth(&self) -> usize {
         self.layers.len() - 1
     }
+
+    /// Get the layer for the current transaction
+    pub fn current_layer(&mut self) -> Result<&mut L, StorageError> {
+        if let Some(top) = self.layers.last_mut() {
+            Ok(top)
+        } else {
+            Err(StorageError::NoCurrentTransaction)
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::layer::{Mergeable, StorageLayer, StorageLayerWithContext};
     use crate::storage::Storage;
     use host::path::{concat, OwnedPath, RefPath};
     use host::runtime::Runtime;
@@ -198,13 +208,15 @@ mod test {
         }
     }
 
+    type TestLayer = StorageLayer<TestAccount>;
+
     const ACCOUNTS_PATH: RefPath = RefPath::assert_from(b"/accounts");
 
     #[test]
     fn test_commit() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -262,7 +274,7 @@ mod test {
     fn test_rollback() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -320,7 +332,7 @@ mod test {
     fn test_original_account() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -386,7 +398,7 @@ mod test {
     fn create_new_account_in_transaction() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         let a1_name = RefPath::assert_from(b"/alpha");
@@ -430,7 +442,7 @@ mod test {
     fn do_nothing() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -454,7 +466,7 @@ mod test {
     fn delete_account_in_transaction() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -506,7 +518,7 @@ mod test {
     fn delete_all_accounts_in_transaction() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -559,7 +571,7 @@ mod test {
     fn delete_account_but_rollback() {
         let mut host = MockHost::default();
 
-        let mut storage = Storage::<TestAccount>::init(&ACCOUNTS_PATH)
+        let mut storage = Storage::<TestAccount, TestLayer>::init(&ACCOUNTS_PATH)
             .expect("Could not create basic storage interface@");
 
         // Arrange
@@ -610,5 +622,98 @@ mod test {
             .expect("No account a2 in storage after commit");
         assert_eq!(a21.get_a(&host), b"a2");
         assert_eq!(a21.get_b(&host), b"b2");
+    }
+
+    #[derive(Default)]
+    struct TestContext {
+        some_integer: u32,
+        some_boolean: bool,
+    }
+
+    impl Mergeable for TestContext {
+        fn merge(&mut self, other: TestContext) {
+            self.some_integer += other.some_integer;
+            self.some_boolean |= other.some_boolean;
+        }
+    }
+
+    type TestContextLayer = StorageLayerWithContext<TestAccount, TestContext>;
+
+    #[test]
+    fn test_context_is_merged_on_commit() {
+        let mut host = MockHost::default();
+
+        let mut storage = Storage::<TestAccount, TestContextLayer>::init(&ACCOUNTS_PATH)
+            .expect("Could not create basic storage interface");
+
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_integer = 4;
+
+        storage
+            .begin_transaction(&mut host)
+            .expect("Could not begin transaction");
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_integer = 42;
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_boolean = true;
+
+        storage
+            .commit(&mut host)
+            .expect("Could not commit transaction");
+        let c2 = &storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context;
+
+        assert_eq!(c2.some_integer, 46);
+        assert!(c2.some_boolean);
+    }
+
+    #[test]
+    fn test_context_is_dropped_on_rollback() {
+        let mut host = MockHost::default();
+
+        let mut storage = Storage::<TestAccount, TestContextLayer>::init(&ACCOUNTS_PATH)
+            .expect("Could not create basic storage interface@");
+
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_integer = 4;
+
+        storage
+            .begin_transaction(&mut host)
+            .expect("Could not begin transaction");
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_integer = 42;
+        storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context
+            .some_boolean = true;
+
+        storage
+            .rollback(&mut host)
+            .expect("Could not commit transaction");
+        let c2 = &storage
+            .current_layer()
+            .expect("Could not get current layer")
+            .context;
+
+        assert_eq!(c2.some_integer, 4);
+        assert!(!c2.some_boolean);
     }
 }

@@ -20,6 +20,7 @@ To use this crate, create account struct and storage object like so:
 use tezos_smart_rollup_host::runtime::Runtime;
 use tezos_smart_rollup_host::path::{concat, RefPath, OwnedPath};
 use tezos_smart_rollup_storage::storage::Storage;
+use tezos_smart_rollup_storage::layer::StorageLayer;
 use tezos_smart_rollup_mock::MockHost;
 
 struct MyAccount {
@@ -57,7 +58,7 @@ const ACCOUNT_PATH: RefPath = RefPath::assert_from(b"/accounts");
 
 let mut host = MockHost::default();
 
-let mut storage = Storage::<MyAccount>::init(&ACCOUNT_PATH)
+let mut storage = Storage::<MyAccount, StorageLayer<MyAccount>>::init(&ACCOUNT_PATH)
     .expect("Could not create storage interface");
 
 storage.begin_transaction(&mut host)

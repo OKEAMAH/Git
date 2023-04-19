@@ -14,7 +14,6 @@ use crate::handler::EvmHandler;
 use alloc::collections::btree_map::BTreeMap;
 use debug::debug_msg;
 use evm::executor::stack::{PrecompileFailure, PrecompileOutput};
-use evm::Context;
 use evm::ExitSucceed;
 use host::runtime::Runtime;
 use primitive_types::H160;
@@ -26,8 +25,6 @@ pub type PrecompileFn<Host> = fn(
     _: &mut EvmHandler<Host>,
     _: &[u8],
     _: Option<u64>,
-    _: &Context,
-    _: bool,
 ) -> Result<PrecompileOutput, PrecompileFailure>;
 
 /// Trait for encapsulating all precompiles
@@ -45,8 +42,6 @@ pub trait PrecompileSet<Host: Runtime> {
         address: H160,
         input: &[u8],
         gas_limit: Option<u64>,
-        context: &Context,
-        is_static: bool,
     ) -> Option<Result<PrecompileOutput, PrecompileFailure>>;
 
     /// Check if there is a precompiled contract at the given address.
@@ -63,15 +58,12 @@ impl<Host: Runtime> PrecompileSet<Host> for PrecompileBTreeMap<Host> {
         address: H160,
         input: &[u8],
         gas_limit: Option<u64>,
-        context: &Context,
-        is_static: bool,
     ) -> Option<Result<PrecompileOutput, PrecompileFailure>>
     where
         Host: Runtime,
     {
-        self.get(&address).map(|precompile| {
-            (*precompile)(handler, input, gas_limit, context, is_static)
-        })
+        self.get(&address)
+            .map(|precompile| (*precompile)(handler, input, gas_limit))
     }
 
     /// Check if the given address is a precompile. Should only be called to
@@ -87,8 +79,6 @@ fn identity_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
     _gas_limit: Option<u64>,
-    _context: &Context,
-    _is_static: bool,
 ) -> Result<PrecompileOutput, PrecompileFailure> {
     debug_msg!(handler.borrow_host(), "Calling identity precompile");
 
@@ -105,8 +95,6 @@ fn sha256_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
     _gas_limit: Option<u64>,
-    _context: &Context,
-    _is_static: bool,
 ) -> Result<PrecompileOutput, PrecompileFailure> {
     debug_msg!(handler.borrow_host(), "Calling sha2-256 precompile");
 
@@ -130,8 +118,6 @@ fn ripemd160_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
     _gas_limit: Option<u64>,
-    _context: &Context,
-    _is_static: bool,
 ) -> Result<PrecompileOutput, PrecompileFailure> {
     debug_msg!(handler.borrow_host(), "Calling ripemd-160 precompile");
 
@@ -177,14 +163,14 @@ mod tests {
     use crate::account_storage::init_account_storage as init_evm_account_storage;
     use crate::block::BlockConstants;
     use evm::Config;
-    use primitive_types::{H160, U256};
+    use primitive_types::H160;
     use tezos_smart_rollup_mock::MockHost;
 
     fn execute_precompiled(
         address: H160,
         input: &[u8],
     ) -> Option<Result<evm::executor::stack::PrecompileOutput, PrecompileFailure>> {
-        let caller = H160::from_low_u64_be(118u64);
+        let caller = H160::from_low_u64_be(118_u64);
         let mut mock_runtime = MockHost::default();
         let block = BlockConstants::first_block();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
@@ -201,16 +187,10 @@ mod tests {
             &precompiles,
             gas_limit,
         );
-        let context = Context {
-            address,
-            caller,
-            apparent_value: U256::zero(),
-        };
 
         let gas_limit = Some(1_000_000_000);
-        let is_static = true;
 
-        precompiles.execute(&mut handler, address, input, gas_limit, &context, is_static)
+        precompiles.execute(&mut handler, address, input, gas_limit)
     }
 
     #[test]
