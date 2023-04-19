@@ -121,7 +121,16 @@ let vdf_tuple_encoding =
   @@ conv_with_guard
        (fun vdf_tuple ->
          (vdf_tuple.puzzle, vdf_tuple.solution, vdf_tuple.vdf_proof))
-       (fun (puzzle, solution, vdf_proof) -> Ok {puzzle; solution; vdf_proof})
+       (fun (puzzle, solution, vdf_proof) ->
+         if Z.Compare.(puzzle < Z.zero || puzzle >= rsa2048) then
+           Error "puzzle is not in the rsa group"
+         else if Z.Compare.(puzzle <= Z.one) then
+           Error "invalid value for puzzle"
+         else if Z.Compare.(solution < Z.zero || solution >= rsa2048) then
+           Error "solution is not in the rsa group"
+         else if Z.Compare.(vdf_proof < Z.zero || vdf_proof >= rsa2048) then
+           Error "VDF proof is not in the rsa group"
+         else Ok {puzzle; solution; vdf_proof})
        (obj3 (req "puzzle" n) (req "solution" n) (req "vdf_proof" n))
 
 let to_vdf_tuple_unsafe x y z =
@@ -137,7 +146,18 @@ let proof_encoding =
   def "timelock.proof"
   @@ conv_with_guard
        (fun proof -> (proof.vdf_tuple, proof.randomness))
-       (fun (vdf_tuple, randomness) -> Ok {vdf_tuple; randomness})
+       (fun (t, r) ->
+         if Z.Compare.(t.puzzle < Z.zero || t.puzzle >= rsa2048) then
+           Error "puzzle is not in the rsa group"
+         else if Z.Compare.(t.puzzle <= Z.one) then
+           Error "invalid value for puzzle"
+         else if Z.Compare.(t.solution < Z.zero || t.solution >= rsa2048) then
+           Error "solution is not in the rsa group"
+         else if Z.Compare.(t.vdf_proof < Z.zero || t.vdf_proof >= rsa2048) then
+           Error "VDF proof is not in the rsa group"
+         else if Z.Compare.(r < Z.one) then
+           Error "randomness is null or negative"
+         else Ok {vdf_tuple = t; randomness = r})
        (obj2 (req "vdf_tuple" vdf_tuple_encoding) (req "randomness" n))
 
 (* -------- Timelock low level functions -------- *)
@@ -147,8 +167,12 @@ let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 (* Generates almost uniformly a Zarith element between 0 and [public key].
    Intended for generating the timelock *)
 let gen_puzzle () =
-  (* We divide by 8 to convert to bytes *)
-  Z.erem (random_z ((size_rsa2048 + 128) / 8)) rsa2048
+  let puzzle = ref Z.one in
+  while Z.(equal !puzzle zero) || Z.(equal !puzzle one) do
+    (* We divide by 8 to convert to bytes *)
+    puzzle := Z.erem (random_z ((size_rsa2048 + 128) / 8)) rsa2048
+  done ;
+  !puzzle
 
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime ~time value key =
@@ -185,7 +209,11 @@ let verify_wesolowski ~time vdf_tuple =
 let to_vdf_tuple_opt ~time x y z =
   let tuple = to_vdf_tuple_unsafe x y z in
   let x, y, z = Z.(of_string x, of_string y, of_string z) in
-  let b_group = x < rsa2048 && y < rsa2048 && z < rsa2048 in
+  let b_group =
+    Z.(
+      x < rsa2048 && y < rsa2048 && z < rsa2048 && x > one && y >= zero
+      && z >= zero)
+  in
   let b_weso = verify_wesolowski ~time tuple in
   if b_group && b_weso then Some tuple else None
 
@@ -202,6 +230,8 @@ let verify ~time puzzle proof =
 
 let rec unlock_timelock ~time puzzle =
   if time = 0 then puzzle
+  else if puzzle = Z.zero then Z.zero
+  else if puzzle = Z.one then Z.one
   else unlock_timelock ~time:Int.(pred time) Z.(puzzle * puzzle mod rsa2048)
 
 (* Gives the value that was timelocked from the timelock, the public modulus
@@ -212,7 +242,12 @@ let unlock_and_prove ~time puzzle =
 
 let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   let puzzle =
-    match puzzle with None -> gen_puzzle () | Some c -> Z.(c mod rsa2048)
+    match puzzle with
+    | None -> gen_puzzle ()
+    | Some c ->
+        let c_mod = Z.(c mod rsa2048) in
+        assert (Z.compare c_mod Z.one = 1) ;
+        c_mod
   in
   let compute_tuple () =
     let solution = unlock_timelock ~time puzzle in
@@ -232,17 +267,28 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
         precomputed
 
 let proof_of_vdf_tuple ~time vdf_tuple =
+  if Z.compare vdf_tuple.puzzle Z.one < 1 then
+    raise (Invalid_argument "Timelock puzzle is smaller than 1.") ;
+  if Z.compare vdf_tuple.solution Z.zero < 1 then
+    raise (Invalid_argument "Timelock solution is smaller than 0") ;
+  if Z.compare vdf_tuple.vdf_proof Z.zero < 1 then
+    raise (Invalid_argument "Timelock proof is smaller than 0.") ;
   if
-    Z.compare vdf_tuple.puzzle rsa2048 > 0
-    || Z.compare vdf_tuple.solution rsa2048 > 0
+    Z.compare vdf_tuple.puzzle rsa2048 > -1
+    || Z.compare vdf_tuple.solution rsa2048 > -1
+    || Z.compare vdf_tuple.vdf_proof rsa2048 > -1
   then
     raise
-      (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
-  if verify_wesolowski ~time vdf_tuple then
-    let randomness = random_z ((size_rsa2048 + 128) / 8) in
-    let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa2048 in
-    let proof = {vdf_tuple; randomness} in
-    (randomized_puzzle, proof)
+      (Invalid_argument
+         "Invalid timelock tuple, its elements are not in the RSA group.")
+  else if verify_wesolowski ~time vdf_tuple then (
+    let r = ref Z.zero in
+    while Z.(equal !r zero) || Z.(equal !r one) do
+      r := random_z ((size_rsa2048 + 128) / 8)
+    done ;
+    let randomized_puzzle = Z.powm vdf_tuple.puzzle !r rsa2048 in
+    let proof = {vdf_tuple; randomness = !r} in
+    (randomized_puzzle, proof))
   else raise (Invalid_argument "Timelock tuple verification failed.")
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
@@ -267,7 +313,9 @@ let chest_encoding =
        (fun chest -> (chest.puzzle, chest.rsa_public, chest.ciphertext))
        (fun (puzzle, rsa_public, ciphertext) ->
          if Z.Compare.(puzzle < Z.zero || puzzle >= rsa_public) then
-           Error "locked value is not in the rsa group"
+           Error "puzzle is not in the rsa group"
+         else if Z.Compare.(puzzle <= Z.one) then
+           Error "invalid value for puzzle"
          else if not @@ Z.equal rsa_public rsa2048 then
            Error "not RSA2048 rsa2048"
          else Ok {puzzle; rsa_public; ciphertext})
@@ -283,15 +331,24 @@ let chest_key_encoding = proof_encoding
 type opening_result = Correct of Bytes.t | Bogus_cipher | Bogus_opening
 
 let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
-  let puzzle, proof =
-    let vdf_tuple = precompute_timelock ~time ~precompute_path () in
-    proof_of_vdf_tuple ~time vdf_tuple
-  in
-  let sym_key = timelock_proof_to_symmetric_key proof in
-  let ciphertext = encrypt sym_key payload in
-  ({puzzle; rsa_public = rsa2048; ciphertext}, proof)
+  if time < 0 then
+    raise
+      (Invalid_argument "Timelock: trying to create chest with a negative time")
+  else
+    let puzzle, proof =
+      let vdf_tuple = precompute_timelock ~time ~precompute_path () in
+      proof_of_vdf_tuple ~time vdf_tuple
+    in
+    let sym_key = timelock_proof_to_symmetric_key proof in
+    let ciphertext = encrypt sym_key payload in
+    ({puzzle; rsa_public = rsa2048; ciphertext}, proof)
 
-let create_chest_key chest ~time = unlock_and_prove ~time chest.puzzle
+let create_chest_key chest ~time =
+  if time < 0 then
+    raise
+      (Invalid_argument
+         "Timelock: trying to create chest_key with a negative time")
+  else unlock_and_prove ~time chest.puzzle
 
 let get_plaintext_size chest =
   assert (Bytes.length chest.ciphertext.payload > Crypto_box.tag_length) ;
