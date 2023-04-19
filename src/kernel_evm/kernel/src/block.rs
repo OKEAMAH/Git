@@ -7,13 +7,13 @@ use crate::error::Error;
 use crate::helpers::address_to_hash;
 use crate::inbox::Transaction;
 use crate::storage;
+use evm_execution::account_storage::{AccountStorageError, EthereumAccount};
 use tezos_ethereum::address::EthereumAddress;
 use tezos_ethereum::signatures::EthereumTransactionCommon;
 use tezos_smart_rollup_host::path::OwnedPath;
 use tezos_smart_rollup_host::runtime::Runtime;
 
 use primitive_types::U256;
-use tezos_ethereum::account::Account;
 use tezos_ethereum::eth_gen::{BlockHash, L2Level, OwnedHash, BLOCK_HASH_SIZE};
 use tezos_ethereum::transaction::{
     TransactionHash, TransactionReceipt, TransactionStatus, TransactionType,
@@ -108,23 +108,26 @@ fn get_tx_receiver(
 
 // Update an account with the given balance and nonce (if one is given), and
 // initialize it if it doesn't already appear in the storage.
-fn update_account<Host: Runtime>(
+// For nonce, if none is given, only the balance is updated. This avoids updating the
+// storage with the same value.
+fn update_account<BalanceUpdater, Host: Runtime>(
     host: &mut Host,
-    account_path: &OwnedPath,
+    account_path: OwnedPath,
     balance: Wei,
-    nonce: Option<U256>, // if none is given, only the balance is updated. This
-                         // avoids updating the storage with the same value.
-) -> Result<(), Error> {
-    if storage::has_account(host, account_path)? {
-        storage::store_balance(host, account_path, balance)?;
-        if let Some(nonce) = nonce {
-            storage::store_nonce(host, account_path, nonce)?
-        };
-        Ok(())
-    } else {
-        let account = Account::with_assets(balance);
-        storage::store_account(host, &account, account_path)
-    }
+    sender: bool,
+    update_balance: BalanceUpdater,
+) -> Result<(), Error>
+where
+    BalanceUpdater:
+        Fn(&mut EthereumAccount, &mut Host, U256) -> Result<(), AccountStorageError>,
+{
+    let mut eth_account = EthereumAccount::from(account_path);
+    let _balance_updated = update_balance(&mut eth_account, host, balance);
+    if sender {
+        let _update_nonce = EthereumAccount::increment_nonce(&mut eth_account, host);
+    };
+
+    Ok(())
 }
 
 fn make_receipt(
@@ -186,15 +189,22 @@ fn apply_transaction<Host: Runtime>(
         };
         update_account(
             host,
-            &sender_path,
+            sender_path,
             src_balance,
-            Some(sender_nonce + U256::one()),
+            true,
+            EthereumAccount::balance_remove,
         )?;
 
         if status == TransactionStatus::Success {
             let dst_balance = storage::read_account_balance(host, &dst_path)
                 .unwrap_or_else(|_| Wei::zero());
-            update_account(host, &dst_path, dst_balance + value, None)?;
+            update_account(
+                host,
+                dst_path,
+                dst_balance + value,
+                false,
+                EthereumAccount::balance_add,
+            )?;
         };
         Ok(make_receipt(
             block,
