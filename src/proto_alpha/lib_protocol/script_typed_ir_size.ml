@@ -243,12 +243,12 @@ let chest_key_size _ =
   (*
      type chest_key = {
        vdf_tuple : vdf_tuple; a record of 3 group elements, each of size 256 bytes
-       nonce : Z.t;  RSA modulus size (256 bytes) + 128 bits
+       randomness : Z.t;  RSA modulus size (256 bytes) + 128 bits
      }
   *)
   let vdf_tuple_size = 3 * 256 in
-  let nonce_size = 256 + 16 in
-  h2w +? (vdf_tuple_size + nonce_size)
+  let randomness_size = 256 + 16 in
+  h2w +? (vdf_tuple_size + randomness_size)
 
 (* The following mutually recursive functions are mostly
    tail-recursive and the only recursive call that is not a tailcall

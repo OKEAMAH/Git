@@ -95,17 +95,17 @@ let test_high_level_negative () =
   let proof_incorrect_solution =
     {
       vdf_tuple = {chest_key.vdf_tuple with solution = solution_wrong};
-      nonce = chest_key.nonce;
+      randomness = chest_key.randomness;
     }
   in
   let proof_incorrect_vdf =
     {
       vdf_tuple = {chest_key.vdf_tuple with vdf_proof = vdf_wrong};
-      nonce = chest_key.nonce;
+      randomness = chest_key.randomness;
     }
   in
   let proof_incorrect_rand =
-    {vdf_tuple = chest_key.vdf_tuple; nonce = Z.zero}
+    {vdf_tuple = chest_key.vdf_tuple; randomness = Z.zero}
   in
   let opening_result_wrong_expected = Bogus_opening in
   let opening_result_wrong = open_chest chest ~time proof_incorrect_solution in
@@ -134,7 +134,7 @@ let test_low_level_negative () =
   let tuple, secret = of_proof chest_key in
   let gen, challenge, w_proof = tuple in
   (* Openener proof *)
-  let _vdf_tuple, nonce = of_proof proof in
+  let _vdf_tuple, randomness = of_proof proof in
   let incorrect_proofs =
     List.map
       to_proof
@@ -143,7 +143,7 @@ let test_low_level_negative () =
         (Z.(gen, challenge + one, w_proof), secret);
         (Z.(gen, challenge, w_proof + one), secret);
         (tuple, Z.(secret + one));
-        (tuple, nonce);
+        (tuple, randomness);
       ]
   in
   assert (

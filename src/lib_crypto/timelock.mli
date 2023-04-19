@@ -97,9 +97,9 @@ val to_vdf_tuple_opt :
 val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
 
 (** Proof that a given solution of an associated puzzle is correct. It is
-    concretely a [vdf_tuple] and a [nonce], that is a scalar representing the
-    randomness linking the vdf_tuple to the timelock puzzle. *)
-type timelock_proof = {vdf_tuple : vdf_tuple; nonce : Z.t}
+    concretely a [vdf_tuple] and a [randomness], that is a scalar representing
+    the randomness linking the vdf_tuple to the timelock puzzle. *)
+type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
 
 (** Default modulus for RSA-based timelock, chosen as 2048 bit RSA modulus
     challenge "RSA-2048". *)
@@ -117,9 +117,9 @@ val gen_puzzle_unsafe : rsa_public -> puzzle
     Some [gen_puzzle_unsafe] [rsa_public]. *)
 val gen_puzzle_opt : rsa_public -> puzzle option
 
-(** Generates a symmetric encryption key out of a [timelock proof].
-    More precisely, computes and hashes solution**nonce mod rsa_public to a
-    symmetric key for authenticated encryption. *)
+(** Generates a symmetric encryption key out of a [timelock_proof].
+    More precisely, computes and hashes solution**randomness mod rsa_public to
+    a symmetric key for authenticated encryption. *)
 val timelock_proof_to_symmetric_key :
   rsa_public -> timelock_proof -> symmetric_key
 
@@ -188,10 +188,10 @@ type chest = {puzzle : puzzle; rsa_public : rsa_public; ciphertext : ciphertext}
 
 val chest_encoding : chest Data_encoding.t
 
-(** Contains a [timelock_tuple] and a [nonce] and is associated to given chest
-    and timelock solution.
+(** Contains a [timelock_tuple] and a [randommness] and is associated to a
+    given chest and timelock solution.
     This represents a proof that the given solution indeed corresponds to the
-    opening of a chest. *)
+    opening of the given chest. *)
 type chest_key = timelock_proof
 
 val chest_key_encoding : chest_key Data_encoding.t
