@@ -89,6 +89,9 @@ type rw = [`Read | `Write] t
 (** Read only node context {!t}. *)
 type ro = [`Read] t
 
+(** Number of blocks after which blocks are considered final. *)
+val block_finality_time : int
+
 (** [get_operator cctxt purpose] returns the public key hash for the operator
     who has purpose [purpose], if any.
 *)
@@ -107,6 +110,9 @@ val is_accuser : _ t -> bool
     failures planned. *)
 val is_loser : _ t -> bool
 
+(** Returns the origination level for the rollup used in the context. *)
+val origination_level : _ t -> int32
+
 (** [get_fee_parameter cctxt purpose] returns the fee parameter to inject an
     operation for a given [purpose]. If no specific fee parameters were
     configured for this purpose, returns the default fee parameter for this
@@ -119,12 +125,13 @@ val get_fee_parameter :
     protocol. *)
 val protocol_max_batch_size : int
 
-(** [init cctxt ~data_dir mode configuration] initializes the rollup
+(** [init cctxt ?head ~data_dir mode configuration] initializes the rollup
     representation. The rollup origination level and kind are fetched via an RPC
     call to the layer1 node that [cctxt] uses for RPC requests.
 *)
 val init :
-  Protocol_client_context.full ->
+  #Client_context.full ->
+  ?head:Block_hash.t ->
   data_dir:string ->
   ?log_kernel_debug_file:string ->
   'a Store_sigs.mode ->
@@ -218,6 +225,11 @@ val hash_of_level_opt : _ t -> int32 -> Block_hash.t option tzresult Lwt.t
 (** [level_of_hash node_ctxt hash] returns the level for Tezos block hash [hash]
     if it is known by the Tezos Layer 1 node. *)
 val level_of_hash : _ t -> Block_hash.t -> int32 tzresult Lwt.t
+
+(** Returns the predecessor of a block hash from the information computed
+    locally in the L2 chain. *)
+val get_l2_predecessor :
+  _ t -> Block_hash.t -> ((Block_hash.t * int32) option, tztrace) result Lwt.t
 
 (** [get_predecessor_opt state head] returns the predecessor of block [head],
     when [head] is not the genesis block. *)

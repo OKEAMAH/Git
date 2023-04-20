@@ -504,17 +504,18 @@ let register (node_ctxt : _ Node_context.t) =
       PVM.build_directory;
     ]
 
+let init _configuration node_ctxt =
+  let acl = RPC_server.Acl.allow_all in
+  let dir = register node_ctxt in
+  RPC_server.init_server dir ~acl ~media_types:Media_type.all_media_types
+
 let start node_ctxt configuration =
   let open Lwt_result_syntax in
   let Configuration.{rpc_addr; rpc_port; _} = configuration in
   let rpc_addr = P2p_addr.of_string_exn rpc_addr in
   let host = Ipaddr.V6.to_string rpc_addr in
   let node = `TCP (`Port rpc_port) in
-  let acl = RPC_server.Acl.allow_all in
-  let dir = register node_ctxt in
-  let server =
-    RPC_server.init_server dir ~acl ~media_types:Media_type.all_media_types
-  in
+  let server = init configuration node_ctxt in
   protect @@ fun () ->
   let*! () =
     RPC_server.launch

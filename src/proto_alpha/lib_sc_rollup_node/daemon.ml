@@ -293,7 +293,8 @@ let previous_context (node_ctxt : _ Node_context.t) ~predecessor
     return (Context.empty node_ctxt.context)
   else Node_context.checkout_context node_ctxt predecessor.Layer1.hash
 
-let rec process_head (node_ctxt : _ Node_context.t)
+let process_block (node_ctxt : _ Node_context.t)
+    ?(process_predecessor = fun _ _ -> return_unit)
     Layer1.({hash; level} as head) =
   let open Lwt_result_syntax in
   let* already_processed = Node_context.is_processed node_ctxt hash in
@@ -305,7 +306,7 @@ let rec process_head (node_ctxt : _ Node_context.t)
          exist in the chain. *)
       return_unit
   | Some predecessor ->
-      let* () = process_head node_ctxt predecessor in
+      let* () = process_predecessor node_ctxt predecessor in
       let*! () = Daemon_event.head_processing hash level in
       let* ctxt = previous_context node_ctxt ~predecessor head in
       let* () = Node_context.save_level node_ctxt head in
@@ -366,6 +367,9 @@ let rec process_head (node_ctxt : _ Node_context.t)
       let* () = Node_context.save_l2_head node_ctxt l2_block in
       let*! () = Daemon_event.new_head_processed hash level in
       return_unit
+
+let rec process_head (node_ctxt : _ Node_context.t) head =
+  process_block node_ctxt ~process_predecessor:process_head head
 
 (* [on_layer_1_head node_ctxt head] processes a new head from the L1. It
    also processes any missing blocks that were not processed. Every time a
@@ -437,7 +441,7 @@ let on_layer_1_head node_ctxt head =
 let daemonize (node_ctxt : _ Node_context.t) =
   Layer1.iter_heads node_ctxt.l1_ctxt (on_layer_1_head node_ctxt)
 
-let degraded_refutation_mode (node_ctxt : _ Node_context.t) =
+let enter_degraded_mode (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   let*! () = Daemon_event.degraded_mode () in
   let message = node_ctxt.Node_context.cctxt#message in
@@ -445,10 +449,18 @@ let degraded_refutation_mode (node_ctxt : _ Node_context.t) =
   let*! () = Batcher.shutdown () in
   let*! () = message "Shutting down Commitment Publisher@." in
   let*! () = Publisher.shutdown () in
-  Layer1.iter_heads node_ctxt.l1_ctxt @@ fun head ->
-  let* () = Refutation_coordinator.process head in
+  return_unit
+
+let degraded_mode_on_block block =
+  let open Lwt_result_syntax in
+  let* () = Refutation_coordinator.process block in
   let*! () = Injector.inject () in
   return_unit
+
+let degraded_refutation_mode node_ctxt =
+  let open Lwt_result_syntax in
+  let* () = enter_degraded_mode node_ctxt in
+  Layer1.iter_heads node_ctxt.l1_ctxt degraded_mode_on_block
 
 let install_finalizer node_ctxt rpc_server =
   let open Lwt_syntax in

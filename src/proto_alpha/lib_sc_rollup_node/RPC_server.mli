@@ -25,6 +25,10 @@
 
 open Tezos_rpc_http_server
 
+(** [init config node_ctxt] creates an RPC server with the directory but does
+    not start yet. *)
+val init : Configuration.t -> Node_context.rw -> RPC_server.server
+
 (** [start node_ctxt config] starts an RPC server listening for requests on the
     port [config.rpc_port] and address [config.rpc_addr]. *)
 val start :

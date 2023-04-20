@@ -63,6 +63,8 @@ type rw = [`Read | `Write] t
 
 type ro = [`Read] t
 
+let block_finality_time = 2
+
 let () =
   if Sc_rollup_address.size <> Protocol.Alpha_context.Sc_rollup.Address.size
   then
@@ -84,9 +86,13 @@ let is_accuser {mode; _} = mode = Accuser
 
 let is_loser {loser_mode; _} = loser_mode <> Loser_mode.no_failures
 
+let origination_level {genesis_info; _} = Raw_level.to_int32 genesis_info.level
+
 let get_fee_parameter node_ctxt purpose =
   Configuration.Operator_purpose_map.find purpose node_ctxt.fee_parameters
   |> Option.value ~default:(Configuration.default_fee_parameter ~purpose ())
+
+let maybe_block_id = function Some h -> `Hash (h, 0) | None -> `Head 0
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/2901
    The constants are retrieved from the latest tezos block. These constants can
@@ -94,27 +100,27 @@ let get_fee_parameter node_ctxt purpose =
    protocol amendment that modifies some of them. This need to be fixed when the
    rollup nodes will be able to handle the migration of protocol.
 *)
-let retrieve_constants cctxt =
-  Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
+let retrieve_constants ?head cctxt =
+  Protocol.Constants_services.all cctxt (cctxt#chain, maybe_block_id head)
 
-let get_last_cemented_commitment (cctxt : Protocol_client_context.full)
+let get_last_cemented_commitment ?head (cctxt : Protocol_client_context.full)
     rollup_address =
   let open Lwt_result_syntax in
   let+ commitment, level =
     Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
       cctxt
-      (cctxt#chain, `Head 0)
+      (cctxt#chain, maybe_block_id head)
       rollup_address
   in
   {commitment; level}
 
-let get_last_published_commitment (cctxt : Protocol_client_context.full)
+let get_last_published_commitment ?head (cctxt : Protocol_client_context.full)
     rollup_address operator =
   let open Lwt_result_syntax in
   let*! res =
     Plugin.RPC.Sc_rollup.staked_on_commitment
       cctxt
-      (cctxt#chain, `Head 0)
+      (cctxt#chain, maybe_block_id head)
       rollup_address
       operator
   in
@@ -286,7 +292,7 @@ let pvm_of_kind : Protocol.Alpha_context.Sc_rollup.Kind.t -> (module Pvm.S) =
   | Example_arith -> (module Arith_pvm)
   | Wasm_2_0_0 -> (module Wasm_2_0_0_pvm)
 
-let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
+let init (cctxt : #Client_context.full) ?head ~data_dir ?log_kernel_debug_file
     mode
     Configuration.(
       {
@@ -301,6 +307,9 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
         _;
       } as configuration) =
   let open Lwt_result_syntax in
+  let cctxt =
+    new Protocol_client_context.wrap_full (cctxt :> Client_context.full)
+  in
   let*? () = check_config configuration in
   let rollup_address =
     (* Convert to protocol rollup address *)
@@ -325,11 +334,11 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
     Layer1.start ~name:"sc_rollup_node" ~reconnection_delay cctxt
   in
   let publisher = Configuration.Operator_purpose_map.find Publish operators in
-  let* protocol_constants = retrieve_constants cctxt
-  and* lcc = get_last_cemented_commitment cctxt rollup_address
+  let* protocol_constants = retrieve_constants ?head cctxt
+  and* lcc = get_last_cemented_commitment ?head cctxt rollup_address
   and* lpc =
     Option.filter_map_es
-      (get_last_published_commitment cctxt rollup_address)
+      (get_last_published_commitment ?head cctxt rollup_address)
       publisher
   and* kind =
     RPC.Sc_rollup.kind cctxt (cctxt#chain, cctxt#block) rollup_address ()
@@ -384,7 +393,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       kind;
       pvm = pvm_of_kind kind;
       injector_retention_period = 0;
-      block_finality_time = 2;
+      block_finality_time;
       fee_parameters;
       protocol_constants;
       loser_mode;
@@ -555,7 +564,7 @@ let head_of_block_level (hash, level) = {Layer1.hash; level}
 
 let block_level_of_head Layer1.{hash; level} = (hash, level)
 
-let get_l2_block_predecessor node_ctxt hash =
+let get_l2_predecessor node_ctxt hash =
   let open Lwt_result_syntax in
   let+ header = Store.L2_blocks.header node_ctxt.store.l2_blocks hash in
   Option.map
@@ -565,7 +574,7 @@ let get_l2_block_predecessor node_ctxt hash =
 
 let get_predecessor_opt node_ctxt (hash, level) =
   let open Lwt_result_syntax in
-  let* pred = get_l2_block_predecessor node_ctxt hash in
+  let* pred = get_l2_predecessor node_ctxt hash in
   match pred with
   | Some p -> return_some p
   | None ->
@@ -574,7 +583,7 @@ let get_predecessor_opt node_ctxt (hash, level) =
 
 let get_predecessor node_ctxt (hash, level) =
   let open Lwt_result_syntax in
-  let* pred = get_l2_block_predecessor node_ctxt hash in
+  let* pred = get_l2_predecessor node_ctxt hash in
   match pred with
   | Some p -> return p
   | None ->
