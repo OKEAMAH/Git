@@ -292,11 +292,30 @@ let setup_installer ~dac_node =
   let (`Hex hex) = Hex.of_string installer in
   return hex
 
+(* Run a committee member *)
+let setup_dac_member ~coordinator ~rollup_id ~member_idx ~member client node =
+  let open Lwt.Syntax in
+  let Account.{aggregate_public_key_hash; _} = member in
+  let dac_node =
+    Dac_node.create_committee_member
+      ~path:Remote.octez_dac_node
+      ~name:(Format.sprintf "dac-member-%d-%d" rollup_id member_idx)
+      ~node
+      ~coordinator_rpc_host:(Dac_node.rpc_host coordinator)
+      ~coordinator_rpc_port:(Dac_node.rpc_port coordinator)
+      ~address:aggregate_public_key_hash
+      ~client
+      ()
+  in
+  let* _dir = Dac_node.init_config dac_node in
+  let+ () = Dac_node.run dac_node ~wait_ready:true in
+  dac_node
+
 (* Initialise DAC committee via *)
-let setup_dac home ~id node client =
+let setup_dac home ~rollup_id node client =
   let open Lwt.Syntax in
   let runner = Node.runner node in
-  let rollup_data_dir = home // Printf.sprintf "rollup-%d" id in
+  let rollup_data_dir = home // Printf.sprintf "rollup-%d" rollup_id in
   let () = Runner.Sys.mkdir ?runner rollup_data_dir in
   let* committee_members =
     List.fold_left
@@ -313,7 +332,7 @@ let setup_dac home ~id node client =
   in
   let dac_node =
     Dac_node.create_coordinator
-      ~name:(Format.sprintf "dac-coord-%d" id)
+      ~name:(Format.sprintf "dac-coord-%d" rollup_id)
       ~path:Remote.octez_dac_node
       ~node
       ~client
@@ -330,7 +349,7 @@ let setup_dac home ~id node client =
   (* Bind local port *)
   Log.info
     "Port forwarding DAC node %d from %s:%d"
-    id
+    rollup_id
     (Option.get runner).address
     (Dac_node.rpc_port dac_node) ;
   let () =
@@ -339,13 +358,28 @@ let setup_dac home ~id node client =
       ~address:(Dac_node.rpc_host dac_node)
       ~port:(Dac_node.rpc_port dac_node)
   in
-  return (rollup_data_dir, dac_node)
+  (* let* _ = setup_dac_member ~coordinator:dac_node ~rollup_id ~member_idx *)
+  let* members =
+    Lwt_list.mapi_p
+      (fun member_idx member ->
+        setup_dac_member
+          ~coordinator:dac_node
+          ~rollup_id
+          ~member_idx
+          ~member
+          client
+          node)
+      committee_members
+  in
+  return (rollup_data_dir, dac_node, members)
 
 let setup_rollup home rollup_id node client =
   let open Lwt.Syntax in
   let runner = Option.get (Node.runner node) in
   let funded_account = Format.asprintf "demo_%d" rollup_id in
-  let* data_dir, dac_node = setup_dac home ~id:rollup_id node client in
+  let* data_dir, dac_node, _dac_members =
+    setup_dac home ~rollup_id node client
+  in
   let* installer = setup_installer ~dac_node in
   let* rollup =
     Client.Sc_rollup.originate
