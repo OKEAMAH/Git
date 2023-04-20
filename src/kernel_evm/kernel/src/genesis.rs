@@ -6,8 +6,8 @@ use crate::error::Error;
 use crate::storage;
 use crate::storage::receipt_path;
 use crate::L2Block;
+use evm_execution::account_storage::EthereumAccount;
 use primitive_types::U256;
-use tezos_ethereum::account::Account;
 use tezos_ethereum::address::EthereumAddress;
 use tezos_ethereum::eth_gen::L2Level;
 use tezos_ethereum::transaction::TransactionHash;
@@ -50,22 +50,17 @@ const MINT_ACCOUNTS: [MintAccount; MINT_ACCOUNTS_NUMBER] = [
     },
 ];
 
-fn store_genesis_mint_account<Host: Runtime>(
-    host: &mut Host,
-    account: &Account,
-    path: &OwnedPath,
-) -> Result<(), Error> {
-    storage::store_account(host, account, path)
-}
-
 fn forge_genesis_mint_account<Host: Runtime>(
     host: &mut Host,
     mint_address: &str,
     balance: Wei,
 ) -> Result<(), Error> {
-    let account = Account::with_assets(balance);
-    let path = storage::account_path(&mint_address.as_bytes().to_vec())?;
-    store_genesis_mint_account(host, &account, &path)
+    let mint_address = OwnedPath::try_from(mint_address.as_bytes().to_vec())?;
+    let mut account = EthereumAccount::from(mint_address);
+    account
+        .balance_add(host, balance)
+        .expect("balance adding failed");
+    Ok(())
 }
 
 fn collect_mint_transactions<T, E>(
