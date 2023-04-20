@@ -78,7 +78,7 @@ module Make (PVM : Pvm.S) = struct
             ~other
         in
         assert (Sc_rollup.Address.(node_ctxt.rollup_address = rollup)) ;
-        Components.Commitment.publish_single_commitment node_ctxt our_commitment
+        Publisher.publish_single_commitment node_ctxt our_commitment
 
   (** Process an L1 SCORU operation (for the node's rollup) which is included
       for the first time. {b Note}: this function does not process inboxes for
@@ -356,7 +356,7 @@ module Make (PVM : Pvm.S) = struct
         in
         let*! context_hash = Context.commit ctxt in
         let* commitment_hash =
-          Components.Commitment.process_head
+          Publisher.process_head
             node_ctxt
             ~predecessor:predecessor.hash
             head
@@ -458,8 +458,8 @@ module Make (PVM : Pvm.S) = struct
     in
     let*! () = Daemon_event.processing_heads_iteration reorg.new_chain in
     let* () = List.iter_es (process_head node_ctxt) reorg.new_chain in
-    let* () = Components.Commitment.Publisher.publish_commitments () in
-    let* () = Components.Commitment.Publisher.cement_commitments () in
+    let* () = Publisher.publish_commitments () in
+    let* () = Publisher.cement_commitments () in
     let*! () = Daemon_event.new_heads_processed reorg.new_chain in
     let* () = Components.Refutation_coordinator.process head in
     let* () = Components.Batcher.batch () in
@@ -477,7 +477,7 @@ module Make (PVM : Pvm.S) = struct
     let*! () = message "Shutting down Batcher@." in
     let*! () = Components.Batcher.shutdown () in
     let*! () = message "Shutting down Commitment Publisher@." in
-    let*! () = Components.Commitment.Publisher.shutdown () in
+    let*! () = Publisher.shutdown () in
     Layer1.iter_heads node_ctxt.l1_ctxt @@ fun head ->
     let* () = Components.Refutation_coordinator.process head in
     let*! () = Injector.inject () in
@@ -494,7 +494,7 @@ module Make (PVM : Pvm.S) = struct
     let* () = message "Shutting down Batcher@." in
     let* () = Components.Batcher.shutdown () in
     let* () = message "Shutting down Commitment Publisher@." in
-    let* () = Components.Commitment.Publisher.shutdown () in
+    let* () = Publisher.shutdown () in
     let* () = message "Shutting down Refutation Coordinator@." in
     let* () = Components.Refutation_coordinator.shutdown () in
     let* (_ : unit tzresult) = Node_context.close node_ctxt in
@@ -549,7 +549,7 @@ module Make (PVM : Pvm.S) = struct
                in
                (operator, strategy, purposes))
       in
-      let* () = Components.Commitment.Publisher.init node_ctxt in
+      let* () = Publisher.init node_ctxt in
       let* () = Components.Refutation_coordinator.init node_ctxt in
       let* () =
         Injector.init
@@ -629,7 +629,7 @@ module Make (PVM : Pvm.S) = struct
       in
       let*! context_hash = Context.commit ctxt in
       let* commitment_hash =
-        Components.Commitment.process_head
+        Publisher.process_head
           node_ctxt
           ~predecessor:predecessor.Layer1.hash
           head

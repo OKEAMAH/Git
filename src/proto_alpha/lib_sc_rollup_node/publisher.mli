@@ -39,45 +39,41 @@
     a new head is processed, the node tries to publish the oldest
     commitment that was not published already.
 *)
-module type S = sig
-  module PVM : Pvm.S
 
-  (** [process_head node_ctxt ~predecessor head ctxt] builds a new commitment if
-      needed, by looking at the level of [head] and checking whether it is a
-      multiple of `Commitment.sc_rollup_commitment_period` levels away from
-      [node_ctxt.initial_level]. It uses the functionalities of [PVM] to compute
-      the hash of to be included in the commitment.  *)
-  val process_head :
-    Node_context.rw ->
-    predecessor:Block_hash.t ->
-    Layer1.head ->
-    Context.rw ->
-    Protocol.Alpha_context.Sc_rollup.Commitment.Hash.t option tzresult Lwt.t
+(** [process_head node_ctxt ~predecessor head ctxt] builds a new commitment if
+    needed, by looking at the level of [head] and checking whether it is a
+    multiple of `Commitment.sc_rollup_commitment_period` levels away from
+    [node_ctxt.initial_level]. It uses the functionalities of [PVM] to compute
+    the hash of to be included in the commitment.  *)
+val process_head :
+  Node_context.rw ->
+  predecessor:Block_hash.t ->
+  Layer1.head ->
+  Context.rw ->
+  Protocol.Alpha_context.Sc_rollup.Commitment.Hash.t option tzresult Lwt.t
 
-  (** [publish_single_commitment node_ctxt commitment] publishes a single
-      [commitment] if it is missing. This function is meant to be used by the {e
-      accuser} mode to sparingly publish commitments when it detects a
-      conflict. *)
-  val publish_single_commitment :
-    _ Node_context.t ->
-    Protocol.Alpha_context.Sc_rollup.Commitment.t ->
-    unit tzresult Lwt.t
+(** [publish_single_commitment node_ctxt commitment] publishes a single
+    [commitment] if it is missing. This function is meant to be used by the {e
+    accuser} mode to sparingly publish commitments when it detects a
+    conflict. *)
+val publish_single_commitment :
+  _ Node_context.t ->
+  Protocol.Alpha_context.Sc_rollup.Commitment.t ->
+  unit tzresult Lwt.t
 
-  (** Worker for publishing and cementing commitments. *)
-  module Publisher : sig
-    val init : _ Node_context.t -> unit tzresult Lwt.t
+(** {2 Worker for publishing and cementing commitments } *)
 
-    (** [publish_commitments node_ctxt] publishes the commitments that were not
+val init : _ Node_context.t -> unit tzresult Lwt.t
+
+(** [publish_commitments node_ctxt] publishes the commitments that were not
       yet published up to the finalized head and which are after the last
       cemented commitment. *)
-    val publish_commitments : unit -> unit tzresult Lwt.t
+val publish_commitments : unit -> unit tzresult Lwt.t
 
-    (** [cement_commitments node_ctxt] cements the commitments that can be
+(** [cement_commitments node_ctxt] cements the commitments that can be
       cemented, i.e. the commitments that are after the current last cemented
       commitment and which have [sc_rollup_challenge_period] levels on top of
       them since they were originally published.  *)
-    val cement_commitments : unit -> unit tzresult Lwt.t
+val cement_commitments : unit -> unit tzresult Lwt.t
 
-    val shutdown : unit -> unit Lwt.t
-  end
-end
+val shutdown : unit -> unit Lwt.t
