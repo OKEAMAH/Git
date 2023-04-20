@@ -311,6 +311,24 @@ let setup_dac_member ~coordinator ~rollup_id ~member_idx ~member client node =
   let+ () = Dac_node.run dac_node ~wait_ready:true in
   dac_node
 
+(* Run a dac observer *)
+let setup_dac_observer ~coordinator ~rollup_id ~reveal_data_dir client node =
+  let open Lwt.Syntax in
+  let dac_node =
+    Dac_node.create_observer
+      ~path:Remote.octez_dac_node
+      ~name:(Format.sprintf "dac-observer-%d" rollup_id)
+      ~node
+      ~coordinator_rpc_host:(Dac_node.rpc_host coordinator)
+      ~coordinator_rpc_port:(Dac_node.rpc_port coordinator)
+      ~client
+      ~reveal_data_dir
+      ()
+  in
+  let* _dir = Dac_node.init_config dac_node in
+  let+ () = Dac_node.run dac_node ~wait_ready:true in
+  dac_node
+
 (* Initialise DAC committee via *)
 let setup_dac home ~rollup_id node client =
   let open Lwt.Syntax in
@@ -336,7 +354,6 @@ let setup_dac home ~rollup_id node client =
       ~path:Remote.octez_dac_node
       ~node
       ~client
-      ~reveal_data_dir:(rollup_data_dir // "wasm_2_0_0")
       ~threshold:2
       ~committee_members:
         (List.map
@@ -358,7 +375,6 @@ let setup_dac home ~rollup_id node client =
       ~address:(Dac_node.rpc_host dac_node)
       ~port:(Dac_node.rpc_port dac_node)
   in
-  (* let* _ = setup_dac_member ~coordinator:dac_node ~rollup_id ~member_idx *)
   let* members =
     Lwt_list.mapi_p
       (fun member_idx member ->
@@ -371,13 +387,21 @@ let setup_dac home ~rollup_id node client =
           node)
       committee_members
   in
-  return (rollup_data_dir, dac_node, members)
+  let* observer =
+    setup_dac_observer
+      ~coordinator:dac_node
+      ~rollup_id
+      ~reveal_data_dir:(rollup_data_dir // "wasm_2_0_0")
+      client
+      node
+  in
+  return (rollup_data_dir, dac_node, members, observer)
 
 let setup_rollup home rollup_id node client =
   let open Lwt.Syntax in
   let runner = Option.get (Node.runner node) in
   let funded_account = Format.asprintf "demo_%d" rollup_id in
-  let* data_dir, dac_node, _dac_members =
+  let* data_dir, dac_node, _dac_members, _dac_observer =
     setup_dac home ~rollup_id node client
   in
   let* installer = setup_installer ~dac_node in
