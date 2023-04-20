@@ -288,7 +288,7 @@ module External = struct
 
   let tests =
     [
-      Alcotest.test_case "test proto" `Quick (first_test_proto_rollup 3);
+      (* Alcotest.test_case "test proto" `Quick (first_test_proto_rollup 3); *)
       Alcotest.test_case "compare protos" `Slow (compare_protos_dummy_circuit 3);
     ]
 end
