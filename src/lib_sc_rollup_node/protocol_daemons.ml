@@ -52,3 +52,6 @@ let register protocol daemon =
 let proto_daemon_for_protocol protocol =
   Protocol_hash.Table.find proto_daemons protocol
   |> Option.to_result ~none:[Unsupported_protocol protocol]
+
+let registered_protocols () =
+  Protocol_hash.Table.to_seq_keys proto_daemons |> List.of_seq

@@ -33,7 +33,5 @@ val register : Protocol_hash.t -> proto_daemon -> unit
     supported). *)
 val proto_daemon_for_protocol : Protocol_hash.t -> proto_daemon tzresult
 
-    @raise Protocol_not_found if the protocol is not known by the rollup
-      node. In this case the rollup node will not be able to handle messages and
-      operations of this protocol.  *)
-val proto_daemon_for_protocol : Protocol_hash.t -> proto_daemon
+(** Returns the list of registered protocols. *)
+val registered_protocols : unit -> Protocol_hash.t list
