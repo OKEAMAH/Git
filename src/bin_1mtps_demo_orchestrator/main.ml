@@ -63,6 +63,8 @@ let network = "https://teztnets.xyz/mondaynet-2023-04-17"
 let snapshot_url =
   "http://mondaynet.snapshots.s3-website.eu-central-1.amazonaws.com/mondaynet-rolling-snapshot"
 
+let mint_and_deposit_contract = "KT18fUtgDECoNHFyM5JmVq7XufVsgy8YcVzo"
+
 (* TODO: Should be a command-line argument *)
 let runners =
   let l1_nodes_count = 1 in
@@ -251,6 +253,28 @@ let bootstrap_node (home, runner) =
 
   Lwt.return (home, node, client)
 
+let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
+    ~rollup_id =
+  let open Lwt.Syntax in
+  Log.info "Depositing %s to %s" content rollup ;
+  let* () =
+    (* Internal message through forwarder *)
+    let arg =
+      sf {|Pair (Pair %S "%s") (Pair 450 "%s")|} rollup no_pixel_addr content
+    in
+    Client.transfer
+      client
+      ~wait:"1"
+      ~amount:Tez.zero
+      ~giver:(Format.sprintf "demo_%d" rollup_id)
+      ~receiver:mint_and_deposit_contract
+      ~arg
+      ~burn_cap:(Tez.of_int 1000)
+  in
+  let* level = Client.level client in
+  let+ _ = Sc_rollup_node.wait_for_level ~timeout:30. rollup_node level in
+  ()
+
 let setup_installer ~dac_node =
   let installer = read_file Local.installer_kernel in
   let tx_kernel = read_file Local.tx_kernel in
@@ -329,7 +353,7 @@ let setup_rollup home rollup_id node client =
       ~wait:"0"
       ~src:funded_account
       ~kind:"wasm_2_0_0"
-      ~parameters_ty:"bytes"
+      ~parameters_ty:"(pair string (ticket string))"
       ~boot_sector:installer
       ~burn_cap:(Tez.of_int 2)
   in
@@ -360,7 +384,34 @@ let setup_rollup home rollup_id node client =
         Format.sprintf "/home/tezos/logs/kernel-%d.log" rollup_id;
       ]
   in
-
+  let no_pixel_addr = "tz1XgzVG2etN26nuM6z7Wtcry7eWU6h1pkMb" in
+  let* () =
+    deposit_ticket
+      ~rollup_node
+      ~client
+      ~content:"R"
+      ~rollup
+      ~no_pixel_addr
+      ~rollup_id
+  in
+  let* () =
+    deposit_ticket
+      ~rollup_node
+      ~client
+      ~content:"G"
+      ~rollup
+      ~no_pixel_addr
+      ~rollup_id
+  in
+  let* () =
+    deposit_ticket
+      ~rollup_node
+      ~client
+      ~content:"B"
+      ~rollup
+      ~no_pixel_addr
+      ~rollup_id
+  in
   Lwt.return (node, client, rollup, rollup_node)
 
 let setup_rollups rollups_per_node i (home, node, client) =
