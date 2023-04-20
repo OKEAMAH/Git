@@ -248,7 +248,7 @@ let from_tagged = function Input i -> Some i | Output _ -> None
 let solve_one trace solver =
   (match solver with
   | Skip -> ()
-  | Arith {wires; linear; qm; qc; qx5a; qx2b; to_solve; _} -> (
+  | Arith {wires; linear; qm; qc; qx5a; qx2b; to_solve} -> (
       (* A gate with degree strictly greater than 1 must be used on an input wire.
          This is to avoid having several solutions for the same equation.
       *)
