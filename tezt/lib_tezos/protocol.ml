@@ -74,7 +74,10 @@ let accuser proto = "./octez-accuser-" ^ daemon_name proto
 
 let baker proto = "./octez-baker-" ^ daemon_name proto
 
-let sc_rollup_node proto = "./octez-smart-rollup-node-" ^ daemon_name proto
+let sc_rollup_node = function
+  (* TODO: remove proto prefix when ok *)
+  | Alpha -> "./octez-smart-rollup-node"
+  | proto -> "./octez-smart-rollup-node-" ^ daemon_name proto
 
 let sc_rollup_client proto = "./octez-smart-rollup-client-" ^ daemon_name proto
 
