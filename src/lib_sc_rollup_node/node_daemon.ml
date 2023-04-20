@@ -267,6 +267,7 @@ let on_layer_1_head state ((hash, header) as head) =
       let+ header = Layer1.fetch_tezos_shell_header state.cctxt block_hash in
       (block_hash, header)
   in
+  let*! () = Node_daemon_event.processing_heads_iteration reorg.new_chain in
   let* () =
     List.iter_es
       (fun (block, _level) ->
@@ -275,6 +276,7 @@ let on_layer_1_head state ((hash, header) as head) =
       reorg.new_chain
   in
   let* () = Daemon.on_layer_1_head_extra node_ctxt head in
+  let*! () = Node_daemon_event.new_heads_processed reorg.new_chain in
   return_unit
 
 let daemonize state = Layer1.iter_heads state.l1 (on_layer_1_head state)
@@ -371,6 +373,11 @@ let run ~data_dir ?log_kernel_debug_file (configuration : Configuration.t)
   in
   let (_ : Lwt_exit.clean_up_callback_id) = install_finalizer state in
   start_metrics_server configuration ;
+  let*! () =
+    Node_daemon_event.node_is_ready
+      ~rpc_addr:configuration.rpc_addr
+      ~rpc_port:configuration.rpc_port
+  in
   protect ~on_error:(fun e ->
       if List.exists error_is_lost_game e then (
         Format.eprintf "%!%a@.Exiting.@." pp_print_trace e ;
