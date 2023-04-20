@@ -35,7 +35,7 @@ type 'a tagged = Input of 'a | Output of 'a
 val untag : 'a tagged -> 'a
 
 type arith_desc = {
-  wires : int array;
+  wires : wire array;
   linear : S.t array;
   qm : S.t;
   qc : S.t;

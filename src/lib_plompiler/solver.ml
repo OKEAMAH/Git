@@ -33,7 +33,7 @@ type wire = W of int [@@deriving repr]
 type 'a tagged = Input of 'a | Output of 'a [@@deriving repr]
 
 type arith_desc = {
-  wires : int array;
+  wires : wire array;
   linear : S.t array;
   qm : S.t;
   qc : S.t;
@@ -256,16 +256,19 @@ let solve_one trace solver =
       | W i ->
           assert (i <> 0 || S.is_zero qx5a) ;
           assert (i <> 1 || S.is_zero qx2b) ;
-          let vs = Array.map (fun w -> trace.(w)) wires in
+          let vs = Array.map (fun (W i) -> trace.(i)) wires in
           let qs = linear in
           let qi = linear.(i) in
           (* We ignore the i-th term, as we are solving for it *)
           qs.(i) <- S.zero ;
           let sum = Array.map2 S.mul qs vs |> Array.fold_left S.add qc in
-          let av = trace.(wires.(0)) in
-          let bv = trace.(wires.(1)) in
+          let (W a) = wires.(0) in
+          let (W b) = wires.(1) in
+          let av = trace.(a) in
+          let bv = trace.(b) in
           let m_pair = match i with 0 -> bv | 1 -> av | _ -> S.zero in
-          trace.(wires.(i)) <-
+          let (W wi) = wires.(i) in
+          trace.(wi) <-
             S.(
               (sum
               + (if i >= 2 then qm * av * bv else S.zero)

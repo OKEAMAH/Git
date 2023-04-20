@@ -265,7 +265,7 @@ let default_solver ?(to_solve = W 2) g =
   in
   Arith
     {
-      wires = c.wires;
+      wires = Array.map (fun i -> W i) c.wires;
       linear;
       qc = get_sel "qc";
       qm = get_sel "qm";
