@@ -419,6 +419,14 @@ let setup_rollups rollups_per_node i (home, node, client) =
     (fun x -> setup_rollup home ((i * rollups_per_node) + x) node client)
     (List.init rollups_per_node Fun.id)
 
+let rec get_continue_conf () =
+  Log.info "Continue? (yes)" ;
+  let line = read_line () in
+  if line = "yes" then ()
+  else (
+    Log.warn "'yes' required" ;
+    get_continue_conf ())
+
 let main () =
   let open Lwt.Syntax in
   (* install nodes on runners *)
@@ -439,6 +447,8 @@ let main () =
       nodes
   in
   Log.info "Rollup nodes are ready" ;
+  Log.info "Start transfers?" ;
+  get_continue_conf () ;
   (* waiting enough time for several commitments to be posted *)
   let node, _, _, _ = List.hd nodes in
   let current_level = Node.get_level node in
