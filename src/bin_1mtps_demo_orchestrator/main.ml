@@ -258,9 +258,13 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
   let open Lwt.Syntax in
   Log.info "Depositing %s to %s" content rollup ;
   let* () =
-    (* Internal message through forwarder *)
+    (* Internal message through forwarder - 255 * 5000 per ticket needed *)
     let arg =
-      sf {|Pair (Pair %S "%s") (Pair 450 "%s")|} rollup no_pixel_addr content
+      sf
+        {|Pair (Pair %S "%s") (Pair 1275000 "%s")|}
+        rollup
+        no_pixel_addr
+        content
     in
     Client.transfer
       client
@@ -275,7 +279,46 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
   let+ _ = Sc_rollup_node.wait_for_level ~timeout:30. rollup_node level in
   ()
 
-let setup_installer ~dac_node ~pk_0 ~pk_1 =
+(* BORROW from dac.ml *)
+let parse_certificate json =
+  JSON.
+    ( json |-> "witnesses" |> as_int,
+      json |-> "aggregate_signature" |> as_string,
+      json |-> "root_hash" |> as_string )
+
+(* Helper process that listens to certificate updates through a
+   RPC request. Upon termination, the list of certificate updates
+   is returned *)
+let streamed_certificates_client coordinator_node node root_hash =
+  let endpoint =
+    Format.sprintf
+      "http://%s:%d/monitor/certificate/%s"
+      (Dac_node.rpc_host coordinator_node)
+      (Dac_node.rpc_port coordinator_node)
+      root_hash
+  in
+  RPC.Curl.get_raw ?runner:(Node.runner node) endpoint
+  |> Runnable.map (fun output ->
+         let as_list = String.split_on_char '\n' output in
+         (* Each JSON item in the response of the curl request is
+            suffixed with the '\n' character, which will cause an
+            empty item to be inserted at the end of the list. *)
+         let rev_as_list_no_empty_element =
+           match List.rev as_list with
+           | [] -> assert false
+           | _ :: rev_list -> rev_list
+         in
+         List.rev_map
+           (fun raw -> parse_certificate @@ JSON.parse ~origin:endpoint raw)
+           rev_as_list_no_empty_element)
+
+let _wait_for_received_root_hash_processed dac_node root_hash =
+  Dac_node.wait_for
+    dac_node
+    "dac_node_received_root_hash_processed.v0"
+    (fun json -> if JSON.(json |> as_string) = root_hash then Some () else None)
+
+let setup_installer ~dac_node ~pk_0 ~pk_1 node =
   let installer = read_file Local.installer_kernel in
   let tx_kernel = read_file Local.tx_kernel in
   let installer_dummy_hash =
@@ -305,6 +348,13 @@ let setup_installer ~dac_node ~pk_0 ~pk_1 =
   assert (String.length dac_member_1_dummy = String.length dac_member_1) ;
   let* root_hash =
     RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:tx_kernel)
+  in
+  let* certificate_updates =
+    Runnable.run @@ streamed_certificates_client dac_node node root_hash
+  in
+  Log.info "Got %d certificates" @@ List.length certificate_updates ;
+  let _, _, root_hash =
+    List.nth certificate_updates (List.length certificate_updates - 1)
   in
   (* Ensure reveal hash is correct length for installer. *)
   assert (String.length root_hash = 66) ;
@@ -427,6 +477,57 @@ let setup_dac home ~rollup_id node client =
   in
   return (rollup_data_dir, dac_node, members, observer, committee_members)
 
+(* ---------------------------- *)
+(* Submit DAC external messages *)
+(* ---------------------------- *)
+let rec submit_dac_message ~rollup_id ~round ~rollup ~dac_node node client =
+  let message =
+    read_file
+    @@ Format.sprintf
+         "/home/emma/sources/wasm-demo/artifacts/rollup-messages/rollup%d.messages/%d-transfers.out"
+         rollup_id
+         round
+  in
+  Log.info "Submitting message for rollup %d at round %d" rollup_id round ;
+  let* root_hash =
+    RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:message)
+  in
+  let* certificate_updates =
+    Runnable.run @@ streamed_certificates_client dac_node node root_hash
+  in
+  Log.info "Got %d certificates" @@ List.length certificate_updates ;
+  let witness, signature, root_hash =
+    List.nth certificate_updates (List.length certificate_updates - 1)
+  in
+  Log.info "Got certificate %d %s %s" witness signature root_hash ;
+  let open Data_encoding.Binary in
+  let open Tezos_protocol_alpha.Protocol.Alpha_context.Sc_rollup in
+  let address =
+    rollup |> Address.of_b58check_opt |> Option.get
+    |> to_string_exn Address.encoding
+  in
+  let root_hash = `Hex root_hash |> Hex.to_string in
+  let signature =
+    Tezos_crypto.Signature.Bls.(
+      signature |> of_b58check_exn |> to_string_exn encoding)
+  in
+  let witness = witness |> Z.of_int |> to_string_exn Data_encoding.z in
+  let (`Hex message) =
+    String.concat "" ["\000"; address; "\000"; root_hash; signature; witness]
+    |> Hex.of_string
+  in
+  let msg = Format.sprintf "hex:[\"%s\"]" message in
+  let* () = Client.Sc_rollup.send_message ~wait:"0" ~src:"demo_0" ~msg client in
+  if round >= 8 then return ()
+  else
+    submit_dac_message
+      ~rollup_id
+      ~round:(round + 1)
+      ~rollup
+      ~dac_node
+      node
+      client
+
 let setup_rollup home rollup_id node client =
   let open Lwt.Syntax in
   let runner = Option.get (Node.runner node) in
@@ -443,6 +544,7 @@ let setup_rollup home rollup_id node client =
       ~dac_node
       ~pk_0:dac_member_0.aggregate_public_key
       ~pk_1:dac_member_1.aggregate_public_key
+      node
   in
   let* rollup =
     Client.Sc_rollup.originate
@@ -510,6 +612,9 @@ let setup_rollup home rollup_id node client =
       ~no_pixel_addr
       ~rollup_id
   in
+  let* _ =
+    submit_dac_message ~rollup_id ~round:1 ~rollup ~dac_node node client
+  in
   Lwt.return (node, client, rollup, rollup_node)
 
 let setup_rollups rollups_per_node i (home, node, client) =
@@ -525,6 +630,9 @@ let rec get_continue_conf () =
     Log.warn "'yes' required" ;
     get_continue_conf ())
 
+(* -------- *)
+(* Run Demo *)
+(* -------- *)
 let main () =
   let open Lwt.Syntax in
   (* install nodes on runners *)
