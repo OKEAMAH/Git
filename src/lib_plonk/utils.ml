@@ -115,6 +115,22 @@ module Array = struct
         i)
 end
 
+let pad_answers nb_max_proofs nb_rc_wires nb_proofs
+    (answers : S.t SMap.t SMap.t list) =
+  let answers = List.map (SMap.map SMap.values) answers in
+  (* We want to work on the 'a map list because it’s the only way to find the wires in the answers without knowing if there is ultra or next wire *)
+  let answers_padded =
+    List.map_end
+      (SMap.map (fun w_list ->
+           w_list
+           @ List.init
+               ((nb_max_proofs - nb_proofs)
+               * (Plompiler.Csir.nb_wires_arch + nb_rc_wires))
+               (Fun.const S.zero)))
+      answers
+  in
+  answers_padded |> List.concat_map SMap.values |> List.flatten
+
 module Fr_generation : sig
   (* computes [| 1; x; x²; x³; ...; xᵈ⁻¹ |] *)
   val powers : int -> Bls.Scalar.t -> Bls.Scalar.t array

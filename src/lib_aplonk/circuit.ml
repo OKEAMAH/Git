@@ -30,11 +30,6 @@ open Plonk.Bls
 
 let nb_wires = Plompiler.Csir.nb_wires_arch
 
-(* Applies the function [f] to the last element of the list [l] *)
-let map_end f l =
-  let n = List.length l in
-  List.mapi (fun i x -> if i = n - 1 then f x else x) l
-
 module V (Main : Aggregation.Main_protocol.S) = struct
   module Gates = Main.Gates
   module Perm = Main.Perm
@@ -566,30 +561,22 @@ module V (Main : Aggregation.Main_protocol.S) = struct
     in
     (switches, S.of_int nb_proofs)
 
-  let pad_inputs nb_max_proofs inner_pi answers =
-    let to_pad = nb_max_proofs - List.length inner_pi in
+  let pad_inputs nb_max_proofs nb_rc_wires inner_pi answers =
+    let nb_proofs = List.length inner_pi in
     let padded_inner_pi =
+      let to_pad = nb_max_proofs - nb_proofs in
       let nb_inner_pi = List.(length (hd inner_pi)) in
       List.flatten inner_pi
       @ List.(init (to_pad * nb_inner_pi) (Fun.const S.zero))
     in
     let padded_answers =
-      let answers =
-        answers |> List.map (fun a -> SMap.values a |> List.map SMap.values)
-      in
-      let pad_wires wires_list =
-        List.map
-          (fun w_list ->
-            w_list @ List.init (to_pad * nb_wires) (Fun.const S.zero))
-          wires_list
-      in
-      map_end pad_wires answers |> List.flatten |> List.flatten
+      Plonk.Utils.pad_answers nb_max_proofs nb_rc_wires nb_proofs answers
     in
     (padded_inner_pi, padded_answers)
 
   (* Returns witness of verification circuit *)
-  let get_witness max_nb_proofs (p : Main.prover_aux) circuit_name pi_size
-      solver (inner_pi, outer_pi) switches compressed_switches batch =
+  let get_witness max_nb_proofs nb_rc_wires (p : Main.prover_aux) circuit_name
+      pi_size solver (inner_pi, outer_pi) switches compressed_switches batch =
     let ids_batch = SMap.find circuit_name p.ids_batch |> fst in
     let public =
       aggreg_public_inputs
@@ -609,7 +596,7 @@ module V (Main : Aggregation.Main_protocol.S) = struct
     in
     let inputs =
       let inner_pi, answers =
-        pad_inputs max_nb_proofs inner_pi circuit_answers
+        pad_inputs max_nb_proofs nb_rc_wires inner_pi circuit_answers
       in
       Array.(concat [of_list (inner_pi @ answers); public; switches])
     in
@@ -633,6 +620,7 @@ module V (Main : Aggregation.Main_protocol.S) = struct
 
   (* generator & n are the subgroup generator & size of the subgroup of identities verification
      check_pi is a function related to PI, given here as argument in order to allow several PI handling forms
+     note that wires & wires_g may also contain RC_Z polynomials
   *)
   let verification_circuit (generator, n) rc_wires check_pi
       {
