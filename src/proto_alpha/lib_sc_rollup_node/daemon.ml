@@ -222,7 +222,7 @@ let process_finalized_l1_operation (type kind) _node_ctxt _head ~source:_
     (_result : kind successful_manager_operation_result) =
   return_unit
 
-let process_l1_operation (type kind) ~finalized node_ctxt head ~source
+let process_l1_operation (type kind) node_ctxt head ~source
     (operation : kind manager_operation)
     (result : kind Apply_results.manager_operation_result) =
   let open Lwt_result_syntax in
@@ -245,7 +245,7 @@ let process_l1_operation (type kind) ~finalized node_ctxt head ~source
   if not (is_for_my_rollup operation) then return_unit
   else
     (* Only look at operations that are for the node's rollup *)
-    let*! () = Daemon_event.included_operation ~finalized operation result in
+    let*! () = Daemon_event.included_operation operation result in
     match result with
     | Applied success_result ->
         process_included_l1_operation
@@ -258,15 +258,14 @@ let process_l1_operation (type kind) ~finalized node_ctxt head ~source
         (* No action for non successful operations  *)
         return_unit
 
-let process_l1_block_operations ~finalized node_ctxt (Layer1.{hash; _} as head)
-    =
+let process_l1_block_operations node_ctxt (Layer1.{hash; _} as head) =
   let open Lwt_result_syntax in
   let* block = Layer1.fetch_tezos_block node_ctxt.Node_context.cctxt hash in
   let apply (type kind) accu ~source (operation : kind manager_operation) result
       =
     let open Lwt_result_syntax in
     let* () = accu in
-    process_l1_operation ~finalized node_ctxt head ~source operation result
+    process_l1_operation node_ctxt head ~source operation result
   in
   let apply_internal (type kind) accu ~source:_
       (_operation : kind Apply_internal_results.internal_operation)
@@ -285,23 +284,6 @@ let before_origination (node_ctxt : _ Node_context.t) Layer1.{level; _} =
   let origination_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
   level < origination_level
 
-let rec processed_finalized_block (node_ctxt : _ Node_context.t)
-    Layer1.({hash; level} as block) =
-  let open Lwt_result_syntax in
-  let* last_finalized = Node_context.get_finalized_head_opt node_ctxt in
-  let already_finalized =
-    match last_finalized with
-    | Some finalized -> level <= Raw_level.to_int32 finalized.header.level
-    | None -> false
-  in
-  unless (already_finalized || before_origination node_ctxt block) @@ fun () ->
-  let* predecessor = Node_context.get_predecessor_opt node_ctxt block in
-  let* () = Option.iter_es (processed_finalized_block node_ctxt) predecessor in
-  let*! () = Daemon_event.head_processing hash level ~finalized:true in
-  let* () = process_l1_block_operations ~finalized:true node_ctxt block in
-  let* () = Node_context.mark_finalized_head node_ctxt hash in
-  return_unit
-
 let previous_context (node_ctxt : _ Node_context.t) ~predecessor
     Layer1.{hash = _; level} =
   let open Lwt_result_syntax in
@@ -316,7 +298,6 @@ let rec process_head (node_ctxt : _ Node_context.t)
   let open Lwt_result_syntax in
   let* already_processed = Node_context.is_processed node_ctxt hash in
   unless (already_processed || before_origination node_ctxt head) @@ fun () ->
-  let*! () = Daemon_event.head_processing hash level ~finalized:false in
   let* predecessor = Node_context.get_predecessor_opt node_ctxt head in
   match predecessor with
   | None ->
@@ -325,6 +306,7 @@ let rec process_head (node_ctxt : _ Node_context.t)
       return_unit
   | Some predecessor ->
       let* () = process_head node_ctxt predecessor in
+      let*! () = Daemon_event.head_processing hash level in
       let* ctxt = previous_context node_ctxt ~predecessor head in
       let* () = Node_context.save_level node_ctxt head in
       let* inbox_hash, inbox, inbox_witness, messages =
@@ -334,7 +316,7 @@ let rec process_head (node_ctxt : _ Node_context.t)
         when_ (Node_context.dal_supported node_ctxt) @@ fun () ->
         Dal_slots_tracker.process_head node_ctxt head
       in
-      let* () = process_l1_block_operations ~finalized:false node_ctxt head in
+      let* () = process_l1_block_operations node_ctxt head in
       (* Avoid storing and publishing commitments if the head is not final. *)
       (* Avoid triggering the pvm execution if this has been done before for
          this head. *)
