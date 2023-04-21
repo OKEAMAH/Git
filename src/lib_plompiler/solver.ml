@@ -256,16 +256,22 @@ let solve_one trace solver =
       | W i ->
           assert (i <> 0 || S.is_zero qx5a) ;
           assert (i <> 1 || S.is_zero qx2b) ;
-          let vs = Array.map (fun (W i) -> trace.(i)) wires in
-          let qs = linear in
           let qi = linear.(i) in
           (* We ignore the i-th term, as we are solving for it *)
-          qs.(i) <- S.zero ;
-          let sum = Array.map2 S.mul qs vs |> Array.fold_left S.add qc in
-          let (W a) = wires.(0) in
-          let (W b) = wires.(1) in
-          let av = trace.(a) in
-          let bv = trace.(b) in
+          let sum =
+            let vs = Array.map (fun (W i) -> trace.(i)) wires in
+            let qs = Array.copy linear in
+            qs.(i) <- S.zero ;
+            Array.map2 S.mul qs vs |> Array.fold_left S.add qc
+          in
+          let av =
+            let (W a) = wires.(0) in
+            trace.(a)
+          in
+          let bv =
+            let (W b) = wires.(1) in
+            trace.(b)
+          in
           let m_pair = match i with 0 -> bv | 1 -> av | _ -> S.zero in
           let (W wi) = wires.(i) in
           trace.(wi) <-
