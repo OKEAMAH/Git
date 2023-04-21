@@ -273,8 +273,8 @@ module CS = struct
            ())
     in
     let wires =
-      let pad_length = nb_wires_arch - List.length wires in
-      wires @ List.init pad_length (Fun.const 0) |> Array.of_list
+      let pad_length = nb_wires_arch - Array.length wires in
+      Array.(append wires (make pad_length 0))
     in
     {wires; sels; precomputed_advice; label = label :: labels}
 
