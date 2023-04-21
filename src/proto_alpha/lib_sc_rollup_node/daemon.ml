@@ -307,7 +307,7 @@ module Make (PVM : Pvm.S) = struct
     in
     let*! () = Daemon_event.head_processing hash level ~finalized:true in
     let* () = process_l1_block_operations ~finalized:true node_ctxt block in
-    let* () = Node_context.mark_finalized_head node_ctxt hash in
+    let* () = Node_context.mark_finalized_level node_ctxt level in
     return_unit
 
   let previous_context (node_ctxt : _ Node_context.t) ~predecessor
