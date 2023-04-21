@@ -248,11 +248,12 @@ let process_l1_operation (type kind) ~finalized node_ctxt head ~source
     let*! () = Daemon_event.included_operation ~finalized operation result in
     match result with
     | Applied success_result ->
-        let process =
-          if finalized then process_finalized_l1_operation
-          else process_included_l1_operation
-        in
-        process node_ctxt head ~source operation success_result
+        process_included_l1_operation
+          node_ctxt
+          head
+          ~source
+          operation
+          success_result
     | _ ->
         (* No action for non successful operations  *)
         return_unit
@@ -374,17 +375,14 @@ let rec process_head (node_ctxt : _ Node_context.t)
       let l2_block =
         Sc_rollup_block.{header; content = (); num_ticks; initial_tick}
       in
-      let* finalized_block, _ =
-        Node_context.nth_predecessor
+      let level = Raw_level.to_int32 level in
+      let* () =
+        Node_context.mark_finalized_level
           node_ctxt
-          node_ctxt.block_finality_time
-          head
+          Int32.(sub level (of_int node_ctxt.block_finality_time))
       in
-      let* () = processed_finalized_block node_ctxt finalized_block in
       let* () = Node_context.save_l2_head node_ctxt l2_block in
-      let*! () =
-        Daemon_event.new_head_processed hash (Raw_level.to_int32 level)
-      in
+      let*! () = Daemon_event.new_head_processed hash level in
       return_unit
 
 (* [on_layer_1_head node_ctxt head] processes a new head from the L1. It
