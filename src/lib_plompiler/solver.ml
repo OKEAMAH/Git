@@ -45,7 +45,7 @@ type arith_desc = {
 
 type pow5_desc = {a : int; c : int} [@@deriving repr]
 
-type wires_desc = int array [@@deriving repr]
+type wires_desc = wire array [@@deriving repr]
 
 type lookup_desc = {
   a : int tagged;
@@ -295,13 +295,19 @@ let solve_one trace solver =
       trace.(wd) <- entry.(3) ;
       trace.(we) <- entry.(4)
   | IsZero wires ->
-      let av = trace.(wires.(0)) in
-      trace.(wires.(2)) <- S.(if av = zero then one else zero) ;
-      trace.(wires.(1)) <- S.(if av = zero then one else S.div_exn one av)
+      let (W a) = wires.(0) in
+      let (W b) = wires.(1) in
+      let (W c) = wires.(2) in
+      let av = trace.(a) in
+      trace.(c) <- S.(if av = zero then one else zero) ;
+      trace.(b) <- S.(if av = zero then one else S.div_exn one av)
   | IsNotZero wires ->
-      let av = trace.(wires.(0)) in
-      trace.(wires.(2)) <- S.(if av = zero then zero else one) ;
-      trace.(wires.(1)) <- S.(if av = zero then one else S.div_exn one av)
+      let (W a) = wires.(0) in
+      let (W b) = wires.(1) in
+      let (W c) = wires.(2) in
+      let av = trace.(a) in
+      trace.(c) <- S.(if av = zero then zero else one) ;
+      trace.(b) <- S.(if av = zero then one else S.div_exn one av)
   | Ecc_Ws {x1; y1; x2; y2; x3; y3} ->
       let x1, y1 = (trace.(x1), trace.(y1)) in
       let x2, y2 = (trace.(x2), trace.(y2)) in

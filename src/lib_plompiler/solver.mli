@@ -46,7 +46,7 @@ type arith_desc = {
 
 type pow5_desc = {a : int; c : int}
 
-type wires_desc = int array
+type wires_desc = wire array
 
 type lookup_desc = {
   a : int tagged;

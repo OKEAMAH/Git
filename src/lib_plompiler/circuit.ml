@@ -543,7 +543,7 @@ module Num = struct
              "is_zero";
          |]
        in
-       let solver = IsZero [|l; r; bit|] in
+       let solver = IsZero [|W l; W r; W bit|] in
        append gate ~solver >* assert_nonzero (Scalar r) >* ret @@ Bool bit
 
   let is_not_zero (Scalar l) =
@@ -561,7 +561,7 @@ module Num = struct
              "is_not_zero";
          |]
        in
-       let solver = IsNotZero [|l; r; bit|] in
+       let solver = IsNotZero [|W l; W r; W bit|] in
        append gate ~solver >* assert_nonzero (Scalar r) >* ret @@ Bool bit
 
   let assert_bool (Scalar l) =
