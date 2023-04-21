@@ -838,12 +838,9 @@ module Auto_build_cmd = struct
       Some (Auto_build {bench_names; auto_build_options}) ;
     Lwt.return_ok ()
 
-  let group =
-    {Tezos_clic.name = "auto-build"; title = "Command for automatic build"}
-
   let params =
     Tezos_clic.(
-      prefixes ["auto-build"] @@ seq_of_param
+      prefixes ["generate"; "code"; "for"; "benchmarks"] @@ seq_of_param
       @@ Benchmark_cmd.benchmark_param ())
 
   let destination_directory_arg =
@@ -857,7 +854,7 @@ module Auto_build_cmd = struct
 
   let command =
     Tezos_clic.command
-      ~group
+      ~group:Codegen_cmd.group
       ~desc:
         "Auto-perform the benchmarks, inference and codegen for the given \
          benchmarks"
