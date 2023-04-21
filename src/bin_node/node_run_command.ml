@@ -517,7 +517,7 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
   let internal_events =
     Tezos_base_unix.Internal_event_unix.make_with_defaults
       ~enable_default_daily_logs_at:
-        Filename.Infix.(config.data_dir // "daily_logs")
+        (Data_version.daily_logs_dir config.data_dir)
       ?internal_events:config.internal_events
       ()
   in

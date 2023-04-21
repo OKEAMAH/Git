@@ -26,6 +26,8 @@
 
 open Filename.Infix
 
+let default_daily_logs_dir_name = "daily_logs"
+
 let store_dir data_dir = data_dir // "store"
 
 let context_dir data_dir = data_dir // "context"
@@ -33,6 +35,8 @@ let context_dir data_dir = data_dir // "context"
 let protocol_dir data_dir = data_dir // "protocol"
 
 let lock_file data_dir = data_dir // "lock"
+
+let daily_logs_dir data_dir = data_dir // default_daily_logs_dir_name
 
 let default_identity_file_name = "identity.json"
 
@@ -411,7 +415,8 @@ let ensure_data_dir ~mode data_dir =
               s <> "." && s <> ".." && s <> version_file_name
               && s <> default_identity_file_name
               && s <> default_config_file_name
-              && s <> default_peers_file_name)
+              && s <> default_peers_file_name
+              && s <> default_daily_logs_dir_name)
             files
         in
         match (files, mode) with

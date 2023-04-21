@@ -50,6 +50,7 @@ val default_peers_file_name : string
             - the identity file;
             - the configuration file;
             - the peer list file;
+            - the daily logs directory
       Otherwise, creates an fresh directory.
     - Is_compatible: similar to [Exists] but, additionally, will
       check the version compatibility.
@@ -83,13 +84,18 @@ val store_dir : string -> string
 
 (** [context_dir dir] is a directory within [dir] that the node uses
     for its context. In order for [context_dir dir] to be valid, [dir]
-    must be a valid directory name.*)
+    must be a valid directory name. *)
 val context_dir : string -> string
 
 (** [protocol_dir dir] is a directory within [dir] that the node uses
     for its protocol. In order for [protocol_dir dir] to be valid,
-    [dir] must be a valid directory name.*)
+    [dir] must be a valid directory name. *)
 val protocol_dir : string -> string
+
+(** [daily_logs_dir dir] is a directory within [dir] that the node uses for its
+    daily logs. In order for [daily_logs_dir dir] to be valid, [dir] must be a
+    valid directory name. *)
+val daily_logs_dir : string -> string
 
 (** [lock_file dir] is a file within [dir] that the node uses for its
     lock. In order for [lock_file dir] to be valid, [dir] must be a
