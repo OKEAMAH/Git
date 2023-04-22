@@ -917,7 +917,7 @@ module Auto_build = struct
       Namespace.Hashtbl.iter
         (fun ns state ->
           Option.iter
-            (fun measurement -> Namespace.Hashtbl.replace tbl ns measurement)
+            (Namespace.Hashtbl.add tbl ns)
             state.measurement)
         state_tbl ;
       tbl
