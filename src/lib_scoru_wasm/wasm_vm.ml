@@ -656,7 +656,6 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
               let* res = reveal_builtins.reveal_metadata () in
               reveal_step (Bytes.of_string res) pvm_state
           | _ ->
-              Printf.eprintf "\n missed reveal\n" ;
               compute_step_with_host_functions
                 ~version
                 ~stack_size_limit

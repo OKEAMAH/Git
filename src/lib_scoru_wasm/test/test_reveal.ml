@@ -409,6 +409,8 @@ let apply_fast ?(images = Preimage_map.empty) tree =
       {
         reveal_preimage =
           (fun hash ->
+            (*Printf.eprintf "\n hash = |%s|\n" (to_hex_string ~tag:"" hash);
+              Preimage_map.iter (fun k v -> Printf.eprintf ":: %s , %s :: " k v) images;*)
             match Preimage_map.find hash images with
             | None -> Stdlib.failwith "Failed to find preimage"
             | Some preimage -> Lwt.return preimage);
@@ -506,6 +508,117 @@ let test_fast_exec_reveal ~version () =
 
   Lwt_result_syntax.return_unit
 
+let test_fast_exec_partial_reveal ~version () =
+  let open Lwt.Syntax in
+  let example_preimage =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse \
+     elementum nec ex sed porttitor."
+    (* 100 bytes *)
+  in
+  let scalar_bytes_amount = Bls12_381.Fr.size_in_bytes - 1 in
+  let size = String.length example_preimage in
+  let remaining_bytes = size mod scalar_bytes_amount in
+  (* Maximum number of coefficients of the polynomial,
+     we take the next power of two for the FFT. *)
+  let len =
+    1
+    lsl Z.log2up
+          (Z.of_int
+             ((size / scalar_bytes_amount)
+             + if remaining_bytes <> 0 then 1 else 0))
+  in
+  let dummy_srs =
+    Octez_bls12_381_polynomial.Srs.Srs_g1.generate_insecure
+      len
+      (Bls12_381.Fr.random ())
+  in
+
+  (* TODO rename hash to commitment, same for wasm code *)
+  let data = Tezos_crypto_dal.Cryptobox.string_to_polynomial example_preimage in
+  let commitment' =
+    Octez_bls12_381_polynomial.Srs.Srs_g1.pippenger
+      (Obj.magic dummy_srs)
+      (Obj.magic data)
+  in
+  let commitment' = Obj.magic commitment' in
+
+  let example_hash =
+    commitment' |> Obj.magic |> Bls12_381.G1.to_bytes |> Bytes.to_string
+  in
+  Printf.eprintf
+    "\n example_hash = |%s| \n"
+    (to_hex_string ~tag:"" example_hash) ;
+
+  let images = Preimage_map.singleton example_hash example_preimage in
+
+  let kernel =
+    Format.asprintf
+      {|
+(module
+  (import
+    "smart_rollup_core"
+    "store_write"
+    (func $store_write (param i32 i32 i32 i32 i32) (result i32))
+  )
+
+  (import
+    "smart_rollup_core"
+    "reveal_preimage"
+    (func $reveal_preimage (param i32 i32 i32 i32) (result i32))
+  )
+
+  (memory 1)
+  (export "memory" (memory 0))
+
+  (data (i32.const 0) "%s") ;; The hash we want to reveal
+  (data (i32.const 192) "/foo")
+
+  (func (export "kernel_run") (local $len i32)
+    ;; Reveal something
+    (call $reveal_preimage
+      ;; Address of the hash
+      (i32.const 0)
+      ;; Size of the hash
+      (i32.const 96)
+      ;; Destination address and length
+      (i32.const 1000) (i32.const 1000)
+    )
+    (local.set $len)
+
+    ;; Write the preimage to the output buffer
+    (call $store_write
+      ;; Key address and length
+      (i32.const 192) (i32.const 4)
+      ;; Offset into the target value
+      (i32.const 0)
+      ;; Memory address and length of the payload to write
+      (i32.const 1000) (local.get $len)
+    )
+    (drop)
+  )
+)
+  |}
+      (to_hex_string ~tag:"" example_hash)
+  in
+
+  let* tree = initial_tree ~version kernel in
+  let* tree = eval_until_input_or_reveal_requested tree in
+  let* tree = set_empty_inbox_step 0l tree in
+  let* tree = apply_fast ~images tree in
+
+  let* durable = wrap_as_durable_storage tree in
+  let durable = Durable.of_storage_exn durable in
+
+  let* written_value =
+    Durable.(find_value_exn durable (key_of_string_exn "/foo"))
+  in
+  let* written_value =
+    Tezos_lazy_containers.Chunked_byte_vector.to_string written_value
+  in
+  assert (String.equal written_value example_preimage) ;
+
+  Lwt_result_syntax.return_unit
+
 let tests =
   tztests_with_pvm
     ~versions:[V0; V1]
@@ -519,6 +632,9 @@ let tests =
       ( "Test reveal_partial_preimage with preimage length below max_bytes",
         `Quick,
         test_reveal_partial_preimage_classic );
-      (*("Test reveal_metadata", `Quick, test_reveal_metadata);
-        ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);*)
+      ("Test reveal_metadata", `Quick, test_reveal_metadata);
+      ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);
+      ( "Test reveal_partial_preimage with Fast Exec",
+        `Quick,
+        test_fast_exec_partial_reveal );
     ]
