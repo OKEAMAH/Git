@@ -225,13 +225,40 @@ let test_reveal_preimage_above_max ~version () =
   test_reveal_preimage_gen ~version preimage max_bytes
 
 let test_reveal_partial_preimage_gen ~version preimage max_bytes =
-  let open Lwt_result_syntax in
+  let scalar_bytes_amount = Bls12_381.Fr.size_in_bytes - 1 in
+  let size = String.length preimage in
+  let remaining_bytes = size mod scalar_bytes_amount in
+  (* Maximum number of coefficients of the polynomial,
+     we take the next power of two for the FFT. *)
+  let len =
+    1
+    lsl Z.log2up
+          (Z.of_int
+             ((size / scalar_bytes_amount)
+             + if remaining_bytes <> 0 then 1 else 0))
+  in
+  let dummy_srs =
+    Octez_bls12_381_polynomial.Srs.Srs_g1.generate_insecure
+      len
+      (Bls12_381.Fr.random ())
+  in
+
   let hash_addr = 120l in
   let preimage_addr = 200l in
   (* TODO rename hash to commitment, same for wasm code *)
   let hash_size = Int32.of_int Bls12_381.G1.size_in_bytes in
-  let commitment' = Bls12_381.G1.(copy zero) in
-  let hash = commitment' |> Bls12_381.G1.to_bytes |> Bytes.to_string in
+  let data = Tezos_crypto_dal.Cryptobox.string_to_polynomial preimage in
+  let commitment' =
+    Octez_bls12_381_polynomial.Srs.Srs_g1.pippenger
+      (Obj.magic dummy_srs)
+      (Obj.magic data)
+  in
+  let commitment' = Obj.magic commitment' in
+
+  let hash =
+    commitment' |> Obj.magic |> Bls12_381.G1.to_bytes |> Bytes.to_string
+  in
+  let open Lwt_result_syntax in
   Printf.eprintf "\n hash = %s \n" (to_hex_string ~tag:"" hash) ;
   let modl =
     reveal_partial_preimage_module
