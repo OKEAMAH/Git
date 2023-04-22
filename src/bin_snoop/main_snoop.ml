@@ -213,14 +213,11 @@ and infer_cmd_full_auto model_name workload_data solver
   if Dep_graph.Graph.is_empty graph then (
     Format.eprintf "Empty dependency graph.@." ;
     exit 1) ;
-  Format.eprintf "Performing topological run@." ;
   Option.iter
     (fun filename -> Dep_graph.Graph.save_graphviz graph filename)
     infer_opts.dot_file ;
-  (* sorted in the topological order *)
-  let solution =
-    List.rev @@ Dep_graph.Graph.fold (fun solved acc -> solved :: acc) graph []
-  in
+  Format.eprintf "Performing topological run@." ;
+  let solution = Dep_graph.Graph.to_sorted_list graph in
   ignore @@ infer_for_measurements
     ~model_name
     measurements
