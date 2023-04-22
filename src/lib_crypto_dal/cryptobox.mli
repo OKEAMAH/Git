@@ -114,36 +114,6 @@ type error += Failed_to_load_trusted_setup of string
 (** [Invalid_precomputation_hash], thrown by {!load_precompute_shards_proofs}. *)
 type error += Invalid_precomputation_hash of (string, string) error_container
 
-module Verifier :
-  VERIFIER
-    with type t = t
-     and type parameters = parameters
-     and type commitment = commitment
-     and type commitment_proof = commitment_proof
-     and type page_proof = page_proof
-     and type ('a, 'b) error_container = ('a, 'b) error_container
-
-include
-  VERIFIER
-    with type t := t
-     and type parameters := parameters
-     and type commitment := commitment
-     and type commitment_proof := commitment_proof
-     and type page_proof := page_proof
-     and type ('a, 'b) error_container := ('a, 'b) error_container
-
-(** The primitives exposed in this modules require some
-   preprocessing. This preprocessing generates data from an unknown
-   secret. For the security of those primitives, it is important that
-   the secret is unknown. *)
-type initialisation_parameters
-
-module Commitment : sig
-  include COMMITMENT with type t = commitment
-
-  val rpc_arg : commitment Resto.Arg.t
-end
-
 (** A slot is a byte sequence corresponding to some data. *)
 type slot = bytes
 
@@ -160,6 +130,38 @@ type scalar
       2. A commitment can be used to verify that a page of fixed size
       (typically [page_size]) is part of the original slot. *)
 type polynomial
+
+module Verifier :
+  VERIFIER
+    with type t = t
+     and type parameters = parameters
+     and type polynomial = polynomial
+     and type commitment = commitment
+     and type commitment_proof = commitment_proof
+     and type page_proof = page_proof
+     and type ('a, 'b) error_container = ('a, 'b) error_container
+
+include
+  VERIFIER
+    with type t := t
+     and type parameters := parameters
+     and type polynomial := polynomial
+     and type commitment := commitment
+     and type commitment_proof := commitment_proof
+     and type page_proof := page_proof
+     and type ('a, 'b) error_container := ('a, 'b) error_container
+
+(** The primitives exposed in this modules require some
+   preprocessing. This preprocessing generates data from an unknown
+   secret. For the security of those primitives, it is important that
+   the secret is unknown. *)
+type initialisation_parameters
+
+module Commitment : sig
+  include COMMITMENT with type t = commitment
+
+  val rpc_arg : commitment Resto.Arg.t
+end
 
 (** [polynomial_degree polynomial] returns the degree of the
      polynomial. *)

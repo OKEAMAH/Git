@@ -1633,6 +1633,39 @@ module Inner = struct
 
   let proof_single_to_bytes = Bls12_381.G1.to_bytes
 
+  (* Converts a string to its polynomial representation for
+     use in the KZG commitment scheme. *)
+  let string_to_polynomial s =
+    (* The maximum number of bytes fitting in an Fr.t element. *)
+    let scalar_bytes_amount = Bls12_381.Fr.size_in_bytes - 1 in
+    let b = String.to_bytes s in
+    let size = Bytes.length b in
+    let remaining_bytes = size mod scalar_bytes_amount in
+    (* Maximum number of coefficients of the polynomial,
+       we take the next power of two for the FFT. *)
+    let len =
+      1
+      lsl Z.log2up
+            (Z.of_int
+               ((size / scalar_bytes_amount)
+               + if remaining_bytes <> 0 then 1 else 0))
+    in
+    let offset = ref 0 in
+    let v = Array.init len (fun _ -> Bls12_381.Fr.(copy zero)) in
+    let buf = ref (Bytes.create scalar_bytes_amount) in
+    for i = 0 to (size / scalar_bytes_amount) - 1 do
+      (* TODO check create is not with size 0 in loops from dal cryptobox *)
+      Bytes.blit b !offset !buf 0 scalar_bytes_amount ;
+      offset := !offset + scalar_bytes_amount ;
+      v.(i) <- Bls12_381.Fr.of_bytes_exn !buf
+    done ;
+    if remaining_bytes <> 0 then (
+      Bytes.blit b !offset !buf 0 remaining_bytes ;
+      v.(size / scalar_bytes_amount) <- Bls12_381.Fr.of_bytes_exn !buf) ;
+    (* Interpolate data *)
+    let dom = Octez_bls12_381_polynomial.Domain.build len in
+    Octez_bls12_381_polynomial.Evaluations.interpolation_fft2 dom v
+
   let prove_single (t : t) p z :
       ( Bls12_381.G1.t,
         [> `Invalid_degree_strictly_less_than_expected of

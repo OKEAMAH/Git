@@ -163,6 +163,8 @@ module type VERIFIER = sig
 
   val proof_single_to_bytes : proof_single -> bytes
 
+  val string_to_polynomial : string -> polynomial
+
   val prove_single :
     t ->
     polynomial ->
