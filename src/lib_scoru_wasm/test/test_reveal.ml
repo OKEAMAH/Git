@@ -58,7 +58,7 @@ let reveal_preimage_module hash hash_addr hash_size preimage_addr max_bytes =
     preimage_addr
     max_bytes
 
-let reveal_partial_preimage_module hash hash_addr hash_size preimage_addr
+let reveal_partial_preimage_module hash hash_addr hash_size preimage_addr index
     max_bytes =
   Format.sprintf
     {|
@@ -79,7 +79,7 @@ let reveal_partial_preimage_module hash hash_addr hash_size preimage_addr
     hash_addr
     hash_size
     preimage_addr
-    10l
+    index
     max_bytes
 
 let reveal_metadata_module metadata_addr =
@@ -244,7 +244,7 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   in
 
   let hash_addr = 120l in
-  let preimage_addr = 200l in
+  let preimage_addr = 201l in
   (* TODO rename hash to commitment, same for wasm code *)
   let hash_size = Int32.of_int Bls12_381.G1.size_in_bytes in
   let data = Tezos_crypto_dal.Cryptobox.string_to_polynomial preimage in
@@ -259,13 +259,18 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
     commitment' |> Obj.magic |> Bls12_381.G1.to_bytes |> Bytes.to_string
   in
   let open Lwt_result_syntax in
-  Printf.eprintf "\n hash = %s \n" (to_hex_string ~tag:"" hash) ;
+  Printf.eprintf
+    "\n hash = %s , max bytes = %ld\n"
+    (to_hex_string ~tag:"" hash)
+    max_bytes ;
+  let index = 1l in
   let modl =
     reveal_partial_preimage_module
       (to_hex_string ~tag:"" hash)
       hash_addr
       hash_size
       preimage_addr
+      index
       max_bytes
   in
   let*! state = initial_tree ~version modl in
@@ -287,13 +292,23 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
     let open Wasm_pvm_state in
     match info.Wasm_pvm_state.input_request with
     | Wasm_pvm_state.Reveal_required
-        (Reveal_partial_raw_data {commitment; start = _; length = _}) ->
+        (Reveal_partial_raw_data {commitment; start; length}) ->
         (* The PVM has reached a point where it’s asking for some preimage. *)
+        Printf.eprintf "\n start = %d , length = %d\n" start length ;
         assert (Bls12_381.G1.eq commitment commitment') ;
+        assert (
+          start
+          = Int32.to_int preimage_addr
+            + (Int32.to_int index * Bls12_381.G1.size_in_bytes)) ;
+        assert (length = Int32.to_int max_bytes) ;
         return_unit
     | No_input_required | Input_required | Reveal_required _ -> assert false
   in
-  let*! state = Wasm.reveal_step (Bytes.of_string preimage) state in
+  let*! state =
+    Wasm.reveal_step
+      (Bytes.of_string (String.sub preimage 0 (Int32.to_int max_bytes)))
+      state
+  in
   let*! info = Wasm.get_info state in
   let* () =
     let open Wasm_pvm_state in
@@ -316,6 +331,11 @@ let test_reveal_partial_preimage_gen ~version preimage max_bytes =
   let*! preimage_in_memory =
     Memory.load_bytes memory preimage_addr expected_length
   in
+  Printf.eprintf
+    "\npreim = %s, max_bytes=%ld, expected_length=%d\n"
+    preimage_in_memory
+    max_bytes
+    expected_length ;
   assert (
     preimage_in_memory = String.sub preimage 0 (Int32.to_int returned_size)) ;
   return_unit
@@ -328,7 +348,7 @@ let test_reveal_partial_preimage_classic ~version () =
      elementum nec ex sed porttitor."
     (* 100 bytes *)
   in
-  let max_bytes = 200l in
+  let max_bytes = Int32.of_int Bls12_381.G1.size_in_bytes in
   test_reveal_partial_preimage_gen ~version preimage max_bytes
 
 let test_reveal_metadata ~version () =

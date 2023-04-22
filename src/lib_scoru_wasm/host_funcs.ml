@@ -1249,7 +1249,7 @@ let reveal_partial_preimage_parse_args memories args =
         Num (I32 commitment_addr);
         Num (I32 commitment_size);
         Num (I32 base);
-        Num (I32 _index);
+        Num (I32 index);
         Num (I32 max_bytes);
       ] ->
       let open Lwt_result_syntax in
@@ -1257,7 +1257,6 @@ let reveal_partial_preimage_parse_args memories args =
       let* commitment =
         Aux.load_bytes ~memory ~addr:commitment_addr ~size:commitment_size
       in
-      Printf.eprintf "\nOKKKKK!!!!\n" ;
       Lwt_result.return
         ( Host_funcs.(
             Reveal_partial_raw_data
@@ -1265,7 +1264,9 @@ let reveal_partial_preimage_parse_args memories args =
                 commitment =
                   (* TODO the commitment should be a string and interpreted outside of the PVM? *)
                   Bls12_381.G1.of_bytes_exn (Bytes.of_string commitment);
-                start = Int32.to_int base;
+                start =
+                  Int32.to_int base
+                  + (Int32.to_int index * Bls12_381.G1.size_in_bytes);
                 length = Int32.to_int max_bytes;
               }),
           Host_funcs.{base; max_bytes} )
