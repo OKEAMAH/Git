@@ -447,6 +447,9 @@ let valid (type state proof output)
         check
           (Sc_rollup_reveal_hash.equal data_hash expected_hash)
           "Invalid reveal"
+    | ( Some (Reveal_proof (Partial_raw_data_proof p)),
+        Needs_reveal (Reveal_partial_raw_data p') ) ->
+        check (Dal.Commitment.equal p.commitment p'.commitment) "Invalid reveal"
     | Some (Reveal_proof Metadata_proof), Needs_reveal Reveal_metadata ->
         return_unit
     | ( Some (Reveal_proof (Dal_page_proof {page_id; proof = _})),
