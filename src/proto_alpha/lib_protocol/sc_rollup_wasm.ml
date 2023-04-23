@@ -400,7 +400,11 @@ module V2_0_0 = struct
           let* s = get in
           let* s = lift (WASM_machine.reveal_step (Bytes.of_string data) s) in
           set s
-      | PS.Reveal (PS.Partial_raw_data _) -> (* TODO complete *) return ()
+      | PS.Reveal (PS.Partial_raw_data {data; _}) ->
+          (* TODO no check performed? *)
+          let* s = get in
+          let* s = lift (WASM_machine.reveal_step (Bytes.of_string data) s) in
+          set s
       | PS.Reveal (PS.Metadata metadata) ->
           let metadata_bytes =
             Data_encoding.Binary.to_bytes_exn
