@@ -50,7 +50,7 @@ let init config store cctxt =
           Uri.of_string ("http://" ^ addr ^ ":" ^ string_of_int port)
         in
         Dal_node_client.make_unix_cctxt endpoint)
-      config.Configuration.neighbors
+      config.Configuration.neighbors_rpc_endpoints
   in
   {
     status = Starting;

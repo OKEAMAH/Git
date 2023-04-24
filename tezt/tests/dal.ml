@@ -272,7 +272,7 @@ let scenario_with_all_nodes ?custom_constants ?node_arguments ?attestation_lag
         client
         key)
 
-let update_neighbors dal_node neighbors =
+let update_neighbors_rpc_endpoints dal_node neighbors =
   let neighbors =
     `A
       (List.map
@@ -286,7 +286,9 @@ let update_neighbors dal_node neighbors =
   in
   Dal_node.Config_file.update
     dal_node
-    (JSON.put ("neighbors", JSON.annotate ~origin:"dal_node_config" neighbors))
+    (JSON.put
+       ( "neighbors-rpc-endpoints",
+         JSON.annotate ~origin:"dal_node_config" neighbors ))
 
 let wait_for_stored_slot dal_node slot_header =
   Dal_node.wait_for dal_node "stored_slot_shards.v0" (fun e ->
@@ -1266,8 +1268,8 @@ let test_dal_node_test_slots_propagation _protocol parameters cryptobox node
   let* _ = Dal_node.init_config dal_node2 in
   let* _ = Dal_node.init_config dal_node3 in
   let* _ = Dal_node.init_config dal_node4 in
-  update_neighbors dal_node3 [dal_node1; dal_node2] ;
-  update_neighbors dal_node4 [dal_node3] ;
+  update_neighbors_rpc_endpoints dal_node3 [dal_node1; dal_node2] ;
+  update_neighbors_rpc_endpoints dal_node4 [dal_node3] ;
   let* () = Dal_node.run dal_node2 in
   let* () = Dal_node.run dal_node3 in
   let* () = Dal_node.run dal_node4 in
@@ -2200,7 +2202,7 @@ let create_additional_nodes ~protocol ~extra_node_operators rollup_address
 
       (* We connect the fresh DAL node to another node, start it and update the
          value of [connect_dal_node_to] to generate the topology above: *)
-      update_neighbors fresh_dal_node [!connect_dal_node_to] ;
+      update_neighbors_rpc_endpoints fresh_dal_node [!connect_dal_node_to] ;
       let* () = Dal_node.run fresh_dal_node in
       connect_dal_node_to :=
         if index mod 2 = 0 then fresh_dal_node else dal_node ;

@@ -30,7 +30,7 @@ type t = {
   data_dir : string;
   rpc_addr : string;
   rpc_port : int;
-  neighbors : socket_addr list;
+  neighbors_rpc_endpoints : socket_addr list;
 }
 
 let default_data_dir = Filename.concat (Sys.getenv "HOME") ".tezos-dal-node"
@@ -59,10 +59,10 @@ let neighbor_encoding : socket_addr Data_encoding.t =
 let encoding : t Data_encoding.t =
   let open Data_encoding in
   conv
-    (fun {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors} ->
-      (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors))
-    (fun (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors) ->
-      {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors})
+    (fun {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors_rpc_endpoints} ->
+      (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors_rpc_endpoints))
+    (fun (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors_rpc_endpoints) ->
+      {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors_rpc_endpoints})
     (obj5
        (dft
           "use_unsafe_srs"
@@ -77,7 +77,7 @@ let encoding : t Data_encoding.t =
        (dft "rpc-addr" ~description:"RPC address" string default_rpc_addr)
        (dft "rpc-port" ~description:"RPC port" uint16 default_rpc_port)
        (dft
-          "neighbors"
+          "neighbors-rpc-endpoints"
           ~description:"DAL Neighbors"
           (list neighbor_encoding)
           default_neighbors))

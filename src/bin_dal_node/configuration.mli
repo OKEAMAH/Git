@@ -31,7 +31,7 @@ type t = {
   data_dir : string;  (** The path to the DAL node data directory *)
   rpc_addr : string;  (** The address the DAL node listens to *)
   rpc_port : int;  (** The port the DAL node listens to *)
-  neighbors : socket_addr list;
+  neighbors_rpc_endpoints : socket_addr list;
       (** List of neighbors to reach withing the DAL *)
 }
 
