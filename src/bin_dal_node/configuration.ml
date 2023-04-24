@@ -45,7 +45,7 @@ let default_rpc_addr = "127.0.0.1"
 
 let default_rpc_port = 10732
 
-let default_neighbors = []
+let default_neighbors_rpc_addr = []
 
 let default_use_unsafe_srs = false
 
@@ -78,9 +78,9 @@ let encoding : t Data_encoding.t =
        (dft "rpc-port" ~description:"RPC port" uint16 default_rpc_port)
        (dft
           "neighbors-rpc-endpoints"
-          ~description:"DAL Neighbors"
+          ~description:"DAL RPC Neighbors"
           (list socket_addr_encoding)
-          default_neighbors))
+          default_neighbors_rpc_addr))
 
 type error += DAL_node_unable_to_write_configuration_file of string
 

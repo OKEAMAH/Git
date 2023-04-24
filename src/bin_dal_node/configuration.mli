@@ -32,7 +32,7 @@ type t = {
   rpc_addr : string;  (** The address the DAL node listens to *)
   rpc_port : int;  (** The port the DAL node listens to *)
   neighbors_rpc_endpoints : socket_addr list;
-      (** List of neighbors to reach withing the DAL *)
+      (** List of neighbors to reach via RPC withing the DAL *)
 }
 
 (** [filename config] gets the path to config file *)
