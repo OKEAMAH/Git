@@ -50,26 +50,47 @@ let make_unix_cctxt ~scheme ~host ~port =
    hash of the protocol that the coordinator was using when the page hash
    was computed.
 *)
-let get_preimage (cctxt : #cctxt) ~page_hash =
-  cctxt#call_service RPC_services.get_preimage ((), page_hash) () ()
+let get_preimage (cctxt : #cctxt) api_version ~page_hash =
+  cctxt#call_service
+    RPC_services.get_preimage
+    (((), api_version), page_hash)
+    ()
+    ()
 
-let post_store_preimage (cctxt : #cctxt) ~payload ~pagination_scheme =
+let post_store_preimage (cctxt : #cctxt) ~payload ~pagination_scheme api_version
+    =
   cctxt#call_service
     RPC_services.post_store_preimage
-    ()
+    ((), api_version)
     ()
     (payload, pagination_scheme)
 
-let get_verify_signature (cctxt : #cctxt) ~external_message =
-  cctxt#call_service RPC_services.get_verify_signature () external_message ()
+let get_verify_signature (cctxt : #cctxt) ~external_message api_version =
+  cctxt#call_service
+    RPC_services.get_verify_signature
+    ((), api_version)
+    external_message
+    ()
 
-let put_dac_member_signature (cctxt : #cctxt) ~signature =
-  cctxt#call_service RPC_services.put_dac_member_signature () () signature
+let put_dac_member_signature (cctxt : #cctxt) ~signature api_version =
+  cctxt#call_service
+    RPC_services.put_dac_member_signature
+    ((), api_version)
+    ()
+    signature
 
-let get_certificate (cctxt : #cctxt) ~root_page_hash =
-  cctxt#call_service RPC_services.get_certificate ((), root_page_hash) () ()
+let get_certificate (cctxt : #cctxt) ~root_page_hash api_version =
+  cctxt#call_service
+    RPC_services.get_certificate
+    (((), api_version), root_page_hash)
+    ()
+    ()
 
 module Coordinator = struct
-  let post_preimage (cctxt : #cctxt) ~payload =
-    cctxt#call_service RPC_services.Coordinator.post_preimage () () payload
+  let post_preimage (cctxt : #cctxt) ~payload api_version =
+    cctxt#call_service
+      RPC_services.Coordinator.post_preimage
+      ((), api_version)
+      ()
+      payload
 end

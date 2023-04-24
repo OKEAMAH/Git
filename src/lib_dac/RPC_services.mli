@@ -45,7 +45,7 @@ end
 val post_store_preimage :
   ( [`POST],
     unit,
-    unit,
+    unit * Api.version,
     unit,
     Bytes.t * Pagination_scheme.t,
     Dac_plugin.raw_hash * Bytes.t )
@@ -56,7 +56,13 @@ val post_store_preimage :
   of the DAL node must be the same that was used to produce the
   [external_message]. *)
 val get_verify_signature :
-  ([`GET], unit, unit, string option, unit, bool) Tezos_rpc.Service.service
+  ( [`GET],
+    unit,
+    unit * Api.version,
+    string option,
+    unit,
+    bool )
+  Tezos_rpc.Service.service
 
 (** GET dac/preimage requests the preimage of hash, consisting of a
     single page, from cctxt. When the request succeeds, the raw page will be
@@ -64,7 +70,7 @@ val get_verify_signature :
 val get_preimage :
   ( [`GET],
     unit,
-    unit * Dac_plugin.raw_hash,
+    (unit * Api.version) * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -73,14 +79,20 @@ val get_preimage :
 (** PUT dac/member_signature endpoint stores the [signature] 
   generated from signing [hex_root_hash] by [dac_member_pkh]. *)
 val put_dac_member_signature :
-  ([`PUT], unit, unit, unit, Signature_repr.t, unit) Tezos_rpc.Service.service
+  ( [`PUT],
+    unit,
+    unit * Api.version,
+    unit,
+    Signature_repr.t,
+    unit )
+  Tezos_rpc.Service.service
 
 (** GET dac/certificate endpoint returns the DAC certificate for the
   provided [root_page_hash]. *)
 val get_certificate :
   ( [`GET],
     unit,
-    unit * Dac_plugin.raw_hash,
+    (unit * Api.version) * Dac_plugin.raw_hash,
     unit,
     unit,
     Certificate_repr.t option )
@@ -92,7 +104,7 @@ val get_certificate :
 val get_missing_page :
   ( [`GET],
     unit,
-    unit * Dac_plugin.raw_hash,
+    (unit * Api.version) * Dac_plugin.raw_hash,
     unit,
     unit,
     Bytes.t )
@@ -107,7 +119,7 @@ module Coordinator : sig
   val post_preimage :
     ( [`POST],
       unit,
-      unit,
+      unit * Api.version,
       unit,
       Bytes.t,
       Dac_plugin.raw_hash )

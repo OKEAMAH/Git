@@ -353,47 +353,51 @@ let stream_certificate_update dac_plugin committee_members
 
 let handle_put_dac_member_signature dac_plugin certificate_streamers_opt
     rw_node_store page_store cctxt committee_members committee_member_signature
-    =
-  let open Lwt_result_syntax in
-  let ((module Plugin) : Dac_plugin.t) = dac_plugin in
-  let Signature_repr.{root_hash = raw_root_hash; _} =
-    committee_member_signature
-  in
-  let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-  let* () = check_coordinator_knows_root_hash dac_plugin page_store root_hash in
-  let* should_update_certificate =
-    should_update_certificate
-      dac_plugin
-      cctxt
-      rw_node_store
-      committee_members
-      committee_member_signature
-  in
-  if should_update_certificate then
-    let* () =
-      add_dac_member_signature
-        dac_plugin
-        rw_node_store
+    api_version =
+  match api_version with
+  | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+      let open Lwt_result_syntax in
+      let ((module Plugin) : Dac_plugin.t) = dac_plugin in
+      let Signature_repr.{root_hash = raw_root_hash; _} =
         committee_member_signature
-    in
-    let* aggregate_signature, witnesses =
-      update_aggregate_sig_store rw_node_store committee_members root_hash
-    in
-    let*? () =
-      Option.iter_e
-        (stream_certificate_update
-           dac_plugin
-           committee_members
-           Certificate_repr.
-             {root_hash = raw_root_hash; aggregate_signature; witnesses})
-        certificate_streamers_opt
-    in
-    return ()
-  else return ()
+      in
+      let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
+      let* () =
+        check_coordinator_knows_root_hash dac_plugin page_store root_hash
+      in
+      let* should_update_certificate =
+        should_update_certificate
+          dac_plugin
+          cctxt
+          rw_node_store
+          committee_members
+          committee_member_signature
+      in
+      if should_update_certificate then
+        let* () =
+          add_dac_member_signature
+            dac_plugin
+            rw_node_store
+            committee_member_signature
+        in
+        let* aggregate_signature, witnesses =
+          update_aggregate_sig_store rw_node_store committee_members root_hash
+        in
+        let*? () =
+          Option.iter_e
+            (stream_certificate_update
+               dac_plugin
+               committee_members
+               Certificate_repr.
+                 {root_hash = raw_root_hash; aggregate_signature; witnesses})
+            certificate_streamers_opt
+        in
+        return ()
+      else return ()
 
 module Coordinator = struct
   let handle_put_dac_member_signature ctx dac_plugin rw_node_store page_store
-      cctxt dac_member_signature =
+      cctxt dac_member_signature api_version =
     let committee_members = Node_context.Coordinator.committee_members ctx in
     handle_put_dac_member_signature
       dac_plugin
@@ -403,6 +407,7 @@ module Coordinator = struct
       cctxt
       committee_members
       dac_member_signature
+      api_version
 end
 
 module Legacy = struct
@@ -428,7 +433,7 @@ module Legacy = struct
         | Some signature -> return @@ (signature, witnesses))
 
   let handle_put_dac_member_signature ctx dac_plugin rw_node_store page_store
-      cctxt dac_member_signature =
+      cctxt dac_member_signature api_version =
     let committee_members = Node_context.Legacy.committee_members ctx in
     handle_put_dac_member_signature
       dac_plugin
@@ -438,4 +443,5 @@ module Legacy = struct
       cctxt
       committee_members
       dac_member_signature
+      api_version
 end

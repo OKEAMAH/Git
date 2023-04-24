@@ -28,7 +28,7 @@ module S : sig
   val root_hashes :
     ( [`GET],
       unit,
-      unit,
+      unit * RPC_services.Api.version,
       unit,
       unit,
       Dac_plugin.raw_hash )
@@ -38,7 +38,7 @@ module S : sig
   val certificate :
     ( [`GET],
       unit,
-      unit * Dac_plugin.raw_hash,
+      (unit * RPC_services.Api.version) * Dac_plugin.raw_hash,
       unit,
       unit,
       Certificate_repr.t )
@@ -52,6 +52,7 @@ end
 *)
 val root_hashes :
   #Tezos_rpc.Context.streamed ->
+  RPC_services.Api.version ->
   (Dac_plugin.raw_hash Lwt_stream.t * Tezos_rpc.Context.stopper)
   Error_monad.tzresult
   Lwt.t
@@ -59,6 +60,7 @@ val root_hashes :
 val certificate :
   #Tezos_rpc.Context.streamed ->
   Dac_plugin.raw_hash ->
+  RPC_services.Api.version ->
   (Certificate_repr.t Lwt_stream.t * Tezos_rpc.Context.stopper)
   Error_monad.tzresult
   Lwt.t

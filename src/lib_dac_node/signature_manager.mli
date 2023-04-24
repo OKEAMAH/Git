@@ -71,6 +71,7 @@ module Coordinator : sig
     Page_store.Filesystem.t ->
     #Client_context.wallet ->
     Signature_repr.t ->
+      RPC_services.Api.version ->
     unit tzresult Lwt.t
 end
 
@@ -103,5 +104,6 @@ module Legacy : sig
     Page_store.Filesystem.t ->
     #Client_context.wallet ->
     Signature_repr.t ->
+    RPC_services.Api.version ->
     unit tzresult Lwt.t
 end

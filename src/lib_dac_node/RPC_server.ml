@@ -58,101 +58,119 @@ let add_service registerer service handler directory =
   registerer directory service handler
 
 let handle_post_store_preimage dac_plugin cctxt dac_sk_uris page_store
-    hash_streamer (data, pagination_scheme) =
-  let open Lwt_result_syntax in
-  let open Pages_encoding in
-  let* root_hash =
-    match pagination_scheme with
-    | Pagination_scheme.Merkle_tree_V0 ->
-        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4897
-           Once new "PUT /preimage" endpoint is implemented, pushing
-           a new root hash to the data streamer should be moved there.
-           Tezt for testing streaming of root hashes should also use
-           the new endpoint. *)
-        let* root_hash =
-          Merkle_tree.V0.Filesystem.serialize_payload
-            dac_plugin
-            ~page_store
-            data
-        in
-        let () =
-          Data_streamer.publish hash_streamer (Dac_plugin.hash_to_raw root_hash)
-        in
-        let*! () =
-          Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
-        in
-        return root_hash
-    | Pagination_scheme.Hash_chain_V0 ->
-        Hash_chain.V0.serialize_payload
+    hash_streamer (data, pagination_scheme) api_version =
+  match api_version with
+  | RPC_services.Api.V0 -> (
+      let open Lwt_result_syntax in
+      let open Pages_encoding in
+      let* root_hash =
+        match pagination_scheme with
+        | Pagination_scheme.Merkle_tree_V0 ->
+            (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4897
+               Once new "PUT /preimage" endpoint is implemented, pushing
+               a new root hash to the data streamer should be moved there.
+               Tezt for testing streaming of root hashes should also use
+               the new endpoint. *)
+            let* root_hash =
+              Merkle_tree.V0.Filesystem.serialize_payload
+                dac_plugin
+                ~page_store
+                data
+            in
+            let () =
+              Data_streamer.publish
+                hash_streamer
+                (Dac_plugin.hash_to_raw root_hash)
+            in
+            let*! () =
+              Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
+            in
+            return root_hash
+        | Pagination_scheme.Hash_chain_V0 ->
+            Hash_chain.V0.serialize_payload
+              dac_plugin
+              ~for_each_page:(fun (hash, content) ->
+                Page_store.Filesystem.save dac_plugin page_store ~hash ~content)
+              data
+      in
+      let* signature, witnesses =
+        Signature_manager.Legacy.sign_root_hash
           dac_plugin
-          ~for_each_page:(fun (hash, content) ->
-            Page_store.Filesystem.save dac_plugin page_store ~hash ~content)
-          data
-  in
-  let* signature, witnesses =
-    Signature_manager.Legacy.sign_root_hash
-      dac_plugin
-      cctxt
-      dac_sk_uris
-      root_hash
-  in
-  let raw_root_hash = Dac_plugin.hash_to_raw root_hash in
-  let*! external_message =
-    External_message.Default.make dac_plugin root_hash signature witnesses
-  in
-  match external_message with
-  | Ok external_message -> return @@ (raw_root_hash, external_message)
-  | Error _ -> tzfail @@ Cannot_construct_external_message
+          cctxt
+          dac_sk_uris
+          root_hash
+      in
+      let raw_root_hash = Dac_plugin.hash_to_raw root_hash in
+      let*! external_message =
+        External_message.Default.make dac_plugin root_hash signature witnesses
+      in
+      match external_message with
+      | Ok external_message -> return @@ (raw_root_hash, external_message)
+      | Error _ -> tzfail @@ Cannot_construct_external_message)
+  | RPC_services.Api.V1 -> raise Not_found
 
-let handle_get_verify_signature dac_plugin public_keys_opt encoded_l1_message =
-  let open Lwt_result_syntax in
-  let ((module Plugin) : Dac_plugin.t) = dac_plugin in
-  let external_message =
-    let open Option_syntax in
-    let* encoded_l1_message in
-    let* as_bytes = Hex.to_bytes @@ `Hex encoded_l1_message in
-    External_message.Default.of_bytes Plugin.encoding as_bytes
-  in
-  match external_message with
-  | None -> tzfail @@ Cannot_deserialize_external_message
-  | Some {root_hash; signature; witnesses} ->
-      Signature_manager.verify
-        dac_plugin
-        ~public_keys_opt
-        (Dac_plugin.hash_to_raw root_hash)
-        signature
-        witnesses
+let handle_get_verify_signature dac_plugin public_keys_opt encoded_l1_message
+    api_version =
+  match api_version with
+  | RPC_services.Api.V0 -> (
+      let open Lwt_result_syntax in
+      let ((module Plugin) : Dac_plugin.t) = dac_plugin in
+      let external_message =
+        let open Option_syntax in
+        let* encoded_l1_message in
+        let* as_bytes = Hex.to_bytes @@ `Hex encoded_l1_message in
+        External_message.Default.of_bytes Plugin.encoding as_bytes
+      in
+      match external_message with
+      | None -> tzfail @@ Cannot_deserialize_external_message
+      | Some {root_hash; signature; witnesses} ->
+          Signature_manager.verify
+            dac_plugin
+            ~public_keys_opt
+            (Dac_plugin.hash_to_raw root_hash)
+            signature
+            witnesses)
+  | RPC_services.Api.V1 -> raise Not_found
 
-let handle_get_preimage dac_plugin page_store raw_hash =
-  let open Lwt_result_syntax in
-  let*? hash = Dac_plugin.raw_to_hash dac_plugin raw_hash in
-  Page_store.Filesystem.load dac_plugin page_store hash
+let handle_get_preimage dac_plugin page_store api_version raw_hash =
+  match api_version with
+  | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+      let open Lwt_result_syntax in
+      let*? hash = Dac_plugin.raw_to_hash dac_plugin raw_hash in
+      Page_store.Filesystem.load dac_plugin page_store hash
 
 (* Handler for subscribing to the streaming of root hashes via
    GET monitor/root_hashes RPC call. *)
-let handle_monitor_root_hashes hash_streamer =
-  let open Lwt_syntax in
-  let stream, stopper = Data_streamer.handle_subscribe hash_streamer in
-  let shutdown () = Lwt_watcher.shutdown stopper in
-  let next () = Lwt_stream.get stream in
-  let* () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
-  Tezos_rpc.Answer.return_stream {next; shutdown}
+let handle_monitor_root_hashes hash_streamer api_version =
+  match api_version with
+  | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+      let open Lwt_syntax in
+      let stream, stopper = Data_streamer.handle_subscribe hash_streamer in
+      let shutdown () = Lwt_watcher.shutdown stopper in
+      let next () = Lwt_stream.get stream in
+      let* () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
+      Tezos_rpc.Answer.return_stream {next; shutdown}
 
-let handle_get_certificate dac_plugin node_store raw_root_hash =
+let handle_get_certificate dac_plugin node_store raw_root_hash api_version =
+  match api_version with
+  | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+      let open Lwt_result_syntax in
+      let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
+
+      let+ value_opt = Store.Certificate_store.find node_store root_hash in
+      Option.map
+        (fun Store.{aggregate_signature; witnesses} ->
+          Certificate_repr.
+            {aggregate_signature; witnesses; root_hash = raw_root_hash})
+        value_opt
+
+let handle_get_missing_page cctxt page_store dac_plugin raw_root_hash
+    api_version =
   let open Lwt_result_syntax in
   let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-
-  let+ value_opt = Store.Certificate_store.find node_store root_hash in
-  Option.map
-    (fun Store.{aggregate_signature; witnesses} ->
-      Certificate_repr.
-        {aggregate_signature; witnesses; root_hash = raw_root_hash})
-    value_opt
-
-let handle_get_missing_page cctxt page_store dac_plugin raw_root_hash =
-  let open Lwt_result_syntax in
-  let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-  let remote_store = Page_store.Remote.(init {cctxt; page_store}) in
+  let remote_store =
+    Page_store.Remote.(init {cctxt; page_store; api_version})
+  in
   let* preimage =
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/5142
         Retrieve missing page from dac committee via "flooding". *)
@@ -165,127 +183,145 @@ let register_post_store_preimage ctx cctxt dac_sk_uris page_store hash_streamer
     directory =
   directory
   |> add_service
-       Tezos_rpc.Directory.register0
+       Tezos_rpc.Directory.register1
        RPC_services.post_store_preimage
-       (fun () input ->
+       (fun api_version () input ->
          handle_post_store_preimage
            ctx
            cctxt
            dac_sk_uris
            page_store
            hash_streamer
-           input)
+           input
+           api_version)
 
 let register_get_verify_signature dac_plugin public_keys_opt directory =
   directory
   |> add_service
-       Tezos_rpc.Directory.register0
+       Tezos_rpc.Directory.register1
        RPC_services.get_verify_signature
-       (fun external_message () ->
-         handle_get_verify_signature dac_plugin public_keys_opt external_message)
+       (fun api_version external_message () ->
+         handle_get_verify_signature
+           dac_plugin
+           public_keys_opt
+           external_message
+           api_version)
 
 let register_get_preimage dac_plugin page_store =
   add_service
-    Tezos_rpc.Directory.register1
+    Tezos_rpc.Directory.register2
     RPC_services.get_preimage
-    (fun hash () () -> handle_get_preimage dac_plugin page_store hash)
+    (fun api_version hash () () ->
+      handle_get_preimage dac_plugin page_store api_version hash)
 
 let register_monitor_root_hashes hash_streamer dir =
   Tezos_rpc.Directory.gen_register
     dir
     Monitor_services.S.root_hashes
-    (fun () () () -> handle_monitor_root_hashes hash_streamer)
+    (fun ((), api_version) () () ->
+      handle_monitor_root_hashes hash_streamer api_version)
 
 let register_get_certificate node_store dac_plugin =
   add_service
-    Tezos_rpc.Directory.register1
+    Tezos_rpc.Directory.register2
     RPC_services.get_certificate
-    (fun root_hash () () ->
-      handle_get_certificate dac_plugin node_store root_hash)
+    (fun api_version root_hash () () ->
+      handle_get_certificate dac_plugin node_store root_hash api_version)
 
 let register_get_missing_page dac_plugin page_store cctxt =
   add_service
-    Tezos_rpc.Directory.register1
+    Tezos_rpc.Directory.register2
     RPC_services.get_missing_page
-    (fun root_hash () () ->
-      handle_get_missing_page cctxt page_store dac_plugin root_hash)
+    (fun api_version root_hash () () ->
+      handle_get_missing_page cctxt page_store dac_plugin root_hash api_version)
 
 module Coordinator = struct
-  let handle_post_preimage dac_plugin page_store hash_streamer payload =
-    let open Lwt_result_syntax in
-    let* root_hash =
-      Pages_encoding.Merkle_tree.V0.Filesystem.serialize_payload
-        dac_plugin
-        ~page_store
-        payload
-    in
-    let () =
-      Data_streamer.publish hash_streamer (Dac_plugin.hash_to_raw root_hash)
-    in
-    let*! () =
-      Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
-    in
-    return @@ Dac_plugin.hash_to_raw root_hash
+  let handle_post_preimage dac_plugin page_store hash_streamer payload
+      api_version =
+    match api_version with
+    | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+        let open Lwt_result_syntax in
+        let* root_hash =
+          Pages_encoding.Merkle_tree.V0.Filesystem.serialize_payload
+            dac_plugin
+            ~page_store
+            payload
+        in
+        let () =
+          Data_streamer.publish hash_streamer (Dac_plugin.hash_to_raw root_hash)
+        in
+        let*! () =
+          Event.emit_root_hash_pushed_to_data_streamer dac_plugin root_hash
+        in
+        return @@ Dac_plugin.hash_to_raw root_hash
 
   let handle_monitor_certificate dac_plugin ro_node_store certificate_streamers
-      raw_root_hash committee_members =
-    let open Lwt_result_syntax in
-    let*? stream, stopper =
-      Certificate_streamers.handle_subscribe
-        dac_plugin
-        certificate_streamers
-        raw_root_hash
-    in
-    let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-    let*! () = Event.emit_new_subscription_to_certificate_updates root_hash in
-    let shutdown () = Lwt_watcher.shutdown stopper in
-    let next () = Lwt_stream.get stream in
-    (* Add the current certificate to the streamer, if any, to ensure that
-       a certificate is returned even in the case that no updates to the
-       certificate happen for a long time. *)
-    let*! current_certificate_store_value_res =
-      Store.Certificate_store.find ro_node_store root_hash
-    in
-    match current_certificate_store_value_res with
-    | Ok current_certificate_store_value ->
-        let () =
-          Option.iter
-            (fun Store.{aggregate_signature; witnesses} ->
-              let certificate =
-                Certificate_repr.
-                  {root_hash = raw_root_hash; aggregate_signature; witnesses}
-              in
-              let _ =
-                Certificate_streamers.push
-                  dac_plugin
-                  certificate_streamers
-                  raw_root_hash
-                  certificate
-              in
-              if
-                Certificate_repr.all_committee_members_have_signed
-                  committee_members
-                  certificate
-              then
-                let _ =
-                  Certificate_streamers.close
-                    dac_plugin
-                    certificate_streamers
-                    raw_root_hash
-                in
-                ()
-              else ())
-            current_certificate_store_value
+      raw_root_hash committee_members api_version =
+    match api_version with
+    | RPC_services.Api.V0 | RPC_services.Api.V1 -> (
+        let open Lwt_result_syntax in
+        let*? stream, stopper =
+          Certificate_streamers.handle_subscribe
+            dac_plugin
+            certificate_streamers
+            raw_root_hash
         in
-        return (next, shutdown)
-    | Error e -> fail e
+        let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
+        let*! () =
+          Event.emit_new_subscription_to_certificate_updates root_hash
+        in
+        let shutdown () = Lwt_watcher.shutdown stopper in
+        let next () = Lwt_stream.get stream in
+        (* Add the current certificate to the streamer, if any, to ensure that
+           a certificate is returned even in the case that no updates to the
+           certificate happen for a long time. *)
+        let*! current_certificate_store_value_res =
+          Store.Certificate_store.find ro_node_store root_hash
+        in
+        match current_certificate_store_value_res with
+        | Ok current_certificate_store_value ->
+            let () =
+              Option.iter
+                (fun Store.{aggregate_signature; witnesses} ->
+                  let certificate =
+                    Certificate_repr.
+                      {
+                        root_hash = raw_root_hash;
+                        aggregate_signature;
+                        witnesses;
+                      }
+                  in
+                  let _ =
+                    Certificate_streamers.push
+                      dac_plugin
+                      certificate_streamers
+                      raw_root_hash
+                      certificate
+                  in
+                  if
+                    Certificate_repr.all_committee_members_have_signed
+                      committee_members
+                      certificate
+                  then
+                    let _ =
+                      Certificate_streamers.close
+                        dac_plugin
+                        certificate_streamers
+                        raw_root_hash
+                    in
+                    ()
+                  else ())
+                current_certificate_store_value
+            in
+            return (next, shutdown)
+        | Error e -> fail e)
 
   let register_monitor_certificate dac_plugin ro_node_store
       certificate_streamers committee_members dir =
     Tezos_rpc.Directory.gen_register
       dir
       Monitor_services.S.certificate
-      (fun ((), root_hash) () () ->
+      (fun (((), api_version), root_hash) () () ->
         let open Lwt_result_syntax in
         let*! handler =
           handle_monitor_certificate
@@ -294,6 +330,7 @@ module Coordinator = struct
             certificate_streamers
             root_hash
             committee_members
+            api_version
         in
         match handler with
         | Ok (next, shutdown) -> Tezos_rpc.Answer.return_stream {next; shutdown}
@@ -301,24 +338,30 @@ module Coordinator = struct
 
   let register_post_preimage dac_plugin hash_streamer page_store =
     add_service
-      Tezos_rpc.Directory.register0
+      Tezos_rpc.Directory.register1
       RPC_services.Coordinator.post_preimage
-      (fun () payload ->
-        handle_post_preimage dac_plugin page_store hash_streamer payload)
+      (fun api_version () payload ->
+        handle_post_preimage
+          dac_plugin
+          page_store
+          hash_streamer
+          payload
+          api_version)
 
   let register_put_dac_member_signature ctx dac_plugin rw_node_store page_store
       cctxt =
     add_service
-      Tezos_rpc.Directory.register0
+      Tezos_rpc.Directory.register1
       RPC_services.put_dac_member_signature
-      (fun () dac_member_signature ->
+      (fun api_version () dac_member_signature ->
         Signature_manager.Coordinator.handle_put_dac_member_signature
           ctx
           dac_plugin
           rw_node_store
           page_store
           cctxt
-          dac_member_signature)
+          dac_member_signature
+          api_version)
 
   let dynamic_rpc_dir dac_plugin rw_store page_store cctxt coordinator_node_ctxt
       =
@@ -361,16 +404,17 @@ module Legacy = struct
   let register_put_dac_member_signature ctx dac_plugin rw_node_store page_store
       cctxt =
     add_service
-      Tezos_rpc.Directory.register0
+      Tezos_rpc.Directory.register1
       RPC_services.put_dac_member_signature
-      (fun () dac_member_signature ->
+      (fun api_version () dac_member_signature ->
         Signature_manager.Legacy.handle_put_dac_member_signature
           ctx
           dac_plugin
           rw_node_store
           page_store
           cctxt
-          dac_member_signature)
+          dac_member_signature
+          api_version)
 
   let dynamic_rpc_dir dac_plugin rw_store page_store cctxt legacy_node_ctxt =
     let hash_streamer = legacy_node_ctxt.Node_context.Legacy.hash_streamer in

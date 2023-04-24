@@ -157,6 +157,7 @@ module Committee_member = struct
       Dac_node_client.put_dac_member_signature
         coordinator_cctxt
         ~signature:signature_repr
+        RPC_services.Api.V1
     in
     let*! () = Event.emit_signature_pushed_to_coordinator signature in
     return_unit
@@ -197,12 +198,18 @@ module Committee_member = struct
           return ()
     in
     let remote_store =
-      Page_store.(Remote.init {cctxt = coordinator_cctxt; page_store})
+      Page_store.(
+        Remote.init
+          {
+            cctxt = coordinator_cctxt;
+            page_store;
+            api_version = RPC_services.Api.V1;
+          })
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt)
+      (Monitor_services.root_hashes coordinator_cctxt RPC_services.Api.V1)
 end
 
 (** Handlers specific to an [Observer]. An [Observer] is responsible for
@@ -240,12 +247,18 @@ module Observer = struct
           return ()
     in
     let remote_store =
-      Page_store.(Remote.init {cctxt = coordinator_cctxt; page_store})
+      Page_store.(
+        Remote.init
+          {
+            cctxt = coordinator_cctxt;
+            page_store;
+            api_version = RPC_services.Api.V1;
+          })
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt)
+      (Monitor_services.root_hashes coordinator_cctxt RPC_services.Api.V1)
 end
 
 (** Handlers specific to a [Legacy] DAC node. If no
@@ -298,6 +311,7 @@ module Legacy = struct
           Dac_node_client.put_dac_member_signature
             coordinator_cctxt
             ~signature:signature_repr
+            RPC_services.Api.V0
         in
         let*! () = Event.emit_signature_pushed_to_coordinator signature in
         return_unit
@@ -349,12 +363,18 @@ module Legacy = struct
           return ()
     in
     let remote_store =
-      Page_store.(Remote.init {cctxt = coordinator_cctxt; page_store})
+      Page_store.(
+        Remote.init
+          {
+            cctxt = coordinator_cctxt;
+            page_store;
+            api_version = RPC_services.Api.V0;
+          })
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt)
+      (Monitor_services.root_hashes coordinator_cctxt RPC_services.Api.V0)
 end
 
 let handlers node_ctxt =
