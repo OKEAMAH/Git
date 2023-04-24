@@ -23,6 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** [Api] module is used for versioning DAC API. *)
+module Api = struct
+  (** [v1] is a version that corresponds to the first public release of the DAC
+      API. *)
+  let v1 = "v1"
+end
+
 let make ?data ?query_string =
   RPC.make
     ?data
@@ -40,7 +47,8 @@ let decode_hex_string_to_bytes s = Hex.to_string (`Hex s)
 let get_bytes_from_json_string_node json =
   JSON.as_string json |> decode_hex_string_to_bytes
 
-let get_preimage page_hash = make GET ["preimage"; page_hash] JSON.as_string
+let get_preimage page_hash =
+  make GET [Api.v1; "preimage"; page_hash] JSON.as_string
 
 let post_store_preimage ~payload ~pagination_scheme =
   let preimage =
@@ -75,18 +83,18 @@ let put_dac_member_signature ~hex_root_hash ~dac_member_pkh ~signature =
       ]
   in
   let data : RPC_core.data = Data payload in
-  make ~data PUT ["dac_member_signature"] @@ fun _resp -> ()
+  make ~data PUT [Api.v1; "dac_member_signature"] @@ fun _resp -> ()
 
 let get_certificate ~hex_root_hash =
   let (`Hex page_hash) = hex_root_hash in
-  make GET ["certificates"; page_hash] @@ fun json ->
+  make GET [Api.v1; "certificates"; page_hash] @@ fun json ->
   JSON.
     ( json |-> "witnesses" |> as_int,
       json |-> "aggregate_signature" |> as_string,
       json |-> "root_hash" |> as_string )
 
 let get_missing_page ~hex_root_hash =
-  make GET ["missing_page"; Hex.show hex_root_hash] JSON.as_string
+  make GET [Api.v1; "missing_page"; Hex.show hex_root_hash] JSON.as_string
 
 module Coordinator = struct
   let post_preimage ~payload =
@@ -96,5 +104,5 @@ module Coordinator = struct
         (encode_bytes_to_hex_string payload)
     in
     let data : RPC_core.data = Data (JSON.unannotate preimage) in
-    make ~data POST ["preimage"] JSON.as_string
+    make ~data POST [Api.v1; "preimage"] JSON.as_string
 end

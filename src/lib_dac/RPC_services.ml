@@ -72,7 +72,8 @@ let get_preimage ((module P) : Dac_plugin.t) =
     ~description:"Retrieves a page by its page hash and returns its contents"
     ~query:Tezos_rpc.Query.empty
     ~output:Data_encoding.bytes
-    Tezos_rpc.Path.(open_root / "preimage" /: P.hash_rpc_arg)
+    Tezos_rpc.Path.(
+      open_root / Api.(to_string V1) / "preimage" /: P.hash_rpc_arg)
 
 let put_dac_member_signature dac_plugin =
   Tezos_rpc.Service.put_service
@@ -81,7 +82,7 @@ let put_dac_member_signature dac_plugin =
     ~query:Tezos_rpc.Query.empty
     ~input:(Signature_repr.encoding dac_plugin)
     ~output:Data_encoding.empty
-    Tezos_rpc.Path.(open_root / "dac_member_signature")
+    Tezos_rpc.Path.(open_root / Api.(to_string V1) / "dac_member_signature")
 
 let get_certificate ((module P) : Dac_plugin.t) =
   Tezos_rpc.Service.get_service
@@ -89,7 +90,8 @@ let get_certificate ((module P) : Dac_plugin.t) =
       "Retrieve the Dac certificate associated with the given root page hash"
     ~query:Tezos_rpc.Query.empty
     ~output:(Data_encoding.option (Certificate_repr.encoding (module P)))
-    Tezos_rpc.Path.(open_root / "certificates" /: P.hash_rpc_arg)
+    Tezos_rpc.Path.(
+      open_root / Api.(to_string V1) / "certificates" /: P.hash_rpc_arg)
 
 let get_missing_page ((module P) : Dac_plugin.t) =
   Tezos_rpc.Service.get_service
@@ -100,7 +102,8 @@ let get_missing_page ((module P) : Dac_plugin.t) =
        Observer mode."
     ~query:Tezos_rpc.Query.empty
     ~output:Data_encoding.bytes
-    Tezos_rpc.Path.(open_root / "missing_page" /: P.hash_rpc_arg)
+    Tezos_rpc.Path.(
+      open_root / Api.(to_string V1) / "missing_page" /: P.hash_rpc_arg)
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4935
    Coordinator's "POST /preimage" endpoint should in addition to root page hash
@@ -120,5 +123,5 @@ module Coordinator = struct
       ~query:Tezos_rpc.Query.empty
       ~input:Data_encoding.bytes
       ~output:P.encoding
-      Tezos_rpc.Path.(open_root / "preimage")
+      Tezos_rpc.Path.(open_root / Api.(to_string V1) / "preimage")
 end

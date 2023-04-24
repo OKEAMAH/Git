@@ -31,7 +31,8 @@ module S = struct
          responsible for the serialization of the dac payload (coordinator).  "
       ~query:Tezos_rpc.Query.empty
       ~output:P.encoding
-      Tezos_rpc.Path.(open_root / "monitor" / "root_hashes")
+      Tezos_rpc.Path.(
+        open_root / RPC_services.Api.(to_string V1) / "monitor" / "root_hashes")
 
   let certificate ((module P) : Dac_plugin.t) =
     Tezos_rpc.Service.get_service
@@ -44,7 +45,10 @@ module S = struct
          times."
       ~query:Tezos_rpc.Query.empty
       ~output:(Certificate_repr.encoding (module P))
-      Tezos_rpc.Path.(open_root / "monitor" / "certificate" /: P.hash_rpc_arg)
+      Tezos_rpc.Path.(
+        open_root
+        / RPC_services.Api.(to_string V1)
+        / "monitor" / "certificate" /: P.hash_rpc_arg)
 end
 
 let root_hashes dac_node_cctxt dac_plugin =

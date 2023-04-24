@@ -129,7 +129,7 @@ let parse_certificate json =
 let streamed_certificates_client coordinator_node root_hash =
   let endpoint =
     Format.sprintf
-      "http://%s:%d/monitor/certificate/%s"
+      "http://%s:%d/v1/monitor/certificate/%s"
       (Dac_node.rpc_host coordinator_node)
       (Dac_node.rpc_port coordinator_node)
       root_hash
