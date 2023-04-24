@@ -24,6 +24,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Api = struct
+  type version = V1
+
+  let to_string = function V1 -> "v1"
+end
+
 (* A variant of [Sc_rollup_reveal_hash.encoding] that prefers hex
    encoding over b58check encoding for JSON. *)
 let store_preimage_request_encoding =

@@ -24,6 +24,18 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** [Api] module is used for versioning DAC API. *)
+module Api : sig
+  (** [version] type is used to version DAC API. *)
+  type version =
+    | V1
+        (** [V1] is a version that corresponds to the first public release of 
+        the DAC API. *)
+
+  (** [to_string version] gives a string representation of the DAC API version. *)
+  val to_string : version -> string
+end
+
 (** POST dac/store_preimage to post a payload using a given [pagination_scheme].
   It returns the base58 encoded root page hash 
   and the raw bytes. *)
