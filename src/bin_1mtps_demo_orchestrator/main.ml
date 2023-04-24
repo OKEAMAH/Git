@@ -24,7 +24,7 @@ echo 'PasswordAuthentication no' > /etc/ssh/sshd_config;
 EOF
     docker run -it -p 30000:30000 -u root --entrypoint /bin/sh \
       -v $(pwd):/home/tezos/logs \
-      tezos/tezos:master_f2db1702_20230415124347 \
+      tezos/tezos:master_9b10efc7_20230422025549 \
       -c "$(cat $STARTUP)"
 
     Login with:
@@ -57,7 +57,7 @@ let ssh_address = "127.0.0.1"
 let ssh_port = 30000
 
 (* TODO: Should be a command-line argument *)
-let network = "https://teztnets.xyz/mondaynet-2023-04-17"
+let network = "https://teztnets.xyz/mondaynet-2023-04-24"
 
 (* TODO: Should be a command-line argument *)
 let snapshot_url =
