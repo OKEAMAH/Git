@@ -122,6 +122,8 @@ Smart Rollup node
 
 - Fixed logs for kernel debug messages (MR :gl:`!7773`).
 
+- Renamed run command to `legacy run` (MR :gl:`!8543`).
+
 Smart Rollup client
 -------------------
 
