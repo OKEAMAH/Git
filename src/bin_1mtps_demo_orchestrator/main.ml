@@ -275,25 +275,44 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
   let+ _ = Sc_rollup_node.wait_for_level ~timeout:30. rollup_node level in
   ()
 
-let setup_installer ~dac_node =
+let setup_installer ~dac_node ~pk_0 ~pk_1 =
   let installer = read_file Local.installer_kernel in
   let tx_kernel = read_file Local.tx_kernel in
   let installer_dummy_hash =
     "1acaa995ef84bc24cc8bb545dd986082fbbec071ed1c3e9954abea5edc441ccd3a"
   in
-  let _dac_member_0_dummy =
+  let dac_member_0_dummy =
     "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
   in
-  let _dac_member_1_dummy =
+  let (`Hex dac_member_0) =
+    Tezos_crypto.Signature.Bls.Public_key.(
+      pk_0 |> of_b58check_exn
+      |> Data_encoding.Binary.to_bytes_exn encoding
+      |> Hex.of_bytes)
+  in
+  Log.info "Dac member 0: %s" dac_member_0 ;
+  assert (String.length dac_member_0_dummy = String.length dac_member_0) ;
+  let dac_member_1_dummy =
     "666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
   in
+  let (`Hex dac_member_1) =
+    Tezos_crypto.Signature.Bls.Public_key.(
+      pk_1 |> of_b58check_exn
+      |> Data_encoding.Binary.to_bytes_exn encoding
+      |> Hex.of_bytes)
+  in
+  Log.info "Dac member 1: %s" dac_member_1 ;
+  assert (String.length dac_member_1_dummy = String.length dac_member_1) ;
   let* root_hash =
     RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:tx_kernel)
   in
   (* Ensure reveal hash is correct length for installer. *)
   assert (String.length root_hash = 66) ;
   let installer =
-    replace_string (rex installer_dummy_hash) ~by:root_hash installer
+    installer
+    |> replace_string (rex installer_dummy_hash) ~by:root_hash
+    |> replace_string (rex dac_member_0_dummy) ~by:dac_member_0
+    |> replace_string (rex dac_member_1_dummy) ~by:dac_member_1
   in
   let (`Hex hex) = Hex.of_string installer in
   return hex
@@ -401,16 +420,30 @@ let setup_dac home ~rollup_id node client =
       client
       node
   in
-  return (rollup_data_dir, dac_node, members, observer)
+  let committee_members =
+    match committee_members with
+    | [mem_0; mem_1] -> (mem_0, mem_1)
+    | _ -> failwith "expected two dac members"
+  in
+  return (rollup_data_dir, dac_node, members, observer, committee_members)
 
 let setup_rollup home rollup_id node client =
   let open Lwt.Syntax in
   let runner = Option.get (Node.runner node) in
   let funded_account = Format.asprintf "demo_%d" rollup_id in
-  let* data_dir, dac_node, _dac_members, _dac_observer =
+  let* ( data_dir,
+         dac_node,
+         _dac_members,
+         _dac_observer,
+         (dac_member_0, dac_member_1) ) =
     setup_dac home ~rollup_id node client
   in
-  let* installer = setup_installer ~dac_node in
+  let* installer =
+    setup_installer
+      ~dac_node
+      ~pk_0:dac_member_0.aggregate_public_key
+      ~pk_1:dac_member_1.aggregate_public_key
+  in
   let* rollup =
     Client.Sc_rollup.originate
       client
