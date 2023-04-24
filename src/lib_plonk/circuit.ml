@@ -228,6 +228,15 @@ end = struct
     in
     (* Check all range indexes are contained in the array & all range check’s wires are in wires *)
     let () =
+      let max_circuit_size =
+        1
+        lsl Z.log2up
+              (Z.of_int
+                 (List.fold_left
+                    ( + )
+                    (circuit_size + public_input_size)
+                    input_com_sizes))
+      in
       SMap.iter
         (fun wire_name r ->
           if
@@ -236,20 +245,32 @@ end = struct
           then
             raise
               (Invalid_argument "Make Circuit: inconsistent range checks keys.") ;
-          (List.iter (fun (i, _) ->
-               if
-                 List.exists
-                   (fun l -> i >= circuit_size + l + public_input_size)
-                   input_com_sizes
-               then
+          let sum_bounds = ref 0 in
+          (List.iter (fun (i, bound) ->
+               sum_bounds := !sum_bounds + bound ;
+               if i >= circuit_size then
                  raise
                    (Invalid_argument
                       "Make Circuit: inconsistent range checks indices.")))
-            r)
+            r ;
+          if !sum_bounds > max_circuit_size then
+            raise
+              (Invalid_argument
+                 (Printf.sprintf
+                    "Make Circuit: circuit (%d) is too small to contain range \
+                     checks bounds (%d)."
+                    max_circuit_size
+                    !sum_bounds)))
         range_checks
     in
-    (* Remove empty ranges checks lists from range checks map *)
-    let range_checks = SMap.filter (fun _ l -> l <> []) range_checks in
+    (* Remove empty ranges checks lists from range checks map & sort lists by growing index *)
+    let range_checks =
+      SMap.filter_map
+        (fun _ -> function
+          | [] -> None
+          | l -> Some (List.sort (fun (a, _) (b, _) -> Int.compare a b) l))
+        range_checks
+    in
     let table_size =
       if tables = [] then 0
       else List.fold_left (fun acc t -> acc + Array.length (List.hd t)) 0 tables
