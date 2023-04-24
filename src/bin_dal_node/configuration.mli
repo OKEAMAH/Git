@@ -23,14 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** A socket address is basically an address and a port. *)
 type socket_addr = {addr : string; port : int}
 
 type t = {
   use_unsafe_srs : bool;
       (** Run dal-node in test mode with an unsafe SRS (Trusted setup) *)
   data_dir : string;  (** The path to the DAL node data directory *)
-  rpc_addr : string;  (** The address the DAL node listens to *)
-  rpc_port : int;  (** The port the DAL node listens to *)
+  rpc_addr : socket_addr;  (** The RPC endpoint the DAL node listens to *)
   neighbors_rpc_endpoints : socket_addr list;
       (** List of neighbors to reach via RPC withing the DAL *)
 }
@@ -44,9 +44,7 @@ val data_dir_path : t -> string -> string
 
 val default_data_dir : string
 
-val default_rpc_addr : string
-
-val default_rpc_port : int
+val default_rpc_addr : socket_addr
 
 (** [save config] writes config file in [config.data_dir] *)
 val save : t -> unit tzresult Lwt.t

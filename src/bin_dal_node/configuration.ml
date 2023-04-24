@@ -28,8 +28,7 @@ type socket_addr = {addr : string; port : int}
 type t = {
   use_unsafe_srs : bool;
   data_dir : string;
-  rpc_addr : string;
-  rpc_port : int;
+  rpc_addr : socket_addr;
   neighbors_rpc_endpoints : socket_addr list;
 }
 
@@ -41,9 +40,7 @@ let relative_filename data_dir = Filename.concat data_dir "config.json"
 
 let filename config = relative_filename config.data_dir
 
-let default_rpc_addr = "127.0.0.1"
-
-let default_rpc_port = 10732
+let default_rpc_addr = {addr = "127.0.0.1"; port = 10732}
 
 let default_neighbors_rpc_addr = []
 
@@ -59,11 +56,11 @@ let socket_addr_encoding : socket_addr Data_encoding.t =
 let encoding : t Data_encoding.t =
   let open Data_encoding in
   conv
-    (fun {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors_rpc_endpoints} ->
-      (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors_rpc_endpoints))
-    (fun (use_unsafe_srs, data_dir, rpc_addr, rpc_port, neighbors_rpc_endpoints) ->
-      {use_unsafe_srs; data_dir; rpc_addr; rpc_port; neighbors_rpc_endpoints})
-    (obj5
+    (fun {use_unsafe_srs; data_dir; rpc_addr; neighbors_rpc_endpoints} ->
+      (use_unsafe_srs, data_dir, rpc_addr, neighbors_rpc_endpoints))
+    (fun (use_unsafe_srs, data_dir, rpc_addr, neighbors_rpc_endpoints) ->
+      {use_unsafe_srs; data_dir; rpc_addr; neighbors_rpc_endpoints})
+    (obj4
        (dft
           "use_unsafe_srs"
           ~description:"use unsafe srs for tests"
@@ -74,8 +71,11 @@ let encoding : t Data_encoding.t =
           ~description:"Location of the data dir"
           string
           default_data_dir)
-       (dft "rpc-addr" ~description:"RPC address" string default_rpc_addr)
-       (dft "rpc-port" ~description:"RPC port" uint16 default_rpc_port)
+       (dft
+          "rpc-addr"
+          ~description:"RPC addr made of a host and a port"
+          socket_addr_encoding
+          default_rpc_addr)
        (dft
           "neighbors-rpc-endpoints"
           ~description:"DAL RPC Neighbors"

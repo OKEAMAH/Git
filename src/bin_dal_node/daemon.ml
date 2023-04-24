@@ -253,7 +253,8 @@ let run ~data_dir cctxt =
   let* rpc_server = RPC_server.(start config ctxt) in
   let _ = RPC_server.install_finalizer rpc_server in
   let*! () =
-    Event.(emit rpc_server_is_ready (config.rpc_addr, config.rpc_port))
+    let Configuration.{addr; port} = config.Configuration.rpc_addr in
+    Event.(emit rpc_server_is_ready (addr, port))
   in
   (* Start daemon to resolve current protocol plugin *)
   let* () =

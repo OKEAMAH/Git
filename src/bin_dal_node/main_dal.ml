@@ -39,7 +39,7 @@ let data_dir_arg =
     (Client_config.string_parameter ())
 
 let rpc_addr_arg =
-  let default = Configuration.default_rpc_addr in
+  let default = Configuration.default_rpc_addr.addr in
   Tezos_clic.default_arg
     ~long:"rpc-addr"
     ~placeholder:"rpc-address|ip"
@@ -61,7 +61,7 @@ let int_parameter =
       if i < 0 then failwith "Parameter must be non-negative" else return i)
 
 let rpc_port_arg =
-  let default = Configuration.default_rpc_port |> string_of_int in
+  let default = Configuration.default_rpc_addr.port |> string_of_int in
   Tezos_clic.default_arg
     ~long:"rpc-port"
     ~placeholder:"rpc-port"
@@ -93,8 +93,7 @@ let config_init_command =
       let config =
         {
           data_dir;
-          rpc_addr;
-          rpc_port;
+          rpc_addr = {addr = rpc_addr; port = rpc_port};
           use_unsafe_srs;
           neighbors_rpc_endpoints = [];
         }
