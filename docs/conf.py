@@ -136,6 +136,7 @@ html_extra_path = [
     'images/getting_started_2.png',
     'images/understanding_octez_4.png',
     'images/using_octez_3.png',
+    'images/dac_workflow.png',
 ]
 
 # Custom sidebar templates, must be a dictionary that maps document names

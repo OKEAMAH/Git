@@ -172,6 +172,7 @@ Platform developers are also provided reference materials for internal APIs of O
    shell/p2p_api
    shell/cli-commands
    shell/rpc
+   shell/data_availability_committees
 
 .. toctree::
    :maxdepth: 2
