@@ -279,8 +279,8 @@ let update_neighbors_rpc_endpoints dal_node neighbors =
          (fun dal_node ->
            `O
              [
-               ("rpc-addr", `String (Dal_node.rpc_host dal_node));
-               ("rpc-port", `Float (float_of_int (Dal_node.rpc_port dal_node)));
+               ("addr", `String (Dal_node.rpc_host dal_node));
+               ("port", `Float (float_of_int (Dal_node.rpc_port dal_node)));
              ])
          neighbors)
   in

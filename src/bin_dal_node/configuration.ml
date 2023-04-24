@@ -49,12 +49,12 @@ let default_neighbors = []
 
 let default_use_unsafe_srs = false
 
-let neighbor_encoding : socket_addr Data_encoding.t =
+let socket_addr_encoding : socket_addr Data_encoding.t =
   let open Data_encoding in
   conv
     (fun {addr; port} -> (addr, port))
     (fun (addr, port) -> {addr; port})
-    (obj2 (req "rpc-addr" string) (req "rpc-port" uint16))
+    (obj2 (req "addr" string) (req "port" uint16))
 
 let encoding : t Data_encoding.t =
   let open Data_encoding in
@@ -79,7 +79,7 @@ let encoding : t Data_encoding.t =
        (dft
           "neighbors-rpc-endpoints"
           ~description:"DAL Neighbors"
-          (list neighbor_encoding)
+          (list socket_addr_encoding)
           default_neighbors))
 
 type error += DAL_node_unable_to_write_configuration_file of string
