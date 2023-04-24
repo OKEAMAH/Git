@@ -524,7 +524,7 @@ let legacy_run_command =
        injection_ttl_arg
        log_kernel_debug_arg
        log_kernel_debug_file_arg)
-    (prefixes ["run"] @@ stop)
+    (prefixes ["legacy"; "run"] @@ stop)
     (fun ( data_dir,
            mode,
            sc_rollup_address,
