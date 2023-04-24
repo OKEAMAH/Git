@@ -63,7 +63,7 @@ let network = "https://teztnets.xyz/mondaynet-2023-04-24"
 let snapshot_url =
   "http://mondaynet.snapshots.s3-website.eu-central-1.amazonaws.com/mondaynet-rolling-snapshot"
 
-let mint_and_deposit_contract = "KT18fUtgDECoNHFyM5JmVq7XufVsgy8YcVzo"
+let mint_and_deposit_contract = "KT1BN1N4Xoris8NPqpq62jjpkEATt8uXQVAP"
 
 (* TODO: Should be a command-line argument *)
 let runners =
@@ -281,6 +281,12 @@ let setup_installer ~dac_node =
   let installer_dummy_hash =
     "1acaa995ef84bc24cc8bb545dd986082fbbec071ed1c3e9954abea5edc441ccd3a"
   in
+  let _dac_member_0_dummy =
+    "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+  in
+  let _dac_member_1_dummy =
+    "666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+  in
   let* root_hash =
     RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:tx_kernel)
   in
@@ -442,7 +448,8 @@ let setup_rollup home rollup_id node client =
         Format.sprintf "/home/tezos/logs/kernel-%d.log" rollup_id;
       ]
   in
-  let no_pixel_addr = "tz1XgzVG2etN26nuM6z7Wtcry7eWU6h1pkMb" in
+  (* TODO: keys file *)
+  let no_pixel_addr = "tz1emVNqFCsNRPkVWR5nAK9FmxbU3cXMdQGx" in
   let* () =
     deposit_ticket
       ~rollup_node
