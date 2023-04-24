@@ -23,14 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type neighbor = {addr : string; port : int}
+type socket_addr = {addr : string; port : int}
 
 type t = {
   use_unsafe_srs : bool;
   data_dir : string;
   rpc_addr : string;
   rpc_port : int;
-  neighbors : neighbor list;
+  neighbors : socket_addr list;
 }
 
 let default_data_dir = Filename.concat (Sys.getenv "HOME") ".tezos-dal-node"
@@ -49,7 +49,7 @@ let default_neighbors = []
 
 let default_use_unsafe_srs = false
 
-let neighbor_encoding : neighbor Data_encoding.t =
+let neighbor_encoding : socket_addr Data_encoding.t =
   let open Data_encoding in
   conv
     (fun {addr; port} -> (addr, port))

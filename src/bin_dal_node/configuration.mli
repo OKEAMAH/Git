@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type neighbor = {addr : string; port : int}
+type socket_addr = {addr : string; port : int}
 
 type t = {
   use_unsafe_srs : bool;
@@ -31,7 +31,8 @@ type t = {
   data_dir : string;  (** The path to the DAL node data directory *)
   rpc_addr : string;  (** The address the DAL node listens to *)
   rpc_port : int;  (** The port the DAL node listens to *)
-  neighbors : neighbor list;  (** List of neighbors to reach withing the DAL *)
+  neighbors : socket_addr list;
+      (** List of neighbors to reach withing the DAL *)
 }
 
 (** [filename config] gets the path to config file *)
