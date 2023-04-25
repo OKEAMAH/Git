@@ -124,6 +124,8 @@ type sc_rollup = {
   max_number_of_stored_cemented_commitments : int;
   (* The maximum number of parallel games played by a given staker. *)
   max_number_of_parallel_games : int;
+  (* Activation dates of reveal kinds in terms of block levels [{!val:Raw_level_repr.t}]. *)
+  reveal_enabled : Reveal_enabled_repr.t;
 }
 
 type zk_rollup = {

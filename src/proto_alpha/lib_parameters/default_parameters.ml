@@ -278,6 +278,12 @@ let constants_mainnet =
             mempool. *)
         max_number_of_stored_cemented_commitments = 5;
         max_number_of_parallel_games = 32;
+        reveal_enabled =
+          {
+            raw_data = {blake2B = Protocol.Raw_level_repr.root};
+            metadata = Protocol.Raw_level_repr.root;
+            dal_page = Protocol.Raw_level_repr.root;
+          };
       };
     zk_rollup =
       {

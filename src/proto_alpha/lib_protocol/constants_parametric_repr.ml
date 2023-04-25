@@ -115,6 +115,7 @@ type sc_rollup = {
   timeout_period_in_blocks : int;
   max_number_of_stored_cemented_commitments : int;
   max_number_of_parallel_games : int;
+  reveal_enabled : Reveal_enabled_repr.t;
 }
 
 type zk_rollup = {
@@ -269,7 +270,8 @@ let sc_rollup_encoding =
         ( c.number_of_sections_in_dissection,
           c.timeout_period_in_blocks,
           c.max_number_of_stored_cemented_commitments,
-          c.max_number_of_parallel_games ) ))
+          c.max_number_of_parallel_games,
+          c.reveal_enabled ) ))
     (fun ( ( sc_rollup_enable,
              sc_rollup_arith_pvm_enable,
              sc_rollup_origination_size,
@@ -282,7 +284,8 @@ let sc_rollup_encoding =
            ( sc_rollup_number_of_sections_in_dissection,
              sc_rollup_timeout_period_in_blocks,
              sc_rollup_max_number_of_cemented_commitments,
-             sc_rollup_max_number_of_parallel_games ) ) ->
+             sc_rollup_max_number_of_parallel_games,
+             sc_rollup_reveal_enabled ) ) ->
       {
         enable = sc_rollup_enable;
         arith_pvm_enable = sc_rollup_arith_pvm_enable;
@@ -299,6 +302,7 @@ let sc_rollup_encoding =
         max_number_of_stored_cemented_commitments =
           sc_rollup_max_number_of_cemented_commitments;
         max_number_of_parallel_games = sc_rollup_max_number_of_parallel_games;
+        reveal_enabled = sc_rollup_reveal_enabled;
       })
     (merge_objs
        (obj9
@@ -311,11 +315,12 @@ let sc_rollup_encoding =
           (req "smart_rollup_max_lookahead_in_blocks" int32)
           (req "smart_rollup_max_active_outbox_levels" int32)
           (req "smart_rollup_max_outbox_messages_per_level" int31))
-       (obj4
+       (obj5
           (req "smart_rollup_number_of_sections_in_dissection" uint8)
           (req "smart_rollup_timeout_period_in_blocks" int31)
           (req "smart_rollup_max_number_of_cemented_commitments" int31)
-          (req "smart_rollup_max_number_of_parallel_games" int31)))
+          (req "smart_rollup_max_number_of_parallel_games" int31)
+          (req "smart_rollup_reveal_enabled" Reveal_enabled_repr.encoding)))
 
 let zk_rollup_encoding =
   let open Data_encoding in

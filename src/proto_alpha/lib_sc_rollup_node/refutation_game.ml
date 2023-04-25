@@ -273,9 +273,8 @@ let generate_proof (node_ctxt : _ Node_context.t) game start_state =
     end
   end in
   let metadata = Node_context.metadata node_ctxt in
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/5880
-        Fetch the real `is_reveal_enabled` definition from the context *)
-  let is_reveal_enabled _ _ = true in
+  let map = parametric_constants.sc_rollup.reveal_enabled in
+  let is_reveal_enabled = Sc_rollup_PVM_sig.default_is_reveal_enabled map in
   let* proof =
     trace (Sc_rollup_node_errors.Cannot_produce_proof game)
     @@ (Sc_rollup.Proof.produce
