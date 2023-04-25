@@ -124,6 +124,8 @@ type sc_rollup = {
   max_number_of_stored_cemented_commitments : int;
   (* The maximum number of parallel games played by a given staker. *)
   max_number_of_parallel_games : int;
+  (* Allows revealing part of a preimage. *)
+  partial_reveal_enable : bool;
 }
 
 type zk_rollup = {

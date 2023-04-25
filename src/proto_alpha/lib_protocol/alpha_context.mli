@@ -832,6 +832,7 @@ module Constants : sig
       timeout_period_in_blocks : int;
       max_number_of_stored_cemented_commitments : int;
       max_number_of_parallel_games : int;
+      partial_reveal_enable : bool;
     }
 
     type zk_rollup = {
@@ -1024,6 +1025,8 @@ module Constants : sig
   val sc_rollup_number_of_sections_in_dissection : context -> int
 
   val max_number_of_stored_cemented_commitments : context -> int
+
+  val sc_rollup_partial_reveal_enable : context -> bool
 
   val zk_rollup_enable : context -> bool
 
