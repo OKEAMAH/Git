@@ -598,21 +598,21 @@ let check_preimage expected_preimage actual_preimage =
       ~error_msg:
         "Preimage does not match expected value (Current: %L <> Expected: %R)")
 
-(** [check_downloaded_page coordinator observer page_hash] checks that the
-     [observer] has downloaded a page with [page_hash] from the [coordinator],
-     that the contents of the page corresponds to the ones of the
-     [coordinator]. It returns the list  of the hashes contained in the
-     [page_hash], if the page corresponds to a hash page. Otherwise, it returns
-     the empty list. *)
-let check_downloaded_page coordinator observer page_hash =
+(** [check_downloaded_page coordinator observer page_hash api_version] checks
+    that the [observer] has downloaded a page with [page_hash] from the
+    [coordinator], that the contents of the page corresponds to the ones of the
+    [coordinator]. It returns the list  of the hashes contained in the
+    [page_hash], if the page corresponds to a hash page. Otherwise, it returns
+    the empty list. *)
+let check_downloaded_page coordinator observer page_hash ~api_version =
   (* TODO this function is called by both legacy and non legacy tests. *)
   let* coordinator_hex_encoded_page =
-    RPC.call coordinator Dac_rpc.(get_preimage page_hash ~api_version:Api.v1)
+    RPC.call coordinator Dac_rpc.(get_preimage page_hash ~api_version)
   in
   let coordinator_page = Hex.to_string (`Hex coordinator_hex_encoded_page) in
   (* Check that the page has been saved by the observer. *)
   let* observer_hex_encoded_page =
-    RPC.call observer Dac_rpc.(get_preimage page_hash ~api_version:Api.v1)
+    RPC.call observer Dac_rpc.(get_preimage page_hash ~api_version)
   in
   let observer_page = Hex.to_string (`Hex observer_hex_encoded_page) in
   (* Check that the raw page for the root hash  stored in the coordinator
@@ -648,13 +648,14 @@ let check_downloaded_page coordinator observer page_hash =
     in
     return @@ split_hashes concatenated_hashes []
 
-(* TODO called by both legacy and non legacy API. *)
-let check_downloaded_preimage coordinator observer root_hash =
+let check_downloaded_preimage coordinator observer root_hash ~api_version =
   let rec go hashes =
     match hashes with
     | [] -> return ()
     | hash :: hashes ->
-        let* next_hashes = check_downloaded_page coordinator observer hash in
+        let* next_hashes =
+          check_downloaded_page coordinator observer hash ~api_version
+        in
         go (hashes @ next_hashes)
   in
   go [root_hash]
@@ -1288,7 +1289,11 @@ module Legacy = struct
     let* () = push_promise in
     (* Assert [observer] emitted event of received [expected_rh]. *)
     let* () = fetch_root_hash_promise in
-    check_downloaded_preimage coordinator observer expected_rh
+    check_downloaded_preimage
+      coordinator
+      observer
+      expected_rh
+      ~api_version:Dac_rpc.Api.v0
 
   (* 1. Observer should fetch missing page from Coordinator when GET /missing_page/{hash}
         is called.
@@ -1651,7 +1656,11 @@ module Full_infrastructure = struct
        This might be inefficient *)
     Lwt_list.iter_s
       (fun dac_node ->
-        check_downloaded_preimage coordinator_node dac_node expected_rh)
+        check_downloaded_preimage
+          coordinator_node
+          dac_node
+          expected_rh
+          ~api_version:Dac_rpc.Api.v1)
       (committee_members_nodes @ observer_nodes)
 
   let test_streaming_certificates
