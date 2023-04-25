@@ -33,46 +33,67 @@ open Plonk_test.Helpers.Utils (LibCircuit)
 
 let s_of_int i = S.of_z (Z.of_int i)
 
-let random_s bound = S.of_z (Z.of_int (Random.int (1 lsl bound)))
-
 let hash array =
   let ctx = Poseidon128.P.init ~input_length:(Array.length array) () in
   let ctx = Poseidon128.P.digest ctx array in
   Poseidon128.P.get ctx
 
-let bound1 = 1 + Random.int 28
+(* compute intermediary products of w to by to and perform a range check on the resulting product with the sum of the term’s bounds *)
+let sums_2_by_2 (w, b) =
+  let rec aux (acc, bacc) = function
+    | a :: b :: tl, ba :: bb :: btl ->
+        let* c = Num.add a b in
+        let nb_bits = max ba bb + 1 in
+        Num.range_check ~nb_bits c >* aux (c :: acc, nb_bits :: bacc) (tl, btl)
+    | [], [] -> ret (List.rev acc, List.rev bacc)
+    | _ -> assert false
+  in
+  aux ([], []) (w, b)
 
-let bound2 = 1 + Random.int 28
+let rec all_sums wb =
+  let* p = sums_2_by_2 wb in
+  match p with [p], [_] -> ret p | _ -> all_sums p
 
-let bound3 = 1 + Random.int 28
-
-let bound4 = 1 + Random.int 28
-
-let build_circuit x1 x2 x3 x4 y () =
+(* This circuit computes all 2 by 2 sums of w, perfoming a range check on each intermediary sum ; it then compare the hash of the resulting sum & inputs to the [y] public input. the final hash is performed to have more room for range checks *)
+let build_circuit bounds w y () =
   let* expected = input ~kind:`Public (Input.scalar y) in
-  let* x1 = input (Input.scalar x1) in
-  let* x2 = input (Input.scalar x2) in
-  let* x3 = input (Input.scalar x3) in
-  let* x4 = input (Input.scalar x4) in
-  Num.range_check ~nb_bits:bound1 x1
-  >* Num.range_check ~nb_bits:bound2 x2
-  >* Num.range_check ~nb_bits:bound3 x3
-  >* Num.range_check ~nb_bits:bound4 x4
-  >* let* out = Hash.digest ~input_length:4 (to_list [x1; x2; x3; x4]) in
-     with_bool_check (equal out expected)
+  let* w = mapM input (List.map Input.scalar w) in
+  let* product = all_sums (w, bounds) in
+  let* out =
+    Hash.digest ~input_length:(1 + List.length w) (to_list (product :: w))
+  in
+  with_bool_check (equal out expected)
 
 let test_range_checks () =
-  let w1 = random_s bound1 in
-  let w2 = random_s bound2 in
-  let w3 = random_s bound3 in
-  let w4 = random_s bound4 in
-  let y = hash [|w1; w2; w3; w4|] in
-  let circuit = build_circuit w1 w2 w3 w4 y () in
+  let n = 4 in
+  let bounds = List.init (1 lsl n) (fun _ -> 1 + Random.int 5) in
+  Printf.printf
+    "\nbounds = [%s]"
+    (String.concat ", " (List.map (Printf.sprintf "%d") bounds)) ;
+  let w = List.map (fun bound -> s_of_int (Random.int (1 lsl bound))) bounds in
+  let y = hash (Array.of_list (S.add_bulk w :: w)) in
+  let circuit = build_circuit bounds w y () in
   (* TODO: make optimizer compatible with range checks *)
-  let cs = get_cs ~optimize:true circuit in
+  let cs = get_cs ~optimize:false circuit in
   let plonk_circuit = Plonk.Circuit.to_plonk cs in
-  let private_inputs = Solver.solve cs.solver [|y; w1; w2; w3; w4|] in
+  let private_inputs = Solver.solve cs.solver (Array.of_list (y :: w)) in
   assert (CS.sat cs.cs [] private_inputs) ;
-  Helpers.test_circuit ~name:"" plonk_circuit private_inputs
+  Helpers.test_circuit ~name:"" plonk_circuit private_inputs ;
+  (* TODO make optimized circuit provable *)
+  (* let o_cs = get_cs ~optimize:true circuit in
+     let o_circuit = Plonk.Circuit.to_plonk o_cs in
+     let o_private_inputs = Solver.solve o_cs.solver (Array.of_list (y :: w)) in
+     Helpers.test_circuit ~name:"" o_circuit o_private_inputs ; *)
+  let fst_invalid = List.(S.(hd w + s_of_int (1 lsl hd bounds))) in
+  let snd_invalid = List.(S.(nth w 1 + s_of_int (1 lsl nth bounds 1))) in
+  let invalid = fst_invalid :: snd_invalid :: List.(tl (tl w)) in
+  let y = hash (Array.of_list (S.mul_bulk invalid :: invalid)) in
+  let private_inputs = Solver.solve cs.solver (Array.of_list (y :: invalid)) in
+  (* assert (not (CS.sat cs.cs [] private_inputs)) ; *)
+  Helpers.test_circuit
+    ~outcome:Plonk_test.Cases.Proof_error
+    ~name:""
+    plonk_circuit
+    private_inputs
 
 let tests = [Alcotest.test_case "Range-check" `Quick test_range_checks]

@@ -1985,10 +1985,10 @@ Bool.test_bor_lookup_optimized:
 Constraints: 5
 
 :
-Proof size: 2.82 KB
-Proof hash: 2356b58249ab73411ad5a8e1df0aaa37fdb3dbd6274431497e24abef68e07d32
-Prover_pp hash: d2a598d312dd16eadb2778f01dd702cd06a9b548f4ea025b1d2692663053b5cb
-Verifier_pp hash: c72dd858f9f9d2666aab34061aaf9d46341fd8ec903452168899ba2f5438aa09
+Proof size: 2.71 KB
+Proof hash: 965ddabdcdbb309924769ed1d0dee30dea1e00eadf8f7e0e06a7b94a71504a4e
+Prover_pp hash: 25e6acde7bff48d5632fb736d36830b0a72b4a44ffc786bc4801d28bd6c7e5bb
+Verifier_pp hash: 8cde0e0be6f7992625683703d7966e6098f142ddf50527fc6499e6bb9ad1e274
 
 Optimizer.test_long_sum:
 Constraints: 100
