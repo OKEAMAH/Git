@@ -244,6 +244,8 @@ module Make (PVM : Pvm.S) = struct
                   failing_ticks
                   next_state)
         | Needs_reveal (Reveal_raw_data hash) -> (
+            Printf.eprintf "\n%s\n" __LOC__ ;
+
             let* data =
               get_reveal ~data_dir:node_ctxt.data_dir reveal_map hash
             in
@@ -251,8 +253,11 @@ module Make (PVM : Pvm.S) = struct
             match F.consume F.one_tick_consumption fuel with
             | None -> abort state fuel current_tick
             | Some fuel ->
+                Printf.eprintf "\n%s\n" __LOC__ ;
+
                 go fuel (Int64.succ current_tick) failing_ticks next_state)
         | Needs_reveal (Reveal_partial_raw_data r) -> (
+            Printf.eprintf "\n%s\n" __LOC__ ;
             let* data =
               (* TODO invalid *)
               get_reveal

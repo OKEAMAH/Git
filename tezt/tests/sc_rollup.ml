@@ -74,17 +74,23 @@ let reveal_hash_b58_mumbai_arith data =
 
 type reveal_hash = {message : string; filename : string}
 
-let reveal_hash ~protocol ~kind data =
+let reveal_hash ?(partial = false) ~protocol ~kind data =
   let hex_hash = reveal_hash_hex data in
-  match (protocol, kind) with
-  | Protocol.Mumbai, "arith" ->
+  match (partial, protocol, kind) with
+  | _, Protocol.Mumbai, "arith" ->
       (* Only for arith PVM, the message should have the form "hash:scrrh1..."  *)
       {
-        message = "hash:" ^ reveal_hash_b58_mumbai_arith data;
+        message =
+          (if partial then "commitment_reveal:" else "hash:")
+          ^ reveal_hash_b58_mumbai_arith data;
         filename = hex_hash;
       }
-  | _, "arith" -> {message = "hash:" ^ hex_hash; filename = hex_hash}
-  | _, _ ->
+  | _, _, "arith" ->
+      {
+        message = (if partial then "commitment_reveal:" else "hash:") ^ hex_hash;
+        filename = hex_hash;
+      }
+  | _, _, _ ->
       (* Not used for wasm yet. *)
       assert false
 
@@ -2516,6 +2522,51 @@ let test_reveals_4k =
   in
   Lwt.choose [sync; failure]
 
+let _test_reveals_4k' =
+  let kind = "arith" in
+  test_full_scenario
+    ~timeout:120
+    ~kind
+    {
+      tags = ["reveals"; "4k"];
+      variant = None;
+      description = "partial reveal 4kB of data";
+    }
+  @@ fun protocol sc_rollup_node _sc_rollup_client sc_rollup node client ->
+  let data = String.make 4096 'z' in
+  let hash = reveal_hash ~partial:true ~protocol ~kind data in
+  let pvm_dir = Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) kind in
+  let filename = Filename.concat pvm_dir hash.filename in
+  let () = Sys.mkdir pvm_dir 0o700 in
+  let () = with_open_out filename @@ fun cout -> output_string cout data in
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
+  let failure =
+    let* () =
+      Sc_rollup_node.process sc_rollup_node |> Option.get |> Process.check
+    in
+    Test.fail "Node terminated before reveal"
+  in
+  let* () =
+    send_text_messages
+      client
+      [
+        (*"commitment_reveal:sh24bdvNQJWbMhUYuJLuGFYYA9tVXFLTDSVwgCqgZoVvvYG3kWCjYY9VGgJmQ6W7s3bYhsjooC"*)
+        hash.message;
+      ]
+  in
+  let sync =
+    let* _level =
+      Sc_rollup_node.wait_for_level
+        ~timeout:10.
+        sc_rollup_node
+        (Node.get_level node)
+    in
+    unit
+  in
+  let* _ = Lwt.choose [sync; failure] in
+  (*ignore @@ assert false ;*)
+  return ()
+
 let test_reveals_above_4k =
   let kind = "arith" in
   test_full_scenario
@@ -4721,6 +4772,7 @@ let register ~protocols =
     protocols ;
   test_reveals_fails_on_wrong_hash protocols ;
   test_reveals_4k protocols ;
+  _test_reveals_4k' protocols ;
   test_reveals_above_4k protocols ;
   (* Specific Wasm PVM tezts *)
   test_rollup_node_run_with_kernel

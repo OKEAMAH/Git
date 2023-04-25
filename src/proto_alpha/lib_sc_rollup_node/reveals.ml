@@ -110,6 +110,7 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
     let contents_hash =
       Reveal_hash.hash_string ~scheme:Reveal_hash.Blake2B [contents]
     in
+    Printf.eprintf "\n %s \n" __LOC__ ;
     error_unless
       (Reveal_hash.equal contents_hash hash)
       (Wrong_hash {found = contents_hash; expected = hash})

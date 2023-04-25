@@ -572,8 +572,11 @@ let input_request_legacy_v9 pvm_state : Wasm_pvm_state.input_request_legacy_v9 =
   | Collect -> Wasm_pvm_state.Input_required
   | Eval {config; _} -> (
       match Tezos_webassembly_interpreter.Eval.is_reveal_tick config with
-      | Some (Reveal_partial_raw_data _) -> Wasm_pvm_state.No_input_required
+      | Some (Reveal_partial_raw_data _) ->
+          Printf.eprintf "\n%s\n" __LOC__ ;
+          Wasm_pvm_state.No_input_required
       | Some (Reveal_raw_data h) ->
+          Printf.eprintf "\n%s\n" __LOC__ ;
           Wasm_pvm_state.Reveal_required (Reveal_raw_data h)
       | Some Reveal_metadata -> Wasm_pvm_state.Reveal_required Reveal_metadata
       | None -> Wasm_pvm_state.No_input_required)
@@ -645,6 +648,8 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
           match info with
           | Reveal_required (Reveal_raw_data req) ->
               Printf.eprintf "\n reveal raw data\n" ;
+              Printf.eprintf "\n%s\n" __LOC__ ;
+
               let* res = reveal_builtins.Builtins.reveal_preimage req in
               reveal_step (Bytes.of_string res) pvm_state
           | Reveal_required (Reveal_partial_raw_data _req) ->

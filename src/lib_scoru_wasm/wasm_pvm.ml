@@ -344,6 +344,7 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
   let reveal_step payload tree =
     let open Lwt_syntax in
     let* pvm_state = decode tree in
+    Printf.eprintf "\n %s\n" __LOC__ ;
     let* pvm_state = Wasm_vm.reveal_step payload pvm_state in
     encode pvm_state tree
 

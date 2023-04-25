@@ -1430,7 +1430,26 @@ module Make (Context : P) :
     | None -> stop_evaluating false
     | Some hash ->
         let* () = Required_reveal.set (Some (Reveal_raw_data hash)) in
+        Logging.log_string
+          Logging.Warning
+          (Format.asprintf "NOOOOO!!  %s@." __LOC__) ;
+
         let* () = Status.set Waiting_for_reveal in
+        return ()
+
+  let evaluate_partial_preimage_request hash =
+    let open Monad.Syntax in
+    match Dal.Commitment.of_b58check_opt hash with
+    | None -> stop_evaluating false
+    | Some commitment ->
+        let* () =
+          Required_reveal.set
+            (Some (Reveal_partial_raw_data {commitment; start = 0; length = 96}))
+        in
+        let* () = Status.set Waiting_for_reveal in
+        Logging.log_string
+          Logging.Info
+          (Format.asprintf "HEYYYYY  %s@." __LOC__) ;
         return ()
 
   let evaluate_dal_parameters dal_directive =
@@ -1487,19 +1506,26 @@ module Make (Context : P) :
            top of the PVM's stack into the variable [x].
         *)
         let len = String.length x in
+        Logging.log_string Debug (Format.asprintf "LOC: %s@." __LOC__) ;
+        ignore @@ assert false;
         match remove_prefix "hash:" x len with
         | Some hash -> evaluate_preimage_request hash
         | None -> (
             match remove_prefix "dal:" x len with
             | Some dal_directive -> evaluate_dal_parameters dal_directive
             | None -> (
-                let* v = Stack.top in
-                match v with
-                | None -> stop_evaluating false
-                | Some v -> (
-                    match identifies_target_contract x with
-                    | Some contract_entrypoint -> output contract_entrypoint v
-                    | None -> Vars.set x v))))
+                match remove_prefix "commitment_reveal:" x len with
+                | Some commitment ->
+                    evaluate_partial_preimage_request commitment
+                | None -> (
+                    let* v = Stack.top in
+                    match v with
+                    | None -> stop_evaluating false
+                    | Some v -> (
+                        match identifies_target_contract x with
+                        | Some contract_entrypoint ->
+                            output contract_entrypoint v
+                        | None -> Vars.set x v)))))
     | Some IAdd -> (
         let* v = Stack.pop in
         match v with

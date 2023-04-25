@@ -994,7 +994,7 @@ let reveal_encoding =
         (function Host_funcs.Reveal_metadata -> Some () | _ -> None)
         (fun () -> Reveal_metadata);
       case
-        "Reveal_partial_metadata"
+        "Reveal_partial_raw_data"
         (value
            []
            Data_encoding.(
