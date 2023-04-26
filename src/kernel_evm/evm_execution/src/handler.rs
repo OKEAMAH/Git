@@ -75,18 +75,17 @@ impl ExecutionOutcome {
 /// (like an error). The same circumstances (eg running out of gas) are not errors as
 /// such for the users of the toplevel transaction functions called by `run_transaction`.
 /// At that point same errors just indicate a failed transaction.
-///
-/// TODO: add logs to the outcome. See issue: <https://gitlab.com/tezos/tezos/-/issues/4870>
 fn map_execution_outcome(
     gas_used: u64,
     result: Result<(ExitReason, Option<H160>, Vec<u8>), EthereumError>,
+    logs: Vec<Log>,
 ) -> Result<ExecutionOutcome, EthereumError> {
     match result {
         Ok((reason, new_address, _)) => Ok(ExecutionOutcome {
             gas_used,
             is_success: reason.is_succeed(),
             new_address,
-            logs: vec![],
+            logs,
         }),
         Err(EthereumError::EthereumAccountError(_error)) => {
             Ok(ExecutionOutcome::failed(gas_used))
@@ -98,9 +97,9 @@ fn map_execution_outcome(
             Ok(ExecutionOutcome::failed(gas_used))
         }
         Err(EthereumError::CallRevert) => Ok(ExecutionOutcome::failed(gas_used)),
-        Err(EthereumError::FatalMachineError(ExitFatal::CallErrorAsFatal(
-            ExitError::OutOfGas,
-        ))) => Ok(ExecutionOutcome::failed(gas_used)),
+        Err(EthereumError::FatalMachineError(ExitFatal::CallErrorAsFatal(_))) => {
+            Ok(ExecutionOutcome::failed(gas_used))
+        }
         Err(err) => Err(err),
     }
 }
@@ -572,7 +571,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             ),
         );
 
-        map_execution_outcome(self.gas_used(), result.map(|(x, y)| (x, None, y)))
+        map_execution_outcome(
+            self.gas_used(),
+            result.map(|(x, y)| (x, None, y)),
+            self.get_logs()?,
+        )
     }
 
     /// Perform a create-contract transaction
@@ -593,7 +596,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             gas_limit,
         );
 
-        map_execution_outcome(self.gas_used(), result)
+        map_execution_outcome(self.gas_used(), result, self.get_logs()?)
     }
 
     /// Perform a transfer transaction
@@ -722,6 +725,24 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     /// Check if the current transaction is a static call
     fn is_static(&mut self) -> Result<bool, EthereumError> {
         Ok(self.evm_account_storage.current_layer()?.context.is_static)
+    }
+
+    /// Add log record to current transaction
+    pub fn add_log_record(&mut self, log: Log) -> Result<(), EthereumError> {
+        let logs = &mut self.evm_account_storage.current_layer()?.context.logs;
+        logs.reserve(1);
+        logs.push(log);
+        Ok(())
+    }
+
+    /// Get the logs for the current transaction
+    fn get_logs(&mut self) -> Result<Vec<Log>, EthereumError> {
+        Ok(self
+            .evm_account_storage
+            .current_layer()?
+            .context
+            .logs
+            .clone())
     }
 
     /// Set current transaction context
@@ -869,8 +890,12 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         topics: Vec<H256>,
         data: Vec<u8>,
     ) -> Result<(), ExitError> {
-        // TODO: issue: https://gitlab.com/tezos/tezos/-/issues/4870
-        Ok(()) // STUB until issue above has been fixed
+        self.add_log_record(Log {
+            address,
+            topics,
+            data,
+        })
+        .map_err(|_| ExitError::Other(Cow::from("Could not write log in handler")))
     }
 
     fn mark_delete(&mut self, address: H160, target: H160) -> Result<(), ExitError> {

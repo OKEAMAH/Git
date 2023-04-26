@@ -7,6 +7,7 @@
 use crate::account_storage::EthereumAccountStorage;
 use crate::EthereumError;
 use debug::debug_msg;
+use evm::executor::stack::Log;
 use evm::Context;
 use host::runtime::Runtime;
 use primitive_types::{H160, U256};
@@ -26,12 +27,15 @@ pub struct TransactionContext {
     /// If the current transaction is banned from changing storage of
     /// the current contract, ie, the call is _static_.
     pub is_static: bool,
+    /// Log records gathered at this transaction layer.
+    pub logs: Vec<Log>,
 }
 
 impl Mergeable for TransactionContext {
-    fn merge(&mut self, _other: Self) {
-        // Do nothing for now. In a follow up MR (or commit)
-        // we'll need to merge log records
+    fn merge(&mut self, mut other: Self) {
+        let other_logs = &mut other.logs;
+        self.logs.reserve(other_logs.len());
+        self.logs.append(other_logs);
     }
 }
 
@@ -44,6 +48,7 @@ impl std::default::Default for TransactionContext {
                 apparent_value: U256::zero(),
             },
             is_static: false,
+            logs: vec![],
         }
     }
 }
@@ -64,12 +69,17 @@ impl TransactionContext {
                 apparent_value,
             },
             is_static,
+            logs: vec![],
         }
     }
 
     /// Create a transaction context from a SputnikVm context
     pub fn from_context(context: Context, is_static: bool) -> Self {
-        Self { context, is_static }
+        Self {
+            context,
+            is_static,
+            logs: vec![],
+        }
     }
 }
 

@@ -126,6 +126,7 @@ mod test {
         account_path, init_account_storage as init_evm_account_storage,
         EthereumAccountStorage,
     };
+    use evm::executor::stack::Log;
     use evm::Opcode;
     use handler::ExecutionOutcome;
     use host::runtime::Runtime;
@@ -957,6 +958,161 @@ mod test {
         let expected_result = Ok(ExecutionOutcome {
             gas_used: all_the_gas,
             is_success: false,
+            new_address: None,
+            logs: vec![],
+        });
+
+        // assert that call fails
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn contracts_can_write_logs() {
+        let mut mock_runtime = MockHost::default();
+        let block = block::BlockConstants::first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let target = H160::from_low_u64_be(117_u64);
+        let caller = H160::from_low_u64_be(118_u64);
+        let data = [0u8; 32]; // Need some data to make it a contract call
+        let log_call_target = H160::from_low_u64_be(200_u64);
+
+        // contract that does logging
+        let log_call_code = vec![
+            Opcode::PUSH1.as_u8(), // push size
+            1,
+            Opcode::PUSH1.as_u8(), // push memory address
+            0x1,
+            Opcode::LOG0.as_u8(), // write a zero to log
+        ];
+
+        set_account_code(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &log_call_target,
+            &log_call_code,
+        );
+
+        // contract that calls the contract above
+        let code = vec![
+            Opcode::PUSH1.as_u8(), // push return data size
+            0,
+            Opcode::PUSH1.as_u8(), // push return data offset
+            0,
+            Opcode::PUSH1.as_u8(), // push arg size
+            0,
+            Opcode::PUSH1.as_u8(), // push arg offset
+            0,
+            Opcode::PUSH1.as_u8(), // push value
+            0,
+            Opcode::PUSH1.as_u8(), // push address
+            200,
+            Opcode::PUSH2.as_u8(), // push gas
+            0xFF,
+            0xFF,
+            Opcode::CALL.as_u8(),
+        ];
+
+        set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            target,
+            caller,
+            data.to_vec(),
+            Some(30_000_u64),
+            None,
+        );
+
+        let expected_log = Log {
+            address: log_call_target,
+            topics: vec![],
+            data: vec![0u8],
+        };
+
+        let expected_result = Ok(ExecutionOutcome {
+            gas_used: 513,
+            is_success: true,
+            new_address: None,
+            logs: vec![expected_log],
+        });
+
+        // assert that call fails
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn reverted_logs_are_removed() {
+        let mut mock_runtime = MockHost::default();
+        let block = block::BlockConstants::first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let target = H160::from_low_u64_be(117_u64);
+        let caller = H160::from_low_u64_be(118_u64);
+        let data = [0u8; 32]; // Need some data to make it a contract call
+        let log_call_target = H160::from_low_u64_be(200_u64);
+
+        // contract that does logging
+        let log_call_code = vec![
+            Opcode::PUSH1.as_u8(), // push size
+            1,
+            Opcode::PUSH1.as_u8(), // push memory address
+            0x1,
+            Opcode::LOG0.as_u8(), // write a zero to log
+            Opcode::PUSH1.as_u8(),
+            0,
+            Opcode::PUSH1.as_u8(),
+            0,
+            Opcode::REVERT.as_u8(), // revert to drop the log record
+        ];
+
+        set_account_code(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &log_call_target,
+            &log_call_code,
+        );
+
+        // contract that calls the contract above
+        let code = vec![
+            Opcode::PUSH1.as_u8(), // push return data size
+            0,
+            Opcode::PUSH1.as_u8(), // push return data offset
+            0,
+            Opcode::PUSH1.as_u8(), // push arg size
+            0,
+            Opcode::PUSH1.as_u8(), // push arg offset
+            0,
+            Opcode::PUSH1.as_u8(), // push value
+            0,
+            Opcode::PUSH1.as_u8(), // push address
+            200,
+            Opcode::PUSH2.as_u8(), // push gas
+            0xFF,
+            0xFF,
+            Opcode::CALL.as_u8(),
+        ];
+
+        set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            target,
+            caller,
+            data.to_vec(),
+            Some(30_000_u64),
+            None,
+        );
+
+        let expected_result = Ok(ExecutionOutcome {
+            gas_used: 519,
+            is_success: true,
             new_address: None,
             logs: vec![],
         });
