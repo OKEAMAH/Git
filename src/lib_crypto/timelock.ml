@@ -164,16 +164,6 @@ let proof_encoding =
 (* A random Z arith element of size [size] bytes *)
 let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 
-(* Generates almost uniformly a Zarith element between 0 and [public key].
-   Intended for generating the timelock *)
-let gen_puzzle () =
-  let puzzle = ref Z.one in
-  while Z.(equal !puzzle zero) || Z.(equal !puzzle one) do
-    (* We divide by 8 to convert to bytes *)
-    puzzle := Z.erem (random_z ((size_rsa2048 + 128) / 8)) rsa2048
-  done ;
-  !puzzle
-
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime ~time value key =
   let personalization = Bytes.of_string "\032" in
@@ -243,7 +233,13 @@ let unlock_and_prove ~time puzzle =
 let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   let puzzle =
     match puzzle with
-    | None -> gen_puzzle ()
+    | None ->
+        let puzzle = ref Z.one in
+        while Z.(equal !puzzle zero) || Z.(equal !puzzle one) do
+          (* We divide by 8 to convert to bytes *)
+          puzzle := Z.erem (random_z ((size_rsa2048 / 8) + 16)) rsa2048
+        done ;
+        !puzzle
     | Some c ->
         let c_mod = Z.(c mod rsa2048) in
         assert (Z.compare c_mod Z.one = 1) ;

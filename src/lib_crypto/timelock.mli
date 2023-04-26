@@ -100,14 +100,6 @@ val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
     the randomness linking the vdf_tuple to the timelock puzzle. *)
 type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
 
-(** Generates almost uniformly an integer mod n.
-    It is in the RSA group with overwhelming probability.
-    We use this since we want to lock symmetric keys, not pre-determined
-    messages.
-
-    @raise Failure if there is not enough entropy available. *)
-val gen_puzzle : unit -> puzzle
-
 (** Generates a symmetric encryption key out of a [timelock_proof].
     More precisely, computes and hashes solution**randomness mod rsa2048 to
     a symmetric key for authenticated encryption. *)
