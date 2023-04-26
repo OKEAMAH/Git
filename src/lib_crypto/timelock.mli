@@ -105,11 +105,6 @@ type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
     a symmetric key for authenticated encryption. *)
 val timelock_proof_to_symmetric_key : timelock_proof -> symmetric_key
 
-(** Generates a [timelock_proof] by unlocking a timelock [puzzle], given a
-    [time]. The proof certifies that the solution found by unlocking the puzzle
-    is correct. *)
-val unlock_and_prove : time:int -> puzzle -> timelock_proof
-
 (** Produces a proof certifying that the [solution] indeed corresponds to the
     opening of the [puzzle] given a [time]. *)
 val prove : time:int -> puzzle -> solution -> timelock_proof
@@ -131,7 +126,11 @@ val precompute_timelock :
 (** Generates a fresh timelock [puzzle] and corresponding [timelock_proof] by
     randomizing a [vdf_tuple] with a freshly generated randomness given a
     [time:int]. *)
-val proof_of_vdf_tuple : time:int -> vdf_tuple -> puzzle * timelock_proof
+val lock_timelock : time:int -> vdf_tuple -> puzzle * timelock_proof
+
+(** Opens a timelock [puzzle] and returns the corresponding [solution] given a
+    [time:int]. *)
+val open_timelock : time:int -> puzzle -> solution
 
 (** Encrypt some bytes given a symmetric key using authenticated encryption.
     The output contains both a ciphertext and a message authentication code. *)
