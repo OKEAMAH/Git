@@ -57,6 +57,30 @@ let reveal_preimage_module hash hash_addr hash_size preimage_addr max_bytes =
     preimage_addr
     max_bytes
 
+let reveal_partial_preimage_module commitment commitment_addr commitment_size
+    preimage_addr page_index max_bytes =
+  Format.sprintf
+    {|
+      (module
+        (import "smart_rollup_core" "reveal_partial_preimage"
+          (func $reveal_partial_preimage (param i32 i32 i32 i32 i32) (result i32))
+        )
+        (memory 1)
+        (data (i32.const %ld) "%s")
+        (export "mem" (memory 0))
+        (func (export "kernel_run")
+          (call $reveal_partial_preimage (i32.const %ld) (i32.const %ld) (i32.const %ld) (i32.const %ld) (i32.const %ld) )
+        )
+      )
+    |}
+    commitment_addr
+    commitment
+    commitment_addr
+    commitment_size
+    preimage_addr
+    page_index
+    max_bytes
+
 let reveal_metadata_module metadata_addr =
   Format.sprintf
     {|
@@ -194,6 +218,121 @@ let test_reveal_preimage_above_max ~version () =
   in
   let max_bytes = 50l in
   test_reveal_preimage_gen ~version preimage max_bytes
+
+let test_reveal_partial_preimage_gen ~version preimage max_bytes =
+  let open Lwt_result_syntax in
+  let commitment_addr = 120l in
+  let page_addr = 200l in
+  let module MTree =
+    Tezos_crypto.Blake2B.Make_merkle_tree
+      (Tezos_crypto.Base58)
+      (struct
+        let name = "Smart_rollup_reveal_data_blake2b_hash"
+
+        let title = "A smart rollup reveal hash"
+
+        let b58check_prefix =
+          "\230\206\128\200\196" (* "scrrh1(56)" decoded from Base58. *)
+
+        let size = Some 32
+      end)
+      (struct
+        include Bytes
+
+        let to_bytes b = b
+      end)
+  in
+  let*? strings =
+    String.chunk_bytes (Int32.to_int max_bytes) (Bytes.of_string preimage)
+  in
+  let bytes = List.map Bytes.of_string strings in
+  let commitment' = MTree.compute bytes in
+  let bytes = Array.of_list bytes in
+  let commitment_size = Int32.of_int (1 + Tezos_crypto.Blake2B.size + 4) in
+  let index = 3l in
+  let page = bytes.(Int32.to_int index) in
+  let integer = Bytes.create 4 in
+  Bytes.set_int32_le integer 0 index ;
+  let commitment =
+    commitment' |> MTree.to_string |> fun s -> s ^ String.of_bytes integer
+  in
+  let modl =
+    reveal_partial_preimage_module
+      (to_hex_string ~tag:"\\01" commitment)
+      commitment_addr
+      commitment_size
+      page_addr
+      index
+      max_bytes
+  in
+  let*! state = initial_tree ~version modl in
+  let*! state_snapshotted = eval_until_input_or_reveal_requested state in
+  let*! state_with_dummy_input = set_empty_inbox_step 0l state_snapshotted in
+  (* Let’s go *)
+  let*! state = eval_until_input_or_reveal_requested state_with_dummy_input in
+  (* Let's check the commitment in memory. *)
+  let*! module_instance =
+    Wasm.Internal_for_tests.get_module_instance_exn state
+  in
+  let*! memory = Instance.Vector.get 0l module_instance.memories in
+  let*! hash_in_memory =
+    Memory.load_bytes memory commitment_addr (Int32.to_int commitment_size)
+  in
+  assert (
+    String.equal
+      (String.sub hash_in_memory 1 (Tezos_crypto.Blake2B.size + 4))
+      commitment) ;
+  let*! info = Wasm.get_info state in
+  let* () =
+    let open Wasm_pvm_state in
+    match info.Wasm_pvm_state.input_request with
+    | Wasm_pvm_state.Reveal_required
+        (Reveal_partial_raw_data {commitment = commitment'; index = index'}) ->
+        (* The PVM has reached a point where it’s asking for some preimage. *)
+        assert (
+          String.equal
+            (String.sub commitment' 1 (Tezos_crypto.Blake2B.size + 4))
+            commitment) ;
+        assert (Int32.equal index index') ;
+        return_unit
+    | No_input_required | Input_required | Reveal_required _ -> assert false
+  in
+  let*! state = Wasm.reveal_step page state in
+  let*! info = Wasm.get_info state in
+  let* () =
+    let open Wasm_pvm_state in
+    match info.input_request with
+    | No_input_required -> return_unit
+    | Input_required ->
+        failwith "should be running, but expect input from the L1"
+    | Reveal_required _ -> failwith "should be running, but expect reveal tick"
+  in
+  (* The revelation step should contain the number of bytes effectively written in
+     memory for the preimage. *)
+  let*! returned_size = reveal_returned_size state in
+  (* Let's check the preimage in memory. *)
+  let*! module_instance =
+    Wasm.Internal_for_tests.get_module_instance_exn state
+  in
+  let*! memory = Instance.Vector.get 0l module_instance.memories in
+  let expected_length = min (String.length preimage) (Int32.to_int max_bytes) in
+  assert (returned_size = Int32.of_int expected_length) ;
+  let*! preimage_in_memory =
+    Memory.load_bytes memory page_addr expected_length
+  in
+  assert (
+    preimage_in_memory
+    = String.of_bytes (Bytes.sub page 0 (Int32.to_int returned_size))) ;
+  return_unit
+
+let test_reveal_partial_preimage_classic ~version () =
+  let preimage =
+    (* 8 kiB long. *)
+    String.make 8192 'f'
+  in
+
+  let max_bytes = 50l in
+  test_reveal_partial_preimage_gen ~version preimage max_bytes
 
 let test_reveal_metadata ~version () =
   let open Lwt_result_syntax in
@@ -360,6 +499,9 @@ let tests =
       ( "Test reveal_preimage with preimage length above max_bytes",
         `Quick,
         test_reveal_preimage_above_max );
+      ( "Test reveal_partial_preimage with preimage length below max_bytes",
+        `Quick,
+        test_reveal_partial_preimage_classic );
       ("Test reveal_metadata", `Quick, test_reveal_metadata);
       ("Test reveal_preimage with Fast Exec", `Quick, test_fast_exec_reveal);
     ]
