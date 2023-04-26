@@ -268,7 +268,7 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
     in
     Client.transfer
       client
-      ~wait:"1"
+      ~wait:"0"
       ~amount:Tez.zero
       ~giver:(Format.sprintf "demo_%d" rollup_id)
       ~receiver:mint_and_deposit_contract
@@ -584,7 +584,7 @@ let setup_rollup home rollup_id node client =
       ]
   in
   (* TODO: keys file *)
-  let no_pixel_addr = "tz1emVNqFCsNRPkVWR5nAK9FmxbU3cXMdQGx" in
+  let no_pixel_addr = "tz1b4MEFri3QAnvLS8Po3cMaZmMtQduY62um" in
   let* () =
     deposit_ticket
       ~rollup_node
@@ -622,13 +622,13 @@ let setup_rollups rollups_per_node i (home, node, client) =
     (fun x -> setup_rollup home ((i * rollups_per_node) + x) node client)
     (List.init rollups_per_node Fun.id)
 
-let rec get_continue_conf () =
+let rec _get_continue_conf () =
   Log.info "Continue? (yes)" ;
   let line = read_line () in
   if line = "yes" then ()
   else (
     Log.warn "'yes' required" ;
-    get_continue_conf ())
+    _get_continue_conf ())
 
 (* -------- *)
 (* Run Demo *)
@@ -654,7 +654,7 @@ let main () =
   in
   Log.info "Rollup nodes are ready" ;
   Log.info "Start transfers?" ;
-  get_continue_conf () ;
+  (* get_continue_conf () ; *)
   (* waiting enough time for several commitments to be posted *)
   let node, _, _, _ = List.hd nodes in
   let current_level = Node.get_level node in
