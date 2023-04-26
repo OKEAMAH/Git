@@ -133,14 +133,6 @@ val precompute_timelock :
     [time:int]. *)
 val proof_of_vdf_tuple : time:int -> vdf_tuple -> puzzle * timelock_proof
 
-(** On a claim opening [timelock_proof] of a timelock [puzzle], verifies if the
-    opening is valid given a [time].
-    If the opening is valid, it is hashed opening using the function
-    [timelock_proof_to_symmetric_key] and returned as Some symmetric_key,
-    otherwise it returns None. *)
-val puzzle_to_symmetric_key :
-  time:int -> puzzle -> timelock_proof -> symmetric_key option
-
 (** Encrypt some bytes given a symmetric key using authenticated encryption.
     The output contains both a ciphertext and a message authentication code. *)
 val encrypt : symmetric_key -> bytes -> ciphertext
