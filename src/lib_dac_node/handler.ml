@@ -136,7 +136,7 @@ let new_head ctxt =
     } *)
 module Committee_member = struct
   let push_payload_signature coordinator_cctxt wallet_cctxt committee_member
-      root_hash =
+      root_hash api_version =
     let open Lwt_result_syntax in
     let signer_pkh =
       committee_member.Wallet_account.Committee_member.public_key_hash
@@ -157,12 +157,12 @@ module Committee_member = struct
       Dac_node_client.put_dac_member_signature
         coordinator_cctxt
         ~signature:signature_repr
-        RPC_services.Api.V1
+        api_version
     in
     let*! () = Event.emit_signature_pushed_to_coordinator signature in
     return_unit
 
-  let new_root_hash ctxt wallet_cctxt dac_plugin page_store =
+  let new_root_hash ctxt wallet_cctxt dac_plugin page_store api_version =
     let open Lwt_result_syntax in
     let coordinator_cctxt =
       ctxt.Node_context.Committee_member.coordinator_cctxt
@@ -189,6 +189,7 @@ module Committee_member = struct
             wallet_cctxt
             committee_member
             root_hash
+            api_version
       | Error errs ->
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/4930.
               Improve handling of errors. *)
@@ -199,17 +200,12 @@ module Committee_member = struct
     in
     let remote_store =
       Page_store.(
-        Remote.init
-          {
-            cctxt = coordinator_cctxt;
-            page_store;
-            api_version = RPC_services.Api.V1;
-          })
+        Remote.init {cctxt = coordinator_cctxt; page_store; api_version})
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt RPC_services.Api.V1)
+      (Monitor_services.root_hashes coordinator_cctxt api_version)
 end
 
 (** Handlers specific to an [Observer]. An [Observer] is responsible for
@@ -220,7 +216,7 @@ end
     } *)
 
 module Observer = struct
-  let new_root_hash ctxt dac_plugin page_store =
+  let new_root_hash ctxt dac_plugin page_store api_version =
     let open Lwt_result_syntax in
     let coordinator_cctxt = ctxt.Node_context.Observer.coordinator_cctxt in
     let handler dac_plugin remote_store _stopper root_hash =
@@ -248,17 +244,12 @@ module Observer = struct
     in
     let remote_store =
       Page_store.(
-        Remote.init
-          {
-            cctxt = coordinator_cctxt;
-            page_store;
-            api_version = RPC_services.Api.V1;
-          })
+        Remote.init {cctxt = coordinator_cctxt; page_store; api_version})
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon
       (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt RPC_services.Api.V1)
+      (Monitor_services.root_hashes coordinator_cctxt api_version)
 end
 
 (** Handlers specific to a [Legacy] DAC node. If no
@@ -382,16 +373,26 @@ let handlers node_ctxt =
   let*? plugin = Node_context.get_dac_plugin node_ctxt in
   let page_store = Node_context.get_page_store node_ctxt in
   let wallet_cctxt = Node_context.get_tezos_node_cctxt node_ctxt in
+  let api_version = Node_context.get_api_version node_ctxt in
   match Node_context.get_mode node_ctxt with
   | Coordinator _ -> return [new_head node_ctxt]
   | Committee_member ctxt ->
       return
         [
           new_head node_ctxt;
-          Committee_member.new_root_hash ctxt wallet_cctxt plugin page_store;
+          Committee_member.new_root_hash
+            ctxt
+            wallet_cctxt
+            plugin
+            page_store
+            api_version;
         ]
   | Observer ctxt ->
-      return [new_head node_ctxt; Observer.new_root_hash ctxt plugin page_store]
+      return
+        [
+          new_head node_ctxt;
+          Observer.new_root_hash ctxt plugin page_store api_version;
+        ]
   | Legacy ctxt ->
       let coordinator_cctxt_opt = ctxt.Node_context.Legacy.coordinator_cctxt in
       let root_hash_handler =

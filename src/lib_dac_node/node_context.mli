@@ -180,3 +180,9 @@ val get_page_store : t -> Page_store.Filesystem.t
 (** [get_node_store ctxt access_mode] returns the [Store.Irmin_store.t] with
     [access_mode] used by Dac components. *)
 val get_node_store : t -> 'a Store_sigs.mode -> 'a Store.Irmin_store.t
+
+(** [get_api_version] returns the api version that the node is running in.
+    [api_version] corresponds to the latest api version supported by the
+    node and is also used for interacting with other nodes APIs. The exception
+    being [Legacy] mode, where the node always uses [API.V0]. *)
+val get_api_version : t -> RPC_services.Api.version

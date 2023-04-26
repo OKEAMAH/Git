@@ -225,6 +225,7 @@ type t = {
   page_store : Page_store.Filesystem.t;
   node_store : Store_sigs.rw Store.Irmin_store.t;
   mode : mode;
+  api_version : RPC_services.Api.version;
 }
 
 let init_mode Configuration.{mode; _} cctxt =
@@ -259,6 +260,7 @@ let init config cctxt =
       Page_store.Filesystem.init (Configuration.reveal_data_dir config);
     node_store;
     mode;
+    api_version = RPC_services.Api.V1;
   }
 
 let get_mode node_ctxt = node_ctxt.mode
@@ -312,3 +314,5 @@ let get_node_store (type a) ctxt (access_mode : a Store_sigs.mode) :
   match access_mode with
   | Store_sigs.Read_only -> Store.Irmin_store.readonly ctxt.node_store
   | Store_sigs.Read_write -> ctxt.node_store
+
+let get_api_version ctxt = ctxt.api_version
