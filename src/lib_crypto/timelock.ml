@@ -83,7 +83,7 @@ let rsa2048 =
   Z.of_string
     "25195908475657893494027183240048398571429282126204032027777137836043662020707595556264018525880784406918290641249515082189298559149176184502808489120072844992687392807287776735971418347270261896375014971824691165077613379859095700097330459748808428401797429100642458691817195118746121515172654632282216869987549182422433637259085141865462043576798423387184774447920739934236584823824281198163815010674810451660377306056201619676256133844143603833904414952634432190114657544454178424020924616515723350778707749817125772467962926386356373289912154831438167899885040445364023527381951378636564391212010397122822120720357"
 
-(* RSA2048 rsa2048 size. *)
+(* RSA2048 RSA modulus size. *)
 let size_rsa2048 = 2048
 
 let rsa_public_encoding =
@@ -158,9 +158,8 @@ let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 (* Generates almost uniformly a Zarith element between 0 and [public key].
    Intended for generating the timelock *)
 let gen_locked_value_unsafe rsa_public =
-  let size_rsa2048 = Z.to_bits rsa_public |> String.length in
-  (* We divide by 8 to convert to bytes *)
-  Z.erem (random_z ((size_rsa2048 / 8) + 16)) rsa_public
+  let size_rsa = Z.to_bits rsa_public |> String.length in
+  Z.erem (random_z (size_rsa + 16)) rsa_public
 
 let gen_locked_value_opt rsa_public =
   if not @@ Z.equal rsa_public rsa2048 then None
@@ -272,7 +271,8 @@ let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
   if verify_wesolowski rsa_public ~time vdf_tuple then
-    let nonce = random_z (128 + (Z.to_bits rsa_public |> String.length)) in
+    let size_rsa = Z.to_bits rsa_public |> String.length in
+    let nonce = random_z (size_rsa + 16) in
     let randomized_locked_value =
       Z.powm vdf_tuple.locked_value nonce rsa_public
     in
@@ -365,7 +365,8 @@ let gen_locked_value_bench_unsafe rsa_public =
   let gen_random_z_unsafe size =
     gen_random_bytes_bench_unsafe size |> Bytes.to_string |> Z.of_bits
   in
-  Z.erem (gen_random_z_unsafe (size_rsa2048 / 8)) rsa_public
+  let size_rsa = Z.to_bits rsa_public |> String.length in
+  Z.erem (gen_random_z_unsafe size_rsa) rsa_public
 
 let encrypt_unsafe symmetric_key plaintext =
   let nonce =
