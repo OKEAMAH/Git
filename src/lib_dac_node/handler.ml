@@ -154,10 +154,11 @@ module Committee_member = struct
         {root_hash = Dac_plugin.hash_to_raw root_hash; signature; signer_pkh}
     in
     let* () =
-      Dac_node_client.put_dac_member_signature
+      (match api_version with
+      | RPC_services.Api.V0 -> Dac_node_client.V0.put_dac_member_signature
+      | RPC_services.Api.V1 -> Dac_node_client.V1.put_dac_member_signature)
         coordinator_cctxt
         ~signature:signature_repr
-        api_version
     in
     let*! () = Event.emit_signature_pushed_to_coordinator signature in
     return_unit
@@ -299,10 +300,9 @@ module Legacy = struct
             }
         in
         let* () =
-          Dac_node_client.put_dac_member_signature
+          Dac_node_client.V0.put_dac_member_signature
             coordinator_cctxt
             ~signature:signature_repr
-            RPC_services.Api.V0
         in
         let*! () = Event.emit_signature_pushed_to_coordinator signature in
         return_unit

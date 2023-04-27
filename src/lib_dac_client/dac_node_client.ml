@@ -44,53 +44,89 @@ let make_unix_cctxt ~scheme ~host ~port =
   in
   new unix_cctxt ~rpc_config
 
-(* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
-   If the preimage was generated using a different plugin, the computation of
-   the hash might fail. In practice it would be better to retrieve the
-   hash of the protocol that the coordinator was using when the page hash
-   was computed.
-*)
-let get_preimage (cctxt : #cctxt) api_version ~page_hash =
-  cctxt#call_service
-    RPC_services.get_preimage
-    (((), api_version), page_hash)
-    ()
-    ()
-
-let post_store_preimage (cctxt : #cctxt) ~payload ~pagination_scheme api_version
-    =
-  cctxt#call_service
-    RPC_services.post_store_preimage
-    ((), api_version)
-    ()
-    (payload, pagination_scheme)
-
-let get_verify_signature (cctxt : #cctxt) ~external_message api_version =
-  cctxt#call_service
-    RPC_services.get_verify_signature
-    ((), api_version)
-    external_message
-    ()
-
-let put_dac_member_signature (cctxt : #cctxt) ~signature api_version =
-  cctxt#call_service
-    RPC_services.put_dac_member_signature
-    ((), api_version)
-    ()
-    signature
-
-let get_certificate (cctxt : #cctxt) ~root_page_hash api_version =
-  cctxt#call_service
-    RPC_services.get_certificate
-    (((), api_version), root_page_hash)
-    ()
-    ()
-
-module Coordinator = struct
-  let post_preimage (cctxt : #cctxt) ~payload api_version =
+module Shared = struct
+  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4895
+     If the preimage was generated using a different plugin, the computation of
+     the hash might fail. In practice it would be better to retrieve the
+     hash of the protocol that the coordinator was using when the page hash
+     was computed.
+  *)
+  let get_preimage (cctxt : #cctxt) api_version ~page_hash =
     cctxt#call_service
-      RPC_services.Coordinator.post_preimage
+      RPC_services.get_preimage
+      (((), api_version), page_hash)
+      ()
+      ()
+
+  let post_store_preimage (cctxt : #cctxt) ~payload ~pagination_scheme
+      api_version =
+    cctxt#call_service
+      RPC_services.post_store_preimage
       ((), api_version)
       ()
-      payload
+      (payload, pagination_scheme)
+
+  let get_verify_signature (cctxt : #cctxt) ~external_message api_version =
+    cctxt#call_service
+      RPC_services.get_verify_signature
+      ((), api_version)
+      external_message
+      ()
+
+  let put_dac_member_signature (cctxt : #cctxt) ~signature api_version =
+    cctxt#call_service
+      RPC_services.put_dac_member_signature
+      ((), api_version)
+      ()
+      signature
+
+  let get_certificate (cctxt : #cctxt) ~root_page_hash api_version =
+    cctxt#call_service
+      RPC_services.get_certificate
+      (((), api_version), root_page_hash)
+      ()
+      ()
+
+  module Coordinator = struct
+    let post_preimage (cctxt : #cctxt) ~payload api_version =
+      cctxt#call_service
+        RPC_services.Coordinator.post_preimage
+        ((), api_version)
+        ()
+        payload
+  end
+end
+
+module V0 = struct
+  let get_preimage cctxt = Shared.get_preimage cctxt RPC_services.Api.V0
+
+  let put_dac_member_signature cctxt =
+    Shared.put_dac_member_signature cctxt RPC_services.Api.V0
+
+  let get_certificate cctxt = Shared.get_certificate cctxt RPC_services.Api.V0
+
+  module Coordinator = struct
+    let post_preimage cctxt =
+      Shared.Coordinator.post_preimage cctxt RPC_services.Api.V0
+  end
+
+  let post_store_preimage cctxt =
+    Shared.post_store_preimage cctxt RPC_services.Api.V0
+
+  let get_verify_signature cctxt =
+    Shared.get_verify_signature cctxt RPC_services.Api.V0
+end
+
+module V1 = struct
+  let get_preimage cctxt = Shared.get_preimage cctxt RPC_services.Api.V1
+
+  let put_dac_member_signature cctxt =
+    Shared.put_dac_member_signature cctxt RPC_services.Api.V1
+
+  let get_certificate cctxt = Shared.get_certificate cctxt RPC_services.Api.V1
+
+  module Coordinator = struct
+    let post_preimage cctxt =
+      Shared.Coordinator.post_preimage cctxt RPC_services.Api.V1
+  end
 end

@@ -285,9 +285,10 @@ module Remote : S with type configuration = remote_configuration = struct
         type remote_context = Dac_node_client.cctxt
 
         let fetch _dac_plugin remote_context api_version hash =
-          Dac_node_client.get_preimage
+          (match api_version with
+          | RPC_services.Api.V0 -> Dac_node_client.V0.get_preimage
+          | RPC_services.Api.V1 -> Dac_node_client.V1.get_preimage)
             remote_context
-            api_version
             ~page_hash:(Dac_plugin.hash_to_raw hash)
       end)
       (F)
