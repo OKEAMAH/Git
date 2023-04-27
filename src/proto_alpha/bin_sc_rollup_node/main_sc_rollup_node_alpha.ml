@@ -282,6 +282,19 @@ let log_kernel_debug_file_arg =
     ~doc:""
     Client_proto_args.string_parameter
 
+let irmin_cache_size_arg =
+  Tezos_clic.arg
+    ~long:"irmin-cache-size"
+    ~placeholder:"<nb_entries>"
+    ~doc:"Size of Irmin cache in number of entries"
+  @@ Tezos_clic.parameter (fun (cctxt : #Client_context.printer) p ->
+         match int_of_string p with
+         | exception _ ->
+             cctxt#error "irmin-cache-size must be a positive integer"
+         | i when i < 0 ->
+             cctxt#error "irmin-cache-size must be a positive integer"
+         | i -> return i)
+
 let group =
   {
     Tezos_clic.name = "sc_rollup.node";
@@ -308,7 +321,8 @@ let make_operators sc_rollup_node_operators =
 let configuration_from_args ~rpc_addr ~rpc_port ~metrics_addr ~loser_mode
     ~reconnection_delay ~dal_node_endpoint ~dac_observer_endpoint ~dac_timeout
     ~injector_retention_period ~injector_attempts ~injection_ttl ~mode
-    ~sc_rollup_address ~sc_rollup_node_operators ~log_kernel_debug =
+    ~sc_rollup_address ~sc_rollup_node_operators ~irmin_cache_size
+    ~log_kernel_debug =
   let open Configuration in
   let sc_rollup_node_operators = make_operators sc_rollup_node_operators in
   let config =
@@ -339,7 +353,7 @@ let configuration_from_args ~rpc_addr ~rpc_port ~metrics_addr ~loser_mode
             Option.value ~default:default_injector.injection_ttl injection_ttl;
         };
       l2_blocks_cache_size = Configuration.default_l2_blocks_cache_size;
-      irmin_cache_size = None;
+      irmin_cache_size;
       log_kernel_debug;
     }
   in
@@ -349,7 +363,7 @@ let patch_configuration_from_args configuration ~rpc_addr ~rpc_port
     ~metrics_addr ~loser_mode ~reconnection_delay ~dal_node_endpoint
     ~dac_observer_endpoint ~dac_timeout ~injector_retention_period
     ~injector_attempts ~injection_ttl ~mode ~sc_rollup_address
-    ~sc_rollup_node_operators ~log_kernel_debug =
+    ~sc_rollup_node_operators ~irmin_cache_size ~log_kernel_debug =
   let open Configuration in
   let new_sc_rollup_node_operators = make_operators sc_rollup_node_operators in
   (* Merge operators *)
@@ -395,6 +409,8 @@ let patch_configuration_from_args configuration ~rpc_addr ~rpc_port
           };
         loser_mode = Option.value ~default:configuration.loser_mode loser_mode;
         metrics_addr = Option.either metrics_addr configuration.metrics_addr;
+        irmin_cache_size =
+          Option.either irmin_cache_size configuration.irmin_cache_size;
         log_kernel_debug = log_kernel_debug || configuration.log_kernel_debug;
       }
   in
@@ -403,7 +419,8 @@ let patch_configuration_from_args configuration ~rpc_addr ~rpc_port
 let create_or_read_config ~data_dir ~rpc_addr ~rpc_port ~metrics_addr
     ~loser_mode ~reconnection_delay ~dal_node_endpoint ~dac_observer_endpoint
     ~dac_timeout ~injector_retention_period ~injector_attempts ~injection_ttl
-    ~mode ~sc_rollup_address ~sc_rollup_node_operators ~log_kernel_debug =
+    ~mode ~sc_rollup_address ~sc_rollup_node_operators ~irmin_cache_size
+    ~log_kernel_debug =
   let open Lwt_result_syntax in
   let config_file = Configuration.config_filename ~data_dir in
   let*! exists_config = Lwt_unix.file_exists config_file in
@@ -428,6 +445,7 @@ let create_or_read_config ~data_dir ~rpc_addr ~rpc_port ~metrics_addr
         ~mode
         ~sc_rollup_address
         ~sc_rollup_node_operators
+        ~irmin_cache_size
         ~log_kernel_debug
     in
     return configuration
@@ -467,6 +485,7 @@ let create_or_read_config ~data_dir ~rpc_addr ~rpc_port ~metrics_addr
         ~mode
         ~sc_rollup_address
         ~sc_rollup_node_operators
+        ~irmin_cache_size
         ~log_kernel_debug
     in
     return config
@@ -477,7 +496,7 @@ let config_init_command =
   command
     ~group
     ~desc:"Configure the smart rollup node."
-    (args14
+    (args15
        force_switch
        data_dir_arg
        rpc_addr_arg
@@ -491,6 +510,7 @@ let config_init_command =
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
+       irmin_cache_size_arg
        log_kernel_debug_arg)
     (prefix "init" @@ mode_param
     @@ prefixes ["config"; "for"]
@@ -510,6 +530,7 @@ let config_init_command =
            injector_retention_period,
            injector_attempts,
            injection_ttl,
+           irmin_cache_size,
            log_kernel_debug )
          mode
          sc_rollup_address
@@ -531,6 +552,7 @@ let config_init_command =
           ~mode
           ~sc_rollup_address
           ~sc_rollup_node_operators
+          ~irmin_cache_size
           ~log_kernel_debug
       in
       let* () = Configuration.save ~force ~data_dir config in
@@ -547,7 +569,7 @@ let legacy_run_command =
   command
     ~group
     ~desc:"Run the rollup node daemon (deprecated)."
-    (args16
+    (args17
        data_dir_arg
        mode_arg
        sc_rollup_address_arg
@@ -562,6 +584,7 @@ let legacy_run_command =
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
+       irmin_cache_size_arg
        log_kernel_debug_arg
        log_kernel_debug_file_arg)
     (prefixes ["run"] @@ stop)
@@ -579,6 +602,7 @@ let legacy_run_command =
            injector_retention_period,
            injector_attempts,
            injection_ttl,
+           irmin_cache_size,
            log_kernel_debug,
            log_kernel_debug_file )
          cctxt ->
@@ -599,6 +623,7 @@ let legacy_run_command =
           ~mode
           ~sc_rollup_address
           ~sc_rollup_node_operators:[]
+          ~irmin_cache_size
           ~log_kernel_debug
       in
       Daemon.run ~data_dir ?log_kernel_debug_file configuration cctxt)
@@ -611,7 +636,7 @@ let run_command =
     ~desc:
       "Run the rollup node daemon. Arguments overwrite values provided in the \
        configuration file."
-    (args14
+    (args15
        data_dir_arg
        rpc_addr_arg
        rpc_port_arg
@@ -624,6 +649,7 @@ let run_command =
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
+       irmin_cache_size_arg
        log_kernel_debug_arg
        log_kernel_debug_file_arg)
     (prefixes ["run"] @@ mode_param @@ prefixes ["for"]
@@ -642,6 +668,7 @@ let run_command =
            injector_retention_period,
            injector_attempts,
            injection_ttl,
+           irmin_cache_size,
            log_kernel_debug,
            log_kernel_debug_file )
          mode
@@ -665,6 +692,7 @@ let run_command =
           ~mode:(Some mode)
           ~sc_rollup_address:(Some sc_rollup_address)
           ~sc_rollup_node_operators
+          ~irmin_cache_size
           ~log_kernel_debug
       in
       Daemon.run ~data_dir ?log_kernel_debug_file configuration cctxt)
