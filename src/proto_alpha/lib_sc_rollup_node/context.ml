@@ -74,8 +74,8 @@ let hash_to_istore_hash h =
 let istore_hash_to_hash h =
   IStore.Hash.to_raw_string h |> Sc_rollup_context_hash.of_string_exn
 
-let load : type a. a mode -> string -> a raw_index Lwt.t =
- fun mode path ->
+let load : type a. ?cache_size:int -> a mode -> string -> a raw_index Lwt.t =
+ fun ?cache_size mode path ->
   let open Lwt_syntax in
   let readonly = match mode with Read_only -> true | Read_write -> false in
   let+ repo =
@@ -83,6 +83,7 @@ let load : type a. a mode -> string -> a raw_index Lwt.t =
       (Irmin_pack.config
          ~readonly
          ~indexing_strategy:Irmin_pack.Indexing_strategy.minimal
+         ?lru_size:cache_size
          path)
   in
   {path; repo}

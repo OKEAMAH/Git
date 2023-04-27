@@ -188,6 +188,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
         fee_parameters;
         loser_mode;
         l2_blocks_cache_size;
+        irmin_cache_size;
         dal_node_endpoint;
         reconnection_delay;
         _;
@@ -204,7 +205,10 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       Configuration.(default_storage_dir data_dir)
   in
   let*! context =
-    Context.load mode (Configuration.default_context_dir data_dir)
+    Context.load
+      ?cache_size:irmin_cache_size
+      mode
+      (Configuration.default_context_dir data_dir)
   in
   let* () = check_and_set_rollup_address context rollup_address in
   let* l1_ctxt =

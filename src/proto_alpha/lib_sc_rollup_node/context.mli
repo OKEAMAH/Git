@@ -54,8 +54,10 @@ type hash = Sc_rollup_context_hash.t
 (** The type of commits for the context. *)
 type commit
 
-(** [load path] initializes from disk a context from [path]. *)
-val load : 'a mode -> string -> 'a index Lwt.t
+(** [load ?cache_size path] initializes from disk a context from
+    [path]. [cache_size] allows to change the LRU cache size of Irmin (100_000
+    by default). *)
+val load : ?cache_size:int -> 'a mode -> string -> 'a index Lwt.t
 
 (** [index context] is the repository of the context [context]. *)
 val index : 'a t -> 'a index

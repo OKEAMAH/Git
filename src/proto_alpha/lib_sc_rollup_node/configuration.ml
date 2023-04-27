@@ -68,6 +68,7 @@ type t = {
   batcher : batcher;
   injector : injector;
   l2_blocks_cache_size : int;
+  irmin_cache_size : int option;
   log_kernel_debug : bool;
 }
 
@@ -519,6 +520,7 @@ let encoding : t Data_encoding.t =
            batcher;
            injector;
            l2_blocks_cache_size;
+           irmin_cache_size;
            log_kernel_debug;
          } ->
       ( ( sc_rollup_address,
@@ -536,6 +538,7 @@ let encoding : t Data_encoding.t =
           batcher,
           injector,
           l2_blocks_cache_size,
+          irmin_cache_size,
           log_kernel_debug ) ))
     (fun ( ( sc_rollup_address,
              sc_rollup_node_operators,
@@ -552,6 +555,7 @@ let encoding : t Data_encoding.t =
              batcher,
              injector,
              l2_blocks_cache_size,
+             irmin_cache_size,
              log_kernel_debug ) ) ->
       {
         sc_rollup_address;
@@ -569,6 +573,7 @@ let encoding : t Data_encoding.t =
         batcher;
         injector;
         l2_blocks_cache_size;
+        irmin_cache_size;
         log_kernel_debug;
       })
     (merge_objs
@@ -609,13 +614,14 @@ let encoding : t Data_encoding.t =
                 test only!)"
              Loser_mode.encoding
              Loser_mode.no_failures))
-       (obj7
+       (obj8
           (opt "DAL node endpoint" Tezos_rpc.Encoding.uri_encoding)
           (opt "dac-observer-client" Tezos_rpc.Encoding.uri_encoding)
           (opt "dac-timeout" Data_encoding.z)
           (dft "batcher" batcher_encoding default_batcher)
           (dft "injector" injector_encoding default_injector)
           (dft "l2_blocks_cache_size" int31 default_l2_blocks_cache_size)
+          (opt "irmin_cache_size" int31)
           (dft "log-kernel-debug" Data_encoding.bool false)))
 
 let check_mode config =

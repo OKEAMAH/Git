@@ -97,6 +97,7 @@ type t = {
   batcher : batcher;
   injector : injector;
   l2_blocks_cache_size : int;
+  irmin_cache_size : int option;
   log_kernel_debug : bool;
 }
 
