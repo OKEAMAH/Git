@@ -93,7 +93,7 @@ let readonly (index : [> `Read] index) = (index :> [`Read] index)
 
 let raw_commit ?(message = "") index tree =
   let info = IStore.Info.v ~author:"Tezos" 0L ~message in
-  IStore.Commit.v index.repo ~info ~parents:[] tree
+  IStore.Commit.v ~clear:false index.repo ~info ~parents:[] tree
 
 let commit ?message ctxt =
   let open Lwt_syntax in
@@ -217,7 +217,7 @@ module Rollup = struct
       Data_encoding.Binary.to_bytes_exn Sc_rollup.Address.encoding addr
     in
     let*! store = IStore.main index.repo in
-    let*! () = IStore.set_exn ~info store path value in
+    let*! () = IStore.set_exn ~clear:false ~info store path value in
     return_unit
 
   let get_address (index : _ index) =
