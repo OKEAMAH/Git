@@ -859,9 +859,25 @@ functor
         test ~valid:true ~name:"Bytes.test_not" @@ test_not o i;
       ]
 
+    let test_band a b z () =
+      let* a = input ~kind:`Public a in
+      let* b = input ~kind:`Public b in
+      let* z = input z in
+      let* z' = band a b in
+      assert_equal z z'
+
+    let tests_band =
+      let x1 = Bytes.input_bytes @@ bytes_of_hex "0F" in
+      let x2 = Bytes.input_bytes @@ bytes_of_hex "00" in
+      [
+        test ~valid:true ~name:"Bytes.test_band" @@ test_band x1 x1 x1;
+        test ~valid:true ~name:"Bytes.test_band" @@ test_band x1 x2 x2;
+        test ~valid:false ~name:"Bytes.test_band" @@ test_band x1 x2 x1;
+      ]
+
     let tests =
       tests_constant @ tests_add @ tests_xor @ tests_ifthenelse_bytes
-      @ tests_rotate_right @ tests_not
+      @ tests_rotate_right @ tests_not @ tests_band
   end
 
 module ECC : Test =
