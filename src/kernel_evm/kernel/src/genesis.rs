@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::error::Error;
 use crate::storage;
 use crate::storage::receipt_path;
 use crate::L2Block;
+use anyhow::Result;
 use primitive_types::U256;
 use tezos_ethereum::account::Account;
 use tezos_ethereum::address::EthereumAddress;
@@ -54,7 +54,7 @@ fn store_genesis_mint_account<Host: Runtime>(
     host: &mut Host,
     account: &Account,
     path: &OwnedPath,
-) -> Result<(), Error> {
+) -> Result<()> {
     storage::store_account(host, account, path)
 }
 
@@ -62,7 +62,7 @@ fn forge_genesis_mint_account<Host: Runtime>(
     host: &mut Host,
     mint_address: &str,
     balance: Wei,
-) -> Result<(), Error> {
+) -> Result<()> {
     let account = Account::with_assets(balance);
     let path = storage::account_path(&mint_address.as_bytes().to_vec())?;
     store_genesis_mint_account(host, &account, &path)
@@ -83,7 +83,7 @@ fn collect_mint_transactions<T, E>(
 
 fn bootstrap_genesis_accounts<Host: Runtime>(
     host: &mut Host,
-) -> Result<Vec<TransactionHash>, Error> {
+) -> Result<Vec<TransactionHash>> {
     let transactions_hashes = MINT_ACCOUNTS.map(
         |MintAccount {
              mint_address,
@@ -108,7 +108,7 @@ fn craft_mint_address(genesis_mint_address: &str) -> Option<EthereumAddress> {
 fn store_genesis_receipts<Host: Runtime>(
     host: &mut Host,
     genesis_block: L2Block,
-) -> Result<(), Error> {
+) -> Result<()> {
     let genesis_address: EthereumAddress = GENESIS_ADDRESSS.into();
 
     for (i, hash) in genesis_block.transactions.iter().enumerate() {
@@ -139,7 +139,7 @@ fn store_genesis_receipts<Host: Runtime>(
     Ok(())
 }
 
-pub fn init_block<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+pub fn init_block<Host: Runtime>(host: &mut Host) -> Result<()> {
     // Forge the genesis' transactions that will mint the very first accounts
     let transaction_hashes = bootstrap_genesis_accounts(host)?;
 

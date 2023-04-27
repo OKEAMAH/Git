@@ -3,13 +3,11 @@
 //
 // SPDX-License-Identifier: MIT
 
+use anyhow::Result;
 use tezos_ethereum::signatures::EthereumTransactionCommon;
+use tezos_ethereum::transaction::TransactionHash;
 use tezos_smart_rollup_host::input::Message;
 use tezos_smart_rollup_host::runtime::Runtime;
-
-use crate::Error;
-
-use tezos_ethereum::transaction::TransactionHash;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
@@ -140,7 +138,7 @@ impl InputResult {
 pub fn read_input<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-) -> Result<InputResult, Error> {
+) -> Result<InputResult> {
     let input = host.read_input()?;
     match input {
         Some(input) => Ok(InputResult::parse(input, smart_rollup_address)),
@@ -153,7 +151,7 @@ fn handle_transaction_chunk<Host: Runtime>(
     tx_hash: TransactionHash,
     i: u16,
     data: Vec<u8>,
-) -> Result<Option<Transaction>, Error> {
+) -> Result<Option<Transaction>> {
     // Sanity check to verify that the transaction chunk uses the maximum
     // space capacity allowed.
     let num_chunks = crate::storage::chunked_transaction_num_chunks(host, &tx_hash)?;
@@ -175,7 +173,7 @@ fn handle_transaction_chunk<Host: Runtime>(
 pub fn read_inbox<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-) -> Result<Vec<Transaction>, Error> {
+) -> Result<Vec<Transaction>> {
     let mut res = Vec::new();
     loop {
         match read_input(host, smart_rollup_address)? {

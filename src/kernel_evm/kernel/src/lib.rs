@@ -7,13 +7,13 @@ use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_entrypoint::kernel_entry;
 use tezos_smart_rollup_host::runtime::Runtime;
 
+use anyhow::Result;
+
 use crate::blueprint::{fetch, Queue};
-use crate::error::Error;
 use crate::storage::{read_smart_rollup_address, store_smart_rollup_address};
 
 mod block;
 mod blueprint;
-mod error;
 mod genesis;
 mod helpers;
 mod inbox;
@@ -22,7 +22,7 @@ mod storage;
 pub fn stage_one<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-) -> Result<Queue, Error> {
+) -> Result<Queue> {
     let queue = fetch(host, smart_rollup_address)?;
 
     for (i, blueprint) in queue.proposals.iter().enumerate() {
@@ -37,7 +37,7 @@ pub fn stage_one<Host: Runtime>(
     Ok(queue)
 }
 
-pub fn stage_two<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error> {
+pub fn stage_two<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<()> {
     block::produce(host, queue)?;
 
     if let Ok(L2Block {
@@ -59,9 +59,7 @@ pub fn stage_two<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Err
     Ok(())
 }
 
-fn retrieve_smart_rollup_address<Host: Runtime>(
-    host: &mut Host,
-) -> Result<[u8; 20], Error> {
+fn retrieve_smart_rollup_address<Host: Runtime>(host: &mut Host) -> Result<[u8; 20]> {
     match read_smart_rollup_address(host) {
         Ok(smart_rollup_address) => Ok(smart_rollup_address),
         Err(_) => {
@@ -73,7 +71,7 @@ fn retrieve_smart_rollup_address<Host: Runtime>(
     }
 }
 
-fn genesis_initialisation<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+fn genesis_initialisation<Host: Runtime>(host: &mut Host) -> Result<()> {
     let block_path = storage::block_path(0)?;
     match Runtime::store_has(host, &block_path) {
         Ok(Some(_)) => Ok(()),
@@ -81,7 +79,7 @@ fn genesis_initialisation<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     }
 }
 
-pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+pub fn main<Host: Runtime>(host: &mut Host) -> Result<()> {
     let smart_rollup_address = retrieve_smart_rollup_address(host)?;
     genesis_initialisation(host)?;
 

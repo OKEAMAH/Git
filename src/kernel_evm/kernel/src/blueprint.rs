@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 use crate::inbox::{read_inbox, Transaction};
-use crate::Error;
 use tezos_smart_rollup_host::runtime::Runtime;
+
+use anyhow::Result;
 
 /// The blueprint of a block is a list of transactions.
 pub struct Blueprint {
@@ -35,7 +36,7 @@ impl Queue {
 pub fn fetch<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-) -> Result<Queue, Error> {
+) -> Result<Queue> {
     let transactions = read_inbox(host, smart_rollup_address)?;
     let blueprint = Blueprint { transactions };
     Ok(Queue {

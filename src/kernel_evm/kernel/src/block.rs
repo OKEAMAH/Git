@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 use crate::blueprint::Queue;
-use crate::error::Error;
 use crate::helpers::address_to_hash;
 use crate::inbox::Transaction;
 use crate::storage;
+use anyhow::Result;
 use tezos_ethereum::address::EthereumAddress;
 use tezos_ethereum::signatures::EthereumTransactionCommon;
 use tezos_smart_rollup_host::path::OwnedPath;
@@ -18,7 +18,6 @@ use tezos_ethereum::eth_gen::{BlockHash, L2Level, OwnedHash, BLOCK_HASH_SIZE};
 use tezos_ethereum::transaction::{
     TransactionHash, TransactionReceipt, TransactionStatus, TransactionType,
 };
-
 use tezos_ethereum::wei::Wei;
 
 pub struct L2Block {
@@ -87,9 +86,7 @@ impl L2Block {
     }
 }
 
-fn get_tx_sender(
-    tx: &EthereumTransactionCommon,
-) -> Result<(OwnedPath, EthereumAddress), Error> {
+fn get_tx_sender(tx: &EthereumTransactionCommon) -> Result<(OwnedPath, EthereumAddress)> {
     let address = tx.caller();
     // We reencode in hexadecimal, since the accounts hash are encoded in
     // hexadecimal in the storage.
@@ -100,7 +97,7 @@ fn get_tx_sender(
 
 fn get_tx_receiver(
     tx: &EthereumTransactionCommon,
-) -> Result<(OwnedPath, EthereumAddress), Error> {
+) -> Result<(OwnedPath, EthereumAddress)> {
     let hash = address_to_hash(tx.to);
     let path = storage::account_path(&hash)?;
     Ok((path, tx.to))
@@ -114,7 +111,7 @@ fn update_account<Host: Runtime>(
     balance: Wei,
     nonce: Option<U256>, // if none is given, only the balance is updated. This
                          // avoids updating the storage with the same value.
-) -> Result<(), Error> {
+) -> Result<()> {
     if storage::has_account(host, account_path)? {
         storage::store_balance(host, account_path, balance)?;
         if let Some(nonce) = nonce {
@@ -159,7 +156,7 @@ fn apply_transaction<Host: Runtime>(
     block: &L2Block,
     transaction: &Transaction,
     index: u32,
-) -> Result<TransactionReceipt, Error> {
+) -> Result<TransactionReceipt> {
     let (sender_path, sender_address) = get_tx_sender(&transaction.tx)?;
     let sender_balance =
         storage::read_account_balance(host, &sender_path).unwrap_or_else(|_| Wei::zero());
@@ -219,7 +216,7 @@ fn apply_transactions<Host: Runtime>(
     host: &mut Host,
     block: &L2Block,
     transactions: &[Transaction],
-) -> Result<Vec<TransactionReceipt>, Error> {
+) -> Result<Vec<TransactionReceipt>> {
     try_collect(
         transactions
             .iter()
@@ -229,7 +226,7 @@ fn apply_transactions<Host: Runtime>(
     )
 }
 
-pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error> {
+pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<()> {
     for proposal in queue.proposals {
         let current_level = storage::read_current_block_number(host)?;
         let next_level = current_level + 1;

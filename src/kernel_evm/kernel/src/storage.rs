@@ -10,13 +10,14 @@ use tezos_smart_rollup_host::runtime::{Runtime, ValueType};
 use std::str::from_utf8;
 
 use crate::block::L2Block;
-use crate::error::{Error, StorageError};
+use anyhow::{bail, Result};
 use tezos_ethereum::account::*;
 use tezos_ethereum::eth_gen::{BlockHash, Hash, L2Level};
 use tezos_ethereum::transaction::{
     TransactionHash, TransactionReceipt, TransactionStatus, TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::wei::Wei;
+use thiserror::Error;
 
 use primitive_types::{H160, U256};
 
@@ -52,26 +53,32 @@ const TRANSACTION_RECEIPT_STATUS_SIZE: usize = 1;
 // TRANSACTION_HASH_SIZE * 128 = 4096.
 const MAX_TRANSACTION_HASHES: usize = TRANSACTION_HASH_SIZE * 128;
 
+#[derive(Debug, Error)]
+pub enum StorageError {
+    #[error("Expected to read {expected:?} bytes but read {actual:?}")]
+    InvalidLoadValue { expected: usize, actual: usize },
+    #[error("Failed to decode bytes at path {path:?}")]
+    InvalidEncoding { path: OwnedPath, value: Vec<u8> },
+}
+
 fn store_read_slice<Host: Runtime, T: Path>(
     host: &mut Host,
     path: &T,
     buffer: &mut [u8],
     expected_size: usize,
-) -> Result<(), Error> {
+) -> Result<()> {
     let size = Runtime::store_read_slice(host, path, 0, buffer)?;
     if size == expected_size {
         Ok(())
     } else {
-        Err(Error::Storage(StorageError::InvalidLoadValue {
+        bail!(StorageError::InvalidLoadValue {
             expected: expected_size,
             actual: size,
-        }))
+        })
     }
 }
 
-pub fn read_smart_rollup_address<Host: Runtime>(
-    host: &mut Host,
-) -> Result<[u8; 20], Error> {
+pub fn read_smart_rollup_address<Host: Runtime>(host: &mut Host) -> Result<[u8; 20]> {
     let mut buffer = [0u8; 20];
     store_read_slice(host, &SMART_ROLLUP_ADDRESS, &mut buffer, 20)?;
     Ok(buffer)
@@ -80,59 +87,53 @@ pub fn read_smart_rollup_address<Host: Runtime>(
 pub fn store_smart_rollup_address<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: &[u8; 20],
-) -> Result<(), Error> {
-    host.store_write(&SMART_ROLLUP_ADDRESS, smart_rollup_address, 0)
-        .map_err(Error::from)
+) -> Result<()> {
+    Ok(host.store_write(&SMART_ROLLUP_ADDRESS, smart_rollup_address, 0)?)
 }
 
 /// The size of one 256 bit word. Size in bytes
 pub const WORD_SIZE: usize = 32usize;
 
 /// Read a single unsigned 256 bit value from storage at the path given.
-fn read_u256(host: &impl Runtime, path: &OwnedPath) -> Result<U256, Error> {
+fn read_u256(host: &impl Runtime, path: &OwnedPath) -> Result<U256> {
     let bytes = host.store_read(path, 0, WORD_SIZE)?;
     Ok(Wei::from_little_endian(&bytes))
 }
 
-fn write_u256(
-    host: &mut impl Runtime,
-    path: &OwnedPath,
-    value: U256,
-) -> Result<(), Error> {
+fn write_u256(host: &mut impl Runtime, path: &OwnedPath, value: U256) -> Result<()> {
     let mut bytes: [u8; WORD_SIZE] = value.into();
     value.to_little_endian(&mut bytes);
-    host.store_write(path, &bytes, 0).map_err(Error::from)
+    Ok(host.store_write(path, &bytes, 0)?)
 }
 
-fn address_path(address: Hash) -> Result<OwnedPath, Error> {
-    let address: &str =
-        from_utf8(address).map_err(crate::error::TransferError::InvalidAddressFormat)?;
+fn address_path(address: Hash) -> Result<OwnedPath> {
+    let address: &str = from_utf8(address)?;
     let address_path: Vec<u8> = format!("/{}", &address.to_ascii_lowercase()).into();
-    OwnedPath::try_from(address_path).map_err(Error::from)
+    Ok(OwnedPath::try_from(address_path)?)
 }
 
-pub fn account_path(address: Hash) -> Result<OwnedPath, Error> {
+pub fn account_path(address: Hash) -> Result<OwnedPath> {
     let address_hash = address_path(address)?;
-    concat(&EVM_ACCOUNTS, &address_hash).map_err(Error::from)
+    Ok(concat(&EVM_ACCOUNTS, &address_hash)?)
 }
 
-pub fn block_path(number: L2Level) -> Result<OwnedPath, Error> {
+pub fn block_path(number: L2Level) -> Result<OwnedPath> {
     let number: &str = &number.to_string();
     let raw_number_path: Vec<u8> = format!("/{}", &number).into();
     let number_path = OwnedPath::try_from(raw_number_path)?;
-    concat(&EVM_BLOCKS, &number_path).map_err(Error::from)
+    Ok(concat(&EVM_BLOCKS, &number_path)?)
 }
-pub fn receipt_path(receipt_hash: &TransactionHash) -> Result<OwnedPath, Error> {
+pub fn receipt_path(receipt_hash: &TransactionHash) -> Result<OwnedPath> {
     let hash = hex::encode(receipt_hash);
     let raw_receipt_path: Vec<u8> = format!("/{}", &hash).into();
     let receipt_path = OwnedPath::try_from(raw_receipt_path)?;
-    concat(&TRANSACTIONS_RECEIPTS, &receipt_path).map_err(Error::from)
+    Ok(concat(&TRANSACTIONS_RECEIPTS, &receipt_path)?)
 }
 
 pub fn has_account<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
-) -> Result<bool, Error> {
+) -> Result<bool> {
     match host.store_has(account_path)? {
         Some(ValueType::Subtree | ValueType::ValueWithSubtree) => Ok(true),
         _ => Ok(false),
@@ -142,7 +143,7 @@ pub fn has_account<Host: Runtime>(
 pub fn read_account_nonce<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
-) -> Result<U256, Error> {
+) -> Result<U256> {
     let path = concat(account_path, &EVM_ACCOUNT_NONCE)?;
     read_u256(host, &path)
 }
@@ -150,7 +151,7 @@ pub fn read_account_nonce<Host: Runtime>(
 pub fn read_account_balance<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
-) -> Result<Wei, Error> {
+) -> Result<Wei> {
     let path = concat(account_path, &EVM_ACCOUNT_BALANCE)?;
     read_u256(host, &path)
 }
@@ -158,16 +159,12 @@ pub fn read_account_balance<Host: Runtime>(
 pub fn read_account_code_hash<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>> {
     let path = concat(account_path, &EVM_ACCOUNT_CODE_HASH)?;
-    host.store_read(&path, 0, HASH_MAX_SIZE)
-        .map_err(Error::from)
+    Ok(host.store_read(&path, 0, HASH_MAX_SIZE)?)
 }
 
-pub fn read_account<Host: Runtime>(
-    host: &mut Host,
-    address: Hash,
-) -> Result<Account, Error> {
+pub fn read_account<Host: Runtime>(host: &mut Host, address: Hash) -> Result<Account> {
     let account_path = account_path(address)?;
     let nonce = read_account_nonce(host, &account_path)?;
     let balance = read_account_balance(host, &account_path)?;
@@ -184,7 +181,7 @@ pub fn store_nonce<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
     nonce: U256,
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(account_path, &EVM_ACCOUNT_NONCE)?;
     write_u256(host, &path, nonce)
 }
@@ -193,7 +190,7 @@ pub fn store_balance<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
     balance: Wei,
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(account_path, &EVM_ACCOUNT_BALANCE)?;
     write_u256(host, &path, balance)
 }
@@ -202,22 +199,22 @@ fn store_code_hash<Host: Runtime>(
     host: &mut Host,
     account_path: &OwnedPath,
     code_hash: Hash,
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(account_path, &EVM_ACCOUNT_CODE_HASH)?;
-    host.store_write(&path, code_hash, 0).map_err(Error::from)
+    Ok(host.store_write(&path, code_hash, 0)?)
 }
 
 pub fn store_account<Host: Runtime>(
     host: &mut Host,
     account: &Account,
     account_path: &OwnedPath,
-) -> Result<(), Error> {
+) -> Result<()> {
     store_nonce(host, account_path, account.nonce)?;
     store_balance(host, account_path, account.balance)?;
     store_code_hash(host, account_path, &account.code_hash)
 }
 
-pub fn read_current_block_number<Host: Runtime>(host: &mut Host) -> Result<u64, Error> {
+pub fn read_current_block_number<Host: Runtime>(host: &mut Host) -> Result<u64> {
     let path = concat(&EVM_CURRENT_BLOCK, &EVM_BLOCKS_NUMBER)?;
     let mut buffer = [0_u8; 8];
     store_read_slice(host, &path, &mut buffer, 8)?;
@@ -227,7 +224,7 @@ pub fn read_current_block_number<Host: Runtime>(host: &mut Host) -> Result<u64, 
 fn read_nth_block_transactions<Host: Runtime>(
     host: &mut Host,
     block_path: &OwnedPath,
-) -> Result<Vec<TransactionHash>, Error> {
+) -> Result<Vec<TransactionHash>> {
     let path = concat(block_path, &EVM_BLOCKS_TRANSACTIONS)?;
 
     let transactions_bytes = host.store_read(&path, 0, MAX_TRANSACTION_HASHES)?;
@@ -240,7 +237,7 @@ fn read_nth_block_transactions<Host: Runtime>(
         .collect::<Vec<TransactionHash>>())
 }
 
-pub fn read_current_block<Host: Runtime>(host: &mut Host) -> Result<L2Block, Error> {
+pub fn read_current_block<Host: Runtime>(host: &mut Host) -> Result<L2Block> {
     let number = read_current_block_number(host)?;
     let block_path = block_path(number)?;
     let transactions = read_nth_block_transactions(host, &block_path)?;
@@ -252,37 +249,36 @@ fn store_block_number<Host: Runtime>(
     host: &mut Host,
     block_path: &OwnedPath,
     block_number: L2Level,
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(block_path, &EVM_BLOCKS_NUMBER)?;
-    host.store_write(&path, &u64::to_le_bytes(block_number), 0)
-        .map_err(Error::from)
+    Ok(host.store_write(&path, &u64::to_le_bytes(block_number), 0)?)
 }
 
 fn store_block_hash<Host: Runtime>(
     host: &mut Host,
     block_path: &OwnedPath,
     block_hash: &BlockHash,
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(block_path, &EVM_BLOCKS_HASH)?;
-    host.store_write(&path, block_hash, 0).map_err(Error::from)
+    Ok(host.store_write(&path, block_hash, 0)?)
 }
 
 fn store_block_transactions<Host: Runtime>(
     host: &mut Host,
     block_path: &OwnedPath,
     block_transactions: &[TransactionHash],
-) -> Result<(), Error> {
+) -> Result<()> {
     let path = concat(block_path, &EVM_BLOCKS_TRANSACTIONS)?;
     let block_transactions = &block_transactions.concat()[..];
-    host.store_write(&path, block_transactions, 0)
-        .map_err(Error::from)
+    host.store_write(&path, block_transactions, 0)?;
+    Ok(())
 }
 
 fn store_block<Host: Runtime>(
     host: &mut Host,
     block: &L2Block,
     block_path: &OwnedPath,
-) -> Result<(), Error> {
+) -> Result<()> {
     store_block_number(host, block_path, block.number)?;
     store_block_hash(host, block_path, &block.hash)?;
     store_block_transactions(host, block_path, &block.transactions)
@@ -291,7 +287,7 @@ fn store_block<Host: Runtime>(
 pub fn store_block_by_number<Host: Runtime>(
     host: &mut Host,
     block: &L2Block,
-) -> Result<(), Error> {
+) -> Result<()> {
     let block_path = block_path(block.number)?;
     store_block(host, block, &block_path)
 }
@@ -299,12 +295,13 @@ pub fn store_block_by_number<Host: Runtime>(
 pub fn store_current_block<Host: Runtime>(
     host: &mut Host,
     block: &L2Block,
-) -> Result<(), Error> {
+) -> Result<()> {
     let current_block_path = OwnedPath::from(EVM_CURRENT_BLOCK);
     // We only need to store current block's number so we avoid the storage of duplicate informations.
     store_block_number(host, &current_block_path, block.number)?;
     // When storing the current block's infos we need to store it under the [evm/blocks/<block_number>]
-    store_block_by_number(host, block)
+    store_block_by_number(host, block)?;
+    Ok(())
 }
 
 // TODO: This store a transaction receipt with multiple subkeys, it could
@@ -314,7 +311,7 @@ pub fn store_transaction_receipt<Host: Runtime>(
     receipt_path: &OwnedPath,
     host: &mut Host,
     receipt: &TransactionReceipt,
-) -> Result<(), Error> {
+) -> Result<()> {
     // Transaction hash
     let hash_path = concat(receipt_path, &TRANSACTION_RECEIPT_HASH)?;
     host.store_write(&hash_path, &receipt.hash, 0)?;
@@ -354,7 +351,7 @@ pub fn store_transaction_receipt<Host: Runtime>(
 pub fn store_transaction_receipts<Host: Runtime>(
     host: &mut Host,
     receipts: &[TransactionReceipt],
-) -> Result<(), Error> {
+) -> Result<()> {
     for receipt in receipts {
         let receipt_path = receipt_path(&receipt.hash)?;
         store_transaction_receipt(&receipt_path, host, receipt)?;
@@ -365,50 +362,54 @@ pub fn store_transaction_receipts<Host: Runtime>(
 pub fn read_transaction_receipt_status<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
-) -> Result<TransactionStatus, Error> {
+) -> Result<TransactionStatus> {
     let receipt_path = receipt_path(tx_hash)?;
     let status_path = concat(&receipt_path, &TRANSACTION_RECEIPT_STATUS)?;
-    let raw_status = host
-        .store_read(&status_path, 0, TRANSACTION_RECEIPT_STATUS_SIZE)
-        .map_err(Error::from)?;
-    TransactionStatus::try_from(&raw_status).map_err(|_| {
-        Error::Storage(StorageError::InvalidEncoding {
-            path: status_path,
-            value: raw_status,
-        })
-    })
+    let raw_status = host.store_read(&status_path, 0, TRANSACTION_RECEIPT_STATUS_SIZE)?;
+    match TransactionStatus::try_from(&raw_status) {
+        Ok(status) => Ok(status),
+        Err(_) => bail!(
+            (StorageError::InvalidEncoding {
+                path: status_path,
+                value: raw_status,
+            })
+        ),
+    }
 }
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
 const CHUNKED_TRANSACTION_NUM_CHUNKS: RefPath = RefPath::assert_from(b"/num_chunks");
 
-fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath, Error> {
+fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath> {
     let hash = hex::encode(tx_hash);
     let raw_chunked_transaction_path: Vec<u8> = format!("/{}", hash).into();
     let chunked_transaction_path = OwnedPath::try_from(raw_chunked_transaction_path)?;
-    concat(&CHUNKED_TRANSACTIONS, &chunked_transaction_path).map_err(Error::from)
+    Ok(concat(&CHUNKED_TRANSACTIONS, &chunked_transaction_path)?)
 }
 
 fn chunked_transaction_num_chunks_path(
     chunked_transaction_path: &OwnedPath,
-) -> Result<OwnedPath, Error> {
-    concat(chunked_transaction_path, &CHUNKED_TRANSACTION_NUM_CHUNKS).map_err(Error::from)
+) -> Result<OwnedPath> {
+    Ok(concat(
+        chunked_transaction_path,
+        &CHUNKED_TRANSACTION_NUM_CHUNKS,
+    )?)
 }
 
 fn transaction_chunk_path(
     chunked_transaction_path: &OwnedPath,
     i: u16,
-) -> Result<OwnedPath, Error> {
+) -> Result<OwnedPath> {
     let raw_i_path: Vec<u8> = format!("/{}", i).into();
     let i_path = OwnedPath::try_from(raw_i_path)?;
-    concat(chunked_transaction_path, &i_path).map_err(Error::from)
+    Ok(concat(chunked_transaction_path, &i_path)?)
 }
 
 fn is_transaction_complete<Host: Runtime>(
     host: &mut Host,
     chunked_transaction_path: &OwnedPath,
     num_chunks: u16,
-) -> Result<bool, Error> {
+) -> Result<bool> {
     let n_subkeys = host.store_count_subkeys(chunked_transaction_path)? as u16;
     // `n_subkeys` includes the key `num_chunks`. The transaction is complete if
     // number of chunks = num_chunks - 1, the last chunk is not written on disk
@@ -419,7 +420,7 @@ fn is_transaction_complete<Host: Runtime>(
 fn chunked_transaction_num_chunks_by_path<Host: Runtime>(
     host: &mut Host,
     chunked_transaction_path: &OwnedPath,
-) -> Result<u16, Error> {
+) -> Result<u16> {
     let chunked_transaction_num_chunks_path =
         chunked_transaction_num_chunks_path(chunked_transaction_path)?;
     let mut buffer = [0u8; 2];
@@ -430,7 +431,7 @@ fn chunked_transaction_num_chunks_by_path<Host: Runtime>(
 pub fn chunked_transaction_num_chunks<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
-) -> Result<u16, Error> {
+) -> Result<u16> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     chunked_transaction_num_chunks_by_path(host, &chunked_transaction_path)
 }
@@ -439,7 +440,7 @@ fn store_transaction_chunk_data<Host: Runtime>(
     host: &mut Host,
     transaction_chunk_path: &OwnedPath,
     data: Vec<u8>,
-) -> Result<(), Error> {
+) -> Result<()> {
     match host.store_has(transaction_chunk_path)? {
         Some(ValueType::Value | ValueType::ValueWithSubtree) => Ok(()),
         _ => {
@@ -459,7 +460,7 @@ fn store_transaction_chunk_data<Host: Runtime>(
 fn read_transaction_chunk_data<Host: Runtime>(
     host: &mut Host,
     transaction_chunk_path: &OwnedPath,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>> {
     let data_size = host.store_value_size(transaction_chunk_path)?;
 
     if data_size > MAX_FILE_CHUNK_SIZE {
@@ -482,7 +483,7 @@ fn get_full_transaction<Host: Runtime>(
     chunked_transaction_path: &OwnedPath,
     num_chunks: u16,
     missing_data: &[u8],
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
     for i in 0..num_chunks {
         let transaction_chunk_path = transaction_chunk_path(chunked_transaction_path, i)?;
@@ -503,14 +504,14 @@ fn get_full_transaction<Host: Runtime>(
 pub fn remove_chunked_transaction_by_path<Host: Runtime>(
     host: &mut Host,
     path: &OwnedPath,
-) -> Result<(), Error> {
-    host.store_delete(path).map_err(Error::from)
+) -> Result<()> {
+    Ok(host.store_delete(path)?)
 }
 
 pub fn remove_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
-) -> Result<(), Error> {
+) -> Result<()> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     remove_chunked_transaction_by_path(host, &chunked_transaction_path)
 }
@@ -522,7 +523,7 @@ pub fn store_transaction_chunk<Host: Runtime>(
     tx_hash: &TransactionHash,
     i: u16,
     data: Vec<u8>,
-) -> Result<Option<Vec<u8>>, Error> {
+) -> Result<Option<Vec<u8>>> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     let num_chunks =
         chunked_transaction_num_chunks_by_path(host, &chunked_transaction_path)?;
@@ -545,7 +546,7 @@ pub fn create_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
     num_chunks: u16,
-) -> Result<(), Error> {
+) -> Result<()> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     let chunked_transaction_num_chunks_path =
         chunked_transaction_num_chunks_path(&chunked_transaction_path)?;
@@ -553,6 +554,6 @@ pub fn create_chunked_transaction<Host: Runtime>(
         &chunked_transaction_num_chunks_path,
         &u16::to_le_bytes(num_chunks),
         0,
-    )
-    .map_err(Error::from)
+    )?;
+    Ok(())
 }

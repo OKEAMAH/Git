@@ -460,6 +460,7 @@ dependencies = [
 name = "evm_kernel"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "evm-execution",
  "hex",
  "num-traits",
@@ -473,6 +474,7 @@ dependencies = [
  "tezos-smart-rollup-panic-hook",
  "tezos_data_encoding",
  "tezos_ethereum",
+ "thiserror",
 ]
 
 [[package]]
