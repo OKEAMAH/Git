@@ -121,6 +121,10 @@ module type LIB = sig
     val band : bl repr -> bl repr -> bl repr t
 
     val rotate_right : bl repr -> int -> bl repr
+
+    val shift_left : bl repr -> int -> bl repr t
+
+    val shift_right : bl repr -> int -> bl repr t
   end
 
   val add2 :
@@ -405,6 +409,27 @@ module Lib (C : COMMON) = struct
       in
       let head, tail = split_n i (of_list a) in
       to_list @@ tail @ head
+
+    let shift_left a i =
+      let* zero = Bool.constant false in
+      let l = of_list a in
+      let length = List.length l - i in
+      assert (length >= 0) ;
+      let res =
+        List.init i (fun _ -> zero)
+        @ List.filteri (fun j _x -> if j < length then true else false) l
+      in
+      ret @@ to_list res
+
+    let shift_right a i =
+      let* zero = Bool.constant false in
+      let l = of_list a in
+      assert (List.compare_length_with l i >= 0) ;
+      let res =
+        List.filteri (fun j _x -> if j < i then false else true) l
+        @ List.init i (fun _ -> zero)
+      in
+      ret @@ to_list res
   end
 
   let add2 p1 p2 =
