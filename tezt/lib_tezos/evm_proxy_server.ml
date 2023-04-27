@@ -146,4 +146,4 @@ let request method_ parameters : JSON.t =
 
 let call_evm_rpc proxy_server ~method_ ~parameters =
   let endpoint = endpoint proxy_server in
-  RPC.Curl.post endpoint (request method_ parameters) |> Runnable.run
+  RPC.Curl.post endpoint (request method_ parameters)

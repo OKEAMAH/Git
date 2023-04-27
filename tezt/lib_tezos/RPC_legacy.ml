@@ -215,6 +215,7 @@ let raw_bytes ?endpoint ?hooks ?(chain = "main") ?(block = "head") ?(path = [])
 module Curl = struct
   let parse url process =
     let* output = Process.check_and_read_stdout process in
+    Log.info "Request returned %s" output ;
     return (JSON.parse ~origin:url output)
 
   let get ?runner ?(args = []) url =
@@ -225,10 +226,43 @@ module Curl = struct
     let process = Process.spawn ?runner "curl" (args @ ["-s"; url]) in
     Runnable.{value = process; run = Process.check_and_read_stdout}
 
-  let post ?runner ?(args = []) url data =
+  let post_str ?runner ?(args = []) url data =
+    Log.info "Making temp file" ;
+    let remote_file = Temp.file ?runner "data" in
+    let local_file = Temp.file "data" in
+    Log.info "Encoding data -> temp file" ;
+    let runner = Option.get runner in
+    let () = write_file local_file ~contents:("\"" ^ "\"" ^ data) in
     let process =
       Process.spawn
-        ?runner
+        "scp"
+        (*Use -O for original transfer protocol *)
+        [
+          "-O";
+          "-i";
+          runner.ssh_id |> Option.get;
+          "-P";
+          runner.ssh_port |> Option.get |> Int.to_string;
+          local_file;
+          (runner.ssh_user |> Option.get)
+          ^ "@" ^ runner.address ^ ":" ^ remote_file;
+        ]
+    in
+    let* _ =
+      Runnable.run
+      @@ Runnable.
+           {
+             value = process;
+             run =
+               (fun process ->
+                 let _ = Process.check process in
+                 Lwt.return ());
+           }
+    in
+    Log.info "Curl" ;
+    let process =
+      Process.spawn
+        ~runner
         "curl"
         (args
         @ [
@@ -239,8 +273,68 @@ module Curl = struct
             "-s";
             url;
             "-d";
-            JSON.encode data;
+            "@" ^ remote_file;
           ])
     in
-    Runnable.{value = process; run = parse url}
+    let* value = Runnable.run @@ Runnable.{value = process; run = parse url} in
+    Log.info "Removing temp file from curl" ;
+    Runner.Sys.remove ~runner local_file ;
+    Runner.Sys.remove ~runner remote_file ;
+    return value
+
+  let post ?runner ?(args = []) url data =
+    Log.info "Making temp file" ;
+    let remote_file = Temp.file ?runner "data" in
+    let local_file = Temp.file "data" in
+    Log.info "Encoding data -> temp file" ;
+    let runner = Option.get runner in
+    let () = JSON.encode_to_file local_file data in
+    let process =
+      Process.spawn
+        "scp"
+        (*Use -O for original transfer protocol *)
+        [
+          "-O";
+          "-i";
+          runner.ssh_id |> Option.get;
+          "-P";
+          runner.ssh_port |> Option.get |> Int.to_string;
+          local_file;
+          (runner.ssh_user |> Option.get)
+          ^ "@" ^ runner.address ^ ":" ^ remote_file;
+        ]
+    in
+    let* _ =
+      Runnable.run
+      @@ Runnable.
+           {
+             value = process;
+             run =
+               (fun process ->
+                 let _ = Process.check process in
+                 Lwt.return ());
+           }
+    in
+    Log.info "Curl" ;
+    let process =
+      Process.spawn
+        ~runner
+        "curl"
+        (args
+        @ [
+            "-X";
+            "POST";
+            "-H";
+            "Content-Type: application/json";
+            "-s";
+            url;
+            "-d";
+            "@" ^ remote_file;
+          ])
+    in
+    let* value = Runnable.run @@ Runnable.{value = process; run = parse url} in
+    Log.info "Removing temp file from curl" ;
+    Runner.Sys.remove ~runner local_file ;
+    Runner.Sys.remove ~runner remote_file ;
+    return value
 end

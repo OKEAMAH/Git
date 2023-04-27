@@ -210,9 +210,8 @@ module Curl : sig
 
       Fails if [curl] is not found in path. *)
   val post :
-    ?runner:Runner.t ->
-    ?args:string list ->
-    string ->
-    JSON.t ->
-    JSON.t Runnable.process
+    ?runner:Runner.t -> ?args:string list -> string -> JSON.t -> JSON.t Lwt.t
+
+  val post_str :
+    ?runner:Runner.t -> ?args:string list -> string -> string -> JSON.t Lwt.t
 end

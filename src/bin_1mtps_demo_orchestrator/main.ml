@@ -279,6 +279,20 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
   let+ _ = Sc_rollup_node.wait_for_level ~timeout:30. rollup_node level in
   ()
 
+(* Send payload for root hash *)
+
+let submit_dac_payload coordinator_node node payload =
+  let open Lwt.Syntax in
+  let (`Hex payload) = Hex.of_string payload in
+  let endpoint =
+    Format.sprintf
+      "http://%s:%d/preimage"
+      (Dac_node.rpc_host coordinator_node)
+      (Dac_node.rpc_port coordinator_node)
+  in
+  let+ result = RPC.Curl.post_str ?runner:(Node.runner node) endpoint payload in
+  JSON.as_string result
+
 (* BORROW from dac.ml *)
 let parse_certificate json =
   JSON.
@@ -346,9 +360,8 @@ let setup_installer ~dac_node ~pk_0 ~pk_1 node =
   in
   Log.info "Dac member 1: %s" dac_member_1 ;
   assert (String.length dac_member_1_dummy = String.length dac_member_1) ;
-  let* root_hash =
-    RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:tx_kernel)
-  in
+  let* root_hash = submit_dac_payload dac_node node tx_kernel in
+  (* RPC.call dac_node (Dac_rpc.Coordinator.post_preimage ~payload:tx_kernel) *)
   let* certificate_updates =
     Runnable.run @@ streamed_certificates_client dac_node node root_hash
   in
