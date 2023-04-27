@@ -4170,12 +4170,11 @@ module Make_snapshot_importer (Importer : IMPORTER) : Snapshot_importer = struct
             Animation.three_dots
               ~progress_display_mode:Auto
               ~msg:"Checking context integrity"
-            @@ fun () ->
-            Context.Checks.Pack.Integrity_check.run
-              ~root:dst_context_dir
-              ~auto_repair:false
-              ~always:false
-              ~heads:(Some [Context_hash.to_b58check imported_context_hash])
+            @@ Context.Checks.Pack.Integrity_check.run
+                 ~root:dst_context_dir
+                 ~auto_repair:false
+                 ~always:false
+                 ~heads:(Some [Context_hash.to_b58check imported_context_hash])
           else Lwt.return_unit
         in
         let* block_validation_result =

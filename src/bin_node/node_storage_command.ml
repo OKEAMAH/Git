@@ -129,6 +129,7 @@ module Term = struct
           ~auto_repair
           ~always:false
           ~heads:None
+          ()
       in
       return_unit)
 
