@@ -75,6 +75,7 @@ module Gadget = struct
   module Schnorr = Gadget_schnorr.Make
   module Blake2s = Gadget_blake2s.Blake2s
   module ArithMod25519 = Gadget_mod_arith.ArithMod25519
+  module Sha256 = Gadget_sha2.SHA256
 end
 
 include Gadget
