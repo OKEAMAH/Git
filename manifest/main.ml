@@ -1441,6 +1441,7 @@ let _octez_plonk_test_plompiler_main =
         "main";
         "test_anemoi";
         "test_blake";
+        "test_sha2";
         "test_core";
         "test_edwards";
         "test_encoding";
