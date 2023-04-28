@@ -88,6 +88,8 @@ val no_confirmation : (bool, full) Tezos_clic.arg
 
 val timelock_locked_value_arg : (string option, full) Tezos_clic.arg
 
+val timelock_hex_arg : (bool, full) Tezos_clic.arg
+
 val tez_arg :
   default:string ->
   parameter:string ->

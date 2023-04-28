@@ -33,18 +33,24 @@ open Client_proto_rollups
 open Client_keys
 open Client_proto_args
 
-let get_timelock_filename path prefix enc obj =
+let get_timelock_filename path prefix enc obj hex =
   let add_path r n = r ^ "/" ^ n in
   let bin = Data_encoding.Binary.to_bytes_exn enc obj in
-  let hex = Tezos_crypto.Blake2B.(hash_bytes [bin] |> to_hex) |> Hex.show in
-  let name = prefix ^ "_" ^ hex in
+  let hash = Tezos_crypto.Blake2B.(hash_bytes [bin] |> to_hex) |> Hex.show in
+  let suffix = if hex then "_hex" else "" in
+  let name = prefix ^ "_" ^ hash ^ suffix in
   add_path path name
 
-let write_encoding filepath enc data =
-  let str = Data_encoding.Binary.to_string_exn enc data in
+let write_encoding filepath enc data hex =
+  let str =
+    if hex then
+      let data_bytes = Data_encoding.Binary.to_bytes_exn enc data in
+      "0x" ^ (Hex.of_bytes data_bytes |> Hex.show)
+    else Data_encoding.Binary.to_string_exn enc data
+  in
   Lwt_utils_unix.create_file filepath str
 
-let read_encoding ?(buffer_size = 32768) path enc =
+let read_encoding ?(buffer_size = 32768) path enc hex =
   let open Lwt_result_syntax in
   let*! file = Lwt_unix.(openfile path [O_RDONLY; O_NONBLOCK; O_CLOEXEC] 0) in
   let buffer = Bytes.create buffer_size in
@@ -52,6 +58,12 @@ let read_encoding ?(buffer_size = 32768) path enc =
   let*! () = Lwt_unix.close file in
   let buffer =
     if nb_bytes_read = 0 then buffer else Bytes.sub buffer 0 nb_bytes_read
+  in
+  let buffer =
+    if hex then
+      let hexa = String.of_bytes buffer in
+      `Hex String.(sub hexa 2 (length hexa - 2)) |> Hex.to_bytes_exn
+    else buffer
   in
   Data_encoding.Binary.of_bytes_exn enc buffer |> return
 
@@ -3251,7 +3263,7 @@ let commands_rw () =
     command
       ~group
       ~desc:"Generate timelock chest."
-      no_options
+      (args1 timelock_hex_arg)
       (prefixes ["timelock"; "create"]
       @@ prefix "for"
       @@ param ~name:"time" ~desc:" timelock difficulty" int_parameter
@@ -3260,7 +3272,7 @@ let commands_rw () =
       @@ prefix "in"
       @@ param ~name:"file" ~desc:" updates dir" string_parameter
       @@ stop)
-      (fun () (time : int) (payload : string) (timelock_path : string) cctxt ->
+      (fun hex (time : int) (payload : string) (timelock_path : string) cctxt ->
         let open Lwt_result_syntax in
         let open Tezos_crypto.Timelock in
         let chest, chest_key =
@@ -3271,7 +3283,12 @@ let commands_rw () =
             ()
         in
         let chest_name =
-          get_timelock_filename timelock_path "time_chest" chest_encoding chest
+          get_timelock_filename
+            timelock_path
+            "time_chest"
+            chest_encoding
+            chest
+            hex
         in
         let chest_key_name =
           get_timelock_filename
@@ -3279,9 +3296,12 @@ let commands_rw () =
             "time_key_create"
             chest_encoding
             chest
+            hex
         in
-        let*! () = write_encoding chest_name chest_encoding chest in
-        let*! () = write_encoding chest_key_name chest_key_encoding chest_key in
+        let*! () = write_encoding chest_name chest_encoding chest hex in
+        let*! () =
+          write_encoding chest_key_name chest_key_encoding chest_key hex
+        in
         let*! () =
           cctxt#message "%s" "Timelock chest and chest_key computed."
         in
@@ -3289,7 +3309,7 @@ let commands_rw () =
     command
       ~group
       ~desc:"Open timelock chest."
-      no_options
+      (args1 timelock_hex_arg)
       (prefixes ["timelock"; "open"]
       @@ prefix "for"
       @@ param ~name:"time" ~desc:" timelock difficulty" int_parameter
@@ -3298,10 +3318,10 @@ let commands_rw () =
       @@ prefix "in"
       @@ param ~name:"file" ~desc:" updates dir" string_parameter
       @@ stop)
-      (fun () (time : int) (chest_path : string) (timelock_path : string) cctxt ->
+      (fun hex (time : int) (chest_path : string) (timelock_path : string) cctxt ->
         let open Lwt_result_syntax in
         let open Tezos_crypto.Timelock in
-        let* chest = read_encoding chest_path chest_encoding in
+        let* chest = read_encoding chest_path chest_encoding hex in
         let chest_key = create_chest_key chest ~time in
         let chest_key_name =
           get_timelock_filename
@@ -3309,14 +3329,17 @@ let commands_rw () =
             "time_key_open"
             chest_encoding
             chest
+            hex
         in
-        let*! () = write_encoding chest_key_name chest_key_encoding chest_key in
+        let*! () =
+          write_encoding chest_key_name chest_key_encoding chest_key hex
+        in
         let*! () = cctxt#message "%s" "Timelock chest_key computed." in
         return_unit);
     command
       ~group
       ~desc:"Verify timelock chest."
-      no_options
+      (args1 timelock_hex_arg)
       (prefixes ["timelock"; "verify"]
       @@ prefix "for"
       @@ param ~name:"time" ~desc:" timelock difficulty" int_parameter
@@ -3325,11 +3348,15 @@ let commands_rw () =
       @@ prefix "chest_key"
       @@ param ~name:"chest_key" ~desc:" timelock chest's key" string_parameter
       @@ stop)
-      (fun () (time : int) (chest_path : string) (chest_key_path : string) cctxt ->
+      (fun hex
+           (time : int)
+           (chest_path : string)
+           (chest_key_path : string)
+           cctxt ->
         let open Lwt_result_syntax in
         let open Tezos_crypto.Timelock in
-        let* chest = read_encoding chest_path chest_encoding in
-        let* chest_key = read_encoding chest_key_path chest_key_encoding in
+        let* chest = read_encoding chest_path chest_encoding hex in
+        let* chest_key = read_encoding chest_key_path chest_key_encoding hex in
         let result = open_chest chest chest_key ~time in
         let*! () =
           match result with

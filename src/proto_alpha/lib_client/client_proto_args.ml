@@ -557,6 +557,9 @@ let timelock_locked_value_arg =
     ~doc:"Timelock RSA group modulus"
     string_parameter
 
+let timelock_hex_arg =
+  Tezos_clic.switch ~long:"hex" ~doc:"Read and save timelock values as hex" ()
+
 let default_minimal_fees =
   match Tez.of_mutez 100L with None -> assert false | Some t -> t
 
