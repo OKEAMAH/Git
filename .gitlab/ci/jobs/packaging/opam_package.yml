@@ -576,6 +576,8 @@ opam:octez-node-config:
   variables:
     package: octez-node-config
 
+# Ignoring unreleased package octez-node-event-regression.
+
 opam:octez-plompiler:
   extends:
     - .opam_template

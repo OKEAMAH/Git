@@ -18,6 +18,7 @@ __pycache__
 /manifest/manifest
 /tezos-node
 /octez-node
+/octez-node-event-regression
 /tezos-tx-rollup-*
 /octez-tx-rollup-*
 /tezos-protocol-compiler

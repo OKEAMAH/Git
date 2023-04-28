@@ -26,6 +26,7 @@ tezos-signer
 tezos-smart-rollup-node-*
 tezos-smart-rollup-client-*
 octez-node
+octez-node-event-regression
 octez-tx-rollup-*
 octez-protocol-compiler
 octez-client

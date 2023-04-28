@@ -1,0 +1,18 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name main)
+ (public_name octez-node-event-regression)
+ (package octez-node-event-regression)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  octez_node_commands
+  tezos-event-logging)
+ (link_flags
+  (:standard)
+  (:include %{workspace_root}/static-link-flags.sexp)
+  (:include %{workspace_root}/macos-link-flags.sexp))
+ (flags
+  (:standard)
+  -open Tezos_event_logging))

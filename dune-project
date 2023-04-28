@@ -34,6 +34,7 @@
 (package (name octez-mec))
 (package (name octez-node))
 (package (name octez-node-config))
+(package (name octez-node-event-regression))
 (package (name octez-plompiler))
 (package (name octez-plonk))
 (package (name octez-polynomial))

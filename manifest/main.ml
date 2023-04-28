@@ -6972,6 +6972,16 @@ let octez_node_commands =
        ]
       @ protocol_deps)
 
+let _octez_node_event_regression =
+  public_exe
+    "octez-node-event-regression"
+    ~path:"src/bin_node_event_regression"
+    ~synopsis:"Tezos: `octez-node-event-regression` binary"
+    ~internal_name:"main"
+    ~release_status:Unreleased
+    ~with_macos_security_framework:true
+    ~deps:[octez_node_commands; octez_event_logging |> open_]
+
 let _octez_node =
   public_exe
     "octez-node"
