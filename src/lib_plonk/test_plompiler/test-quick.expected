@@ -1768,6 +1768,30 @@ Constraints: 160
 SHA256.test_sum1_optimized:
 Constraints: 96
 
+SHA256.test_padding:
+Constraints: 1536
+
+SHA256.test_padding_optimized:
+Constraints: 536
+
+SHA256.test_initial_hash:
+Constraints: 320
+
+SHA256.test_initial_hash_optimized:
+Constraints: 32
+
+SHA256.test_digest:
+Constraints: 259416
+
+SHA256.test_digest_optimized:
+Constraints: 130136
+
+SHA256.test_digest:
+Constraints: 518064
+
+SHA256.test_digest_optimized:
+Constraints: 259344
+
 Anemoi.test_round.valid:
 Constraints: 20
 

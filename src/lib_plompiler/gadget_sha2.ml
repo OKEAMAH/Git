@@ -24,41 +24,19 @@
 (*****************************************************************************)
 
 open Lang_stdlib
+open Sha2_variants
 
-module type VARIANT = sig
-  val word_size : int
-
-  val sum_constants : int array
-
-  val sigma_constants : int array
-
-  val round_constants : int array
-
-  val loop_bound : int
-end
-
-module type SHA2 = functor (L : LIB) -> sig
-  open L
-
-  val ch : Bytes.bl repr -> Bytes.bl repr -> Bytes.bl repr -> Bytes.bl repr t
-
-  val maj : Bytes.bl repr -> Bytes.bl repr -> Bytes.bl repr -> Bytes.bl repr t
-
-  val sum_0 : Bytes.bl repr -> Bytes.bl repr t
-
-  val sum_1 : Bytes.bl repr -> Bytes.bl repr t
-
-  val sigma_0 : Bytes.bl repr -> Bytes.bl repr t
-
-  val sigma_1 : Bytes.bl repr -> Bytes.bl repr t
-end
-
-module MAKE (V : VARIANT) : SHA2 =
+module MAKE (V : VARIANT) =
 functor
   (L : LIB)
   ->
   struct
     open L
+
+    (* Section 4.1.2
+       use six logical functions, where each function operates on 32-bit words,
+       which are represented as x, y, and z. The result of each function is a
+       new 32-bit word. *)
 
     (* Ch(x, y, z) = (x && y) XOR ( !x && z) *)
     let ch x y z =
@@ -122,18 +100,237 @@ functor
       let* tmp = Bytes.xor x0 x1 in
       let* res = Bytes.xor tmp x2 in
       ret res
+
+    (* 4.2.2 constants *)
+    let ks : Bytes.bl repr array t =
+      with_label ~label:"Sha2.ks"
+      @@ let* a =
+           mapM
+             (fun s -> Bytes.constant @@ Utils.bytes_of_hex s)
+             (Array.to_list V.round_constants)
+         in
+         ret @@ Array.of_list a
+
+    (* Section 5.3.3 SHA256 specific *)
+    let initial_hash : Bytes.bl repr array t =
+      let* a =
+        mapM
+          (fun s -> Bytes.constant @@ Utils.bytes_of_hex s)
+          (Array.to_list V.init_hash)
+      in
+      ret @@ Array.of_list a
+
+    (* 5.1.1 *)
+    let padding : Bytes.bl repr -> Bytes.bl repr t =
+     fun msg ->
+      with_label ~label:"Sha2.padding"
+      @@
+      (* TODO generalize to other versions? *)
+      let l = Bytes.length msg in
+      let k =
+        let k = (448 - (l + 1)) mod 512 in
+        if k > 0 then k else k + 512
+      in
+      let* padding =
+        let* tmp =
+          foldiM
+            (fun acc i ->
+              let* b = Bool.constant (if i = 0 then true else false) in
+              ret (b :: acc))
+            []
+            (k + 1)
+        in
+        ret @@ to_list tmp
+      in
+      let* binary_l =
+        Z.of_int l |> Z.to_bits |> Stdlib.Bytes.of_string
+        |> Bytes.constant ~le:true
+      in
+      ret @@ Bytes.concat [|msg; padding; binary_l|]
+
+    let parsing : Bytes.bl repr -> Bytes.bl repr array array =
+     fun msg ->
+      let split_exactly array size_chunk nb_chunks =
+        assert (Bytes.length array = size_chunk * nb_chunks) ;
+        let res =
+          List.init nb_chunks (fun i ->
+              let array = Array.of_list (of_list array) in
+              let array = Array.sub array (i * size_chunk) size_chunk in
+              to_list (Array.to_list array))
+        in
+        Array.of_list (List.rev res)
+        (* TODO why this inversion? *)
+      in
+      let nb_blocks = Bytes.length msg / V.block_size in
+      (* Split in blocks of V.block_size bits *)
+      let blocks = split_exactly msg V.block_size nb_blocks in
+      (* Split each block into 16 words of V.word_size bits *)
+      Array.map (fun block -> split_exactly block V.word_size 16) blocks
+
+    let schedule : Bytes.bl repr array -> Bytes.bl repr array t =
+     fun message_block ->
+      assert (Array.length message_block = 16) ;
+      let ( + ) = Bytes.add in
+
+      with_label ~label:"Sha2.schedule"
+      @@ let* rest =
+           let* res =
+             mapM
+               (fun _ -> Bytes.constant Stdlib.Bytes.empty)
+               (List.init (V.loop_bound - 16) Fun.id)
+           in
+           ret @@ Array.of_list res
+         in
+         let ws = Array.append message_block rest in
+         let rec aux t =
+           if t = V.loop_bound then ret ()
+           else
+             let* res =
+               let* tmp1 =
+                 let* tmp = sigma_1 ws.(t - 2) in
+                 tmp + ws.(t - 7)
+               in
+               let* tmp2 =
+                 let* tmp = sigma_0 ws.(t - 15) in
+                 tmp + ws.(t - 16)
+               in
+               tmp1 + tmp2
+             in
+             ws.(t) <- res ;
+             aux (succ t)
+         in
+         let* () = aux 16 in
+         ret ws
+
+    type vars =
+      Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+      * Bytes.bl repr
+
+    let assign_variables : Bytes.bl repr array -> vars =
+     fun hs ->
+      let a = hs.(0) in
+      let b = hs.(1) in
+      let c = hs.(2) in
+      let d = hs.(3) in
+      let e = hs.(4) in
+      let f = hs.(5) in
+      let g = hs.(6) in
+      let h = hs.(7) in
+      (a, b, c, d, e, f, g, h)
+
+    (* Section 6.2.2 step 3. *)
+    let step3_one_iteration t : vars -> Bytes.bl repr array -> vars t =
+     fun (a, b, c, d, e, f, g, h) ws ->
+      let ( + ) = Bytes.add in
+      with_label ~label:"Sha2.step3_one_iteration"
+      @@ let* ks in
+         let* t1 =
+           let* tmp_sum = sum_1 e in
+           let* tmp_ch = ch e f g in
+
+           let* tmp = h + tmp_sum in
+           let* tmp = tmp + tmp_ch in
+           let* tmp = tmp + ks.(t) in
+           tmp + ws.(t)
+         in
+         let* t2 =
+           let* tmp_sum = sum_0 a in
+           let* tmp_maj = maj a b c in
+           tmp_sum + tmp_maj
+         in
+         let h = g in
+         let g = f in
+         let f = e in
+         let* e = d + t1 in
+         let d = c in
+         let c = b in
+         let b = a in
+         let* a = t1 + t2 in
+         ret (a, b, c, d, e, f, g, h)
+
+    let debug_array s a =
+      let* () = debug s unit in
+      iterM
+        (fun e ->
+          let* () = debug "" e in
+          ret unit)
+        (Array.to_list a)
+
+    let step3 : vars -> L.Bytes.bl repr array -> vars t =
+     fun vars ws ->
+      with_label ~label:"Sha2.step3"
+      @@
+      let rec aux acc t =
+        let* _ =
+          let a, b, c, d, e, f, g, h = acc in
+          let tmp = [|a; b; c; d; e; f; g; h|] in
+          debug_array ("t" ^ string_of_int t) tmp
+        in
+        if t = V.loop_bound then ret acc
+        else
+          let* acc = step3_one_iteration t acc ws in
+          aux acc (t + 1)
+      in
+      aux vars 0
+
+    let assign_hs : vars -> Bytes.bl repr array -> Bytes.bl repr array t =
+     fun (a, b, c, d, e, f, g, h) hs ->
+      with_label ~label:"Sha2.assign_hs"
+      @@
+      let vars = [a; b; c; d; e; f; g; h] in
+      let hs = Array.to_list hs in
+      let* res = map2M Bytes.add vars hs in
+      ret @@ Array.of_list res
+
+    let block_process :
+        L.Bytes.bl repr array ->
+        L.Bytes.bl repr array ->
+        L.Bytes.bl repr array t =
+     fun block hs ->
+      with_label ~label:"Sha2.block_process"
+      @@ let* ws = schedule block in
+         let vars = assign_variables hs in
+         let* vars = step3 vars ws in
+         assign_hs vars hs
+
+    let digest : Bytes.bl repr -> L.Bytes.bl repr t =
+     fun blocks ->
+      with_label ~label:"Sha2.digest"
+      @@ let* blocks = padding blocks in
+         let* _ = debug "padding" blocks in
+         let blocks = parsing blocks in
+         let* _ = debug_array "parsing" blocks.(0) in
+         let* initial_hash in
+         let rec aux acc i =
+           let* _ = debug_array ("ih" ^ string_of_int i) acc in
+           if i = Array.length blocks then ret acc
+           else
+             let* acc = block_process blocks.(i) acc in
+             aux acc (i + 1)
+         in
+         let* res = aux initial_hash 0 in
+         let res = Array.sub res 0 V.message_digest in
+         let res = Bytes.concat res in
+         let* _ = debug "conca" res in
+         ret res
   end
 
-module Variant_sha256 : VARIANT = struct
-  let word_size = 32
+module type SHA2 = functor (L : LIB) -> sig
+  open L
 
-  let sum_constants = [|2; 13; 22; 6; 11; 25|]
-
-  let sigma_constants = [|7; 18; 3; 17; 19; 10|]
-
-  let round_constants = [||]
-
-  let loop_bound = 64
+  val digest : Bytes.bl repr -> Bytes.bl repr t
 end
 
-module SHA256 = MAKE (Variant_sha256)
+module SHA224 : SHA2 = MAKE (Sha224)
+
+module SHA256 : SHA2 = MAKE (Sha256)
+
+module SHA384 : SHA2 = MAKE (Sha384)
+
+module SHA512 : SHA2 = MAKE (Sha512)

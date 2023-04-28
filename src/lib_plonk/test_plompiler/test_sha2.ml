@@ -38,7 +38,7 @@ functor
 
     open Utils (L)
 
-    module H = Plompiler.Sha256 (L)
+    module H = Plompiler__Gadget_sha2.MAKE (Plompiler__Sha2_variants.Sha256) (L)
 
     let bytes_of_hex = Plompiler.Utils.bytes_of_hex
 
@@ -134,9 +134,50 @@ functor
         test ~valid:false ~name:"SHA256.test_sum1" @@ test_sum1 i i;
       ]
 
+    let test_padding i o () =
+      let* i = input ~kind:`Public i in
+      let* o = input o in
+      let* o' = H.padding i in
+      assert_equal o o'
+
+    (* Example from the spec https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+       section 5.1.1 *)
+    let tests_padding =
+      let abc = Stdlib.Bytes.of_string "abc" in
+      let padding =
+        Stdlib.Bytes.(
+          concat
+            empty
+            (of_string "\128" :: List.init 52 (fun _ -> of_string "\000")))
+      in
+      let length_bites =
+        let res = Stdlib.Bytes.create 8 in
+        Stdlib.Bytes.set_int64_be res 0 24L ;
+        res
+      in
+      let output_bytes =
+        Stdlib.Bytes.(concat empty [abc; padding; length_bites])
+      in
+      assert (Stdlib.Bytes.length output_bytes = 512 / 8) ;
+      let i = input_bytes abc in
+      let o = input_bytes output_bytes in
+      [test ~valid:true ~name:"SHA256.test_padding" @@ test_padding i o]
+
+    let test_initial_hash i o () =
+      let* o = input o in
+      let* ih = H.initial_hash in
+      assert_equal o ih.(i)
+
+    let tests_initial_hash =
+      let o = input_bytes @@ bytes_of_hex "6A09E667" in
+      [
+        test ~valid:true ~name:"SHA256.test_initial_hash"
+        @@ test_initial_hash 0 o;
+      ]
+
     let tests =
       tests_ch @ tests_maj @ tests_sigma0 @ tests_sigma1 @ tests_sum0
-      @ tests_sum1
+      @ tests_sum1 @ tests_padding @ tests_initial_hash
   end
 
 module External : Test =
@@ -144,11 +185,55 @@ functor
   (L : LIB)
   ->
   struct
-    (* open L *)
+    open L
+    open Bytes
 
     open Utils (L)
 
-    let tests = []
+    module H = Plompiler.Gadget.Sha256 (L)
+
+    let bytes_of_hex = Plompiler.Utils.bytes_of_hex
+
+    let test_digest i o () =
+      let* i = input ~kind:`Public i in
+      let* o = input o in
+      let* o' = H.digest i in
+      assert_equal o o'
+
+    let tests_digest =
+      List.map
+        (fun (i, o) ->
+          let i = input_bytes @@ Stdlib.Bytes.of_string i in
+          let o = input_bytes @@ bytes_of_hex (String.concat "" o) in
+
+          test ~valid:true ~name:"SHA256.test_digest" ~flamegraph:true
+          @@ test_digest i o)
+        [
+          ( "abc",
+            [
+              "BA7816BF";
+              "8F01CFEA";
+              "414140DE";
+              "5DAE2223";
+              "B00361A3";
+              "96177A9C";
+              "B410FF61";
+              "F20015AD";
+            ] );
+          ( "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
+            [
+              "248D6A61";
+              "D20638B8";
+              "E5C02693";
+              "0C3E6039";
+              "A33CE459";
+              "64FF2167";
+              "F6ECEDD4";
+              "19DB06C1";
+            ] );
+        ]
+
+    let tests = tests_digest
   end
 
 let tests =
