@@ -130,13 +130,13 @@ let parse_certificate json =
 (* Helper process that listens to certificate updates through a
    RPC request. Upon termination, the list of certificate updates
    is returned *)
-let streamed_certificates_client coordinator_node root_hash =
+let streamed_certificates_client coordinator_node root_hash api_version =
   let endpoint =
     Format.sprintf
       "http://%s:%d/%s/monitor/certificate/%s"
       (Dac_node.rpc_host coordinator_node)
       (Dac_node.rpc_port coordinator_node)
-      Dac_rpc.Api.v1
+      api_version
       root_hash
   in
   RPC.Curl.get_raw endpoint
@@ -1547,6 +1547,107 @@ module Legacy = struct
       assert_verify_aggregate_signature [member] hex_root_hash certificate ;
       unit
   end
+
+  module Api_versioning = struct
+    (** [test_legacy_mode_does_not_support_v1] tests that dac node running in
+        the [Legacy] mode does not support [Api.v1]. *)
+    let test_legacy_mode_does_not_support_v1 _protocol node client coordinator
+        threshold dac_committee =
+      (* Unfortunatelly, validation that [Legacy] mode only supports [v0]
+         API happens as part of the handlers inside [RPC_server]. This means,
+         that it is not sufficient to simply ping the endpoints with dummy data,
+         as deserialization of RPC arguments and input parameters happens before
+         the actual API validation. *)
+      let expected_root_hash =
+        "00a3703854279d2f377d689163d1ec911a840d84b56c4c6f6cafdf0610394df7c6"
+      in
+      let root_hash_stream_promise =
+        wait_for_root_hash_pushed_to_data_streamer
+          coordinator
+          expected_root_hash
+      in
+      let* hex_root_hash = init_hex_root_hash ~payload:"test" coordinator in
+      assert (expected_root_hash = Hex.show hex_root_hash) ;
+      let* () = root_hash_stream_promise in
+      (* [observer] node is needeed to test "GET /v1/missing_page". The reason
+         is that this endpoint triggers validation that coordinator of the
+         current node is specified in the the configuration file.
+         Unfortunatelly, this validation happens before the actual validation
+         of the appropriate API version, thus the boilerplate inside this test.
+      *)
+      let observer =
+        Dac_node.create_legacy
+          ~name:"Observer"
+          ~threshold
+          ~committee_members:
+            (List.map
+               (fun (dc : Account.aggregate_key) ->
+                 dc.aggregate_public_key_hash)
+               dac_committee)
+          ~node
+          ~client
+          ()
+      in
+      let* _ = Dac_node.init_config observer in
+      let () = set_coordinator observer coordinator in
+      let* () = Dac_node.run observer in
+      assert (List.length dac_committee > 0) ;
+      let member_key : Account.aggregate_key = List.nth dac_committee 0 in
+      let dac_member_pkh = member_key.aggregate_public_key_hash in
+      let member_signature = bls_sign_hex_hash member_key hex_root_hash in
+      (* Test starts here.*)
+      (* We call endpoints supported by [Legacy] mode with [v1] API version.
+         Since [Legacy] mode does not support [v1] API, we assert that each one
+         of the responses returns 404 (not found) code. Additionally, we also
+         call endpoint only supported by [Coordinator] mode with both [v0] and
+         [v1] API version and assert both return not found response. *)
+      let invalid_legacy_mode_calls =
+        [
+          (* GET /v1/preimage *)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(get_preimage (Hex.show hex_root_hash) ~api_version:Api.v1);
+          (* GET /v1/verify_signature *)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(get_verify_signature "dummy signature" ~api_version:Api.v1);
+          (* GET /v1/missing_page *)
+          RPC.call_raw
+            observer
+            Dac_rpc.(get_missing_page ~hex_root_hash ~api_version:Api.v1);
+          (* PUT /v1/dac_member_signature *)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(
+              put_dac_member_signature
+                ~hex_root_hash
+                ~dac_member_pkh
+                ~signature:member_signature
+                ~api_version:Api.v1);
+          (* GET /v1/certificates *)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(get_certificate ~hex_root_hash ~api_version:Api.v1);
+          (* [Legacy] mode fails calling [Coordinator]'s mode specific
+             PUT v0/preimage*)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(
+              Coordinator.post_preimage ~payload:"Test" ~api_version:Api.v0);
+          (* [Legacy] mode fails calling [Coordinator]'s mode specific
+             PUT v1/preimage*)
+          RPC.call_raw
+            coordinator
+            Dac_rpc.(
+              Coordinator.post_preimage ~payload:"Test" ~api_version:Api.v1);
+        ]
+      in
+      Lwt_list.iter_s
+        (fun invalid_response ->
+          let* response = invalid_response in
+          return @@ RPC.check_string_response ~code:404 response)
+        invalid_legacy_mode_calls
+  end
 end
 
 module Full_infrastructure = struct
@@ -1689,7 +1790,11 @@ module Full_infrastructure = struct
     assert (List.length committee_members > 0) ;
     let payload, expected_rh = sample_payload "preimage" in
     let certificate_stream_client =
-      Runnable.run @@ streamed_certificates_client coordinator_node expected_rh
+      Runnable.run
+      @@ streamed_certificates_client
+           coordinator_node
+           expected_rh
+           Dac_rpc.Api.v1
     in
     let push_promise =
       wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh
@@ -1766,7 +1871,11 @@ module Full_infrastructure = struct
        item is returned with the same certificate returned by the GET
        endpoint. *)
     let* second_certificates_stream =
-      Runnable.run @@ streamed_certificates_client coordinator_node expected_rh
+      Runnable.run
+      @@ streamed_certificates_client
+           coordinator_node
+           expected_rh
+           Dac_rpc.Api.v1
     in
     Check.(
       (1 = List.length second_certificates_stream)
@@ -1857,6 +1966,13 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"]
     "dac_store_member_signature"
     Legacy.Signature_manager.test_handle_store_signature
+    protocols ;
+  scenario_with_layer1_and_legacy_dac_nodes
+    ~threshold:0
+    ~committee_members:1
+    ~tags:["dac"; "dac_node"]
+    "dac_legacy_mode_only_supports_v0"
+    Legacy.Api_versioning.test_legacy_mode_does_not_support_v1
     protocols ;
   scenario_with_full_dac_infrastructure
     ~observers:0
