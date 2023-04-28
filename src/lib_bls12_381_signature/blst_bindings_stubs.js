@@ -13,7 +13,7 @@ function blst_pairing_sizeof() {
 //Provides: Blst_pairing
 //Requires: blst_pairing_sizeof
 //Requires: bls_allocate_mlbytes, bls_free
-if (typeof globalThis.FinalizationRegistry === 'function') {
+if (typeof globalThis.FinalizationRegistry === 'function' && false) {
   var blst_pairing_finalizer = new globalThis.FinalizationRegistry(bls_free);
 } else {
   var blst_pairing_finalizer = null;
