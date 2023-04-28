@@ -75,6 +75,22 @@ is the tool used to compile this format into plain web pages in HTML format.
 
 For the RST syntax, see the `Sphinx RST primer <https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html>`_ and also the `Sphinx extensions`_ below.
 
+The default role
+----------------
+
+As opposed to Markdown, framing a piece of text within single backquotes has undefined meaning in RST.
+More precisely, such a ```text``` gets handled by a "default role" whose behaviour is not specified by RST.
+Therefore, you should **never frame text within single backquotes**, unless they are prefixed by an known role: ``:role:`text```.
+
+In our setup, any use of the default role is flagged by a warning, prompting you to chose an appropriate syntax, depending on what you mean:
+
+- ````double backquotes```` for code excerpts
+- ``*single stars*`` for italics (simple emphasis)
+- ``**double stars**`` for bold (strong empahsis)
+- ``:math:`expression``` for maths
+- ``"double quotes"`` for quotations
+- etc.
+
 Sphinx extensions
 -----------------
 
