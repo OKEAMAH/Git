@@ -132,7 +132,17 @@ let handle_get_verify_signature dac_plugin public_keys_opt encoded_l1_message
             witnesses)
   | RPC_services.Api.V1 -> raise Not_found
 
-let handle_get_preimage dac_plugin page_store api_version raw_hash =
+let assert_legacy_mode_cannot_run_v1 node_ctxt api_version =
+  match api_version with
+  | RPC_services.Api.V0 -> Result_syntax.return_unit
+  | RPC_services.Api.V1 -> (
+      match Node_context.get_mode node_ctxt with
+      | Node_context.Legacy _ -> raise Not_found
+      | _ -> Result_syntax.return_unit)
+
+let handle_get_preimage node_ctxt dac_plugin page_store api_version raw_hash =
+  let open Lwt_result_syntax in
+  let*? () = assert_legacy_mode_cannot_run_v1 node_ctxt api_version in
   match api_version with
   | RPC_services.Api.V0 | RPC_services.Api.V1 ->
       let open Lwt_result_syntax in
@@ -141,22 +151,25 @@ let handle_get_preimage dac_plugin page_store api_version raw_hash =
 
 (* Handler for subscribing to the streaming of root hashes via
    GET monitor/root_hashes RPC call. *)
-let handle_monitor_root_hashes hash_streamer api_version =
+let handle_monitor_root_hashes node_ctxt hash_streamer api_version =
+  let open Lwt_result_syntax in
+  let*? () = assert_legacy_mode_cannot_run_v1 node_ctxt api_version in
   match api_version with
   | RPC_services.Api.V0 | RPC_services.Api.V1 ->
-      let open Lwt_syntax in
       let stream, stopper = Data_streamer.handle_subscribe hash_streamer in
       let shutdown () = Lwt_watcher.shutdown stopper in
       let next () = Lwt_stream.get stream in
-      let* () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
-      Tezos_rpc.Answer.return_stream {next; shutdown}
+      let*! () = Event.(emit handle_new_subscription_to_hash_streamer ()) in
+      return (next, shutdown)
 
-let handle_get_certificate dac_plugin node_store raw_root_hash api_version =
+let handle_get_certificate dac_plugin ctx raw_root_hash api_version =
+  let open Lwt_result_syntax in
+  let*? () = assert_legacy_mode_cannot_run_v1 ctx api_version in
   match api_version with
   | RPC_services.Api.V0 | RPC_services.Api.V1 ->
       let open Lwt_result_syntax in
       let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-
+      let node_store = Node_context.get_node_store ctx Store_sigs.Read_write in
       let+ value_opt = Store.Certificate_store.find node_store root_hash in
       Option.map
         (fun Store.{aggregate_signature; witnesses} ->
@@ -164,20 +177,23 @@ let handle_get_certificate dac_plugin node_store raw_root_hash api_version =
             {aggregate_signature; witnesses; root_hash = raw_root_hash})
         value_opt
 
-let handle_get_missing_page cctxt page_store dac_plugin raw_root_hash
+let handle_get_missing_page node_ctxt cctxt page_store dac_plugin raw_root_hash
     api_version =
   let open Lwt_result_syntax in
+  let*? () = assert_legacy_mode_cannot_run_v1 node_ctxt api_version in
   let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
-  let remote_store =
-    Page_store.Remote.(init {cctxt; page_store; api_version})
-  in
-  let* preimage =
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/5142
-        Retrieve missing page from dac committee via "flooding". *)
-    Page_store.Remote.load dac_plugin remote_store root_hash
-  in
-  let*! () = Event.(emit fetched_missing_page raw_root_hash) in
-  return preimage
+  match api_version with
+  | RPC_services.Api.V0 | RPC_services.Api.V1 ->
+      let remote_store =
+        Page_store.Remote.(init {cctxt; page_store; api_version})
+      in
+      let* preimage =
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5142
+            Retrieve missing page from dac committee via "flooding". *)
+        Page_store.Remote.load dac_plugin remote_store root_hash
+      in
+      let*! () = Event.(emit fetched_missing_page raw_root_hash) in
+      return preimage
 
 let register_post_store_preimage ctx cctxt dac_sk_uris page_store hash_streamer
     directory =
@@ -207,19 +223,25 @@ let register_get_verify_signature dac_plugin public_keys_opt directory =
            external_message
            api_version)
 
-let register_get_preimage dac_plugin page_store =
+let register_get_preimage node_ctxt dac_plugin page_store =
   add_service
     Tezos_rpc.Directory.register2
     RPC_services.get_preimage
     (fun api_version hash () () ->
-      handle_get_preimage dac_plugin page_store api_version hash)
+      handle_get_preimage node_ctxt dac_plugin page_store api_version hash)
 
-let register_monitor_root_hashes hash_streamer dir =
+let register_monitor_root_hashes node_ctxt hash_streamer dir =
   Tezos_rpc.Directory.gen_register
     dir
     Monitor_services.S.root_hashes
     (fun ((), api_version) () () ->
-      handle_monitor_root_hashes hash_streamer api_version)
+      let open Lwt_result_syntax in
+      let*! handler =
+        handle_monitor_root_hashes node_ctxt hash_streamer api_version
+      in
+      match handler with
+      | Ok (next, shutdown) -> Tezos_rpc.Answer.return_stream {next; shutdown}
+      | Error e -> Tezos_rpc.Answer.fail e)
 
 let register_get_certificate node_store dac_plugin =
   add_service
@@ -228,12 +250,18 @@ let register_get_certificate node_store dac_plugin =
     (fun api_version root_hash () () ->
       handle_get_certificate dac_plugin node_store root_hash api_version)
 
-let register_get_missing_page dac_plugin page_store cctxt =
+let register_get_missing_page node_ctxt dac_plugin page_store cctxt =
   add_service
     Tezos_rpc.Directory.register2
     RPC_services.get_missing_page
     (fun api_version root_hash () () ->
-      handle_get_missing_page cctxt page_store dac_plugin root_hash api_version)
+      handle_get_missing_page
+        node_ctxt
+        cctxt
+        page_store
+        dac_plugin
+        root_hash
+        api_version)
 
 module Coordinator = struct
   let handle_post_preimage dac_plugin page_store hash_streamer payload
@@ -363,8 +391,8 @@ module Coordinator = struct
           dac_member_signature
           api_version)
 
-  let dynamic_rpc_dir dac_plugin rw_store page_store cctxt coordinator_node_ctxt
-      =
+  let dynamic_rpc_dir node_ctxt dac_plugin rw_store page_store cctxt
+      coordinator_node_ctxt =
     let hash_streamer =
       coordinator_node_ctxt.Node_context.Coordinator.hash_streamer
     in
@@ -372,8 +400,8 @@ module Coordinator = struct
     let committee_members = coordinator_node_ctxt.committee_members in
     Tezos_rpc.Directory.empty
     |> register_post_preimage dac_plugin hash_streamer page_store
-    |> register_get_preimage dac_plugin page_store
-    |> register_monitor_root_hashes hash_streamer
+    |> register_get_preimage node_ctxt dac_plugin page_store
+    |> register_monitor_root_hashes node_ctxt hash_streamer
     |> register_monitor_certificate
          dac_plugin
          rw_store
@@ -385,19 +413,25 @@ module Coordinator = struct
          rw_store
          page_store
          cctxt
-    |> register_get_certificate rw_store dac_plugin
+    |> register_get_certificate node_ctxt dac_plugin
 end
 
 module Committee_member = struct
-  let dynamic_rpc_dir dac_plugin page_store =
-    Tezos_rpc.Directory.empty |> register_get_preimage dac_plugin page_store
+  let dynamic_rpc_dir dac_plugin node_ctxt =
+    let page_store = Node_context.get_page_store node_ctxt in
+    Tezos_rpc.Directory.empty
+    |> register_get_preimage node_ctxt dac_plugin page_store
 end
 
 module Observer = struct
-  let dynamic_rpc_dir dac_plugin coordinator_cctxt page_store =
+  let dynamic_rpc_dir node_ctxt dac_plugin coordinator_cctxt page_store =
     Tezos_rpc.Directory.empty
-    |> register_get_preimage dac_plugin page_store
-    |> register_get_missing_page dac_plugin page_store coordinator_cctxt
+    |> register_get_preimage node_ctxt dac_plugin page_store
+    |> register_get_missing_page
+         node_ctxt
+         dac_plugin
+         page_store
+         coordinator_cctxt
 end
 
 module Legacy = struct
@@ -416,7 +450,8 @@ module Legacy = struct
           dac_member_signature
           api_version)
 
-  let dynamic_rpc_dir dac_plugin rw_store page_store cctxt legacy_node_ctxt =
+  let dynamic_rpc_dir node_ctxt dac_plugin rw_store page_store cctxt
+      legacy_node_ctxt =
     let hash_streamer = legacy_node_ctxt.Node_context.Legacy.hash_streamer in
     let public_keys_opt =
       Node_context.Legacy.public_keys_opt legacy_node_ctxt
@@ -429,7 +464,8 @@ module Legacy = struct
       | None -> fun dir -> dir
       | Some cctxt ->
           fun dir ->
-            dir |> register_get_missing_page dac_plugin page_store cctxt
+            dir
+            |> register_get_missing_page node_ctxt dac_plugin page_store cctxt
     in
     Tezos_rpc.Directory.empty
     |> register_post_store_preimage
@@ -439,15 +475,15 @@ module Legacy = struct
          page_store
          hash_streamer
     |> register_get_verify_signature dac_plugin public_keys_opt
-    |> register_get_preimage dac_plugin page_store
-    |> register_monitor_root_hashes hash_streamer
+    |> register_get_preimage node_ctxt dac_plugin page_store
+    |> register_monitor_root_hashes node_ctxt hash_streamer
     |> register_put_dac_member_signature
          legacy_node_ctxt
          dac_plugin
          rw_store
          page_store
          cctxt
-    |> register_get_certificate rw_store dac_plugin
+    |> register_get_certificate node_ctxt dac_plugin
     |> register_get_missing_page
 end
 
@@ -460,17 +496,23 @@ let start ~rpc_address ~rpc_port node_ctxt =
     match Node_context.get_mode node_ctxt with
     | Coordinator coordinator_node_ctxt ->
         Coordinator.dynamic_rpc_dir
+          node_ctxt
           dac_plugin
           rw_store
           page_store
           cctxt
           coordinator_node_ctxt
     | Committee_member _committee_member_node_ctxt ->
-        Committee_member.dynamic_rpc_dir dac_plugin page_store
+        Committee_member.dynamic_rpc_dir dac_plugin node_ctxt
     | Observer {coordinator_cctxt; _} ->
-        Observer.dynamic_rpc_dir dac_plugin coordinator_cctxt page_store
+        Observer.dynamic_rpc_dir
+          node_ctxt
+          dac_plugin
+          coordinator_cctxt
+          page_store
     | Legacy legacy_node_ctxt ->
         Legacy.dynamic_rpc_dir
+          node_ctxt
           dac_plugin
           rw_store
           page_store

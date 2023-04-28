@@ -434,6 +434,13 @@ module Legacy = struct
 
   let handle_put_dac_member_signature ctx dac_plugin rw_node_store page_store
       cctxt dac_member_signature api_version =
+    let assert_legacy_mode_cannot_run_v1 api_version =
+      match api_version with
+      | RPC_services.Api.V0 -> Result_syntax.return_unit
+      | RPC_services.Api.V1 -> raise Not_found
+    in
+    let open Lwt_result_syntax in
+    let*? () = assert_legacy_mode_cannot_run_v1 api_version in
     let committee_members = Node_context.Legacy.committee_members ctx in
     handle_put_dac_member_signature
       dac_plugin
