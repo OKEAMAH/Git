@@ -877,6 +877,36 @@ let get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout
     ]
     parse_timeout_result
 
+type timeout_simulate_result = {staker1_timeout : int; staker2_timeout : int}
+
+let parse_timeout_simulate_result json =
+  let open JSON in
+  {
+    staker1_timeout = json |-> "staker1" |> as_int;
+    staker2_timeout = json |-> "staker2" |> as_int;
+  }
+
+let get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout_simulate
+    ?(chain = "main") ?(block = "head") ~staker1 ~staker2 sc_rollup =
+  make
+    GET
+    [
+      "chains";
+      chain;
+      "blocks";
+      block;
+      "context";
+      "smart_rollups";
+      "smart_rollup";
+      sc_rollup;
+      "staker1";
+      staker1;
+      "staker2";
+      staker2;
+      "timeout_simulate";
+    ]
+    parse_timeout_simulate_result
+
 let get_chain_block_context_smart_rollups_all_inbox ?(chain = "main")
     ?(block = "head") () =
   make

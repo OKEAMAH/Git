@@ -4118,6 +4118,8 @@ module Sc_rollup : sig
 
     val timeout_encoding : timeout Data_encoding.t
 
+    val compute_timeout : timeout -> t -> Raw_level.t -> timeout
+
     type error +=
       | Dissection_choice_not_found of Tick.t
       | Proof_unexpected_section_size of Z.t
@@ -4235,6 +4237,9 @@ module Sc_rollup : sig
 
     val get_timeout :
       context -> t -> Game.Index.t -> (Game.timeout * context) tzresult Lwt.t
+
+    val get_game :
+      context -> t -> Game.Index.t -> (Game.t * context) tzresult Lwt.t
 
     val timeout :
       context ->

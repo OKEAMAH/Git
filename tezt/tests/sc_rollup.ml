@@ -277,11 +277,12 @@ let format_title_scenario kind {variant; tags = _; description} =
     description
     (match variant with Some variant -> " (" ^ variant ^ ")" | None -> "")
 
-let test_l1_scenario ?regression ?hooks ~kind ?boot_sector ?commitment_period
-    ?challenge_window ?timeout ?(src = Constant.bootstrap1.alias)
-    {variant; tags; description} scenario =
+let test_l1_scenario ?supports ?regression ?hooks ~kind ?boot_sector
+    ?commitment_period ?challenge_window ?timeout
+    ?(src = Constant.bootstrap1.alias) {variant; tags; description} scenario =
   let tags = kind :: tags in
   register_test
+    ?supports
     ?regression
     ~__FILE__
     ~tags
@@ -5055,6 +5056,7 @@ let test_arg_boot_sector_file ~kind =
 let test_rpc_timeout_simulate ~kind =
   let timeout = 10 in
   test_l1_scenario
+    ~supports:(Protocol.From_protocol 018)
     ~commitment_period:5
     ~timeout
     {
@@ -5113,12 +5115,23 @@ let test_rpc_timeout_simulate ~kind =
          ~staker2:Constant.bootstrap2.public_key_hash
          sc_rollup
   in
-  let check_timeout v =
-    Check.((timeout / 2 = v) int)
+  (* Simulated RPC returns real information. *)
+  let* {staker1_timeout; staker2_timeout = _} =
+    RPC.Client.call tezos_client
+    @@ RPC
+       .get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout_simulate
+         ~staker1:Constant.bootstrap1.public_key_hash
+         ~staker2:Constant.bootstrap2.public_key_hash
+         sc_rollup
+  in
+  let check_timeout ~simulate v =
+    let expected_value = if simulate then timeout / 2 else timeout in
+    Check.((expected_value = v) int)
       ~error_msg:"Time left to play should be %L and not %R"
   in
-  if is_staker1_alice then check_timeout alice_timeout
-  else check_timeout bob_timeout ;
+  if is_staker1_alice then check_timeout ~simulate:false alice_timeout
+  else check_timeout ~simulate:false bob_timeout ;
+  check_timeout ~simulate:true staker1_timeout ;
   unit
 
 let register ~kind ~protocols =

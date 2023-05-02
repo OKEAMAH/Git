@@ -420,6 +420,10 @@ type timeout = {
 
 val timeout_encoding : timeout Data_encoding.t
 
+(** [compute_timeout timeout game current_level] computes the new [timeout]
+    based on [game] and [current_level]. *)
+val compute_timeout : timeout -> t -> Raw_level_repr.t -> timeout
+
 module Internal_for_tests : sig
   (** Checks that the tick count chosen by the current move is one of
     the ones in the current dissection. Returns a tuple containing

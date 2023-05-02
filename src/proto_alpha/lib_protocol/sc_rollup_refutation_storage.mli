@@ -182,6 +182,14 @@ val apply_game_result :
   tzresult
   Lwt.t
 
+(** [get_game ctxt rollup stakers] returns the [stakers]' game, fails
+    if doesn't exists. *)
+val get_game :
+  Raw_context.t ->
+  Smart_rollup_address.t ->
+  Sc_rollup_game_repr.Index.t ->
+  (Sc_rollup_game_repr.t * Raw_context.t) tzresult Lwt.t
+
 (**/**)
 
 module Internal_for_tests : sig

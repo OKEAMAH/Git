@@ -55,23 +55,14 @@ let initial_timeout ctxt =
 (** [update_timeout ctxt rollup game idx] update the timeout left for the
     current player [game.turn]. Her new timeout is equal to [nb_of_block_left -
     (current_level - last_turn_level)] where [nb_of_block_left] is her current
-    timeout. *)
+    timeout.
+*)
 let update_timeout ctxt rollup (game : Sc_rollup_game_repr.t) idx =
   let open Lwt_result_syntax in
   let* ctxt, timeout = Store.Game_timeout.get (ctxt, rollup) idx in
   let current_level = (Raw_context.current_level ctxt).level in
-  let sub_block_left nb_of_block_left =
-    nb_of_block_left
-    - Int32.to_int (Raw_level_repr.diff current_level timeout.last_turn_level)
-  in
   let new_timeout =
-    match game.turn with
-    | Alice ->
-        let nb_of_block_left = sub_block_left timeout.alice in
-        {timeout with last_turn_level = current_level; alice = nb_of_block_left}
-    | Bob ->
-        let nb_of_block_left = sub_block_left timeout.bob in
-        {timeout with last_turn_level = current_level; bob = nb_of_block_left}
+    Sc_rollup_game_repr.compute_timeout timeout game current_level
   in
   let* ctxt, _ = Store.Game_timeout.update (ctxt, rollup) idx new_timeout in
   return ctxt

@@ -814,6 +814,20 @@ val get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout :
   string ->
   timeout_result t
 
+type timeout_simulate_result = {
+  staker1_timeout : int;  (** Blocks left for staker1 to play. *)
+  staker2_timeout : int;  (** Blocks left for staker2 to play. *)
+}
+
+(** RPC: [GET chains/<chain>/blocks/<block>/context/smart_rollups/smart_rollup/<smart_rollup_address>/staker1/<staker>/staker2/<staker>/timeout_simulate]. *)
+val get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout_simulate :
+  ?chain:string ->
+  ?block:string ->
+  staker1:string ->
+  staker2:string ->
+  string ->
+  timeout_simulate_result t
+
 (** RPC: [GET chains/<chain>/blocks/<block>/context/smart_rollups/all/inbox] *)
 val get_chain_block_context_smart_rollups_all_inbox :
   ?chain:string -> ?block:string -> unit -> JSON.t t

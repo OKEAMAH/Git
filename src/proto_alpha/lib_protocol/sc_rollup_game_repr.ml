@@ -1003,6 +1003,19 @@ end
 
 type timeout = {alice : int; bob : int; last_turn_level : Raw_level_repr.t}
 
+let compute_timeout (timeout : timeout) (game : t) current_level =
+  let sub_block_left nb_of_block_left =
+    nb_of_block_left
+    - Int32.to_int (Raw_level_repr.diff current_level timeout.last_turn_level)
+  in
+  match game.turn with
+  | Alice ->
+      let nb_of_block_left = sub_block_left timeout.alice in
+      {timeout with last_turn_level = current_level; alice = nb_of_block_left}
+  | Bob ->
+      let nb_of_block_left = sub_block_left timeout.bob in
+      {timeout with last_turn_level = current_level; bob = nb_of_block_left}
+
 let timeout_encoding =
   let open Data_encoding in
   conv
