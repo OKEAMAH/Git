@@ -44,15 +44,16 @@ export CC="${LLVM_PATH}/bin/clang"
 
 ## Features
 
-| Feature         | Default? | Enables                             | About                                         |
-|-----------------|----------|-------------------------------------|-----------------------------------------------|
-| `std`           | ✅       | `alloc`                             | Disable for `#![no_std]` integration          |
-| `alloc`         | ✅       |                                     | Enables methods/types requiring `alloc` crate |
-| `panic-hook`    | ✅       |                                     | Print panics to debug log and abort           |
-| `dlmalloc`      | ✅       |                                     | Enables `dlmalloc` as default allocator       |
-| `crypto`        | ✅       | `tezos_crypto_rs`                   | Integration with `tezos_crypto_rs` types      |
-| `data-encoding` | ✅       | `tezos_data_encoding`               | Integration with `tezos_data_encoding` traits |
-| `testing`       | ❌       | `crypto`, `tezos_smart_rollup_mock` | Enables `MockHost` for writing tests          |
+| Feature         | Default? | Enables                             | About                                          |
+|-----------------|----------|-------------------------------------|------------------------------------------------|
+| `std`           | ✅       | `alloc`                             | Disable for `#![no_std]` integration           |
+| `alloc`         | ✅       |                                     | Enables methods/types requiring `alloc` crate  |
+| `panic-hook`    | ✅       |                                     | Print panics to debug log and abort            |
+| `dlmalloc`      | ✅       |                                     | Enables `dlmalloc` as default allocator        |
+| `crypto`        | ✅       | `tezos_crypto_rs`                   | Integration with `tezos_crypto_rs` types       |
+| `data-encoding` | ✅       | `tezos_data_encoding`               | Integration with `tezos_data_encoding` traits  |
+| `proto-nairobi` | ❌       |                                     | Enables host functions introduced in `Nairobi` |
+| `testing`       | ❌       | `crypto`, `tezos_smart_rollup_mock` | Enables `MockHost` for writing tests           |
 
 ## Usage
 
