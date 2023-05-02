@@ -2992,7 +2992,6 @@ let test_refutation_scenario ?commitment_period ?challenge_window ~variant ~mode
       @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_games
            ~staker:bootstrap1_key
            sc_rollup_address
-           ()
     in
     if !game_started then return @@ not (JSON.is_null game)
     else (
@@ -5053,6 +5052,75 @@ let test_arg_boot_sector_file ~kind =
   let* _ = Sc_rollup_node.wait_sync ~timeout:10. rollup_node in
   unit
 
+let test_rpc_timeout_simulate ~kind =
+  let timeout = 10 in
+  test_l1_scenario
+    ~commitment_period:5
+    ~timeout
+    {
+      variant = None;
+      tags = ["rpc"; "timeout"; "refutation"];
+      description = "RPC timeout_simulate gives real information";
+    }
+    ~kind
+  @@ fun sc_rollup _tezos_node tezos_client ->
+  let* commitment1, player_commitment_hash =
+    bake_period_then_publish_commitment
+      ~sc_rollup
+      ~number_of_ticks:1
+      ~src:Constant.bootstrap1.public_key_hash
+      tezos_client
+  in
+  let* _commitment2, opponent_commitment_hash =
+    forge_and_publish_commitment
+      ~inbox_level:commitment1.inbox_level
+      ~predecessor:commitment1.predecessor
+      ~sc_rollup
+      ~number_of_ticks:2
+      ~src:Constant.bootstrap2.public_key_hash
+      tezos_client
+  in
+  let* () =
+    start_refute
+      tezos_client
+      ~sc_rollup
+      ~source:Constant.bootstrap1
+      ~opponent:Constant.bootstrap2.public_key_hash
+      ~player_commitment_hash
+      ~opponent_commitment_hash
+  in
+  let* () = bake_levels (timeout / 2) tezos_client in
+  (* Who's Alice and Bob? *)
+  let* games =
+    RPC.Client.call tezos_client
+    @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_games
+         ~staker:Constant.bootstrap1.public_key_hash
+         sc_rollup
+  in
+  let is_staker1_alice =
+    let open JSON in
+    match games |> as_list with
+    | [game] ->
+        game |-> "alice" |> as_string = Constant.bootstrap1.public_key_hash
+    | _ -> (* There is exactly one game. *) assert false
+  in
+  (* Current RPC returns unhelpful information. *)
+  let* {alice_timeout; bob_timeout; last_turn_level = _} =
+    RPC.Client.call tezos_client
+    @@ RPC
+       .get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout
+         ~staker1:Constant.bootstrap1.public_key_hash
+         ~staker2:Constant.bootstrap2.public_key_hash
+         sc_rollup
+  in
+  let check_timeout v =
+    Check.((timeout / 2 = v) int)
+      ~error_msg:"Time left to play should be %L and not %R"
+  in
+  if is_staker1_alice then check_timeout alice_timeout
+  else check_timeout bob_timeout ;
+  unit
+
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -5194,6 +5262,7 @@ let register ~protocols =
   test_no_cementation_if_parent_not_lcc_or_if_disputed_commit
     ~kind:"arith"
     protocols ;
+  test_rpc_timeout_simulate ~kind:"arith" protocols ;
   test_refutation protocols ~kind:"arith" ;
   test_refutation protocols ~kind:"wasm_2_0_0" ;
   test_recover_bond_of_stakers protocols ;

@@ -797,7 +797,22 @@ val get_chain_block_context_smart_rollups_all :
 
 (** RPC: [GET chains/<chain>/blocks/<block>/context/smart_rollups/smart_rollup/<smart_rollup_address>/staker/<staker>/games] *)
 val get_chain_block_context_smart_rollups_smart_rollup_staker_games :
-  ?chain:string -> ?block:string -> staker:string -> string -> unit -> JSON.t t
+  ?chain:string -> ?block:string -> staker:string -> string -> JSON.t t
+
+type timeout_result = {
+  alice_timeout : int;  (** Blocks left for Alice to play. *)
+  bob_timeout : int;  (** Blocks left for Bob to play. *)
+  last_turn_level : int;  (** Last level a turn happened. *)
+}
+
+(** RPC: [GET chains/<chain>/blocks/<block>/context/smart_rollups/smart_rollup/<smart_rollup_address>/staker1/<staker>/staker2/<staker>/timeout]. *)
+val get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout :
+  ?chain:string ->
+  ?block:string ->
+  staker1:string ->
+  staker2:string ->
+  string ->
+  timeout_result t
 
 (** RPC: [GET chains/<chain>/blocks/<block>/context/smart_rollups/all/inbox] *)
 val get_chain_block_context_smart_rollups_all_inbox :

@@ -824,7 +824,7 @@ let get_chain_block_context_smart_rollups_all ?(chain = "main")
     Fun.id
 
 let get_chain_block_context_smart_rollups_smart_rollup_staker_games
-    ?(chain = "main") ?(block = "head") ~staker sc_rollup () =
+    ?(chain = "main") ?(block = "head") ~staker sc_rollup =
   make
     GET
     [
@@ -841,6 +841,41 @@ let get_chain_block_context_smart_rollups_smart_rollup_staker_games
       "games";
     ]
     Fun.id
+
+type timeout_result = {
+  alice_timeout : int;
+  bob_timeout : int;
+  last_turn_level : int;
+}
+
+let parse_timeout_result json =
+  let open JSON in
+  {
+    alice_timeout = json |-> "alice" |> as_int;
+    bob_timeout = json |-> "bob" |> as_int;
+    last_turn_level = json |-> "last_turn_level" |> as_int;
+  }
+
+let get_chain_block_context_smart_rollups_smart_rollup_staker1_staker2_timeout
+    ?(chain = "main") ?(block = "head") ~staker1 ~staker2 sc_rollup =
+  make
+    GET
+    [
+      "chains";
+      chain;
+      "blocks";
+      block;
+      "context";
+      "smart_rollups";
+      "smart_rollup";
+      sc_rollup;
+      "staker1";
+      staker1;
+      "staker2";
+      staker2;
+      "timeout";
+    ]
+    parse_timeout_result
 
 let get_chain_block_context_smart_rollups_all_inbox ?(chain = "main")
     ?(block = "head") () =
