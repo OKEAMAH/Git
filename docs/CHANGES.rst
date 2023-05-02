@@ -37,6 +37,13 @@ Node
 - Fixed a issue that may trigger unknown keys errors while reading the
   context on a read-only instance.
 
+- Deprecated the RPC ``smart_rollups/smart_rollup/<address>/staker1/<pkh>/staker2/<pkh>/timeout`` in favor of
+  ``smart_rollups/smart_rollup/<address>/staker1/<pkh>/staker2/<pkh>/timeout_simulate``.
+  The former returns the timeout on the context of the last played turn, which is neither
+  informative nor helpful. The latter returns the **actual** time
+  left (in blocks) per player. (MR :gl:`!8621`)
+
+
 Baker
 -----
 
