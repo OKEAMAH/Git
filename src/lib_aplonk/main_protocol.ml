@@ -53,10 +53,6 @@ struct
 
   type circuit_map = Main_Pack.circuit_map
 
-  let public_input_size circuit_name gates =
-    let module PI = (val PIs.get_pi_module circuit_name) in
-    Aggreg_circuit.meta_public_input_size gates + PI.nb_outer
-
   (* Type of prover public params for meta-verification of a base circuit:
       - meta_pp           : meta-verification prover PP of this base circuit
       - meta_solver       : Plompiler solver for this meta-verification circuit
@@ -230,13 +226,14 @@ struct
     ignore (size, shift, pp, secret) ;
     failwith "[input_commit] in aPlonK is not supported yet"
 
-  let meta_setup ~zero_knowledge ~srs ~main_prover_pp circuit_name
+  let meta_setup ~zero_knowledge ~srs ~main_prover_pp ~nb_batch circuit_name
       (circuit, nb_proofs) =
     let module PI = (val PIs.get_pi_module circuit_name) in
     let cs =
       Aggreg_circuit.get_cs_verification
         main_prover_pp
         circuit
+        nb_batch
         nb_proofs
         PI.(nb_outer, nb_inner)
         PI.check
@@ -246,7 +243,7 @@ struct
     (* Plompiler.Utils.dump_label_traces
        ("../../../../flamegraph/flamegraph" ^ "_" ^ Int.to_string nb_proofs)
        cs.cs; *)
-    let public_input_size = public_input_size circuit_name circuit.gates in
+    let public_input_size = cs.public_input_size in
     let input_com_sizes = cs.input_com_sizes in
     let circuit_aggreg = Plonk.Circuit.to_plonk cs in
     let agg_circuit_map =
@@ -273,9 +270,16 @@ struct
     let prover_pp, verifier_pp =
       Main_Pack.setup ~zero_knowledge circuits_map ~srs
     in
+    (* nb_batch gives the maximum number of batch of all circuits ; the number of batches has to be the same for all verification circuit *)
+    let nb_batch =
+      SMap.fold
+        (fun _ (c, _) nb_batch -> max nb_batch (Aggreg_circuit.nb_batch c))
+        circuits_map
+        0
+    in
     let meta_pps =
       SMap.mapi
-        (meta_setup ~zero_knowledge ~srs ~main_prover_pp:prover_pp)
+        (meta_setup ~zero_knowledge ~srs ~main_prover_pp:prover_pp ~nb_batch)
         circuits_map
     in
     let prover_meta_pps = SMap.map fst meta_pps in

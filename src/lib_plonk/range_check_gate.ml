@@ -125,19 +125,21 @@ module type S = sig
   val cs :
     rc_index:int list ->
     nb_proofs:int ->
-    lnin1:s_repr list ->
-    pnin1:s_repr list ->
-    z_list:s_repr list ->
-    zg_list:s_repr list ->
-    aggregated_wires:s_repr list ->
-    sum_alpha_i:(s_repr list -> s_repr -> s_repr L.t) ->
-    l1:s_repr ->
-    ss_list:s_repr list list ->
-    beta:s_repr ->
-    gamma:s_repr ->
-    delta:s_repr ->
-    x:s_repr ->
-    (string * s_repr) list L.t
+    lnin1:L.scalar L.repr list ->
+    pnin1:L.scalar L.repr list ->
+    z_rc:L.scalar L.repr list list ->
+    zg_rc:L.scalar L.repr list list ->
+    z_perm:L.scalar L.repr list ->
+    zg_perm:L.scalar L.repr list ->
+    aggregated_wires:L.scalar L.repr list ->
+    sum_alpha_i:(L.scalar L.repr list -> 'a -> L.scalar L.repr L.t) ->
+    l1:L.scalar L.repr ->
+    ss_list:L.scalar L.repr list list ->
+    beta:L.scalar L.repr ->
+    gamma:L.scalar L.repr ->
+    delta:'a ->
+    x:L.scalar L.repr ->
+    (string * L.scalar L.repr) list L.t
 end
 
 module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
@@ -565,39 +567,14 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       range_checks
     |> SMap.values |> Identities.merge_verifier_identities
 
-  (* converts [0~RC_a_Z ; 0~RC_b_Z ; 1~RC_a_Z ; 1~RC_b_Z ; RC_perm_a ; RC_perm_b]
-     into [RC_perm_a ; RC_perm_b], [[0~RC_a_Z ; 0~RC_b_Z] ; [1~RC_a_Z ; 1~RC_b_Z]]
-      Note that the way answers are ordered may differ if proof are not numbered (-> if there is just one proof)
-  *)
-  let format_z_list rc_wires nb_proofs z_list =
-    let z_rev = List.rev z_list in
-    let z = Array.of_list z_list in
-    let n = List.length rc_wires in
-    if nb_proofs = 1 then
-      (* let _ = Printf.printf "\n\n1 PREUVE\n" in *)
-      let z_perm, z_rc =
-        List.mapi (fun i _ -> (z.(2 * i), z.((2 * i) + 1))) rc_wires
-        |> List.split
-      in
-      (z_perm, [z_rc])
-    else
-      let z_perm = List.(rev (init n (nth z_rev))) in
-      let z_rc =
-        List.init nb_proofs (fun i -> List.init n (fun w -> z.((n * i) + w)))
-      in
-      (z_perm, z_rc)
-
-  (*
-      [lni1]
-      [pni1]
-      z_list = [0~RC_a_Z ; 0~RC_b_Z ; 1~RC_a_Z ; 1~RC_b_Z ; RC_perm_a ; RC_perm_b]
-      aggregated_wires = [A, B, C, D, E]
-  *)
-  let cs ~rc_index ~nb_proofs:n ~lnin1 ~pnin1 ~z_list ~zg_list ~aggregated_wires
-      ~sum_alpha_i ~l1 ~ss_list ~beta ~gamma ~delta ~x =
+  (* [lni1]
+     [pni1]
+     z_rc = [[0~RC_a_Z ; 0~RC_b_Z] ; [1~RC_a_Z ; 1~RC_b_Z]]
+     z_perm = [RC_perm_a ; RC_perm_b]
+     aggregated_wires = [A, B, C, D, E] *)
+  let cs ~rc_index ~nb_proofs:n ~lnin1 ~pnin1 ~z_rc ~zg_rc ~z_perm ~zg_perm
+      ~aggregated_wires ~sum_alpha_i ~l1 ~ss_list ~beta ~gamma ~delta ~x =
     let open L in
-    let z_perm, z_rc = format_z_list rc_index n z_list in
-    let zg_perm, zg_rc = format_z_list rc_index n zg_list in
     let* rc =
       let proof_idx = ref (-1) in
       map2M

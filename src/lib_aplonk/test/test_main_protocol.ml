@@ -150,9 +150,11 @@ module External = struct
           ])
         [
           [qc; ql; qr; qd; qe];
-          (* FIXME: aPlonk doesn’t work when used with two circuits with different evaluation points for wires *)
+          (* FIXME: aPlonk doesn’t work when used with two circuits with different evaluation points for wires
+             UPDATE: I thought the problem was solved when I fixed the number of batches to the max of the circuits but it still fails in verification *)
           (* [ql; qlg; Cases.Range_Checks.valid; Cases.Range_Checks.basic]; *)
-          [qc; Cases.Range_Checks.basic];
+          (* [ql; qlg]; *)
+          [qc; Cases.Range_Checks.basic; Cases.Range_Checks.basic];
           [non_zero_values; non_zero_values; zero_values];
           [qlg; qrg; non_zero_values; zero_values];
         ]
@@ -165,6 +167,8 @@ module External = struct
     @ multi_tests
     |> List.map (prefix pc_name)
 end
+
+(* TODO: add test on nb_proofs & switches for range checks *)
 
 let tests =
   List.map
