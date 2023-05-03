@@ -1890,6 +1890,30 @@ module Full_infrastructure = struct
     in
     check_certificate get_certificate certificate_update_from_second_stream ;
     return ()
+
+  module Api = struct
+    (** Test that [V0] API specific endpoints are not supported in 
+        [V1] API. I.e. [V1] no longer support "POST /store_preimage" and
+        "GET /verify_signature". *)
+    let test_v1_does_not_support_v0_specific_endpoints
+        Scenarios.{coordinator_node; _} =
+      let* response =
+        RPC.call_raw
+          coordinator_node
+          Dac_rpc.(
+            post_store_preimage
+              ~payload:"test"
+              ~pagination_scheme:"Merkle_tree_V0"
+              ~api_version:Api.v1)
+      in
+      let () = RPC.check_string_response ~code:404 response in
+      let* response =
+        RPC.call_raw
+          coordinator_node
+          Dac_rpc.(get_verify_signature "test" ~api_version:Dac_rpc.Api.v1)
+      in
+      return @@ RPC.check_string_response ~code:404 response
+  end
 end
 
 let register ~protocols =
@@ -2001,4 +2025,11 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"]
     "certificates are updated in streaming endpoint"
     Full_infrastructure.test_streaming_certificates
+    protocols ;
+  scenario_with_full_dac_infrastructure
+    ~observers:0
+    ~committee_members:0
+    ~tags:["dac"; "dac_node"]
+    "v1 does not support v0 specific endpoints"
+    Full_infrastructure.Api.test_v1_does_not_support_v0_specific_endpoints
     protocols
