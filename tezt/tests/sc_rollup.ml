@@ -5056,7 +5056,6 @@ let test_arg_boot_sector_file ~kind =
 let test_rpc_timeout_simulate ~kind =
   let timeout = 10 in
   test_l1_scenario
-    ~supports:(Protocol.From_protocol 018)
     ~commitment_period:5
     ~timeout
     {

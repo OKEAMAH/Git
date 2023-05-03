@@ -2225,7 +2225,9 @@ module Sc_rollup = struct
     let timeout =
       let output = Data_encoding.option Sc_rollup.Game.timeout_encoding in
       RPC_service.get_service
-        ~description:"Returns the timeout of players."
+        ~description:
+          "Returns the number of blocks each player still has to play in their \
+           current game."
         ~query:RPC_query.empty
         ~output
         RPC_path.(
@@ -2242,6 +2244,27 @@ module Sc_rollup = struct
         RPC_path.(
           path_sc_rollup / "staker1" /: Sc_rollup.Staker.rpc_arg / "staker2"
           /: Sc_rollup.Staker.rpc_arg / "timeout_reached")
+
+    type timeout_simulate_res = {staker1 : int; staker2 : int}
+
+    let timeout_simulate_res_encoding =
+      let open Data_encoding in
+      conv
+        (fun {staker1; staker2} -> (staker1, staker2))
+        (fun (staker1, staker2) -> {staker1; staker2})
+        (obj2 (req "staker1" int31) (req "staker2" int31))
+
+    let timeout_simulate =
+      let output = Data_encoding.option timeout_simulate_res_encoding in
+      RPC_service.get_service
+        ~description:
+          "Returns the number of blocks each player still has to play in their \
+           current game."
+        ~query:RPC_query.empty
+        ~output
+        RPC_path.(
+          path_sc_rollup / "staker1" /: Sc_rollup.Staker.rpc_arg / "staker2"
+          /: Sc_rollup.Staker.rpc_arg / "timeout_simulate")
 
     let can_be_cemented =
       let output = Data_encoding.bool in
@@ -2440,6 +2463,57 @@ module Sc_rollup = struct
         | Ok (timeout, _context) -> return_some timeout
         | Error _ -> return_none)
 
+  let compute_timeout (timeout : Sc_rollup.Game.timeout)
+      (game : Sc_rollup.Game.t) current_level =
+    let sub_block_left nb_of_block_left =
+      nb_of_block_left
+      - Int32.to_int (Raw_level.diff current_level timeout.last_turn_level)
+    in
+    match game.turn with
+    | Alice ->
+        let nb_of_block_left = sub_block_left timeout.alice in
+        {timeout with last_turn_level = current_level; alice = nb_of_block_left}
+    | Bob ->
+        let nb_of_block_left = sub_block_left timeout.bob in
+        {timeout with last_turn_level = current_level; bob = nb_of_block_left}
+
+  let find_game context rollup ({alice; bob} : Sc_rollup.Game.Index.t) =
+    let open Lwt_result_syntax in
+    let+ games, _context =
+      Sc_rollup.Refutation_storage.get_ongoing_games_for_staker
+        context
+        rollup
+        alice
+    in
+    List.find_opt
+      (fun (_game, game_index) ->
+        let open Sc_rollup.Game.Index in
+        let ( = ) = Sc_rollup.Staker.equal in
+        alice = game_index.alice && bob = game_index.bob)
+      games
+
+  let register_timeout_simulate () =
+    Registration.register3
+      ~chunked:false
+      S.timeout_simulate
+      (fun context rollup staker1 staker2 () () ->
+        let open Lwt_result_syntax in
+        let index = Sc_rollup.Game.Index.make staker1 staker2 in
+        let* game = find_game context rollup index in
+        match game with
+        | Some (game, _game_index) ->
+            let* timeout, _context =
+              Sc_rollup.Refutation_storage.get_timeout context rollup index
+            in
+            let current_level = (Level.current context).level in
+            let ({alice; bob; _} : Sc_rollup.Game.timeout) =
+              compute_timeout timeout game current_level
+            in
+            if Sc_rollup.Staker.equal staker1 index.alice then
+              return_some S.{staker1 = alice; staker2 = bob}
+            else return_some S.{staker1 = bob; staker2 = alice}
+        | None -> return_none)
+
   let register_timeout_reached () =
     Registration.register3
       ~chunked:false
@@ -2483,6 +2557,7 @@ module Sc_rollup = struct
     register_stakers () ;
     register_conflicts () ;
     register_timeout () ;
+    register_timeout_simulate () ;
     register_timeout_reached () ;
     register_can_be_cemented () ;
     register_initial_pvm_state_hash ()
