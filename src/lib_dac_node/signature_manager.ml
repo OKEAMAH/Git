@@ -371,7 +371,8 @@ module Coordinator = struct
       return true
 
   let stream_certificate_update dac_plugin committee_members
-      (Certificate_repr.{root_hash; _} as certificate) certificate_streamers =
+      (Certificate_repr.V0.{root_hash; _} as certificate) certificate_streamers
+      =
     let open Result_syntax in
     let* () =
       Certificate_streamers.push
@@ -381,7 +382,7 @@ module Coordinator = struct
         certificate
     in
     if
-      Certificate_repr.all_committee_members_have_signed
+      Certificate_repr.V0.all_committee_members_have_signed
         committee_members
         certificate
     then
@@ -440,7 +441,7 @@ module Coordinator = struct
           (stream_certificate_update
              dac_plugin
              committee_members
-             Certificate_repr.{root_hash; aggregate_signature; witnesses})
+             (Certificate_repr.V0.make root_hash aggregate_signature witnesses))
           certificate_streamers_opt
       in
       return ()
