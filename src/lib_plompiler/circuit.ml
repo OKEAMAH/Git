@@ -973,35 +973,35 @@ module Mod_arith = struct
 
   let nb_limbs = 3
 
-  let add (List n1) (List n2) =
+  let add (List xs) (List ys) =
     (* This is just a sanity check, inputs are assumed to be well-formed,
        in particular, their limb values are in the range [0, B) *)
-    assert (List.length n1 = nb_limbs) ;
-    assert (List.length n2 = nb_limbs) ;
+    assert (List.length xs = nb_limbs) ;
+    assert (List.length ys = nb_limbs) ;
     with_label ~label:"Mod_arith.add"
-    @@ let* res = fresh @@ Dummy.list nb_limbs Dummy.scalar in
-       let* q = fresh Dummy.scalar in
-       let* qs = fresh @@ Dummy.list (List.length moduli) Dummy.scalar in
-       let inp1 = List.map unscalar n1 in
-       let inp2 = List.map unscalar n2 in
+    @@ let* zs = fresh @@ Dummy.list nb_limbs Dummy.scalar in
+       let* qm = fresh Dummy.scalar in
+       let* ts = fresh @@ Dummy.list (List.length moduli) Dummy.scalar in
+       let inp1 = List.map unscalar xs in
+       let inp2 = List.map unscalar ys in
        (* TODO: "out" is not assumed to be well-formed, we need to enforce this
           with constraints. In particular, we need range-checks that assert that
           every limb in "out" is in the range [0, B). *)
-       let out = List.map unscalar (of_list res) in
+       let out = List.map unscalar (of_list zs) in
        let gate =
          [|
            CS.new_constraint
-             ~wires:(List.map unscalar (n1 @ n2 @ [q] @ of_list qs))
+             ~wires:(List.map unscalar (xs @ ys @ [qm] @ of_list ts))
              ~q_mod_arith:one
              "mod_arith-add.1";
            CS.new_constraint ~wires:out "mod_arith-add.2";
          |]
        in
-       (* TODO: main_q and qs need to be bounded with range-checks too! *)
-       let main_q = unscalar q in
-       let qs = List.map unscalar (of_list qs) in
-       let solver = Mod_Add {base; inp1; inp2; out; main_q; qs} in
-       append gate ~solver >* ret res
+       (* TODO: qm and ts need to be bounded with range-checks too! *)
+       let qm = unscalar qm in
+       let ts = List.map unscalar (of_list ts) in
+       let solver = Mod_Add {base; inp1; inp2; out; qm; ts} in
+       append gate ~solver >* ret zs
 end
 
 module Poseidon = struct

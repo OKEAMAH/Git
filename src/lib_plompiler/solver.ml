@@ -218,8 +218,8 @@ type mod_add_desc = {
   inp1 : int list;
   inp2 : int list;
   out : int list;
-  main_q : int;
-  qs : int list;
+  qm : int;
+  ts : int list;
 }
 [@@deriving repr]
 
@@ -416,15 +416,15 @@ let solve_one trace solver =
       in
       trace.(x2) <- x2' ;
       trace.(y2) <- y2'
-  | Mod_Add {base; inp1; inp2; out; main_q; qs} ->
+  | Mod_Add {base; inp1; inp2; out; qm; ts} ->
       let n1 =
         Utils.z_of_limbs ~base @@ List.map (fun w -> trace.(w) |> S.to_z) inp1
       in
       ignore n1 ;
       ignore inp2 ;
       ignore out ;
-      ignore main_q ;
-      ignore qs ;
+      ignore qm ;
+      ignore ts ;
       ()) ;
   trace
 

@@ -31,7 +31,7 @@ open Gates_common
 (* Arithmetic modulo 2^255 - 19 : TODO
    Non Arith
    degree : TODO
-   nb identities : TODO
+   nb identities : 2
    advice selectors : None
    equations : TODO
 *)
@@ -56,8 +56,9 @@ module AddMod25519 : Base_sig = struct
 
      In that case, we can establish the following bounds on qm:
        qm_min =   - (B-1) * \sum_i (B^i mod m) / m
-       qm_max = 2 * (B-1) * \sum_i (B^i mod m) / m
-  *)
+       qm_max = 2 * (B-1) * \sum_i (B^i mod m) / m *)
+
+  let nb_used_wires = (2 * nb_limbs) + 1 + List.length moduli
 
   let sum = List.fold_left Z.add Z.zero
 
@@ -235,10 +236,9 @@ module AddMod25519 : Base_sig = struct
         (None :: t_infos)
 
   let blinds =
-    SMap.of_list
-    @@ List.init
-         ((2 * nb_limbs) + 1 + List.length moduli)
-         (fun i -> (wire_name i, if i < nb_limbs then [|1; 1|] else [|1; 0|]))
+    List.init nb_used_wires (fun i ->
+        (wire_name i, if i < nb_limbs then [|1; 1|] else [|1; 0|]))
+    |> SMap.of_list
 
   let prover_identities ~prefix_common ~prefix ~public:_ ~domain :
       prover_identities =
@@ -324,8 +324,8 @@ module AddMod25519 : Base_sig = struct
     |> SMap.of_list
 
   let polynomials_degree =
-    SMap.of_list
-      [(wire_name 0, 4); (wire_name 1, 4); (wire_name 2, 4); (q_label, 4)]
+    (q_label, 2) :: List.init nb_used_wires (fun i -> (wire_name i, 2))
+    |> SMap.of_list
 
   let cs ~q:q_mod_arith ~wires ~wires_g ?precomputed_advice:_ () =
     ignore q_mod_arith ;

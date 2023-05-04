@@ -152,8 +152,8 @@ type mod_add_desc = {
   inp1 : int list;
   inp2 : int list;
   out : int list;
-  main_q : int;
-  qs : int list;
+  qm : int;
+  ts : int list;
 }
 
 type solver_desc =
