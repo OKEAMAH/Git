@@ -35,8 +35,6 @@ module type PARAMETERS = sig
 
   val nb_limbs : int
 
-  (* Assert that base^nb_limbs >= modulus *)
-
   val setM : Z.t list
 end
 
@@ -45,7 +43,21 @@ module type MOD_ARITH = functor (L : LIB) -> sig
 
   type mod_int
 
+  val label : string
+
   val modulus : Z.t
+
+  val base : Z.t
+
+  val nb_limbs : int
+
+  val moduli : Z.t list
+
+  val qm_min_add : Z.t
+
+  val qm_bound_add : Z.t
+
+  val ts_bounds_add : (Z.t * Z.t) list
 
   val input_mod_int : ?kind:input_kind -> S.t list -> mod_int repr t
 
@@ -142,7 +154,7 @@ let check_addition_parameters ~modulus:m ~base ~nb_limbs ~moduli =
      the interval [0, tj_bound) where tj_bound is the power of 2^15
      immediately above (tj_max - tj_min)
   *)
-  let t_bounds =
+  let ts_bounds =
     List.map
       (fun mj ->
         (* We can establish the following bounds on tj:
@@ -192,7 +204,7 @@ let check_addition_parameters ~modulus:m ~base ~nb_limbs ~moduli =
         (tj_min, tj_bound))
       moduli
   in
-  ((qm_min, qm_bound), t_bounds)
+  ((qm_min, qm_bound), ts_bounds)
 
 module Make (Params : PARAMETERS) : MOD_ARITH =
 functor
@@ -203,7 +215,18 @@ functor
 
     type mod_int = scalar list
 
+    let label = Params.label
+
     let modulus = Params.modulus
+
+    let base = Params.base
+
+    let nb_limbs = Params.nb_limbs
+
+    let moduli = Params.setM
+
+    let (qm_min_add, qm_bound_add), ts_bounds_add =
+      check_addition_parameters ~modulus ~base ~nb_limbs ~moduli
 
     let input_mod_int ?(kind = `Private) n =
       assert (List.length n = Params.nb_limbs) ;
@@ -215,11 +238,9 @@ functor
     let mul = failwith "TODO"
 
     let neg = failwith "TODO"
-
-    (* let _ = Utils.z_to_base ~base:Params.base n |> List.map S.of_z *)
   end
 
-module ArithMod25519 : MOD_ARITH = Make (struct
+module ArithMod25519 = Make (struct
   let label = "2^25519"
 
   let modulus = Z.(shift_left one 255 - of_int 19)
