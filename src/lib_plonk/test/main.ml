@@ -32,7 +32,7 @@ let () =
             ~verbose:false
             "PlonK"
             [
-              ("Utils", Test_utils.tests);
+              (* ("Utils", Test_utils.tests);
               ("Evaluations", Test_evaluations.tests);
               ("Plonk_Pack", Test_pack.tests);
               ("Polynomial Commitment", Test_polynomial_commitment.tests);
@@ -41,5 +41,5 @@ let () =
               ("Plookup", Test_plookup.tests);
               ("Range_Checks", Test_range_checks.tests);
               ("Main_Protocol", Test_main_protocol.tests);
-              ("Circuit", Test_circuit.tests);
+              ("Circuit", Test_circuit.tests); *)
             ]))

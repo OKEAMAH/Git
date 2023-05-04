@@ -23,32 +23,30 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Plonk_test
+open Plompiler
+open LibCircuit
+module CS = Plonk.Circuit
+module Hash = Poseidon128.V (LibCircuit)
+module Helpers = Plonk_test.Helpers.Make (Plonk.Main_protocol)
 
-let () =
-  Helpers.with_seed (fun () ->
-      Helpers.with_output_to_file (fun () ->
-          Alcotest.run
-            "Plompiler"
-            [
-              ("Core", Test_core.tests);
-              ("Blake", Test_blake.tests);
-              ("Poseidon", Test_poseidon.tests);
-              ("Anemoi", Test_anemoi.tests);
-              ("Enum", Test_enum.tests);
-              ("Schnorr", Test_schnorr.tests);
-              ("Merkle", Test_merkle.tests);
-              ("Merkle N-arity: Plonk integration", Test_merkle_narity.tests);
-              ("ModuloArith", Test_mod_arith.test);
-              ("Edwards", Test_edwards.tests);
-              ("Weierstrass", Test_weierstrass.tests);
-              ("Serialization", Test_serialization.tests);
-              ("Lookups", Test_lookup.tests);
-              ("InputCom", Test_input_com.tests);
-              ("Range-checks", Test_range_checks.tests);
-              ("Linear algebra", Test_linear_algebra.tests);
-              ("Bench", Benchmark.bench);
-              ("Bench Poseidon", Bench_poseidon.bench);
-              ("Optimizer", Test_optimizer.tests);
-              ("Encoding", Test_encoding.tests);
-            ]))
+open Plonk_test.Helpers.Utils (LibCircuit)
+
+module ArithMod = ArithMod25519
+
+let random_limb bound =
+  Random.nativeint (Z.to_nativeint bound) |> Z.of_nativeint
+
+(* Adding 2 integers that won’t overflow *)
+let test_add_small () =
+  let x = List.init ArithMod.nb_limbs (fun _ -> random_limb Z.(ArithMod.base - one - one)) in
+  let y = List.init ArithMod.nb_limbs (fun _ -> random_limb Z.(ArithMod.base - one - one)) in
+  let _ = ArithMod.add x y in ()
+
+  
+
+(* Adding 2 integers that overflow & result in 0 *)
+
+(* Having an integer between 2²⁵⁵ & 2²⁵⁵ - 19 & assert it fails *)
+
+
+let tests = [Alcotest.test_case "Add small" `Quick test_add_small]

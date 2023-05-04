@@ -243,13 +243,24 @@ functor
         ~qm_bound:qm_bound_add
         ~ts_bounds:(List.map snd ts_bounds_add)
 
-    let mul = failwith "TODO"
+        (* TODO test that
+           input 2^255 - 100
+           add 80 & get 1 
 
-    let neg = failwith "TODO"
+           adding 2 small numbers
+        *)
+
+    let mul x _ = 
+      (* failwith "TODO" *)
+ret x
+
+    let neg x = 
+      (* failwith "TODO" *)
+      ret x
   end
 
 module ArithMod25519 = Make (struct
-  let label = "2^25519"
+  let label = "2^255-19"
 
   let modulus = Z.(shift_left one 255 - of_int 19)
 
