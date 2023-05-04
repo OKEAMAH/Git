@@ -239,7 +239,15 @@ module type COMMON = sig
   end
 
   module Mod_arith : sig
-    val add : scalar list repr -> scalar list repr -> scalar list repr t
+    val add :
+      nb_limbs:int ->
+      base:Z.t ->
+      moduli:Z.t list ->
+      qm_bound:Z.t ->
+      ts_bounds:Z.t list ->
+      scalar list repr ->
+      scalar list repr ->
+      scalar list repr t
   end
 
   module Poseidon : sig

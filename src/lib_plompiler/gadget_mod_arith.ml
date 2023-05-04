@@ -231,9 +231,17 @@ functor
     let input_mod_int ?(kind = `Private) n =
       assert (List.length n = Params.nb_limbs) ;
       (* TODO: add range check assertions on the limbs *)
-      Input.(list @@ List.map scalar n) |> input ~kind
+      let* i = Input.(list @@ List.map scalar n) |> input ~kind in
+      let nb_bits = Z.log2 Params.base in
+      iterM (Num.range_check ~nb_bits) (of_list i) >* ret i
 
-    let add = Mod_arith.add
+    let add =
+      Mod_arith.add
+        ~nb_limbs
+        ~base
+        ~moduli
+        ~qm_bound:qm_bound_add
+        ~ts_bounds:(List.map snd ts_bounds_add)
 
     let mul = failwith "TODO"
 

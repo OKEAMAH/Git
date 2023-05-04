@@ -967,17 +967,16 @@ module Ecc = struct
 end
 
 module Mod_arith = struct
-  let base = Z.of_int 5
+  let is_power_of_2 n = Z.log2 n = Z.log2up n
 
-  let moduli = []
-
-  let nb_limbs = 3
-
-  let add (List xs) (List ys) =
+  let add ~nb_limbs ~base ~moduli ~qm_bound ~ts_bounds (List xs) (List ys) =
     (* This is just a sanity check, inputs are assumed to be well-formed,
        in particular, their limb values are in the range [0, B) *)
     assert (List.length xs = nb_limbs) ;
     assert (List.length ys = nb_limbs) ;
+    assert (is_power_of_2 base) ;
+    assert (is_power_of_2 qm_bound) ;
+    List.iter (fun b -> assert (is_power_of_2 b)) ts_bounds ;
     with_label ~label:"Mod_arith.add"
     @@ let* zs = fresh @@ Dummy.list nb_limbs Dummy.scalar in
        let* qm = fresh Dummy.scalar in
@@ -1001,7 +1000,8 @@ module Mod_arith = struct
        let qm = unscalar qm in
        let ts = List.map unscalar (of_list ts) in
        let solver = Mod_Add {base; inp1; inp2; out; qm; ts} in
-       append gate ~solver >* ret zs
+       iterM (Num.range_check ~nb_bits:(Z.log2 base)) (of_list zs)
+       >* append gate ~solver >* ret zs
 end
 
 module Poseidon = struct
