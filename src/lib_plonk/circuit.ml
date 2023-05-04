@@ -222,15 +222,6 @@ end = struct
     in
     (* Check all range indexes are contained in the array & all range check’s wires are in wires *)
     let () =
-      let max_circuit_size =
-        1
-        lsl Z.log2up
-              (Z.of_int
-                 (List.fold_left
-                    ( + )
-                    (circuit_size + public_input_size)
-                    input_com_sizes))
-      in
       SMap.iter
         (fun wire_name r ->
           if
@@ -239,22 +230,12 @@ end = struct
           then
             raise
               (Invalid_argument "Make Circuit: inconsistent range checks keys.") ;
-          let sum_bounds = ref 0 in
-          (List.iter (fun (i, bound) ->
-               sum_bounds := !sum_bounds + bound ;
+          (List.iter (fun (i, _) ->
                if i >= circuit_size then
                  raise
                    (Invalid_argument
                       "Make Circuit: inconsistent range checks indices.")))
-            r ;
-          if !sum_bounds > max_circuit_size then
-            raise
-              (Invalid_argument
-                 (Printf.sprintf
-                    "Make Circuit: circuit (%d) is too small to contain range \
-                     checks bounds (%d)."
-                    max_circuit_size
-                    !sum_bounds)))
+            r)
         range_checks
     in
     (* Remove empty ranges checks lists from range checks map & sort lists by growing index *)
