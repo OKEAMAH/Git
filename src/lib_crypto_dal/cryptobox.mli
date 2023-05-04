@@ -416,6 +416,22 @@ val prove_shards :
   polynomial:polynomial ->
   shard_proof array
 
+val prove_knowledge_of_commitment :
+  t ->
+  polynomial ->
+  int ->
+  ( page_proof * Bls12_381.GT.t * scalar * scalar * scalar,
+    [> `Invalid_degree_strictly_less_than_expected of (int, int) error_container]
+  )
+  result
+
+val verify_knowledge_of_commitment :
+  t ->
+  commitment ->
+  page_proof * Bls12_381.GT.t * scalar * scalar * scalar ->
+  int ->
+  bool
+
 module Internal_for_tests : sig
   (** The initialisation parameters can be too large for testing
      purposes. This function creates an unsafe initialisation

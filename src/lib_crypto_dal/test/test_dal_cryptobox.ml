@@ -871,6 +871,33 @@ module Test = struct
         | Ok check -> check
         | _ -> false)
 
+  let test_proof_of_knowledge_commitment =
+    let open QCheck2 in
+    let open Error_monad.Result_syntax in
+    Test.make
+      ~name:"proof of knowledge of commitment"
+      ~print:print_parameters
+      generate_parameters
+      (fun params ->
+        init () ;
+        assume (ensure_validity params) ;
+        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
+         let* commitment = Cryptobox.commit t polynomial in
+         let challenge_point = randrange Int.max_int in
+         let* proof =
+           Cryptobox.prove_knowledge_of_commitment t polynomial challenge_point
+         in
+         Ok
+           (Cryptobox.verify_knowledge_of_commitment
+              t
+              commitment
+              proof
+              challenge_point))
+        |> function
+        | Ok check -> check
+        | _ -> false)
+
   (* We can craft two slots whose commitments are equal for two different
      page sizes. *)
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4555
@@ -974,5 +1001,6 @@ let () =
             Test.test_commit;
             Test.test_commit_failure;
             Test.test_encoded_share_size;
+            Test.test_proof_of_knowledge_commitment;
           ] );
     ]

@@ -1692,6 +1692,66 @@ module Inner = struct
         | Ok true -> Ok ()
         | Ok false -> Error `Invalid_page
         | Error e -> Error e
+
+  let prove_single (t : t) p z =
+    Octez_bls12_381_polynomial.Polynomial.(
+      division_xn (p - constant (evaluate p z)) 1 (Bls12_381.Fr.negate z))
+    |> fst |> commit t
+
+  let copy a = Bls12_381.GT.(of_bytes_exn (to_bytes a))
+
+  let prove_knowledge_of_commitment t polynomial challenge_point =
+    let open Result_syntax in
+    let* commitment = commit t polynomial in
+    let challenge_point_s = Scalar.of_int challenge_point in
+    let* proof = prove_single t polynomial challenge_point_s in
+    let evaluation =
+      Octez_bls12_381_polynomial.Polynomial.evaluate
+        polynomial
+        challenge_point_s
+    in
+    let open Bls12_381 in
+    let s1 = Fr.random () in
+    let s2 = Fr.random () in
+    let r = ref (Fr.random ()) in
+    while Fr.(eq zero !r) do
+      r := Fr.random ()
+    done ;
+    let a1 = G1.mul proof (Fr.inverse_exn !r) in
+    let a2 =
+      Pairing.pairing
+        (G1.mul a1 s1)
+        (G2.(add (negate (mul one challenge_point_s)))
+           (Srs_g2.get t.srs.raw.srs_g2 1))
+      |> GT.(add (mul (copy one) s2))
+    in
+    let c =
+      Hex.show
+        Tezos_crypto.Blake2B.(
+          to_hex
+            (hash_bytes
+               [
+                 G1.to_compressed_bytes commitment;
+                 Fr.to_bytes challenge_point_s;
+                 G1.to_bytes a1;
+                 GT.to_bytes a2;
+               ]))
+      |> fun h -> Z.of_string ("0x" ^ h) |> Fr.of_z
+    in
+    let v1 = Fr.(sub s1 (mul !r c)) in
+    let v2 = Fr.(sub s2 (mul evaluation c)) in
+    return (a1, a2, v1, v2, c)
+
+  let verify_knowledge_of_commitment t commitment (a1, a2, v1, v2, c)
+      challenge_point =
+    let open Bls12_381 in
+    Pairing.pairing
+      (G1.mul a1 v1)
+      (G2.(add (negate (mul one (Fr.of_int challenge_point))))
+         (Srs_g2.get t.srs.raw.srs_g2 1))
+    |> GT.add (Pairing.pairing (G1.mul commitment c) G2.one)
+    |> GT.(add (mul one v2))
+    |> GT.eq a2
 end
 
 include Inner

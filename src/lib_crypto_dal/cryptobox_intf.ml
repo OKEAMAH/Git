@@ -152,4 +152,15 @@ module type VERIFIER = sig
       | `Page_length_mismatch
       | `Page_index_out_of_range ] )
     Result.t
+
+  val verify_knowledge_of_commitment :
+    t ->
+    commitment ->
+    page_proof
+    * Bls12_381.GT.t
+    * Bls12_381.Fr.t
+    * Bls12_381.Fr.t
+    * Bls12_381.Fr.t ->
+    int ->
+    bool
 end
