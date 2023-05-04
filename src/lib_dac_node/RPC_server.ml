@@ -182,15 +182,17 @@ let handle_get_missing_page node_ctxt cctxt page_store dac_plugin raw_root_hash
   let open Lwt_result_syntax in
   let*? () = assert_legacy_mode_cannot_run_v1 node_ctxt api_version in
   let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
+  let (module Remote_store : Page_store.S
+        with type configuration = Page_store.remote_configuration) =
+    Page_store.remote_store api_version
+  in
+  let remote_store = Remote_store.init {cctxt; page_store} in
   match api_version with
   | RPC_services.Api.V0 | RPC_services.Api.V1 ->
-      let remote_store =
-        Page_store.Remote.(init {cctxt; page_store; api_version})
-      in
       let* preimage =
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/5142
             Retrieve missing page from dac committee via "flooding". *)
-        Page_store.Remote.load dac_plugin remote_store root_hash
+        Remote_store.load dac_plugin remote_store root_hash
       in
       let*! () = Event.(emit fetched_missing_page raw_root_hash) in
       return preimage

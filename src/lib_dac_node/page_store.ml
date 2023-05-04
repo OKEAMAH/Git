@@ -230,62 +230,56 @@ module With_remote_fetch (R : sig
   type remote_context
 
   val fetch :
-    Dac_plugin.t ->
-    remote_context ->
-    RPC_services.Api.version ->
-    Dac_plugin.hash ->
-    bytes tzresult Lwt.t
+    Dac_plugin.t -> remote_context -> Dac_plugin.hash -> bytes tzresult Lwt.t
 end)
 (P : S) :
   S
-    with type configuration = R.remote_context * P.t * RPC_services.Api.version
-     and type t = R.remote_context * P.t * RPC_services.Api.version = struct
-  type t = R.remote_context * P.t * RPC_services.Api.version
+    with type configuration = R.remote_context * P.t
+     and type t = R.remote_context * P.t = struct
+  type t = R.remote_context * P.t
 
-  type configuration = R.remote_context * P.t * RPC_services.Api.version
+  type configuration = R.remote_context * P.t
 
-  let init (remote_ctxt, page_store, api_version) =
-    (remote_ctxt, page_store, api_version)
+  let init (remote_ctxt, page_store) = (remote_ctxt, page_store)
 
-  let save plugin (_remote_ctxt, page_store, _api_version) ~hash ~content =
+  let save plugin (_remote_ctxt, page_store) ~hash ~content =
     P.save plugin page_store ~hash ~content
 
-  let mem plugin (_remote_ctxt, page_store, _api_version) hash =
-    P.mem plugin page_store hash
+  let mem plugin (_remote_ctxt, page_store) hash = P.mem plugin page_store hash
 
-  let load plugin (remote_ctxt, page_store, api_version) hash =
+  let load plugin (remote_ctxt, page_store) hash =
     let open Lwt_result_syntax in
-    let* page_exists_in_store =
-      mem plugin (remote_ctxt, page_store, api_version) hash
-    in
+    let* page_exists_in_store = mem plugin (remote_ctxt, page_store) hash in
     if page_exists_in_store then P.load plugin page_store hash
     else
-      let* content = R.fetch plugin remote_ctxt api_version hash in
+      let* content = R.fetch plugin remote_ctxt hash in
       let+ () = P.save plugin page_store ~hash ~content in
       content
+end
+
+module type API_VERSION = sig
+  val version : RPC_services.Api.version
 end
 
 type remote_configuration = {
   cctxt : Dac_node_client.cctxt;
   page_store : Filesystem.t;
-  api_version : RPC_services.Api.version;
 }
 
-module Remote : S with type configuration = remote_configuration = struct
+module Make_Remote (A : API_VERSION) :
+  S with type configuration = remote_configuration = struct
   module F = Filesystem_with_integrity_check
 
   module Internal :
     S
-      with type configuration =
-        Dac_node_client.cctxt * Filesystem.t * RPC_services.Api.version
-       and type t =
-        Dac_node_client.cctxt * Filesystem.t * RPC_services.Api.version =
+      with type configuration = Dac_node_client.cctxt * Filesystem.t
+       and type t = Dac_node_client.cctxt * Filesystem.t =
     With_remote_fetch
       (struct
         type remote_context = Dac_node_client.cctxt
 
-        let fetch _dac_plugin remote_context api_version hash =
-          (match api_version with
+        let fetch _dac_plugin remote_context hash =
+          (match A.version with
           | RPC_services.Api.V0 -> Dac_node_client.V0.get_preimage
           | RPC_services.Api.V1 -> Dac_node_client.V1.get_preimage)
             remote_context
@@ -299,9 +293,22 @@ module Remote : S with type configuration = remote_configuration = struct
 
   type configuration = remote_configuration
 
-  let init {cctxt; page_store; api_version} =
-    Internal.init (cctxt, page_store, api_version)
+  let init {cctxt; page_store} = Internal.init (cctxt, page_store)
 end
+
+module Remote_V0 = Make_Remote (struct
+  let version = RPC_services.Api.V0
+end)
+
+module Remote_V1 = Make_Remote (struct
+  let version = RPC_services.Api.V1
+end)
+
+let remote_store api_version =
+  (module Make_Remote (struct
+    let version = api_version
+  end) : S
+    with type configuration = remote_configuration)
 
 module Internal_for_tests = struct
   module With_data_integrity_check (P : S) :
@@ -312,16 +319,11 @@ module Internal_for_tests = struct
     type remote_context
 
     val fetch :
-      Dac_plugin.t ->
-      remote_context ->
-      RPC_services.Api.version ->
-      Dac_plugin.hash ->
-      bytes tzresult Lwt.t
+      Dac_plugin.t -> remote_context -> Dac_plugin.hash -> bytes tzresult Lwt.t
   end)
   (P : S) :
     S
-      with type configuration =
-        R.remote_context * P.t * RPC_services.Api.version
-       and type t = R.remote_context * P.t * RPC_services.Api.version =
+      with type configuration = R.remote_context * P.t
+       and type t = R.remote_context * P.t =
     With_remote_fetch (R) (P)
 end

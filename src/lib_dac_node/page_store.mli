@@ -88,15 +88,21 @@ module Filesystem : S with type configuration = string
 type remote_configuration = {
   cctxt : Dac_node_client.cctxt;
   page_store : Filesystem.t;
-  api_version : RPC_services.Api.version;
 }
 
 (** A [Page_store] implementation backed by the local filesystem, which
    uses a connection to a Dac node to retrieve pages that are not
-   saved locally. *)
-module Remote : S with type configuration = remote_configuration
+   saved locally. [V0] api is used in case of retrieving the pages remotely. *)
+module Remote_V0 : S with type configuration = remote_configuration
 
-(**/**)
+(** A [Page_store] implementation backed by the local filesystem, which
+   uses a connection to a Dac node to retrieve pages that are not
+   saved locally. [V1] api is used in case of retrieving the pages remotely. *)
+module Remote_V1 : S with type configuration = remote_configuration
+
+val remote_store :
+  RPC_services.Api.version ->
+  (module S with type configuration = remote_configuration)
 
 module Internal_for_tests : sig
   (** [With_data_integrity_check] tweaks a module [P] of type [Page_store]
@@ -115,17 +121,12 @@ module Internal_for_tests : sig
     type remote_context
 
     val fetch :
-      Dac_plugin.t ->
-      remote_context ->
-      RPC_services.Api.version ->
-      Dac_plugin.hash ->
-      bytes tzresult Lwt.t
+      Dac_plugin.t -> remote_context -> Dac_plugin.hash -> bytes tzresult Lwt.t
   end)
   (P : S) :
     S
-      with type configuration =
-        R.remote_context * P.t * RPC_services.Api.version
-       and type t = R.remote_context * P.t * RPC_services.Api.version
+      with type configuration = R.remote_context * P.t
+       and type t = R.remote_context * P.t
 end
 
 (** [ensure_reveal_data_dir_exists reveal_data_dir] checks that the

@@ -168,14 +168,11 @@ module Committee_member = struct
     let coordinator_cctxt =
       ctxt.Node_context.Committee_member.coordinator_cctxt
     in
-    let handler dac_plugin remote_store _stopper root_hash =
+    let handler dac_plugin remote_store deserialize_payload _stopper root_hash =
       let*? root_hash = Dac_plugin.raw_to_hash dac_plugin root_hash in
       let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
       let*! payload_result =
-        Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
-          dac_plugin
-          ~page_store:remote_store
-          root_hash
+        deserialize_payload dac_plugin ~page_store:remote_store root_hash
       in
       match payload_result with
       | Ok _ ->
@@ -199,14 +196,29 @@ module Committee_member = struct
           in
           return ()
     in
-    let remote_store =
-      Page_store.(
-        Remote.init {cctxt = coordinator_cctxt; page_store; api_version})
-    in
-    let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
-    make_stream_daemon
-      (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt api_version)
+    match api_version with
+    | RPC_services.Api.V0 ->
+        let remote_store =
+          Page_store.Remote_V0.init {cctxt = coordinator_cctxt; page_store}
+        in
+        let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
+        make_stream_daemon
+          (handler
+             dac_plugin
+             remote_store
+             Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload)
+          (Monitor_services.root_hashes coordinator_cctxt api_version)
+    | RPC_services.Api.V1 ->
+        let remote_store =
+          Page_store.Remote_V1.init {cctxt = coordinator_cctxt; page_store}
+        in
+        let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
+        make_stream_daemon
+          (handler
+             dac_plugin
+             remote_store
+             Pages_encoding.Merkle_tree.V1.Remote.deserialize_payload)
+          (Monitor_services.root_hashes coordinator_cctxt api_version)
 end
 
 (** Handlers specific to an [Observer]. An [Observer] is responsible for
@@ -220,14 +232,11 @@ module Observer = struct
   let new_root_hash ctxt dac_plugin page_store api_version =
     let open Lwt_result_syntax in
     let coordinator_cctxt = ctxt.Node_context.Observer.coordinator_cctxt in
-    let handler dac_plugin remote_store _stopper root_hash =
+    let handler dac_plugin remote_store deserialize_payload _stopper root_hash =
       let*? root_hash = Dac_plugin.raw_to_hash dac_plugin root_hash in
       let*! () = Event.emit_new_root_hash_received dac_plugin root_hash in
       let*! payload_result =
-        Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload
-          dac_plugin
-          ~page_store:remote_store
-          root_hash
+        deserialize_payload dac_plugin ~page_store:remote_store root_hash
       in
       match payload_result with
       | Ok _ ->
@@ -243,14 +252,29 @@ module Observer = struct
           in
           return ()
     in
-    let remote_store =
-      Page_store.(
-        Remote.init {cctxt = coordinator_cctxt; page_store; api_version})
-    in
-    let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
-    make_stream_daemon
-      (handler dac_plugin remote_store)
-      (Monitor_services.root_hashes coordinator_cctxt api_version)
+    match api_version with
+    | RPC_services.Api.V0 ->
+        let remote_store =
+          Page_store.Remote_V0.init {cctxt = coordinator_cctxt; page_store}
+        in
+        let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
+        make_stream_daemon
+          (handler
+             dac_plugin
+             remote_store
+             Pages_encoding.Merkle_tree.V0.Remote.deserialize_payload)
+          (Monitor_services.root_hashes coordinator_cctxt api_version)
+    | RPC_services.Api.V1 ->
+        let remote_store =
+          Page_store.Remote_V1.init {cctxt = coordinator_cctxt; page_store}
+        in
+        let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
+        make_stream_daemon
+          (handler
+             dac_plugin
+             remote_store
+             Pages_encoding.Merkle_tree.V1.Remote.deserialize_payload)
+          (Monitor_services.root_hashes coordinator_cctxt api_version)
 end
 
 (** Handlers specific to a [Legacy] DAC node. If no
@@ -354,13 +378,7 @@ module Legacy = struct
           return ()
     in
     let remote_store =
-      Page_store.(
-        Remote.init
-          {
-            cctxt = coordinator_cctxt;
-            page_store;
-            api_version = RPC_services.Api.V0;
-          })
+      Page_store.Remote_V0.init {cctxt = coordinator_cctxt; page_store}
     in
     let*! () = Event.(emit subscribed_to_root_hashes_stream ()) in
     make_stream_daemon

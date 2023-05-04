@@ -233,13 +233,12 @@ module With_hash_check :
 
 module Double_hash_map_backend :
   Page_store.S
-    with type configuration =
-      Hashes_map_backend.t * Hashes_map_backend.t * RPC_services.Api.version =
+    with type configuration = Hashes_map_backend.t * Hashes_map_backend.t =
   Page_store.Internal_for_tests.With_remote_fetch
     (struct
       type remote_context = Hashes_map_backend.t
 
-      let fetch dac_plugin remote_context _api_version hash =
+      let fetch dac_plugin remote_context hash =
         Hashes_map_backend.load dac_plugin remote_context hash
     end)
     (With_hash_check)
@@ -398,8 +397,7 @@ module Merkle_tree = struct
       let mock_remote_store = Hashes_map_backend.init () in
       let mock_local_store = Hashes_map_backend.init () in
       let page_store =
-        Double_hash_map_backend.init
-          (mock_remote_store, mock_local_store, RPC_services.Api.V0)
+        Double_hash_map_backend.init (mock_remote_store, mock_local_store)
       in
       let payload =
         Bytes.of_string "This is a payload that will be tampered later on"

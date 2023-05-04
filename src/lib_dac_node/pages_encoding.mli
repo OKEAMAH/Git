@@ -157,9 +157,14 @@ module Merkle_tree : sig
   module V0 : sig
     module Filesystem : Dac_codec with type page_store = Page_store.Filesystem.t
 
-    module Remote : Dac_codec with type page_store = Page_store.Remote.t
+    module Remote : Dac_codec with type page_store = Page_store.Remote_V0.t
   end
 
+  module V1 : sig
+    module Filesystem : Dac_codec with type page_store = Page_store.Filesystem.t
+
+    module Remote : Dac_codec with type page_store = Page_store.Remote_V1.t
+  end
   module Internal_for_tests : sig
     module Make_buffered (S : Page_store.S) (V : VERSION) (C : CONFIG) :
       Buffered_dac_codec with type page_store = S.t
