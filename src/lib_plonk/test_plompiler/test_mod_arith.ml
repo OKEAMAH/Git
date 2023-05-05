@@ -24,29 +24,88 @@
 (*****************************************************************************)
 
 open Plompiler
-open LibCircuit
 module CS = Plonk.Circuit
-module Hash = Poseidon128.V (LibCircuit)
 module Helpers = Plonk_test.Helpers.Make (Plonk.Main_protocol)
 
 open Plonk_test.Helpers.Utils (LibCircuit)
 
-module ArithMod = ArithMod25519
+module AddMod (L : LIB) = struct
+  module AddMod = AddMod25519 (L)
+  open L
 
-let random_limb bound =
-  Random.nativeint (Z.to_nativeint bound) |> Z.of_nativeint
+  let add xs ys =
+    let x = Utils.z_of_limbs ~base:AddMod.base xs in
+    let y = Utils.z_of_limbs ~base:AddMod.base ys in
+    let z = Z.(rem (x + y) AddMod.modulus) in
+    Utils.z_to_limbs ~base:AddMod.base z
 
-(* Adding 2 integers that won’t overflow *)
-let test_add_small () =
-  let x = List.init ArithMod.nb_limbs (fun _ -> random_limb Z.(ArithMod.base - one - one)) in
-  let y = List.init ArithMod.nb_limbs (fun _ -> random_limb Z.(ArithMod.base - one - one)) in
-  let _ = ArithMod.add x y in ()
+  let random_limb ?(bound = AddMod.base) () =
+    let x = S.random () |> S.to_z in
+    Z.rem x bound
 
-  
+  let random_modint ?(bound = AddMod.base) () =
+    List.init AddMod.nb_limbs (fun _ -> random_limb ~bound ())
 
-(* Adding 2 integers that overflow & result in 0 *)
+  let add_circuit z_exp x y =
+    let* z_exp = AddMod.input_mod_int ~kind:`Public (List.map S.of_z z_exp) in
+    let* x = AddMod.input_mod_int (List.map S.of_z x) in
+    let* y = AddMod.input_mod_int (List.map S.of_z y) in
+    let* z = AddMod.add x y in
+    (* Can we use assert_equal here ? *)
+    assert_equal z z_exp
 
-(* Having an integer between 2²⁵⁵ & 2²⁵⁵ - 19 & assert it fails *)
+  (* Adding 2 integers that for sure won’t overflow *)
+  let test_add_small () =
+    let x = random_modint ~bound:Z.(AddMod.base - one - one) () in
+    let y = random_modint ~bound:Z.(AddMod.base - one - one) () in
+    (* TODO : I’m pretty sure this is how you’re supposed to get z ; I think the equation must give the output, not whether or not the identity is verified *)
+    (* Anyway it seems we can’t access equations from here *)
+    let z = add x y in
+    add_circuit z x y
 
+  (* Adding 0 doesn’t change the number *)
+  let test_add_0 () =
+    let x = random_modint () in
+    let y = List.init AddMod.nb_limbs (Fun.const Z.zero) in
+    let z = add x y in
+    assert (List.equal Z.equal z x) ;
+    add_circuit z x y
 
-let tests = [Alcotest.test_case "Add small" `Quick test_add_small]
+  (* Adding 2 integers that overflow & result in 0 *)
+  let test_add_overflow () =
+    let x = S.random () |> S.to_z in
+    let neg_x = Z.(AddMod.modulus - x) in
+    let x = Utils.z_to_limbs ~base:AddMod.base x in
+    let neg_x = Utils.z_to_limbs ~base:AddMod.base neg_x in
+    let z = add x neg_x in
+    assert (List.for_all Z.(equal zero) z) ;
+    add_circuit z x neg_x
+
+  (* Having an integer between 2²⁵⁵ & 2²⁵⁵ - 19 & assert it fails at input *)
+  let test_add_limit () =
+    let x = Z.(AddMod.modulus - (Random.int 19 |> Z.of_int)) in
+    let x = Utils.z_to_limbs ~base:AddMod.base x in
+    let y = Z.zero |> Utils.z_to_limbs ~base:AddMod.base in
+    let z = add x y in
+    assert (List.equal Z.equal z x) ;
+    add_circuit z x y
+
+  let tests =
+    [
+      test ~valid:true ~name:"AddMod.test_add_small" test_add_small;
+      (* test ~valid:true ~name:"AddMod.test_add_0" test_add_0;
+      test ~valid:true ~name:"AddMod.test_add_overflow" test_add_overflow;
+      test ~valid:false ~name:"AddMod.test_add_limit" test_add_small; *)
+    ]
+end
+
+open Plonk_test.Helpers
+
+let tests =
+  [
+    Alcotest.test_case "AddMod" `Quick (to_test (module AddMod : Test));
+    Alcotest.test_case
+      "AddMod plonk"
+      `Slow
+      (to_test ~plonk:(module Plonk.Main_protocol) (module AddMod : Test));
+  ]
