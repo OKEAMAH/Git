@@ -240,11 +240,13 @@ module type COMMON = sig
 
   module Mod_arith : sig
     val add :
+      modulus:Z.t ->
       nb_limbs:int ->
       base:Z.t ->
       moduli:Z.t list ->
+      qm_min:Z.t ->
       qm_bound:Z.t ->
-      ts_bounds:Z.t list ->
+      ts_bounds:(Z.t * Z.t) list ->
       scalar list repr ->
       scalar list repr ->
       scalar list repr t

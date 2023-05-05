@@ -345,7 +345,8 @@ module Ecc = struct
 end
 
 module Mod_arith = struct
-  let add ~nb_limbs:_ ~base:_ ~moduli:_ ~qm_bound:_ ~ts_bounds:_ x y =
+  let add ~modulus:_ ~nb_limbs:_ ~base:_ ~moduli:_ ~qm_min:_ ~qm_bound:_
+      ~ts_bounds:_ x y =
     ignore x ;
     ignore y ;
     failwith "TODO"

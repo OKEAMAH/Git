@@ -237,26 +237,17 @@ functor
 
     let add =
       Mod_arith.add
+        ~modulus
         ~nb_limbs
         ~base
         ~moduli
+        ~qm_min:qm_min_add
         ~qm_bound:qm_bound_add
-        ~ts_bounds:(List.map snd ts_bounds_add)
+        ~ts_bounds:ts_bounds_add
 
-        (* TODO test that
-           input 2^255 - 100
-           add 80 & get 1 
+    let mul _ = failwith "TODO"
 
-           adding 2 small numbers
-        *)
-
-    let mul x _ = 
-      (* failwith "TODO" *)
-ret x
-
-    let neg x = 
-      (* failwith "TODO" *)
-      ret x
+    let neg _ = failwith "TODO"
   end
 
 module ArithMod25519 = Make (struct

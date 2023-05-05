@@ -148,7 +148,13 @@ type anemoi_custom_desc = {
 }
 
 type mod_add_desc = {
+  modulus : Z.t;
   base : Z.t;
+  nb_limbs : int;
+  moduli : Z.t list;
+  qm_min : Z.t;
+  qm_bound : Z.t;
+  ts_bounds : (Z.t * Z.t) list;
   inp1 : int list;
   inp2 : int list;
   out : int list;

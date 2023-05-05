@@ -105,8 +105,10 @@ module Z = struct
         (fun s -> Z.to_bits s |> Bytes.of_string))
 end
 
-(* [z_to_limbs ~base n] takes an integer (n : Z.t) and returns a list of
-   integers (Z.t) encoding its big-endian representation in base [base] *)
+let ( %! ) n m = Z.rem n m
+
+(* [z_to_limbs ~base n] takes an integer (n : Z.t) and returns a Z.t list
+   encoding its big-endian representation in base [base] *)
 let z_to_limbs ~base n =
   let rec aux output n =
     let q, r = Z.div_rem n base in
@@ -114,8 +116,19 @@ let z_to_limbs ~base n =
   in
   aux [] n
 
+(* [z_of_limbs ~base ls] returns the Z.t encoded in the given Z.t list [ls],
+   its big-endian representation in base [base]. *)
 let z_of_limbs ~base limbs =
   List.fold_right (fun x acc -> Z.((base * acc) + x)) limbs Z.zero
+
+(* [mod_add_limbs ~modulus ~base xs ys] returns the result of adding [xs]
+   and [ys] modulo [modulus], where the inputs and the output are in big-endian
+   form in base [base]. *)
+let mod_add_limbs ~modulus ~base xs ys =
+  let x = z_of_limbs ~base xs in
+  let y = z_of_limbs ~base ys in
+  let z = Z.((x + y) %! modulus) in
+  z_to_limbs ~base z
 
 let rec transpose = function
   | [] | [] :: _ -> []

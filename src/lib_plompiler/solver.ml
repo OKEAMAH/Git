@@ -214,7 +214,13 @@ module Z = struct
 end
 
 type mod_add_desc = {
+  modulus : Z.t;
   base : Z.t;
+  nb_limbs : int;
+  moduli : Z.t list;
+  qm_min : Z.t;
+  qm_bound : Z.t;
+  ts_bounds : (Z.t * Z.t) list;
   inp1 : int list;
   inp2 : int list;
   out : int list;
@@ -416,16 +422,61 @@ let solve_one trace solver =
       in
       trace.(x2) <- x2' ;
       trace.(y2) <- y2'
-  | Mod_Add {base; inp1; inp2; out; qm; ts} ->
-      let n1 =
-        Utils.z_of_limbs ~base @@ List.map (fun w -> trace.(w) |> S.to_z) inp1
+  | Mod_Add
+      {
+        modulus;
+        base;
+        nb_limbs;
+        moduli;
+        qm_min;
+        qm_bound;
+        ts_bounds;
+        inp1;
+        inp2;
+        out;
+        qm;
+        ts;
+      } ->
+      assert (List.length inp1 = nb_limbs) ;
+      assert (List.length inp2 = nb_limbs) ;
+      assert (List.length out = nb_limbs) ;
+      let sum = List.fold_left Z.add Z.zero in
+      let ( %! ) n m = Z.rem n m in
+      let xs = List.map (fun v -> trace.(v) |> S.to_z) inp1 in
+      let ys = List.map (fun v -> trace.(v) |> S.to_z) inp2 in
+      let zs = Utils.mod_add_limbs ~modulus ~base xs ys in
+      List.iter2 (fun v zi -> trace.(v) <- S.of_z zi) out zs ;
+      let bs_mod_m = List.init nb_limbs (fun i -> Z.pow base i %! modulus) in
+      let x_plus_y_minus_z =
+        List.map2 (fun (xi, yi) zi -> Z.(xi + yi - zi)) (List.combine xs ys) zs
       in
-      ignore n1 ;
-      ignore inp2 ;
-      ignore out ;
-      ignore qm ;
-      ignore ts ;
-      ()) ;
+      (* \sum_i (B^i mod m) * (x_i + y_i - z_i) = (qm + qm_min) * m *)
+      let qm_value, r =
+        let lhs = sum @@ List.map2 Z.mul bs_mod_m x_plus_y_minus_z in
+        Z.(div_rem (lhs - (qm_min * modulus)) modulus)
+      in
+      assert (Z.(equal r zero)) ;
+      assert (Z.(compare qm_value zero >= 0)) ;
+      assert (Z.(compare qm_value qm_bound < 0)) ;
+      trace.(qm) <- S.of_z qm_value ;
+      (* For every modulo mj in moduli,
+         \sum_i ((B^i mod m) mod mj) * (x_i + y_i - z_i)
+         - qm * (m mod mj) - ((qm_min * m) mod mj) = (tj + tj_min) * mj *)
+      List.iter2
+        (fun mj (tj, (tj_min, tj_bound)) ->
+          let bs_mod_m_mod_mj = List.map (fun v -> v %! mj) bs_mod_m in
+          let terms = List.map2 Z.mul bs_mod_m_mod_mj x_plus_y_minus_z in
+          let lhs =
+            Z.(
+              sum terms - (qm_value * (modulus %! mj)) - (qm_min * modulus %! mj))
+          in
+          let tj_value, r = Z.(div_rem (lhs - (tj_min * mj)) mj) in
+          assert (Z.(equal r zero)) ;
+          assert (Z.(compare tj_value zero >= 0)) ;
+          assert (Z.(compare tj_value tj_bound < 0)) ;
+          trace.(tj) <- S.of_z tj_value)
+        moduli
+        (List.combine ts ts_bounds)) ;
   trace
 
 let solve : t -> S.t array -> S.t array =
