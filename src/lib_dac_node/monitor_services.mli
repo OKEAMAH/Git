@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 module S : sig
-  (** Define RPC GET /monitor/root_hashes. *)
+  (** Define RPC GET [api_version]/monitor/root_hashes. *)
   val root_hashes :
     ( [`GET],
       unit,
@@ -34,7 +34,7 @@ module S : sig
       Dac_plugin.raw_hash )
     Tezos_rpc.Service.service
 
-  (** Define RPC GET /monitor/certificate/{hex_root_hash}. *)
+  (** Define RPC GET [api_version]/monitor/certificate/{hex_root_hash}. *)
   val certificate :
     ( [`GET],
       unit,
@@ -45,10 +45,10 @@ module S : sig
     Tezos_rpc.Service.service
 end
 
-(** [root_hashes streamed_cctxt dac_plugin] returns a stream of root hashes
+(** [root_hashes streamed_cctxt api_version] returns a stream of root hashes
     and a stopper for it.
 
-    Stream is produced by calling RPC GET /monitor/root_hashes.
+    Stream is produced by calling RPC GET [api_version]/monitor/root_hashes.
 *)
 val root_hashes :
   #Tezos_rpc.Context.streamed ->
@@ -57,6 +57,11 @@ val root_hashes :
   Error_monad.tzresult
   Lwt.t
 
+(** [certificate streamed_cctxt raw_hash api_version] returns a stream of
+    updates to certificate of a given root hash and a stopper for it.
+
+    Stream is produced by calling RPC GET [api_version]/monitor/certificate.
+*)
 val certificate :
   #Tezos_rpc.Context.streamed ->
   Dac_plugin.raw_hash ->
