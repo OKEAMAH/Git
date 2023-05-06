@@ -33,7 +33,7 @@
  (modules
   test_ast_generators
   test_debug
-  test_durable_shapshot
+  test_durable_snapshot
   test_durable_storage
   test_fixed_nb_ticks
   test_get_set

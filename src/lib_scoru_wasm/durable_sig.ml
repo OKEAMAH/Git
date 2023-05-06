@@ -23,131 +23,134 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [t] provides an interface of the tree of [immutable_chunked_byte_vector] *)
-type t = Tezos_lazy_containers.Lazy_tree.CBV_lazy_tree.t
+module type S = sig
+  (** [t] provides an interface of the tree of [immutable_chunked_byte_vector] *)
+  type t
 
-(** [key] was too long, or contained invalid steps. *)
-exception Invalid_key of string
+  (** [key] was too long, or contained invalid steps. *)
+  exception Invalid_key of string
 
-(** Invalid index for a subkey *)
-exception Index_too_large of int
+  (** Invalid index for a subkey *)
+  exception Index_too_large of int
 
-(** A value was not found in the durable store. *)
-exception Value_not_found
+  (** A value was not found in the durable store. *)
+  exception Value_not_found
 
-(** A tree does not exists under key in the durable store. *)
-exception Tree_not_found
+  (** A tree does not exists under key in the durable store. *)
+  exception Tree_not_found
 
-(** Attempted to write/read to/from a value at [offset],
+  (** Attempted to write/read to/from a value at [offset],
     beyond the [limit]. *)
-exception Out_of_bounds of (int64 * int64)
+  exception Out_of_bounds of (int64 * int64)
 
-(** [Durable_storage.t] was empty. *)
-exception Durable_empty
+  (** [Durable_storage.t] was empty. *)
+  exception Durable_empty
 
-(** Cannot modify a readonly value. *)
-exception Readonly_value
+  (** Cannot modify a readonly value. *)
+  exception Readonly_value
 
-(** Cannot read from or write to more than 2,048 bytes *)
-exception IO_too_large
+  (** Cannot read from or write to more than 2,048 bytes *)
+  exception IO_too_large
 
-(** [encoding] is a [Tezos_tree_encoding] for [t]. *)
-val encoding : t Tezos_tree_encoding.t
+  (** [encoding] is a [Tezos_tree_encoding] for [t]. *)
+  val encoding : t Tezos_tree_encoding.t
 
-val of_storage :
-  default:t -> Tezos_webassembly_interpreter.Durable_storage.t -> t
+  val of_storage :
+    default:t -> Tezos_webassembly_interpreter.Durable_storage.t -> t
 
-(** @raise Durable_empty *)
-val of_storage_exn : Tezos_webassembly_interpreter.Durable_storage.t -> t
+  (** @raise Durable_empty *)
+  val of_storage_exn : Tezos_webassembly_interpreter.Durable_storage.t -> t
 
-val to_storage : t -> Tezos_webassembly_interpreter.Durable_storage.t
+  val to_storage : t -> Tezos_webassembly_interpreter.Durable_storage.t
 
-(** Type describing the behavior of generic functions:
+  (** Type describing the behavior of generic functions:
     - [Value] indicates the operation should work on the value only
     - [Directory] indicates the operation should work on the value and all
     subkeys under the given key.
 
     See [hash], for example.
 *)
-type kind = Value | Directory
+  type kind = Value | Directory
 
-(** [key] is the type that indexes [t]. It enforces several constraints:
+  (** [key] is the type that indexes [t]. It enforces several constraints:
     - a key's length is bounded.
     - a key is a series of non-empty steps, where
     - a step is preceded by '/'
     - a step only contains alphanumeric ascii, or dots ('.') *)
-type key
+  type key
 
-(** [max_key_length] is the maximum length of a key in bytes. *)
-val max_key_length : int
+  (** [max_key_length] is the maximum length of a key in bytes. *)
+  val max_key_length : int
 
-(** @raise Invalid_key *)
-val key_of_string_exn : string -> key
+  (** @raise Invalid_key *)
+  val key_of_string_exn : string -> key
 
-val key_of_string_opt : string -> key option
+  val key_of_string_opt : string -> key option
 
-(** [find_value durable key] optionally looks for the value encoded at [key]
+  (** [find_value durable key] optionally looks for the value encoded at [key]
     in [durable]. *)
-val find_value :
-  t -> key -> Tezos_lazy_containers.Immutable_chunked_byte_vector.t option Lwt.t
+  val find_value :
+    t ->
+    key ->
+    Tezos_lazy_containers.Immutable_chunked_byte_vector.t option Lwt.t
 
-(** @raise Value_not_found *)
-val find_value_exn :
-  t -> key -> Tezos_lazy_containers.Immutable_chunked_byte_vector.t Lwt.t
+  (** @raise Value_not_found *)
+  val find_value_exn :
+    t -> key -> Tezos_lazy_containers.Immutable_chunked_byte_vector.t Lwt.t
 
-(** [copy_tree_exn tree ?edit_readonly from_key to_key] produces a new tree in which a copy of
+  (** [copy_tree_exn tree ?edit_readonly from_key to_key] produces a new tree in which a copy of
     the entire subtree at from_key is copied to to_key.
 
     [~edit_readonly:true] allows a a tree to be copied into a readonly location.
 
     @raise Readonly_value
 *)
-val copy_tree_exn : t -> ?edit_readonly:bool -> key -> key -> t Lwt.t
+  val copy_tree_exn : t -> ?edit_readonly:bool -> key -> key -> t Lwt.t
 
-(** [move_tree_exn tree from_key to_key] produces a new tree in which
+  (** [move_tree_exn tree from_key to_key] produces a new tree in which
     the entire subtree at from_key is moved to to_key.
 
     @raise Readonly_value
 *)
-val move_tree_exn : t -> key -> key -> t Lwt.t
+  val move_tree_exn : t -> key -> key -> t Lwt.t
 
-(** [list durable key] returns the subkeys under [key]. *)
-val list : t -> key -> string list Lwt.t
+  (** [list durable key] returns the subkeys under [key]. *)
+  val list : t -> key -> string list Lwt.t
 
-(** [count_subtrees durable key] returns the number of subtrees under [key]. *)
-val count_subtrees : t -> key -> int Lwt.t
+  (** [count_subtrees durable key] returns the number of subtrees under [key]. *)
+  val count_subtrees : t -> key -> int Lwt.t
 
-(** [subtree_name_at durable key n] returns the name of the n_th subtree
+  (** [subtree_name_at durable key n] returns the name of the n_th subtree
     under [key]. *)
-val subtree_name_at : t -> key -> int -> string Lwt.t
+  val subtree_name_at : t -> key -> int -> string Lwt.t
 
-(** [delete ?edit_readonly ~kind durable key] deletes the value of [key] if
+  (** [delete ?edit_readonly ~kind durable key] deletes the value of [key] if
     [kind = `Value], and subtrees and/or values of [key] if [kind = `All].
 
     @raise Readonly_value when [edit_readonly] is not set while trying
     to edit the readonly section.
 *)
-val delete : ?edit_readonly:bool -> kind:kind -> t -> key -> t Lwt.t
+  val delete : ?edit_readonly:bool -> kind:kind -> t -> key -> t Lwt.t
 
-(** [hash ~kind durable key] retrieves the tree hash of the value (if [kind =
+  (** [hash ~kind durable key] retrieves the tree hash of the value (if [kind =
     Value]) or the complete directory ([kind = Directory]) at the given [key].
     This is not the same as the hash of the value. *)
-val hash : kind:kind -> t -> key -> Context_hash.t option Lwt.t
+  val hash : kind:kind -> t -> key -> Context_hash.t option Lwt.t
 
-(** [hash_exn ~kind durable key] retrieves the tree hash of the value (if [kind
+  (** [hash_exn ~kind durable key] retrieves the tree hash of the value (if [kind
     = Value]) or the complete directory ([kind = Directory]) at the given [key].
     This is not the same as the hash of the value.
 
     @raise Value_not_found when [key] is not found and [kind = Value]
     @raise Tree_not_found when [key] is not found and [kind = Directory]. *)
-val hash_exn : kind:kind -> t -> key -> Context_hash.t Lwt.t
+  val hash_exn : kind:kind -> t -> key -> Context_hash.t Lwt.t
 
-(** [set_value_exn durable key str] installs the value [str] in
+  (** [set_value_exn durable key str] installs the value [str] in
     [durable] under [key], replacing any previous contents under this
     key without fetching it. *)
-val set_value_exn : t -> ?edit_readonly:bool -> key -> string -> t Lwt.t
+  val set_value_exn : t -> ?edit_readonly:bool -> key -> string -> t Lwt.t
 
-(** [create_value_exn ?edit_readonly durable key size] allocates a new value of
+  (** [create_value_exn ?edit_readonly durable key size] allocates a new value of
     [size] at the given [key]. Returns [Some durable] if the value didn't exist,
     and [None] if there was already a value at the given [key]
 
@@ -155,10 +158,10 @@ val set_value_exn : t -> ?edit_readonly:bool -> key -> string -> t Lwt.t
     @raise Readonly_value iff [edit_readonly] is not set to [true]
     when attempting to write in the [readonly] section.
 *)
-val create_value_exn :
-  t -> ?edit_readonly:bool -> key -> int64 -> t option Lwt.t
+  val create_value_exn :
+    t -> ?edit_readonly:bool -> key -> int64 -> t option Lwt.t
 
-(** [write_value_exn ?edit_readonly durable key offset bytes] writes
+  (** [write_value_exn ?edit_readonly durable key offset bytes] writes
     [bytes] to [key], starting at the given [offset].
 
     If no value at [key] exists, it is created.
@@ -169,19 +172,20 @@ val create_value_exn :
     @raise Readonly_value iff [edit_readonly] is not set to [true]
     when attempting to write in the [readonly] section.
 *)
-val write_value_exn :
-  t -> ?edit_readonly:bool -> key -> int64 -> string -> t Lwt.t
+  val write_value_exn :
+    t -> ?edit_readonly:bool -> key -> int64 -> string -> t Lwt.t
 
-(** [read_value durable key offset max_bytes] reads up to [max_bytes]
+  (** [read_value durable key offset max_bytes] reads up to [max_bytes]
     bytes from the value at [key], starting at the given [offset].
 
     @raise Value_not_found when [key] is not found.
     @raise Out_of_bounds when [offset] is larger than the value.
 *)
-val read_value_exn : t -> key -> int64 -> int64 -> string Lwt.t
+  val read_value_exn : t -> key -> int64 -> int64 -> string Lwt.t
 
-module Internal_for_tests : sig
-  val key_is_readonly : key -> bool
+  module Internal_for_tests : sig
+    val key_is_readonly : key -> bool
 
-  val key_to_list : key -> string list
+    val key_to_list : key -> string list
+  end
 end

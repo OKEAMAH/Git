@@ -5,19 +5,9 @@ exception Durable_empty
 
 val empty : t
 
-val of_tree :
-  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
-  Tezos_lazy_containers.Lazy_fs.t ->
-  t
+val of_tree : Tezos_lazy_containers.Lazy_tree.CBV_lazy_tree.t -> t
 
 (** @raise Durable_empty *)
-val to_tree_exn :
-  t ->
-  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
-  Tezos_lazy_containers.Lazy_fs.t
+val to_tree_exn : t -> Tezos_lazy_containers.Lazy_tree.CBV_lazy_tree.t
 
-val to_tree :
-  t ->
-  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
-  Tezos_lazy_containers.Lazy_fs.t
-  option
+val to_tree : t -> Tezos_lazy_containers.Lazy_tree.CBV_lazy_tree.t option

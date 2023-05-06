@@ -414,48 +414,35 @@ module CBV_encoding : sig
     S with type cbv := CBV.t and type chunk := CBV.chunk
 end
 
-module Lazy_dirs_encoding : sig
-  module type Lazy_dirs_sig = sig
-    type 'a t
+module Lazy_tree_encoding : sig
+  module type Lazy_tree_sig = sig
+    type elt
 
-    module Names : Stdlib.Set.S with type elt = String.t
+    type lt
 
-    module Map : Lazy_map_encoding.Lazy_map_sig with type key = String.t
+    val origin : lt -> wrapped_tree option
 
-    val contents : 'a t -> 'a Map.t
+    val subtrees_diff : lt -> (string * lt option) list
 
-    val create : ?names:Names.t -> ?contents:'a Map.t -> unit -> 'a t
+    val value : lt -> [`NoChange | `NewValue of elt | `Removed]
 
-    val remove : 'a t -> Names.elt -> 'a t
+    val value_encoding : elt t
+
+    val create : Tree.wrapped_tree -> lt
   end
 
   module type S = sig
-    type 'a dirs
+    type elt
 
-    val lazy_dirs : 'a t -> 'a dirs t
+    type lt
+
+    val lazy_tree : unit -> lt t
+
+    val decode_subtree : wrapped_tree -> string -> lt option Lwt.t
+
+    val decode_value : wrapped_tree -> elt option Lwt.t
   end
 
-  module Make (Dirs : Lazy_dirs_sig) : S with type 'a dirs := 'a Dirs.t
-end
-
-module Lazy_fs_encoding : sig
-  module type Lazy_fs_sig = sig
-    type 'a t
-
-    module Dirs : Lazy_dirs_encoding.Lazy_dirs_sig
-
-    val dirs : 'a t -> 'a t Dirs.t
-
-    val content : 'a t -> 'a option
-
-    val create : ?value:'a -> ?dirs:'a t Dirs.t -> Tree.wrapped_tree -> 'a t
-  end
-
-  module type S = sig
-    type 'a fs
-
-    val lazy_fs : 'a t -> 'a fs t
-  end
-
-  module Make (Fs : Lazy_fs_sig) : S with type 'a fs := 'a Fs.t
+  module Make (Lt : Lazy_tree_sig) :
+    S with type lt := Lt.lt and type elt := Lt.elt
 end

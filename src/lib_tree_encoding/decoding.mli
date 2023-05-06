@@ -92,10 +92,9 @@ val scope : key -> 'a t -> 'a t
 val lazy_mapping :
   ('i -> key) -> 'a t -> (Tree.wrapped_tree * ('i -> 'a Lwt.t)) t
 
-(** [lazy_mapping_with_names to_key decoder] does the same as [lazy_mapping]
-    but also eagerly decodes names of subtrees. *)
-val lazy_mapping_with_names :
-  ('i -> key) -> 'a t -> (Tree.wrapped_tree * string list * ('i -> 'a Lwt.t)) t
+(** [subtree_wrapped_tree key] is semantically equvalent to
+    [scope_option key wrapped_tree] but which makes one less find_tree in the irmin tree *)
+val subtree_wrapped_tree : key -> Tree.wrapped_tree option t
 
 (** [delayed f] produces a tree decoder that delays evaluation of [f ()] until
     the decoder is actually needed. This is required to allow for directly

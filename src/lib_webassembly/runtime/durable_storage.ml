@@ -1,7 +1,4 @@
-type t =
-  Tezos_lazy_containers.Immutable_chunked_byte_vector.t
-  Tezos_lazy_containers.Lazy_fs.t
-  option
+type t = Tezos_lazy_containers.Lazy_tree.CBV_lazy_tree.t option
 
 exception Durable_empty
 

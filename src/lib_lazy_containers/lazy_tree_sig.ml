@@ -23,62 +23,53 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Names = Set.Make (String)
+module type S = sig
+  type elt
 
-module Map = Lazy_map.Make (struct
-  include String
+  type t
 
-  let to_string = Fun.id
-end)
+  module Set : Set.S with type elt = string
 
-type 'a t = {names : Names.t; contents : 'a Map.t}
+  module Map : Map.S with type key = string
 
-let origin fs = Map.origin @@ fs.contents
+  type tree_source = Origin | From_parent
 
-let create ?names ?contents () =
-  let lazy_value x ~default = match x with Some x -> x | None -> default () in
-  {
-    names =
-      lazy_value names ~default:(fun () ->
-          match contents with
-          | None -> Names.empty
-          | Some contents ->
-              Map.loaded_bindings contents |> List.map fst |> Names.of_list);
-    contents = lazy_value contents ~default:Map.create;
-  }
+  (** [origin fs] returns the tree origin of the container, if it exists. *)
+  val origin : t -> Tezos_tree_encoding.wrapped_tree option
 
-let is_empty {names; _} = Names.is_empty names
+  (** [tree_instance fs] returns either origin tree of the current node
+    or a parent's origin. Necessary to be able to encode Lazy_fs to this instance. *)
+  val tree_instance : t -> Tezos_tree_encoding.wrapped_tree * tree_source
 
-let find tree key =
-  let open Lwt.Syntax in
-  if Names.mem key tree.names then
-    let+ content = Map.get key tree.contents in
-    Some content
-  else Lwt.return_none
+  (** [find_tree fs path] finds a tree node corresponding to the [path]. *)
+  val find_tree : t -> string list -> t option Lwt.t
 
-let set tree key value =
-  {names = Names.add key tree.names; contents = Map.set key value tree.contents}
+  (** [find fs path] finds a node value corresponding to the [path]. *)
+  val find_value : t -> string list -> elt option Lwt.t
 
-let remove tree key =
-  {names = Names.remove key tree.names; contents = Map.remove key tree.contents}
+  (** [add_tree fs path subtree] adds a subtree under the given [path]. *)
+  val add_tree : t -> string list -> t -> t Lwt.t
 
-let list tree = Names.elements tree.names
+  (** [set fs path value] set a value of the node corresponding to [path] to [value]. *)
+  val set : t -> string list -> elt -> t Lwt.t
 
-let length tree = Names.cardinal tree.names
+  (** [remove fs path] removes a subtree under the given [path] togehter with its value. *)
+  val remove_tree : t -> string list -> t Lwt.t
 
-let nth_name tree n = List.nth_opt (Names.elements tree.names) n
+  (** [remove_value fs path] removes a subtree's value under the given [path]. *)
+  val remove_value : t -> string list -> t Lwt.t
 
-module Encoding = Tezos_tree_encoding.Lazy_dirs_encoding.Make (struct
-  type nonrec 'a t = 'a t
+  (** [count_subtrees fs] returns number of direct subtrees of the given [fs]. *)
+  val count_subtrees : t -> int Lwt.t
 
-  module Names = Names
-  module Map = Map
+  val hash_value : t -> Tezos_base.TzPervasives.Context_hash.t option Lwt.t
 
-  let contents x = x.contents
+  val hash_tree : t -> Tezos_base.TzPervasives.Context_hash.t option Lwt.t
 
-  let create = create
+  val list_subtree_names :
+    t -> ?offset:int -> ?length:int -> string list -> string list option Lwt.t
 
-  let remove = remove
-end)
-
-let encoding = Encoding.lazy_dirs
+  (** [encoding value_enc] returns an encoding for the container wrt
+    encoding of the value [value_enc] *)
+  val encoding : t Tezos_tree_encoding.t
+end

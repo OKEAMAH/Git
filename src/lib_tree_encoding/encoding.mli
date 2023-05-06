@@ -88,6 +88,23 @@ val scope : key -> 'a t -> 'a t
 val lazy_mapping :
   ('k -> key) -> 'v t -> (Tree.wrapped_tree option * ('k * 'v option) list) t
 
+(** [lazy_tree value_enc subtree_enc] returns a subtree plus,
+    value encoder which could be left unchanged, rewritten or removed,
+    and finally key-value list
+    encoder that encodes subtrees from a given key-value list using the
+    the provided encoder [enc] for the values.
+
+    This one is similar to [lazy_mapping] but specifies key to string,
+    and also makes possible to encode an additional (meta) value with different encoder.
+*)
+val lazy_tree :
+  'v t ->
+  'sub t ->
+  (Tree.wrapped_tree option
+  * [`NoChange | `NewValue of 'v | `Removed]
+  * (string * 'sub option) list)
+  t
+
 (** [case tag enc f] return a partial encoder that represents a case in a
     sum-type. The encoder hides the (existentially bound) type of the
     parameter to the specific case, provided a converter function [f] and

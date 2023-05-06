@@ -159,6 +159,25 @@ let lazy_mapping to_key enc_value =
           bindings);
   }
 
+let lazy_tree enc_value enc_tree =
+  {
+    encode =
+      (fun backend (origin_opt, value_change, subtree_bindings) prefix tree ->
+        let open Lwt_syntax in
+        let* new_tree =
+          (lazy_mapping (fun x -> [x]) enc_tree).encode
+            backend
+            (origin_opt, subtree_bindings)
+            prefix
+            tree
+        in
+        let value_pref = append_key prefix ["@"] in
+        match value_change with
+        | `NoChange -> Lwt.return new_tree
+        | `Removed -> Tree.remove backend new_tree (value_pref [])
+        | `NewValue v -> enc_value.encode backend v value_pref new_tree);
+  }
+
 type ('tag, 'a) case =
   | Case : {
       tag : 'tag;

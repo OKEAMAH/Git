@@ -236,9 +236,7 @@ module Lazy_map_encoding = struct
       let decode =
         D.map
           (fun (origin, produce_value) -> Map.create ~origin ~produce_value ())
-          (let open D.Syntax in
-          let+ produce_value = D.lazy_mapping to_key value.decode in
-          produce_value)
+          (D.lazy_mapping to_key value.decode)
       in
       {encode; decode}
   end
@@ -356,103 +354,53 @@ module CBV_encoding = struct
   end
 end
 
-module Lazy_dirs_encoding = struct
-  module type Lazy_dirs_sig = sig
-    type 'a t
+module Lazy_tree_encoding = struct
+  module type Lazy_tree_sig = sig
+    type elt
 
-    module Names : Stdlib.Set.S with type elt = String.t
+    type lt
 
-    module Map : Lazy_map_encoding.Lazy_map_sig with type key = String.t
+    val origin : lt -> wrapped_tree option
 
-    val contents : 'a t -> 'a Map.t
+    val subtrees_diff : lt -> (string * lt option) list
 
-    val create : ?names:Names.t -> ?contents:'a Map.t -> unit -> 'a t
+    val value : lt -> [`NoChange | `NewValue of elt | `Removed]
 
-    val remove : 'a t -> Names.elt -> 'a t
+    val value_encoding : elt t
+
+    val create : Tree.wrapped_tree -> lt
   end
 
   module type S = sig
-    type 'a dirs
+    type elt
 
-    val lazy_dirs : 'a t -> 'a dirs t
+    type lt
+
+    val lazy_tree : unit -> lt t
+
+    val decode_subtree : wrapped_tree -> string -> lt option Lwt.t
+
+    val decode_value : wrapped_tree -> elt option Lwt.t
   end
 
-  module Make (Dirs : Lazy_dirs_sig) = struct
-    let decode_lazy_dirs_with_origin value_decoder =
-      let to_key k = [Dirs.Map.string_of_key k] in
-      D.map
-        (fun (origin, names, produce_value) ->
-          let contents = Dirs.Map.create ~origin ~produce_value () in
-          (Dirs.create ~names:(Dirs.Names.of_list names) ~contents (), origin))
-        (D.lazy_mapping_with_names to_key value_decoder)
-
-    let lazy_dirs value =
-      let to_key k = [Dirs.Map.string_of_key k] in
+  module Make (Lt : Lazy_tree_sig) = struct
+    let rec lazy_tree () =
       let encode =
         E.contramap
-          (fun tree ->
-            let contents = Dirs.contents tree in
-            (Dirs.Map.origin contents, Dirs.Map.loaded_bindings contents))
-          (E.lazy_mapping to_key value.encode)
+          (fun lt -> (Lt.origin lt, Lt.value lt, Lt.subtrees_diff lt))
+          (E.lazy_tree
+             Lt.value_encoding.encode
+             (E.delayed @@ fun () -> (lazy_tree ()).encode))
       in
-      let decode =
-        D.map
-          (fun (dirs, _) -> dirs)
-          (decode_lazy_dirs_with_origin value.decode)
-      in
+      let decode = D.map Lt.create D.wrapped_tree in
       {encode; decode}
-  end
-end
 
-module Lazy_fs_encoding = struct
-  module type Lazy_fs_sig = sig
-    type 'a t
+    let decode_subtree (Wrapped_tree (undelying, (module M))) step =
+      Lwt.map (Option.map Lt.create)
+      @@ D.run (module M) (D.subtree_wrapped_tree [step]) undelying
 
-    module Dirs : Lazy_dirs_encoding.Lazy_dirs_sig
-
-    val dirs : 'a t -> 'a t Dirs.t
-
-    val content : 'a t -> 'a option
-
-    val create : ?value:'a -> ?dirs:'a t Dirs.t -> Tree.wrapped_tree -> 'a t
-  end
-
-  module type S = sig
-    type 'a fs
-
-    val lazy_fs : 'a t -> 'a fs t
-  end
-
-  module Make (Fs : Lazy_fs_sig) = struct
-    module Lazy_dirs_enc = Lazy_dirs_encoding.Make (Fs.Dirs)
-
-    let lazy_dirs = Lazy_dirs_enc.lazy_dirs
-
-    let decode_lazy_dirs_with_origin =
-      Lazy_dirs_enc.decode_lazy_dirs_with_origin
-
-    let rec lazy_fs value =
-      let encode =
-        E.contramap
-          (fun fs -> (Fs.dirs fs, Fs.content fs))
-          (E.tup2
-             (E.delayed @@ fun () -> (lazy_dirs (lazy_fs value)).encode)
-             (E.scope_option ["@"] value.encode))
-      in
-      let decode =
-        D.map
-          (fun (value, (dirs, origin)) ->
-            let dirs = Fs.Dirs.remove dirs "@" in
-            Fs.create ?value ~dirs origin)
-          (let open D.Syntax in
-          let+ x = D.scope_option ["@"] value.decode
-          and+ dirs_n_origin =
-            D.delayed @@ fun () ->
-            decode_lazy_dirs_with_origin (lazy_fs value).decode
-          in
-          (x, dirs_n_origin))
-      in
-      {encode; decode}
+    let decode_value (Wrapped_tree (undelying, (module M))) =
+      D.run (module M) (D.scope_option ["@"] Lt.value_encoding.decode) undelying
   end
 end
 

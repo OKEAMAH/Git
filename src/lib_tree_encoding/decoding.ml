@@ -180,13 +180,13 @@ let scope key {decode} =
       (fun backend tree prefix -> decode backend tree (append_key prefix key));
   }
 
-let lazy_mapping to_key field_enc =
+let lazy_mapping to_key field_dec =
   {
     decode =
       (fun backend input_tree input_prefix ->
         let open Lwt_syntax in
         let produce_value index =
-          (scope (to_key index) field_enc).decode
+          (scope (to_key index) field_dec).decode
             backend
             input_tree
             input_prefix
@@ -195,16 +195,17 @@ let lazy_mapping to_key field_enc =
         (Tree.Wrapped_tree (tree, backend), produce_value));
   }
 
-let lazy_mapping_with_names to_key field_enc =
+let subtree_wrapped_tree key =
   {
     decode =
-      (fun backend input_tree input_prefix ->
-        let open Lwt_syntax in
-        let* wrapped, produce_value =
-          (lazy_mapping to_key field_enc).decode backend input_tree input_prefix
-        in
-        let+ names = Tree.list backend input_tree (input_prefix []) in
-        (wrapped, List.map fst names, produce_value));
+      (fun backend tree prefix ->
+        let open Lwt.Syntax in
+        let subtree_prefix = append_key prefix key in
+        let* subtree_opt = Tree.find_tree backend tree (subtree_prefix []) in
+        match subtree_opt with
+        | None -> Lwt.return_none
+        | Some subtree ->
+            Lwt.return @@ Some (Tree.Wrapped_tree (subtree, backend)));
   }
 
 let case_lwt tag decode extract = Case {tag; decode; extract}

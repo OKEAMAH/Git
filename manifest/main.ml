@@ -1996,7 +1996,7 @@ let lazy_containers =
     ~synopsis:
       "A collection of lazy containers whose contents is fetched from \
        arbitrary backend on-demand"
-    ~deps:[zarith; tree_encoding]
+    ~deps:[octez_base; zarith; tree_encoding]
 
 let _lazy_containers_tests =
   tezt
@@ -4225,7 +4225,7 @@ let _octez_scoru_wasm_tests =
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/5028
          Beware: there is a weird test failure when
          Durable snapshot test doesn't go first *)
-      "test_durable_shapshot";
+      "test_durable_snapshot";
       "test_durable_storage";
       "test_fixed_nb_ticks";
       "test_get_set";
