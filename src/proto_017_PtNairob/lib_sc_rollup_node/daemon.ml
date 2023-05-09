@@ -650,6 +650,10 @@ end
 let run ~data_dir ?log_kernel_debug_file (configuration : Configuration.t)
     (cctxt : Protocol_client_context.full) =
   let open Lwt_result_syntax in
+  let* () =
+    Store_migration.maybe_run_migration
+      ~storage_dir:(Configuration.default_storage_dir data_dir)
+  in
   Random.self_init () (* Initialize random state (for reconnection delays) *) ;
   let*! () = Event.starting_node () in
   let open Configuration in

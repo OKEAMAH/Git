@@ -1,7 +1,6 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (* Copyright (c) 2023 Functori, <contact@functori.com>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
@@ -24,4 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Store_v1
+(** Migrate store located in rollup node {e store} directory [storage_dir] if
+    needed. *)
+val maybe_run_migration : storage_dir:string -> unit tzresult Lwt.t
