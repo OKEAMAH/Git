@@ -498,9 +498,19 @@ module Encodings_util = struct
 
     module Tree_encoding_runner = Runner.Make (Tree)
 
+    let fresh_context =
+      let name i = Format.sprintf "/tmp/wasm_debugger.%d" i in
+      let rec fresh_context i () =
+        let path = name i in
+        try if Sys.is_directory path then fresh_context (i + 1) () else path
+        with _ ->
+          if Sys.file_exists path then fresh_context (i + 1) () else path
+      in
+      fresh_context 0
+
     let empty_tree () =
       let open Lwt_syntax in
-      let* index = Ctx.init "/tmp" in
+      let* index = Ctx.init (fresh_context ()) in
       let empty_store = Ctx.empty index in
       return @@ Ctx.Tree.empty empty_store
   end

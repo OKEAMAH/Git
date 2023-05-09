@@ -295,6 +295,6 @@ struct
         exit 1
 end
 
-include Make (Tezos_context_memory.Context_binary)
+include Make (Tezos_context_disk.Context_binary)
 
 let () = main ()
