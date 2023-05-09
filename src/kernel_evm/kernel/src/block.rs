@@ -10,6 +10,7 @@ use crate::error::StorageError::AccountInitialisation;
 use crate::error::TransferError::CumulativeGasUsedOverflow;
 use crate::error::TransferError::InvalidCallerAddress;
 use crate::storage;
+use crate::storage::EVMBlockStorage;
 use evm_execution::account_storage::init_account_storage;
 use evm_execution::handler::ExecutionOutcome;
 use evm_execution::{precompiles, run_transaction};
@@ -116,6 +117,7 @@ pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error
     let mut current_block = storage::read_current_block(host)?;
     let mut evm_account_storage =
         init_account_storage().map_err(|_| Error::Storage(AccountInitialisation))?;
+    let mut evm_block_storage = EVMBlockStorage::init_evm_block_storage()?;
     let precompiles = precompiles::precompile_set::<Host>();
 
     for proposal in queue.proposals {
@@ -165,7 +167,16 @@ pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error
         }
 
         let new_block = L2Block::new(current_block.number + 1, valid_txs);
-        storage::store_current_block(host, &new_block)?;
+
+        evm_block_storage.begin_block_storage(host)?;
+        match storage::store_current_block(host, &new_block) {
+            Ok(()) => evm_block_storage.commit_block_storage(host),
+            storage_error => match evm_block_storage.rollback_block_storage(host) {
+                Ok(()) => storage_error,
+                rollback_error => rollback_error,
+            },
+        }?;
+
         storage::store_transaction_receipts(
             host,
             &make_receipts(&new_block, receipts_infos)?,

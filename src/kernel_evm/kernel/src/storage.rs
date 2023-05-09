@@ -17,6 +17,7 @@ use tezos_ethereum::transaction::{
     TransactionHash, TransactionReceipt, TransactionStatus, TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::wei::Wei;
+use tezos_smart_rollup_storage::storage::Storage;
 
 use primitive_types::{H160, H256, U256};
 
@@ -28,6 +29,52 @@ const EVM_BLOCKS: RefPath = RefPath::assert_from(b"/evm/blocks");
 const EVM_BLOCKS_NUMBER: RefPath = RefPath::assert_from(b"/number");
 const EVM_BLOCKS_HASH: RefPath = RefPath::assert_from(b"/hash");
 const EVM_BLOCKS_TRANSACTIONS: RefPath = RefPath::assert_from(b"/transactions");
+
+pub struct EVMBlock {
+    path: OwnedPath,
+}
+
+impl From<OwnedPath> for EVMBlock {
+    fn from(path: OwnedPath) -> Self {
+        Self { path }
+    }
+}
+
+pub struct EVMBlockStorage {
+    storage: Storage<EVMBlock>,
+}
+
+impl EVMBlockStorage {
+    pub fn init_evm_block_storage() -> Result<EVMBlockStorage, Error> {
+        let storage = Storage::<EVMBlock>::init(&EVM_BLOCKS)
+            .map_err(|_| Error::Storage(StorageError::EVMBlockStorageInitialisation))?;
+        Ok(EVMBlockStorage { storage })
+    }
+
+    pub fn begin_block_storage(&mut self, host: &mut impl Runtime) -> Result<(), Error> {
+        debug_msg!(host, "Begin block storage");
+        self.storage
+            .begin_transaction(host)
+            .map_err(|_| Error::Storage(StorageError::EVMBlockStorage))
+    }
+
+    pub fn commit_block_storage(&mut self, host: &mut impl Runtime) -> Result<(), Error> {
+        debug_msg!(host, "Commit block storage");
+        self.storage
+            .commit(host)
+            .map_err(|_| Error::Storage(StorageError::EVMBlockStorage))
+    }
+
+    pub fn rollback_block_storage(
+        &mut self,
+        host: &mut impl Runtime,
+    ) -> Result<(), Error> {
+        debug_msg!(host, "Rollback transaction");
+        self.storage
+            .rollback(host)
+            .map_err(|_| Error::Storage(StorageError::EVMBlockStorage))
+    }
+}
 
 const TRANSACTIONS_RECEIPTS: RefPath = RefPath::assert_from(b"/transactions_receipts");
 const TRANSACTION_RECEIPT_HASH: RefPath = RefPath::assert_from(b"/hash");
