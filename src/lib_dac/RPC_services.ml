@@ -33,7 +33,7 @@ module Api = struct
       match version with
       | "v0" -> Ok V0
       | "v1" -> Ok V1
-      | _ -> Error "Invalid API version."
+      | invalid_version -> Error invalid_version
     in
     Tezos_rpc.Arg.make
       ~descr:"API version"
