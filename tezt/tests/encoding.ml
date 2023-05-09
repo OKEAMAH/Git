@@ -55,7 +55,7 @@ let check_dump_encodings () =
   let* (_ : JSON.t) = Codec.dump_encodings () in
   unit
 
-let check_sample ~name ~file =
+let check_sample ~__LOC__ ~name ~file =
   let* json_string = Tezos_stdlib_unix.Lwt_utils_unix.read_file file in
   let original_json = JSON.parse ~origin:json_string json_string in
   let* binary =
@@ -64,8 +64,8 @@ let check_sample ~name ~file =
   let* decoded_json = Codec.decode ~hooks:Regression.hooks ~name binary in
   Check.(
     (original_json = decoded_json)
-      json
       ~__LOC__
+      json
       ~error_msg:
         "The converted JSON doesn't match the original.\n\
          Expected: %L\n\
@@ -78,7 +78,7 @@ let iter_sample_s base_path func =
 
 (** The given sample must be included in registered encodings. These can be
     found with [octez-codec list encodings]. *)
-let check_protocol_sample_encoding ?supports sample =
+let check_protocol_sample_encoding ~__LOC__ ?supports sample =
   Protocol.register_regression_test
     ~__FILE__
     ~title:(sf "protocol encoding regression test: %s" sample)
@@ -89,11 +89,14 @@ let check_protocol_sample_encoding ?supports sample =
     "tezt" // "tests" // "encoding_samples" // Protocol.tag protocol // sample
   in
   iter_sample_s base_path @@ fun file ->
-  check_sample ~name:(Protocol.encoding_prefix protocol ^ "." ^ sample) ~file
+  check_sample
+    ~__LOC__
+    ~name:(Protocol.encoding_prefix protocol ^ "." ^ sample)
+    ~file
 
 (** The given sample must be included in registered encodings. These can be
     found with [octez-codec list encodings]. *)
-let check_shell_sample_encoding sample =
+let check_shell_sample_encoding ~__LOC__ sample =
   Regression.register
     ~__FILE__
     ~title:(sf "shell encoding regression test: %s" sample)
@@ -102,43 +105,46 @@ let check_shell_sample_encoding sample =
   let base_path =
     "tezt" // "tests" // "encoding_samples" // "shell" // sample
   in
-  iter_sample_s base_path @@ fun file -> check_sample ~name:sample ~file
+  iter_sample_s base_path @@ fun file ->
+  check_sample ~__LOC__ ~name:sample ~file
 
 let check_samples protocols =
-  let protocol_sample ?supports name =
-    check_protocol_sample_encoding ?supports name protocols
+  let protocol_sample ~__LOC__ ?supports name =
+    check_protocol_sample_encoding ~__LOC__ ?supports name protocols
   in
-  check_shell_sample_encoding "network_version" ;
-  protocol_sample "block_header" ;
-  protocol_sample "block_header.raw" ;
-  protocol_sample "block_header.unsigned" ;
-  protocol_sample "contract" ;
-  protocol_sample "cycle" ;
-  protocol_sample "fitness" ;
-  protocol_sample "gas.cost" ;
-  protocol_sample "gas" ;
-  protocol_sample "level" ;
-  protocol_sample "nonce" ;
-  protocol_sample "operation.internal" ;
-  protocol_sample "operation" ;
+  check_shell_sample_encoding ~__LOC__ "network_version" ;
+  protocol_sample ~__LOC__ "block_header" ;
+  protocol_sample ~__LOC__ "block_header.raw" ;
+  protocol_sample ~__LOC__ "block_header.unsigned" ;
+  protocol_sample ~__LOC__ "contract" ;
+  protocol_sample ~__LOC__ "cycle" ;
+  protocol_sample ~__LOC__ "fitness" ;
+  protocol_sample ~__LOC__ "gas.cost" ;
+  protocol_sample ~__LOC__ "gas" ;
+  protocol_sample ~__LOC__ "level" ;
+  protocol_sample ~__LOC__ "nonce" ;
+  protocol_sample ~__LOC__ "operation.internal" ;
+  protocol_sample ~__LOC__ "operation" ;
   protocol_sample
+    ~__LOC__
     ~supports:Protocol.(From_protocol 18)
     "operation_with_attestation" ;
-  protocol_sample "operation.raw" ;
-  protocol_sample "operation.unsigned" ;
+  protocol_sample ~__LOC__ "operation.raw" ;
+  protocol_sample ~__LOC__ "operation.unsigned" ;
   protocol_sample
+    ~__LOC__
     ~supports:Protocol.(From_protocol 18)
     "operation_with_attestation.unsigned" ;
-  protocol_sample "period" ;
-  protocol_sample "raw_level" ;
-  protocol_sample "seed" ;
-  protocol_sample "tez" ;
-  protocol_sample "timestamp" ;
-  protocol_sample "vote.ballot" ;
-  protocol_sample "vote.ballots" ;
-  protocol_sample "vote.listings" ;
-  protocol_sample "voting_period.kind" ;
-  protocol_sample "voting_period" ;
+  protocol_sample ~__LOC__ "period" ;
+  protocol_sample ~__LOC__ "raw_level" ;
+  protocol_sample ~__LOC__ "seed" ;
+  protocol_sample ~__LOC__ "tez" ;
+  protocol_sample ~__LOC__ "timestamp" ;
+  protocol_sample ~__LOC__ "vote.ballot" ;
+  protocol_sample ~__LOC__ "vote.ballots" ;
+  protocol_sample ~__LOC__ "vote.listings" ;
+  protocol_sample ~__LOC__ "voting_period.kind" ;
+  protocol_sample ~__LOC__ "voting_period" ;
   ()
 
 let register ~protocols =
