@@ -114,6 +114,10 @@ module Config_file = struct
   let update dal_node update = read dal_node |> update |> write dal_node
 end
 
+let read_identity dal_node =
+  let filename dal_node = sf "%s/identity.json" @@ data_dir dal_node in
+  JSON.parse_file (filename dal_node)
+
 let check_event ?timeout ?where dal_node name promise =
   let* result =
     match timeout with
