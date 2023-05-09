@@ -938,7 +938,10 @@ module Auto_build = struct
         | "*" -> ()
         | local_model_name ->
             let mkfilename ext =
-              Filename.concat outdir local_model_name ^ ext
+              Filename.concat outdir
+                String.(concat "__"
+                        @@ split_on_char '/' local_model_name)
+              ^ ext
             in
             (* Infernece *)
             let solution = infer mkfilename local_model_name measurements providers in
