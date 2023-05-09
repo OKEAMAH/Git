@@ -10,7 +10,9 @@ use tezos_smart_rollup_encoding::dac::PreimageHash;
 use tezos_smart_rollup_host::path::{OwnedPath, PathError};
 use thiserror::Error;
 
-use crate::yaml::Instr;
+use crate::yaml::{YamlInstr, Value};
+
+// This module contains a conversion functions from YamlInstr/YamlConfig to binary counterparts.
 
 #[derive(Debug, Error, PartialEq)]
 pub enum ConfigConversionError {
@@ -49,6 +51,34 @@ pub fn move_instr_str(
     Ok(OwnedConfigInstruction::move_instr(from, to))
 }
 
+impl TryFrom<Value> for Vec<u8> {
+    type Error = ConfigConversionError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        use super::IntEncoding::*;
+        use super::StringEncoding::*;
+        fn to_bytes<T, const N: usize>(
+            x: T,
+            f: impl FnOnce(T) -> [u8; N],
+        ) -> Result<Vec<u8>, ConfigConversionError> {
+            Ok(f(x).to_vec())
+        }
+
+        match value {
+            Value::String(s, Hex) => {
+                hex::decode(s.as_str()).map_err(ConfigConversionError::Hex)
+            }
+            Value::String(s, Base58) => FromBase58Check::from_base58check(s.as_str())
+                .map_err(ConfigConversionError::Base58),
+            Value::I32(x, LittleEndian) => to_bytes(x, i32::to_le_bytes),
+            Value::I32(x, BigEndian) => to_bytes(x, i32::to_be_bytes),
+            Value::U32(x, LittleEndian) => to_bytes(x, u32::to_le_bytes),
+            Value::U32(x, BigEndian) => to_bytes(x, u32::to_be_bytes),
+            Value::U8(x) => to_bytes(x, u8::to_be_bytes),
+        }
+    }
+}
+
 impl TryFrom<YamlConfig> for OwnedConfigProgram {
     type Error = ConfigConversionError;
 
@@ -57,8 +87,9 @@ impl TryFrom<YamlConfig> for OwnedConfigProgram {
             .instructions
             .into_iter()
             .map(|instr| match instr {
-                Instr::Move(args) => move_instr_str(args.from, args.to),
-                Instr::Reveal(args) => reveal_instr_hex(args.reveal, args.to),
+                YamlInstr::Move(args) => move_instr_str(args.from, args.to),
+                YamlInstr::Reveal(args) => reveal_instr_hex(args.reveal, args.to),
+                YamlInstr::Set(args) =>
             })
             .collect::<Result<Vec<OwnedConfigInstruction>, Self::Error>>()
             .map(OwnedConfigProgram)

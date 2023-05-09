@@ -4,6 +4,7 @@
 
 use std::io::Read;
 
+use crate::yaml::Value;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -23,9 +24,16 @@ pub struct RevealArgs {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct SetArgs {
+    set: String,
+    value: Value,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(try_from = "raw_encodings::InstrSerDeser")]
 #[serde(into = "raw_encodings::InstrSerDeser")]
-pub enum Instr {
+pub enum YamlInstr {
     Move(MoveArgs),
 
     // Uncomment this
@@ -33,12 +41,17 @@ pub enum Instr {
     // and remove InstrSerDeser workaround type
     // when this one is merged https://github.com/serde-rs/serde/pull/2403
     Reveal(RevealArgs),
+
+    // Uncomment this
+    // #[serde(untagged)]
+    // when this one is merged https://github.com/serde-rs/serde/pull/2403
+    Set(SetArgs),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct YamlConfig {
     #[serde(with = "serde_yaml::with::singleton_map_recursive")]
-    pub instructions: Vec<Instr>,
+    pub instructions: Vec<YamlInstr>,
 }
 
 impl YamlConfig {
@@ -69,13 +82,18 @@ mod raw_encodings {
 
         #[serde(flatten)]
         reveal: Option<RevealArgs>,
+
+        #[serde(flatten)]
+        set: Option<SetArgs>,
     }
 
-    impl TryFrom<InstrSerDeser> for Instr {
+    impl TryFrom<InstrSerDeser> for YamlInstr {
         type Error = String;
 
         fn try_from(value: InstrSerDeser) -> Result<Self, Self::Error> {
-            let sm = value.move_.is_some() as u32 + value.reveal.is_some() as u32;
+            let sm = value.move_.is_some() as u32
+                + value.reveal.is_some() as u32
+                + value.set.is_some() as u32;
 
             if sm == 0 {
                 Err("Neither of instructions deserialized".to_owned())
@@ -85,9 +103,11 @@ mod raw_encodings {
                     &value
                 ))
             } else if value.move_.is_some() {
-                Ok(Instr::Move(value.move_.unwrap()))
+                Ok(YamlInstr::Move(value.move_.unwrap()))
             } else if value.reveal.is_some() {
-                Ok(Instr::Reveal(value.reveal.unwrap()))
+                Ok(YamlInstr::Reveal(value.reveal.unwrap()))
+            } else if value.set.is_some() {
+                Ok(YamlInstr::Set(value.set.unwrap()))
             } else {
                 Err(format!("Unknown instruction {:#?}", value))
             }
@@ -95,19 +115,24 @@ mod raw_encodings {
     }
 
     #[allow(clippy::from_over_into)]
-    impl Into<InstrSerDeser> for Instr {
+    impl Into<InstrSerDeser> for YamlInstr {
         fn into(self) -> InstrSerDeser {
             let default = InstrSerDeser {
                 move_: None,
                 reveal: None,
+                set: None,
             };
             match self {
-                Instr::Move(m) => InstrSerDeser {
+                YamlInstr::Move(m) => InstrSerDeser {
                     move_: Some(m),
                     ..default
                 },
-                Instr::Reveal(r) => InstrSerDeser {
+                YamlInstr::Reveal(r) => InstrSerDeser {
                     reveal: Some(r),
+                    ..default
+                },
+                YamlInstr::Set(s) => InstrSerDeser {
+                    set: Some(s),
                     ..default
                 },
             }
@@ -118,7 +143,7 @@ mod raw_encodings {
 #[cfg(test)]
 mod test {
 
-    use super::{Instr, RevealArgs};
+    use super::{RevealArgs, YamlInstr};
 
     use super::{MoveArgs, YamlConfig};
     use std::fs::read_to_string;
@@ -127,11 +152,11 @@ mod test {
     fn encode() {
         let instructions = YamlConfig {
             instructions: vec![
-                Instr::Move(MoveArgs {
+                YamlInstr::Move(MoveArgs {
                     from: "/hello/path".to_owned(),
                     to: "/to/path".to_owned(),
                 }),
-                Instr::Reveal(RevealArgs {
+                YamlInstr::Reveal(RevealArgs {
                     reveal: "a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3a1b2c3".to_owned(),
                     to: "/path".to_owned(),
                 }),
@@ -149,11 +174,11 @@ mod test {
         let instrs = serde_yaml::from_str::<YamlConfig>(&source_yaml).unwrap();
         let expected_instrs = YamlConfig {
             instructions: vec![
-                Instr::Move(MoveArgs {
+                YamlInstr::Move(MoveArgs {
                     from: "/move/path/from".to_owned(),
                     to: "/move/path/to".to_owned(),
                 }),
-                Instr::Reveal(RevealArgs {
+                YamlInstr::Reveal(RevealArgs {
                     reveal: "aea02c32324433".to_owned(),
                     to: "/path/reveal/to".to_owned(),
                 }),
