@@ -95,3 +95,4 @@ target
 
 evm_kernel.wasm
 smart-rollup-installer
+tx_kernel.wasm
