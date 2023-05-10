@@ -427,7 +427,7 @@ module Timelock = struct
 
   let generator rng_state =
     let log_time =
-      Base_samplers.sample_in_interval ~range:{min = 0; max = 29} rng_state
+      Base_samplers.sample_in_interval ~range:{min = 0; max = 10} rng_state
     in
     let time = Random.State.int rng_state (Int.shift_left 1 log_time) in
     let plaintext_size =
