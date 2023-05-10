@@ -67,7 +67,7 @@ echo $$ > "$SNOOP_RESULT_DIR"/STARTED
 # Build dependencies.
 cd tezos
 dated_log "Compiling dependencies"
-. "/home/mclaren/.cargo/env"
+. "$HOME/.cargo/env"
 # BLST_PORTABLE=y is needed to benchmark BLS instructions
 # OPAMSOLVERTIMEOUT=0 means that the opam solver won't timeout
 make BLST_PORTABLE=y OPAMSOLVERTIMEOUT=0 build-dev-deps
@@ -88,16 +88,16 @@ mv tezos/_snoop/*_results "$SNOOP_RESULT_DIR"/
 chmod +rx "$SNOOP_RESULT_DIR"/*_results
 
 # Save results in the cloud.
-dated_log "Uploading results"
-aws s3 cp "$SNOOP_RESULT_DIR"/ s3://snoop-playground/mclaren/complete_results/"$SNOOP_RESULT_DIR"/ --recursive
-dated_log "Uploading CSVs"
-aws s3 cp "$SNOOP_RESULT_DIR"/inference_results/ s3://snoop-playground/mclaren/inference_csvs/"$SNOOP_RESULT_DIR"/ --recursive --exclude "*" --include "*.csv"
-dated_log "Results and CSVs uploaded"
+# dated_log "Uploading results"
+# aws s3 cp "$SNOOP_RESULT_DIR"/ s3://snoop-playground/mclaren/complete_results/"$SNOOP_RESULT_DIR"/ --recursive
+# dated_log "Uploading CSVs"
+# aws s3 cp "$SNOOP_RESULT_DIR"/inference_results/ s3://snoop-playground/mclaren/inference_csvs/"$SNOOP_RESULT_DIR"/ --recursive --exclude "*" --include "*.csv"
+# dated_log "Results and CSVs uploaded"
 
 # Update the directory of the last successful run, and its status.
 mv current_run_dir last_run_dir
 echo $$ > "$SNOOP_RESULT_DIR"/SUCCESS
-aws s3 cp "$SNOOP_RESULT_DIR"/SUCCESS s3://snoop-playground/mclaren/complete_results/"$SNOOP_RESULT_DIR"/
+# aws s3 cp "$SNOOP_RESULT_DIR"/SUCCESS s3://snoop-playground/mclaren/complete_results/"$SNOOP_RESULT_DIR"/
 
 dated_log "End of benchmarks processes"
 exit 0
