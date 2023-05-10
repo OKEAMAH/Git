@@ -577,6 +577,13 @@ opam:octez-proxy-server:
   variables:
     package: octez-proxy-server
 
+opam:octez-rpc-process:
+  extends:
+    - .opam_template
+    - .rules_template__trigger_all_opam_batch_2
+  variables:
+    package: octez-rpc-process
+
 opam:octez-shell-libs:
   extends:
     - .opam_template
@@ -841,7 +848,7 @@ opam:tezos-client-012-Psithaca:
 opam:tezos-client-013-PtJakart:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_3
+    - .rules_template__trigger_all_opam_batch_4
   variables:
     package: tezos-client-013-PtJakart
 
@@ -1082,7 +1089,7 @@ opam:tezos-embedded-protocol-013-PtJakart:
 opam:tezos-embedded-protocol-014-PtKathma:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_4
+    - .rules_template__trigger_all_opam_batch_5
   variables:
     package: tezos-embedded-protocol-014-PtKathma
 
@@ -1295,7 +1302,7 @@ opam:tezos-protocol-015-PtLimaPt:
 opam:tezos-protocol-016-PtMumbai:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_6
+    - .rules_template__trigger_all_opam_batch_7
   variables:
     package: tezos-protocol-016-PtMumbai
 
@@ -1441,7 +1448,7 @@ opam:tezos-protocol-plugin-013-PtJakart:
 opam:tezos-protocol-plugin-013-PtJakart-registerer:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_2
+    - .rules_template__trigger_all_opam_batch_3
   variables:
     package: tezos-protocol-plugin-013-PtJakart-registerer
 
@@ -1549,7 +1556,7 @@ opam:tezos-proxy-server-config:
 opam:tezos-smart-rollup-016-PtMumbai:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_5
+    - .rules_template__trigger_all_opam_batch_6
   variables:
     package: tezos-smart-rollup-016-PtMumbai
 
