@@ -43,6 +43,9 @@ let write_enc filepath filename enc data =
   Printf.fprintf outc "%s" Data_encoding.Json.(construct enc data |> to_string) ;
   close_out outc
 
+(* Other helper functions *)
+let z_to_bits x = Z.to_bits x |> Bytes.of_string
+
 (* Timelock encryption scheme *)
 type symmetric_key = Crypto_box.Secretbox.key
 
@@ -171,12 +174,13 @@ let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime ~time value key =
   let personalization = Bytes.of_string "\032" in
-  let s =
-    String.concat
-      "\xff\x00\xff\x00\xff\x00\xff\x00"
-      (Int.to_string time :: List.map Z.to_bits [rsa2048; value; key])
+  let to_hash =
+    let time_bytes = Int.to_string time |> Bytes.of_string in
+    let prefix = Bytes.of_string "\xff\x00\xff\x00\xff\x00\xff\x00" in
+    let suffix = time_bytes :: List.map z_to_bits [rsa2048; value; key] in
+    Bytes.concat prefix suffix
   in
-  let hash_result = Blake2b.hash ~key:personalization (Bytes.of_string s) 32 in
+  let hash_result = Blake2b.hash ~key:personalization to_hash 32 in
   (* Beware, the function nextprime gives a biased distribution,
      using it here is fine as the input is already uniformly distributed *)
   Z.(nextprime (of_bits (Bytes.to_string hash_result)))
@@ -252,7 +256,7 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   match precompute_path with
   | None -> compute_tuple ()
   | Some filepath ->
-      let hash_mod = Blake2b.hash (Z.to_bits rsa2048 |> Bytes.of_string) 32 in
+      let hash_mod = Blake2b.hash (z_to_bits rsa2048) 32 in
       let file_prefix = Hex.of_bytes hash_mod |> Hex.show in
       let filename = file_prefix ^ "_" ^ string_of_int time ^ ".json" in
       let file_exists = Sys.file_exists (add_path filepath filename) in
@@ -291,8 +295,7 @@ let lock_timelock ~time vdf_tuple =
 let timelock_proof_to_symmetric_key proof =
   let updated = Z.powm proof.vdf_tuple.solution proof.randomness rsa2048 in
   let kdf_key = Bytes.of_string "Tezoskdftimelockv1" in
-  let to_hash = Z.to_bits updated |> Bytes.of_string in
-  let hash = Blake2b.hash ~key:kdf_key to_hash 32 in
+  let hash = Blake2b.hash ~key:kdf_key (z_to_bits updated) 32 in
   Crypto_box.Secretbox.unsafe_of_bytes hash
 
 (* -------- Timelock high level functions (used in Tezos) -------- *)
