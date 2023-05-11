@@ -153,7 +153,7 @@ val dal_supported : _ t -> bool
 val readonly : _ t -> ro
 
 (** Monad for values with delayed write effects in the node context. *)
-type 'a delayed_write = ('a, rw) Delayed_write_monad.t
+type ('a, 'b) delayed_write = ('a, 'b t) Delayed_write_monad.t
 
 (** {2 Abstraction over store} *)
 

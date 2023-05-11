@@ -36,7 +36,7 @@ module type S = sig
     Fueled_pvm.S with module PVM = PVM and type fuel = Fuel.Free.t
 
   val process_head :
-    Node_context.rw ->
+    _ Node_context.t ->
     'a Context.t ->
     predecessor:Layer1.header ->
     Layer1.header ->
@@ -51,7 +51,7 @@ module type S = sig
     Accounted_pvm.eval_state option tzresult Lwt.t
 
   val state_of_head :
-    'a Node_context.t ->
+    _ Node_context.t ->
     'a Context.t ->
     Layer1.head ->
     ('a Context.t * PVM.state) tzresult Lwt.t

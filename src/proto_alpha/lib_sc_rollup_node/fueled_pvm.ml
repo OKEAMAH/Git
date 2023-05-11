@@ -60,10 +60,10 @@ module type S = sig
       inbox level and the remaining fuel. *)
   val eval_block_inbox :
     fuel:fuel ->
-    _ Node_context.t ->
+    'a Node_context.t ->
     Sc_rollup.Inbox.t * Sc_rollup.Inbox_message.t list ->
     PVM.state ->
-    eval_result Node_context.delayed_write tzresult Lwt.t
+    (eval_result, 'a) Node_context.delayed_write tzresult Lwt.t
 
   (** [eval_messages ?reveal_map ~fuel node_ctxt ~message_counter_offset state
       inbox_level messages] evaluates the [messages] for inbox level
@@ -76,9 +76,9 @@ module type S = sig
       used as an additional source of data for revelation ticks. *)
   val eval_messages :
     ?reveal_map:string Sc_rollup_reveal_hash.Map.t ->
-    _ Node_context.t ->
+    'a Node_context.t ->
     eval_state ->
-    eval_result Node_context.delayed_write tzresult Lwt.t
+    (eval_result, 'a) Node_context.delayed_write tzresult Lwt.t
 end
 
 module Make (PVM : Pvm.S) = struct
@@ -415,8 +415,9 @@ module Make (PVM : Pvm.S) = struct
       in
       (feed_messages [@tailcall]) (state, fuel) message_counter_offset messages
 
-    let eval_block_inbox ~fuel node_ctxt (inbox, messages) (state : PVM.state) :
-        eval_result Node_context.delayed_write tzresult Lwt.t =
+    let eval_block_inbox ~fuel (node_ctxt : 'a Node_context.t) (inbox, messages)
+        (state : PVM.state) :
+        (eval_result, 'a) Node_context.delayed_write tzresult Lwt.t =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
       (* Obtain inbox and its messages for this block. *)

@@ -429,7 +429,7 @@ let readonly (node_ctxt : _ t) =
     lpc = Reference.readonly node_ctxt.lpc;
   }
 
-type 'a delayed_write = ('a, rw) Delayed_write_monad.t
+type ('a, 'b) delayed_write = ('a, 'b t) Delayed_write_monad.t
 
 (** Abstraction over store  *)
 

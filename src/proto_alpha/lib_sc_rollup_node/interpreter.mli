@@ -43,7 +43,7 @@ module type S = sig
       ticks taken by the PVM for the evaluation and [tick] is the tick reached
       by the PVM after the evaluation. *)
   val process_head :
-    Node_context.rw ->
+    _ Node_context.t ->
     'a Context.t ->
     predecessor:Layer1.header ->
     Layer1.header ->
@@ -65,7 +65,7 @@ module type S = sig
       block [head], or the state at rollup genesis if the block is before the
       rollup origination. *)
   val state_of_head :
-    'a Node_context.t ->
+    _ Node_context.t ->
     'a Context.t ->
     Layer1.head ->
     ('a Context.t * PVM.state) tzresult Lwt.t
