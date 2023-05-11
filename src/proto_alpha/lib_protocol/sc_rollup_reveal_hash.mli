@@ -31,6 +31,9 @@ type t
 (** The hashing schemes supported by the reveal hash. *)
 type supported_hashes = Blake2B
 
+(** A Merkle tree module for storing reveal-hash-indexed values. *)
+module Merkle_tree : S.MERKLE_TREE with type elt = Bytes.t
+
 (** A Map module for storing reveal-hash-indexed values. *)
 module Map : Map.S with type key = t
 

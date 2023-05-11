@@ -36,6 +36,14 @@ module Prefix_hash = struct
   let size = Some 32
 end
 
+module Merkle_tree =
+  Blake2B.Make_merkle_tree (Base58) (Prefix_hash)
+    (struct
+      include Bytes
+
+      let to_bytes b = b
+    end)
+
 (* Reserve the first byte in the encoding to support multi-versioning
    in the future. *)
 module Blake2B = struct
@@ -46,18 +54,32 @@ end
 
 type supported_hashes = Blake2B
 
-type t = Blake2B of Blake2B.t
+type t =
+  | Blake2B of Blake2B.t
+  | Merkle_tree of {index : int; tree : Merkle_tree.t}
 
 let zero ~(scheme : supported_hashes) =
   match scheme with Blake2B -> Blake2B Blake2B.zero
 
-let pp ppf hash = match hash with Blake2B hash -> Blake2B.pp ppf hash
+let pp ppf hash =
+  match hash with
+  | Blake2B hash -> Blake2B.pp ppf hash
+  | Merkle_tree {tree; _} -> Merkle_tree.pp ppf tree
 
 let equal h1 h2 =
-  match (h1, h2) with Blake2B h1, Blake2B h2 -> Blake2B.equal h1 h2
+  match (h1, h2) with
+  | Blake2B h1, Blake2B h2 -> Blake2B.equal h1 h2
+  | Merkle_tree {tree = t1; _}, Merkle_tree {tree = t2; _} ->
+      Merkle_tree.equal t1 t2
+  | _, _ -> false
 
 let compare h1 h2 =
-  match (h1, h2) with Blake2B h1, Blake2B h2 -> Blake2B.compare h1 h2
+  match (h1, h2) with
+  | Blake2B h1, Blake2B h2 -> Blake2B.compare h1 h2
+  | Merkle_tree {tree = t1; _}, Merkle_tree {tree = t2; _} ->
+      Merkle_tree.compare t1 t2
+  | Blake2B _, Merkle_tree _ -> -1
+  | Merkle_tree _, Blake2B _ -> 1
 
 module Map = Map.Make (struct
   type tmp = t
@@ -83,8 +105,14 @@ let encoding =
         ~title:"Reveal_data_hash_v0"
         (Tag 0)
         Blake2B.encoding
-        (fun (Blake2B s) -> Some s)
+        (function Blake2B s -> Some s | Merkle_tree _ -> None)
         (fun s -> Blake2B s);
+      case
+        ~title:"Reveal_data_hash_v1"
+        (Tag 1)
+        (obj2 (req "index" int31) (req "tree" Merkle_tree.encoding))
+        (function Merkle_tree t -> Some (t.index, t.tree) | _ -> None)
+        (fun (index, tree) -> Merkle_tree {index; tree});
     ]
 
 let hash_string ~(scheme : supported_hashes) ?key strings =
@@ -94,7 +122,7 @@ let hash_bytes ~(scheme : supported_hashes) ?key bytes =
   match scheme with Blake2B -> Blake2B (Blake2B.hash_bytes ?key bytes)
 
 let scheme_of_hash hash =
-  match hash with Blake2B _hash -> (Blake2B : supported_hashes)
+  match hash with Blake2B _ | Merkle_tree _ -> (Blake2B : supported_hashes)
 
 let to_hex hash =
   let (`Hex hash) =
