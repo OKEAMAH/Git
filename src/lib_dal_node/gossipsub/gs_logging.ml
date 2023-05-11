@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Gs_interface.Worker_instance
+
 module Events = struct
   include Internal_event.Simple
   open Data_encoding
@@ -39,7 +41,7 @@ module Events = struct
     declare_0
       ~section
       ~name:(prefix "heartbeat")
-      ~msg:"Heartbeat"
+      ~msg:"Process Heartbeat"
       ~level:Info
       ()
 
@@ -47,8 +49,13 @@ module Events = struct
     declare_3
       ~section
       ~name:(prefix "publish_message")
-      ~msg:"Processing publish_message"
+      ~msg:
+        "Process Publish_message id {message_id} at topic {topic} with content \
+         {message}"
       ~level:Info
+      ~pp1:GS.Topic.pp
+      ~pp2:GS.Message.pp
+      ~pp3:GS.Message_id.pp
       ("topic", topic_encoding)
       ("message", message_encoding)
       ("message_id", message_id_encoding)
@@ -57,24 +64,29 @@ module Events = struct
     declare_1
       ~section
       ~name:(prefix "join")
-      ~msg:"Processing join"
+      ~msg:"Process Join {topic}"
       ~level:Notice
+      ~pp1:GS.Topic.pp
       ("topic", topic_encoding)
 
   let leave =
     declare_1
       ~section
       ~name:(prefix "leave")
-      ~msg:"Processing leave"
+      ~msg:"Process Leave {topic}"
       ~level:Notice
+      ~pp1:GS.Topic.pp
       ("topic", topic_encoding)
 
   let new_connection =
     declare_3
       ~section
       ~name:(prefix "new_connection")
-      ~msg:"new_connection"
+      ~msg:
+        "Process New_connection from/to {peer} (direct={direct}, \
+         outbound={outbound})"
       ~level:Notice
+      ~pp1:P2p_peer.Id.pp
       ("peer", P2p_peer.Id.encoding)
       ("direct", bool)
       ("outbound", bool)
@@ -83,16 +95,23 @@ module Events = struct
     declare_1
       ~section
       ~name:(prefix "disconnection")
-      ~msg:"Disconnection"
+      ~msg:"Process Disconnection of {peer}"
       ~level:Notice
+      ~pp1:P2p_peer.Id.pp
       ("peer", P2p_peer.Id.encoding)
 
   let message_with_header =
     declare_4
       ~section
       ~name:(prefix "message_with_header")
-      ~msg:"Processing Message_with_header"
+      ~msg:
+        "Process Message_with_header from {peer} with id {message_id}, topic \
+         {topic} and content {message}"
       ~level:Info
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
+      ~pp3:GS.Message.pp
+      ~pp4:GS.Message_id.pp
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
       ("message", message_encoding)
@@ -102,8 +121,10 @@ module Events = struct
     declare_2
       ~section
       ~name:(prefix "subscribe")
-      ~msg:"Processing subscribe"
+      ~msg:"Process Subscribe {peer} to {topic}"
       ~level:Notice
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
 
@@ -111,8 +132,10 @@ module Events = struct
     declare_2
       ~section
       ~name:(prefix "unsubscribe")
-      ~msg:"Processing unsubscribe"
+      ~msg:"Process Unsubscribe {peer} from {topic}"
       ~level:Notice
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
 
@@ -120,8 +143,10 @@ module Events = struct
     declare_2
       ~section
       ~name:(prefix "graft")
-      ~msg:"Processing graft"
+      ~msg:"Process Graft {peer} for {topic}"
       ~level:Info
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
 
@@ -129,8 +154,12 @@ module Events = struct
     declare_4
       ~section
       ~name:(prefix "prune")
-      ~msg:"Processing prune"
+      ~msg:"Process Prune {peer} for {topic} with backoff {backoff} and px {px}"
       ~level:Info
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
+      ~pp3:Span.pp
+      ~pp4:(Format.pp_print_list P2p_peer.Id.pp)
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
       ("backoff", span_encoding)
@@ -140,8 +169,12 @@ module Events = struct
     declare_3
       ~section
       ~name:(prefix "ihave")
-      ~msg:"Processing IHave"
+      ~msg:
+        "Process IHave from {peer} for {topic} with message_ids {message_ids}"
       ~level:Info
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:GS.Topic.pp
+      ~pp3:(Format.pp_print_list GS.Message_id.pp)
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
       ("message_ids", list message_id_encoding)
@@ -150,15 +183,16 @@ module Events = struct
     declare_2
       ~section
       ~name:(prefix "iwant")
-      ~msg:"Processing IWant"
+      ~msg:"Process IWant from {peer} with message_ids {message_ids}"
       ~level:Info
+      ~pp1:P2p_peer.Id.pp
+      ~pp2:(Format.pp_print_list GS.Message_id.pp)
       ("peer", P2p_peer.Id.encoding)
       ("message_ids", list message_id_encoding)
 end
 
 let event =
   let open Events in
-  let open Gs_interface.Worker_instance in
   function
   | Heartbeat -> emit heartbeat ()
   | App_input event -> (
