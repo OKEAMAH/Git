@@ -509,6 +509,25 @@ let input_request pvm_state =
       | None -> Wasm_pvm_state.No_input_required)
   | _ -> Wasm_pvm_state.No_input_required
 
+let input_request_legacy_v10 pvm_state : Wasm_pvm_state.input_request_legacy_v10
+    =
+  match pvm_state.tick_state with
+  | Stuck (Decode_error _ | Init_error _ | Link_error _) ->
+      (* These stuck states are recovered on the next tick by
+         the fallback mechanism. *)
+      Wasm_pvm_state.No_input_required
+  | Stuck _ -> Wasm_pvm_state.Input_required
+  | Snapshot -> Wasm_pvm_state.No_input_required
+  | Collect -> Wasm_pvm_state.Input_required
+  | Eval {config; _} -> (
+      match Tezos_webassembly_interpreter.Eval.is_reveal_tick config with
+      | Some (Reveal_partial_raw_data _) -> Wasm_pvm_state.No_input_required
+      | Some (Reveal_raw_data h) ->
+          Wasm_pvm_state.Reveal_required (Reveal_raw_data h)
+      | Some Reveal_metadata -> Wasm_pvm_state.Reveal_required Reveal_metadata
+      | None -> Wasm_pvm_state.No_input_required)
+  | _ -> Wasm_pvm_state.No_input_required
+
 let is_top_level_padding pvm_state =
   match pvm_state.tick_state with
   | Padding -> not @@ is_time_for_snapshot pvm_state
@@ -732,6 +751,14 @@ let get_info ({current_tick; last_input_info; _} as pvm_state) =
   return
   @@ Wasm_pvm_state.
        {current_tick; last_input_read = last_input_info; input_request}
+
+let get_info_legacy_v10 ({current_tick; last_input_info; _} as pvm_state) :
+    Wasm_pvm_state.info_legacy_v10 Lwt.t =
+  let open Lwt_syntax in
+  let input_request = input_request_legacy_v10 pvm_state in
+  return
+    ({current_tick; last_input_read = last_input_info; input_request}
+      : Wasm_pvm_state.info_legacy_v10)
 
 module Internal_for_tests = struct
   let compute_step_many_with_hooks ?reveal_builtins ?write_debug

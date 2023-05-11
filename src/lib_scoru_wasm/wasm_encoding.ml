@@ -993,6 +993,24 @@ let reveal_encoding =
         (value [] Data_encoding.unit)
         (function Host_funcs.Reveal_metadata -> Some () | _ -> None)
         (fun () -> Reveal_metadata);
+      case
+        "Reveal_partial_raw_data"
+        (value
+           []
+           Data_encoding.(
+             tup3
+               (conv
+                  Bls12_381.G1.to_compressed_bytes
+                  Bls12_381.G1.of_compressed_bytes_exn
+                  bytes)
+               int31
+               int31))
+        (function
+          | Host_funcs.Reveal_partial_raw_data {commitment; start; length} ->
+              Some (commitment, start, length)
+          | _ -> None)
+        (fun (commitment, start, length) ->
+          Reveal_partial_raw_data {commitment; start; length});
     ]
 
 let invoke_step_kont_encoding =

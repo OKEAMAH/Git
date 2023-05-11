@@ -62,15 +62,40 @@ type output_info = {
 
 type reveal_hash = string
 
+type reveal_legacy_v10 = Reveal_raw_data of reveal_hash | Reveal_metadata
+
 type reveal = Tezos_webassembly_interpreter.Host_funcs.reveal =
   | Reveal_raw_data of reveal_hash
+  | Reveal_partial_raw_data of {
+      commitment : Bls12_381.G1.t;
+      start : int;
+      (* Should be a multiple of {!val:Bls12_381.G1.size_in_bytes}. *)
+      length : int;
+          (* Should be a multiple of {!val:Bls12_381.G1.size_in_bytes} and less than 4KiB. *)
+    }
   | Reveal_metadata
+
+(** Represents the state of input requests. *)
+type input_request_legacy_v10 =
+  | No_input_required  (** The VM does not expect any input. *)
+  | Input_required  (** The VM needs input in order to progress. *)
+  | Reveal_required of reveal_legacy_v10
 
 (** Represents the state of input requests. *)
 type input_request =
   | No_input_required  (** The VM does not expect any input. *)
   | Input_required  (** The VM needs input in order to progress. *)
   | Reveal_required of reveal
+
+(** Represents the state of the VM. *)
+type info_legacy_v10 = {
+  current_tick : Z.t;
+      (** The number of ticks processed by the VM, zero for the initial state.
+          [current_tick] must be incremented for each call to [step] *)
+  last_input_read : input_info option;
+      (** The last message to be read by the VM, if any. *)
+  input_request : input_request_legacy_v10;  (** The current VM input request. *)
+}
 
 (** Represents the state of the VM. *)
 type info = {

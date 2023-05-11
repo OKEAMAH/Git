@@ -66,6 +66,8 @@ module Make_backend (Tree : TreeS) = struct
   include Tezos_scoru_wasm_fast.Pvm.Make (Make_wrapped_tree (Tree))
 
   let initial_state = initial_state V0
+
+  let get_info = get_info_legacy_v10
 end
 
 module Make_durable_state

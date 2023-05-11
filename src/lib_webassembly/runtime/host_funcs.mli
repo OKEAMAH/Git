@@ -5,7 +5,18 @@ type available_memories =
 
 type reveal_destination = {base : int32; max_bytes : int32}
 
-type reveal = Reveal_raw_data of string | Reveal_metadata
+type reveal_legacy_v10 = Reveal_raw_data of string | Reveal_metadata
+
+type reveal =
+  | Reveal_raw_data of string
+  | Reveal_partial_raw_data of {
+      commitment : Bls12_381.G1.t;
+      start : int;
+          (** Should be a multiple of {!val:Bls12_381.G1.size_in_bytes}. *)
+      length : int;
+          (** Should be a multiple of {!val:Bls12_381.G1.size_in_bytes} and less than 4KiB. *)
+    }
+  | Reveal_metadata
 
 type ticks = Z.t
 
