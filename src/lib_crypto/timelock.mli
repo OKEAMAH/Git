@@ -92,12 +92,17 @@ type vdf_tuple = {puzzle : puzzle; solution : solution; vdf_proof : vdf_proof}
     Some vdf_tuple if the elements are in the RSA group with RSA2048 as modulus
     and the Wesolowski proof verifies, None otherwise. *)
 val to_vdf_tuple_opt :
-  time:int -> string -> string -> string -> vdf_tuple option
+  time:int ->
+  puzzle:string ->
+  solution:string ->
+  vdf_proof:string ->
+  vdf_tuple option
 
 (** Function taking as input three strings representing a timelock puzzle, a
     solution and a Wesolowski proof and returning them as vdf_tuple without
     verifying them. *)
-val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
+val to_vdf_tuple_unsafe :
+  puzzle:string -> solution:string -> vdf_proof:string -> vdf_tuple
 
 (** Proof that a given solution of an associated puzzle is correct. It is
     concretely a [vdf_tuple] and a [randomness], that is a scalar representing

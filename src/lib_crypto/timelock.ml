@@ -133,8 +133,12 @@ let vdf_tuple_encoding =
          else Ok {puzzle; solution; vdf_proof})
        (obj3 (req "puzzle" n) (req "solution" n) (req "vdf_proof" n))
 
-let to_vdf_tuple_unsafe x y z =
-  {puzzle = Z.of_string x; solution = Z.of_string y; vdf_proof = Z.of_string z}
+let to_vdf_tuple_unsafe ~puzzle ~solution ~vdf_proof =
+  {
+    puzzle = Z.of_string puzzle;
+    solution = Z.of_string solution;
+    vdf_proof = Z.of_string vdf_proof;
+  }
 
 (* Timelock proof:
    - a VDF tuple, and a random coin
@@ -196,16 +200,16 @@ let verify_wesolowski ~time vdf_tuple =
       * powm vdf_tuple.puzzle r rsa2048
       mod rsa2048)
 
-let to_vdf_tuple_opt ~time x y z =
-  let tuple = to_vdf_tuple_unsafe x y z in
-  let x, y, z = Z.(of_string x, of_string y, of_string z) in
+let to_vdf_tuple_opt ~time ~puzzle ~solution ~vdf_proof =
+  let x, y, z = Z.(of_string puzzle, of_string solution, of_string vdf_proof) in
   let b_group =
     Z.(
       x < rsa2048 && y < rsa2048 && z < rsa2048 && x > one && y >= zero
       && z >= zero)
   in
-  let b_weso = verify_wesolowski ~time tuple in
-  if b_group && b_weso then Some tuple else None
+  let vdf_tuple = {puzzle = x; solution = y; vdf_proof = z} in
+  let b_weso = verify_wesolowski ~time vdf_tuple in
+  if b_group && b_weso then Some vdf_tuple else None
 
 let verify ~time puzzle proof =
   (* Verify link between precomputed tuple, randomness and evaluation *)
