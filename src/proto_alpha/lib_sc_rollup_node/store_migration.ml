@@ -91,6 +91,38 @@ module V0_to_V1 = struct
           ~header
           ~value
 
+  (* In place migration of processed slots under new key name by hand *)
+  let migrate_dal_processed_slots_irmin (v1_store : _ Store_v1.t) =
+    let open Lwt_syntax in
+    let open Store_v1 in
+    let info () =
+      let date =
+        Tezos_base.Time.(
+          System.now () |> System.to_protocol |> Protocol.to_seconds)
+      in
+      let author =
+        Format.asprintf
+          "Rollup node %a"
+          Tezos_version_parser.pp
+          Tezos_version.Current_git_info.version
+      in
+      let message = "Migration store from v0 to v1" in
+      Irmin_store.Raw_irmin.Info.v ~author ~message date
+    in
+    let store = Irmin_store.Raw_irmin.unsafe v1_store.irmin_store in
+    let old_root = Store_v0.Dal_processed_slots.path in
+    let new_root = Dal_slots_statuses.path in
+    let* old_tree = Irmin_store.Raw_irmin.find_tree store old_root in
+    match old_tree with
+    | None -> return_unit
+    | Some _ ->
+        (* Move the tree in the new key *)
+        Irmin_store.Raw_irmin.with_tree_exn
+          ~info
+          store
+          new_root
+          (fun _new_tree -> return old_tree)
+
   let tmp_dir ~storage_dir =
     Filename.concat
       (Configuration.default_storage_dir storage_dir)
@@ -132,6 +164,7 @@ module V0_to_V1 = struct
           (messages_store_location ~storage_dir:tmp_dir)
           (messages_store_location ~storage_dir)
       in
+      let*! () = migrate_dal_processed_slots_irmin v1_store in
       let*! () = Lwt_utils_unix.remove_dir tmp_dir in
       return_unit
     in
