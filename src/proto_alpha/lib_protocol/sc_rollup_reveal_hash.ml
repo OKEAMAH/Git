@@ -25,22 +25,21 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Prefix_hash = struct
+  let name = "Smart_rollup_reveal_data_blake2b_hash"
+
+  let title = "A smart rollup reveal hash"
+
+  let b58check_prefix =
+    "\230\206\128\200\196" (* "scrrh1(56)" decoded from Base58. *)
+
+  let size = Some 32
+end
+
 (* Reserve the first byte in the encoding to support multi-versioning
    in the future. *)
 module Blake2B = struct
-  include
-    Blake2B.Make
-      (Base58)
-      (struct
-        let name = "Smart_rollup_reveal_data_blake2b_hash"
-
-        let title = "A smart rollup reveal hash"
-
-        let b58check_prefix =
-          "\230\206\128\200\196" (* "scrrh1(56)" decoded from Base58. *)
-
-        let size = Some 32
-      end)
+  include Blake2B.Make (Base58) (Prefix_hash)
 
   let () = Base58.check_encoded_prefix b58check_encoding "scrrh1" 56
 end
