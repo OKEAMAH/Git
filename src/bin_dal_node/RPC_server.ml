@@ -128,7 +128,10 @@ end
 
 module Profile_handlers = struct
   let patch_profile ctxt () profile =
-    call_handler1 ctxt (fun store -> Profile_manager.add_profile store profile)
+    call_handler2
+      ctxt
+      (fun store {proto_parameters = {number_of_slots; _}; _} ->
+        Profile_manager.add_profile ~number_of_slots store profile)
 
   let get_profiles ctxt () () =
     call_handler1 ctxt (fun store ->
