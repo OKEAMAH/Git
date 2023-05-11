@@ -23,7 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Tezos_hacl
 module Blake2b = Hacl_star.Hacl.Blake2b_32
 
 (* -------- Helpers I/O functions -------- *)
