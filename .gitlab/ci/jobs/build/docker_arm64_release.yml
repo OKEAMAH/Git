@@ -3,10 +3,9 @@ include: .gitlab/ci/jobs/build/common.yml
 docker:arm64:
   extends:
     - .build_docker_release_template
+    - .default_settings_template_arm64
   stage: build
   variables:
     IMAGE_ARCH_PREFIX: "arm64_"
     CI_DOCKER_HUB: "true"
     EXECUTABLE_FILES: "script-inputs/released-executables"
-  tags:
-    - arm64

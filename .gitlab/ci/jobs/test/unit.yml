@@ -34,12 +34,12 @@
       - test_results
 
 .unit_test_template_arm64:
-  extends: .unit_test_template
+  extends:
+    - .unit_test_template
+    - .default_settings_template_arm64
   needs: ["build_arm64"]
   variables:
     ARCH: "arm64"
-  tags:
-    - arm64
 
 unit:non-proto-x86_64:
   extends:

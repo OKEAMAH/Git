@@ -3,6 +3,7 @@ include: .gitlab/ci/jobs/build/common.yml
 build_arm64:
   extends:
     - .build
+    - .default_settings_template_arm64
   variables:
     ARCH: "arm64"
     # Disable coverage for arm64
@@ -15,5 +16,3 @@ build_arm64:
       when: on_success
     - when: manual
       allow_failure: true
-  tags:
-    - arm64
