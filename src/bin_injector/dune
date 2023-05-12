@@ -1,0 +1,35 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name injector_main)
+ (public_name octez-injector-server)
+ (package octez-injector-server)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  octez-injector
+  tezos-rpc-http-server
+  tezos-rpc-http
+  tezos-clic
+  tezos-client-base
+  tezos-client-base-unix
+  tezos-event-logging
+  tezos-stdlib-unix
+  data-encoding
+  tezos-protocol-alpha)
+ (link_flags
+  (:standard)
+  (:include %{workspace_root}/static-link-flags.sexp)
+  (:include %{workspace_root}/macos-link-flags.sexp)
+  (-linkall))
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Octez_injector
+  -open Tezos_rpc_http_server
+  -open Tezos_rpc_http
+  -open Tezos_client_base
+  -open Tezos_client_base_unix
+  -open Tezos_event_logging
+  -open Tezos_stdlib_unix))

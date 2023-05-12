@@ -4051,7 +4051,7 @@ let octez_crawler =
         octez_shell;
       ]
 
-let octez_injector =
+let octez_injector_lib =
   public_lib
     "octez-injector"
     ~path:"src/lib_injector"
@@ -4103,7 +4103,7 @@ let octez_smart_rollup_node_lib =
         cohttp_lwt_unix;
         octez_node_config;
         prometheus_app;
-        octez_injector |> open_;
+        octez_injector_lib |> open_;
         octez_version_value |> open_;
         octez_smart_rollup_lib |> open_;
         octez_layer2_store |> open_;
@@ -6041,8 +6041,8 @@ let hash = Protocol.hash
           [
             octez_base |> open_ ~m:"TzPervasives";
             main |> open_;
-            octez_injector |> open_;
             octez_smart_rollup_lib |> open_;
+            octez_injector_lib |> open_;
           ]
         ~inline_tests:ppx_expect
         ~linkall:true
@@ -6091,7 +6091,7 @@ let hash = Protocol.hash
             irmin;
             aches;
             aches_lwt;
-            octez_injector |> open_;
+            octez_injector_lib |> open_;
             octez_smart_rollup_node_lib |> open_;
             octez_scoru_wasm;
             octez_scoru_wasm_fast;
@@ -7112,6 +7112,31 @@ let _octez_snoop =
           :: G [S "deps" :: [S "main_snoop.exe"]]
           :: [S "package" :: [S "octez-snoop"]];
         ]
+
+let _octez_injector =
+  let protocol_deps = [Protocol.(main alpha)] in
+  public_exe
+    "octez-injector-server"
+    ~internal_name:"injector_main"
+    ~path:"src/bin_injector"
+    ~synopsis:"Octez injector"
+    ~release_status:Experimental
+    ~with_macos_security_framework:true
+    ~linkall:true
+    ~deps:
+      ([
+         octez_base |> open_ ~m:"TzPervasives";
+         octez_injector_lib |> open_;
+         octez_rpc_http_server |> open_;
+         octez_rpc_http |> open_;
+         octez_clic;
+         octez_client_base |> open_;
+         octez_client_base_unix |> open_;
+         octez_event_logging |> open_;
+         octez_stdlib_unix |> open_;
+         data_encoding;
+       ]
+      @ protocol_deps)
 
 (* We use Dune's select statement and keep uTop optional *)
 (* Keeping uTop optional lets `make build` succeed, *)

@@ -3,6 +3,7 @@ octez-smart-rollup-sequencer-node
 octez-dac-client
 octez-dac-node
 octez-dal-node
+octez-injector-server
 octez-smart-rollup-node-alpha
 octez-smart-rollup-client-alpha
 octez-accuser-alpha
