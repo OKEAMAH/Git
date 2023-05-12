@@ -1212,6 +1212,22 @@ module Make (Context : P) :
         let* () = Next_message.set (Some data) in
         let* () = start_parsing in
         return ()
+    | PS.Partial_raw_data {data; proof; index} ->
+        let* () =
+          Next_message.set
+            (Some
+               (String.concat
+                  "%"
+                  [
+                    data;
+                    Data_encoding.Binary.to_string_exn
+                      Sc_rollup_reveal_hash.Merkle_tree.path_encoding
+                      proof;
+                    string_of_int index;
+                  ]))
+        in
+        let* () = start_parsing in
+        return ()
     | PS.Metadata metadata ->
         let* () = Metadata.set (Some metadata) in
         let* () = Status.set Waiting_for_input_message in

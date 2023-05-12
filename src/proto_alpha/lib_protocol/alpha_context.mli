@@ -3354,6 +3354,11 @@ module Sc_rollup : sig
 
   type reveal_data =
     | Raw_data of string
+    | Partial_raw_data of {
+        data : string;
+        proof : Sc_rollup_reveal_hash.Merkle_tree.path;
+        index : int;
+      }
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
 
