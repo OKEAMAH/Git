@@ -8,12 +8,15 @@
   # their dependencies locally.
   dependencies: []
   # we can easily switch the default runner tags
-  # tags:
+  tags:
+    - amd64
+    - reserved-for-profiling
 
 # Default runner tags for arm64 jobs
 .default_settings_template_arm64:
   tags:
     - arm64
+    - reserved-for-profiling
 
 # Add variables for bisect_ppx instrumentation
 .template__coverage:
