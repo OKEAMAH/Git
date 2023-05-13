@@ -645,6 +645,10 @@ module Auto_build = struct
     measurement : Measure.packed_measurement option;
   }
 
+  type options = {
+    outdir : string;
+  }
+
   (* Get the dependency problem under the current state *)
   let get_problem state_tbl =
     Namespace.Hashtbl.fold
@@ -658,7 +662,7 @@ module Auto_build = struct
       []
 
   (* Perform the benchmark of name [bench_name] *)
-  let benchmark outdir bench_name =
+  let benchmark {outdir} bench_name =
     let (module Bench) = Registration.find_benchmark_exn bench_name in
     let Measure.{bench_number; nsamples; _} =
       Commands.Benchmark_cmd.default_benchmark_options.options
@@ -721,7 +725,7 @@ module Auto_build = struct
      We start from a small [state_tbl] with possibly incomplete free variable
      sets. They are completed on demand by running the corresponding benchmarks.
   *)
-  let rec analyze_dependency outdir state_tbl free_variables_to_infer =
+  let rec analyze_dependency options state_tbl free_variables_to_infer =
     let open Dep_graph in
     let open Solver.Solved in
     let module Fv_set = Free_variable.Set in
@@ -755,7 +759,7 @@ module Auto_build = struct
       | None ->
           all_required_benchmark_has_measurement := false ;
           Format.eprintf "Benchmarking %a...@." Namespace.pp bench_name ;
-          let measurement = benchmark outdir bench_name in
+          let measurement = benchmark options bench_name in
           (* Now we have the exact free variable set. *)
           let free_variables = Measure.get_free_variable_set measurement in
           let state =
@@ -767,7 +771,7 @@ module Auto_build = struct
 
     if not !all_required_benchmark_has_measurement then
       (* Recurse if [state_tbl] is updated by [run_benchmark] *)
-      analyze_dependency outdir state_tbl free_variables_to_infer
+      analyze_dependency options state_tbl free_variables_to_infer
     else
       (* Add the dependencies of [providers] to [free_variables_to_infer] *)
       let new_free_variables_to_infer =
@@ -781,7 +785,7 @@ module Auto_build = struct
       if not @@ Fv_set.equal new_free_variables_to_infer free_variables_to_infer
       then
         (* Recurse with the updated free variables to infer *)
-        analyze_dependency outdir state_tbl new_free_variables_to_infer
+        analyze_dependency options state_tbl new_free_variables_to_infer
       else (
         prerr_endline "Reached fixedpoint" ;
         let Graph.{resolved = _; with_ambiguities; providers_map} =
@@ -867,6 +871,9 @@ module Auto_build = struct
         ~none:(fun () -> exitf 1 "Need to specify --out-dir")
         ~some:Fun.id
     in
+    let options =
+      {outdir}
+    in
     (* No non-lwt version available... *)
     Lwt_main.run (Lwt_utils_unix.create_dir outdir) ;
 
@@ -896,7 +903,7 @@ module Auto_build = struct
         benches
     in
     let providers, providers_map =
-      analyze_dependency outdir state_tbl free_variables_to_infer
+      analyze_dependency options state_tbl free_variables_to_infer
     in
     Format.eprintf
       "@[<v2>Required benchmarks:@ @[<v>%a@]@]@."
