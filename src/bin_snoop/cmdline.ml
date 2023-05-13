@@ -77,7 +77,10 @@ type infer_parameters_options = {
   display : Display.options;
 }
 
-type auto_build_options = {destination_directory : string option}
+type auto_build_options = {
+  destination_directory : string option;
+  bench_num : int option;
+}
 
 (* Outcome of command-line parsing. *)
 
