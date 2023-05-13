@@ -648,6 +648,7 @@ module Auto_build = struct
   type options = {
     outdir : string;
     bench_num_opt : int option;
+    nsamples_opt : int option;
   }
 
   (* Get the dependency problem under the current state *)
@@ -663,13 +664,14 @@ module Auto_build = struct
       []
 
   (* Perform the benchmark of name [bench_name] *)
-  let benchmark {outdir; bench_num_opt} bench_name =
+  let benchmark {outdir; bench_num_opt; nsamples_opt} bench_name =
     let (module Bench) = Registration.find_benchmark_exn bench_name in
     let Measure.{bench_number; nsamples; _} =
       Commands.Benchmark_cmd.default_benchmark_options.options
     in
     let bench_number, nsamples =
       let bench_number = Option.value ~default:bench_number bench_num_opt in
+      let nsamples = Option.value ~default:nsamples nsamples_opt in
       match Namespace.basename bench_name with
       | "intercept" -> (1, nsamples)
       | "TIMER_LATENCY" -> (1, 10000)
@@ -859,7 +861,7 @@ module Auto_build = struct
       codegen_options
       ~exclusions:String.Set.empty
 
-  let cmd bench_names Cmdline.{destination_directory; bench_num} =
+  let cmd bench_names Cmdline.{destination_directory; bench_num; nsamples} =
     let exitf status fmt =
       Format.kasprintf
         (fun s ->
@@ -874,7 +876,7 @@ module Auto_build = struct
         ~some:Fun.id
     in
     let options =
-      {outdir; bench_num_opt = bench_num}
+      {outdir; bench_num_opt = bench_num; nsamples_opt = nsamples}
     in
     (* No non-lwt version available... *)
     Lwt_main.run (Lwt_utils_unix.create_dir outdir) ;

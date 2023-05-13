@@ -824,7 +824,8 @@ module Codegen_check_definitions_cmd = struct
 end
 
 module Auto_build_cmd = struct
-  let auto_build_handler (destination_directory, bench_num) bench_names () =
+  let auto_build_handler (destination_directory, bench_num, nsamples)
+      bench_names () =
     let bench_names = List.map (fun s ->
         let n = Namespace.of_string s in
         if not @@ List.mem_assoc ~equal:Namespace.equal n
@@ -833,7 +834,7 @@ module Auto_build_cmd = struct
           exit 1);
         n) bench_names
     in
-    let auto_build_options = {destination_directory; bench_num} in
+    let auto_build_options = {destination_directory; bench_num; nsamples} in
     commandline_outcome_ref :=
       Some (Auto_build {bench_names; auto_build_options}) ;
     Lwt.return_ok ()
@@ -851,9 +852,10 @@ module Auto_build_cmd = struct
       (Tezos_clic.parameter (fun () filename -> Lwt.return_ok filename))
 
   let options =
-    Tezos_clic.args2
+    Tezos_clic.args3
       destination_directory_arg
       Benchmark_cmd.Options.bench_number_arg
+      Benchmark_cmd.Options.nsamples_arg
 
   let command =
     Tezos_clic.command

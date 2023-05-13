@@ -80,6 +80,7 @@ type infer_parameters_options = {
 type auto_build_options = {
   destination_directory : string option;
   bench_num : int option;
+  nsamples : int option;
 }
 
 (* Outcome of command-line parsing. *)
