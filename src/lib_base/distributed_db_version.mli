@@ -75,3 +75,7 @@ val one : t
    function will return [true] but is invalid should not be kicked
    anymore. *)
 val two : t
+
+(** [of_int_exn i] returns a value of type {!t} from [i] if it fits in an
+    Uint16. raises an [Invalid_argument "not a Uint16 integer"] otherwise. *)
+val of_int_exn : int -> t

@@ -66,6 +66,10 @@ let one = 1
 
 let two = 2
 
+let of_int_exn i =
+  if i >= 0 && i <= 65535 then i
+  else raise @@ Invalid_argument "not a Uint16 integer"
+
 let () =
   Data_encoding.Registration.register ~pp:Name.pp Name.encoding ;
   Data_encoding.Registration.register ~pp encoding
