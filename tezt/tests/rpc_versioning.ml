@@ -182,8 +182,93 @@ let test_forge_double_preconsensus_evidence =
       ["forge"; "operations"; "consensus"; "pre"; "double"; "evidence"]
   @@ fun protocol -> test_double_consensus_evidence Preattestation protocol
 
+let test_invalid_double_consensus_evidence kind protocol =
+  let* _node, client = Client.init_with_protocol ~protocol `Client () in
+  let signer1 = Constant.bootstrap1 in
+  let signer2 = Constant.bootstrap2 in
+  let get_name_consensus kind =
+    sf "double_%s_evidence" (get_name_consensus kind)
+  in
+  let mk_double_consensus (kind, use_legacy_name) op1 op2 client =
+    let* op1_sign = Operation.sign op1 client in
+    let* op2_sign = Operation.sign op2 client in
+    Lwt.return
+      ((match kind with
+       | Attestation -> Operation.Anonymous.double_attestation_evidence
+       | Preattestation -> Operation.Anonymous.double_preattestation_evidence)
+         ~use_legacy_name
+         (op1, op1_sign)
+         (op2, op2_sign))
+  in
+
+  let create_double_consensus_evidence ~use_legacy_name =
+    let consensus_infos = (kind, use_legacy_name) in
+    let consensus_name = get_name_consensus consensus_infos in
+    Log.info "Create an %s operation" consensus_name ;
+    let legacy_consensus = mk_consensus (kind, true) in
+    let consensus = mk_consensus (kind, false) in
+    let* op1 =
+      Operation.Consensus.operation ~signer:signer1 legacy_consensus client
+    in
+    let* op2 = Operation.Consensus.operation ~signer:signer2 consensus client in
+    let* double_consensus_evidence =
+      mk_double_consensus consensus_infos op1 op2 client
+    in
+    let* double_consensus_evidence_op =
+      Operation.Anonymous.operation
+        ~signer:signer1
+        double_consensus_evidence
+        client
+    in
+
+    Log.info
+      "Ensures that the generated JSON contains the %s kind"
+      consensus_name ;
+    let consensus_json = Operation.json double_consensus_evidence_op in
+    let annotated_json = JSON.annotate ~origin:"" @@ consensus_json in
+    check_kind annotated_json consensus_name ;
+
+    Log.info "Ensures that the generated JSON cannot be parsed by the forge RPC" ;
+    let*? t =
+      RPC.Client.spawn client
+      @@ RPC.post_chain_block_helpers_forge_operations
+           ~data:(Data consensus_json)
+           ()
+    in
+    let msg = rex "Failed to parse the request body: No case matched:" in
+    Process.check_error ~msg t
+  in
+
+  let* () = create_double_consensus_evidence ~use_legacy_name:true in
+  create_double_consensus_evidence ~use_legacy_name:false
+
+let test_forge_invalid_double_consensus_evidence =
+  register_test
+    ~title:"Forge invalid double consensus evidence operations"
+    ~additionnal_tags:
+      ["forge"; "operations"; "consensus"; "double"; "evidence"; "invalid"]
+  @@ fun protocol -> test_invalid_double_consensus_evidence Attestation protocol
+
+let test_forge_invalid_double_preconsensus_evidence =
+  register_test
+    ~title:"Forge invalid double pre-consensus evidence operations"
+    ~additionnal_tags:
+      [
+        "forge";
+        "operations";
+        "consensus";
+        "pre";
+        "double";
+        "evidence";
+        "invalid";
+      ]
+  @@ fun protocol ->
+  test_invalid_double_consensus_evidence Preattestation protocol
+
 let register ~protocols =
   test_forge_consensus protocols ;
   test_forge_preconsensus protocols ;
   test_forge_double_consensus_evidence protocols ;
-  test_forge_double_preconsensus_evidence protocols
+  test_forge_double_preconsensus_evidence protocols ;
+  test_forge_invalid_double_consensus_evidence protocols ;
+  test_forge_invalid_double_preconsensus_evidence protocols
