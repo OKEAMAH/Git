@@ -347,6 +347,51 @@ let test_reveal () =
   | [2] -> return_unit
   | _ -> failwith "invalid stack"
 
+let test_partial_reveal () =
+  let open Lwt_result_syntax in
+  let* state =
+    boot_then_reveal_metadata Sc_rollup_repr.Address.zero Raw_level_repr.root
+  in
+  let* state = go ~max_steps:10_000 Waiting_for_input_message state in
+  let raw_data = "1 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 +" in
+  let*? strings = String.chunk_bytes 4 (Bytes.of_string raw_data) in
+  let strings = List.map Bytes.of_string strings in
+  let merkle_root = Sc_rollup_reveal_hash.Merkelized_bytes.compute strings in
+  let* _, state =
+    Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.fold_left_es
+      (fun (index, state) b ->
+        let source =
+          "hash:"
+          ^ Sc_rollup_reveal_hash.(
+              to_hex (reveal_hash_merkle ~index ~merkle_root))
+        in
+        let input = Sc_rollup_helpers.make_external_input_repr source in
+        let*! state = set_input input state in
+        let* state = go ~max_steps:10_000 Waiting_for_reveal state in
+        let*! input_state = is_input_state state in
+        let* () =
+          match input_state with
+          | Needs_reveal
+              (Reveal_raw_data
+                (Sc_rollup_reveal_hash.Merkle_root_Blake2B
+                  {index = index'; root})) ->
+              assert (
+                index = index'
+                && Sc_rollup_reveal_hash.Blake2B.equal merkle_root root) ;
+              return_unit
+          | No_input_required | Initial | First_after _ | _ ->
+              failwith "expected partial reveal."
+        in
+        let*! state = set_input (Reveal (Raw_data (String.of_bytes b))) state in
+        let* state = go ~max_steps:10_000 Waiting_for_input_message state in
+        return (index + 1, state))
+      (0, state)
+      strings
+  in
+  get_stack state >>= function
+  | [55] -> return_unit
+  | _ -> failwith "invalid stack"
+
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
   boot "" @@ fun ctxt state ->
@@ -582,6 +627,7 @@ let tests =
       test_initial_state_hash_arith_pvm;
     Tztest.tztest "Filter internal message" `Quick test_filter_internal_message;
     Tztest.tztest "Reveal" `Quick test_reveal;
+    Tztest.tztest "Partial reveal" `Quick test_partial_reveal;
   ]
 
 let () =

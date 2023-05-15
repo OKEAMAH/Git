@@ -25,17 +25,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** The type of a reveal hash. *)
-type t
+module Blake2B : S.HASH
 
 (** The hashing schemes supported by the reveal hash. *)
 type supported_hashes = Blake2B
 
-module Blake2B : S.HASH
-
 (** A Merkle tree module for storing byte-indexed values. *)
 module Merkelized_bytes :
   Merkle_list.T with type elt = Bytes.t and type h = Blake2B.t
+
+(** The type of a reveal hash. *)
+type t =
+  | Blake2B of Blake2B.t
+  | Merkle_root_Blake2B of {index : int; root : Merkelized_bytes.h}
 
 (** A Map module for storing reveal-hash-indexed values. *)
 module Map : Map.S with type key = t
