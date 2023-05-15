@@ -59,6 +59,28 @@ val deploy :
   unit ->
   string Lwt.t
 
+(** [call  ~source_private_key ~endpoint ~abi_label ~address ~method_call ()]
+    make a call to a contract found at [address], with interface registered as
+    [abi_labbel] in the client, signed with a user's [source_private_key].
+    [method_call] is the call data, as a solidity expression.
+
+    example:
+    [call
+      ~source_private_key
+      ~endpoint
+      ~abi_label:"storage"
+      ~address:"0xaaaa....aaaa"
+      ~method_call:"set(42)"
+      ()]*)
+val call :
+  source_private_key:string ->
+  endpoint:string ->
+  abi_label:string ->
+  address:string ->
+  method_call:string ->
+  unit ->
+  string Lwt.t
+
 (** [get_block ~block_id ~endpoint] asks the block [block_id] (it can be a
     hash or a number) to the JSON-RPC API server listening at [endpoint]. *)
 val get_block : block_id:string -> endpoint:string -> Block.t Lwt.t

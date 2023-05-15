@@ -336,31 +336,151 @@ let test_l2_blocks_progression =
   let* () = check_block_progression ~expected_block_level:2 in
   unit
 
-let test_l2_deploy =
+(** Container for the informations necessary to create a contract:
+      - label: the label used to refer to ABI
+      - abi: the interface (json file)
+      - bin: the binary *)
+type contract = {label : string; abi : string; bin : string}
+
+let deploy contract (sender : Eth_account.t) full_evm_setup =
+  let {node; client; sc_rollup_node; evm_proxy_server; _} = full_evm_setup in
+  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
+  let* () = Eth_cli.add_abi ~label:contract.label ~abi:contract.abi () in
+  let send_deploy =
+    Eth_cli.deploy
+      ~source_private_key:sender.private_key
+      ~endpoint:evm_proxy_server_endpoint
+      ~abi:contract.label
+      ~bin:contract.bin
+  in
+  wait_for_application ~sc_rollup_node ~node ~client send_deploy ()
+
+(** The info for the "storage.sol" contract *)
+let simple_storage =
+  {
+    label = "simpleStorage";
+    abi = kernel_inputs_path ^ "/storage_abi.json";
+    bin = kernel_inputs_path ^ "/storage.bin";
+  }
+
+(** A number as a 256bit hex encoded value. *)
+let hex_256_of n = Printf.sprintf "%064x" n
+
+(** Removes x prefix if present. *)
+let no_0x s =
+  if String.starts_with ~prefix:"0x" s then String.sub s 2 (String.length s - 2)
+  else s
+
+(** Test that the contract creation works.  *)
+let test_l2_deploy_simple_storage =
   Protocol.register_test
     ~__FILE__
     ~tags:["evm"; "l2_deploy"]
     ~title:"Check L2 contract deployment"
   @@ fun protocol ->
-  let* {node; client; sc_rollup_node; _} = setup_evm_kernel protocol in
-  let* evm_proxy_server = Evm_proxy_server.init sc_rollup_node in
-  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
-  let* _level = next_evm_level ~sc_rollup_node ~node ~client in
+  let* ({sc_rollup_client; _} as full_evm_setup) = setup_evm_kernel protocol in
   let sender = Eth_account.bootstrap_accounts.(0) in
-  let* () =
-    Eth_cli.add_abi
-      ~label:"simpleStorage"
-      ~abi:(kernel_inputs_path ^ "/storage_abi.json")
-      ()
+  let* _ = deploy simple_storage sender full_evm_setup in
+  let address = "0xd77420f73b4612a7a99dba8c2afd30a1886b0344" in
+  let*! accounts =
+    Sc_rollup_client.inspect_durable_state_value
+      ~hooks
+      sc_rollup_client
+      ~pvm_kind
+      ~operation:Sc_rollup_client.Subkeys
+      ~key:"/eth_accounts"
   in
-  let send_deploy =
-    Eth_cli.deploy
+  Check.(
+    list_mem
+      string
+      (no_0x address)
+      accounts
+      ~error_msg:"Expected %L account to be initialized by contract creation.") ;
+  unit
+
+(** [get_value_in_storage client addr nth] fetch the [nth] value in the storage
+    of account [addr]  *)
+let get_value_in_storage sc_rollup_client address nth =
+  Sc_rollup_client.inspect_durable_state_value
+    ~hooks
+    sc_rollup_client
+    ~pvm_kind
+    ~operation:Sc_rollup_client.Value
+    ~key:(Printf.sprintf "/eth_accounts/%s/storage/%064x" (no_0x address) nth)
+
+(** [get_storage_size client addr] return the nb of stored value for [addr] *)
+let get_storage_size sc_rollup_client address =
+  let*! storage =
+    Sc_rollup_client.inspect_durable_state_value
+      ~hooks
+      sc_rollup_client
+      ~pvm_kind
+      ~operation:Sc_rollup_client.Subkeys
+      ~key:(Printf.sprintf "/eth_accounts/%s/storage" (no_0x address))
+  in
+  return (List.length storage)
+
+(** Test that a contract can be called,
+    and that the call can modify the storage.  *)
+let test_l2_call_simple_storage =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "l2_deploy"; "l2_call"]
+    ~title:"Check L2 contract call"
+  @@ fun protocol ->
+  (* setup *)
+  let* ({sc_rollup_node; node; client; evm_proxy_server; sc_rollup_client; _} as
+       full_evm_setup) =
+    setup_evm_kernel protocol
+  in
+  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
+  let sender = Eth_account.bootstrap_accounts.(0) in
+
+  (* deploy contract *)
+  let* _ = deploy simple_storage sender full_evm_setup in
+  (* address is harcoded until proxynode can return it *)
+  let address = "0xd77420f73b4612a7a99dba8c2afd30a1886b0344" in
+
+  (* calls the set method *)
+  let call_set (sender : Eth_account.t) n =
+    Eth_cli.call
       ~source_private_key:sender.private_key
       ~endpoint:evm_proxy_server_endpoint
-      ~abi:"simpleStorage"
-      ~bin:(kernel_inputs_path ^ "/storage.bin")
+      ~abi_label:simple_storage.label
+      ~address
+      ~method_call:(Printf.sprintf "set(%d)" n)
   in
-  let* _ = wait_for_application ~sc_rollup_node ~node ~client send_deploy () in
+
+  (* set 42 *)
+  let* _ =
+    wait_for_application ~sc_rollup_node ~node ~client (call_set sender 42) ()
+  in
+  let* storage_size = get_storage_size sc_rollup_client address in
+  Check.((storage_size = 1) int)
+    ~error_msg:"Unexpected storage size, should be %R, but is %L" ;
+  let*! storage = get_value_in_storage sc_rollup_client address 0 in
+  Check.((storage = Some (hex_256_of 42)) (option string))
+    ~error_msg:
+      "Unexpected value in storage after call, should be %R, but got %L" ;
+
+  (* set 24 by another user *)
+  let* _ =
+    wait_for_application
+      ~sc_rollup_node
+      ~node
+      ~client
+      (call_set Eth_account.bootstrap_accounts.(1) 24)
+      ()
+  in
+  (* storage size hasn't changed *)
+  let* storage_size = get_storage_size sc_rollup_client address in
+  Check.((storage_size = 1) int)
+    ~error_msg:"Unexpected storage size, should be %R, but is %L" ;
+  (* value stored has changed *)
+  let*! storage = get_value_in_storage sc_rollup_client address 0 in
+  Check.((storage = Some (hex_256_of 24)) (option string))
+    ~error_msg:
+      "Unexpected value in storage after call, should be %R, but got %L" ;
   unit
 
 let transfer ?data protocol =
@@ -430,6 +550,7 @@ let register_evm_proxy_server ~protocols =
   test_l2_blocks_progression protocols ;
   test_l2_transfer protocols ;
   test_chunked_transaction protocols ;
-  test_l2_deploy protocols
+  test_l2_deploy_simple_storage protocols ;
+  test_l2_call_simple_storage protocols
 
 let register ~protocols = register_evm_proxy_server ~protocols

@@ -87,3 +87,16 @@ let deploy ~source_private_key ~endpoint ~abi ~bin () =
       bin;
     ]
     decode
+
+let call ~source_private_key ~endpoint ~abi_label ~address ~method_call () =
+  spawn_command_and_read
+    [
+      "contract:send";
+      "--pk";
+      source_private_key;
+      "--network";
+      endpoint;
+      Format.sprintf "%s@%s" abi_label address;
+      method_call;
+    ]
+    JSON.as_string
