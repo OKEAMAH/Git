@@ -151,6 +151,11 @@ type _ successful_manager_operation_result =
       paid_storage_size_diff : Z.t;
     }
       -> Kind.zk_rollup_update successful_manager_operation_result
+  | Mock_counter_update_result : {
+      consumed_gas : Gas.Arith.fp;
+      paid_storage_size_diff : Z.t;
+    }
+      -> Kind.mock_counter_update successful_manager_operation_result
 
 let migration_origination_result_to_successful_manager_operation_result
     ({
@@ -831,6 +836,25 @@ module Manager_result = struct
             (balance_updates, consumed_gas))
       ~inj:(fun (balance_updates, consumed_gas) ->
         Sc_rollup_recover_bond_result {balance_updates; consumed_gas})
+
+  let mock_counter_update_case =
+    make
+      ~op_case:Operation.Encoding.Manager_operations.mock_counter_update_case
+      ~encoding:
+        Data_encoding.(
+          obj2
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+            (dft "paid_storage_size_diff" z Z.zero))
+      ~select:(function
+        | Successful_manager_result (Mock_counter_update_result _ as op) ->
+            Some op
+        | _ -> None)
+      ~kind:Kind.Mock_counter_update_manager_kind
+      ~proj:(function
+        | Mock_counter_update_result {consumed_gas; paid_storage_size_diff} ->
+            (consumed_gas, paid_storage_size_diff))
+      ~inj:(fun (consumed_gas, paid_storage_size_diff) ->
+        Mock_counter_update_result {consumed_gas; paid_storage_size_diff})
 end
 
 let successful_manager_operation_result_encoding :
@@ -999,6 +1023,10 @@ let equal_manager_kind :
   | Kind.Zk_rollup_update_manager_kind, Kind.Zk_rollup_update_manager_kind ->
       Some Eq
   | Kind.Zk_rollup_update_manager_kind, _ -> None
+  | Kind.Mock_counter_update_manager_kind, Kind.Mock_counter_update_manager_kind
+    ->
+      Some Eq
+  | Kind.Mock_counter_update_manager_kind, _ -> None
 
 module Encoding = struct
   type 'kind case =
@@ -1588,6 +1616,17 @@ module Encoding = struct
           ->
             Some (op, res)
         | _ -> None)
+
+  let mock_counter_update_case =
+    make_manager_case
+      Operation.Encoding.mock_counter_update_case
+      Manager_result.mock_counter_update_case
+      (function
+        | Contents_and_result
+            ( (Manager_operation {operation = Mock_counter_update _; _} as op),
+              res ) ->
+            Some (op, res)
+        | _ -> None)
 end
 
 let contents_result_encoding =
@@ -1642,6 +1681,7 @@ let contents_result_encoding =
          make zk_rollup_origination_case;
          make zk_rollup_publish_case;
          make zk_rollup_update_case;
+         make mock_counter_update_case;
        ]
 
 let contents_and_result_encoding =
@@ -1701,6 +1741,7 @@ let contents_and_result_encoding =
          make zk_rollup_origination_case;
          make zk_rollup_publish_case;
          make zk_rollup_update_case;
+         make mock_counter_update_case;
        ]
 
 type 'kind contents_result_list =
@@ -2378,6 +2419,32 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Zk_rollup_update _; _}, _ -> None
+  | ( Manager_operation {operation = Mock_counter_update _; _},
+      Manager_operation_result
+        {operation_result = Applied (Mock_counter_update_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Mock_counter_update _; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Mock_counter_update_result _, _); _} )
+    ->
+      Some Eq
+  | ( Manager_operation {operation = Mock_counter_update _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Mock_counter_update_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Mock_counter_update _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Mock_counter_update_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | Manager_operation {operation = Mock_counter_update _; _}, _ -> None
 
 let rec kind_equal_list :
     type kind kind2.

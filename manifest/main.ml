@@ -4891,6 +4891,7 @@ end = struct
             ("test_dal_slot_proof", N.(number >= 016));
             ("test_tx_rollup_l2_apply", N.(number >= 015 && number <= 016));
             ("test_tx_rollup_l2", N.(number >= 015 && number <= 016));
+            ("test_mock_counter_storage", N.(number >= 018));
           ]
           |> List.filter_map (fun (n, b) -> if b then Some n else None)
         in

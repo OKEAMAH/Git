@@ -111,6 +111,8 @@ module Kind = struct
 
   type zk_rollup_update = Zk_rollup_update_kind
 
+  type mock_counter_update = Mock_counter_update_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -135,6 +137,7 @@ module Kind = struct
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
     | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Mock_counter_update_manager_kind : mock_counter_update manager
 end
 
 type 'a consensus_operation_type =
@@ -412,6 +415,10 @@ and _ manager_operation =
       update : Zk_rollup_update_repr.t;
     }
       -> Kind.zk_rollup_update manager_operation
+  | Mock_counter_update : {
+      value : Z.t;
+    }
+      -> Kind.mock_counter_update manager_operation
 
 let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
@@ -437,6 +444,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Zk_rollup_origination _ -> Kind.Zk_rollup_origination_manager_kind
   | Zk_rollup_publish _ -> Kind.Zk_rollup_publish_manager_kind
   | Zk_rollup_update _ -> Kind.Zk_rollup_update_manager_kind
+  | Mock_counter_update _ -> Kind.Mock_counter_update_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -550,6 +558,8 @@ let sc_rollup_operation_recover_bond_tag = sc_rollup_operation_tag_offset + 7
 let dal_offset = 230
 
 let dal_publish_slot_header_tag = dal_offset + 0
+
+let mock_counter_update_tag = 240
 
 let zk_rollup_operation_tag_offset = 250
 
@@ -1017,6 +1027,19 @@ module Encoding = struct
           inj =
             (fun (sc_rollup, staker) ->
               Sc_rollup_recover_bond {sc_rollup; staker});
+        }
+
+    let mock_counter_update_case =
+      MCase
+        {
+          tag = mock_counter_update_tag;
+          name = "mock_counter_update";
+          encoding = obj1 (req "value" Data_encoding.z);
+          select =
+            (function
+            | Manager (Mock_counter_update _ as op) -> Some op | _ -> None);
+          proj = (function Mock_counter_update {value} -> value);
+          inj = (fun value -> Mock_counter_update {value});
         }
   end
 
@@ -1555,6 +1578,11 @@ module Encoding = struct
       zk_rollup_operation_update_tag
       Manager_operations.zk_rollup_update_case
 
+  let mock_counter_update_case =
+    make_manager_case
+      mock_counter_update_tag
+      Manager_operations.mock_counter_update_case
+
   type packed_case = PCase : 'b case -> packed_case
 
   let common_cases =
@@ -1589,6 +1617,7 @@ module Encoding = struct
       PCase zk_rollup_origination_case;
       PCase zk_rollup_publish_case;
       PCase zk_rollup_update_case;
+      PCase mock_counter_update_case;
     ]
 
   let contents_cases =
@@ -2056,6 +2085,8 @@ let equal_manager_operation_kind :
   | Zk_rollup_publish _, _ -> None
   | Zk_rollup_update _, Zk_rollup_update _ -> Some Eq
   | Zk_rollup_update _, _ -> None
+  | Mock_counter_update _, Mock_counter_update _ -> Some Eq
+  | Mock_counter_update _, _ -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
