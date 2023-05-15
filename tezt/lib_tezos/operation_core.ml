@@ -31,6 +31,7 @@ type consensus_kind =
 
 type kind =
   | Consensus of {kind : consensus_kind; chain_id : string}
+  | Anonymous
   | Voting
   | Manager
 
@@ -103,7 +104,7 @@ let sign ?protocol ({kind; signer; _} as t) client =
         in
         Tezos_crypto.Signature.Custom
           (Bytes.cat (Bytes.of_string prefix) (Bytes.of_string chain_id))
-    | Voting | Manager -> Tezos_crypto.Signature.Generic_operation
+    | Anonymous | Voting | Manager -> Tezos_crypto.Signature.Generic_operation
   in
   let* hex = hex ?protocol t client in
   let bytes = Hex.to_bytes hex in
@@ -292,6 +293,83 @@ module Consensus = struct
 
   let inject ?request ?force ?branch ?chain_id ?error ~signer consensus client =
     let* op = operation ?branch ?chain_id ~signer consensus client in
+    inject ?request ?force ?error op client
+end
+
+module Anonymous = struct
+  type anonymous =
+    | Double_attestation_evidence of {
+        use_legacy_name : bool;
+        op1 : t * Tezos_crypto.Signature.t;
+        op2 : t * Tezos_crypto.Signature.t;
+      }
+    | Double_preattestation_evidence of {
+        use_legacy_name : bool;
+        op1 : t * Tezos_crypto.Signature.t;
+        op2 : t * Tezos_crypto.Signature.t;
+      }
+
+  let double_attestation_evidence ~use_legacy_name op1 op2 =
+    Double_attestation_evidence {use_legacy_name; op1; op2}
+
+  let double_preattestation_evidence ~use_legacy_name op1 op2 =
+    Double_preattestation_evidence {use_legacy_name; op1; op2}
+
+  type t = anonymous
+
+  let get_name = function true -> "endorsement" | false -> "attestation"
+
+  let get_branch_contents_and_sign (op, sign) =
+    let op_json = JSON.annotate ~origin:"" @@ json op in
+    let branch = JSON.(op_json |-> "branch") in
+    let contents = JSON.(op_json |-> "contents" |> as_list |> List.hd) in
+    let sign = Tezos_crypto.Signature.to_b58check sign in
+    (branch, contents, sign)
+
+  let get_op op =
+    let branch, contents, signature = get_branch_contents_and_sign op in
+    `O
+      [
+        ("branch", JSON.unannotate branch);
+        ("operations", JSON.unannotate contents);
+        ("signature", `String signature);
+      ]
+
+  let json = function
+    | Double_attestation_evidence {use_legacy_name; op1; op2} ->
+        let op1 = get_op op1 in
+        let op2 = get_op op2 in
+        `O
+          [
+            ( "kind",
+              Ezjsonm.string
+                (sf "double_%s_evidence" (get_name use_legacy_name)) );
+            ("op1", op1);
+            ("op2", op2);
+          ]
+    | Double_preattestation_evidence {use_legacy_name; op1; op2} ->
+        let op1 = get_op op1 in
+        let op2 = get_op op2 in
+        `O
+          [
+            ( "kind",
+              Ezjsonm.string
+                (sf "double_pre%s_evidence" (get_name use_legacy_name)) );
+            ("op1", op1);
+            ("op2", op2);
+          ]
+
+  let operation ?branch ~signer anonymous_operation client =
+    let json = `A [json anonymous_operation] in
+    let* branch =
+      match branch with
+      | None -> get_branch ~offset:0 client
+      | Some branch -> return branch
+    in
+    return (make ~branch ~signer ~kind:Anonymous json)
+
+  let inject ?request ?force ?branch ?error ~signer consensus client =
+    let* op = operation ?branch ~signer consensus client in
     inject ?request ?force ?error op client
 end
 

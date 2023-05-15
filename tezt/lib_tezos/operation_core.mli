@@ -71,6 +71,7 @@ type consensus_kind =
    this module. *)
 type kind =
   | Consensus of {kind : consensus_kind; chain_id : string}
+  | Anonymous
   | Voting
   | Manager
 
@@ -234,6 +235,49 @@ module Consensus : sig
     ?force:bool ->
     ?branch:string ->
     ?chain_id:string ->
+    ?error:rex ->
+    signer:Account.key ->
+    t ->
+    Client.t ->
+    [`OpHash of string] Lwt.t
+end
+
+module Anonymous : sig
+  (** A representation of an anonymous operation. *)
+  type t
+
+  (* [double_attestation_evidence ~use_legacy_name op1 op2] craft a double
+     attestation evidence operation with op1 and op2. Both operation should be
+     attestation. If [use_legacy_name] is set, the [kind] field in the crafted
+     JSON will be "endorsement" instead "attestation" *)
+  val double_attestation_evidence :
+    use_legacy_name:bool ->
+    operation * Tezos_crypto.Signature.t ->
+    operation * Tezos_crypto.Signature.t ->
+    t
+
+  (* [double_preattestation_evidence ~use_legacy_name op1 op2] craft a double
+     attestation evidence operation with op1 and op2. Both operation should be
+     preattestation. If [use_legacy_name] is set, the [kind] field in the
+     crafted JSON will be "preendorsement" instead "preattestation" *)
+  val double_preattestation_evidence :
+    use_legacy_name:bool ->
+    operation * Tezos_crypto.Signature.t ->
+    operation * Tezos_crypto.Signature.t ->
+    t
+
+  (** [operation] constructs an operation from an anonymous operation. the
+      [client] is used to fetch the branch and the [chain_id]. *)
+  val operation :
+    ?branch:string -> signer:Account.key -> t -> Client.t -> operation Lwt.t
+
+  (** A wrapper for {!val:inject} with anonymous operations. The client is used
+      to get all the data that was not provided if it can be recovered via RPCs.
+      Mainly those are the [branch] and the [chain_id]. *)
+  val inject :
+    ?request:[`Inject | `Notify] ->
+    ?force:bool ->
+    ?branch:string ->
     ?error:rex ->
     signer:Account.key ->
     t ->
