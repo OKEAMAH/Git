@@ -61,7 +61,9 @@ type t
 
 type operation := t
 
-type consensus_kind = Endorsement | Preendorsement
+type consensus_kind =
+  | Attestation of {use_legacy_name : bool}
+  | Preattestation of {use_legacy_name : bool}
 
 (** The kind is necessary because it determines the watermark of an
    operation which is necessary for signing an operation. This type
@@ -188,17 +190,29 @@ module Consensus : sig
      booleans indicates whether the data is deemed available. *)
   val dal_attestation : attestation:bool array -> level:int -> t
 
-  (* [preendorsement ~level ~round ~slot ~block_payload_hash] craft a
-     preendorsement operation at [level] on the [round] with the [slot] and
-     [block_payload_hash]. *)
-  val preendorsement :
-    slot:int -> level:int -> round:int -> block_payload_hash:string -> t
+  (* [preattestation ~use_legacy_name ~level ~round ~slot ~block_payload_hash]
+     craft a preattestation operation at [level] on the [round] with the [slot]
+     and [block_payload_hash]. If [use_legacy_name] is set, the [kind] field in
+     the crafted JSON will be "preendorsement" instead of "preattestation" *)
+  val preattestation :
+    use_legacy_name:bool ->
+    slot:int ->
+    level:int ->
+    round:int ->
+    block_payload_hash:string ->
+    t
 
-  (* [endorsement ~level ~round ~slot ~block_payload_hash] craft an
-     endorsement operation at [level] on the [round] with the [slot] and
-     [block_payload_hash]. *)
-  val endorsement :
-    slot:int -> level:int -> round:int -> block_payload_hash:string -> t
+  (* [attestation ~use_legacy_name ~level ~round ~slot ~block_payload_hash]
+     craft an attestation operation at [level] on the [round] with the [slot]
+     and [block_payload_hash]. If [use_legacy_name] is set, the [kind] field in
+     the crafted JSON will be "endorsement" instead "attestation" *)
+  val attestation :
+    use_legacy_name:bool ->
+    slot:int ->
+    level:int ->
+    round:int ->
+    block_payload_hash:string ->
+    t
 
   (** [operation] constructs an operation from a consensus
      operation. the [client] is used to fetch the branch and the
