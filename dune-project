@@ -3,6 +3,7 @@
 (cram enable)
 (using ctypes 0.1)
 (package (name internal-devtools))
+(package (name octez-1mtps-orchestrator))
 (package (name octez-accuser-PtMumbai))
 (package (name octez-accuser-PtNairob))
 (package (name octez-accuser-alpha))

@@ -36,7 +36,7 @@ type t = {
 
 let next_name = ref 1
 
-let path = "./octez-dac-client"
+let default_path = "./octez-dac-client"
 
 let fresh_name () =
   let index = !next_name in
@@ -45,7 +45,8 @@ let fresh_name () =
 
 let () = Test.declare_reset_function @@ fun () -> next_name := 1
 
-let create ?runner ?name ?base_dir ?(color = Log.Color.FG.green) dac_node =
+let create ?runner ?name ?(path = default_path) ?base_dir
+    ?(color = Log.Color.FG.green) dac_node =
   let name = match name with None -> fresh_name () | Some name -> name in
   let base_dir =
     match base_dir with None -> Temp.dir ?runner name | Some dir -> dir
@@ -96,7 +97,7 @@ let send_payload_from_hex ?hooks ?threshold dac_client hex_payload =
   let coordinator_endpoint =
     Printf.sprintf
       "%s:%d"
-      (Dac_node.rpc_host dac_client.dac_node)
+      (Dac_node.external_rpc_host dac_client.dac_node)
       (Dac_node.rpc_port dac_client.dac_node)
   in
   let threshold_arg =

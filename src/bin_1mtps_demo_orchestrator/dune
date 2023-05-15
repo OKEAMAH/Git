@@ -1,0 +1,15 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name main)
+ (public_name octez-1mtps-orchestrator)
+ (package octez-1mtps-orchestrator)
+ (libraries
+  tezt
+  tezt-tezos
+  tezos-client-alpha
+  tezos-protocol-alpha)
+ (flags
+  (:standard)
+  -open Tezos_protocol_alpha))

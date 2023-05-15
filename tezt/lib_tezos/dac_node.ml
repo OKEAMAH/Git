@@ -95,6 +95,9 @@ let mode dac_node =
 
 let rpc_host dac_node = dac_node.persistent_state.rpc_host
 
+let external_rpc_host dac_node =
+  Runner.address @@ Node.runner dac_node.persistent_state.node
+
 let rpc_port dac_node = dac_node.persistent_state.rpc_port
 
 let layer1_addr dac_node = Node.rpc_host dac_node.persistent_state.node
@@ -109,7 +112,8 @@ let data_dir dac_node = dac_node.persistent_state.data_dir
 let reveal_data_dir dac_node = dac_node.persistent_state.reveal_data_dir
 
 let spawn_command dac_node =
-  Process.spawn ~name:dac_node.name ~color:dac_node.color dac_node.path
+  let runner = Node.runner dac_node.persistent_state.node in
+  Process.spawn ?runner ~name:dac_node.name ~color:dac_node.color dac_node.path
 
 let spawn_config_init dac_node =
   let arg_command =
@@ -254,13 +258,14 @@ let handle_event dac_node {name; value = _; timestamp = _} =
 let create ?(path = Constant.dac_node) ?name ?color ?data_dir ?event_pipe
     ?(rpc_host = "127.0.0.1") ?rpc_port ?reveal_data_dir ~mode ~node ~client ()
     =
+  let runner = Node.runner node in
   let name = match name with None -> fresh_name () | Some name -> name in
   let data_dir =
-    match data_dir with None -> Temp.dir name | Some dir -> dir
+    match data_dir with None -> Temp.dir ?runner name | Some dir -> dir
   in
   let reveal_data_dir =
     match reveal_data_dir with
-    | None -> Temp.dir (name ^ "preimages")
+    | None -> Temp.dir ?runner (name ^ "preimages")
     | Some dir -> dir
   in
   let rpc_port =
@@ -270,6 +275,7 @@ let create ?(path = Constant.dac_node) ?name ?color ?data_dir ?event_pipe
     create
       ~path
       ~name
+      ?runner
       ?color
       ?event_pipe
       {
@@ -395,7 +401,8 @@ let do_runlike_command ?env node arguments =
     unit
   in
   let arguments = make_arguments node @ arguments in
-  run ?env node {ready = false} arguments ~on_terminate
+  let runner = Node.runner node.persistent_state.node in
+  run ?runner ?env node {ready = false} arguments ~on_terminate
 
 let run ?env node =
   do_runlike_command

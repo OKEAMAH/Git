@@ -199,6 +199,8 @@
 
 # Ignoring unreleased package internal-devtools.
 
+# Ignoring unreleased package octez-1mtps-orchestrator.
+
 opam:octez-accuser-PtMumbai:
   extends:
     - .opam_template

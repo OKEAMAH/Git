@@ -112,6 +112,9 @@ val mode : t -> string
 (** Get the RPC host given as [--rpc-addr] to an dac node. *)
 val rpc_host : t -> string
 
+(** Get the RPC host given as [--rpc-addr] to an dac node. *)
+val external_rpc_host : t -> string
+
 (** Get the RPC port given as [--rpc-addr] to an dac node. *)
 val rpc_port : t -> int
 

@@ -29,6 +29,9 @@ COPY --chown=tezos:nogroup vendors tezos/vendors
 ENV GIT_SHORTREF=${GIT_SHORTREF}
 ENV GIT_DATETIME=${GIT_DATETIME}
 ENV GIT_VERSION=${GIT_VERSION}
+RUN opam repo add default https://opam.ocaml.org --yes
+RUN opam update --yes
+RUN opam install irmin.3.7.0 irmin-pack.3.7.0 --yes
 RUN opam exec -- make -C tezos release OCTEZ_EXECUTABLES="${OCTEZ_EXECUTABLES}" OCTEZ_BIN_DIR=bin
 # Gather the parameters of all active protocols in 1 place
 RUN while read -r protocol; do \
