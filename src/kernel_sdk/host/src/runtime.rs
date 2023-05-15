@@ -287,7 +287,7 @@ where
     ) -> Result<Vec<u8>, RuntimeError> {
         use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 
-        check_path_has_value(self, path)?;
+        //check_path_has_value(self, path)?;
 
         let mut buffer = Vec::with_capacity(max_bytes);
 

@@ -7319,6 +7319,23 @@ let _octez_scoru_wasm_debugger =
         octez_webassembly_interpreter_extra |> open_;
       ]
 
+let _tezt_1mtps_orchestrator =
+  public_exe
+    "octez-1mtps-orchestrator"
+    ~internal_name:"main"
+    ~path:"src/bin_1mtps_demo_orchestrator"
+    ~synopsis:"Run a bunch of nodes locally"
+    ~bisect_ppx:No
+    ~static:false
+    ~deps:
+      [
+        tezt_lib;
+        tezt_tezos;
+        Protocol.(client_exn alpha);
+        Protocol.(main alpha) |> open_;
+      ]
+    ~cram:true
+
 let _evm_proxy =
   public_exe
     (sf "octez-evm-proxy-server")

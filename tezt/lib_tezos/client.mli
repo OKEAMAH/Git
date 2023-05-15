@@ -32,6 +32,7 @@ module Time = Tezos_base.Time.System
 type endpoint =
   | Node of Node.t  (** A full-fledged node *)
   | Proxy_server of Proxy_server.t  (** A proxy server *)
+  | Address of (Node.t * string * int)  (**Internal address*)
 
 (** Values that can be passed to the client's [--media-type] argument *)
 type media_type = Json | Binary | Any
