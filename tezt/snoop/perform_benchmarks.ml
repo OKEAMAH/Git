@@ -35,9 +35,6 @@ let default_bench_num = 300
 let default_nsamples = 500
 
 (* ------------------------------------------------------------------------- *)
-(* Helpers *)
-
-let rm_config ~file = Lwt_unix.unlink file
 
 (* Some benchmarks require specific parameters.
    This is a bit brittle, as benchmark names fluctuate... *)
@@ -119,19 +116,21 @@ let with_config_dir snoop bench_name json_opt f =
   | Some json ->
       Log.info "Benchmark %s: using patched configuration" bench_name ;
       let config_file = bench_config (bench_name_to_file_name bench_name) in
-      Files.write_json json config_file ;
-      let* () =
-        Snoop.write_config
-          ~benchmark:bench_name
-          ~bench_config:config_file
-          ~file:meta_config_file
-          snoop
-      in
-      let* () = f (Some meta_config_file) in
-      rm_config ~file:config_file
+      let* () = Files.write_json json config_file in
+      Lwt.finalize
+        (fun () ->
+          let* () =
+            Snoop.write_config
+              ~benchmark:bench_name
+              ~bench_config:config_file
+              ~file:meta_config_file
+              snoop
+          in
+          f (Some meta_config_file))
+        (fun () -> Files.unlink_if_present config_file)
 
 let perform_benchmarks (patches : patch_rule list) snoop benchmarks =
-  Lwt_list.iter_s
+  Lwt_list.map_s
     (fun bench_name ->
       (* Check if target file exists, if it does we skip. *)
       let bench_file_name = bench_name_to_file_name bench_name in
@@ -144,7 +143,7 @@ let perform_benchmarks (patches : patch_rule list) snoop benchmarks =
           "Benchmark %s: target %s already exists, skipping"
           bench_name
           save_to ;
-        return ())
+        Lwt.return @@ fun () -> Lwt.return_unit)
       else
         let* bench_num, nsamples, config =
           let* patch, override = patch_benchmark_config ~patches ~bench_name in
@@ -159,6 +158,8 @@ let perform_benchmarks (patches : patch_rule list) snoop benchmarks =
           | Overriden_parameters {nsamples; bench_num} ->
               return (bench_num, nsamples, config)
         in
+
+        Lwt.return @@ fun () ->
         with_config_dir snoop bench_name config (fun config_file ->
             Snoop.benchmark
               ~bench_name
@@ -176,7 +177,7 @@ let perform_benchmarks (patches : patch_rule list) snoop benchmarks =
               snoop))
     benchmarks
 
-let perform_interpreter_benchmarks snoop proto =
+let perform_interpreter_benchmarks proto snoop =
   let patches =
     [
       ( rex "Concat_(bytes|string).*",
@@ -223,7 +224,7 @@ let create_config file =
     return (Patched_config json, No_parameter_override)
   else return (No_patch, No_parameter_override)
 
-let perform_typechecker_benchmarks snoop proto =
+let perform_typechecker_benchmarks proto snoop =
   let patches =
     [
       ( rex "(TYPECHECKING|UNPARSING)_CODE.*",
@@ -239,7 +240,7 @@ let perform_typechecker_benchmarks snoop proto =
   in
   perform_benchmarks patches snoop benches
 
-let perform_encoding_benchmarks snoop proto =
+let perform_encoding_benchmarks proto snoop =
   let patches =
     [
       ( rex "(ENCODING|DECODING)_MICHELINE.*",
@@ -263,7 +264,7 @@ let perform_cache_benchmarks snoop =
   let* benches = Snoop.(list_benchmarks ~mode:All ~tags:[Cache] snoop) in
   perform_benchmarks [] snoop benches
 
-let perform_tickets_benchmarks snoop proto =
+let perform_tickets_benchmarks proto snoop =
   let* benches =
     Snoop.(list_benchmarks ~mode:All ~tags:[Tickets; Proto proto] snoop)
   in
@@ -273,23 +274,23 @@ let perform_misc_benchmarks snoop =
   let* benches = Snoop.(list_benchmarks ~mode:All ~tags:[Misc] snoop) in
   perform_benchmarks [] snoop benches
 
-let perform_carbonated_map_benchmarks snoop proto =
+let perform_carbonated_map_benchmarks proto snoop =
   let* benches =
     Snoop.(list_benchmarks ~mode:All ~tags:[Carbonated_map; Proto proto] snoop)
   in
   perform_benchmarks [] snoop benches
 
-let perform_big_map_benchmarks snoop proto =
+let perform_big_map_benchmarks proto snoop =
   let* benches =
     Snoop.(list_benchmarks ~mode:All ~tags:[Big_map; Proto proto] snoop)
   in
   perform_benchmarks [] snoop benches
 
-let perform_skip_list_benchmarks snoop _proto =
+let perform_skip_list_benchmarks snoop =
   let* benches = Snoop.(list_benchmarks ~mode:All ~tags:[Skip_list] snoop) in
   perform_benchmarks [] snoop benches
 
-let perform_sc_rollup_benchmarks snoop proto =
+let perform_sc_rollup_benchmarks proto snoop =
   let* benches =
     Snoop.(list_benchmarks ~mode:All ~tags:[Sc_rollup; Proto proto] snoop)
   in
@@ -298,14 +299,34 @@ let perform_sc_rollup_benchmarks snoop proto =
 let main protocol =
   Log.info "Entering Perform_inference.main" ;
   let snoop = Snoop.create () in
-  let* () = perform_misc_benchmarks snoop in
-  let* () = perform_interpreter_benchmarks snoop protocol in
-  let* () = perform_typechecker_benchmarks snoop protocol in
-  let* () = perform_tickets_benchmarks snoop protocol in
-  let* () = perform_global_constants_benchmarks snoop in
-  let* () = perform_cache_benchmarks snoop in
-  let* () = perform_encoding_benchmarks snoop protocol in
-  let* () = perform_big_map_benchmarks snoop protocol in
-  let* () = perform_skip_list_benchmarks snoop protocol in
-  let* () = perform_carbonated_map_benchmarks snoop protocol in
-  perform_sc_rollup_benchmarks snoop protocol
+  let affinity = Lwt_unix.get_affinity () |> List.length  in
+  let affinity = match (affinity / 2) with n when n <= 1 -> 1 | n -> n - 1 in
+  let tasks =
+    Lwt_stream.map_list_s (fun x -> x snoop)
+    @@ Lwt_stream.of_list
+         [
+           perform_misc_benchmarks;
+           perform_interpreter_benchmarks protocol;
+           perform_typechecker_benchmarks protocol;
+           perform_tickets_benchmarks protocol;
+           perform_global_constants_benchmarks;
+           perform_cache_benchmarks;
+           perform_encoding_benchmarks protocol;
+           perform_big_map_benchmarks protocol;
+           perform_skip_list_benchmarks;
+           perform_carbonated_map_benchmarks protocol;
+           perform_sc_rollup_benchmarks protocol;
+         ]
+  in
+  let* () =
+    Lwt_stream.iter_n
+      ~max_concurrency:affinity
+      (fun x ->
+        Lwt.catch x (fun exn ->
+            let () =
+              Log.error "Error occured: %s\n%!" @@ Printexc.to_string exn
+            in
+            Lwt.return_unit))
+      tasks
+  in
+  Tezt.Process.clean_up ~timeout:30. ()
