@@ -30,6 +30,41 @@ open Tezos_micheline
 open Client_proto_contracts
 open Client_keys
 
+let build_mock_counter_update ?fee ?gas_limit ?storage_limit ~value () =
+  let operation = Mock_counter_update {value} in
+  Injection.prepare_manager_operation
+    ~fee:(Limit.of_option fee)
+    ~gas_limit:(Limit.of_option gas_limit)
+    ~storage_limit:(Limit.of_option storage_limit)
+    operation
+
+let mock_counter_update (cctxt : #full) ~chain ~block ?confirmations ?dry_run
+    ?verbose_signing ?simulation ?fee mgr ~src_pk ~src_sk ~value ~fee_parameter
+    =
+  let open Lwt_result_syntax in
+  let op = build_mock_counter_update ?fee ~value () in
+  let annotated_op = Annotated_manager_operation.Single_manager op in
+  Injection.inject_manager_operation
+    cctxt
+    ~chain
+    ~block
+    ?confirmations
+    ?dry_run
+    ?verbose_signing
+    ?simulation
+    ~source:mgr
+    ~fee:(Limit.of_option fee)
+    ~storage_limit:Limit.unknown
+    ~gas_limit:Limit.unknown
+    ~src_pk
+    ~src_sk
+    ~fee_parameter
+    annotated_op
+  >>=? fun (oph, _, op, result) ->
+  match Apply_results.pack_contents_list op result with
+  | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
+      return (oph, op, result)
+
 let get_balance (rpc : #rpc_context) ~chain ~block contract =
   Alpha_services.Contract.balance rpc (chain, block) contract
 

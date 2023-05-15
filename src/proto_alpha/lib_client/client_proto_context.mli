@@ -26,6 +26,23 @@
 open Protocol
 open Alpha_context
 
+(** Calls {!Tezos_protocol_alpha.Protocol.Alpha_context.Mock_counter.update_value}. *)
+val mock_counter_update :
+  #Protocol_client_context.full ->
+  chain:Shell_services.chain ->
+  block:Shell_services.block ->
+  ?confirmations:int ->
+  ?dry_run:bool ->
+  ?verbose_signing:bool ->
+  ?simulation:bool ->
+  ?fee:Tez.tez ->
+  public_key_hash ->
+  src_pk:public_key ->
+  src_sk:Client_keys.sk_uri ->
+  value:Z.t ->
+  fee_parameter:Injection.fee_parameter ->
+  Kind.mock_counter_update Kind.manager Injection.result tzresult Lwt.t
+
 (** Calls {!Tezos_protocol_alpha.Protocol.Contract_services.list}. *)
 val list_contract_labels :
   #Protocol_client_context.full ->

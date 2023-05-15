@@ -1084,6 +1084,52 @@ let commands_rw () =
   [
     command
       ~group
+      ~desc:"Update value of mock counter"
+      (args5
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         fee_parameter_args)
+      (prefixes ["update"; "mock"; "counter"]
+      @@ prefix "with"
+      @@ param
+           ~name:"value"
+           ~desc:"value to increase mock counter with"
+           int_parameter
+      @@ Contract_alias.destination_param ~name:"src" ~desc:"source contract"
+      @@ stop)
+      (fun (fee, dry_run, verbose_signing, simulation, fee_parameter)
+           (value : int)
+           contract
+           (cctxt : Protocol_client_context.full) ->
+        let open Lwt_result_syntax in
+        let* source =
+          match contract with
+          | Originated contract ->
+              Managed_contract.get_contract_manager cctxt contract
+          | Implicit mgr -> return mgr
+        in
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
+        let* (_ : _ Injection.result) =
+          mock_counter_update
+            cctxt
+            ~chain:cctxt#chain
+            ~block:cctxt#block
+            ?confirmations:cctxt#confirmations
+            ~dry_run
+            ~verbose_signing
+            ~simulation
+            ~fee_parameter
+            ?fee
+            source
+            ~src_pk
+            ~src_sk
+            ~value:(Z.of_int value)
+        in
+        return_unit);
+    command
+      ~group
       ~desc:"Set the delegate of a contract."
       (args5
          fee_arg
