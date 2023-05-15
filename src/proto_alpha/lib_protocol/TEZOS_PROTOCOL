@@ -195,6 +195,8 @@
 
         "Destination_storage",
 
+        "Mock_counter_storage",
+
         "Alpha_context",
         "Script_string",
         "Script_timestamp",

@@ -207,6 +207,7 @@
   Sc_rollup_refutation_storage
   Zk_rollup_errors
   Destination_storage
+  Mock_counter_storage
   Alpha_context
   Script_string
   Script_timestamp
@@ -488,6 +489,7 @@
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
   destination_storage.ml destination_storage.mli
+  mock_counter_storage.ml mock_counter_storage.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli
@@ -770,6 +772,7 @@
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
   destination_storage.ml destination_storage.mli
+  mock_counter_storage.ml mock_counter_storage.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli
@@ -1036,6 +1039,7 @@
   sc_rollup_refutation_storage.ml sc_rollup_refutation_storage.mli
   zk_rollup_errors.ml
   destination_storage.ml destination_storage.mli
+  mock_counter_storage.ml mock_counter_storage.mli
   alpha_context.ml alpha_context.mli
   script_string.ml script_string.mli
   script_timestamp.ml script_timestamp.mli

@@ -5389,3 +5389,10 @@ module Fees : sig
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
 end
+
+(** This module re-exports definitions from {!Mock_counter_storage}. *)
+module Mock_counter : sig
+  val update_value : context -> Z.t -> (context * int) tzresult Lwt.t
+
+  val get_value : context -> (context * Z.t) tzresult Lwt.t
+end

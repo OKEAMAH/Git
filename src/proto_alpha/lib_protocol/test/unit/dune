@@ -68,6 +68,7 @@
   test_tez_repr
   test_time_repr
   test_zk_rollup_storage
+  test_mock_counter_storage
   test_sc_rollup_inbox_legacy
   test_sc_rollup_wasm
   test_local_contexts

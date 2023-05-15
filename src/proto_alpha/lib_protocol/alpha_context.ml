@@ -668,3 +668,7 @@ module Cache = Cache_repr
 module Internal_for_tests = struct
   let to_raw x = x
 end
+
+module Mock_counter = struct
+  include Mock_counter_storage
+end
