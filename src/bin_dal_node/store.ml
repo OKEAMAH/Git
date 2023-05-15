@@ -476,24 +476,35 @@ module Legacy = struct
     let* profiles = list node_store.store path in
     return @@ List.map_e (fun (p, _) -> decode_profile p) profiles
 
-  let add_profile ~number_of_slots node_store profile =
-    let open Lwt_syntax in
-    let path = Path.Profile.profile profile in
-    let* () =
-      set
-        ~msg:(Printf.sprintf "New profile added: %s" (Path.to_string path))
-        node_store.store
-        path
-        ""
+  let add_profile =
+    let check_slots_range x y =
+      fail_unless
+        (x <= y)
+        (error_of_fmt "Invalid slot bound. We should have %d <= %d" x y)
     in
-    match profile with
-    | Attestor pkh ->
-        List.iter
-          (fun slot_index ->
-            Join Gossipsub.{slot_index; pkh}
-            |> Gossipsub.Worker.(app_input node_store.gs_worker))
-          Utils.Infix.(0 -- (number_of_slots - 1)) ;
-        return_unit
+    fun ~number_of_slots node_store profile ->
+      let open Lwt_result_syntax in
+      let path = Path.Profile.profile profile in
+      let*! () =
+        set
+          ~msg:(Printf.sprintf "New profile added: %s" (Path.to_string path))
+          node_store.store
+          path
+          ""
+      in
+      match profile with
+      | Attestor {pkh; from_slot; to_slot} ->
+          let* () = check_slots_range 0 from_slot in
+          let* () = check_slots_range from_slot to_slot in
+          let* () = check_slots_range to_slot (number_of_slots - 1) in
+          (* add checks *)
+          let () = assert false in
+          List.iter
+            (fun slot_index ->
+              Join Gossipsub.{slot_index; pkh}
+              |> Gossipsub.Worker.(app_input node_store.gs_worker))
+            Utils.Infix.(from_slot -- to_slot) ;
+          return_unit
 
   (** Filter the given list of indices according to the values of the given slot
       level and index. *)

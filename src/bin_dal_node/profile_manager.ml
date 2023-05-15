@@ -28,9 +28,7 @@
    so that we can cache them *)
 
 let add_profile ~number_of_slots node_store profile =
-  let open Lwt_result_syntax in
-  let*! () = Store.Legacy.add_profile ~number_of_slots node_store profile in
-  return_unit
+  Store.Legacy.add_profile ~number_of_slots node_store profile
 
 let get_profiles node_store = Store.Legacy.get_profiles node_store
 

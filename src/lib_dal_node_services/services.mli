@@ -87,7 +87,12 @@ module Types : sig
 
   (** DAL node can track one or many profiles that correspond to various modes
       that the DAL node would operate in *)
-  type profile = Attestor of Tezos_crypto.Signature.public_key_hash
+  type profile =
+    | Attestor of {
+        pkh : Tezos_crypto.Signature.public_key_hash;
+        from_slot : int;
+        to_slot : int;
+      }
 
   (** Information associated to a slot header in the RPC services of the DAL
       node. *)

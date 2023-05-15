@@ -63,7 +63,12 @@ module Types = struct
     status : header_status;
   }
 
-  type profile = Attestor of Tezos_crypto.Signature.public_key_hash
+  type profile =
+    | Attestor of {
+        pkh : Tezos_crypto.Signature.public_key_hash;
+        from_slot : int;
+        to_slot : int;
+      }
 
   type with_proof = {with_proof : bool}
 
