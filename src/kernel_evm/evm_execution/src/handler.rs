@@ -1843,4 +1843,63 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn revert_can_return_a_value() {
+        let mut mock_runtime = MockHost::default();
+        let block = BlockConstants::first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let config = Config::london();
+        let gas_limit = 1000_u64;
+        let caller = H160::from_low_u64_be(523_u64);
+
+        let mut handler = EvmHandler::new(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            caller,
+            &block,
+            &config,
+            &precompiles,
+            gas_limit,
+        );
+
+        let address = H160::from_low_u64_be(210_u64);
+        let input = vec![0_u8];
+        let gas_limit: Option<u64> = None;
+        let is_static = false;
+        let transaction_context = TransactionContext::new(caller, address, U256::zero());
+        let transfer: Option<Transfer> = None;
+
+        let code: Vec<u8> = vec![
+            Opcode::PUSH1.as_u8(),
+            1u8,
+            Opcode::PUSH1.as_u8(),
+            0u8,
+            Opcode::REVERT.as_u8(),
+        ];
+
+        set_code(&mut handler, &address, code);
+        set_balance(&mut handler, &caller, U256::from(99_u32));
+
+        let result = handler.execute_call(
+            address,
+            transfer,
+            input,
+            gas_limit,
+            is_static,
+            transaction_context,
+        );
+
+        match result {
+            Ok(result) => {
+                let expected_result =
+                    (ExitReason::Revert(ExitRevert::Reverted), None, vec![0]);
+                assert_eq!(expected_result, result);
+            }
+            Err(err) => {
+                panic!("Unexpected error: {:?}", err);
+            }
+        }
+    }
 }
