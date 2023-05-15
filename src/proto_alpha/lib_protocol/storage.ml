@@ -409,6 +409,53 @@ module Contract = struct
       (Tez_repr)
 end
 
+module Mock_counter :
+  Non_iterable_indexed_carbonated_data_storage
+    with type t := Raw_context.t
+     and type key = int64
+     and type value = Z.t =
+  Make_indexed_carbonated_data_storage
+    (Make_subcontext (Registered) (Raw_context)
+       (struct
+         let name = ["mock_counter"]
+       end))
+       (Make_index (struct
+         type t = int64
+
+         let rpc_arg =
+           let construct = Int64.to_string in
+           let destruct hash =
+             Int64.of_string_opt hash
+             |> Result.of_option ~error:"Cannot parse mock counter"
+           in
+           RPC_arg.make
+             ~descr:"The position of a mock counter"
+             ~name:"mock_counter_position"
+             ~construct
+             ~destruct
+             ()
+
+         let encoding =
+           Data_encoding.def
+             "mock_counter_position"
+             ~title:"Mock counter position"
+             ~description:"The position of a mock counter"
+             Data_encoding.int64
+
+         let compare = Compare.Int64.compare
+
+         let path_length = 1
+
+         let to_path c l = Int64.to_string c :: l
+
+         let of_path = function [c] -> Int64.of_string_opt c | _ -> None
+       end))
+    (struct
+      type t = Z.t
+
+      let encoding = Data_encoding.z
+    end)
+
 module type NEXT = sig
   type id
 

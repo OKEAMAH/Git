@@ -231,6 +231,12 @@ module Contract : sig
        and type t := Raw_context.t
 end
 
+module Mock_counter :
+  Non_iterable_indexed_carbonated_data_storage
+    with type t := Raw_context.t
+     and type key = int64
+     and type value = Z.t
+
 module Big_map : sig
   type id = Lazy_storage_kind.Big_map.Id.t
 
