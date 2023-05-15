@@ -65,13 +65,15 @@ let cleanup model_name =
       inference_root // dep_graph model_name;
     ]
   in
-  List.iter Files.unlink_if_present files
+  Lwt_list.iter_s Files.unlink_if_present files
 
-let rec retry ?max_tries closure =
-  Lwt.catch closure (fun e ->
+let rec retry ?max_tries model_name closure =
+  Lwt.catch closure (fun _ ->
       match max_tries with
-      | None -> retry closure
-      | Some k -> if k <= 0 then raise e else retry ~max_tries:(k - 1) closure)
+      | None -> retry model_name closure
+      | Some k ->
+          if k <= 0 then cleanup model_name
+          else retry ~max_tries:(k - 1) model_name closure)
 
 let main () =
   Log.info "Entering Perform_inference.main" ;
@@ -82,12 +84,12 @@ let main () =
       let saved_model_name =
         String.split_on_char '/' model_name |> String.concat "__"
       in
-      cleanup saved_model_name ;
+      let* () = cleanup saved_model_name in
       (* Python bindings tend to crash, hence the need to retry and resume inference midway,
          multiple times. When python bindings are removed, this needs to be removed as well
          See https://gitlab.com/tezos/tezos/-/issues/1523
       *)
-      retry ~max_tries:5 (fun () ->
+      retry ~max_tries:5 model_name (fun () ->
           Snoop.infer_parameters
             ~model_name
             ~workload_data:Files.(working_dir // benchmark_results_dir)

@@ -38,7 +38,7 @@ let cleanup model_name =
       inference_root // cost_function_ml true model_name;
     ]
   in
-  List.iter Files.unlink_if_present files
+  Lwt_list.iter_s Files.unlink_if_present files
 
 let solution_fn inference_root model_name =
   Files.(inference_root // solution_bin model_name)
@@ -66,7 +66,7 @@ let main () =
       let saved_model_name =
         String.split_on_char '/' model_name |> String.concat "__"
       in
-      cleanup saved_model_name ;
+      let* () = cleanup saved_model_name in
       let solution_fn = solution_fn inference_root saved_model_name in
       let* no_fp =
         Snoop.generate_code_using_solution ~solution:solution_fn snoop

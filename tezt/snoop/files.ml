@@ -56,6 +56,8 @@ let michelson_code_file = "code.mich"
 
 let michelson_data_file = "data.mich"
 
+let errors_file = "errors.json"
+
 let benchmark_results_dir = "benchmark_results"
 
 let workload name = sf "%s.workload" name
@@ -78,13 +80,20 @@ let dep_graph model_name = sf "graph_%s.dot" model_name
 type dirclass = Does_not_exist | Exists_and_is_not_a_dir | Exists
 
 let classify_dirname dir =
-  match Unix.stat dir with
-  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Does_not_exist
-  | {Unix.st_kind; _} ->
-      if st_kind = Unix.S_DIR then Exists else Exists_and_is_not_a_dir
+  Lwt.catch
+    (fun () ->
+      let* stat = Lwt_unix.stat dir in
+      match stat with
+      | {Unix.st_kind; _} ->
+          if st_kind = Unix.S_DIR then Lwt.return Exists
+          else Lwt.return Exists_and_is_not_a_dir)
+    (function
+      | Unix.Unix_error (Unix.ENOENT, _, _) -> Lwt.return Does_not_exist
+      | exn -> Lwt.fail exn)
 
 let create_dir dir =
-  match classify_dirname dir with
+  let* dirname = classify_dirname dir in
+  match dirname with
   | Does_not_exist -> Lwt_unix.mkdir dir 0o700
   | Exists -> Lwt.return_unit
   | Exists_and_is_not_a_dir ->
@@ -110,22 +119,26 @@ let copy =
     close fd_out
 
 let fold_dir f dirname =
-  let open Unix in
-  let d = opendir dirname in
+  let* d = Lwt_unix.opendir dirname in
   let rec loop acc =
-    match readdir d with
-    | entry -> loop (f entry acc)
-    | exception End_of_file ->
-        closedir d ;
-        List.rev acc
+    Lwt.catch
+      (fun () ->
+        let* entry = Lwt_unix.readdir d in
+        loop (f entry acc))
+      (function
+        | End_of_file ->
+            let* () = Lwt_unix.closedir d in
+            Lwt.return @@ List.rev acc
+        | exn -> Lwt.fail exn)
   in
+
   loop []
 
 let is_directory_nonempty dir =
   let* st = Lwt_unix.stat dir in
   match st.Unix.st_kind with
   | S_DIR -> (
-      let entries = fold_dir (fun x acc -> x :: acc) dir in
+      let* entries = fold_dir (fun x acc -> x :: acc) dir in
       let entries =
         List.filter
           (fun entry ->
@@ -138,22 +151,34 @@ let is_directory_nonempty dir =
       Test.fail "Expected %s to be a directory" dir
 
 let read_json name =
-  let ic = Stdlib.open_in name in
-  let json = Ezjsonm.from_channel ic in
-  Stdlib.close_in ic ;
-  json
+  Lwt_io.with_file ~mode:Lwt_io.Input name (fun oc ->
+      let* contents = Lwt_io.read oc in
+      let contents = Ezjsonm.from_string contents in
+      Lwt.return contents)
 
-let write_json json file =
-  Base.with_open_out file (fun oc ->
-      Ezjsonm.value_to_channel oc json ;
-      flush oc)
+let write_json ?minify json file =
+  Lwt_io.with_file ~mode:Lwt_io.Output file (fun oc ->
+      let contents = Ezjsonm.value_to_string ?minify json in
+      let* () = Lwt_io.write oc contents in
+      Lwt_io.flush oc)
 
 let unlink_if_present file =
-  match Unix.stat file with
-  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> ()
-  | {Unix.st_kind; _} -> (
-      match st_kind with
-      | Unix.S_REG -> (
-          Log.info "Removing existing %s" file ;
-          try Unix.unlink file with Unix.Unix_error (Unix.ENOENT, _, _) -> ())
-      | _ -> Test.fail "%s is not a regular file" file)
+  Lwt.try_bind
+    (fun () -> Lwt_unix.stat file)
+    (function
+      | {Unix.st_kind; _} -> (
+          match st_kind with
+          | Unix.S_REG ->
+              Log.info "Removing existing %s" file ;
+              let* () =
+                Lwt.catch
+                  (fun () -> Lwt_unix.unlink file)
+                  (function
+                    | Unix.Unix_error (Unix.ENOENT, _, _) -> Lwt.return_unit
+                    | exn -> Lwt.fail exn)
+              in
+              Lwt.return_unit
+          | _ -> Test.fail "%s is not a regular file" file))
+    (function
+      | Unix.Unix_error (Unix.ENOENT, _, _) -> Lwt.return_unit
+      | exn -> Lwt.fail exn)

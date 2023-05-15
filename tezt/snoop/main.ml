@@ -29,7 +29,17 @@
 let run proto =
   Lwt_main.run
     (let* () = Prepare_data.main proto in
-     let* () = Perform_benchmarks.main proto in
+     let* () =
+       Lwt.finalize
+         (fun () -> Perform_benchmarks.main proto)
+         (fun () ->
+           Format.printf "running %b \n" @@ Error_log.non_empty () ;
+           if Error_log.non_empty () then
+             let errors = Error_log.to_file () in
+             let destination = Files.(working_dir // errors_file) in
+             Files.write_json ~minify:false errors destination
+           else Lwt.return_unit)
+     in
      let* () = Perform_inference.main () in
      Perform_codegen.main ())
 

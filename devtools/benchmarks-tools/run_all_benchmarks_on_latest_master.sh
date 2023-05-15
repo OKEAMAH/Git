@@ -85,6 +85,11 @@ dated_log "End of benchmarks run"
 # Move results from tezos to their dedicated directory.
 cd ..
 mv tezos/_snoop/*_results "$SNOOP_RESULT_DIR"/
+if [ -f "tezos/_snoop/error.json" ] 
+then 
+ mv tezos/_snoop/error.json "$SNOOP_RESULT_DIR"/
+fi
+
 chmod +rx "$SNOOP_RESULT_DIR"/*_results
 
 # Save results in the cloud.

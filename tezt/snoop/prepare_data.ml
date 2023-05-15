@@ -121,48 +121,58 @@ let call_if_no_file ~file ~if_present ~if_absent =
   else if_absent ()
 
 let prepare_sapling_data snoop cfg protocol =
-  let file = Files.(working_dir // sapling_data_dir // sapling_txs_file 0) in
-  let* () =
-    call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
-        Snoop.sapling_generate
-          ~protocol
-          ~tx_count:1
-          ~max_inputs:0
-          ~max_outputs:0
-          ~file
-          snoop)
+  let file =
+    ( Files.(working_dir // sapling_data_dir // sapling_txs_file 0),
+      fun file ->
+        call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
+            Snoop.sapling_generate
+              ~protocol
+              ~tx_count:1
+              ~max_inputs:0
+              ~max_outputs:0
+              ~file
+              snoop) )
   in
-  let file = Files.(working_dir // sapling_data_dir // sapling_txs_file 1) in
-  let* () =
-    call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
-        Snoop.sapling_generate
-          ~protocol
-          ~tx_count:cfg.sapling_tx_count
-          ~max_inputs:0
-          ~max_outputs:60
-          ~file
-          snoop)
+  let file1 =
+    ( Files.(working_dir // sapling_data_dir // sapling_txs_file 1),
+      fun file ->
+        call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
+            Snoop.sapling_generate
+              ~protocol
+              ~tx_count:cfg.sapling_tx_count
+              ~max_inputs:0
+              ~max_outputs:60
+              ~file
+              snoop) )
   in
-  let file = Files.(working_dir // sapling_data_dir // sapling_txs_file 2) in
-  let* () =
-    call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
-        Snoop.sapling_generate
-          ~protocol
-          ~tx_count:cfg.sapling_tx_count
-          ~max_inputs:60
-          ~max_outputs:0
-          ~file
-          snoop)
+  let file2 =
+    ( Files.(working_dir // sapling_data_dir // sapling_txs_file 2),
+      fun file ->
+        call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
+            Snoop.sapling_generate
+              ~protocol
+              ~tx_count:cfg.sapling_tx_count
+              ~max_inputs:60
+              ~max_outputs:0
+              ~file
+              snoop) )
   in
-  let file = Files.(working_dir // sapling_data_dir // sapling_txs_file 3) in
-  call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
-      Snoop.sapling_generate
-        ~protocol
-        ~tx_count:cfg.sapling_tx_count
-        ~max_inputs:60
-        ~max_outputs:60
-        ~file
-        snoop)
+  let file3 =
+    ( Files.(working_dir // sapling_data_dir // sapling_txs_file 3),
+      fun file ->
+        call_if_no_file ~file ~if_present:Lwt.return_unit ~if_absent:(fun () ->
+            Snoop.sapling_generate
+              ~protocol
+              ~tx_count:cfg.sapling_tx_count
+              ~max_inputs:60
+              ~max_outputs:60
+              ~file
+              snoop) )
+  in
+  let stream = Lwt_stream.of_list [file; file1; file2; file3] in
+  let affinity = Lwt_unix.get_affinity () |> List.length in
+  let affinity = match affinity with 1 -> 1 | n -> n - 1 in
+  Lwt_stream.iter_n ~max_concurrency:affinity (fun (file, f) -> f file) stream
 
 let concat snoop protocol tmp_files target =
   Log.info "Copying %s to %s" (List.hd tmp_files) target ;
@@ -180,7 +190,7 @@ let concat snoop protocol tmp_files target =
 (* We spawn several michelson generation processes in parallel for speed
    and concat the results *)
 
-let prepare_michelson kind snoop cfg protocol =
+let prepare_michelson affinity kind snoop cfg protocol =
   let target, terms_count =
     match kind with
     | Snoop.Code ->
@@ -198,37 +208,54 @@ let prepare_michelson kind snoop cfg protocol =
             Files.(working_dir // michelson_data_dir // sf "generated.tmp.%d" n))
           indices
       in
+      let stream = Lwt_stream.of_list tmp_files in
       Lwt.finalize
         (fun () ->
-          let* processes =
-            Lwt_list.filter_map_s
+          let* () =
+            Lwt_stream.iter_n
+              ~max_concurrency:affinity
               (fun file ->
-                call_if_no_file
-                  ~file
-                  ~if_present:Lwt.return_none
-                  ~if_absent:(fun () ->
-                    Lwt.return_some
-                    @@ Snoop.spawn_michelson_generate
-                         ~protocol
-                         ~terms_count
-                         ~kind
-                         ~file
-                         snoop))
-              tmp_files
+                let* process =
+                  call_if_no_file
+                    ~file
+                    ~if_present:Lwt.return_none
+                    ~if_absent:(fun () ->
+                      Lwt.return_some
+                      @@ Snoop.spawn_michelson_generate
+                           ~protocol
+                           ~terms_count
+                           ~kind
+                           ~file
+                           snoop)
+                in
+                match process with
+                | Some pr -> Process.check pr
+                | None -> Lwt.return_unit)
+              stream
           in
-          let* () = Lwt_list.iter_s Process.check processes in
           concat snoop protocol tmp_files target)
-        (fun () -> Lwt_list.iter_s Lwt_unix.unlink tmp_files))
+        (fun () -> Lwt_list.iter_s Files.unlink_if_present tmp_files))
 
 let prepare_michelson_data snoop cfg protocol =
-  let* () = prepare_michelson Snoop.Code snoop cfg protocol in
-  prepare_michelson Snoop.Data snoop cfg protocol
+  let affinity = Lwt_unix.get_affinity () |> List.length in
+  match affinity with
+  | n when n <= 2 ->
+      let* () = prepare_michelson n Snoop.Code snoop cfg protocol in
+      prepare_michelson n Snoop.Data snoop cfg protocol
+  | n when n mod 2 = 0 ->
+      let affinity = (n - 1) / 2 in
+      let* () = prepare_michelson affinity Snoop.Code snoop cfg protocol in
+      prepare_michelson affinity Snoop.Data snoop cfg protocol
+  | n ->
+      let affinity = n / 2 in
+      let* () = prepare_michelson affinity Snoop.Code snoop cfg protocol in
+      prepare_michelson affinity Snoop.Data snoop cfg protocol
 
 let load_cfg () =
   let file = Files.(working_dir // data_generation_cfg_file) in
   let* exists = Lwt_unix.file_exists file in
   if exists then (
-    let json = Files.read_json file in
+    let* json = Files.read_json file in
     let cfg = cfg_of_json json in
     Log.info "Loaded data generation parameters" ;
     return cfg)

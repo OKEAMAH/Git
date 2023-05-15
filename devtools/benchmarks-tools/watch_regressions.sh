@@ -128,9 +128,11 @@ rm -rf "$OUTPUT_CSV_DIR"
 mkdir -p "$OUTPUT_CSV_DIR"
 
 ALERT_FILE="$OCTEZ_DIR/alerts"
+ERROR_FILE="$OCTEZ_DIR/errors.json"
 SELECTION_FILE="$OCTEZ_DIR/selected.csv"
 
 rm -f "$ALERT_FILE"
+rm -f "$ERROR_FILE"
 rm -f "$SELECTION_FILE"
 
 # All the directories before FIRST_DIR will be ignored.
@@ -253,6 +255,16 @@ done
 cat "$OUTPUT_CSV_DIR"/all_*.csv > "$OUTPUT_CSV_DIR"/all.csv
 cat "$OUTPUT_CSV_DIR"/reference_*.csv > "$OUTPUT_CSV_DIR"/reference.csv
 cat "$OUTPUT_CSV_DIR"/previous_*.csv > "$OUTPUT_CSV_DIR"/previous.csv
+
+if [ -f "$REF_DIR/$ERROR_FILE" ]
+then 
+cp "$REF_DIR/$ERROR_FILE" $ERROR_FILE
+fi
+
+if [ -s "$ERROR_FILE" ]
+then 
+slack_send_file "$ERROR_FILE" "Some errors occured during benchmarks runs :sadparrot:"
+fi
 
 if [ -s "$ALERT_FILE" ]
 then
