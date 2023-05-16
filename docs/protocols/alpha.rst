@@ -80,3 +80,10 @@ Internal
 
 - Move notion of Smart rollup address in the shell to make it common to all protocols,
   and expose it in the environment. (MR :gl:`!8562`)
+
+- Add ``mock_counter`` to the context, with two commands to get and update its content, 
+  only the later one consuming gas (MR :gl:`!8759`)
+
+- Michelson: add two new instructions ``GET_COUNTER`` and ``SET_COUNTER`` to push the current 
+  value of the mock counter, or to set the current value of the mock counter, respectively.
+  (MR :gl:`!8759`)
