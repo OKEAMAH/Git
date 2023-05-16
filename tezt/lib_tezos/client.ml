@@ -3967,3 +3967,22 @@ let get_timestamp ?endpoint ?block ?seconds client =
     |> Process.check_and_read_stdout
   in
   return (String.trim output)
+
+let mock_counter_update ~src value client =
+  spawn_command
+    client
+    [
+      "--wait";
+      "none";
+      "update";
+      "mock";
+      "counter";
+      "with";
+      Int.to_string value;
+      src;
+    ]
+  |> Process.check
+
+let mock_counter_get client =
+  spawn_command client ["get"; "mock"; "counter"]
+  |> Process.check_and_read_stdout

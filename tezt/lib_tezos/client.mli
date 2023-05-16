@@ -2845,3 +2845,7 @@ val get_timestamp :
 (** Same as [get_timestamp], but do not wait for the process to exit. *)
 val spawn_get_timestamp :
   ?endpoint:endpoint -> ?block:string -> ?seconds:bool -> t -> Process.t
+
+val mock_counter_update : src:string -> int -> t -> unit Lwt.t
+
+val mock_counter_get : t -> string Lwt.t

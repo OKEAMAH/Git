@@ -143,6 +143,7 @@ let register_protocol_tests_that_use_supports_correctly () =
   Light.register ~protocols ;
   Liquidity_baking_per_block_votes.register ~protocols ;
   Manager_operations.register ~protocols ;
+  Mock_counter.register ~protocols ;
   Mockup.register ~protocols ;
   Mockup.register_global_constants ~protocols ;
   Monitor_operations.register ~protocols ;

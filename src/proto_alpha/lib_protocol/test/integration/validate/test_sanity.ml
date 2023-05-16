@@ -87,7 +87,7 @@ let ensure_kind infos kind =
           | Sc_rollup_add_messages _ | Sc_rollup_refute _ | Sc_rollup_timeout _
           | Sc_rollup_execute_outbox_message _ | Sc_rollup_recover_bond _
           | Dal_publish_slot_header _ | Zk_rollup_origination _
-          | Zk_rollup_publish _ | Zk_rollup_update _ ),
+          | Zk_rollup_publish _ | Zk_rollup_update _ | Mock_counter_update _ ),
           _ ) ->
           assert false)
   | Single _ -> assert false
