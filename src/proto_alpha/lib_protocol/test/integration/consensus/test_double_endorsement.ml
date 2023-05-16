@@ -74,7 +74,8 @@ let double_preendorsement ctxt ?(correct_order = true) op1 op2 =
     delegate and exposed by a double_endorsement operation. Also verify
     that punishment is operated. *)
 let test_valid_double_endorsement_evidence () =
-  Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, _contracts) ->
+  Context.init2 ~consensus_threshold:0 ~reward_weights:Context.zero_rewards ()
+  >>=? fun (genesis, _contracts) ->
   block_fork genesis >>=? fun (blk_1, blk_2) ->
   (* from blk_1 we bake blk_a and from blk_2 we bake blk_b so that
      the same delegate endorses blk_a and blk_b and these 2 form
@@ -181,7 +182,8 @@ let test_different_slots () =
 (** Say a delegate double-endorses twice and say the 2 evidences are timely
    included. Then the delegate can no longer bake. *)
 let test_two_double_endorsement_evidences_leadsto_no_bake () =
-  Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, _contracts) ->
+  Context.init2 ~consensus_threshold:0 ~reward_weights:Context.zero_rewards ()
+  >>=? fun (genesis, _contracts) ->
   block_fork genesis >>=? fun (blk_1, blk_2) ->
   Block.bake blk_1 >>=? fun blk_a ->
   Block.bake blk_2 >>=? fun blk_b ->
