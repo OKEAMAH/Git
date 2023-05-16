@@ -1,0 +1,3 @@
+{ parameter (or (int %set) (int %update)) ;
+  storage unit ;
+  code { UNPAIR ; IF_LEFT { SET_COUNTER } { GET_COUNTER ; ADD ; SET_COUNTER } ; NIL operation ; PAIR } }

@@ -4638,6 +4638,7 @@ end = struct
           [
             ("test_annotations", true);
             ("test_block_time_instructions", true);
+            ("test_mock_counter_instructions", N.(number >= 018));
             ("test_contract_event", true);
             ("test_global_constants_storage", true);
             ("test_interpretation", true);

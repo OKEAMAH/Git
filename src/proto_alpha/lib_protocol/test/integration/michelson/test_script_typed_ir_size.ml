@@ -904,6 +904,8 @@ let check_kinstr_size () =
       Kinstr ("ISet_delegate", ISet_delegate (loc, halt ()));
       Kinstr ("INow", INow (loc, halt ()));
       Kinstr ("IMin_block_time", IMin_block_time (loc, halt ()));
+      Kinstr ("IGet_counter", IGet_counter (loc, halt ()));
+      Kinstr ("ISet_counter", ISet_counter (loc, halt ()));
       Kinstr ("IBalance", IBalance (loc, halt ()));
       Kinstr ("ILevel", ILevel (loc, halt ()));
       Kinstr ("ICheck_signature", ICheck_signature (loc, halt ()));
