@@ -93,6 +93,11 @@ module type S = sig
 
   (** [txpool ()] returns the pending and queued transactions. *)
   val txpool : unit -> Ethereum_types.txpool tzresult Lwt.t
+
+  (** [trace_transaction tx_hash] returns the full trace of the [tx_hash]
+      application. *)
+  val trace_transaction :
+    Ethereum_types.hash -> Ethereum_types.trace_transaction tzresult Lwt.t
 end
 
 (** Instantiate a module of type {!S} that communicates with a rollup

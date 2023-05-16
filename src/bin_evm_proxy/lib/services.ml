@@ -141,6 +141,9 @@ let dispatch_input
         return (Txpool_content.Output (Ok txpool))
     | Web3_clientVersion.Input _ ->
         return (Web3_clientVersion.Output (Ok client_version))
+    | Debug_trace_transaction.Input (Some tx_hash) ->
+        let* trace = Rollup_node_rpc.trace_transaction tx_hash in
+        return (Debug_trace_transaction.Output (Ok trace))
     | _ -> Error_monad.failwith "Unsupported method\n%!"
   in
   return (output, id)

@@ -215,3 +215,6 @@ let txpool _ =
           (NonceMap.add Z.zero tx_queued NonceMap.empty)
           AddressMap.empty;
     }
+
+let trace_transaction _ =
+  return {gas = 1000L; return_value = ""; struct_logs = []}

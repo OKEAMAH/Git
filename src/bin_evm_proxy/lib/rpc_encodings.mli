@@ -261,3 +261,8 @@ module Txpool_content :
 
 module Web3_clientVersion :
   METHOD with type m_input = unit and type m_output = string
+
+module Debug_trace_transaction :
+  METHOD
+    with type m_input = Ethereum_types.hash
+     and type m_output = Ethereum_types.trace_transaction

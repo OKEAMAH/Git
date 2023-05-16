@@ -608,6 +608,16 @@ module RPC = struct
 
   let txpool _ () =
     Lwt.return_ok {pending = AddressMap.empty; queued = AddressMap.empty}
+
+  let trace_transaction base (Hash tx_hash) =
+    let open Lwt_result_syntax in
+    let+ (Qty gas) =
+      inspect_durable_and_decode
+        base
+        (Durable_storage_path.Transaction_object.gas_used tx_hash)
+        decode_number
+    in
+    {gas = Z.to_int64 gas; return_value = ""; struct_logs = []}
 end
 
 module type S = sig
@@ -638,6 +648,9 @@ module type S = sig
     Ethereum_types.transaction_object option tzresult Lwt.t
 
   val txpool : unit -> Ethereum_types.txpool tzresult Lwt.t
+
+  val trace_transaction :
+    Ethereum_types.hash -> Ethereum_types.trace_transaction tzresult Lwt.t
 end
 
 module Make (Base : sig
@@ -664,4 +677,6 @@ end) : S = struct
   let transaction_object = RPC.transaction_object Base.base
 
   let txpool = RPC.txpool Base.base
+
+  let trace_transaction = RPC.trace_transaction Base.base
 end

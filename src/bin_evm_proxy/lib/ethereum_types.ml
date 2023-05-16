@@ -671,3 +671,19 @@ let txpool_encoding =
     (fun {pending; queued} -> (pending, queued))
     (fun (pending, queued) -> {pending; queued})
     (obj2 (req "pending" field_encoding) (req "queued" field_encoding))
+
+type trace_transaction = {
+  gas : int64;
+  return_value : string;
+  struct_logs : string list; (* Unit list cannot be encoded safely *)
+}
+
+let trace_transaction_encoding =
+  let open Data_encoding in
+  conv
+    (fun {gas; return_value; struct_logs} -> (gas, return_value, struct_logs))
+    (fun (gas, return_value, struct_logs) -> {gas; return_value; struct_logs})
+    (obj3
+       (req "gas" int64)
+       (req "returnValue" string)
+       (req "structLogs" (list string)))

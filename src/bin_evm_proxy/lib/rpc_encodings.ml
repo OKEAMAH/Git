@@ -431,6 +431,30 @@ module Web3_clientVersion = MethodMaker (struct
 
   let method_ = "web3_clientVersion"
 end)
+
+module Debug_trace_transaction = MethodMaker (struct
+  type input = Ethereum_types.hash
+
+  type output = Ethereum_types.trace_transaction
+
+  let method_ = "debug_traceTransaction"
+
+  (* This encoding is a bit lax: it only expect the hash of the transaction to
+     trace and discards the rest. This is not useful yet since we don't support
+     tracing, this MR is simply to be consistent with indexers. *)
+  let input_encoding =
+    let open Data_encoding in
+    conv
+      (fun h -> `A [`String (Ethereum_types.hash_to_string h)])
+      (fun json ->
+        match json with
+        | `A (`String s :: _) -> Ethereum_types.hash_of_string s
+        | _ -> Stdlib.failwith ("Invalid input for " ^ method_))
+      json
+
+  let output_encoding = Ethereum_types.trace_transaction_encoding
+end)
+
 let methods : (module METHOD) list =
   [
     (module Network_id);
@@ -451,6 +475,7 @@ let methods : (module METHOD) list =
     (module Get_estimate_gas);
     (module Txpool_content);
     (module Web3_clientVersion);
+    (module Debug_trace_transaction);
   ]
 
 module Input = struct
