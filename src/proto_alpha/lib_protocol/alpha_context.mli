@@ -577,6 +577,7 @@ module Script : sig
     | I_GE
     | I_GET
     | I_GET_AND_UPDATE
+    | I_GET_COUNTER
     | I_GT
     | I_HASH_KEY
     | I_IF
@@ -614,6 +615,7 @@ module Script : sig
     | I_SENDER
     | I_SELF
     | I_SELF_ADDRESS
+    | I_SET_COUNTER
     | I_SLICE
     | I_STEPS_TO_QUOTA
     | I_SUB

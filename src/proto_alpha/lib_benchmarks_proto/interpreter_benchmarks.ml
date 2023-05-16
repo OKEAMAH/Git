@@ -2553,6 +2553,20 @@ module Registration_section = struct
 
     let () =
       simple_benchmark
+        ~name:Interpreter_workload.N_IGet_counter
+        ~stack_type:bot
+        ~kinstr:(IGet_counter (dummy_loc, halt))
+        ()
+
+    let () =
+      simple_benchmark
+        ~name:Interpreter_workload.N_ISet_counter
+        ~stack_type:(int @$ bot)
+        ~kinstr:(ISet_counter (dummy_loc, halt))
+        ()
+
+    let () =
+      simple_benchmark
         ~name:Interpreter_workload.N_ILevel
         ~stack_type:(unit @$ bot)
         ~kinstr:(ILevel (dummy_loc, halt))

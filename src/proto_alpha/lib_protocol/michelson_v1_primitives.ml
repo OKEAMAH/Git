@@ -85,6 +85,7 @@ type prim =
   | I_GE
   | I_GET
   | I_GET_AND_UPDATE
+  | I_GET_COUNTER
   | I_GT
   | I_HASH_KEY
   | I_IF
@@ -122,6 +123,7 @@ type prim =
   | I_SENDER
   | I_SELF
   | I_SELF_ADDRESS
+  | I_SET_COUNTER
   | I_SLICE
   | I_STEPS_TO_QUOTA
   | I_SUB
@@ -213,14 +215,14 @@ let namespace = function
   | I_COMPARE | I_CONCAT | I_CONS | I_CONTRACT | I_CREATE_ACCOUNT
   | I_CREATE_CONTRACT | I_DIG | I_DIP | I_DROP | I_DUG | I_DUP | I_VIEW | I_EDIV
   | I_EMPTY_BIG_MAP | I_EMPTY_MAP | I_EMPTY_SET | I_EQ | I_EXEC | I_FAILWITH
-  | I_GE | I_GET | I_GET_AND_UPDATE | I_GT | I_HASH_KEY | I_IF | I_IF_CONS
-  | I_IF_LEFT | I_IF_NONE | I_IMPLICIT_ACCOUNT | I_INT | I_ISNAT | I_ITER
-  | I_JOIN_TICKETS | I_KECCAK | I_LAMBDA | I_LAMBDA_REC | I_LE | I_LEFT
+  | I_GE | I_GET | I_GET_AND_UPDATE | I_GET_COUNTER | I_GT | I_HASH_KEY | I_IF
+  | I_IF_CONS | I_IF_LEFT | I_IF_NONE | I_IMPLICIT_ACCOUNT | I_INT | I_ISNAT
+  | I_ITER | I_JOIN_TICKETS | I_KECCAK | I_LAMBDA | I_LAMBDA_REC | I_LE | I_LEFT
   | I_LEVEL | I_LOOP | I_LOOP_LEFT | I_LSL | I_LSR | I_LT | I_MAP | I_MEM
   | I_MUL | I_NEG | I_NEQ | I_NEVER | I_NIL | I_NONE | I_NOT | I_NOW
   | I_MIN_BLOCK_TIME | I_OR | I_PACK | I_PAIR | I_PAIRING_CHECK | I_PUSH
   | I_READ_TICKET | I_RENAME | I_RIGHT | I_SAPLING_EMPTY_STATE
-  | I_SAPLING_VERIFY_UPDATE | I_SELF | I_SELF_ADDRESS | I_SENDER
+  | I_SAPLING_VERIFY_UPDATE | I_SELF | I_SELF_ADDRESS | I_SENDER | I_SET_COUNTER
   | I_SET_DELEGATE | I_SHA256 | I_SHA512 | I_SHA3 | I_SIZE | I_SLICE | I_SOME
   | I_SOURCE | I_SPLIT_TICKET | I_STEPS_TO_QUOTA | I_SUB | I_SUB_MUTEZ | I_SWAP
   | I_TICKET | I_TICKET_DEPRECATED | I_TOTAL_VOTING_POWER | I_TRANSFER_TOKENS
@@ -297,6 +299,7 @@ let string_of_prim = function
   | I_GE -> "GE"
   | I_GET -> "GET"
   | I_GET_AND_UPDATE -> "GET_AND_UPDATE"
+  | I_GET_COUNTER -> "GET_COUNTER"
   | I_GT -> "GT"
   | I_HASH_KEY -> "HASH_KEY"
   | I_IF -> "IF"
@@ -333,6 +336,7 @@ let string_of_prim = function
   | I_SENDER -> "SENDER"
   | I_SELF -> "SELF"
   | I_SELF_ADDRESS -> "SELF_ADDRESS"
+  | I_SET_COUNTER -> "SET_COUNTER"
   | I_SLICE -> "SLICE"
   | I_STEPS_TO_QUOTA -> "STEPS_TO_QUOTA"
   | I_SUB -> "SUB"
@@ -457,6 +461,7 @@ let prim_of_string = function
   | "GE" -> ok I_GE
   | "GET" -> ok I_GET
   | "GET_AND_UPDATE" -> ok I_GET_AND_UPDATE
+  | "GET_COUNTER" -> ok I_GET_COUNTER
   | "GT" -> ok I_GT
   | "HASH_KEY" -> ok I_HASH_KEY
   | "IF" -> ok I_IF
@@ -497,6 +502,7 @@ let prim_of_string = function
   | "SENDER" -> ok I_SENDER
   | "SELF" -> ok I_SELF
   | "SELF_ADDRESS" -> ok I_SELF_ADDRESS
+  | "SET_COUNTER" -> ok I_SET_COUNTER
   | "SLICE" -> ok I_SLICE
   | "STEPS_TO_QUOTA" -> ok I_STEPS_TO_QUOTA
   | "SUB" -> ok I_SUB
@@ -784,7 +790,11 @@ let prim_encoding =
          ("LAMBDA_REC", I_LAMBDA_REC);
          ("TICKET", I_TICKET);
          ("BYTES", I_BYTES);
-         ("NAT", I_NAT)
+         ("NAT", I_NAT);
+         (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)
+         (* Alpha_018 addition *)
+         ("GET_COUNTER", I_GET_COUNTER);
+         ("SET_COUNTER", I_SET_COUNTER)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *);
        ]

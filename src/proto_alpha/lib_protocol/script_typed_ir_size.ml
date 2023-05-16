@@ -587,6 +587,8 @@ and kinstr_size :
     | ISet_delegate (loc, k) -> ret_succ_adding accu (base1 loc k)
     | INow (loc, k) -> ret_succ_adding accu (base1 loc k)
     | IMin_block_time (loc, k) -> ret_succ_adding accu (base1 loc k)
+    | IGet_counter (loc, k) -> ret_succ_adding accu (base1 loc k)
+    | ISet_counter (loc, k) -> ret_succ_adding accu (base1 loc k)
     | IBalance (loc, k) -> ret_succ_adding accu (base1 loc k)
     | ILevel (loc, k) -> ret_succ_adding accu (base1 loc k)
     | ICheck_signature (loc, k) -> ret_succ_adding accu (base1 loc k)

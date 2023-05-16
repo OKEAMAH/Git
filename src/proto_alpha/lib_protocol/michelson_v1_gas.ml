@@ -432,6 +432,10 @@ module Cost_of = struct
 
     let min_block_time = atomic_step_cost cost_N_IMin_block_time
 
+    let get_counter = atomic_step_cost cost_N_IGet_counter
+
+    let set_counter = atomic_step_cost cost_N_ISet_counter
+
     let source = atomic_step_cost cost_N_ISource
 
     let sender = atomic_step_cost cost_N_ISender

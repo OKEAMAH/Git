@@ -1284,6 +1284,27 @@ module Raw = struct
             in
             let new_stack = (accu, stack) in
             (step [@ocaml.tailcall]) g gas k ks min_block_time new_stack
+        | IGet_counter (_, k) ->
+            let ctxt = update_context gas ctxt in
+            let open Lwt_result_syntax in
+            let* ctxt, z_counter = Alpha_context.Mock_counter.get_value ctxt in
+            let int_counter = Script_int.of_int64 @@ Z.to_int64 z_counter in
+            let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+            let new_stack = (accu, stack) in
+            (step [@ocaml.tailcall]) (ctxt, sc) gas k ks int_counter new_stack
+        | ISet_counter (_, k) ->
+            let x = accu and y, stack = stack in
+            let value = Script_int.to_zint x in
+            let ctxt = update_context gas ctxt in
+            let open Lwt_result_syntax in
+            let* ctxt, z_counter = Alpha_context.Mock_counter.get_value ctxt in
+            let* ctxt, _ =
+              Alpha_context.Mock_counter.update_value
+                ctxt
+                (Z.sub value z_counter)
+            in
+            let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+            (step [@ocaml.tailcall]) (ctxt, sc) gas k ks y stack
         | ICheck_signature (_, k) ->
             let key = accu and signature, (message, stack) = stack in
             let res = Script_signature.check key signature message in

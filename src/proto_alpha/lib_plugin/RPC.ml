@@ -865,6 +865,8 @@ module Scripts = struct
       | ISet_delegate _ -> pp_print_string fmt "SET_DELEGATE"
       | INow _ -> pp_print_string fmt "NOW"
       | IMin_block_time _ -> pp_print_string fmt "MIN_BLOCK_TIME"
+      | IGet_counter _ -> pp_print_string fmt "GET_COUNTER"
+      | ISet_counter _ -> pp_print_string fmt "SET_COUNTER"
       | IBalance _ -> pp_print_string fmt "BALANCE"
       | ILevel _ -> pp_print_string fmt "LEVEL"
       | ICheck_signature _ -> pp_print_string fmt "CHECK_SIGNATURE"

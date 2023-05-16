@@ -175,6 +175,8 @@ type instruction_name =
   | N_INow
   | N_IMin_block_time
   (* other *)
+  | N_IGet_counter
+  | N_ISet_counter
   | N_IBalance
   | N_ILevel
   | N_IView
@@ -377,6 +379,8 @@ let string_of_instruction_name : instruction_name -> string =
   | N_ISet_delegate -> "N_ISet_delegate"
   | N_INow -> "N_INow"
   | N_IMin_block_time -> "N_IMin_block_time"
+  | N_IGet_counter -> "N_IGet_counter"
+  | N_ISet_counter -> "N_ISet_counter"
   | N_IBalance -> "N_IBalance"
   | N_ICheck_signature_ed25519 -> "N_ICheck_signature_ed25519"
   | N_ICheck_signature_secp256k1 -> "N_ICheck_signature_secp256k1"
@@ -603,6 +607,8 @@ let all_instructions =
     N_ISet_delegate;
     N_INow;
     N_IMin_block_time;
+    N_IGet_counter;
+    N_ISet_counter;
     N_IBalance;
     N_ICheck_signature_ed25519;
     N_ICheck_signature_secp256k1;
@@ -1015,6 +1021,10 @@ module Instructions = struct
   let now = ir_sized_step N_INow nullary
 
   let min_block_time = ir_sized_step N_IMin_block_time nullary
+
+  let get_counter = ir_sized_step N_IGet_counter nullary
+
+  let set_counter = ir_sized_step N_ISet_counter nullary
 
   let balance = ir_sized_step N_IBalance nullary
 
@@ -1514,6 +1524,8 @@ let extract_ir_sized_step :
       let log_time = Z.log2 Z.(one + Script_int.to_zint time) |> Size.of_int in
       Instructions.open_chest log_time plaintext_size
   | IMin_block_time _, _ -> Instructions.min_block_time
+  | IGet_counter _, _ -> Instructions.get_counter
+  | ISet_counter _, _ -> Instructions.set_counter
   | IEmit _, _ -> Instructions.emit
   | ILsl_bytes (_, _), (x, (y, _)) ->
       let y =

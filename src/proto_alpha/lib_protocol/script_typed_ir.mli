@@ -902,6 +902,12 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | IMin_block_time :
       Script.location * (n num, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr
+  | IGet_counter :
+      Script.location * (z num, 'a * 'S, 'r, 'F) kinstr
+      -> ('a, 'S, 'r, 'F) kinstr
+  | ISet_counter :
+      Script.location * ('a, 'S, 'r, 'F) kinstr
+      -> (z num, 'a * 'S, 'r, 'F) kinstr
   | IBalance :
       Script.location * (Tez.t, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr

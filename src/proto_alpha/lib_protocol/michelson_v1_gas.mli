@@ -359,6 +359,10 @@ module Cost_of : sig
 
     val min_block_time : Gas.cost
 
+    val get_counter : Gas.cost
+
+    val set_counter : Gas.cost
+
     val hash_key : Signature.Public_key.t -> Gas.cost
 
     val source : Gas.cost

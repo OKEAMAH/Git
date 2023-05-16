@@ -410,9 +410,10 @@ let ir_model instr_or_cont =
       | N_IEmpty_set | N_IEmpty_map | N_IEmpty_big_map | N_IOr | N_IAnd | N_IXor
       | N_INot | N_IIf | N_ILoop | N_ILoop_left | N_IDip | N_IExec | N_IView
       | N_ILambda | N_IFailwith | N_IAddress | N_ICreate_contract
-      | N_ISet_delegate | N_INow | N_IMin_block_time | N_IBalance | N_IHash_key
-      | N_IUnpack | N_ISource | N_ISender | N_ISelf | N_IAmount | N_IChainId
-      | N_ILevel | N_ISelf_address | N_INever | N_IUnpair | N_IVoting_power
+      | N_ISet_delegate | N_INow | N_IMin_block_time | N_IGet_counter
+      | N_ISet_counter | N_IBalance | N_IHash_key | N_IUnpack | N_ISource
+      | N_ISender | N_ISelf | N_IAmount | N_IChainId | N_ILevel
+      | N_ISelf_address | N_INever | N_IUnpair | N_IVoting_power
       | N_ITotal_voting_power | N_IList_size | N_ISet_size | N_IMap_size
       | N_ISapling_empty_state ->
           const1_model name |> m

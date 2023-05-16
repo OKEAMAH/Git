@@ -4046,6 +4046,14 @@ and parse_instr :
         loc
         {apply = (fun k -> IMin_block_time (loc, k))}
         (Item_t (nat_t, stack))
+  | Prim (loc, I_GET_COUNTER, [], _), stack ->
+      typed
+        ctxt
+        loc
+        {apply = (fun k -> IGet_counter (loc, k))}
+        (Item_t (int_t, stack))
+  | Prim (loc, I_SET_COUNTER, [], _), Item_t (Int_t, rest) ->
+      typed ctxt loc {apply = (fun k -> ISet_counter (loc, k))} rest
   | Prim (loc, I_AMOUNT, [], annot), stack ->
       check_var_annot loc annot >>?= fun () ->
       let instr = {apply = (fun k -> IAmount (loc, k))} in

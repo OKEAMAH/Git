@@ -914,6 +914,12 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | IMin_block_time :
       Script.location * (n num, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr
+  | IGet_counter :
+      Script.location * (z num, 'a * 'S, 'r, 'F) kinstr
+      -> ('a, 'S, 'r, 'F) kinstr
+  | ISet_counter :
+      Script.location * ('a, 'S, 'r, 'F) kinstr
+      -> (z num, 'a * 'S, 'r, 'F) kinstr
   | IBalance :
       Script.location * (Tez.t, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr
@@ -1653,6 +1659,8 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | ISet_delegate (loc, _) -> loc
   | INow (loc, _) -> loc
   | IMin_block_time (loc, _) -> loc
+  | IGet_counter (loc, _) -> loc
+  | ISet_counter (loc, _) -> loc
   | IBalance (loc, _) -> loc
   | ILevel (loc, _) -> loc
   | ICheck_signature (loc, _) -> loc
@@ -2202,6 +2210,8 @@ let kinstr_traverse i init f =
     | ISet_delegate (_, k) -> (next [@ocaml.tailcall]) k
     | INow (_, k) -> (next [@ocaml.tailcall]) k
     | IMin_block_time (_, k) -> (next [@ocaml.tailcall]) k
+    | IGet_counter (_, k) -> (next [@ocaml.tailcall]) k
+    | ISet_counter (_, k) -> (next [@ocaml.tailcall]) k
     | IBalance (_, k) -> (next [@ocaml.tailcall]) k
     | ILevel (_, k) -> (next [@ocaml.tailcall]) k
     | ICheck_signature (_, k) -> (next [@ocaml.tailcall]) k

@@ -430,6 +430,12 @@ let cost_N_INow = S.safe_int 10
 (* model N_IMin_block_time *)
 let cost_N_IMin_block_time = S.safe_int 20
 
+(* model N_IGet_counter *)
+let cost_N_IGet_counter = S.safe_int 20
+
+(* model N_ISet_counter *)
+let cost_N_ISet_counter = S.safe_int 20
+
 (* model N_IOpen_chest *)
 (* 612000 + chest * 19 + time * 19050 *)
 let cost_N_IOpen_chest time chest =

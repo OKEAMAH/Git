@@ -1719,6 +1719,23 @@ module Stack_utils = struct
                continuation = k;
                reconstruct = (fun k -> IMin_block_time (loc, k));
              }
+    | IGet_counter (loc, k), s ->
+        let s = Item_t (int_t, s) in
+        ok
+        @@ Ex_split_kinstr
+             {
+               cont_init_stack = s;
+               continuation = k;
+               reconstruct = (fun k -> IGet_counter (loc, k));
+             }
+    | ISet_counter (loc, k), Item_t (_, s) ->
+        ok
+        @@ Ex_split_kinstr
+             {
+               cont_init_stack = s;
+               continuation = k;
+               reconstruct = (fun k -> ISet_counter (loc, k));
+             }
     | IEmit {loc; ty; unparsed_ty; tag; k}, Item_t (_, s) ->
         let s = Item_t (operation_t, s) in
         ok
