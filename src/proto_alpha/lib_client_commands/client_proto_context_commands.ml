@@ -724,7 +724,7 @@ let commands_ro () =
                    Current participation %.2f%%, necessary quorum %.2f%%@,\
                    Current in favor %a %s, needed supermajority %a %s@]"
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.yay)
+                  (Tez.of_mutez_exn ballots_info.ballots.yea)
                   Operation_result.tez_sym
                   Tez.pp
                   (Tez.of_mutez_exn ballots_info.ballots.nay)
@@ -735,7 +735,7 @@ let commands_ro () =
                   (Int32.to_float ballots_info.participation /. 100.)
                   (Int32.to_float ballots_info.current_quorum /. 100.)
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.yay)
+                  (Tez.of_mutez_exn ballots_info.ballots.yea)
                   Operation_result.tez_sym
                   Tez.pp
                   (Tez.of_mutez_exn ballots_info.supermajority)
@@ -2316,7 +2316,7 @@ let commands_rw () =
                 let open Lwt_result_syntax in
                 (* We should have [Vote.of_string]. *)
                 match String.lowercase_ascii s with
-                | "yay" | "yea" -> return Vote.Yay
+                | "yay" | "yea" -> return Vote.Yea
                 | "nay" -> return Vote.Nay
                 | "pass" -> return Vote.Pass
                 | s -> cctxt#error "Invalid ballot: '%s'" s))

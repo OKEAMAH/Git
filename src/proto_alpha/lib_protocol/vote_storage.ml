@@ -56,22 +56,22 @@ let clear_proposals ctxt =
   Storage.Vote.Proposals_count.clear ctxt >>= fun ctxt ->
   Storage.Vote.Proposals.clear ctxt
 
-type ballots = {yay : int64; nay : int64; pass : int64}
+type ballots = {yea : int64; nay : int64; pass : int64}
 
-let ballots_zero = {yay = 0L; nay = 0L; pass = 0L}
+let ballots_zero = {yea = 0L; nay = 0L; pass = 0L}
 
 let ballots_encoding =
   let open Data_encoding in
   conv
-    (fun {yay; nay; pass} -> (yay, nay, pass))
-    (fun (yay, nay, pass) -> {yay; nay; pass})
+    (fun {yea; nay; pass} -> (yea, nay, pass))
+    (fun (yea, nay, pass) -> {yea; nay; pass})
   @@ obj3 (req "yay" int64) (req "nay" int64) (req "pass" int64)
 
 let equal_ballots b1 b2 =
-  Int64.(equal b1.yay b2.yay && equal b1.nay b2.nay && equal b1.pass b2.pass)
+  Int64.(equal b1.yea b2.yea && equal b1.nay b2.nay && equal b1.pass b2.pass)
 
 let pp_ballots ppf b =
-  Format.fprintf ppf "{ yay = %Ld; nay = %Ld; pass = %Ld }" b.yay b.nay b.pass
+  Format.fprintf ppf "{ yay = %Ld; nay = %Ld; pass = %Ld }" b.yea b.nay b.pass
 
 let has_recorded_ballot = Storage.Vote.Ballots.mem
 
@@ -88,7 +88,7 @@ let get_ballots ctxt =
       Lwt.return
         ( ballots >|? fun ballots ->
           match ballot with
-          | Yay -> {ballots with yay = count ballots.yay}
+          | Yea -> {ballots with yea = count ballots.yea}
           | Nay -> {ballots with nay = count ballots.nay}
           | Pass -> {ballots with pass = count ballots.pass} ))
     ~init:(ok ballots_zero)

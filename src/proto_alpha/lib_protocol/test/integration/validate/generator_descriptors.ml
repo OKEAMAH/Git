@@ -251,7 +251,7 @@ let ballot_promotion_descriptor =
               let* ops =
                 List.map_es
                   (fun voter ->
-                    Op.ballot (B state.block) voter Protocol_hash.zero Vote.Yay)
+                    Op.ballot (B state.block) voter Protocol_hash.zero Vote.Yea)
                   state.voters
               in
               return (ops, state)

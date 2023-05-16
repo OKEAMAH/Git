@@ -556,7 +556,7 @@ let test_successful_vote num_delegates () =
   >>=? fun () ->
   (* unanimous vote: all delegates --active when p2 started-- vote *)
   List.map_es
-    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yay)
+    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yea)
     delegates_p2
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
@@ -566,7 +566,7 @@ let test_successful_vote num_delegates () =
     info1
     {
       voting_power = Some pow1;
-      current_ballot = Some Yay;
+      current_ballot = Some Yea;
       current_proposals = [];
       remaining_proposals = 0;
     }
@@ -585,10 +585,10 @@ let test_successful_vote num_delegates () =
   (* Allocate votes from weight of active delegates *)
   List.fold_left (fun acc v -> Int64.(add v acc)) 0L power_p2
   |> fun power_sum ->
-  (* # of Yay in ballots matches votes of the delegates *)
-  assert_ballots Vote.{yay = power_sum; nay = 0L; pass = 0L} b __LOC__
+  (* # of Yea in ballots matches votes of the delegates *)
+  assert_ballots Vote.{yea = power_sum; nay = 0L; pass = 0L} b __LOC__
   >>=? fun () ->
-  (* One Yay ballot per delegate *)
+  (* One Yea ballot per delegate *)
   (Context.Vote.get_ballot_list (B b) >>=? function
    | [] -> failwith "%s - Unexpected empty ballot list" __LOC__
    | l ->
@@ -597,7 +597,7 @@ let test_successful_vote num_delegates () =
            let pkh = Context.Contract.pkh delegate in
            match List.find_opt (fun (del, _) -> del = pkh) l with
            | None -> failwith "%s - Missing delegate" __LOC__
-           | Some (_, Vote.Yay) -> return_unit
+           | Some (_, Vote.Yea) -> return_unit
            | Some _ -> failwith "%s - Wrong ballot" __LOC__)
          delegates_p2)
   >>=? fun () ->
@@ -634,16 +634,16 @@ let test_successful_vote num_delegates () =
   >>=? fun () ->
   (* unanimous vote: all delegates --active when p4 started-- vote *)
   List.map_es
-    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yay)
+    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yea)
     delegates_p4
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
   List.fold_left (fun acc v -> Int64.(add v acc)) 0L power_p4
   |> fun power_sum ->
   (* # of Yays in ballots matches voting power of the delegate *)
-  assert_ballots Vote.{yay = power_sum; nay = 0L; pass = 0L} b __LOC__
+  assert_ballots Vote.{yea = power_sum; nay = 0L; pass = 0L} b __LOC__
   >>=? fun () ->
-  (* One Yay ballot per delegate *)
+  (* One Yea ballot per delegate *)
   (Context.Vote.get_ballot_list (B b) >>=? function
    | [] -> failwith "%s - Unexpected empty ballot list" __LOC__
    | l ->
@@ -652,7 +652,7 @@ let test_successful_vote num_delegates () =
            let pkh = Context.Contract.pkh delegate in
            match List.find_opt (fun (del, _) -> del = pkh) l with
            | None -> failwith "%s - Missing delegate" __LOC__
-           | Some (_, Vote.Yay) -> return_unit
+           | Some (_, Vote.Yea) -> return_unit
            | Some _ -> failwith "%s - Wrong ballot" __LOC__)
          delegates_p4)
   >>=? fun () ->
@@ -747,7 +747,7 @@ let test_not_enough_quorum_in_exploration num_delegates () =
   (* all voters_without_quorum vote, for yays;
      no nays, so supermajority is satisfied *)
   List.map_es
-    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yay)
+    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yea)
     voters_without_quorum
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
@@ -795,7 +795,7 @@ let test_not_enough_quorum_in_promotion num_delegates () =
   (* all voters vote, for yays;
        no nays, so supermajority is satisfied *)
   List.map_es
-    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yay)
+    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yea)
     voters
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
@@ -826,7 +826,7 @@ let test_not_enough_quorum_in_promotion num_delegates () =
   (* all voters_without_quorum vote, for yays;
      no nays, so supermajority is satisfied *)
   List.map_es
-    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yay)
+    (fun del -> Op.ballot (B b) del Protocol_hash.zero Vote.Yea)
     voters_without_quorum
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
@@ -968,7 +968,7 @@ let test_supermajority_in_exploration supermajority () =
   let open Alpha_context in
   let nays_delegates, rest = List.split_n num_nays delegates_p2 in
   let yays_delegates, _ = List.split_n num_yays rest in
-  List.map_es (fun del -> Op.ballot (B b) del proposal Vote.Yay) yays_delegates
+  List.map_es (fun del -> Op.ballot (B b) del proposal Vote.Yea) yays_delegates
   >>=? fun operations_yays ->
   List.map_es (fun del -> Op.ballot (B b) del proposal Vote.Nay) nays_delegates
   >>=? fun operations_nays ->
@@ -1032,7 +1032,7 @@ let test_quorum_capped_maximum num_delegates () =
   in
   let voters = List.take_n minimum_to_pass delegates in
   (* all voters vote for yays; no nays, so supermajority is satisfied *)
-  List.map_es (fun del -> Op.ballot (B b) del protocol Vote.Yay) voters
+  List.map_es (fun del -> Op.ballot (B b) del protocol Vote.Yea) voters
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
   (* skip to next period *)
@@ -1072,7 +1072,7 @@ let test_quorum_capped_minimum num_delegates () =
   in
   let voters = List.take_n minimum_to_pass delegates in
   (* all voters vote for yays; no nays, so supermajority is satisfied *)
-  List.map_es (fun del -> Op.ballot (B b) del protocol Vote.Yay) voters
+  List.map_es (fun del -> Op.ballot (B b) del protocol Vote.Yea) voters
   >>=? fun operations ->
   Block.bake ~operations b >>=? fun b ->
   (* skip to next period *)
@@ -1309,7 +1309,7 @@ let test_proposals_wrong_voting_period_kind () =
   let* () = assert_proposals_fails_with_unexpected_proposal block __LOC__ in
   (* End the Exploration period with enough votes to move on to a
      Cooldown period. *)
-  let* operation = Op.ballot (B block) proposer proposal Vote.Yay in
+  let* operation = Op.ballot (B block) proposer proposal Vote.Yea in
   let* block = Block.bake ~operation block in
   let* block = bake_until_first_block_of_next_period block in
   (* Proposals during Cooldown. *)
@@ -1321,7 +1321,7 @@ let test_proposals_wrong_voting_period_kind () =
   let* () = assert_proposals_fails_with_unexpected_proposal block __LOC__ in
   (* End the Promotion period with enough votes to move on to an
      Adoption period. *)
-  let* operation = Op.ballot (B block) proposer proposal Vote.Yay in
+  let* operation = Op.ballot (B block) proposer proposal Vote.Yea in
   let* block = Block.bake ~operation block in
   let* block = bake_until_first_block_of_next_period block in
   (* Proposals during Adoption. *)
@@ -1684,7 +1684,7 @@ let test_valid_proposals () =
 let test_ballot_missing_signature () =
   let open Lwt_result_syntax in
   let* block, voter, proposal = context_init_exploration () in
-  let* contents = Op.ballot_contents (B block) voter proposal Vote.Yay in
+  let* contents = Op.ballot_contents (B block) voter proposal Vote.Yea in
   let op = Op.pack_operation (B block) None contents in
   Incremental.assert_validate_operation_fails
     (missing_signature __LOC__)
@@ -1695,7 +1695,7 @@ let test_ballot_missing_signature () =
 let test_ballot_invalid_signature () =
   let open Lwt_result_syntax in
   let* block, voter, proposal = context_init_exploration () in
-  let* contents = Op.ballot_contents (B block) voter proposal Vote.Yay in
+  let* contents = Op.ballot_contents (B block) voter proposal Vote.Yea in
   let op = Op.pack_operation (B block) (Some Signature.zero) contents in
   Incremental.assert_validate_operation_fails
     (invalid_signature __LOC__)
@@ -1714,7 +1714,7 @@ let test_ballot_wrong_voting_period_index () =
     ~expected_error:(wrong_voting_period_index ~current_index ~op_index)
     ~voter
     ~proposal:protos.(0)
-    ~ballot:Vote.Yay
+    ~ballot:Vote.Yea
     ~period:op_index
     block
     __LOC__
@@ -1742,7 +1742,7 @@ let test_ballot_wrong_voting_period_kind () =
   let* block = bake_until_first_block_of_next_period block in
   (* End the Exploration period with enough votes to move on to a
      Cooldown period. *)
-  let* operation = Op.ballot (B block) voter proposal Vote.Yay in
+  let* operation = Op.ballot (B block) voter proposal Vote.Yea in
   let* block = Block.bake block ~operation in
   let* block = bake_until_first_block_of_next_period block in
   (* Ballot during Cooldown. *)
@@ -1751,7 +1751,7 @@ let test_ballot_wrong_voting_period_kind () =
   (* End the Cooldown period, then end the Promotion period with
      enough votes to move on to an Adoption period. *)
   let* block = bake_until_first_block_of_next_period block in
-  let* operation = Op.ballot (B block) voter proposal Vote.Yay in
+  let* operation = Op.ballot (B block) voter proposal Vote.Yea in
   let* block = Block.bake ~operation block in
   let* block = bake_until_first_block_of_next_period block in
   (* Ballot during Adoption. *)
@@ -1770,7 +1770,7 @@ let test_ballot_for_wrong_proposal () =
     ~expected_error:(ballot_for_wrong_proposal ~current_proposal ~op_proposal)
     ~voter
     ~proposal:op_proposal
-    ~ballot:Vote.Yay
+    ~ballot:Vote.Yea
     block
     __LOC__
 
@@ -1779,7 +1779,7 @@ let test_ballot_for_wrong_proposal () =
 let test_already_submitted_a_ballot () =
   let open Lwt_result_syntax in
   let* block, voter, proposal = context_init_exploration () in
-  let* operation = Op.ballot (B block) voter proposal Vote.Yay in
+  let* operation = Op.ballot (B block) voter proposal Vote.Yea in
   let* block = Block.bake ~operation block in
   assert_validate_ballot_fails
     ~expected_error:already_submitted_a_ballot
@@ -1806,7 +1806,7 @@ let test_ballot_source_not_in_vote_listings () =
       ~expected_error:source_not_in_vote_listings
       ~voter
       ~proposal
-      ~ballot:Vote.Yay
+      ~ballot:Vote.Yea
       block
   in
   let assert_fails_with_unregistered_delegate block =
@@ -1814,7 +1814,7 @@ let test_ballot_source_not_in_vote_listings () =
       ~expected_error:ballot_from_unregistered_delegate
       ~voter
       ~proposal
-      ~ballot:Vote.Yay
+      ~ballot:Vote.Yea
       block
   in
   (* Fail when the source has no contract in the storage. *)
@@ -1839,7 +1839,7 @@ let test_conflicting_ballot () =
   let open Lwt_result_syntax in
   let* block, voter, proposal = context_init_exploration () in
   let* current_block_state = Incremental.begin_construction block in
-  let* op_in_current_block = Op.ballot (B block) voter proposal Vote.Yay in
+  let* op_in_current_block = Op.ballot (B block) voter proposal Vote.Yea in
   let* current_block_state =
     Incremental.validate_operation current_block_state op_in_current_block
   in
@@ -1875,7 +1875,7 @@ let test_conflicting_ballot () =
     - the ballot has been recorded for the voter in the post-state,
       and
 
-    - the score of the ballot's vote (yay/nay/pass) has been
+    - the score of the ballot's vote (yea/nay/pass) has been
       incremented by the voting power of the source. *)
 
 let observe_ballot pre_state post_state op caller_loc =
@@ -1939,7 +1939,7 @@ let observe_ballot pre_state post_state op caller_loc =
   in
   let expected_ballots_post =
     match ballot with
-    | Yay -> {ballots_pre with yay = Int64.add ballots_pre.yay source_power}
+    | Yea -> {ballots_pre with yea = Int64.add ballots_pre.yea source_power}
     | Nay -> {ballots_pre with nay = Int64.add ballots_pre.nay source_power}
     | Pass -> {ballots_pre with pass = Int64.add ballots_pre.pass source_power}
   in
@@ -1959,7 +1959,7 @@ let test_valid_ballot () =
   let* operation = Op.proposals (B block) proposer [proposal] in
   let* block = Block.bake block ~operation in
   let* b0 = bake_until_first_block_of_next_period block in
-  let* operation = Op.ballot (B b0) voter1 proposal Vote.Yay in
+  let* operation = Op.ballot (B b0) voter1 proposal Vote.Yea in
   let* b1 = Block.bake b0 ~operation in
   let* () = observe_ballot b0 b1 operation __LOC__ in
   let* operation = Op.ballot (B b1) voter2 proposal Vote.Nay in

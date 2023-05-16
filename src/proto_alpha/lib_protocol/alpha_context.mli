@@ -2348,7 +2348,7 @@ module Vote : sig
 
   val get_listings : context -> (public_key_hash * int64) list Lwt.t
 
-  type ballot = Yay | Nay | Pass
+  type ballot = Yea | Nay | Pass
 
   val equal_ballot : ballot -> ballot -> bool
 
@@ -2382,7 +2382,7 @@ module Vote : sig
 
   val ballot_encoding : ballot Data_encoding.t
 
-  type ballots = {yay : int64; nay : int64; pass : int64}
+  type ballots = {yea : int64; nay : int64; pass : int64}
 
   (** See {!Vote_storage.ballots_zero}. *)
   val ballots_zero : ballots

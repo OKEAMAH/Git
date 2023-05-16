@@ -57,7 +57,7 @@ let mycombine l1 l2 =
 
 (** {3 Global Values}*)
 
-let ballots = Vote.[Yay; Nay; Pass]
+let ballots = Vote.[Yea; Nay; Pass]
 
 let protos =
   List.map

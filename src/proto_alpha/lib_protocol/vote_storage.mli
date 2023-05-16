@@ -66,7 +66,7 @@ val get_proposals : Raw_context.t -> int64 Protocol_hash.Map.t tzresult Lwt.t
 val clear_proposals : Raw_context.t -> Raw_context.t Lwt.t
 
 (** Counts of the votes *)
-type ballots = {yay : int64; nay : int64; pass : int64}
+type ballots = {yea : int64; nay : int64; pass : int64}
 
 (** All vote counts set to zero. *)
 val ballots_zero : ballots

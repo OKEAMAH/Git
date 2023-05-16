@@ -25,26 +25,26 @@
 
 type proposal = Protocol_hash.t
 
-type ballot = Yay | Nay | Pass
+type ballot = Yea | Nay | Pass
 
 let ballot_encoding =
   let of_int8 = function
-    | 0 -> Ok Yay
+    | 0 -> Ok Yea
     | 1 -> Ok Nay
     | 2 -> Ok Pass
     | _ -> Error "ballot_of_int8"
   in
-  let to_int8 = function Yay -> 0 | Nay -> 1 | Pass -> 2 in
+  let to_int8 = function Yea -> 0 | Nay -> 1 | Pass -> 2 in
   let open Data_encoding in
   (* union *)
   splitted
     ~binary:(conv_with_guard to_int8 of_int8 int8)
-    ~json:(string_enum [("yay", Yay); ("nay", Nay); ("pass", Pass)])
+    ~json:(string_enum [("yay", Yea); ("nay", Nay); ("pass", Pass)])
 
 let equal_ballot a b =
-  match (a, b) with Yay, Yay | Nay, Nay | Pass, Pass -> true | _ -> false
+  match (a, b) with Yea, Yea | Nay, Nay | Pass, Pass -> true | _ -> false
 
 let pp_ballot ppf = function
-  | Yay -> Format.fprintf ppf "yay"
+  | Yea -> Format.fprintf ppf "yay"
   | Nay -> Format.fprintf ppf "nay"
   | Pass -> Format.fprintf ppf "pass"

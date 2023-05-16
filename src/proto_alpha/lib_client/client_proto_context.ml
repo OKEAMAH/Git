@@ -772,7 +772,7 @@ let get_ballots_info (cctxt : #full) ~chain ~block =
   Alpha_services.Voting.current_quorum cctxt cb >>=? fun current_quorum ->
   Alpha_services.Voting.total_voting_power cctxt cb
   >>=? fun max_participation ->
-  let all_votes = Int64.(add (add ballots.yay ballots.nay) ballots.pass) in
+  let all_votes = Int64.(add (add ballots.yea ballots.nay) ballots.pass) in
   let participation =
     Z.(
       to_int32
@@ -780,7 +780,7 @@ let get_ballots_info (cctxt : #full) ~chain ~block =
            (mul (of_int64 all_votes) (of_int 100_00))
            (of_int64 max_participation)))
   in
-  let supermajority = Int64.(div (mul 8L (add ballots.yay ballots.nay)) 10L) in
+  let supermajority = Int64.(div (mul 8L (add ballots.yea ballots.nay)) 10L) in
   return {current_quorum; participation; supermajority; ballots}
 
 let get_period_info ?(successor = false) (cctxt : #full) ~chain ~block =

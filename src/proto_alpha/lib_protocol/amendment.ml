@@ -73,7 +73,7 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
      In 'participation' a Z is used because in the worst case 'all_votes is
      1e15 and after the multiplication is 1e19 (around 2^64).
   *)
-  let casted_votes = Int64.add ballots.yay ballots.nay in
+  let casted_votes = Int64.add ballots.yea ballots.nay in
   let all_votes = Int64.add casted_votes ballots.pass in
   let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
   let participation =
@@ -86,7 +86,7 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
   in
   let approval =
     Compare.Int32.(participation >= expected_quorum)
-    && Compare.Int64.(ballots.yay >= supermajority)
+    && Compare.Int64.(ballots.yea >= supermajority)
   in
   let new_participation_ema =
     Int32.(div (add (mul 8l participation_ema) (mul 2l participation)) 10l)
