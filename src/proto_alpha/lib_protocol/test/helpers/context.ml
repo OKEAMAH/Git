@@ -618,3 +618,15 @@ let default_raw_context () =
     ~typecheck_smart_contract
     ~typecheck_smart_rollup
   >>= fun e -> Lwt.return @@ Environment.wrap_tzresult e
+
+let zero_rewards =
+  let open Constants.Parametric in
+  {
+    base_total_rewards_per_minute = Tez.zero;
+    endorsing_reward_weight = 1;
+    baking_reward_bonus_weight = 1;
+    baking_reward_fixed_portion_weight = 1;
+    seed_nonce_revelation_tip_weight = 1;
+    vdf_revelation_tip_weight = 1;
+    liquidity_baking_subsidy_weight = 1;
+  }
