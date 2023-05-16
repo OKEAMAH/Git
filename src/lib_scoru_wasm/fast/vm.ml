@@ -76,6 +76,9 @@ let compute_fast ~reveal_builtins ~write_debug pvm_state =
 
   Lwt.return pvm_state
 
+let print_debug write_debug s =
+  match write_debug with Builtins.Noop -> Lwt.return_unit | Printer f -> f s
+
 let rec compute_step_many accum_ticks ?reveal_builtins
     ?(write_debug = Builtins.Noop) ?(after_fast_exec = fun () -> ())
     ?(stop_at_snapshot = false) ~max_steps pvm_state =
@@ -153,7 +156,18 @@ let rec compute_step_many accum_ticks ?reveal_builtins
         else Lwt.return (pvm_state, accum_ticks)
       in
       match pvm_state.tick_state with
-      | Snapshot -> Lwt.catch go_like_the_wind (fun _ -> backup pvm_state)
+      | Snapshot ->
+          Lwt.catch go_like_the_wind (fun exn ->
+              let* () =
+                print_debug
+                  write_debug
+                  (Format.sprintf
+                     "Evaluation failed in Fast Execution, restarting the \
+                      current `kernel_run` execution with the PVM Interpreter.\n\
+                      Error: %s\n"
+                     (Printexc.to_string exn))
+              in
+              backup pvm_state)
       | _ -> goto_snapshot_and_retry ())
   | _ ->
       (* The number of ticks we're asked to do is lower than the maximum number
