@@ -153,7 +153,10 @@ let rec compute_step_many accum_ticks ?reveal_builtins
         else Lwt.return (pvm_state, accum_ticks)
       in
       match pvm_state.tick_state with
-      | Snapshot -> Lwt.catch go_like_the_wind (fun _ -> backup pvm_state)
+      | Snapshot ->
+          Lwt.catch go_like_the_wind (function
+              | (Stack_overflow | Out_of_memory) as exn -> raise exn
+              | _ -> backup pvm_state)
       | _ -> goto_snapshot_and_retry ())
   | _ ->
       (* The number of ticks we're asked to do is lower than the maximum number
