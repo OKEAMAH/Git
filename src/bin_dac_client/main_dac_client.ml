@@ -115,13 +115,18 @@ let hex_root_hash_param ?(name = "hex root hash")
     ~desc
     (Tezos_clic.map_parameter ~f:Dac_plugin.raw_hash_of_bytes hex_parameter)
 
+let content_filename_param ?(name = "payload filename")
+    ?(desc = "A filename containing a payload") =
+  let desc = String.concat "\n" [desc; "Payload must be in binary format"] in
+  Tezos_clic.param ~name ~desc (Client_config.string_parameter ())
+
 let group =
   {
     Tezos_clic.name = "dac-client";
     title = "Dac client commands for interacting with a Dac node";
   }
 
-let send_dac_payload =
+let send_dac_payload_input_from_command_line =
   let open Tezos_clic in
   command
     ~group
@@ -132,6 +137,58 @@ let send_dac_payload =
     @@ prefixes ["with"; "content"]
     @@ hex_payload_param @@ stop)
     (fun threshold coordinator_cctxt payload _cctxt ->
+      let open Lwt_result_syntax in
+      let* root_hash =
+        Command_handlers.send_preimage coordinator_cctxt payload
+      in
+      match threshold with
+      | None ->
+          return
+          @@ Format.printf
+               "Payload stored under root hash: %a"
+               Dac_plugin.pp_raw_hash
+               root_hash
+      | Some threshold -> (
+          let* certificate_opt =
+            Command_handlers.wait_for_certificate
+              coordinator_cctxt
+              root_hash
+              threshold
+          in
+          match certificate_opt with
+          | None ->
+              return
+              @@ Format.printf
+                   "No certificate could be obtained.\n\
+                    Payload stored under root hash: %a\n"
+                   Dac_plugin.pp_raw_hash
+                   root_hash
+          | Some certificate ->
+              return
+              @@ Format.printf "Certificate received: %a\n" Hex.pp certificate))
+
+let send_dac_payload_input_from_file =
+  let open Tezos_clic in
+  command
+    ~group
+    ~desc:"Send a list of strings to the DAC coordinator"
+    (args1 wait_for_threshold_arg)
+    (prefixes ["send"; "payload"; "to"; "coordinator"]
+    @@ coordinator_rpc_param
+    @@ prefixes ["read"; "content"; "from"; "file"]
+    @@ content_filename_param @@ stop)
+    (fun threshold coordinator_cctxt filename _cctxt ->
+      let open Lwt_result_syntax in
+      let* payload =
+        Lwt.catch
+          (fun () ->
+            let*! payload = Lwt_utils_unix.read_file filename in
+            return @@ String.to_bytes payload)
+          (fun exn ->
+            Stdlib.failwith
+              (Format.sprintf "Cannot read from file %s: %s" filename
+              @@ Printexc.to_string exn))
+      in
       let open Lwt_result_syntax in
       let* root_hash =
         Command_handlers.send_preimage coordinator_cctxt payload
@@ -188,7 +245,12 @@ let get_dac_certificate =
           return
           @@ Format.printf "Certificate received: %a\n" Hex.pp certificate)
 
-let commands () = [send_dac_payload; get_dac_certificate]
+let commands () =
+  [
+    send_dac_payload_input_from_command_line;
+    send_dac_payload_input_from_file;
+    get_dac_certificate;
+  ]
 
 let select_commands _ _ =
   let open Lwt_result_syntax in
