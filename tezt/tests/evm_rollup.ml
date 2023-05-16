@@ -481,6 +481,23 @@ let test_l2_call_simple_storage =
   Check.((storage = Some (hex_256_of 24)) (option string))
     ~error_msg:
       "Unexpected value in storage after call, should be %R, but got %L" ;
+
+  (* set -1 *)
+  let* _ =
+    wait_for_application ~sc_rollup_node ~node ~client (call_set sender (-1)) ()
+  in
+  (* storage size hasn't changed *)
+  let* storage_size = get_storage_size sc_rollup_client address in
+  Check.((storage_size = 1) int)
+    ~error_msg:"Unexpected storage size, should be %R, but is %L" ;
+  (* value stored has changed *)
+  let*! storage = get_value_in_storage sc_rollup_client address 0 in
+  Check.(
+    (storage
+   = Some "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+      (option string))
+    ~error_msg:
+      "Unexpected value in storage after call, should be %R, but got %L" ;
   unit
 
 let transfer ?data protocol =
