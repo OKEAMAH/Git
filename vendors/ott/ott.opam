@@ -1,0 +1,13 @@
+opam-version: "2.0"
+synopsis: "Ott is a tool for writing definitions of programming languages and calculi"
+maintainer: "Hannes Mehnert <hannes@mehnert.org>"
+authors: [ "Peter Sewell" "Francesco Zappa Nardelli" "Scott Owens"]
+homepage: "http://www.cl.cam.ac.uk/~pes20/ott/"
+dev-repo: "git+https://github.com/ott-lang/ott.git"
+bug-reports: "https://github.com/ott-lang/ott/issues"
+license: "part BSD3, part LGPL 2.1"
+depends: [ "yojson" "ocaml" {>= "4.00.0"} ]
+
+build: [
+  [ make "world" ]
+]
