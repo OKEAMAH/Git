@@ -1130,6 +1130,20 @@ let commands_rw () =
         return_unit);
     command
       ~group
+      ~desc:"Get value of mock counter"
+      no_options
+      (prefixes ["get"; "mock"; "counter"] @@ stop)
+      (fun () (cctxt : Protocol_client_context.full) ->
+        let open Lwt_result_syntax in
+        let* value =
+          mock_counter_get cctxt ~chain:cctxt#chain ~block:cctxt#block
+        in
+        let*! () =
+          cctxt#answer "Value of the mock counter: %a" Z.pp_print value
+        in
+        return_unit);
+    command
+      ~group
       ~desc:"Set the delegate of a contract."
       (args5
          fee_arg

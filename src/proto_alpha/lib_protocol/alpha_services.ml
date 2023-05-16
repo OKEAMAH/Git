@@ -299,6 +299,27 @@ module Cache = struct
     RPC_context.make_call0 S.contract_rank ctxt block () contract
 end
 
+module Mock_counter = struct
+  module S = struct
+    let mock_counter =
+      RPC_service.get_service
+        ~description:"Access the value of the mock counter"
+        ~query:RPC_query.empty
+        ~output:Data_encoding.z
+        RPC_path.(custom_root / "context" / "mock_counter")
+  end
+
+  let register () =
+    let open Services_registration in
+    let open Lwt_result_syntax in
+    register0 ~chunked:false S.mock_counter (fun ctxt () () ->
+        let* _, value = Mock_counter.get_value ctxt in
+        return value)
+
+  let mock_counter ctxt block =
+    RPC_context.make_call0 S.mock_counter ctxt block () ()
+end
+
 let register () =
   Contract.register () ;
   Constants.register () ;
@@ -308,4 +329,5 @@ let register () =
   Voting.register () ;
   Sapling.register () ;
   Liquidity_baking.register () ;
-  Cache.register ()
+  Cache.register () ;
+  Mock_counter.register ()

@@ -43,6 +43,13 @@ val mock_counter_update :
   fee_parameter:Injection.fee_parameter ->
   Kind.mock_counter_update Kind.manager Injection.result tzresult Lwt.t
 
+(** Calls {!Tezos_protocol_alpha.Protocol.Alpha_context.Mock_counter.get_value}. *)
+val mock_counter_get :
+  #Protocol_client_context.rpc_context ->
+  chain:Shell_services.chain ->
+  block:Shell_services.block ->
+  Z.t tzresult Lwt.t
+
 (** Calls {!Tezos_protocol_alpha.Protocol.Contract_services.list}. *)
 val list_contract_labels :
   #Protocol_client_context.full ->

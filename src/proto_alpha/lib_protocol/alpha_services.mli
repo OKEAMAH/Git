@@ -92,4 +92,8 @@ module Cache : sig
     int option shell_tzresult Lwt.t
 end
 
+module Mock_counter : sig
+  val mock_counter : 'a #RPC_context.simple -> 'a -> Z.t shell_tzresult Lwt.t
+end
+
 val register : unit -> unit

@@ -65,6 +65,9 @@ let mock_counter_update (cctxt : #full) ~chain ~block ?confirmations ?dry_run
   | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
       return (oph, op, result)
 
+let mock_counter_get (rpc : #rpc_context) ~chain ~block =
+  Alpha_services.Mock_counter.mock_counter rpc (chain, block)
+
 let get_balance (rpc : #rpc_context) ~chain ~block contract =
   Alpha_services.Contract.balance rpc (chain, block) contract
 
