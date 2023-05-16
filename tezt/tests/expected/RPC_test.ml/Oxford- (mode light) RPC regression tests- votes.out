@@ -2,7 +2,13 @@
 ./octez-client --mode light rpc get /chains/main/blocks/head/votes/ballot_list
 []
 
+./octez-client --mode light rpc get '/chains/main/blocks/head/votes/ballot_list?legacy_encoding=false'
+[]
+
 ./octez-client --mode light rpc get /chains/main/blocks/head/votes/ballots
+{ "yay": "0", "nay": "0", "pass": "0" }
+
+./octez-client --mode light rpc get '/chains/main/blocks/head/votes/ballots?legacy_encoding=false'
 { "yay": "0", "nay": "0", "pass": "0" }
 
 ./octez-client --mode light rpc get /chains/main/blocks/head/votes/current_period

@@ -1086,14 +1086,14 @@ val get_chain_block_context_raw_json :
     [chain] defaults to ["main"].
     [block] defaults to ["head"]. *)
 val get_chain_block_votes_ballot_list :
-  ?chain:string -> ?block:string -> unit -> JSON.t t
+  ?chain:string -> ?block:string -> ?legacy_encoding:bool -> unit -> JSON.t t
 
 (** RPC: [GET /chains/<chain>/blocks/<block>/votes/ballots]
 
     [chain] defaults to ["main"].
     [block] defaults to ["head"]. *)
 val get_chain_block_votes_ballots :
-  ?chain:string -> ?block:string -> unit -> JSON.t t
+  ?chain:string -> ?block:string -> ?legacy_encoding:bool -> unit -> JSON.t t
 
 (** RPC: [GET /chains/<chain>/blocks/<block>/votes/current_period]
 

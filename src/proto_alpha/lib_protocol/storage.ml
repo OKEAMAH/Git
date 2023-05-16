@@ -1426,7 +1426,7 @@ module Vote = struct
       (struct
         type t = Vote_repr.ballot
 
-        let encoding = Vote_repr.ballot_encoding
+        let encoding = Vote_repr.ballot_legacy_encoding
       end)
 end
 

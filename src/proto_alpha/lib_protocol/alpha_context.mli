@@ -2380,6 +2380,8 @@ module Vote : sig
 
   val get_total_voting_power : context -> (context * int64) tzresult Lwt.t
 
+  val ballot_legacy_encoding : ballot Data_encoding.t
+
   val ballot_encoding : ballot Data_encoding.t
 
   type ballots = {yea : int64; nay : int64; pass : int64}
@@ -2388,6 +2390,8 @@ module Vote : sig
   val ballots_zero : ballots
 
   (** See {!Vote_storage.ballots_encoding} *)
+  val ballots_legacy_encoding : ballots Data_encoding.t
+
   val ballots_encoding : ballots Data_encoding.t
 
   (** See {!Vote_storage.equal_ballots}. *)

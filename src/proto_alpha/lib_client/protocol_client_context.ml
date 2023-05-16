@@ -147,9 +147,17 @@ let () =
   @@ def "timestamp" [] Protocol.Alpha_context.Timestamp.encoding ;
   register ~pp:Protocol.Alpha_context.Raw_level.pp
   @@ def "raw_level" [] Protocol.Alpha_context.Raw_level.encoding ;
-  register @@ def "vote" ["ballot"] Protocol.Alpha_context.Vote.ballot_encoding ;
   register
-  @@ def "vote" ["ballots"] Protocol.Alpha_context.Vote.ballots_encoding ;
+  @@ def "vote" ["ballot"] Protocol.Alpha_context.Vote.ballot_legacy_encoding ;
+  register
+  @@ def "vote" ["ballot_with_yea"] Protocol.Alpha_context.Vote.ballot_encoding ;
+  register
+  @@ def "vote" ["ballots"] Protocol.Alpha_context.Vote.ballots_legacy_encoding ;
+  register
+  @@ def
+       "vote"
+       ["ballots_with_yea"]
+       Protocol.Alpha_context.Vote.ballots_encoding ;
   register
   @@ def "vote" ["listings"] Protocol.Alpha_context.Vote.listings_encoding ;
   register @@ def "seed" [] Protocol.Alpha_context.Seed.seed_encoding ;

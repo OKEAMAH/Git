@@ -1,0 +1,10 @@
+
+./octez-codec encode alpha.vote.ballots_with_yea from '{
+  "yea": "2147483647",
+  "nay": "0",
+  "pass": "455"
+}'
+000000007fffffff000000000000000000000000000001c7
+
+./octez-codec decode alpha.vote.ballots_with_yea from 000000007fffffff000000000000000000000000000001c7
+{ "yea": "2147483647", "nay": "0", "pass": "455" }

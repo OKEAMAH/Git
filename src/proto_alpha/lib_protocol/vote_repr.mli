@@ -30,6 +30,8 @@ type proposal = Protocol_hash.t
     Neutral serves to count towards a quorum *)
 type ballot = Yea | Nay | Pass
 
+val ballot_legacy_encoding : ballot Data_encoding.t
+
 val ballot_encoding : ballot Data_encoding.t
 
 val equal_ballot : ballot -> ballot -> bool

@@ -135,7 +135,9 @@ let check_samples protocols =
   protocol_sample "tez" ;
   protocol_sample "timestamp" ;
   protocol_sample "vote.ballot" ;
+  protocol_sample ~supports:Protocol.(From_protocol 19) "vote.ballot_with_yea" ;
   protocol_sample "vote.ballots" ;
+  protocol_sample ~supports:Protocol.(From_protocol 19) "vote.ballots_with_yea" ;
   protocol_sample "vote.listings" ;
   protocol_sample "voting_period.kind" ;
   protocol_sample "voting_period" ;

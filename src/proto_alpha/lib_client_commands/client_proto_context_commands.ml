@@ -718,7 +718,7 @@ let commands_ro () =
               let*! () =
                 cctxt#answer
                   "@[<v>Ballots:@,\
-                  \  Yay: %a %s@,\
+                  \  Yea: %a %s@,\
                   \  Nay: %a %s@,\
                   \  Pass: %a %s@,\
                    Current participation %.2f%%, necessary quorum %.2f%%@,\

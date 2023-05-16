@@ -971,7 +971,7 @@ let pp_contents_and_result :
         Protocol_hash.pp
         proposal
         Data_encoding.Json.pp
-        (Data_encoding.Json.construct Vote.ballot_encoding ballot)
+        (Data_encoding.Json.construct Vote.ballot_legacy_encoding ballot)
   | ( Drain_delegate {consensus_key; delegate; destination},
       Drain_delegate_result {balance_updates; allocated_destination_contract} )
     ->

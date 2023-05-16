@@ -1348,11 +1348,23 @@ let get_chain_block_context_raw_json ?(chain = "main") ?(block = "head")
     (["chains"; chain; "blocks"; block; "context"; "raw"; "json"] @ path)
     Fun.id
 
-let get_chain_block_votes_ballot_list ?(chain = "main") ?(block = "head") () =
-  make GET ["chains"; chain; "blocks"; block; "votes"; "ballot_list"] Fun.id
+let get_chain_block_votes_ballot_list ?(chain = "main") ?(block = "head")
+    ?legacy_encoding () =
+  let query_string = Query_arg.opt_bool "legacy_encoding" legacy_encoding in
+  make
+    GET
+    ~query_string
+    ["chains"; chain; "blocks"; block; "votes"; "ballot_list"]
+    Fun.id
 
-let get_chain_block_votes_ballots ?(chain = "main") ?(block = "head") () =
-  make GET ["chains"; chain; "blocks"; block; "votes"; "ballots"] Fun.id
+let get_chain_block_votes_ballots ?(chain = "main") ?(block = "head")
+    ?legacy_encoding () =
+  let query_string = Query_arg.opt_bool "legacy_encoding" legacy_encoding in
+  make
+    GET
+    ~query_string
+    ["chains"; chain; "blocks"; block; "votes"; "ballots"]
+    Fun.id
 
 let get_chain_block_votes_current_period ?(chain = "main") ?(block = "head") ()
     =

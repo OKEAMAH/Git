@@ -1,0 +1,6 @@
+
+./octez-codec encode alpha.vote.ballot_with_yea from '"yea"'
+00
+
+./octez-codec decode alpha.vote.ballot_with_yea from 00
+"yea"

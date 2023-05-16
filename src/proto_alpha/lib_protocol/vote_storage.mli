@@ -72,6 +72,8 @@ type ballots = {yea : int64; nay : int64; pass : int64}
 val ballots_zero : ballots
 
 (** Encoding for {!ballots}. *)
+val ballots_legacy_encoding : ballots Data_encoding.t
+
 val ballots_encoding : ballots Data_encoding.t
 
 (** Equality check for {!ballots}. *)

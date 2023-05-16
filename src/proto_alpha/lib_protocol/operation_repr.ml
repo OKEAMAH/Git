@@ -1346,7 +1346,7 @@ module Encoding = struct
             (req "source" Signature.Public_key_hash.encoding)
             (req "period" int32)
             (req "proposal" Protocol_hash.encoding)
-            (req "ballot" Vote_repr.ballot_encoding);
+            (req "ballot" Vote_repr.ballot_legacy_encoding);
         select = (function Contents (Ballot _ as op) -> Some op | _ -> None);
         proj =
           (function

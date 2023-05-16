@@ -28,23 +28,86 @@ open Alpha_context
 module S = struct
   let path = RPC_path.(open_root / "votes")
 
+  let legacy_encoding = true
+
+  type ballots_with_version =
+    | Legacy_ballots_version of Vote.ballots
+    | New_ballots_version of Vote.ballots
+
+  let legacy_encoding_query : bool RPC_query.t =
+    let open RPC_query in
+    query (fun v -> v)
+    |+ field "legacy_encoding" RPC_arg.bool legacy_encoding (fun v -> v)
+    |> seal
+
+  let ballots_encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"new_encoding_ballots"
+          (Tag 1)
+          Vote.ballots_encoding
+          (function
+            | New_ballots_version ballots -> Some ballots
+            | Legacy_ballots_version _ -> None)
+          (fun ballots -> New_ballots_version ballots);
+        case
+          ~title:"legacy_encoding_ballots"
+          Json_only
+          Vote.ballots_legacy_encoding
+          (function
+            | Legacy_ballots_version ballots -> Some ballots
+            | New_ballots_version _ -> None)
+          (fun ballots -> Legacy_ballots_version ballots);
+      ]
+
   let ballots =
     RPC_service.get_service
       ~description:"Sum of ballots casted so far during a voting period."
-      ~query:RPC_query.empty
-      ~output:Vote.ballots_encoding
+      ~query:legacy_encoding_query
+      ~output:ballots_encoding
       RPC_path.(path / "ballots")
+
+  type ballot_list_with_version =
+    | Legacy_ballot_list_version of
+        (Signature.public_key_hash * Vote.ballot) list
+    | New_ballot_list_version of (Signature.public_key_hash * Vote.ballot) list
+
+  let ballot_list_encoding =
+    let ballot_list_encoding ballot_encoding =
+      Data_encoding.(
+        list
+          (obj2
+             (req "pkh" Signature.Public_key_hash.encoding)
+             (req "ballot" ballot_encoding)))
+    in
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"new_encoding_ballot_list"
+          (Tag 1)
+          (ballot_list_encoding Vote.ballot_encoding)
+          (function
+            | New_ballot_list_version ballot_list -> Some ballot_list
+            | Legacy_ballot_list_version _ -> None)
+          (fun ballot_list -> New_ballot_list_version ballot_list);
+        case
+          ~title:"legacy_encoding_ballot_list"
+          Json_only
+          (ballot_list_encoding Vote.ballot_legacy_encoding)
+          (function
+            | Legacy_ballot_list_version ballot_list -> Some ballot_list
+            | New_ballot_list_version _ -> None)
+          (fun ballot_list -> Legacy_ballot_list_version ballot_list);
+      ]
 
   let ballot_list =
     RPC_service.get_service
       ~description:"Ballots casted so far during a voting period."
-      ~query:RPC_query.empty
-      ~output:
-        Data_encoding.(
-          list
-            (obj2
-               (req "pkh" Signature.Public_key_hash.encoding)
-               (req "ballot" Vote.ballot_encoding)))
+      ~query:legacy_encoding_query
+      ~output:ballot_list_encoding
       RPC_path.(path / "ballot_list")
 
   let current_period =
@@ -111,9 +174,16 @@ end
 
 let register () =
   let open Services_registration in
-  register0 ~chunked:false S.ballots (fun ctxt () () -> Vote.get_ballots ctxt) ;
-  register0 ~chunked:true S.ballot_list (fun ctxt () () ->
-      Vote.get_ballot_list ctxt >|= ok) ;
+  register0 ~chunked:false S.ballots (fun ctxt legacy () ->
+      Vote.get_ballots ctxt >>=? fun ballots ->
+      (if legacy then S.Legacy_ballots_version ballots
+      else S.New_ballots_version ballots)
+      |> return) ;
+  register0 ~chunked:true S.ballot_list (fun ctxt legacy () ->
+      Vote.get_ballot_list ctxt >>= fun ballot_list ->
+      (if legacy then S.Legacy_ballot_list_version ballot_list
+      else S.New_ballot_list_version ballot_list)
+      |> return) ;
   register0 ~chunked:false S.current_period (fun ctxt () () ->
       Voting_period.get_rpc_current_info ctxt) ;
   register0 ~chunked:false S.successor_period (fun ctxt () () ->
@@ -131,10 +201,24 @@ let register () =
   register1 ~chunked:false S.delegate_proposal_count (fun ctxt pkh () () ->
       Vote.get_delegate_proposal_count ctxt pkh)
 
-let ballots ctxt block = RPC_context.make_call0 S.ballots ctxt block () ()
+let ballots ctxt block =
+  let open Lwt_result_syntax in
+  let* ballots_versionned =
+    RPC_context.make_call0 S.ballots ctxt block S.legacy_encoding ()
+  in
+  match ballots_versionned with
+  | S.Legacy_ballots_version ballots | S.New_ballots_version ballots ->
+      return ballots
 
 let ballot_list ctxt block =
-  RPC_context.make_call0 S.ballot_list ctxt block () ()
+  let open Lwt_result_syntax in
+  let* ballot_list_versionned =
+    RPC_context.make_call0 S.ballot_list ctxt block S.legacy_encoding ()
+  in
+  match ballot_list_versionned with
+  | S.Legacy_ballot_list_version ballot_list
+  | S.New_ballot_list_version ballot_list ->
+      return ballot_list
 
 let current_period ctxt block =
   RPC_context.make_call0 S.current_period ctxt block () ()

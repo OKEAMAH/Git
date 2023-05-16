@@ -628,7 +628,13 @@ let test_votes _test_mode_tag _protocol ?endpoint client =
   (* RPC calls *)
   let call rpc = RPC.Client.call ?endpoint ~hooks client rpc in
   let* _ = call @@ RPC.get_chain_block_votes_ballot_list () in
+  let* _ =
+    call @@ RPC.get_chain_block_votes_ballot_list ~legacy_encoding:false ()
+  in
   let* _ = call @@ RPC.get_chain_block_votes_ballots () in
+  let* _ =
+    call @@ RPC.get_chain_block_votes_ballots ~legacy_encoding:false ()
+  in
   let* _ = call @@ RPC.get_chain_block_votes_current_period () in
   let* _ = call @@ RPC.get_chain_block_votes_current_proposal () in
   let* _ = call @@ RPC.get_chain_block_votes_current_quorum () in
