@@ -2,6 +2,8 @@ open Tezt
 open Tezt_tezos
 open Tezt.Base
 
+type mode = Nodes | Rest
+
 (** Running:
     The script will ssh in to a running docker container.
 
@@ -34,6 +36,8 @@ EOF
     Run node:
     perf record --call-graph=dwarf -- /usr/local/bin/octez-smart-rollup-node-alpha --base-dir /tmp/tezt-23702/1/0/.tezos-client run --data-dir /tmp/tezt-23702/1/0/rollup-0 --log-kernel-debug --log-kernel-debug-file logs/kernel-0.log --rpc-addr 127.0.0.1 --rpc-port 52811 --endpoint http://0.0.0.0:40549
 
+
+
        *)
 
 (**
@@ -45,6 +49,23 @@ EOF
 
     Notes:
     If an error like 'mkdir exited with code 255 (@@@@@@@ occurs, clean up the ~/.ssh/known_hosts file
+
+    Ensure you cleanup any `ssh-tezos@` master connections
+
+    Too many open files:
+    for running process
+
+check NOFILE limit:
+
+$ prlimit -p 1930 -n
+RESOURCE DESCRIPTION                 SOFT    HARD UNITS
+NOFILE   max number of open files 1048576 1048576 files
+
+change NOFILE limit
+
+prlimit -n1048576
+ulimit -S -n 1048576
+
         *)
 
 (*
@@ -79,57 +100,145 @@ let ssh_id = "/home/emma/.ssh/tutanota"
 (* - Must be a multiple of 5 *)
 let internal_addresses_dac =
   [
-    "10.10.0.8";
-    "10.10.0.7";
+    "10.10.0.31";
+    "10.10.0.24";
+    "10.10.0.33";
+    "10.10.0.46";
     "10.10.0.2";
-    "10.10.0.11";
+    "10.10.0.57";
+    "10.10.0.48";
     "10.10.0.14";
-    "10.10.0.10";
+    "10.10.0.16";
+    "10.10.0.56";
+    "10.10.0.29";
+    "10.10.0.58";
+    "10.10.0.60";
+    "10.10.0.50";
+    "10.10.0.44";
+    "10.10.0.32";
+    "10.10.0.28";
     "10.10.0.13";
-    "10.10.0.15";
+    "10.10.0.25";
+    "10.10.0.52";
+    "10.10.0.27";
+    "10.10.0.59";
+    "10.10.0.36";
+    "10.10.0.6";
+    "10.10.0.23";
+    "10.10.0.51";
+    "10.10.0.34";
+    "10.10.0.43";
+    "10.10.0.38";
+    "10.10.0.41";
   ]
 
 let internal_addresses_rollup =
   [
-    "10.10.0.4";
+    "10.10.0.21";
     "10.10.0.5";
-    "10.10.0.6";
+    "10.10.0.45";
+    "10.10.0.30";
+    "10.10.0.8";
+    "10.10.0.7";
+    "10.10.0.26";
+    "10.10.0.4";
+    "10.10.0.55";
+    "10.10.0.37";
+    "10.10.0.20";
+    "10.10.0.53";
+    "10.10.0.49";
+    "10.10.0.11";
+    "10.10.0.18";
     "10.10.0.17";
-    "10.10.0.3";
-    "10.10.0.16";
-    "10.10.0.12";
+    "10.10.0.19";
+    "10.10.0.42";
+    "10.10.0.47";
     "10.10.0.9";
+    "10.10.0.15";
+    "10.10.0.40";
+    "10.10.0.54";
+    "10.10.0.35";
+    "10.10.0.10";
+    "10.10.0.12";
+    "10.10.0.61";
+    "10.10.0.22";
+    "10.10.0.39";
+    "10.10.0.3";
   ]
 
 let ssh_addresses_dac =
   [
-    "35.187.84.190";
-    "35.205.214.188";
-    "34.79.155.162";
-    "35.240.103.145";
-    "34.79.87.118";
-    "34.22.172.195";
-    "34.76.69.224";
-    "34.77.91.58";
+    "130.211.83.176";
+    "34.22.174.130";
+    "34.79.160.23";
+    "34.140.8.117";
+    "34.78.44.120";
+    "130.211.69.210";
+    "34.77.158.111";
+    "34.78.232.73";
+    "34.78.114.102";
+    "35.195.104.96";
+    "35.195.174.242";
+    "34.22.244.86";
+    "35.241.207.73";
+    "34.79.58.185";
+    "34.22.183.48";
+    "35.240.12.211";
+    "34.140.68.167";
+    "34.77.194.109";
+    "34.22.182.92";
+    "35.240.59.200";
+    "34.140.197.226";
+    "34.78.107.253";
+    "35.189.192.149";
+    "34.77.72.47";
+    "146.148.26.153";
+    "34.140.105.186";
+    "35.241.252.226";
+    "130.211.92.192";
+    "34.78.182.110";
+    "34.78.55.156";
   ]
 
 let ssh_addresses_rollup =
   [
-    "35.195.229.135";
-    "34.76.52.89";
-    "34.79.96.177";
-    "34.79.156.221";
-    "34.79.4.100";
-    "34.22.236.92";
-    "35.195.253.13";
-    "35.233.46.221";
+    "34.77.72.108";
+    "35.195.141.226";
+    "35.205.19.158";
+    "23.251.136.157";
+    "35.189.228.251";
+    "34.78.248.58";
+    "34.140.239.230";
+    "35.205.157.146";
+    "35.189.209.251";
+    "34.79.136.103";
+    "34.79.169.196";
+    "34.140.183.67";
+    "34.140.116.112";
+    "35.240.100.49";
+    "130.211.99.103";
+    "34.76.205.159";
+    "130.211.74.105";
+    "35.205.24.197";
+    "35.233.56.151";
+    "35.187.18.56";
+    "104.155.37.174";
+    "35.189.240.191";
+    "34.76.171.218";
+    "34.76.189.93";
+    "35.195.245.34";
+    "35.205.24.221";
+    "34.22.161.240";
+    "34.78.183.228";
+    "34.78.63.42";
+    "34.77.52.162";
   ]
 
 let ssh_port = 30000
 
 let node_rpc_port = 50000
 
-let dac_coord_base_port = 40000
+let dac_coord_base_port = 62500
 
 (* TODO: Should be a command-line argument *)
 let network = "https://teztnets.xyz/mondaynet-2023-05-15"
@@ -138,7 +247,6 @@ let network = "https://teztnets.xyz/mondaynet-2023-05-15"
 let _snapshot_url =
   "http://mondaynet.snapshots.s3-website.eu-central-1.amazonaws.com/mondaynet-rolling-snapshot"
 
-(* TODO: Should be a command-line argument *)
 let rollup_runners () =
   List.map
     (fun ssh_address ->
@@ -184,7 +292,8 @@ module Local = struct
     project_root // Filename.dirname __FILE__ // "artifacts/installer.wasm"
 
   let tx_kernel =
-    project_root // Filename.dirname __FILE__ // "artifacts/tx-kernel.wasm"
+    project_root // Filename.dirname __FILE__
+    // "artifacts/tx-kernel-debug.wasm"
 
   let minter =
     project_root // Filename.dirname __FILE__ // "artifacts/mint_and_deposit.tz"
@@ -209,6 +318,8 @@ module Remote = struct
 
   let tx_kernel = "/home/tezos/tx-kernel.wasm"
 
+  let installer home rollup = Format.sprintf "%s/installer-%d" home rollup
+
   let octez_node = "/usr/local/bin/octez-node"
 
   let octez_dac_node = "/usr/local/bin/octez-dac-node"
@@ -226,6 +337,9 @@ module Remote = struct
 
   let messages home rollup_id =
     Format.sprintf "%s/rollup%i-messages" home rollup_id
+
+  let message home rollup_id round =
+    messages home rollup_id // Format.sprintf "%d-transfers.out" round
 end
 
 let deploy_runnable ~(runner : Runner.t) ?(r = false) local_file dst =
@@ -253,19 +367,10 @@ let deploy_runnable ~(runner : Runner.t) ?(r = false) local_file dst =
       (*Use -O for original transfer protocol *)
       (["-O"] @ identity @ recursive @ port @ [local_file] @ [dst])
   in
-  Runnable.
-    {
-      value = process;
-      run =
-        (fun process ->
-          let _ = Process.check process in
-          Lwt.return ());
-    }
+  Runnable.{value = process; run = (fun process -> Process.check process)}
 
 let deploy ~runner ?r local_file dst =
-  let open Runnable.Syntax in
-  let*! () = deploy_runnable ~runner ?r local_file dst in
-  Lwt.return ()
+  Runnable.run @@ deploy_runnable ~runner ?r local_file dst
 
 let _download_snapshot ?runner home = function
   | `Url url ->
@@ -279,14 +384,19 @@ let _download_snapshot ?runner home = function
       Lwt.return_unit
   | `Path path -> Lwt.return path
 
-let setup_artifacts internal_addresses per i runner =
+let setup_artifacts internal_addresses per i runner ~mode =
   let open Lwt.Syntax in
+  Log.info "Creating home %d" i ;
   let home = Temp.dir ~runner Format.(sprintf "%d" i) in
-  Log.info "Downloading snapshot %d" i ;
-  let* () = deploy ~runner ~r:false Local.snapshot (Remote.snapshot home) in
+  Log.info "Created home %d %s" i home ;
+  let* () =
+    if mode = Nodes then (
+      Log.info "Copying snapshot snapshot %d" i ;
+      deploy ~runner ~r:false Local.snapshot (Remote.snapshot home))
+    else return ()
+  in
   Log.info "Deploying wallet %s (%d) to %s" Local.wallet i (Remote.wallet home) ;
   let* () = deploy ~runner ~r:true Local.wallet (Remote.wallet home) in
-  Log.info "Deploying messages %d" i ;
   let base_rollup_id = i * per in
   let rollup_ids = List.init per (fun i -> base_rollup_id + i) in
   let internal = List.nth internal_addresses i in
@@ -315,10 +425,12 @@ type rollup_runner = {
 (** Distribute runners to ensure that all parts of a rollup are running on different machines. *)
 let distribute_nodes rollup_client_nodes dac_client_nodes =
   rollup_client_nodes
-  |> List.map
-       (fun (_home, _client_node, _client, rollup_ids, _runner, _internal) ->
+  |> List.map (fun (home, node, client, rollup_ids, runner, internal) ->
          List.map
            (fun rollup_id ->
+             let rollup = {home; node; client; runner; internal} in
+             Log.info "Rollup %d rollup %s" rollup_id @@ group_to_string rollup ;
+
              let offset i nodes = (rollup_id + i) mod List.length nodes in
              let runner i nodes =
                let home, node, client, _, runner, internal =
@@ -326,55 +438,55 @@ let distribute_nodes rollup_client_nodes dac_client_nodes =
                in
                {home; node; runner; client; internal}
              in
-             let rollup = runner 0 rollup_client_nodes in
-             Log.info "Rollup %d rollup %s" rollup_id @@ group_to_string rollup ;
-             let client = runner 1 dac_client_nodes in
-             Log.info "Rollup %d client %s" rollup_id @@ group_to_string client ;
-             let dac_coord = runner 2 dac_client_nodes in
+             let dac_coord = runner 0 dac_client_nodes in
              Log.info "Rollup %d daccor %s" rollup_id
              @@ group_to_string dac_coord ;
-             let dac_mem_1 = runner 3 dac_client_nodes in
+             let client = runner 1 dac_client_nodes in
+             Log.info "Rollup %d client %s" rollup_id @@ group_to_string client ;
+             let dac_mem_1 = runner 2 dac_client_nodes in
              Log.info "Rollup %d dacme1 %s" rollup_id
              @@ group_to_string dac_mem_1 ;
-             let dac_mem_2 = runner 4 dac_client_nodes in
+             let dac_mem_2 = runner 3 dac_client_nodes in
              Log.info "Rollup %d dacme2 %s" rollup_id
              @@ group_to_string dac_mem_2 ;
              {rollup_id; client; rollup; dac_coord; dac_mem_1; dac_mem_2})
            rollup_ids)
   |> List.flatten
 
-let prepare_snapshot () =
+let prepare_snapshot ~mode () =
   let open Lwt.Syntax in
-  let l1_node_args =
-    Node.[Expected_pow 26; Synchronisation_threshold 1; Network network]
-  in
-  let node = Node.create ~path:Local.octez_node l1_node_args in
+  if mode <> Nodes then return ()
+  else
+    let l1_node_args =
+      Node.[Expected_pow 26; Synchronisation_threshold 1; Network network]
+    in
+    let node = Node.create ~path:Local.octez_node l1_node_args in
 
-  let* () = Node.config_init node [] in
+    let* () = Node.config_init node [] in
 
-  let* () = Node.snapshot_import node Local.snapshot in
-  Log.info "Snapshot imported for %s" (Node.name node) ;
-  let* () = Node.run node [] in
-  let* () = Node.wait_for_ready node in
+    let* () = Node.snapshot_import node Local.snapshot in
+    Log.info "Snapshot imported for %s" (Node.name node) ;
+    let* () = Node.run node [] in
+    let* () = Node.wait_for_ready node in
 
-  Log.info "Node %s ready" (Node.name node) ;
+    Log.info "Node %s ready" (Node.name node) ;
 
-  let client =
-    Client.create ~path:Local.octez_client ~endpoint:(Node node) ()
-  in
-  let* () = Client.bootstrapped client in
-  let* level = Client.level client in
-  Log.info "%s ready" (Node.name node) ;
+    let client =
+      Client.create ~path:Local.octez_client ~endpoint:(Node node) ()
+    in
+    let* () = Client.bootstrapped client in
+    let* level = Client.level client in
+    Log.info "%s ready" (Node.name node) ;
 
-  let* () = Node.terminate node in
-  let () = Unix.rename Local.snapshot Local.snapshot_old in
-  Node.snapshot_export
-    ~history_mode:Rolling_history
-    node
-    ~export_level:(level - 1)
-    Local.snapshot
+    let* () = Node.terminate node in
+    let () = Unix.rename Local.snapshot Local.snapshot_old in
+    Node.snapshot_export
+      ~history_mode:Rolling_history
+      node
+      ~export_level:(level - 1)
+      Local.snapshot
 
-let start_bootstrap_node (home, runner, rollup_ids, internal_ip) =
+let start_bootstrap_node (home, runner, rollup_ids, internal_ip) ~mode =
   let open Lwt.Syntax in
   let l1_node_args =
     Node.[Expected_pow 26; Synchronisation_threshold 1; Network network]
@@ -383,23 +495,32 @@ let start_bootstrap_node (home, runner, rollup_ids, internal_ip) =
     Node.create
       ~path:Remote.octez_node
       ~runner
+      ~rpc_host:"0.0.0.0"
       ~rpc_port:node_rpc_port
       l1_node_args
   in
 
-  let* () = Node.config_init node [] in
+  let+ () =
+    if mode = Nodes then (
+      let* () = Node.config_init node [] in
 
-  let* () = Node.snapshot_import node (Remote.snapshot home) in
-  Log.info "Snapshot imported for %s" (Node.name node) ;
+      let* () = Node.snapshot_import node (Remote.snapshot home) in
+      Log.info "Snapshot imported for %s" (Node.name node) ;
 
-  let+ () = Node.run node [] in
+      Node.run node [])
+    else return ()
+  in
   (home, runner, rollup_ids, internal_ip, node)
 
 (** [bootstrap_node _snapshot_path ()] *)
-let finish_bootstrap_node (home, runner, rollup_ids, internal_ip, node) =
+let finish_bootstrap_node (home, runner, rollup_ids, internal_ip, node) ~mode =
   let open Lwt.Syntax in
-  let* () = Node.wait_for_ready node in
-  Log.info "Node %s ready" (Node.name node) ;
+  let* () =
+    if mode = Nodes then
+      let+ () = Node.wait_for_ready node in
+      Log.info "Node %s ready" (Node.name node)
+    else return ()
+  in
   let client =
     Client.create
       ~runner
@@ -437,14 +558,14 @@ let deposit_ticket ~rollup_node ~client ~content ~rollup ~no_pixel_addr
   (* let+ _ = Sc_rollup_node.wait_for_level ~timeout:30. rollup_node level in *)
   ()
 
-let setup_installer ~dac_client ~pk_0 ~pk_1 _node =
+let setup_installer ~rollup ~dac_client ~pk_0 ~pk_1 =
   let installer = read_file Local.installer_kernel in
   (* let tx_kernel = Hex.of_string @@ read_file Local.tx_kernel in *)
   let installer_dummy_hash =
     "1acaa995ef84bc24cc8bb545dd986082fbbec071ed1c3e9954abea5edc441ccd3a"
   in
   let dac_member_0_dummy =
-    "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+    "3433E5AA739292FDEB08AC05B4102095BD6E2602B76DA2E89322491929EDD730F62A536FFFC796FCA8CB5E261129F091"
   in
   let (`Hex dac_member_0) =
     Tezos_crypto.Signature.Bls.Public_key.(
@@ -452,10 +573,10 @@ let setup_installer ~dac_client ~pk_0 ~pk_1 _node =
       |> Data_encoding.Binary.to_bytes_exn encoding
       |> Hex.of_bytes)
   in
-  Log.info "Dac member 0: %s" dac_member_0 ;
+  Log.info "Dac (%d) member 0: %s | %s" rollup.rollup_id dac_member_0 pk_0 ;
   assert (String.length dac_member_0_dummy = String.length dac_member_0) ;
   let dac_member_1_dummy =
-    "666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+    "451141561F23E4BED315BBC4D7A77200446A5B4BE43376DB8F648BB4160DB261F5D2077A548936BC3B2FB4148849C41E"
   in
   let (`Hex dac_member_1) =
     Tezos_crypto.Signature.Bls.Public_key.(
@@ -463,7 +584,7 @@ let setup_installer ~dac_client ~pk_0 ~pk_1 _node =
       |> Data_encoding.Binary.to_bytes_exn encoding
       |> Hex.of_bytes)
   in
-  Log.info "Dac member 1: %s" dac_member_1 ;
+  Log.info "Dac (%d) member 1: %s | %s" rollup.rollup_id dac_member_1 pk_1 ;
   assert (String.length dac_member_1_dummy = String.length dac_member_1) ;
   let* result = Dac_client.send_payload_from_file dac_client Remote.tx_kernel in
   let (`Hex root_hash) =
@@ -473,14 +594,16 @@ let setup_installer ~dac_client ~pk_0 ~pk_1 _node =
   in
   (* Ensure reveal hash is correct length for installer. *)
   assert (String.length root_hash = 66) ;
-  let installer =
+  let (`Hex installer) =
     installer
     |> replace_string (rex installer_dummy_hash) ~by:root_hash
     |> replace_string (rex dac_member_0_dummy) ~by:dac_member_0
     |> replace_string (rex dac_member_1_dummy) ~by:dac_member_1
+    |> Hex.of_string
   in
-  let (`Hex hex) = Hex.of_string installer in
-  return hex
+  let file = Temp.file @@ Format.sprintf "installer-%d" rollup.rollup_id in
+  write_file file ~contents:installer ;
+  return file
 
 (* Run a committee member *)
 let setup_dac_member ~coordinator ~rollup_id ~member_idx ~member client node
@@ -523,11 +646,13 @@ let setup_dac_observer ~coordinator ~rollup_id ~reveal_data_dir client node
 
 (* Initialise DAC committee via *)
 let setup_dac (rollup : rollup_runner) =
+  Log.info "Setup DAC %d" rollup.rollup_id ;
   let open Lwt.Syntax in
   let rollup_data_dir =
     rollup.rollup.home // Printf.sprintf "rollup-%d" rollup.rollup_id
   in
   let () = Runner.Sys.mkdir ~runner:rollup.rollup.runner rollup_data_dir in
+  Log.info "Setup DAC %d - generating committee keys" rollup.rollup_id ;
   let* key_1 =
     Client.bls_gen_and_show_keys
       ~alias:(Format.sprintf "committee-member-%d-1" rollup.rollup_id)
@@ -538,8 +663,20 @@ let setup_dac (rollup : rollup_runner) =
       ~alias:(Format.sprintf "committee-member-%d-2" rollup.rollup_id)
       rollup.dac_mem_2.client
   in
+  Log.info
+    "Setup DAC %d - importing committee keys to coordinator"
+    rollup.rollup_id ;
   let* () = Client.bls_import_secret_key key_1 rollup.dac_coord.client in
   let* () = Client.bls_import_secret_key key_2 rollup.dac_coord.client in
+  let port =
+    dac_coord_base_port + rollup.rollup_id
+    (* dac_coord_base_port + (rollup.rollup_id / List.length ssh_addresses_rollup) *)
+  in
+  Log.info
+    "Setup DAC %d - creating coordinator (%s:%d)"
+    rollup.rollup_id
+    rollup.dac_coord.internal
+    port ;
   let dac_node =
     Dac_node.create_coordinator
       ~name:(Format.sprintf "dac-coord-%d" rollup.rollup_id)
@@ -547,24 +684,33 @@ let setup_dac (rollup : rollup_runner) =
       ~node:rollup.dac_coord.node
       ~client:rollup.dac_coord.client
       ~rpc_host:"0.0.0.0"
-      ~rpc_port:(dac_coord_base_port + (rollup.rollup_id mod dacs_per_node))
-      ~threshold:2
+      ~rpc_port:port
       ~committee_members:
         (List.map
            (fun (dc : Account.aggregate_key) -> dc.aggregate_public_key_hash)
            [key_1; key_2])
       ()
   in
+  Log.info "Setup DAC %d - initialising coordinator" rollup.rollup_id ;
   let* _dir = Dac_node.init_config dac_node in
-  let* () = Dac_node.run dac_node in
+  Log.info "Setup DAC %d - running coordinator" rollup.rollup_id ;
+  let* () = Dac_node.run dac_node ~wait_ready:true in
+  Log.info "Setup DAC %d - creating client" rollup.rollup_id ;
   let dac_client =
     Dac_client.create
       ~name:(Format.sprintf "dac-client-%d" rollup.rollup_id)
       ~path:Remote.octez_dac_client
       ~base_dir:(Remote.wallet rollup.client.home)
+      ~rpc_host:rollup.dac_coord.internal
       ~runner:rollup.client.runner
       dac_node
   in
+  Log.info "Setup DAC %d - testing coordinator reachable" rollup.rollup_id ;
+  let* _ =
+    Dac_client.send_payload_from_hex dac_client
+    @@ Hex.of_string @@ String.make 100 '\000'
+  in
+  Log.info "Setup DAC %d - creating member 1" rollup.rollup_id ;
   let* member_1 =
     setup_dac_member
       ~coordinator:dac_node
@@ -575,6 +721,7 @@ let setup_dac (rollup : rollup_runner) =
       rollup.dac_mem_1.node
       rollup.dac_coord
   in
+  Log.info "Setup DAC %d - creating member 2" rollup.rollup_id ;
   let* member_2 =
     setup_dac_member
       ~coordinator:dac_node
@@ -585,6 +732,7 @@ let setup_dac (rollup : rollup_runner) =
       rollup.dac_mem_2.node
       rollup.dac_coord
   in
+  Log.info "Setup DAC %d - creating observer" rollup.rollup_id ;
   let* observer =
     setup_dac_observer
       ~coordinator:dac_node
@@ -594,37 +742,42 @@ let setup_dac (rollup : rollup_runner) =
       rollup.rollup.node
       rollup.dac_coord
   in
+  Log.info "Setup DAC %d - complete" rollup.rollup_id ;
   return
-    ( rollup_data_dir,
-      dac_node,
-      dac_client,
-      (member_1, member_2),
-      observer,
-      (key_1, key_2) )
+    ( rollup,
+      ( rollup_data_dir,
+        dac_node,
+        dac_client,
+        (member_1, member_2),
+        observer,
+        (key_1, key_2) ) )
 
 (* ---------------------------- *)
 (* Submit DAC external messages *)
 (* ---------------------------- *)
 let rec submit_dac_messages ?(round = 1) rollup_ =
   let rollup, rollup_address, _rollup_node, _dac_node, dac_client = rollup_ in
-  let message =
-    Hex.of_string @@ read_file
-    @@ Format.sprintf
-         "/home/emma/sources/wasm-demo/artifacts/rollup-messages/rollup%d.messages/%d-transfers.out"
-         rollup.rollup_id
-         round
-  in
-  Log.info "Submitting message for rollup %d at round %d" rollup.rollup_id round ;
+  (* let message = *)
+  (*   Hex.of_string @@ read_file *)
+  (*   @@ Format.sprintf *)
+  (*        "/home/emma/sources/wasm-demo/artifacts/rollup-messages/rollup%d.messages/%d-transfers.out" *)
+  (*        rollup.rollup_id *)
+  (*        round *)
+  (* in *)
+  (* Log.info "Submitting message for rollup %d at round %d" rollup.rollup_id round ; *)
   let open Tezos_protocol_alpha.Protocol.Alpha_context.Sc_rollup in
   let address =
     rollup_address |> Address.of_b58check_opt |> Option.get
     |> Data_encoding.Binary.to_string_exn Address.encoding
   in
-  let* result = Dac_client.send_payload ~threshold:2 dac_client message in
-  let (`Hex certificate) =
+  let* result =
+    Dac_client.send_payload_from_file ~threshold:2 dac_client
+    @@ Remote.message rollup.client.home rollup.rollup_id round
+  in
+  let certificate =
     match result with
     | Dac_client.Root_hash _hash -> failwith "Certificate required"
-    | Dac_client.Certificate c -> c
+    | Dac_client.Certificate c -> Hex.to_string c
   in
   let (`Hex message) =
     String.concat "" ["\000"; address; certificate] |> Hex.of_string
@@ -639,51 +792,41 @@ let rec submit_dac_messages ?(round = 1) rollup_ =
   let* () =
     Client.Sc_rollup.send_message
       ~wait:"0"
-      ~src:(Format.sprintf "demo-submit-%d" (rollup.rollup_id + 10))
-        (* FIXME new accounts*)
+      ~src:(Format.sprintf "demo-submit-%d" rollup.rollup_id)
       ~msg
       rollup.client.client
   in
   if round >= 8 then return ()
   else submit_dac_messages rollup_ ~round:(round + 1)
 
-let setup_rollup ~mint_and_deposit_contract (rollup : rollup_runner) =
+let setup_rollup ~mint_and_deposit_contract
+    ((rollup : rollup_runner), dac_committee) =
   let open Lwt.Syntax in
   let staked_account = Format.asprintf "demo_%d" rollup.rollup_id in
   let message_account = Format.sprintf "demo-submit-%d" rollup.rollup_id in
-  let* ( data_dir,
-         dac_node,
-         dac_client,
-         _dac_members,
-         _dac_observer,
-         (dac_member_0, dac_member_1) ) =
-    setup_dac rollup
-  in
-  let* balance =
-    Client.get_balance_for ~account:message_account rollup.client.client
-  in
-  let required = Tez.of_int 50 in
-  let* () =
-    if balance < required then (
-      Log.info
-        "%s has insufficient balance, transferring extra tez"
-        message_account ;
-      Client.transfer
-        ~amount:required
-        ~giver:staked_account
-        ~receiver:message_account
-        ~burn_cap:(Tez.of_int 1)
-        rollup.client.client)
-    else Lwt.return ()
+  let ( data_dir,
+        (dac_node : Dac_node.t),
+        (dac_client : Dac_client.t),
+        (_dac_members : Dac_node.t * Dac_node.t),
+        (_dac_observer : Dac_node.t),
+        ( (dac_member_0 : Account.aggregate_key),
+          (dac_member_1 : Account.aggregate_key) ) ) =
+    dac_committee
   in
 
+  Log.info "Setting up installer for %d" rollup.rollup_id ;
   let* installer =
     setup_installer
+      ~rollup
       ~dac_client
       ~pk_0:dac_member_0.aggregate_public_key
       ~pk_1:dac_member_1.aggregate_public_key
-      rollup.dac_coord.node
   in
+  let* () =
+    deploy ~runner:rollup.client.runner installer
+    @@ Remote.installer rollup.client.home rollup.rollup_id
+  in
+  Log.info "Originating rollup for %d" rollup.rollup_id ;
   let* rollup_address =
     Client.Sc_rollup.originate
       rollup.client.client
@@ -692,7 +835,9 @@ let setup_rollup ~mint_and_deposit_contract (rollup : rollup_runner) =
       ~src:message_account
       ~kind:"wasm_2_0_0"
       ~parameters_ty:"(pair string (ticket string))"
-      ~boot_sector:installer
+      ~boot_sector:
+        (Format.sprintf "file:%s"
+        @@ Remote.installer rollup.client.home rollup.rollup_id)
       ~burn_cap:(Tez.of_int 2)
   in
 
@@ -765,100 +910,169 @@ let setup_rollup ~mint_and_deposit_contract (rollup : rollup_runner) =
   in
   Lwt.return (rollup, rollup_address, rollup_node, dac_node, dac_client)
 
-let rec get_continue_conf () =
-  Log.info "===============" ;
-  Log.info "Continue? (yes)" ;
-  Log.info "===============" ;
+let balance_accounts (rollup : rollup_runner) =
+  let staked_account = Format.asprintf "demo_%d" rollup.rollup_id in
+  let message_account = Format.sprintf "demo-submit-%d" rollup.rollup_id in
+  let* balance =
+    Client.get_balance_for ~account:message_account rollup.client.client
+  in
+  let required = Tez.of_int 50 in
+  if balance < required then (
+    Log.info
+      "%s has insufficient balance, transferring extra tez"
+      message_account ;
+    Client.transfer
+      ~wait:"0"
+      ~amount:required
+      ~giver:staked_account
+      ~receiver:message_account
+      ~burn_cap:(Tez.of_int 1)
+      rollup.client.client)
+  else Lwt.return ()
+
+(* let rec get_continue_conf () = *)
+(*   Log.info "===============" ; *)
+(*   Log.info "Continue? (yes)" ; *)
+(*   Log.info "===============" ; *)
+(*   let* line = Lwt_io.read_line Lwt_io.stdin in *)
+(*   if line = "yes" then Lwt.return () *)
+(*   else ( *)
+(*     Log.warn "'yes' required" ; *)
+(*     get_continue_conf ()) *)
+
+let rec get_mode () =
+  Log.info "====================" ;
+  Log.info "Mode? (nodes | rest)" ;
+  Log.info "====================" ;
   let* line = Lwt_io.read_line Lwt_io.stdin in
-  if line = "yes" then Lwt.return ()
-  else (
-    Log.warn "'yes' required" ;
-    get_continue_conf ())
+  match line with
+  | "nodes" -> return Nodes
+  | "rest" -> return Rest
+  | _ ->
+      Log.warn "'nodes' or 'rest' required" ;
+      get_mode ()
 
 (* -------- *)
 (* Run Demo *)
 (* -------- *)
 let main () =
   let open Lwt.Syntax in
+  let* mode = get_mode () in
   Log.info "Preparing snapshot" ;
-  let* () = prepare_snapshot () in
+  let* () = prepare_snapshot ~mode () in
   (* install nodes on runners *)
   Log.info "Creating runners" ;
   let rollup_runners = rollup_runners () in
   let dac_runners = dac_runners () in
-  Log.info "Copying artifacts" ;
+  Log.info "---------------------------" ;
+  Log.info "Copying artifacts (rollups)" ;
+  Log.info "---------------------------" ;
   let* rollup_runners =
     Lwt_list.mapi_p
-      (setup_artifacts internal_addresses_rollup rollups_per_node)
+      (setup_artifacts internal_addresses_rollup rollups_per_node ~mode)
       rollup_runners
   in
+  Log.info "-----------------------" ;
+  Log.info "Copying artifacts (dac)" ;
+  Log.info "-----------------------" ;
   let* dac_runners =
     Lwt_list.mapi_p
-      (setup_artifacts internal_addresses_dac dacs_per_node)
+      (setup_artifacts internal_addresses_dac dacs_per_node ~mode)
       dac_runners
   in
   Log.info "Bootstrapping nodes" ;
   (* setup L1 nodes *)
   let* rollup_client_nodes =
-    Lwt_list.map_p start_bootstrap_node rollup_runners
-  in
-  let* dac_client_nodes = Lwt_list.map_p start_bootstrap_node dac_runners in
-  Log.info "All nodes started" ;
-  let* rollup_client_nodes =
-    Lwt_list.map_p finish_bootstrap_node rollup_client_nodes
+    Lwt_list.map_p (start_bootstrap_node ~mode) rollup_runners
   in
   let* dac_client_nodes =
-    Lwt_list.map_p finish_bootstrap_node dac_client_nodes
+    Lwt_list.map_p (start_bootstrap_node ~mode) dac_runners
   in
+  Log.info "All nodes started" ;
+  let* rollup_client_nodes =
+    Lwt_list.map_p (finish_bootstrap_node ~mode) rollup_client_nodes
+  in
+  let* dac_client_nodes =
+    Lwt_list.map_p (finish_bootstrap_node ~mode) dac_client_nodes
+  in
+  Log.info "----------------------" ;
   Log.info "All nodes bootstrapped" ;
-  let scenario_nodes = distribute_nodes rollup_client_nodes dac_client_nodes in
-  (* let scenario_nodes = [List.hd scenario_nodes] in *)
-  Log.info "Copying messages" ;
-  let* () =
-    Lwt_list.iter_p
-      (fun rollup ->
-        let* () =
-          deploy
-            ~runner:rollup.client.runner
-            ~r:true
-            (Local.messages rollup.rollup_id)
-            (Remote.messages rollup.client.home rollup.rollup_id)
-        in
-        deploy ~runner:rollup.client.runner Local.tx_kernel Remote.tx_kernel)
-      scenario_nodes
-  in
+  Log.info "----------------------" ;
+  let* node =
+    if mode <> Nodes then (
+      let scenario_nodes =
+        distribute_nodes rollup_client_nodes dac_client_nodes
+      in
+      let* () =
+        Lwt_list.iter_p
+          (fun rollup ->
+            let* () =
+              deploy
+                ~runner:rollup.client.runner
+                ~r:true
+                (Local.messages rollup.rollup_id)
+                (Remote.messages rollup.client.home rollup.rollup_id)
+            in
+            deploy ~runner:rollup.client.runner Local.tx_kernel Remote.tx_kernel)
+          scenario_nodes
+      in
+      Log.info "----------------------" ;
+      Log.info " Setting up DAC nodes " ;
+      Log.info "----------------------" ;
+      let* nodes_with_dac =
+        Lwt_list.map_p (fun rollup -> setup_dac rollup) scenario_nodes
+      in
 
-  (* Deploy contract *)
-  let client = List.hd scenario_nodes |> fun r -> r.client.client in
-  let* mint_and_deposit_contract =
-    Client.originate_contract
-      ~wait:"1"
-      ~alias:"mint_and_deposit"
-      ~amount:Tez.zero
-      ~src:"demo_0"
-      ~init:"Unit"
-      ~burn_cap:Tez.(of_int 1)
-      client
-      ~prg:(read_file Local.minter)
+      (* setup L2 nodes *)
+
+      (* Deploy contract *)
+      let client = List.hd scenario_nodes |> fun r -> r.client.client in
+      let* mint_and_deposit_contract =
+        Client.originate_contract
+          ~wait:"1"
+          ~alias:"mint_and_deposit"
+          ~amount:Tez.zero
+          ~src:"demo_0"
+          ~init:"Unit"
+          ~burn_cap:Tez.(of_int 1)
+          client
+          ~prg:(read_file Local.minter)
+      in
+      Log.info "----------------------" ;
+      Log.info "  Balancing accounts  " ;
+      Log.info "----------------------" ;
+      let* () = Lwt_list.iter_p balance_accounts scenario_nodes in
+      Log.info "----------------------" ;
+      Log.info "       Dac ready      " ;
+      Log.info "----------------------" ;
+      let* nodes =
+        nodes_with_dac
+        |> Lwt_list.map_p @@ setup_rollup ~mint_and_deposit_contract
+      in
+      Log.info "----------------------" ;
+      Log.info "   Start transfers?   " ;
+      Log.info "Rollup nodes are ready" ;
+      Log.info "----------------------" ;
+      (* let* () = get_continue_conf () in *)
+      (* Submit dac messages *)
+      let+ () = Lwt_list.iter_p submit_dac_messages nodes in
+      let node, _, _, _, _ = List.hd nodes in
+      node.client.node)
+    else
+      let _, node, _, _, _, _ = List.hd rollup_client_nodes in
+      return node
   in
-  (* setup L2 nodes *)
-  let* nodes =
-    scenario_nodes |> Lwt_list.map_p @@ setup_rollup ~mint_and_deposit_contract
-  in
-  Log.info "Rollup nodes are ready" ;
-  Log.info "Start transfers?" ;
-  let* () = get_continue_conf () in
-  (* Submit dac messages *)
-  let* () = Lwt_list.iter_p submit_dac_messages nodes in
   (* waiting enough time for several commitments to be posted *)
-  let node, _, _, _, _ = List.hd nodes in
-  let current_level = Node.get_level node.client.node in
-  let target_level = current_level + 150 in
+  let current_level = Node.get_level node in
+  let target_level = current_level + 30000 in
   Log.info
     "Setup completed at level %d, waited for level %d now"
     current_level
     target_level ;
-  let* _ = Node.wait_for_level node.client.node target_level in
+  Log.info "----------------------" ;
+  Log.info "       Spinning       " ;
+  Log.info "----------------------" ;
+  let* _ = Node.wait_for_level node target_level in
   (* exit *)
   Lwt.return ()
 

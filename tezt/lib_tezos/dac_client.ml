@@ -32,6 +32,7 @@ type t = {
   base_dir : string;
   color : Log.Color.t;
   runner : Runner.t option;
+  rpc_host : string option;
 }
 
 let next_name = ref 1
@@ -45,13 +46,13 @@ let fresh_name () =
 
 let () = Test.declare_reset_function @@ fun () -> next_name := 1
 
-let create ?runner ?name ?(path = default_path) ?base_dir
+let create ?runner ?name ?(path = default_path) ?base_dir ?rpc_host
     ?(color = Log.Color.FG.green) dac_node =
   let name = match name with None -> fresh_name () | Some name -> name in
   let base_dir =
     match base_dir with None -> Temp.dir ?runner name | Some dir -> dir
   in
-  {name; path; dac_node; base_dir; color; runner}
+  {name; path; dac_node; base_dir; color; runner; rpc_host}
 
 let base_dir_arg dac_client = ["--base-dir"; dac_client.base_dir]
 
@@ -94,11 +95,13 @@ let get_certificate_output raw_output =
       | None -> assert false)
 
 let send_hex_payload ?hooks ?threshold dac_client hex_payload =
+  let rpc_host =
+    match dac_client.rpc_host with
+    | Some h -> h
+    | None -> Dac_node.external_rpc_host dac_client.dac_node
+  in
   let coordinator_endpoint =
-    Printf.sprintf
-      "%s:%d"
-      (Dac_node.external_rpc_host dac_client.dac_node)
-      (Dac_node.rpc_port dac_client.dac_node)
+    Printf.sprintf "%s:%d" rpc_host (Dac_node.rpc_port dac_client.dac_node)
   in
   let threshold_arg =
     match threshold with
@@ -125,11 +128,13 @@ let send_hex_payload ?hooks ?threshold dac_client hex_payload =
   Lwt.return @@ send_payload_output raw_output
 
 let send_payload_from_file ?hooks ?threshold dac_client filename =
+  let rpc_host =
+    match dac_client.rpc_host with
+    | Some h -> h
+    | None -> Dac_node.external_rpc_host dac_client.dac_node
+  in
   let coordinator_endpoint =
-    Printf.sprintf
-      "%s:%d"
-      (Dac_node.rpc_host dac_client.dac_node)
-      (Dac_node.rpc_port dac_client.dac_node)
+    Printf.sprintf "%s:%d" rpc_host (Dac_node.rpc_port dac_client.dac_node)
   in
   let threshold_arg =
     match threshold with
