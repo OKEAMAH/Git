@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -30,9 +31,9 @@ let spawn_command_and_read command decode =
   let* output = Process.check_and_read_stdout process in
   return (JSON.parse ~origin:"eth_spawn_command" output |> decode)
 
-let spawn_command command =
+let spawn_command ?(expect_failure = false) command =
   let process = Process.spawn path command in
-  let* output = Process.check process in
+  let* output = Process.check ~expect_failure process in
   return output
 
 let balance ~account ~endpoint =
@@ -73,7 +74,9 @@ let add_abi ~label ~abi () = spawn_command ["abi:add"; label; abi]
 let deploy ~source_private_key ~endpoint ~abi ~bin () =
   let decode json =
     let open JSON in
-    json |-> "address" |> as_string
+    let address = json |-> "address" |> as_string in
+    let tx_hash = json |-> "receipt" |-> "transactionHash" |> as_string in
+    (address, tx_hash)
   in
   spawn_command_and_read
     [
@@ -87,3 +90,8 @@ let deploy ~source_private_key ~endpoint ~abi ~bin () =
       bin;
     ]
     decode
+
+let get_receipt ~endpoint ~tx =
+  spawn_command_and_read
+    ["transaction:get"; "--network"; endpoint; tx]
+    (fun j -> JSON.(j |-> "receipt"))

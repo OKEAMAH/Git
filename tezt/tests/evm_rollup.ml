@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (* Copyright (c) 2023 TriliTech <contact@trili.tech>                         *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -31,135 +32,8 @@
                  npm install eth-cli
    Invocation:   dune exec tezt/tests/main.exe -- --file evm_rollup.ml
 *)
-
 open Sc_rollup_helpers
-
-let pvm_kind = "wasm_2_0_0"
-
-let kernel_inputs_path = "tezt/tests/evm_kernel_inputs"
-
-type full_evm_setup = {
-  node : Node.t;
-  client : Client.t;
-  sc_rollup_node : Sc_rollup_node.t;
-  sc_rollup_client : Sc_rollup_client.t;
-  sc_rollup_address : string;
-  originator_key : string;
-  rollup_operator_key : string;
-  evm_proxy_server : Evm_proxy_server.t;
-}
-
-let hex_encode (input : string) : string =
-  match Hex.of_string input with `Hex s -> s
-
-let evm_proxy_server_version proxy_server =
-  let endpoint = Evm_proxy_server.endpoint proxy_server in
-  let get_version_url = endpoint ^ "/version" in
-  RPC.Curl.get get_version_url
-
-let get_transaction_count proxy_server address =
-  let parameters : JSON.u = `A [`String address; `String "latest"] in
-  let* transaction_count =
-    Evm_proxy_server.call_evm_rpc
-      proxy_server
-      ~method_:"eth_getTransactionCount"
-      ~parameters
-  in
-  return JSON.(transaction_count |-> "result" |> as_int64)
-
-(** [next_evm_level ~sc_rollup_node ~node ~client] moves [sc_rollup_node] to
-    the [node]'s next level. *)
-let next_evm_level ~sc_rollup_node ~node ~client =
-  let* () = Client.bake_for_and_wait client in
-  Sc_rollup_node.wait_for_level
-    ~timeout:30.
-    sc_rollup_node
-    (Node.get_level node)
-
-(** [wait_for_application ~sc_rollup_node ~node ~client apply ()] tries to
-[apply] an operation and in parallel moves [sc_rollup_node] to the [node]'s next
-level until either the operation succeeded (in which case it stops) or a given
-number of level has passed (in which case it fails). *)
-let wait_for_application ~sc_rollup_node ~node ~client apply () =
-  let* start_level = Client.level client in
-  let max_iteration = 10 in
-  let tx_hash = apply () in
-  let rec loop () =
-    let* () = Lwt_unix.sleep 5. in
-    let* new_level = next_evm_level ~sc_rollup_node ~node ~client in
-    if start_level + max_iteration < new_level then
-      Test.fail
-        "Baked more than %d blocks and the operation's application is still \
-         pending"
-        max_iteration ;
-    if Lwt.state tx_hash = Lwt.Sleep then loop () else unit
-  in
-  (* Using [Lwt.both] ensures that any exception thrown in [tx_hash] will be
-     thrown by [Lwt.both] as well. *)
-  Lwt.both tx_hash (loop ())
-
-let send_and_wait_until_tx_mined ~sc_rollup_node ~node ~client
-    ~source_private_key ~to_public_key ~value ~evm_proxy_server_endpoint ?data
-    () =
-  let send =
-    Eth_cli.transaction_send
-      ~source_private_key
-      ~to_public_key
-      ~value
-      ~endpoint:evm_proxy_server_endpoint
-      ?data
-  in
-  wait_for_application ~sc_rollup_node ~node ~client send ()
-
-let setup_evm_kernel ?(originator_key = Constant.bootstrap1.public_key_hash)
-    ?(rollup_operator_key = Constant.bootstrap1.public_key_hash) protocol =
-  let* node, client = setup_l1 protocol in
-  let sc_rollup_node =
-    Sc_rollup_node.create
-      ~protocol
-      Operator
-      node
-      ~base_dir:(Client.base_dir client)
-      ~default_operator:rollup_operator_key
-  in
-  (* Start a rollup node *)
-  let* boot_sector =
-    prepare_installer_kernel
-      ~base_installee:"./"
-      ~preimages_dir:
-        (Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) "wasm_2_0_0")
-      "evm_kernel"
-  in
-  let* sc_rollup_address =
-    originate_sc_rollup
-      ~kind:pvm_kind
-      ~boot_sector
-      ~parameters_ty:"pair string (ticket string)"
-      ~src:originator_key
-      client
-  in
-  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
-  let sc_rollup_client = Sc_rollup_client.create ~protocol sc_rollup_node in
-  (* EVM Kernel installation level. *)
-  let* () = Client.bake_for_and_wait client in
-  let* _ =
-    Sc_rollup_node.wait_for_level
-      ~timeout:30.
-      sc_rollup_node
-      (Node.get_level node)
-  in
-  let* evm_proxy_server = Evm_proxy_server.init sc_rollup_node in
-  return
-    {
-      node;
-      client;
-      sc_rollup_node;
-      sc_rollup_client;
-      sc_rollup_address;
-      originator_key;
-      rollup_operator_key;
-      evm_proxy_server;
-    }
+open Evm_rollup_helpers
 
 let test_evm_proxy_server_connection =
   Protocol.register_test
@@ -361,13 +235,13 @@ let test_l2_deploy =
   unit
 
 let transfer ?data protocol =
-  let* {node; client; sc_rollup_node; _} = setup_evm_kernel protocol in
-  let* evm_proxy_server = Evm_proxy_server.init sc_rollup_node in
-  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
-  let* _level = next_evm_level ~sc_rollup_node ~node ~client in
-  let balance account =
-    Eth_cli.balance ~account ~endpoint:evm_proxy_server_endpoint
+  let* ({node; client; sc_rollup_node; _} as full_evm_setup) =
+    setup_evm_kernel protocol
   in
+  let* evm_proxy_server = Evm_proxy_server.init sc_rollup_node in
+  let endpoint = Evm_proxy_server.endpoint evm_proxy_server in
+  let* _level = next_evm_level ~sc_rollup_node ~node ~client in
+  let balance account = Eth_cli.balance ~account ~endpoint in
   let sender, receiver =
     (Eth_account.bootstrap_accounts.(0), Eth_account.bootstrap_accounts.(1))
   in
@@ -376,18 +250,8 @@ let transfer ?data protocol =
   let* sender_nonce = get_transaction_count evm_proxy_server sender.address in
   (* We always send less than the balance, to ensure it always works. *)
   let value = Wei.(sender_balance - one) in
-  let* _tx_hash =
-    send_and_wait_until_tx_mined
-      ~sc_rollup_node
-      ~node
-      ~client
-      ~source_private_key:sender.private_key
-      ~to_public_key:receiver.address
-      ~value
-      ?data
-      ~evm_proxy_server_endpoint
-      ()
-  in
+  let* tx = send ~sender ~receiver ~value ?data full_evm_setup in
+  let* () = check_tx_succeeded ~endpoint ~tx in
   let* new_sender_balance = balance sender.address in
   let* new_receiver_balance = balance receiver.address in
   let* new_sender_nonce =

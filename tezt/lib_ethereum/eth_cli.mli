@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -50,14 +51,16 @@ val add_abi : label:string -> abi:string -> unit -> unit Lwt.t
     transaction deploying [bin] whose interface [abi] is registered in the
     client, and sends the raw transaction to the JSON-API server listening at
     [endpoint]. [bin] is a path to the binary file, and [abi] is the label used
-    while registering the ABI in the client. *)
+    while registering the ABI in the client.
+
+    Returns a pair [(address, tx_hash)]. *)
 val deploy :
   source_private_key:string ->
   endpoint:string ->
   abi:string ->
   bin:string ->
   unit ->
-  string Lwt.t
+  (string * string) Lwt.t
 
 (** [get_block ~block_id ~endpoint] asks the block [block_id] (it can be a
     hash or a number) to the JSON-RPC API server listening at [endpoint]. *)
@@ -66,3 +69,5 @@ val get_block : block_id:string -> endpoint:string -> Block.t Lwt.t
 (** [block_number ~endpoint] asks the current block number to the
     JSON-RPC API server listening at [endpoint]. *)
 val block_number : endpoint:string -> int Lwt.t
+
+val get_receipt : endpoint:string -> tx:string -> JSON.t Lwt.t

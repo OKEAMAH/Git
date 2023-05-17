@@ -12,6 +12,7 @@ depends: [
   "ocaml" { >= "4.14" }
   "tezt" { >= "3.1.0" }
   "tezt-performance-regression"
+  "tezt-tezos"
 ]
 build: [
   ["rm" "-r" "vendors"]

@@ -6,9 +6,12 @@
  (package tezt-ethereum)
  (libraries
   tezt
-  tezt-performance-regression)
+  tezt-performance-regression
+  tezt-tezos)
  (flags
   (:standard)
   -open Tezt
   -open Tezt.Base
-  -open Tezt_performance_regression))
+  -open Tezt_performance_regression
+  -open Tezt_tezos
+  -open Tezt_tezos.Runnable.Syntax))
