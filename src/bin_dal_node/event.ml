@@ -57,3 +57,14 @@ let loading_shard_data_failed =
     ~msg:"Error while reading shard data {message}"
     ~level:Warning
     ("message", Data_encoding.string)
+
+let message_validation_error =
+  declare_2
+    ~section
+    ~name:"message_validation_failed"
+    ~msg:
+      "Validating message with id {message_id} failed with error \
+       {validation_error}"
+    ~level:Warning
+    ("message_id", Gossipsub.message_id_encoding)
+    ("validation_error", Data_encoding.string)
