@@ -2472,15 +2472,7 @@ let make_set_input_refutation context state input input_proof =
   in
   return Sc_rollup.Game.(Move {choice; step})
 
-(** [test_refute_set_input p1_info p2_info make_state_before] creates
-    a refutation game where the final tick refuted is a [set_input]
-    step.  It uses [p1_info] (and respectively [p2_info]) to create
-    the input (and the input proof) executed. [make_state_before]
-    initializes the context and the state before the divergence
-    between the two players.
-
-    The first player will be expected to win the game. *)
-let test_refute_set_input
+let test_refute_set_input_game_status
     (p1_info :
       Sc_rollup.t ->
       Sc_rollup.Commitment.genesis_info ->
@@ -2488,7 +2480,9 @@ let test_refute_set_input
     (make_state_before :
       Sc_rollup.t ->
       Sc_rollup.Commitment.genesis_info ->
-      (Arith_pvm.context * Arith_pvm.state) tzresult Lwt.t) =
+      (Arith_pvm.context * Arith_pvm.state) tzresult Lwt.t)
+    ~(expected_game_status :
+       public_key_hash -> public_key_hash -> Sc_rollup.Game.status) =
   let open Lwt_result_syntax in
   let* block, (p1, p2) = context_init Context.T2 in
   let pkh1 = Account.pkh_of_contract_exn p1 in
@@ -2590,14 +2584,53 @@ let test_refute_set_input
   let* incr = Incremental.begin_construction block in
   let* incr = Incremental.add_operation incr p2_final_move_op in
   let* incr = Incremental.add_operation incr p1_final_move_op in
-  let expected_game_status : Sc_rollup.Game.status =
-    Ended (Loser {reason = Conflict_resolved; loser = pkh2})
-  in
   assert_refute_result
-    ~game_status:expected_game_status
+    ~game_status:(expected_game_status pkh1 pkh2)
     incr
     rollup
     (Sc_rollup.Game.Index.make pkh1 pkh2)
+
+(** [test_refute_set_input p1_info p2_info make_state_before] creates
+    a refutation game where the final tick refuted is a [set_input]
+    step.  It uses [p1_info] (and respectively [p2_info]) to create
+    the input (and the input proof) executed. [make_state_before]
+    initializes the context and the state before the divergence
+    between the two players.
+
+    The first player will be expected to win the game. *)
+let test_refute_set_input
+    (p1_info :
+      Sc_rollup.t ->
+      Sc_rollup.Commitment.genesis_info ->
+      Sc_rollup.input * Sc_rollup.Proof.input_proof) p2_info
+    (make_state_before :
+      Sc_rollup.t ->
+      Sc_rollup.Commitment.genesis_info ->
+      (Arith_pvm.context * Arith_pvm.state) tzresult Lwt.t) =
+  let expected_game_status _pkh1 pkh2 : Sc_rollup.Game.status =
+    Ended (Loser {reason = Conflict_resolved; loser = pkh2})
+  in
+  test_refute_set_input_game_status
+    p1_info
+    p2_info
+    make_state_before
+    ~expected_game_status
+
+let test_refute_set_input_draw
+    (p1_info :
+      Sc_rollup.t ->
+      Sc_rollup.Commitment.genesis_info ->
+      Sc_rollup.input * Sc_rollup.Proof.input_proof) p2_info
+    (make_state_before :
+      Sc_rollup.t ->
+      Sc_rollup.Commitment.genesis_info ->
+      (Arith_pvm.context * Arith_pvm.state) tzresult Lwt.t) =
+  let expected_game_status _pkh1 _pkh2 : Sc_rollup.Game.status = Ended Draw in
+  test_refute_set_input_game_status
+    p1_info
+    p2_info
+    make_state_before
+    ~expected_game_status
 
 let test_refute_invalid_metadata () =
   let open Lwt_result_syntax in
@@ -2676,6 +2709,128 @@ let test_refute_invalid_reveal () =
     arith_state_before_reveal metadata hash
   in
   test_refute_set_input p1_info p2_info make_state_before
+
+let randrange ?(min = 0) max = QCheck2.Gen.(generate1 (min -- max))
+
+let gen_strings () =
+  let open Lwt_result_wrap_syntax in
+  let number_of_leaves = randrange ~min:1 20 in
+  let size = number_of_leaves * Constants_repr.sc_rollup_message_size_limit in
+  let data = String.init size (fun _ -> QCheck2.Gen.(generate1 char)) in
+  let*?@ strings =
+    String.chunk_bytes
+      Constants_repr.sc_rollup_message_size_limit
+      (Bytes.of_string data)
+  in
+  return (strings, number_of_leaves, randrange (number_of_leaves - 1))
+
+let flip_bit_string s =
+  let b = Bytes.of_string s in
+  let idx = randrange (String.length s) in
+  let c = Bytes.get b idx in
+  let mask = 1 lsl randrange 7 in
+  Bytes.set b idx Char.(unsafe_chr (code c lxor mask)) ;
+  b
+
+let test_refute_invalid_partial_reveal_proof () =
+  let open Lwt_result_wrap_syntax in
+  let* strings, _, index = gen_strings () in
+  let elts = List.map Bytes.of_string strings in
+  let (module Blake) =
+    Sc_rollup_partial_reveal_hash.to_mod Sc_rollup_reveal_hash.Blake2B
+  in
+  let tree : Blake.t =
+    Sc_rollup_partial_reveal_hash.merkle_tree (module Blake) ~elts
+  in
+  let root : Blake.h =
+    Sc_rollup_partial_reveal_hash.merkle_root (module Blake) ~tree
+  in
+  let partial_reveal =
+    Sc_rollup_partial_reveal_hash.(make (module Blake) ~index ~root |> to_hex)
+  in
+
+  let*?@ proof =
+    Sc_rollup_partial_reveal_hash.produce_proof (module Blake) ~tree ~index
+  in
+
+  let page = WithExceptions.Option.get ~loc:__LOC__ (List.nth strings index) in
+  let p1_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data page),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = page}) )
+  in
+  let invalid_page = String.of_bytes (flip_bit_string page) in
+  assert (invalid_page <> page) ;
+  let p2_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data invalid_page),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = invalid_page})
+      )
+  in
+  let make_state_before rollup
+      (genesis_info : Sc_rollup.Commitment.genesis_info) =
+    let metadata =
+      Sc_rollup.Metadata.
+        {address = rollup; origination_level = genesis_info.level}
+    in
+    arith_state_before_reveal metadata partial_reveal
+  in
+  test_refute_set_input p1_info p2_info make_state_before
+
+let out_of_range ~min ~max =
+  let int_min = -((1 lsl 30) - 1) in
+  let int_max = 1 lsl 30 in
+  let left = QCheck2.Gen.(int_min -- (min - 1)) in
+  let right = QCheck2.Gen.(max -- int_max) in
+  let a, b = QCheck2.Gen.(pair left right |> generate1) in
+  QCheck2.Gen.(generate1 (oneofl [a; b]))
+
+let test_refute_invalid_partial_reveal_index () =
+  let open Lwt_result_wrap_syntax in
+  let* strings, max, index = gen_strings () in
+  let elts = List.map Bytes.of_string strings in
+  let (module Blake) =
+    Sc_rollup_partial_reveal_hash.to_mod Sc_rollup_reveal_hash.Blake2B
+  in
+  let tree : Blake.t =
+    Sc_rollup_partial_reveal_hash.merkle_tree (module Blake) ~elts
+  in
+  let root : Blake.h =
+    Sc_rollup_partial_reveal_hash.merkle_root (module Blake) ~tree
+  in
+  let index' = out_of_range ~min:0 ~max in
+  let partial_reveal =
+    Sc_rollup_partial_reveal_hash.(
+      make (module Blake) ~index:index' ~root |> to_hex)
+  in
+
+  let*?@ proof =
+    Sc_rollup_partial_reveal_hash.produce_proof (module Blake) ~tree ~index
+  in
+
+  let page = WithExceptions.Option.get ~loc:__LOC__ (List.nth strings index) in
+  let p1_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data page),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = page}) )
+  in
+  let invalid_page = String.of_bytes (flip_bit_string page) in
+  assert (invalid_page <> page) ;
+  let p2_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data invalid_page),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = invalid_page})
+      )
+  in
+  let make_state_before rollup
+      (genesis_info : Sc_rollup.Commitment.genesis_info) =
+    let metadata =
+      Sc_rollup.Metadata.
+        {address = rollup; origination_level = genesis_info.level}
+    in
+    arith_state_before_reveal metadata partial_reveal
+  in
+  test_refute_set_input_draw p1_info p2_info make_state_before
 
 let full_history_inbox (genesis_predecessor_timestamp, genesis_predecessor)
     all_external_messages =
@@ -3581,6 +3736,14 @@ let tests =
       "Invalid reveal can be refuted"
       `Quick
       test_refute_invalid_reveal;
+    Tztest.tztest
+      "Invalid partial reveal proof can be refuted"
+      `Quick
+      test_refute_invalid_partial_reveal_proof;
+    Tztest.tztest
+      "Invalid partial reveal proof index can be refuted"
+      `Quick
+      test_refute_invalid_partial_reveal_index;
     Tztest.tztest
       "SOL/Info_per_level/EOL are added in the inbox"
       `Quick
