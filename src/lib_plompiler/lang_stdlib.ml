@@ -120,6 +120,8 @@ module type LIB = sig
 
     val band : bl repr -> bl repr -> bl repr t
 
+    val rotate_left : bl repr -> int -> bl repr
+
     val rotate_right : bl repr -> int -> bl repr
 
     val shift_left : bl repr -> int -> bl repr t
@@ -409,6 +411,10 @@ module Lib (C : COMMON) = struct
       in
       let head, tail = split_n i (of_list a) in
       to_list @@ tail @ head
+
+    let rotate_left a i =
+      let length = List.length (of_list a) in
+      rotate_right a (length - i)
 
     let shift_left a i =
       let* zero = Bool.constant false in
