@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Make (Wasm : Wasm_utils_intf.S) = struct
+module Make (Wasm : Commands.S) = struct
   module Commands = Commands.Make (Wasm)
 
   (* [parse_binary_module module_name module_stream] parses a binary encoded
@@ -108,9 +108,9 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     handle_module version binary module_name buffer
 
   (* REPL main loop: reads an input, does something out of it, then loops. *)
-  let repl tree inboxes level config extra =
+  let repl ctxt tree inboxes level config extra =
     let open Lwt_result_syntax in
-    let rec loop tree inboxes level =
+    let rec loop ctxt tree inboxes level =
       let*! () = Lwt_io.printf "> " in
       let* input =
         Lwt.catch
@@ -121,13 +121,13 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       in
       match input with
       | Some command ->
-          let* tree, inboxes, level =
-            Commands.handle_command command config extra tree inboxes level
+          let* ctxt, tree, inboxes, level =
+            Commands.handle_command command ctxt config extra tree inboxes level
           in
-          loop tree inboxes level
+          loop ctxt tree inboxes level
       | None -> return tree
     in
-    loop tree (List.to_seq inboxes) level
+    loop ctxt tree (List.to_seq inboxes) level
 
   let file_parameter =
     Tezos_clic.parameter (fun _ filename ->
@@ -198,6 +198,16 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       ~placeholder:"preimage-dir"
       dir_parameter
 
+  let fresh_context_path =
+    let name i = Format.sprintf "/tmp/wasm_debugger.%d" i in
+    let rec fresh_context i () =
+      let path = name i in
+      try if Sys.is_directory path then fresh_context (i + 1) () else path
+      with _ ->
+        if Sys.file_exists path then fresh_context (i + 1) () else path
+    in
+    fresh_context 0
+
   let main_command =
     let open Tezos_clic in
     let open Lwt_result_syntax in
@@ -227,7 +237,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
           | Some inputs -> Messages.parse_inboxes inputs config
           | None -> return []
         in
-        let+ _tree = repl tree inboxes 0l config extra in
+        let*! ctxt = Wasm.empty_context (fresh_context_path ()) in
+        let+ _tree = repl ctxt tree inboxes 0l config extra in
         ())
 
   (* List of program commands *)
@@ -295,6 +306,16 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         exit 1
 end
 
-include Make (Wasm_utils)
+module In_memory = struct
+  include Wasm_utils
+  include Tezos_context_memory.Context_binary
+
+  let empty_context path =
+    let open Lwt_syntax in
+    let+ index = init path in
+    empty index
+end
+
+include Make (In_memory)
 
 let () = main ()

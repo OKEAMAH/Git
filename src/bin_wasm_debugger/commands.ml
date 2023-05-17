@@ -172,7 +172,20 @@ let reveals config =
 let write_debug =
   Tezos_scoru_wasm.Builtins.Printer (fun msg -> Lwt_io.printf "%s%!" msg)
 
-module Make (Wasm_utils : Wasm_utils_intf.S) = struct
+module type S = sig
+  include Wasm_utils_intf.S
+
+  val empty_context : string -> t Lwt.t
+
+  val add_tree : t -> string list -> tree -> t Lwt.t
+
+  val commit :
+    time:Time.Protocol.t -> ?message:string -> t -> Context_hash.t Lwt.t
+
+  val find_tree : t -> string list -> tree option Lwt.t
+end
+
+module Make (Wasm_utils : S) = struct
   module Prof = Profiling.Make (Wasm_utils)
   open Wasm_utils
 
@@ -290,10 +303,14 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
   (* [load_inputs_gen inboxes level tree] reads the next inbox from [inboxes], set the
      messages at [level] in the [tree], and returns the remaining inbox, the next
      level and the tree. *)
-  let load_inputs_gen inboxes level tree =
+  let load_inputs_gen ctxt inboxes level tree =
     let open Lwt_result_syntax in
     match Seq.uncons inboxes with
     | Some (inputs, inboxes) ->
+        let*! ctxt = Wasm_utils.add_tree ctxt [] tree in
+        let*! _ = Wasm_utils.commit ~time:Time.Protocol.epoch ctxt in
+        let*! tree = Wasm_utils.find_tree ctxt [] in
+        let tree = WithExceptions.Option.get ~loc:__LOC__ tree in
         let* tree =
           trap_exn (fun () ->
               set_full_input_step_gen
@@ -308,26 +325,26 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
             (List.length inputs)
             level
         in
-        return (tree, inboxes, Int32.succ level)
+        return (ctxt, tree, inboxes, Int32.succ level)
     | None ->
         let*! () = Lwt_io.printf "No more inputs at level %ld\n%!" level in
-        return (tree, inboxes, level)
+        return (ctxt, tree, inboxes, level)
 
-  let load_inputs inboxes level tree =
+  let load_inputs ctxt inboxes level tree =
     let open Lwt_result_syntax in
     let*! status = check_input_request tree in
     match status with
-    | Ok () -> load_inputs_gen inboxes level tree
+    | Ok () -> load_inputs_gen ctxt inboxes level tree
     | Error msg ->
         Format.printf "%s\n%!" msg ;
-        return (tree, inboxes, level)
+        return (ctxt, tree, inboxes, level)
 
   (* Eval dispatcher. *)
-  let eval level inboxes config step tree =
+  let eval ctxt level inboxes config step tree =
     let open Lwt_result_syntax in
     let return' ?(inboxes = inboxes) f =
       let* tree, count = f in
-      return (tree, count, inboxes)
+      return (ctxt, tree, count, inboxes)
     in
     match step with
     | Tick -> return' (compute_step tree)
@@ -337,22 +354,24 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
         let*! status = check_input_request tree in
         match status with
         | Ok () ->
-            let* tree, inboxes, count1 = load_inputs inboxes level tree in
+            let* ctxt, tree, inboxes, count1 =
+              load_inputs ctxt inboxes level tree
+            in
             let* tree, count2 = eval_until_input_requested config tree in
-            return (tree, Int64.(add (of_int32 count1) count2), inboxes)
+            return (ctxt, tree, Int64.(add (of_int32 count1) count2), inboxes)
         | Error _ -> return' (eval_until_input_requested config tree))
 
-  let profile ~collapse level inboxes config extra tree =
+  let profile ~collapse ctxt level inboxes config extra tree =
     let open Lwt_result_syntax in
     let*! status = check_input_request tree in
     match status with
     | Ok () ->
-        let* tree, inboxes, level = load_inputs inboxes level tree in
+        let* ctxt, tree, inboxes, level = load_inputs ctxt inboxes level tree in
         let* tree = eval_and_profile ~collapse config extra tree in
-        return (tree, inboxes, level)
+        return (ctxt, tree, inboxes, level)
     | Error _ ->
         let* tree = eval_and_profile ~collapse config extra tree in
-        return (tree, inboxes, level)
+        return (ctxt, tree, inboxes, level)
 
   let pp_input_request ppf = function
     | Wasm_pvm_state.No_input_required -> Format.fprintf ppf "Evaluating"
@@ -378,12 +397,14 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
 
   (* [step level inboxes config kind tree] evals according to the step kind and
      prints the number of ticks elapsed and the new status. *)
-  let step level inboxes config kind tree =
+  let step ctxt level inboxes config kind tree =
     let open Lwt_result_syntax in
-    let* tree, ticks, inboxes = eval level inboxes config kind tree in
+    let* ctxt, tree, ticks, inboxes =
+      eval ctxt level inboxes config kind tree
+    in
     let*! () = Lwt_io.printf "Evaluation took %Ld ticks so far\n" ticks in
     let*! () = show_status tree in
-    return (tree, inboxes)
+    return (ctxt, tree, inboxes)
 
   let bench config tree =
     let open Lwt_syntax in
@@ -665,11 +686,11 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
 
   (* [handle_command command tree inboxes level] dispatches the commands to their
      actual implementation. *)
-  let handle_command c config extra tree inboxes level =
+  let handle_command c ctxt config extra tree inboxes level =
     let open Lwt_result_syntax in
     let command = parse_commands c in
-    let return ?(tree = tree) ?(inboxes = inboxes) () =
-      return (tree, inboxes, level)
+    let return ?(ctxt = ctxt) ?(tree = tree) ?(inboxes = inboxes) () =
+      return (ctxt, tree, inboxes, level)
     in
     let rec go = function
       | Bench ->
@@ -694,13 +715,13 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
               (Format.asprintf "%a" Ptime.Span.pp (Ptime.diff t' t))
           in
           Lwt_result_syntax.return res
-      | Load_inputs -> load_inputs inboxes level tree
+      | Load_inputs -> load_inputs ctxt inboxes level tree
       | Show_status ->
           let*! () = show_status tree in
           return ()
       | Step kind ->
-          let* tree, inboxes = step level inboxes config kind tree in
-          return ~tree ~inboxes ()
+          let* ctxt, tree, inboxes = step ctxt level inboxes config kind tree in
+          return ~ctxt ~tree ~inboxes ()
       | Show_inbox ->
           let*! () = show_inbox tree in
           return ()
@@ -729,10 +750,7 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
           let*! tree = reveal_metadata config tree in
           return ~tree ()
       | Profile collapse ->
-          let* tree, inboxes, level =
-            profile ~collapse level inboxes config extra tree
-          in
-          Lwt.return_ok (tree, inboxes, level)
+          profile ~collapse ctxt level inboxes config extra tree
       | Unknown s ->
           let*! () = Lwt_io.eprintf "Unknown command `%s`\n%!" s in
           return ()
