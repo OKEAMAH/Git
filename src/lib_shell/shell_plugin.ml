@@ -72,7 +72,7 @@ module No_filter (Proto : Registered_protocol.T) :
   module Mempool = struct
     type config = unit
 
-    let config_encoding = Data_encoding.empty
+    let config_encoding = Data_encoding.(obj1 (req "" unit))
 
     let default_config = ()
 
