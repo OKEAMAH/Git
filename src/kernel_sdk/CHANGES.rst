@@ -51,6 +51,8 @@ SDK
 - Add a feature flag ``proto-nairobi`` to enable host functions introduced in the ``Nairobi``
   protocol.
 - Implement host function ``store_delete_value`` introduced in the ``Nairobi`` protocol.
+- Add ``store_read_all`` and ``store_write_all`` to read (resp. write) a full value from (to) the
+  storage, leveraging the need to chunk the reading (resp. writing).
 
 Installer client
 ----------------
