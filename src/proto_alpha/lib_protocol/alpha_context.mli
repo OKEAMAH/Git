@@ -3410,6 +3410,10 @@ module Sc_rollup : sig
   module Proof : sig
     type reveal_proof =
       | Raw_data_proof of string
+      | Partial_raw_data_proof of {
+          data : string;
+          proof : Sc_rollup_reveal_hash.Merkelized_bytes.path;
+        }
       | Metadata_proof
       | Dal_page_proof of {
           page_id : Dal.Page.t;

@@ -51,6 +51,10 @@ let () =
 
 type reveal_proof =
   | Raw_data_proof of string
+  | Partial_raw_data_proof of {
+      data : string;
+      proof : Sc_rollup_reveal_hash.Merkelized_bytes.path;
+    }
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;
@@ -95,7 +99,33 @@ let reveal_proof_encoding =
         | _ -> None)
       (fun ((), page_id, proof) -> Dal_page_proof {page_id; proof})
   in
-  union [case_raw_data; case_metadata_proof; case_dal_page]
+  let case_partial_raw_data_proof =
+    case
+      ~title:"partial raw data proof"
+      (Tag 3)
+      (obj3
+         (req "reveal_proof_kind" (constant "partial_raw_data_proof"))
+         (req
+            "data"
+            Bounded.(
+              string
+                ~length_kind:`Uint16
+                Hex
+                Constants_repr.sc_rollup_message_size_limit))
+         (req "proof" Sc_rollup_reveal_hash.Merkelized_bytes.path_encoding))
+      (function
+        | Partial_raw_data_proof {data; proof} -> Some ((), data, proof)
+        | _ -> None)
+      (fun ((), data, proof) -> Partial_raw_data_proof {data; proof})
+  in
+
+  union
+    [
+      case_raw_data;
+      case_metadata_proof;
+      case_dal_page;
+      case_partial_raw_data_proof;
+    ]
 
 type input_proof =
   | Inbox_proof of {
@@ -324,6 +354,8 @@ let valid (type state proof output)
             Inbox_message {inbox_level; message_counter; payload})
     | Some (Reveal_proof (Raw_data_proof data)) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Raw_data data))
+    | Some (Reveal_proof (Partial_raw_data_proof r)) ->
+        return_some (Sc_rollup_PVM_sig.Reveal (Raw_data r.data))
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
@@ -362,6 +394,18 @@ let valid (type state proof output)
         check
           (Sc_rollup_reveal_hash.equal data_hash expected_hash)
           "Invalid reveal"
+    | ( Some (Reveal_proof (Partial_raw_data_proof p)),
+        Needs_reveal (Reveal_raw_data (Merkle_root_Blake2B {index; root})) )
+      -> (
+        match
+          Sc_rollup_reveal_hash.Merkelized_bytes.check_path
+            p.proof
+            index
+            (Bytes.of_string p.data)
+            root
+        with
+        | Ok true -> return_unit
+        | Ok false | Error _ -> proof_error "Invalid partial proof")
     | Some (Reveal_proof Metadata_proof), Needs_reveal Reveal_metadata ->
         return_unit
     | ( Some (Reveal_proof (Dal_page_proof {page_id; proof = _})),
