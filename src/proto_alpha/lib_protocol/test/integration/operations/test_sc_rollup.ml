@@ -2508,6 +2508,51 @@ let test_refute_invalid_reveal () =
   in
   test_refute_set_input p1_info p2_info make_state_before
 
+let test_refute_invalid_partial_reveal_proof () =
+  let open Lwt_result_wrap_syntax in
+  let data =
+    String.make (10 * Constants_repr.sc_rollup_message_size_limit) 'f'
+  in
+  let*?@ strings =
+    String.chunk_bytes
+      Constants_repr.sc_rollup_message_size_limit
+      (Bytes.of_string data)
+  in
+  let bytes = List.map Bytes.of_string strings in
+  let merkelized_data = Sc_rollup_reveal_hash.Merkelized_bytes.of_list bytes in
+  let merkelized_data_hash =
+    Sc_rollup_reveal_hash.Merkelized_bytes.root merkelized_data
+  in
+  let partial_reveal =
+    Sc_rollup_reveal_hash.(
+      reveal_hash_merkle ~index:0 ~merkle_root:merkelized_data_hash |> to_hex)
+  in
+  let*?@ proof =
+    Sc_rollup_reveal_hash.Merkelized_bytes.compute_path merkelized_data 0
+  in
+  let page_zero = WithExceptions.Option.get ~loc:__LOC__ (List.hd strings) in
+  let p1_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data page_zero),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = page_zero}) )
+  in
+  let invalid_data = "invalid" in
+  let p2_info _rollup _genesis_info =
+    Sc_rollup.
+      ( Reveal (Raw_data invalid_data),
+        Proof.Reveal_proof (Partial_raw_data_proof {proof; data = invalid_data})
+      )
+  in
+  let make_state_before rollup
+      (genesis_info : Sc_rollup.Commitment.genesis_info) =
+    let metadata =
+      Sc_rollup.Metadata.
+        {address = rollup; origination_level = genesis_info.level}
+    in
+    arith_state_before_reveal metadata partial_reveal
+  in
+  test_refute_set_input p1_info p2_info make_state_before
+
 let full_history_inbox (genesis_predecessor_timestamp, genesis_predecessor)
     all_external_messages =
   let open Sc_rollup_helpers in
@@ -3410,6 +3455,10 @@ let tests =
       "Invalid reveal can be refuted"
       `Quick
       test_refute_invalid_reveal;
+    Tztest.tztest
+      "Invalid partial reveal proof can be refuted"
+      `Quick
+      test_refute_invalid_partial_reveal_proof;
     Tztest.tztest
       "SOL/Info_per_level/EOL are added in the inbox"
       `Quick
