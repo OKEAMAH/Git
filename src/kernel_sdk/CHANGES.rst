@@ -48,6 +48,9 @@ SDK
 - Upgrade dependencies:
   - ``tezos_crypto_rs``, ``tezos_data_encoding`` to ``v0.5.0``.
   - ``nom`` to ``7.1``.
+- Add a feature flag ``proto-nairobi`` to enable host functions introduced in the ``Nairobi``
+  protocol.
+- Implement host function ``store_delete_value`` introduced in the ``Nairobi`` protocol.
 
 Installer client
 ----------------
