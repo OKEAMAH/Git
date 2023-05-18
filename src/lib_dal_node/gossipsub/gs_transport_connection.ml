@@ -81,18 +81,38 @@ let new_connections_handler gs_worker p2p_layer peer conn =
 let disconnections_handler gs_worker peer =
   Worker.(Disconnection {peer} |> p2p_input gs_worker)
 
+(* Inspect [peer]'s connection to retrieve its connection point. *)
+let point_of_peer p2p_layer peer =
+  let conn = P2p.find_connection_by_peer_id p2p_layer peer in
+  match conn with
+  | None -> None
+  | Some conn -> (
+      let info = P2p.connection_info p2p_layer conn in
+      match info.P2p_connection.Info.id_point with
+      | _addr, None -> None
+      | addr, Some port -> Some (addr, port))
+
 (* This function translates a Worker p2p_message to the type of messages sent
    via the P2P layer. The two types don't coincide because of Prune. *)
-let wrap_p2p_message =
+let wrap_p2p_message p2p_layer =
   let module W = Worker in
   let open Transport_layer_interface in
   function
   | W.Graft {topic} -> Graft {topic}
-  | W.Prune _ ->
+  | W.Prune {topic; px; backoff} ->
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
 
          Handle Prune messages in GS/P2P interconnection. *)
-      assert false
+      let px =
+        Seq.fold_left
+          (fun acc peer ->
+            match point_of_peer p2p_layer peer with
+            | None -> acc
+            | Some point -> Transport_layer_interface.{point; peer} :: acc)
+          []
+          px
+      in
+      Prune {topic; px; backoff}
   | W.IHave {topic; message_ids} -> IHave {topic; message_ids}
   | W.IWant {message_ids} -> IWant {message_ids}
   | W.Subscribe {topic} -> Subscribe {topic}
@@ -143,7 +163,8 @@ let gs_worker_p2p_output_handler gs_worker p2p_layer =
           | Some conn ->
               Error_monad.dont_wait
                 (fun () ->
-                  wrap_p2p_message p2p_message |> P2p.send p2p_layer conn)
+                  wrap_p2p_message p2p_layer p2p_message
+                  |> P2p.send p2p_layer conn)
                 (Format.eprintf
                    "Uncaught error in %s: %a\n%!"
                    __FUNCTION__
