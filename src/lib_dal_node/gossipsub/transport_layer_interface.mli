@@ -36,6 +36,8 @@
     calling {!P2p.create}.
 *)
 
+type alternative_peer = {point : P2p_point.Id.t; peer : P2p_peer.Id.t}
+
 (** Without piggybacking, {!p2p_message} is almost identical to
     {!Gs_interface.p2p_message}, except that for the [Prune] case,
     {!P2p_peer.Id.t} elements in [px] are replaced by their {!P2p_point.Id.t}
@@ -44,7 +46,7 @@ type p2p_message =
   | Graft of {topic : Gs_interface.topic}
   | Prune of {
       topic : Gs_interface.topic;
-      px : P2p_point.Id.t Seq.t;
+      px : alternative_peer list;
       backoff : Gs_interface.Span.t;
     }
   | IHave of {
