@@ -362,6 +362,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
       by the automaton as well). *)
   let handle_heartheat ~emit_p2p_output = function
     | gstate, GS.Heartbeat {to_graft; to_prune; noPX_peers} ->
+        Format.eprintf "# to_prune size is %d@." (Peer.Map.cardinal to_prune) ;
         let iter pmap mk_msg =
           Peer.Map.iter
             (fun peer topicset ->

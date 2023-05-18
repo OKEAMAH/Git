@@ -113,6 +113,7 @@ let wrap_p2p_message p2p_layer =
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
 
          Handle Prune messages in GS/P2P interconnection. *)
+      Format.eprintf "### PRUNE SENT@.@." ;
       let px =
         Seq.fold_left
           (fun acc peer ->
@@ -141,6 +142,7 @@ let unwrap_p2p_message peers_to_points =
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
 
          Handle Prune messages in GS/P2P interconnection. *)
+      Format.eprintf "### PRUNE RECEIVED@.@." ;
       let px =
         List.fold_left
           (fun seq I.{point; peer} ->
@@ -229,11 +231,16 @@ let app_messages_handler gs_worker ~app_messages_callback =
     let* Worker.{message; message_id; topic = _} =
       Worker.Stream.pop app_output_stream
     in
+    Format.eprintf "### NOTIF CHECK@.@." ;
+
     let* res = app_messages_callback message message_id in
     let* () =
       match res with
-      | Ok () -> Events.(emit message_notified_to_app message_id)
+      | Ok () ->
+          Format.eprintf "### NOTIF SAVED@.@." ;
+          Events.(emit message_notified_to_app message_id)
       | Error err ->
+          Format.eprintf "### NOTIF NOT SAVED@.@." ;
           Events.(
             emit
               app_message_callback_failed

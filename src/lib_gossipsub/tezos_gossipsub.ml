@@ -1502,12 +1502,29 @@ module Make (C : AUTOMATON_CONFIG) :
           (* Drop all peers with negative score, without PX *)
           Peer.Set.fold
             (fun peer (to_prune, peers, noPX_peers) ->
-              if Score.(get_score peer < zero) then
+              Format.eprintf
+                "# %a score for topic %a is %a@."
+                Peer.pp
+                peer
+                Topic.pp
+                topic
+                Score.pp_value
+                (get_score peer) ;
+              if Score.(get_score peer < zero) then (
                 let to_prune, peers =
                   prune topic to_prune ~old_peers:peers [peer]
                 in
+                Format.eprintf
+                  "# prune %a for topic %a having score %a @."
+                  Peer.pp
+                  peer
+                  Topic.pp
+                  topic
+                  Score.pp_value
+                  (get_score peer) ;
+
                 let noPX_peers = Peer.Set.add peer noPX_peers in
-                (to_prune, peers, noPX_peers)
+                (to_prune, peers, noPX_peers))
               else (to_prune, peers, noPX_peers))
             peers
             (to_prune, peers, noPX_peers)
@@ -1575,7 +1592,6 @@ module Make (C : AUTOMATON_CONFIG) :
             else (to_graft, Peer.Set.elements peers)
           else (to_graft, Peer.Set.elements peers)
         in
-
         (* Attempt opportunistic grafting. *)
         let to_graft, to_prune =
           let peers_to_graft = opportunistic_grafting topic peers in
@@ -1598,7 +1614,6 @@ module Make (C : AUTOMATON_CONFIG) :
           in
           (to_graft, to_prune)
         in
-
         (`To_prune to_prune, `To_graft to_graft, noPX_peers)
       in
 

@@ -2862,6 +2862,8 @@ let test_dal_node_gs_topic_subscribe_and_graft_and_publication _protocol
         (expected = slots)
           (list bool)
           ~error_msg:"Expected %L attestable slots list flags, got %R") ;
+      Format.eprintf "# sleep@." ;
+      let* () = Lwt_unix.sleep 20. in
       unit
 
 let register ~protocols =
