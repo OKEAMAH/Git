@@ -65,6 +65,16 @@ module Events = struct
       ("failure", Data_encoding.string)
 end
 
+module Peers_to_points_cache =
+  Aches.Vache.Map (Aches.Vache.LRU_Precise) (Aches.Vache.Strong)
+    (struct
+      type t = P2p_peer.Id.t
+
+      let equal = P2p_peer.Id.equal
+
+      let hash = P2p_peer.Id.hash
+    end)
+
 (** This handler forwards information about connections established by the P2P layer
     to the Gossipsub worker. *)
 let new_connections_handler gs_worker p2p_layer peer conn =
@@ -122,16 +132,24 @@ let wrap_p2p_message p2p_layer =
 
 (* This function translates a message received via the P2P layer to a Worker
    p2p_message. The two types don't coincide because of Prune. *)
-let unwrap_p2p_message =
+let unwrap_p2p_message peers_to_points =
   let open Worker in
   let module I = Transport_layer_interface in
   function
   | I.Graft {topic} -> Graft {topic}
-  | I.Prune _ ->
+  | I.Prune {topic; px; backoff} ->
       (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
 
          Handle Prune messages in GS/P2P interconnection. *)
-      assert false
+      let px =
+        List.fold_left
+          (fun seq I.{point; peer} ->
+            Peers_to_points_cache.replace peers_to_points peer point ;
+            Seq.cons peer seq)
+          Seq.empty
+          px
+      in
+      Prune {topic; px; backoff}
   | I.IHave {topic; message_ids} -> IHave {topic; message_ids}
   | I.IWant {message_ids} -> IWant {message_ids}
   | I.Subscribe {topic} -> Subscribe {topic}
@@ -187,13 +205,17 @@ let gs_worker_p2p_output_handler gs_worker p2p_layer =
 
 (** This handler forwards p2p messages received via Octez p2p to the Gossipsub
     worker. *)
-let transport_layer_inputs_handler gs_worker p2p_layer =
+let transport_layer_inputs_handler gs_worker p2p_layer peers_to_points =
   let open Lwt_syntax in
   let rec loop () =
     let* conn, msg = P2p.recv_any p2p_layer in
     let {P2p_connection.Info.peer_id; _} = P2p.connection_info p2p_layer conn in
     Worker.(
-      In_message {from_peer = peer_id; p2p_message = unwrap_p2p_message msg}
+      In_message
+        {
+          from_peer = peer_id;
+          p2p_message = unwrap_p2p_message peers_to_points msg;
+        }
       |> p2p_input gs_worker) ;
     loop ()
   in
@@ -222,6 +244,7 @@ let app_messages_handler gs_worker ~app_messages_callback =
   Worker.app_output_stream gs_worker |> loop
 
 let activate gs_worker p2p_layer ~app_messages_callback =
+  let peers_to_points = Peers_to_points_cache.create 2048 in
   (* Register a handler to notify new P2P connections to GS. *)
   let () =
     new_connections_handler gs_worker p2p_layer
@@ -232,6 +255,6 @@ let activate gs_worker p2p_layer ~app_messages_callback =
   Lwt.join
     [
       gs_worker_p2p_output_handler gs_worker p2p_layer;
-      transport_layer_inputs_handler gs_worker p2p_layer;
+      transport_layer_inputs_handler gs_worker p2p_layer peers_to_points;
       app_messages_handler gs_worker ~app_messages_callback;
     ]
