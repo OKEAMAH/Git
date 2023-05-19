@@ -2729,9 +2729,9 @@ let nodes_join_the_same_topics dal_node1 dal_node2 ~num_slots ~pkh1 =
     publication of a slot's shard into the Gossipsub layer.
 
     The [l1_committee] used to determine the topic of published messages is the
-    one at the attesattion level corresponding to [pub_level].
+    one at the attesattion level corresponding to [publish_level].
 *)
-let waiters_publish_shards l1_committee dal_node commitment ~pub_level
+let waiters_publish_shards l1_committee dal_node commitment ~publish_level
     ~slot_index =
   let open Rollup.Dal.Committee in
   List.map
@@ -2742,7 +2742,7 @@ let waiters_publish_shards l1_committee dal_node commitment ~pub_level
         ~from_shard:first_shard_index
         ~to_shard:(first_shard_index + power - 1)
         ~expected_commitment:commitment
-        ~expected_level:pub_level
+        ~expected_level:publish_level
         ~expected_pkh:attestor
         ~expected_slot:slot_index)
     l1_committee
