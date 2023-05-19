@@ -2748,12 +2748,12 @@ let waiters_publish_shards l1_committee dal_node commitment ~publish_level
     l1_committee
 
 (** This helper returns the promise that allows to wait for the reception of
-    messages of [slot_index] published at level [pub_level] by the attestor
+    messages of [slot_index] published at level [publish_level] by the attestor
     [pkh].
 
     The [l1_committee] used to determine the topic of published messages is the
-    one at the attesattion level corresponding to [pub_level]. *)
-let waiter_receive_shards l1_committee dal_node commitment ~pub_level
+    one at the attesattion level corresponding to [publish_level]. *)
+let waiter_receive_shards l1_committee dal_node commitment ~publish_level
     ~slot_index ~pkh ~from_peer =
   let open Rollup.Dal.Committee in
   match List.find (fun {attestor; _} -> attestor = pkh) l1_committee with
