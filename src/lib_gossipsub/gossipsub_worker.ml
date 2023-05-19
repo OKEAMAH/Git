@@ -152,6 +152,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
   let handle_receive_message ~emit_p2p_output ~emit_app_output received_message
       = function
     | gstate, GS.Route_message {to_route} ->
+        Format.eprintf "# Route_message@." ;
         let ({sender = _; topic; message_id; message} : GS.receive_message) =
           received_message
         in
@@ -161,10 +162,18 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         let has_joined = View.(has_joined topic @@ view gstate) in
         if has_joined then emit_app_output message_with_header ;
         gstate
-    | gstate, GS.Already_received
-    | gstate, GS.Not_subscribed
-    | gstate, GS.Invalid_message
+    | gstate, GS.Already_received ->
+        Format.eprintf "# already received@." ;
+        gstate
+    | gstate, GS.Not_subscribed ->
+        Format.eprintf "# Not_subscribed@." ;
+
+        gstate
+    | gstate, GS.Invalid_message ->
+        Format.eprintf "# Invalid message@." ;
+        gstate
     | gstate, GS.Unknown_validity ->
+        Format.eprintf "# Unknown_validity@." ;
         gstate
 
   (** From the worker's perspective, the outcome of joining a new topic from the
@@ -412,11 +421,17 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         let receive_message =
           {GS.sender = from_peer; topic; message_id; message}
         in
-        GS.handle_receive_message receive_message gossip_state
-        |> handle_receive_message
-             ~emit_p2p_output
-             ~emit_app_output
-             receive_message
+        Format.eprintf "# A@." ;
+        GS.handle_receive_message receive_message gossip_state |> fun x ->
+        Format.eprintf "# B@." ;
+        handle_receive_message
+          ~emit_p2p_output
+          ~emit_app_output
+          receive_message
+          x
+        |> fun x ->
+        Format.eprintf "# C@." ;
+        x
     | Graft {topic} ->
         let graft : GS.graft = {peer = from_peer; topic} in
         GS.handle_graft graft gossip_state

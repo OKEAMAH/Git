@@ -184,7 +184,11 @@ module Message = struct
          Cryptobox.shard_proof_encoding
          shard_proof)
 
-  let valid msg msg_id = !Validate_message_hook.check msg msg_id
+  let valid msg msg_id =
+    Format.eprintf "# check if message is valid@." ;
+    let x = !Validate_message_hook.check msg msg_id in
+    Format.eprintf "# checkED if message is valid@." ;
+    x
 end
 
 module Peer = struct

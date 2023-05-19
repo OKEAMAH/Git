@@ -2821,9 +2821,9 @@ let test_dal_node_join_topic _protocol _parameters _cryptobox _node client
   let* () = RPC.call dal_node1 (Rollup.Dal.RPC.patch_profile profile1) in
   event_waiter
 
-let test_dal_node_gs_valid_messages_exchange _protocol parameters _cryptobox
-    node client dal_node1 =
-  let dal_node2 = Dal_node.create ~node ~client () in
+let generic_gs_messages_exchange protocol parameters _cryptobox node client
+    dal_node1 ~mk_dal_node2 ~mk_app_notification_event =
+  let* dal_node2 = mk_dal_node2 protocol parameters in
   let* _config_file = Dal_node.init_config dal_node2 in
   (* Connect the nodes *)
   let* () = connect_nodes_via_p2p dal_node1 dal_node2 in
@@ -2882,7 +2882,7 @@ let test_dal_node_gs_valid_messages_exchange _protocol parameters _cryptobox
         JSON.(Dal_node.read_identity dal_node1 |-> "peer_id" |> as_string)
   in
   let waiter_app_notifs =
-    waiter_successful_shards_app_notification
+    mk_app_notification_event
       committee
       dal_node2
       slot_commitment
@@ -2914,6 +2914,52 @@ let test_dal_node_gs_valid_messages_exchange _protocol parameters _cryptobox
           (list bool)
           ~error_msg:"Expected %L attestable slots list flags, got %R") ;
       unit
+
+let test_dal_node_gs_valid_messages_exchange _protocol parameters _cryptobox
+    node client dal_node1 =
+  generic_gs_messages_exchange
+    _protocol
+    parameters
+    _cryptobox
+    node
+    client
+    dal_node1
+    ~mk_dal_node2:(fun _protocol _parameters ->
+      Dal_node.create ~node ~client () |> return)
+    ~mk_app_notification_event:waiter_successful_shards_app_notification
+
+let test_dal_node_gs_invalid_messages_exchange _protocol parameters _cryptobox
+    node client dal_node1 =
+  (* Create a non-compatible DAL node. *)
+  let mk_dal_node2 protocol parameters =
+    (* Create another L1 node with different DAL parameters. *)
+    let* node2, client2, _xdal_parameters2 =
+      let crypto_params = parameters.Rollup.Dal.Parameters.cryptobox in
+      let parameters =
+        dal_enable_param (Some true)
+        @ redundancy_factor_param (Some (2 * crypto_params.redundancy_factor))
+      in
+      setup_node ~protocol ~parameters ()
+    in
+    (* Create a second DAL node with node2 and client2 as argument (so different
+       DAL parameters compared to dal_node1. *)
+    let dal_node2 = Dal_node.create ~node:node2 ~client:client2 () in
+    return dal_node2
+  in
+  (* Messages are not validated, so, the app layer is not notified. *)
+  let mk_app_notification_event _committee _dal_node2 _slot_commitment
+      ~publish_level:_ ~slot_index:_ ~pkh:_ =
+    unit
+  in
+  generic_gs_messages_exchange
+    _protocol
+    parameters
+    _cryptobox
+    node
+    client
+    dal_node1
+    ~mk_dal_node2
+    ~mk_app_notification_event
 
 let register ~protocols =
   (* Tests with Layer1 node only *)
@@ -3019,6 +3065,11 @@ let register ~protocols =
     ~tags:["gossipsub"]
     "GS valid messages exchange"
     test_dal_node_gs_valid_messages_exchange
+    protocols ;
+  scenario_with_layer1_and_dal_nodes
+    ~tags:["gossipsub"]
+    "GS invalid messages exchange"
+    test_dal_node_gs_invalid_messages_exchange
     protocols ;
 
   (* Tests with all nodes *)

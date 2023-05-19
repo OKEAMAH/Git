@@ -110,7 +110,7 @@ module Handler = struct
     let {share; shard_proof} = message in
     let {commitment; shard_index; _} = message_id in
     let shard = Cryptobox.{share; index = shard_index} in
-    Cryptobox.verify_shard cryptobox commitment shard shard_proof |> function
+    match Cryptobox.verify_shard cryptobox commitment shard shard_proof with
     | Ok () -> `Valid
     | Error err ->
         let err =
@@ -129,6 +129,9 @@ module Handler = struct
           emit__dont_wait__use_with_care
             message_validation_error
             (message_id, err)) ;
+        `Invalid
+    | exception exn ->
+        Format.eprintf "### EXN %s@." (Printexc.to_string exn) ;
         `Invalid
 
   let resolve_plugin_and_set_ready config ctxt cctxt =
