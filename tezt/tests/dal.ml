@@ -2726,7 +2726,11 @@ let nodes_join_the_same_topics dal_node1 dal_node2 ~num_slots ~pkh1 =
   Lwt.join [event_waiter_subscribe; event_waiter_graft]
 
 (** This helper returns the list of promises that allow to wait for the
-    publication of a slot's shard into the Gossipsub layer. *)
+    publication of a slot's shard into the Gossipsub layer.
+
+    The [l1_committee] used to determine the topic of published messages is the
+    one at the attesattion level corresponding to [pub_level].
+*)
 let waiters_publish_shards l1_committee dal_node commitment ~pub_level
     ~slot_index =
   let open Rollup.Dal.Committee in
