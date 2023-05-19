@@ -111,7 +111,10 @@ module Handler = struct
     let {commitment; shard_index; _} = message_id in
     let shard = Cryptobox.{share; index = shard_index} in
     match Cryptobox.verify_shard cryptobox commitment shard shard_proof with
-    | Ok () -> `Valid
+    | Ok () ->
+        Event.(
+          emit__dont_wait__use_with_care message_validation_succeeded message_id) ;
+        `Valid
     | Error err ->
         let err =
           match err with

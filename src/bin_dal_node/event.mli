@@ -42,3 +42,6 @@ val loading_shard_data_failed : string t
 
 (** Validating a message received via Gossipsub/P2P failed. *)
 val message_validation_error : (Gossipsub.message_id * string) t
+
+(** Validating a message received via Gossipsub/P2P succeeded. *)
+val message_validation_succeeded : Gossipsub.message_id t

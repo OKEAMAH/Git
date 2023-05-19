@@ -69,3 +69,12 @@ let message_validation_error =
     ~pp1:Gossipsub.Worker.GS.Message_id.pp
     ("message_id", Gossipsub.message_id_encoding)
     ("validation_error", Data_encoding.string)
+
+let message_validation_succeeded =
+  declare_1
+    ~section
+    ~name:"message_validation_succeeded"
+    ~msg:"Validating message with id {message_id} succeeded"
+    ~level:Debug
+    ~pp1:Gossipsub.Worker.GS.Message_id.pp
+    ("message_id", Gossipsub.message_id_encoding)
