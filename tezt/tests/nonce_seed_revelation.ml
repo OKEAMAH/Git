@@ -45,6 +45,9 @@ type block = {
   operations : JSON.t list;
 }
 
+let debug_loc ?(extra = "") protocol __LOC__ =
+  Log.info "[SEEEED][%s] %s: %s" extra (Protocol.name protocol) __LOC__
+
 (* Test baker injection of nonce revelations.
    See http://tezos.gitlab.io/alpha/proof_of_stake.html
    Runs a node and a baker. The baker bakes two full cycles.
@@ -58,6 +61,7 @@ let test_nonce_seed_revelation =
   @@ fun protocol ->
   (* Run a node and a baker.
      The node runs in archive mode to obtain metadata with [RPC.get_chain_block]. *)
+  debug_loc protocol __LOC__ ;
   let* parameter_file =
     Protocol.write_parameter_file
       ~base:(Right (protocol, None))
@@ -66,6 +70,7 @@ let test_nonce_seed_revelation =
         (["delay_increment_per_round"], `String_of_int delay_increment_per_round);
       ]
   in
+  debug_loc protocol __LOC__ ;
   (* Get protocol parameters *)
   let blocks_per_cycle, blocks_per_commitment =
     let parameters = JSON.parse_file parameter_file in
@@ -73,31 +78,41 @@ let test_nonce_seed_revelation =
       ( parameters |-> "blocks_per_cycle" |> as_int,
         parameters |-> "blocks_per_commitment" |> as_int )
   in
+  debug_loc protocol __LOC__ ;
   let target_level = first_protocol_block + (2 * blocks_per_cycle) in
   let nodes =
     Cluster.create num_nodes [Synchronisation_threshold 0; History_mode Archive]
   in
   let head_node = List.hd nodes in
   Cluster.clique nodes ;
+  debug_loc protocol __LOC__ ;
   let* () = Cluster.start nodes in
+  debug_loc protocol __LOC__ ;
   let* client = Client.init ~endpoint:(Node head_node) () in
+  debug_loc protocol __LOC__ ;
   (* Set up promise to wait for level, before starting bakers *)
   let cycle_two_promise =
     Lwt_list.iter_p
       (fun node ->
+        debug_loc protocol __LOC__ ;
         let* (_ : int) = Node.wait_for_level node target_level in
+        debug_loc protocol __LOC__ ;
         unit)
       nodes
   in
+  debug_loc protocol __LOC__ ;
   (* Start bakers before activating alpha *)
   let bakers_promise =
     Lwt_list.mapi_p
       (fun i node ->
+        debug_loc protocol __LOC__ ;
         let* client = Client.init ~endpoint:(Node node) () in
+        debug_loc protocol __LOC__ ;
         let delegates = [Account.Bootstrap.keys.(i).alias] in
         Baker.init ~protocol ~delegates node client)
       nodes
   in
+  debug_loc protocol __LOC__ ;
   let* () =
     Client.activate_protocol_and_wait
       ~timestamp:Now
@@ -105,22 +120,28 @@ let test_nonce_seed_revelation =
       ~protocol
       client
   in
+  debug_loc protocol __LOC__ ;
   (* Wait for the bakers to start *)
   let* bakers = bakers_promise in
+  debug_loc protocol __LOC__ ;
   Log.info "Wait for two cycles" ;
   (* Wait until target level is reached *)
   let* () = cycle_two_promise in
+  debug_loc protocol __LOC__ ;
   (* No need to bake further *)
   let* () = Lwt_list.iter_p Baker.terminate bakers in
+  debug_loc protocol __LOC__ ;
   Log.info "Get all blocks" ;
   (* Retrieve all blocks for two full cycles. *)
   let* blocks =
     Lwt_list.map_p
       (fun level ->
+        debug_loc ~extra:(string_of_int level) protocol __LOC__ ;
         let* block =
           RPC.call ~log_request:false head_node
           @@ RPC.get_chain_block ~block:(string_of_int level) ()
         in
+        debug_loc ~extra:(string_of_int level) protocol __LOC__ ;
         let level_info = JSON.(block |-> "metadata" |-> "level_info") in
         return
           JSON.
@@ -133,6 +154,7 @@ let test_nonce_seed_revelation =
             })
       (range first_protocol_block (2 * blocks_per_cycle))
   in
+  debug_loc protocol __LOC__ ;
   let blocks = Array.of_list blocks in
   Log.info "Cycle alignment" ;
   (* Test that cycles start where they are supposed to start.
