@@ -4,6 +4,10 @@ set -eu
 
 COVERAGE_MERGED=$(echo "$CI_JOB_NAME" | tr --squeeze-repeats '[\/_ @[]+' '-')
 
+echo "BEGIN::"
+cat "$BISECT_FILE"*.coverage
+echo "END::"
+
 # If the ci--no-coverage label is set, we do not attempt to merge the coverage files
 if echo "${CI_MERGE_REQUEST_LABELS:-}" | grep -q '\(^\|,\)ci--no-coverage\($\|,\)' ; then
     rm "$BISECT_FILE"*.coverage || true
@@ -23,4 +27,3 @@ else
     fi
     exit 1
 fi
-
