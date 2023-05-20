@@ -62,6 +62,7 @@ let test_nonce_seed_revelation =
   (* Run a node and a baker.
      The node runs in archive mode to obtain metadata with [RPC.get_chain_block]. *)
   debug_loc protocol __LOC__ ;
+  Tezt.Cli.options.log_level <- Debug ;
   let* parameter_file =
     Protocol.write_parameter_file
       ~base:(Right (protocol, None))
@@ -92,7 +93,7 @@ let test_nonce_seed_revelation =
   debug_loc protocol __LOC__ ;
   (* Set up promise to wait for level, before starting bakers *)
   let cycle_two_promise =
-    Lwt_list.iter_p
+    Lwt_list.iter_s
       (fun node ->
         debug_loc protocol __LOC__ ;
         let* (_ : int) = Node.wait_for_level node target_level in
@@ -103,7 +104,7 @@ let test_nonce_seed_revelation =
   debug_loc protocol __LOC__ ;
   (* Start bakers before activating alpha *)
   let bakers_promise =
-    Lwt_list.mapi_p
+    Lwt_list.mapi_s
       (fun i node ->
         debug_loc protocol __LOC__ ;
         let* client = Client.init ~endpoint:(Node node) () in
@@ -129,12 +130,12 @@ let test_nonce_seed_revelation =
   let* () = cycle_two_promise in
   debug_loc protocol __LOC__ ;
   (* No need to bake further *)
-  let* () = Lwt_list.iter_p Baker.terminate bakers in
+  let* () = Lwt_list.iter_s Baker.terminate bakers in
   debug_loc protocol __LOC__ ;
   Log.info "Get all blocks" ;
   (* Retrieve all blocks for two full cycles. *)
   let* blocks =
-    Lwt_list.map_p
+    Lwt_list.map_s
       (fun level ->
         debug_loc ~extra:(string_of_int level) protocol __LOC__ ;
         let* block =
@@ -155,6 +156,7 @@ let test_nonce_seed_revelation =
       (range first_protocol_block (2 * blocks_per_cycle))
   in
   debug_loc protocol __LOC__ ;
+  Tezt.Cli.options.log_level <- Info ;
   let blocks = Array.of_list blocks in
   Log.info "Cycle alignment" ;
   (* Test that cycles start where they are supposed to start.
