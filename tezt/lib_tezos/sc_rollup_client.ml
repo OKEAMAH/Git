@@ -98,7 +98,7 @@ let commitment_info_from_json json =
 
 let next_name = ref 1
 
-let () = Test.declare_reset_function @@ fun () -> next_name := 1
+let () = Test.declare_reset_function @@ fun _ -> next_name := 1
 
 let create ~protocol ?runner ?name ?base_dir ?color sc_node =
   let name =

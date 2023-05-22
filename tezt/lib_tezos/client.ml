@@ -88,7 +88,7 @@ let fresh_name () =
   incr next_name ;
   "client" ^ string_of_int index
 
-let () = Test.declare_reset_function @@ fun () -> next_name := 1
+let () = Test.declare_reset_function @@ fun _ -> next_name := 1
 
 let runner endpoint =
   match endpoint with
