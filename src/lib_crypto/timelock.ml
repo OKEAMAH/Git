@@ -139,9 +139,7 @@ let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 
 (* Generates almost uniformly a Zarith element between 0 and [public key].
    Intended for generating the timelock *)
-let gen_puzzle_unsafe () =
-  (* We divide by 8 to convert to bytes *)
-  Z.erem (random_z ((size_rsa2048 / 8) + 16)) rsa2048
+let gen_puzzle_unsafe () = Z.erem (random_z (size_rsa2048 + 16)) rsa2048
 
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime ~time value key =
@@ -246,7 +244,7 @@ let proof_of_vdf_tuple ~time vdf_tuple =
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
   if verify_wesolowski ~time vdf_tuple then
-    let randomness = random_z (128 + (Z.to_bits rsa2048 |> String.length)) in
+    let randomness = random_z (size_rsa2048 + 16) in
     let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa2048 in
     let proof = {vdf_tuple; randomness} in
     (randomized_puzzle, proof)
