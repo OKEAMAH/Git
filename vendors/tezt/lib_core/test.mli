@@ -25,11 +25,16 @@
 
 (** Base test functions. *)
 
+(** Test descriptions. *)
+type t
+
 (** Add a function to be called before each test start.
 
     Used to reset counters such as the ones which are used to
     choose default process names. *)
-val declare_reset_function : (unit -> unit) -> unit
+val declare_reset_function : (t -> unit) -> unit
+
+val declare_cleanup_function : (t -> unit Lwt.t) -> unit
 
 (** Log an error and stop the test right here.
 
@@ -155,13 +160,14 @@ end
     by the particular variant of Tezt you are using (Unix or JavaScript). *)
 val run_with_scheduler : (module SCHEDULER) -> unit
 
-(** Test descriptions. *)
-type t
-
 (** Get a test by its title.
 
     Return [None] if no test was [register]ed with this title. *)
 val get_test_by_title : string -> t option
+
+val title : t -> string
+
+val file : t -> string
 
 (** Run one test.
 
