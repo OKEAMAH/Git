@@ -25,15 +25,6 @@
 
 open Base
 
-let reset_functions = ref []
-
-let declare_reset_function f = reset_functions := f :: !reset_functions
-
-let before_test_run_functions = ref []
-
-let before_test_run f =
-  before_test_run_functions := f :: !before_test_run_functions
-
 (* Prepare a promise that will resolve on SIGINT
    (e.g. when the user presses Ctrl+C).
 
@@ -158,6 +149,19 @@ type test = {
 
 type t = test
 
+let reset_functions = ref []
+
+let declare_reset_function f = reset_functions := f :: !reset_functions
+
+let cleanup_functions = ref []
+
+let declare_cleanup_function f = cleanup_functions := f :: !cleanup_functions
+
+let before_test_run_functions = ref []
+
+let before_test_run f =
+  before_test_run_functions := f :: !before_test_run_functions
+
 type used_seed = Used_fixed | Used_random of int
 
 type test_result = {test_result : Log.test_result; seed : used_seed}
@@ -181,7 +185,7 @@ let really_run ~sleep ~clean_up ~temp_start ~temp_stop ~temp_clean_up test =
             Log.info "Random seed: %d" seed ;
             Used_random seed)
   in
-  List.iter (fun reset -> reset ()) !reset_functions ;
+  List.iter (fun reset -> reset test) !reset_functions ;
   test.result <- None ;
   (* It may happen that the promise of the function resolves successfully
      at the same time as a background promise is rejected or that we
@@ -292,6 +296,7 @@ let really_run ~sleep ~clean_up ~temp_start ~temp_stop ~temp_clean_up test =
   in
   if kept_temp then
     Log.report "Temporary files can be found in: %s" main_temporary_directory ;
+  let* () = Lwt_list.iter_s (fun cleanup -> cleanup test) !cleanup_functions in
   (* Resolve all pending promises so that they won't do anything
      (like raise [Canceled]) during the next test. *)
   let* () = Background.stop () in
@@ -520,6 +525,10 @@ let map_registered_list f =
   List.map f (list_registered ())
 
 let get_test_by_title test_title = String_map.find_opt test_title !registered
+
+let title {title; _} = title
+
+let file {file; _} = file
 
 let list_tests include_time format =
   match format with
