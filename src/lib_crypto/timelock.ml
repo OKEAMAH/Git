@@ -260,10 +260,6 @@ let timelock_proof_to_symmetric_key proof =
   let hash = blake ~key:kdf_key (Z.to_string updated) in
   Crypto_box.Secretbox.unsafe_of_bytes hash
 
-let puzzle_to_symmetric_key ~time puzzle proof =
-  if verify ~time puzzle proof then Some (timelock_proof_to_symmetric_key proof)
-  else None
-
 (* -------- Timelock high level functions (used in Tezos) -------- *)
 type chest = {puzzle : puzzle; ciphertext : ciphertext}
 
@@ -305,15 +301,12 @@ let open_chest chest chest_key ~time =
   if time <= 0 then
     raise
       (Invalid_argument "Timelock.open_chest: the time bound must be positive")
+  else if not @@ verify ~time chest.puzzle chest_key then Bogus_opening
   else
-    let sym_key_opt = puzzle_to_symmetric_key ~time chest.puzzle chest_key in
-    match sym_key_opt with
-    | None -> Bogus_opening
-    | Some sym_key -> (
-        let plaintext_opt = decrypt sym_key chest.ciphertext in
-        match plaintext_opt with
-        | None -> Correct Bytes.empty
-        | Some plaintext -> Correct plaintext)
+    let sym_key = timelock_proof_to_symmetric_key chest_key in
+    match decrypt sym_key chest.ciphertext with
+    | None -> Correct Bytes.empty
+    | Some plaintext -> Correct plaintext
 
 module Internal_for_tests = struct
   let rsa2048 = rsa2048
