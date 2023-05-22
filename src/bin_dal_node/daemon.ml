@@ -121,6 +121,7 @@ module Handler = struct
                  expected: %d"
                 given
                 expected
+          | `Shard_length_mismatch -> "Invalid shard length"
           | `Invalid_shard -> "Invalid_shard"
           | `Shard_index_out_of_range s ->
               Format.sprintf "Shard_index_out_of_range(%s)" s
