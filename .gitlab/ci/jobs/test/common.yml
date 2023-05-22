@@ -10,7 +10,6 @@
   stage: test
   before_script:
     - . ./scripts/version.sh
-  retry: 2
 
 # Merge coverage files after the execution
 .template__coverage_files:
