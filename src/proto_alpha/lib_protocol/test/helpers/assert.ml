@@ -235,12 +235,14 @@ let balance_is = contract_property_is Contract.balance
 *)
 let frozen_bonds_is = contract_property_is Contract.frozen_bonds
 
-type container = Balance | Frozen_bonds
+type _ container =
+  | Balance : Alpha_context.Contract.t container
+  | Frozen_bonds : Alpha_context.Contract.t container
 
-let tez_container_was_operated ~container ~operand ~loc b contract old_balance
-    amount =
+let tez_container_was_operated (type c) ~(container : c container) ~operand ~loc
+    b (contract : c) old_balance amount =
   operand old_balance amount |> Environment.wrap_tzresult >>?= fun expected ->
-  let f =
+  let (f : loc:string -> t -> c -> Alpha_context.Tez.t -> unit tzresult Lwt.t) =
     match container with
     | Balance -> balance_is
     | Frozen_bonds -> frozen_bonds_is
