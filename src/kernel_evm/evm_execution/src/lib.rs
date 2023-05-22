@@ -119,13 +119,14 @@ pub fn run_transaction<'a, Host>(
     call_data: Vec<u8>,
     gas_limit: Option<u64>,
     value: Option<U256>,
-) -> Result<handler::ExecutionOutcome, EthereumError>
+) -> Result<Option<handler::ExecutionOutcome>, EthereumError>
 where
     Host: Runtime,
 {
     debug_msg!(host, "Going to run an Ethereum transaction");
     debug_msg!(host, " - from address: {}", caller);
     debug_msg!(host, " - to address: {:?}", address);
+    debug_msg!(host, " - Pre-paying for gas: {:?}", gas_limit);
 
     let mut handler = handler::EvmHandler::<'_, Host>::new(
         host,
@@ -134,23 +135,39 @@ where
         block,
         &config,
         precompiles,
-        gas_limit.unwrap_or(0_u64),
     );
 
-    // TODO: check gas_limit vs caller balance. Make sure caller has
-    // enough funds to pay for gas.
-
-    if let Some(address) = address {
-        if call_data.is_empty() {
-            // This is a transfer transaction
-            handler.transfer(caller, address, value.unwrap_or(U256::zero()), gas_limit)
+    if handler.pre_pay_transactions(caller, gas_limit)? {
+        let result = if let Some(address) = address {
+            if call_data.is_empty() {
+                // This is a transfer transaction
+                handler.transfer(
+                    caller,
+                    address,
+                    value.unwrap_or(U256::zero()),
+                    gas_limit,
+                )?
+            } else {
+                // This must be a contract-call transaction
+                handler
+                    .call_contract(caller, address, value, call_data, gas_limit, false)?
+            }
         } else {
-            // This must be a contract-call transaction
-            handler.call_contract(caller, address, value, call_data, gas_limit, false)
+            // This is a create-contract transaction
+            handler.create_contract(caller, value, call_data, gas_limit)?
+        };
+
+        if result.is_success && gas_limit.is_some() {
+            let gas_refund = result.gas_refund;
+            debug_msg!(handler.borrow_host(), "Refunding gas: {}", gas_refund);
+            handler.refund_transaction(caller, result.gas_refund)?;
         }
+
+        Ok(Some(result))
     } else {
-        // This is a create-contract transaction
-        handler.create_contract(caller, value, call_data, gas_limit)
+        debug_msg!(host, "Caller was unable to pre-pay the transaction");
+        // caller was unable to pay for the gas limit
+        Ok(None)
     }
 }
 
@@ -251,12 +268,13 @@ mod test {
         let call_data: Vec<u8> = vec![];
         let transaction_value = U256::from(100_u32);
         let config = Config::london();
+        let gas_limit = 21000;
 
         set_balance(
             &mut mock_runtime,
             &mut evm_account_storage,
             &caller,
-            U256::from(99),
+            U256::from(21099),
         );
         set_balance(
             &mut mock_runtime,
@@ -274,17 +292,18 @@ mod test {
             Some(callee),
             caller,
             call_data,
-            Some(22000),
+            Some(gas_limit),
             Some(transaction_value),
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: config.gas_transaction_call,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
         assert_eq!(
@@ -309,6 +328,7 @@ mod test {
         let call_data: Vec<u8> = vec![];
         let transaction_value = U256::from(100_u32);
         let config = Config::london();
+        let gas_limit = 21000;
 
         set_balance(
             &mut mock_runtime,
@@ -320,7 +340,7 @@ mod test {
             &mut mock_runtime,
             &mut evm_account_storage,
             &caller,
-            U256::from(101),
+            U256::from(21101),
         );
 
         let result = run_transaction(
@@ -332,17 +352,20 @@ mod test {
             Some(callee),
             caller,
             call_data,
-            Some(21000),
+            Some(gas_limit),
             Some(transaction_value),
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: config.gas_transaction_call,
+            gas_refund: (gas_limit - config.gas_transaction_call)
+                .try_into()
+                .unwrap(),
             is_success: true,
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(expected_result, result);
 
@@ -388,13 +411,14 @@ mod test {
             Some(transaction_value),
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
         assert_eq!(
@@ -414,12 +438,14 @@ mod test {
         let caller = H160::from_low_u64_be(117);
         let transaction_value = U256::from(0);
         let call_data: Vec<u8> = hex::decode(STORAGE_CONTRACT_INITIALIZATION).unwrap();
+        let gas_limit = 90000;
+        let gas_cost = 21123;
 
         set_balance(
             &mut mock_runtime,
             &mut evm_account_storage,
             &caller,
-            U256::from(0),
+            U256::from(gas_limit * 4),
         );
 
         let result = run_transaction(
@@ -431,20 +457,23 @@ mod test {
             callee,
             caller,
             call_data,
-            Some(10000),
+            Some(gas_limit),
             Some(transaction_value),
         );
 
         let new_address =
             Some(H160::from_str("907823e0a92f94355968feb2cbf0fbb594fe3214").unwrap());
 
-        assert!(result.is_ok(), "execution should have succeeded");
-        let result = result.unwrap();
-        assert!(result.is_success, "transaction should have succeeded");
-        assert_eq!(
-            new_address, result.new_address,
-            "Contract addess not its expected value"
-        );
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: gas_cost,
+            gas_refund: (gas_limit - gas_cost).try_into().unwrap(),
+            is_success: true,
+            new_address,
+            logs: vec![],
+            result: Some(vec![]),
+        }));
+
+        assert_eq!(result, expected_result);
 
         // test of a call
         let call_data2 = hex::decode(STORAGE_CONTRACT_CALL_NUM).unwrap();
@@ -457,11 +486,13 @@ mod test {
             new_address,
             caller,
             call_data2,
-            Some(10000),
+            Some(gas_limit),
             Some(U256::zero()),
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
+        assert!(result.is_some(), "execution should have produced a result");
+        let result = result.unwrap();
         assert!(result.is_success, "transaction should have succeeded");
         assert!(result.result.is_some(), "Call should have returned a value");
         let value = U256::from_little_endian(result.result.unwrap().as_slice());
@@ -477,11 +508,13 @@ mod test {
             new_address,
             caller,
             call_data_set,
-            Some(100000),
+            Some(gas_limit),
             Some(U256::zero()),
         );
         assert!(result3.is_ok(), "execution should have succeeded");
         let result = result3.unwrap();
+        assert!(result.is_some(), "execution should have produced a result");
+        let result = result.unwrap();
         assert!(result.is_success, "transaction should have succeeded");
         assert!(result.result.is_some(), "Call should have returned a value");
         let value = U256::from_big_endian(result.result.unwrap().as_slice());
@@ -496,11 +529,13 @@ mod test {
             new_address,
             caller,
             hex::decode(STORAGE_CONTRACT_CALL_NUM).unwrap(),
-            Some(10000),
+            Some(gas_limit),
             Some(U256::zero()),
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
+        assert!(result.is_some(), "execution should have produced a result");
+        let result = result.unwrap();
         assert!(result.is_success, "transaction should have succeeded");
         assert!(result.result.is_some(), "Call should have returned a value");
         let value = U256::from_big_endian(result.result.unwrap().as_slice());
@@ -523,7 +558,7 @@ mod test {
             &mut mock_runtime,
             &mut evm_account_storage,
             &caller,
-            U256::from(0),
+            U256::from(100000) + transaction_value,
         );
 
         let result = run_transaction(
@@ -539,7 +574,9 @@ mod test {
             Some(transaction_value),
         );
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "execution should have succeeded");
+        let result = result.unwrap();
+        assert!(result.is_some(), "execution should have produced a result");
         let result = result.unwrap();
 
         assert!(result.is_success);
@@ -584,13 +621,14 @@ mod test {
             Some(transaction_value),
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
         assert_eq!(
@@ -625,13 +663,14 @@ mod test {
         );
 
         // Assert
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(expected_result, result);
     }
@@ -743,6 +782,12 @@ mod test {
         ];
 
         set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            21_006.into(),
+        );
 
         // Act
         let result = run_transaction(
@@ -754,18 +799,19 @@ mod test {
             Some(target),
             caller,
             data.to_vec(),
-            Some(6),
+            Some(21_006),
             None,
         );
 
         // Assert
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 6,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 21_006,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(expected_result, result);
     }
@@ -779,6 +825,8 @@ mod test {
         let mut evm_account_storage = init_evm_account_storage().unwrap();
         let target = H160::from_low_u64_be(117u64);
         let caller = H160::from_low_u64_be(118u64);
+        let gas_limit = 30_000;
+        let gas_cost = 21_006;
         let data = [0u8; 32]; // Need some data to make it a call
         let code = vec![
             Opcode::PUSH1.as_u8(),
@@ -789,6 +837,12 @@ mod test {
         ];
 
         set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            30_000.into(),
+        );
 
         // Act
         let result = run_transaction(
@@ -800,18 +854,19 @@ mod test {
             Some(target),
             caller,
             data.to_vec(),
-            Some(6),
+            Some(gas_limit),
             None,
         );
 
         // Assert
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 6,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: gas_cost,
+            gas_refund: (gas_limit - gas_cost).try_into().unwrap(),
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
     }
@@ -852,13 +907,14 @@ mod test {
         );
 
         // Assert
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
     }
@@ -902,13 +958,14 @@ mod test {
             Some(U256::from(100)),
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(expected_result, result);
         assert_eq!(
@@ -932,6 +989,13 @@ mod test {
         let caller = H160::from_low_u64_be(118u64);
         let data = [0u8; 32]; // Need some data to make it a contract call
 
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            21_001.into(),
+        );
+
         // Act
         let result = run_transaction(
             &mut mock_runtime,
@@ -942,18 +1006,19 @@ mod test {
             Some(target),
             caller,
             data.to_vec(),
-            Some(1),
+            Some(21001),
             None,
         );
 
         // Assert
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 0,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 21000,
+            gas_refund: 1,
             is_success: true,
             new_address: None,
             logs: vec![],
             result: Some(vec![0u8; 32]),
-        });
+        }));
 
         assert_eq!(expected_result, result);
     }
@@ -1067,6 +1132,13 @@ mod test {
         let static_call_target = H160::from_low_u64_be(200_u64);
         let all_the_gas = 2_000_000_u64;
 
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            all_the_gas.into(),
+        );
+
         // contract that stores something in durable storage
         let static_call_code = vec![
             Opcode::PUSH2.as_u8(),
@@ -1119,13 +1191,14 @@ mod test {
 
         // Since we execute an invalid instruction (for a static call that is) we spend
         // _all_ the gas.
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: all_the_gas,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 86_653,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         // assert that call fails
         assert_eq!(result, expected_result);
@@ -1142,6 +1215,13 @@ mod test {
         let data = [0u8; 32]; // Need some data to make it a contract call
         let static_call_target = H160::from_low_u64_be(200_u64);
         let all_the_gas = 2_000_000_u64;
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            all_the_gas.into(),
+        );
 
         // contract that does logging
         let static_call_code = vec![
@@ -1194,13 +1274,14 @@ mod test {
 
         // Since we execute an invalid instruction (for a static call that is), we
         // expect to spend _all_ the gas.
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: all_the_gas,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 86653,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         // assert that call fails
         assert_eq!(result, expected_result);
@@ -1216,7 +1297,7 @@ mod test {
         let caller = H160::from_low_u64_be(118_u64);
         let data = [0u8; 32]; // Need some data to make it a contract call
         let call_target = H160::from_low_u64_be(200_u64);
-        let all_the_gas = 2_000_000_u64;
+        let all_the_gas = 95_000_u64;
 
         // contract that does logging
         let contract_that_logs = vec![
@@ -1246,6 +1327,12 @@ mod test {
             &mut evm_account_storage,
             &call_target,
             &contract_that_logs,
+        );
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            95_000.into(),
         );
 
         // contract that calls contract above
@@ -1300,13 +1387,14 @@ mod test {
             data: vec![1, 2, 3, 4, 5, 6, 7, 8],
         };
 
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 1345,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 87048,
+            gas_refund: 72652,
             is_success: true,
             new_address: None,
             logs: vec![log_record1, log_record2],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(result, expected_result);
     }
@@ -1320,11 +1408,18 @@ mod test {
         let target = H160::from_low_u64_be(117_u64);
         let caller = H160::from_low_u64_be(118_u64);
         let data = [0u8; 32]; // Need some data to make it a contract call
-        let static_call_target = H160::from_low_u64_be(200_u64);
+        let reverting_target = H160::from_low_u64_be(200_u64);
         let all_the_gas = 2_000_000_u64;
 
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            all_the_gas.into(),
+        );
+
         // contract that does logging
-        let static_call_code = vec![
+        let reverting_code = vec![
             Opcode::PUSH1.as_u8(), // push size
             1,
             Opcode::PUSH1.as_u8(), // push address
@@ -1340,8 +1435,8 @@ mod test {
         set_account_code(
             &mut mock_runtime,
             &mut evm_account_storage,
-            &static_call_target,
-            &static_call_code,
+            &reverting_target,
+            &reverting_code,
         );
 
         // contract that does call to contract above
@@ -1390,13 +1485,14 @@ mod test {
             data: vec![0],
         };
 
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 908,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 87048,
+            gas_refund: 1978089,
             is_success: true,
             new_address: None,
             logs: vec![log_record1],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(result, expected_result);
     }
@@ -1425,6 +1521,13 @@ mod test {
             &mut evm_account_storage,
             &selfdestructing_contract,
             &selfdestructing_code,
+        );
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            all_the_gas.into(),
         );
 
         set_balance(
@@ -1469,13 +1572,14 @@ mod test {
             None,
         );
 
-        let expected_result = Ok(ExecutionOutcome {
-            gas_used: 30124,
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 86656,
+            gas_refund: 948876,
             is_success: true,
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
-        });
+        }));
 
         assert_eq!(result, expected_result);
 
@@ -1490,7 +1594,7 @@ mod test {
         );
         assert_eq!(
             get_balance(&mut mock_runtime, &mut evm_account_storage, &caller),
-            1_000_000.into()
+            1948876.into()
         );
     }
 
@@ -1504,7 +1608,7 @@ mod test {
         let caller = H160::from_low_u64_be(115_u64);
         let data = [0u8; 32]; // Need some data to make it a contract call
         let selfdestructing_contract = H160::from_low_u64_be(100_u64);
-        let all_the_gas = 1_000_000_u64;
+        let all_the_gas = 500_000_u64;
 
         // This contract selfdestructs and gives its funds to `caller`
         let selfdestructing_code = vec![
@@ -1518,6 +1622,13 @@ mod test {
             &mut evm_account_storage,
             &selfdestructing_contract,
             &selfdestructing_code,
+        );
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            all_the_gas.into(),
         );
 
         set_balance(
@@ -1569,13 +1680,14 @@ mod test {
             None,
         );
 
-        let expected_result = Ok(ExecutionOutcome {
+        let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: all_the_gas,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
             result: None,
-        });
+        }));
 
         assert_eq!(result, expected_result);
 

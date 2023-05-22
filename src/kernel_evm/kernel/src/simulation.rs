@@ -75,7 +75,10 @@ impl Simulation {
     }
 
     /// Execute the simulation
-    pub fn run<Host: Runtime>(&self, host: &mut Host) -> Result<ExecutionOutcome, Error> {
+    pub fn run<Host: Runtime>(
+        &self,
+        host: &mut Host,
+    ) -> Result<Option<ExecutionOutcome>, Error> {
         let timestamp = current_timestamp(host);
         let timestamp = U256::from(timestamp.as_u64());
         let block_constants = BlockConstants::first_block(timestamp);
@@ -240,9 +243,15 @@ pub fn start_simulation_mode<Host: Runtime>(host: &mut Host) -> Result<(), Error
     let simulation = parse_inbox(host)?;
     let outcome = simulation.run(host)?;
     debug_msg!(host, "outcome={:?} ", outcome);
-    storage::store_simulation_status(host, outcome.is_success)?;
-    storage::store_simulation_gas(host, outcome.gas_used)?;
-    storage::store_simulation_result(host, outcome.result)
+
+    match outcome {
+        Some(outcome) => {
+            storage::store_simulation_status(host, outcome.is_success)?;
+            storage::store_simulation_gas(host, outcome.gas_used)?;
+            storage::store_simulation_result(host, outcome.result)
+        }
+        None => Ok(()),
+    }
 }
 
 #[cfg(test)]
@@ -352,11 +361,11 @@ mod tests {
             callee,
             caller,
             call_data,
-            Some(10000),
+            Some(30000),
             Some(transaction_value),
         );
         assert!(outcome.is_ok(), "contract should have been created");
-        outcome.unwrap().new_address.unwrap()
+        outcome.unwrap().unwrap().new_address.unwrap()
     }
 
     #[test]
@@ -380,7 +389,7 @@ mod tests {
         let outcome = outcome.unwrap();
         assert_eq!(
             Some(vec![0u8; 32]),
-            outcome.result,
+            outcome.unwrap().result,
             "simulation result should be 0"
         );
 
@@ -399,7 +408,7 @@ mod tests {
         let outcome = outcome.unwrap();
         assert_eq!(
             Some(vec![0u8; 32]),
-            outcome.result,
+            outcome.unwrap().result,
             "simulation result should be 0"
         );
     }
@@ -425,7 +434,7 @@ mod tests {
         let outcome = outcome.unwrap();
         assert_eq!(
             Some(vec![0u8; 32]),
-            outcome.result,
+            outcome.unwrap().result,
             "simulation result should be 0"
         );
     }
@@ -466,7 +475,7 @@ mod tests {
 
         let to = Some(new_address);
         let data = hex::decode(STORAGE_CONTRACT_CALL_GET).unwrap();
-        let gas = Some(11111);
+        let gas = Some(31111);
         let expected = Simulation {
             from: None,
             to,
@@ -490,7 +499,7 @@ mod tests {
 
         if let Input::SimpleSimulation(s) = parsed {
             let res = s.run(&mut host).expect("simulation should run");
-            assert!(res.is_success, "simulation should have succeeded");
+            assert!(res.unwrap().is_success, "simulation should have succeeded");
         } else {
             panic!("Parsing failed")
         }

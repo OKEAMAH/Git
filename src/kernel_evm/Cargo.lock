@@ -450,6 +450,7 @@ version = "0.1.0"
 dependencies = [
  "const-decoder",
  "evm",
+ "evm-gasometer",
  "hex",
  "libsecp256k1",
  "num-bigint",

@@ -22,6 +22,7 @@ use core::convert::Infallible;
 use debug::debug_msg;
 use evm::executor::stack::Log;
 use evm::gasometer::Gasometer;
+use evm::gasometer::{GasCost, MemoryCost};
 use evm::{
     Capture, Config, Context, CreateScheme, ExitError, ExitFatal, ExitReason, ExitRevert,
     ExitSucceed, Handler, Opcode, Stack, Transfer,
@@ -49,8 +50,20 @@ const MAXIMUM_TRANSACTION_DEPTH: usize = 1024_usize;
 /// (like as if it the call ended with a RETURN opcode).
 #[derive(Debug, Eq, PartialEq)]
 pub struct ExecutionOutcome {
-    /// How much gas was used for processing an entire transaction.
+    /// How much gas was used for processing an entire transaction. This includes all
+    /// gas used for opcodes, plus gas given when a contract calls another contract.
+    /// Unused gas from successful recursive calls will be refunded to the calling
+    /// context. The gas used can never be more than the gas limit.
     pub gas_used: u64,
+    /// How much gas to refund after the transaction. This includes:
+    ///  - Unused gas, not used for instructions or given to sub-calls; and,
+    ///  - Gas refunded by SSTORE and SELFDESTRUCT; and,
+    ///  - Unused gas after sub-calls.
+    /// Note that unused gas from sub calls will be recorded as both used and also
+    /// refunded, ie used- plus refunded gas can be more than the gas limit. Also,
+    /// the refuneded gas can be _more than_ the gas limit in case of clever SSTORE
+    /// instructions.
+    pub gas_refund: i64,
     /// Whether the transaction succeeded or not.
     ///  - In case of transfer-, whether the funds were transferred
     ///  - In case of call-, whether toplevel call returned or stopped (success), or
@@ -93,7 +106,12 @@ fn ethereum_error_to_exit_reason(exit_reason: EthereumError) -> ExitReason {
 }
 
 /// Data related to the current transaction layer
-struct TransactionLayerData {
+#[derive(Debug)]
+struct TransactionLayerData<'config> {
+    /// Gasometer for the current transaction layer. If this value is
+    /// `None`, then the current transaction has no gas limit and no
+    /// gas accounting.
+    pub gasometer: Option<Gasometer<'config>>,
     /// Whether the current transaction is static or not, ie, if the
     /// transaction is allowed to update durable storage.
     pub is_static: bool,
@@ -105,13 +123,14 @@ struct TransactionLayerData {
     pub deleted_contracts: Vec<H160>,
 }
 
-impl TransactionLayerData {
+impl<'config> TransactionLayerData<'config> {
     /// Create the data associated with one layer of transactions -
     /// one Ethereum transaction context. It initially has no log
     /// records.
-    pub fn new(is_static: bool) -> Self {
+    pub fn new(is_static: bool, gas_limit: Option<u64>, config: &'config Config) -> Self {
         TransactionLayerData {
             is_static,
+            gasometer: gas_limit.map(|gl| Gasometer::new(gl, config)),
             logs: vec![],
             deleted_contracts: vec![],
         }
@@ -130,13 +149,11 @@ pub struct EvmHandler<'a, Host: Runtime> {
     pub block: &'a BlockConstants,
     /// The precompiled functions
     precompiles: &'a dyn PrecompileSet<Host>,
-    /// The gasometer for measuring and keeping track of gas usage
-    gasometer: Gasometer<'a>,
     /// The configuration, eg, London or Frontier for execution
     config: &'a Config,
     /// The contexts associated with transaction(s) currently in
     /// progress
-    transaction_data: Vec<TransactionLayerData>,
+    transaction_data: Vec<TransactionLayerData<'a>>,
 }
 
 #[allow(unused_variables)]
@@ -149,7 +166,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         block: &'a BlockConstants,
         config: &'a Config,
         precompiles: &'a dyn PrecompileSet<Host>,
-        gas_limit: u64,
     ) -> Self {
         Self {
             host,
@@ -158,7 +174,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             block,
             config,
             precompiles,
-            gasometer: Gasometer::<'a>::new(gas_limit, config),
             transaction_data: vec![],
         }
     }
@@ -166,7 +181,119 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     /// Get the total amount of gas used for the duration of the handlers
     /// lifetime.
     pub fn gas_used(&self) -> u64 {
-        self.gasometer.total_used_gas()
+        self.transaction_data
+            .last()
+            .map(|layer| {
+                layer
+                    .gasometer
+                    .as_ref()
+                    .map(|g| g.total_used_gas())
+                    .unwrap_or(0_u64)
+            })
+            .unwrap_or(0_u64)
+    }
+
+    /// Get the total amount of gas to refund.
+    ///
+    /// The total amount of refunded gas is both unused gas and gas refunded
+    /// from previously paid fees for durable storage (eg SSTORE instructions).
+    /// This refund is _not_ limited.
+    pub fn gas_refund(&self) -> i64 {
+        self.transaction_data
+            .last()
+            .map(|layer| {
+                layer
+                    .gasometer
+                    .as_ref()
+                    .map(|g| {
+                        let unused_gas: i64 = g.gas().try_into().unwrap_or(0_i64);
+                        unused_gas + g.refunded_gas()
+                    })
+                    .unwrap_or(0)
+            })
+            .unwrap_or(0)
+    }
+
+    /// Record the base fee on the gasometer for current transaction layer.
+    /// This should be layer 1, since base fee is always for the toplevel
+    /// transaction. Return `true` if there was enough gas - `false` otherwise.
+    fn record_base_fee(&mut self) -> Result<(), ExitError> {
+        self.record_cost(self.config.gas_transaction_call)
+    }
+
+    /// Record the cost of a static-cost opcode
+    fn record_cost(&mut self, cost: u64) -> Result<(), ExitError> {
+        self.transaction_data
+            .last_mut()
+            .as_mut()
+            .map(|layer| {
+                layer
+                    .gasometer
+                    .as_mut()
+                    .map(|gasometer| gasometer.record_cost(cost))
+                    .unwrap_or(Ok(()))
+            })
+            .unwrap_or(Ok(()))
+    }
+
+    /// Record the cost of a dynamic-cost opcode
+    fn record_dynamic_cost(
+        &mut self,
+        cost: GasCost,
+        memory_cost: Option<MemoryCost>,
+    ) -> Result<(), ExitError> {
+        self.transaction_data
+            .last_mut()
+            .as_mut()
+            .map(|layer| {
+                layer
+                    .gasometer
+                    .as_mut()
+                    .map(|gasometer| gasometer.record_dynamic_cost(cost, memory_cost))
+                    .unwrap_or(Ok(()))
+            })
+            .unwrap_or(Ok(()))
+    }
+
+    /// Have the caller account pay for gas. Returns `Ok(true)` if the payment
+    /// went through; returns `Ok(false)` if `caller` doesn't have the funds.
+    /// Return `Err(...)` in case something is at fault with durable storage or
+    /// runtime.
+    pub fn pre_pay_transactions(
+        &mut self,
+        caller: H160,
+        gas_limit: Option<u64>,
+    ) -> Result<bool, EthereumError> {
+        match gas_limit {
+            Some(gas_limit) => self
+                .get_or_create_account(caller)?
+                .balance_remove(self.host, U256::from(gas_limit) * self.block.gas_price)
+                .map_err(EthereumError::from),
+            None => Ok(true),
+        }
+    }
+
+    pub fn refund_transaction(
+        &mut self,
+        caller: H160,
+        gas_refund: i64,
+    ) -> Result<(), EthereumError> {
+        if let Ok(gas_refund) = u64::try_from(gas_refund) {
+            let mut account = self.get_or_create_account(caller)?;
+            account
+                .balance_add(self.host, U256::from(gas_refund) * self.block.gas_price)?;
+            Ok(())
+        } else if gas_refund < 0 {
+            debug_msg!(
+                self.host,
+                "Tried to negative gas {} to {:?}",
+                gas_refund,
+                caller
+            );
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     /// Returns true if there is a static transaction in progress, otherwise
@@ -459,7 +586,15 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         gas_limit: Option<u64>,
         is_static: bool,
     ) -> Result<ExecutionOutcome, EthereumError> {
-        self.begin_initial_transaction(is_static)?;
+        self.begin_initial_transaction(is_static, gas_limit)?;
+
+        if let Err(err) = self.record_base_fee() {
+            return self.end_initial_transaction(Ok((
+                ExitReason::Error(err),
+                None,
+                vec![],
+            )));
+        }
 
         let result = self.execute_call(
             callee,
@@ -484,7 +619,15 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         input: Vec<u8>,
         gas_limit: Option<u64>,
     ) -> Result<ExecutionOutcome, EthereumError> {
-        self.begin_initial_transaction(false)?;
+        self.begin_initial_transaction(false, gas_limit)?;
+
+        if let Err(err) = self.record_base_fee() {
+            return self.end_initial_transaction(Ok((
+                ExitReason::Error(err),
+                None,
+                vec![],
+            )));
+        }
 
         let default_create_scheme = CreateScheme::Legacy { caller };
 
@@ -507,26 +650,21 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         value: U256,
         gas_limit: Option<u64>,
     ) -> Result<ExecutionOutcome, EthereumError> {
-        self.begin_initial_transaction(false)?;
+        self.begin_initial_transaction(false, gas_limit)?;
 
         self.increment_nonce(from)?;
 
-        // TODO gas cost - it costs a fixed amount transferring funds
-
-        let transfer_cost = self.config.gas_transaction_call;
-
-        let gas_result = self.gasometer.record_cost(transfer_cost);
-
-        let tx_result = match gas_result {
-            Ok(()) => Ok((
-                self.execute_transfer(from, to, value, gas_limit)?,
+        if let Err(err) = self.record_base_fee() {
+            return self.end_initial_transaction(Ok((
+                ExitReason::Error(err),
                 None,
                 vec![],
-            )),
-            Err(err) => Ok((ExitReason::Error(err), None, vec![])),
-        };
+            )));
+        }
 
-        self.end_initial_transaction(tx_result)
+        let result = self.execute_transfer(from, to, value, gas_limit)?;
+
+        self.end_initial_transaction(Ok((result, None, vec![])))
     }
 
     fn get_or_create_account(
@@ -650,6 +788,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     fn begin_initial_transaction(
         &mut self,
         is_static: bool,
+        gas_limit: Option<u64>,
     ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
@@ -673,8 +812,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             ));
         }
 
-        self.transaction_data
-            .push(TransactionLayerData::new(self.is_static() || is_static));
+        self.transaction_data.push(TransactionLayerData::new(
+            self.is_static() || is_static,
+            gas_limit,
+            self.config,
+        ));
 
         self.evm_account_storage
             .begin_transaction(self.host)
@@ -720,13 +862,17 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             ));
         }
 
+        let gas_used = self.gas_used();
+        let gas_refund = self.gas_refund();
+
         if let Some(last_layer) = self.transaction_data.pop() {
             self.evm_account_storage
                 .commit_transaction(self.host)
                 .map_err(EthereumError::from)?;
 
             Ok(ExecutionOutcome {
-                gas_used: self.gas_used(),
+                gas_used,
+                gas_refund,
                 is_success: true,
                 new_address,
                 logs: last_layer.logs,
@@ -746,6 +892,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     /// executing, such state is the sort of thing that may cause panic.
     fn rollback_initial_transaction(
         &mut self,
+        do_refund: bool,
     ) -> Result<ExecutionOutcome, EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
@@ -777,6 +924,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         }
 
         let gas_used = self.gas_used();
+        let gas_refund = if do_refund { self.gas_refund() } else { 0 };
+
+        debug_msg!(self.host, "Rolling back. Gas used: {:?}", gas_used);
+        debug_msg!(self.host, "Rolling back. Gas refund: {:?}", gas_refund);
 
         self.evm_account_storage
             .rollback_transaction(self.host)
@@ -786,6 +937,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         Ok(ExecutionOutcome {
             gas_used,
+            gas_refund,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -799,6 +951,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         &mut self,
         execution_result: Result<CreateOutcome, EthereumError>,
     ) -> Result<ExecutionOutcome, EthereumError> {
+        debug_msg!(
+            self.host,
+            "end initial transaction with result: {:?}",
+            execution_result
+        );
+
         match execution_result {
             Ok((ExitReason::Succeed(r), new_address, result)) => {
                 debug_msg!(
@@ -810,7 +968,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 self.commit_initial_transaction(new_address, result)
             }
             Ok((ExitReason::Revert(ExitRevert::Reverted), _, _)) => {
-                self.rollback_initial_transaction()
+                self.rollback_initial_transaction(true)
             }
             Ok((ExitReason::Error(error), _, _)) => {
                 debug_msg!(
@@ -819,10 +977,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     error
                 );
 
-                self.rollback_initial_transaction()
+                self.rollback_initial_transaction(false)
             }
             Ok((ExitReason::Fatal(ExitFatal::Other(cow_str)), _, _)) => {
-                self.rollback_initial_transaction()?;
+                self.rollback_initial_transaction(false)?;
                 Err(EthereumError::WrappedError(cow_str))
             }
             Ok((ExitReason::Fatal(fatal_error), _, _)) => {
@@ -832,7 +990,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     fatal_error
                 );
 
-                self.rollback_initial_transaction()
+                self.rollback_initial_transaction(false)
             }
             Err(err) => {
                 debug_msg!(
@@ -841,14 +999,18 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     err
                 );
 
-                self.rollback_initial_transaction()?;
+                self.rollback_initial_transaction(false)?;
                 Err(err)
             }
         }
     }
 
     /// Begin an intermediate transaction
-    fn begin_inter_transaction(&mut self, is_static: bool) -> Result<(), EthereumError> {
+    fn begin_inter_transaction(
+        &mut self,
+        is_static: bool,
+        gas_limit: Option<u64>,
+    ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
         debug_msg!(
@@ -861,8 +1023,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             return Err(EthereumError::InconsistentTransactionStack(0, false, true));
         }
 
-        self.transaction_data
-            .push(TransactionLayerData::new(self.is_static() || is_static));
+        self.transaction_data.push(TransactionLayerData::new(
+            self.is_static() || is_static,
+            gas_limit,
+            self.config,
+        ));
 
         self.evm_account_storage
             .begin_transaction(self.host)
@@ -891,6 +1056,8 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             .commit_transaction(self.host)
             .map_err(EthereumError::from)?;
 
+        let gas_refund = self.gas_refund();
+
         if let Some(mut committed_data) = self.transaction_data.pop() {
             if let Some(top_layer) = self.transaction_data.last_mut() {
                 top_layer
@@ -904,6 +1071,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 top_layer
                     .deleted_contracts
                     .append(&mut committed_data.deleted_contracts);
+                top_layer
+                    .gasometer
+                    .as_mut()
+                    .map(|g| g.record_refund(gas_refund));
 
                 Ok(())
             } else {
@@ -919,7 +1090,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     }
 
     /// Rollback an intermediate transaction
-    fn rollback_inter_transaction(&mut self) -> Result<(), EthereumError> {
+    fn rollback_inter_transaction(
+        &mut self,
+        do_refund: bool,
+    ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
         if current_depth < 2 {
@@ -936,7 +1110,24 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             current_depth
         );
 
+        let gas_refund = self.gas_refund();
+
         let _ = self.transaction_data.pop();
+
+        if do_refund {
+            if let Some(top_layer) = self.transaction_data.last_mut() {
+                top_layer
+                    .gasometer
+                    .as_mut()
+                    .map(|g| g.record_refund(gas_refund));
+            } else {
+                return Err(EthereumError::InconsistentTransactionStack(
+                    current_depth,
+                    false,
+                    false,
+                ));
+            }
+        }
 
         self.evm_account_storage
             .rollback_transaction(self.host)
@@ -966,7 +1157,19 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
                 return Capture::Exit((ethereum_error_to_exit_reason(err), None, vec![]));
             }
-        } else if let Err(err) = self.rollback_inter_transaction() {
+        } else if let Ok((ExitReason::Revert(_), _, _)) = execution_result {
+            debug_msg!(self.host, "Reverting intermediate transaction");
+
+            if let Err(err) = self.rollback_inter_transaction(true) {
+                debug_msg!(
+                    self.host,
+                    "Rolling back intermediate transaction caused an error: {:?}",
+                    err
+                );
+
+                return Capture::Exit((ethereum_error_to_exit_reason(err), None, vec![]));
+            }
+        } else if let Err(err) = self.rollback_inter_transaction(false) {
             debug_msg!(
                 self.host,
                 "Intermediate transaction ended in error: {:?}",
@@ -1171,7 +1374,21 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         init_code: Vec<u8>,
         target_gas: Option<u64>,
     ) -> Capture<CreateOutcome, Self::CreateInterrupt> {
-        if let Err(err) = self.begin_inter_transaction(false) {
+        if let Err(err) = self.record_cost(target_gas.unwrap_or(0)) {
+            debug_msg!(
+                self.host,
+                "Not enought gas for call. Required at least: {:?}",
+                target_gas
+            );
+
+            return Capture::Exit((
+                ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::OutOfGas)),
+                None,
+                vec![],
+            ));
+        }
+
+        if let Err(err) = self.begin_inter_transaction(false, target_gas) {
             Capture::Exit((
                 ExitReason::Fatal(ExitFatal::Other(Cow::from(format!("{err:?}")))),
                 None,
@@ -1194,7 +1411,20 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         is_static: bool,
         context: Context,
     ) -> Capture<CallOutcome, Self::CallInterrupt> {
-        if let Err(err) = self.begin_inter_transaction(is_static) {
+        if let Err(err) = self.record_cost(target_gas.unwrap_or(0)) {
+            debug_msg!(
+                self.host,
+                "Not enought gas for call. Required at least: {:?}",
+                target_gas
+            );
+
+            return Capture::Exit((
+                ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::OutOfGas)),
+                vec![],
+            ));
+        }
+
+        if let Err(err) = self.begin_inter_transaction(is_static, target_gas) {
             return Capture::Exit((ethereum_error_to_exit_reason(err), vec![]));
         }
 
@@ -1222,7 +1452,7 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         stack: &Stack,
     ) -> Result<(), ExitError> {
         if let Some(cost) = evm::gasometer::static_opcode_cost(opcode) {
-            self.gasometer.record_cost(cost)
+            self.record_cost(cost)
         } else {
             let (cost, _target, memory_cost) = evm::gasometer::dynamic_opcode_cost(
                 context.address,
@@ -1233,7 +1463,7 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
                 &self,
             )?;
 
-            self.gasometer.record_dynamic_cost(cost, memory_cost)
+            self.record_dynamic_cost(cost, memory_cost)
         }
     }
 
@@ -1311,7 +1541,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
 
         // This is a randomly generated address. It has been used for testing legacy address
         // generation with zero nonce using Ethereum. To replicate (with new address):
@@ -1330,7 +1559,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let result = handler.create_address(CreateScheme::Legacy { caller });
@@ -1348,7 +1576,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller: H160 =
             H160::from_str("9bbfed6889322e016e0a02ee459d306fc19545d8").unwrap();
 
@@ -1359,7 +1586,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let code_hash: H256 = CODE_HASH_DEFAULT;
@@ -1384,7 +1610,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller: H160 =
             H160::from_str("9bbfed6889322e016e0a02ee459d306fc19545d8").unwrap();
 
@@ -1395,7 +1620,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let code_hash: H256 = CODE_HASH_DEFAULT;
@@ -1423,7 +1647,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(28349_u64);
 
         // We use an origin distinct from caller for testing purposes
@@ -1436,7 +1659,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(213_u64);
@@ -1474,7 +1696,6 @@ mod test {
                     H256::from(origin).0.to_vec(),
                 );
                 assert_eq!(result, expected_result);
-                assert_eq!(handler.gas_used(), 17);
             }
             Err(err) => {
                 panic!("Expected Ok, but got {:?}", err);
@@ -1489,7 +1710,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(28349_u64);
 
         let mut handler = EvmHandler::new(
@@ -1499,7 +1719,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(213_u64);
@@ -1569,7 +1788,6 @@ mod test {
                     vec![0xFF_u8, 0x01_u8],
                 );
                 assert_eq!(result, expected_result);
-                assert_eq!(handler.gas_used(), 18);
             }
             Err(err) => {
                 panic!("Expected Ok, but got {:?}", err);
@@ -1590,7 +1808,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(2340);
 
         let mut handler = EvmHandler::new(
@@ -1600,7 +1817,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let input_value = U256::from(2026_u32);
@@ -1696,7 +1912,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(8213);
 
         let mut handler = EvmHandler::new(
@@ -1706,7 +1921,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let input_value = U256::from(1025_u32); // transaction depth for contract below is callarg - 1
@@ -1789,7 +2003,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 100000_u64;
         let caller = H160::from_low_u64_be(444);
 
         let mut handler = EvmHandler::new(
@@ -1799,7 +2012,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(312);
@@ -1847,7 +2059,6 @@ mod test {
                     get_durable_slot(&mut handler, &address, &H256::zero()),
                     expected_in_storage
                 );
-                assert_eq!(handler.gas_used(), 20215);
             }
             Err(err) => {
                 panic!("Expected Ok, but got {:?}", err);
@@ -1862,7 +2073,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 100000_u64;
         let caller = H160::from_low_u64_be(117);
 
         let mut handler = EvmHandler::new(
@@ -1872,7 +2082,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let gas_limit: Option<u64> = None;
@@ -1894,7 +2103,6 @@ mod test {
                 );
                 assert_eq!(result, expected_result);
                 assert_eq!(get_durable_slot(&mut handler, &expected_address, &H256::zero()), H256::from_str("000000000000000000000000000000000000000000000000000000000000002a").unwrap());
-                assert_eq!(handler.gas_used(), 20131);
             }
             Err(err) => {
                 panic!("Expected Ok, but got {:?}", err);
@@ -1909,7 +2117,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(118);
 
         let mut handler = EvmHandler::new(
@@ -1919,7 +2126,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(117);
@@ -1958,7 +2164,6 @@ mod test {
                 assert_eq!(result, expected_result);
                 assert_eq!(get_balance(&mut handler, &address), U256::from(100_u32));
                 assert_eq!(get_balance(&mut handler, &caller), U256::from(1_u32));
-                assert_eq!(handler.gas_used(), 6);
             }
             Err(err) => {
                 panic!("Expected Ok, but got {:?}", err);
@@ -1973,7 +2178,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(523_u64);
 
         let mut handler = EvmHandler::new(
@@ -1983,7 +2187,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(210_u64);
@@ -2024,7 +2227,6 @@ mod test {
                 assert_eq!(result, expected_result);
                 assert_eq!(get_balance(&mut handler, &caller), U256::from(99_u32));
                 assert_eq!(get_balance(&mut handler, &address), U256::zero());
-                assert_eq!(handler.gas_used(), 0);
             }
             Err(err) => {
                 panic!("Unexpected error: {:?}", err);
@@ -2039,7 +2241,6 @@ mod test {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();
-        let gas_limit = 1000_u64;
         let caller = H160::from_low_u64_be(523_u64);
 
         let mut handler = EvmHandler::new(
@@ -2049,7 +2250,6 @@ mod test {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
 
         let address = H160::from_low_u64_be(210_u64);

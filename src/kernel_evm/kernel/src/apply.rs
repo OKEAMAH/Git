@@ -230,7 +230,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         Some(gas_limit),
         Some(value),
     ) {
-        Ok(outcome) => Some(outcome),
+        Ok(outcome) => outcome,
         Err(err) => {
             // TODO: https://gitlab.com/tezos/tezos/-/issues/5665
             // Because the proposal's state is unclear, and we do not have a sequencer
@@ -273,8 +273,11 @@ fn apply_deposit<Host: Runtime>(
 
     let gas_used = CONFIG.gas_transaction_call;
 
+    let gas_refund = 0_i64;
+
     let execution_outcome = ExecutionOutcome {
         gas_used,
+        gas_refund,
         is_success,
         new_address: None,
         logs: vec![],

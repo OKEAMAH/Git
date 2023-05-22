@@ -190,7 +190,6 @@ mod tests {
         let mut evm_account_storage = init_evm_account_storage().unwrap();
         let precompiles = precompile_set::<MockHost>();
         let config = Config::london();
-        let gas_limit = 1000_u64;
 
         let mut handler = EvmHandler::new(
             &mut mock_runtime,
@@ -199,7 +198,6 @@ mod tests {
             &block,
             &config,
             &precompiles,
-            gas_limit,
         );
         let context = Context {
             address,
