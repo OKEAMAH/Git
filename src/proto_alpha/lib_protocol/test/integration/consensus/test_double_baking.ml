@@ -67,7 +67,8 @@ let double_baking ctxt ?(correct_order = true) bh1 bh2 =
 (** Simple scenario where two blocks are baked by a same baker and
     exposed by a double baking evidence operation. *)
 let test_valid_double_baking_evidence () =
-  Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, contracts) ->
+  Context.init2 ~consensus_threshold:0 ~reward_weights:Context.zero_rewards ()
+  >>=? fun (genesis, contracts) ->
   Context.get_constants (B genesis) >>=? fun c ->
   let p =
     c.parametric.percentage_of_frozen_deposits_slashed_per_double_baking
@@ -112,7 +113,8 @@ let double_endorsement ctxt ?(correct_order = true) op1 op2 =
   Op.double_endorsement ctxt e1 e2
 
 let test_valid_double_baking_followed_by_double_endorsing () =
-  Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, contracts) ->
+  Context.init2 ~consensus_threshold:0 ~reward_weights:Context.zero_rewards ()
+  >>=? fun (genesis, contracts) ->
   Context.get_first_different_bakers (B genesis) >>=? fun (baker1, baker2) ->
   Block.bake genesis >>=? fun b ->
   Context.Delegate.current_frozen_deposits (B b) baker1
@@ -158,7 +160,8 @@ let block_fork_diff b =
   Block.bake ~policy:(By_account baker_2) b >|=? fun blk_b -> (blk_a, blk_b)
 
 let test_valid_double_endorsing_followed_by_double_baking () =
-  Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, contracts) ->
+  Context.init2 ~consensus_threshold:0 ~reward_weights:Context.zero_rewards ()
+  >>=? fun (genesis, contracts) ->
   Context.get_first_different_bakers (B genesis) >>=? fun (baker1, baker2) ->
   block_fork_diff genesis >>=? fun (blk_1, blk_2) ->
   Context.Delegate.current_frozen_deposits (B genesis) baker1
