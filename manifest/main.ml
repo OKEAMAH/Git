@@ -5368,7 +5368,12 @@ let hash = Protocol.hash
         ~synopsis:
           "Tezos/Protocol: protocol specific library of helpers for \
            `tezos-smart-rollup`"
-        ~deps:[octez_base |> open_ ~m:"TzPervasives"; main |> open_]
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives";
+            if_some parameters |> open_if N.(number >= 018);
+            main |> open_;
+          ]
         ~inline_tests:ppx_expect
         ~linkall:true
     in
@@ -5460,7 +5465,7 @@ let hash = Protocol.hash
             octez_stdlib_unix |> open_;
             main |> open_;
             client |> if_some |> open_;
-            parameters |> if_some;
+            parameters |> if_some |> open_;
             octez_protocol_environment;
             plugin |> if_some |> open_;
             octez_shell_services |> open_;
@@ -7368,6 +7373,7 @@ let octez_scoru_wasm_regressions =
         octez_test_helpers;
         Protocol.(main alpha);
         Protocol.(sc_rollup alpha) |> if_some |> open_;
+        Protocol.(parameters_exn alpha) |> open_;
         tezt_lib |> open_ |> open_ ~m:"Base";
       ]
     ~preprocess:[staged_pps [ppx_import; ppx_deriving_show]]

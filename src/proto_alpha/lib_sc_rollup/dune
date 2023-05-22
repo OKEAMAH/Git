@@ -7,6 +7,7 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   tezos-base
+  tezos-protocol-alpha.parameters
   tezos-protocol-alpha)
  (inline_tests (flags -verbose) (modes native))
  (preprocess (pps ppx_expect))
@@ -14,4 +15,5 @@
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
+  -open Tezos_protocol_alpha_parameters
   -open Tezos_protocol_alpha))
