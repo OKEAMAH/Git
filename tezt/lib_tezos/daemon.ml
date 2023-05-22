@@ -162,7 +162,7 @@ module Make (X : PARAMETERS) = struct
     color
 
   let () =
-    Test.declare_reset_function @@ fun () ->
+    Test.declare_reset_function @@ fun _ ->
     next_name := 1 ;
     next_color := 0
 
