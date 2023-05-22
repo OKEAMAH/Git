@@ -177,9 +177,8 @@ let test_wesolowski () =
   let open Internal_for_tests in
   let payload = Bytes.of_string "fdgfnhfd" and time = 10 in
   let chest, chest_key = create_chest_and_chest_key ~payload ~time () in
-  let rsa, g, c, pi =
-    ( rsa_public_to_z chest.rsa_public,
-      puzzle_to_z chest_key.vdf_tuple.puzzle,
+  let g, c, pi =
+    ( puzzle_to_z chest_key.vdf_tuple.puzzle,
       solution_to_z chest_key.vdf_tuple.solution,
       vdf_proof_to_z chest_key.vdf_tuple.vdf_proof )
   in
@@ -187,7 +186,7 @@ let test_wesolowski () =
   let pi_high_memory =
     let l = hash_to_prime ~time chest.puzzle chest_key.vdf_tuple.solution in
     let exponent = Z.(pow (of_int 2) time / l) in
-    Z.powm g exponent rsa
+    Z.powm g exponent rsa2048
   in
   let tuple_high_memory =
     to_vdf_tuple_unsafe

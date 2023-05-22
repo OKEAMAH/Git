@@ -323,7 +323,7 @@ let open_chest chest chest_key ~time =
         | Some plaintext -> Correct plaintext)
 
 module Internal_for_tests = struct
-  let rsa_public_to_z x = x
+  let rsa2048 = rsa2048
 
   let puzzle_to_z x = x
 

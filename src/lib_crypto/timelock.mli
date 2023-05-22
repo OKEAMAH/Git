@@ -178,13 +178,13 @@ val open_chest : chest -> chest_key -> time:int -> opening_result
 val get_plaintext_size : chest -> int
 
 module Internal_for_tests : sig
+  val rsa2048 : Z.t
+
   val puzzle_to_z : puzzle -> Z.t
 
   val solution_to_z : solution -> Z.t
 
   val vdf_proof_to_z : vdf_proof -> Z.t
-
-  val rsa_public_to_z : rsa_public -> Z.t
 
   val prove_wesolowski : time:int -> puzzle -> solution -> vdf_proof
 
