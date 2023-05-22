@@ -235,10 +235,16 @@ let balance_is = contract_property_is Contract.balance
 *)
 let frozen_bonds_is = contract_property_is Contract.frozen_bonds
 
-let tez_container_was_operated ~is_balance ~operand ~loc b contract old_balance
+type container = Balance | Frozen_bonds
+
+let tez_container_was_operated ~container ~operand ~loc b contract old_balance
     amount =
   operand old_balance amount |> Environment.wrap_tzresult >>?= fun expected ->
-  let f = if is_balance then balance_is else frozen_bonds_is in
+  let f =
+    match container with
+    | Balance -> balance_is
+    | Frozen_bonds -> frozen_bonds_is
+  in
   f ~loc b contract expected
 
 (** [balance_was_credited ~loc ctxt contract old_balance amount] checks
@@ -246,28 +252,36 @@ let tez_container_was_operated ~is_balance ~operand ~loc b contract old_balance
     [old_balance].
 *)
 let balance_was_credited =
-  tez_container_was_operated ~is_balance:true ~operand:Alpha_context.Tez.( +? )
+  tez_container_was_operated
+    ~container:Balance
+    ~operand:Alpha_context.Tez.( +? )
 
 (** [balance_was_credited ~loc ctxt contract old_balance amount] checks
     that [contract]'s balance was debited [amount] tez in comparison to
     [old_balance].
 *)
 let balance_was_debited =
-  tez_container_was_operated ~is_balance:true ~operand:Alpha_context.Tez.( -? )
+  tez_container_was_operated
+    ~container:Balance
+    ~operand:Alpha_context.Tez.( -? )
 
 (** [frozen_bonds_was_credited ~loc ctxt contract old_balance amount] checks
     that [contract]'s frozen bonds was credited [amount] tez in comparison to
     [old_balance].
 *)
 let frozen_bonds_was_credited =
-  tez_container_was_operated ~is_balance:false ~operand:Alpha_context.Tez.( +? )
+  tez_container_was_operated
+    ~container:Frozen_bonds
+    ~operand:Alpha_context.Tez.( +? )
 
 (** [frozen_bonds_was_credited ~loc ctxt contract old_balance amount] checks
     that [contract]'s frozen bonds was credited [amount] tez in comparison to
     [old_balance].
 *)
 let frozen_bonds_was_debited =
-  tez_container_was_operated ~is_balance:false ~operand:Alpha_context.Tez.( -? )
+  tez_container_was_operated
+    ~container:Frozen_bonds
+    ~operand:Alpha_context.Tez.( -? )
 
 let pp_print_list pp out xs =
   let list_pp fmt =
