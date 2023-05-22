@@ -115,10 +115,10 @@ let test_no_commitment () =
     e
     "Invalid commitment in block header"
 
-(** Choose a baker, denote it by id. In the first cycle, make id bake only once.
+(** Choose a baker, denote it by pkh. In the first cycle, make pkh bake only once.
     Check that:
-    - when id reveals the nonce too early, there's an error
-    - when id reveals at the right time but the wrong value, there's an error
+    - when pkh reveals the nonce too early, there's an error
+    - when pkh reveals at the right time but the wrong value, there's an error
     - when another baker reveals correctly, it receives the tip
     - revealing twice produces an error *)
 let test_revelation_early_wrong_right_twice () =
@@ -135,21 +135,20 @@ let test_revelation_early_wrong_right_twice () =
   in
   (* get the pkh of a baker *)
   let* pkh, _, _, _ = Block.get_next_baker b in
-  let id = Alpha_context.Contract.Implicit pkh in
   let policy = Block.Excluding [pkh] in
-  (* bake until commitment - 2, excluding id *)
+  (* bake until commitment - 2, excluding pkh *)
   let* b = Block.bake_n ~policy (blocks_per_commitment - 2) b in
-  let* bal_main = Context.Contract.balance (B b) id in
-  (* the baker [id] will include a seed_nonce commitment *)
+  let* bal_main = Context.Delegate.current_frozen_deposits (B b) pkh in
+  (* the baker [pkh] will include a seed_nonce commitment *)
   let* b = Block.bake ~policy:(Block.By_account pkh) b in
   let*? level_commitment = Context.get_level (B b) in
   let* committed_hash = Context.get_seed_nonce_hash (B b) in
   (* test that the baking reward is received *)
   let* () =
-    balance_was_credited
+    frozen_deposits_was_credited
       ~loc:__LOC__
       (B b)
-      id
+      pkh
       bal_main
       baking_reward_fixed_portion
   in
@@ -166,7 +165,7 @@ let test_revelation_early_wrong_right_twice () =
         | Nonce_storage.Too_early_revelation -> true
         | _ -> false)
   in
-  (* finish the cycle excluding the committing baker, id *)
+  (* finish the cycle excluding the committing baker, pkh *)
   let* b = Block.bake_until_cycle_end ~policy b in
   (* test that revealing at the right time but the wrong value
      produces an error *)
@@ -191,8 +190,7 @@ let test_revelation_early_wrong_right_twice () =
       (WithExceptions.Option.to_exn ~none:Not_found @@ Nonce.get committed_hash)
   in
   let* baker_pkh, _, _, _ = Block.get_next_baker ~policy b in
-  let baker = Alpha_context.Contract.Implicit baker_pkh in
-  let* baker_bal = Context.Contract.balance (B b) baker in
+  let* baker_bal = Context.Delegate.current_frozen_deposits (B b) baker_pkh in
   (* test that revealing twice in a block produces an error *)
   let*! e =
     Block.bake
@@ -208,10 +206,10 @@ let test_revelation_early_wrong_right_twice () =
   let* b = Block.bake ~policy:(Block.By_account baker_pkh) ~operation b in
   (* test that the baker gets the tip reward plus the baking reward*)
   let* () =
-    balance_was_credited
+    frozen_deposits_was_credited
       ~loc:__LOC__
       (B b)
-      baker
+      baker_pkh
       baker_bal
       Test_tez.(tip +! baking_reward_fixed_portion)
   in
@@ -243,12 +241,12 @@ let test_revelation_missing_and_late () =
   in
   (* bake until commitment *)
   let* b = Block.bake_n (blocks_per_commitment - 2) b in
-  (* the next baker [id] will include a seed_nonce commitment *)
+  (* the next baker [pkh] will include a seed_nonce commitment *)
   let* pkh, _, _, _ = Block.get_next_baker b in
   let* b = Block.bake b in
   let*? level_commitment = Context.get_level (B b) in
   let* committed_hash = Context.get_seed_nonce_hash (B b) in
-  (* finish cycle 0 excluding the committing baker [id] *)
+  (* finish cycle 0 excluding the committing baker [pkh] *)
   let policy = Block.Excluding [pkh] in
   let* b = Block.bake_until_cycle_end ~policy b in
   (* test that revealing after revelation period produces an error *)
@@ -265,7 +263,7 @@ let test_revelation_missing_and_late () =
         | Nonce_storage.Too_late_revelation -> true
         | _ -> false)
   in
-  (* finish cycle 1 excluding the committing baker [id] *)
+  (* finish cycle 1 excluding the committing baker [pkh] *)
   let* b = Block.bake_until_cycle_end ~policy b in
   (* test that revealing too late after cycle 1 produces an error *)
   let operation =
@@ -358,7 +356,7 @@ let test_vdf_status () =
     | _ -> false) ;
   return_unit
 
-(** Choose a baker, denote it by id. In the first cycle, make id bake only once.
+(** Choose a baker, denote it by pkh. In the first cycle, make pkh bake only once.
   Check that:
   - when the vdf is revealed too early, there's an error
   - when the vdf is revealed at the right time but the wrong value, there's an error
@@ -387,25 +385,24 @@ let test_early_incorrect_unverified_correct_already_vdf () =
   let* vdf_nonce_revelation_tip = Context.get_vdf_revelation_tip (B b) in
   (* get the pkh of a baker *)
   let* pkh, _, _, _ = Block.get_next_baker b in
-  let id = Alpha_context.Contract.Implicit pkh in
   let policy = Block.Excluding [pkh] in
-  (* bake until commitment - 2, excluding id *)
+  (* bake until commitment - 2, excluding pkh *)
   let* b = Block.bake_n ~policy (blocks_per_commitment - 2) b in
-  let* bal_main = Context.Contract.balance (B b) id in
-  (* the baker [id] will include a seed_nonce commitment *)
+  let* bal_main = Context.Delegate.current_frozen_deposits (B b) pkh in
+  (* the baker [pkh] will include a seed_nonce commitment *)
   let* b = Block.bake ~policy:(Block.By_account pkh) b in
   let*? level_commitment = Context.get_level (B b) in
   let* committed_hash = Context.get_seed_nonce_hash (B b) in
   (* test that the baking reward is received *)
   let* () =
-    balance_was_credited
+    frozen_deposits_was_credited
       ~loc:__LOC__
       (B b)
-      id
+      pkh
       bal_main
       baking_reward_fixed_portion
   in
-  (* finish the cycle excluding the committing baker, id *)
+  (* finish the cycle excluding the committing baker, pkh *)
   let* b = Block.bake_until_cycle_end ~policy b in
   (* reveals correctly *)
   let operation =
@@ -415,15 +412,14 @@ let test_early_incorrect_unverified_correct_already_vdf () =
       (WithExceptions.Option.to_exn ~none:Not_found @@ Nonce.get committed_hash)
   in
   let* baker_pkh, _, _, _ = Block.get_next_baker ~policy b in
-  let baker = Alpha_context.Contract.Implicit baker_pkh in
-  let* baker_bal = Context.Contract.balance (B b) baker in
+  let* baker_bal = Context.Delegate.current_frozen_deposits (B b) baker_pkh in
   let* b = Block.bake ~policy:(Block.By_account baker_pkh) ~operation b in
   (* test that the baker gets the tip reward plus the baking reward*)
   let* () =
-    balance_was_credited
+    frozen_deposits_was_credited
       ~loc:__LOC__
       (B b)
-      baker
+      baker_pkh
       baker_bal
       Test_tez.(seed_nonce_revelation_tip +! baking_reward_fixed_portion)
   in
@@ -487,7 +483,9 @@ let test_early_incorrect_unverified_correct_already_vdf () =
           challenge
           csts.parametric.vdf_difficulty
       in
-      let* baker_bal = Context.Contract.balance (B b) baker in
+      let* baker_bal =
+        Context.Delegate.current_frozen_deposits (B b) baker_pkh
+      in
       let operation = Op.vdf_revelation (B b) solution in
       let*! e =
         Block.bake
@@ -503,10 +501,10 @@ let test_early_incorrect_unverified_correct_already_vdf () =
       (* verify the balance was credited following operation inclusion *)
       let* b = Block.bake ~policy:(Block.By_account baker_pkh) ~operation b in
       let* () =
-        balance_was_credited
+        frozen_deposits_was_credited
           ~loc:__LOC__
           (B b)
-          baker
+          baker_pkh
           baker_bal
           Test_tez.(vdf_nonce_revelation_tip +! baking_reward_fixed_portion)
       in
