@@ -235,9 +235,14 @@ let balance_is = contract_property_is Contract.balance
 *)
 let frozen_bonds_is = contract_property_is Contract.frozen_bonds
 
+(** [frozen_deposits_is b c amount] checks that the current frozen deposits [b]
+    of contract [c] is [amount]. *)
+let frozen_deposits_is = contract_property_is Delegate.current_frozen_deposits
+
 type _ container =
   | Balance : Alpha_context.Contract.t container
   | Frozen_bonds : Alpha_context.Contract.t container
+  | Frozen_deposits : Signature.Public_key_hash.t container
 
 let tez_container_was_operated (type c) ~(container : c container) ~operand ~loc
     b (contract : c) old_balance amount =
@@ -246,6 +251,7 @@ let tez_container_was_operated (type c) ~(container : c container) ~operand ~loc
     match container with
     | Balance -> balance_is
     | Frozen_bonds -> frozen_bonds_is
+    | Frozen_deposits -> frozen_deposits_is
   in
   f ~loc b contract expected
 
@@ -284,6 +290,14 @@ let frozen_bonds_was_debited =
   tez_container_was_operated
     ~container:Frozen_bonds
     ~operand:Alpha_context.Tez.( -? )
+
+(** [frozen_deposits_was_credited ~loc ctxt contract old_balance amount] checks
+    that [contract]'s current frozen deposits was credited [amount] tez in
+    comparison to [old_balance]. *)
+let frozen_deposits_was_credited =
+  tez_container_was_operated
+    ~container:Frozen_deposits
+    ~operand:Alpha_context.Tez.( +? )
 
 let pp_print_list pp out xs =
   let list_pp fmt =
