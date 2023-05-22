@@ -54,7 +54,7 @@ let fresh_name () =
   incr next_name ;
   "dac_client" ^ string_of_int index
 
-let () = Test.declare_reset_function @@ fun () -> next_name := 1
+let () = Test.declare_reset_function @@ fun _ -> next_name := 1
 
 let create_with_endpoint ?runner ?name ?path ?base_dir
     ?(color = Log.Color.FG.green) endpoint =
