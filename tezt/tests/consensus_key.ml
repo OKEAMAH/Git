@@ -78,12 +78,15 @@ let test_update_consensus_key =
     ~tags:["consensus_key"]
   @@ fun protocol ->
   let parameters =
-    (* we update paramaters for faster testing: no need to wait
-       5 cycles for the consensus key to activate. *)
+    (* We update parameters for faster testing: no need to wait
+       5 cycles for the consensus key to activate.
+       We also pay no rewards (to the frozen balance) to make sure when bakers
+       are deactivated. *)
     [
       (["blocks_per_cycle"], `Int blocks_per_cycle);
       (["nonce_revelation_threshold"], `Int 2);
       (["preserved_cycles"], `Int preserved_cycles);
+      (["reward_weights"; "base_total_rewards_per_minute"], `String_of_int 0);
     ]
   in
   let* parameter_file =
