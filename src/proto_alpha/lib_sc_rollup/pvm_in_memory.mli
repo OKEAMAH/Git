@@ -25,13 +25,19 @@
 
 open Protocol.Alpha_context
 
-module type S =
-  Sc_rollup.PVM.S
-    with type context = Tezos_context_memory.Context_binary.t
-     and type state = Tezos_context_memory.Context_binary.tree
-     and type proof =
-      Tezos_context_memory.Context_binary.Proof.tree
-      Tezos_context_memory.Context_binary.Proof.t
+module type S = sig
+  include
+    Sc_rollup.PVM.S
+      with type context = Tezos_context_memory.Context_binary.t
+       and type state = Tezos_context_memory.Context_binary.tree
+       and type proof =
+        Tezos_context_memory.Context_binary.Proof.tree
+        Tezos_context_memory.Context_binary.Proof.t
+
+  val make_empty_context : ?root:string -> unit -> context
+
+  val make_empty_state : unit -> state
+end
 
 (** [Arith]: Arith PVM with an in memory context {!Tezos_context_memory}. *)
 module Arith : S

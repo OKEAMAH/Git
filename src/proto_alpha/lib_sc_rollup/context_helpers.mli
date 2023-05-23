@@ -53,14 +53,10 @@ end
     or Wasm PVM. It's signature is
     {!Protocol.Alpha_context.Sc_rollup.ArithPVM.P} =
     {!Protocol.Alpha_context.Sc_rollup.Wasm_2_0_0PVM.P} *)
-module In_memory : sig
-  include
-    P
-      with type Tree.tree = Tezos_context_memory.Context_binary.tree
-       and type Tree.t = Tezos_context_memory.Context_binary.t
-       and type proof =
-        Tezos_context_memory.Context.Proof.tree
-        Tezos_context_memory.Context.Proof.t
-
-  val make_empty_context : ?root:string -> unit -> Tree.t
-end
+module In_memory :
+  P
+    with type Tree.tree = Tezos_context_memory.Context_binary.tree
+     and type Tree.t = Tezos_context_memory.Context_binary.t
+     and type proof =
+      Tezos_context_memory.Context_binary.Proof.tree
+      Tezos_context_memory.Context_binary.Proof.t
