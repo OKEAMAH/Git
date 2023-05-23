@@ -103,7 +103,7 @@ let to_locked_value_opt x =
 let to_locked_value_unsafe = Z.of_string
 
 (* Timelock opening, also called "unlocked" value. *)
-type unlocked_value = Z.t
+type solution = Z.t
 
 (* VDF proof (Wesolowski https://eprint.iacr.org/2018/623.pdf) *)
 type vdf_proof = Z.t
@@ -111,7 +111,7 @@ type vdf_proof = Z.t
 (* Timelock tuple: challenge, opening and VDF proof *)
 type vdf_tuple = {
   locked_value : locked_value;
-  unlocked_value : unlocked_value;
+  solution : solution;
   vdf_proof : vdf_proof;
 }
 
@@ -120,18 +120,15 @@ let vdf_tuple_encoding =
   def "timelock.vdf_tuple"
   @@ conv_with_guard
        (fun vdf_tuple ->
-         (vdf_tuple.locked_value, vdf_tuple.unlocked_value, vdf_tuple.vdf_proof))
-       (fun (locked_value, unlocked_value, vdf_proof) ->
-         Ok {locked_value; unlocked_value; vdf_proof})
-       (obj3
-          (req "locked_value" n)
-          (req "unlocked_value" n)
-          (req "vdf_proof" n))
+         (vdf_tuple.locked_value, vdf_tuple.solution, vdf_tuple.vdf_proof))
+       (fun (locked_value, solution, vdf_proof) ->
+         Ok {locked_value; solution; vdf_proof})
+       (obj3 (req "locked_value" n) (req "solution" n) (req "vdf_proof" n))
 
 let to_vdf_tuple_unsafe x y z =
   {
     locked_value = Z.of_string x;
-    unlocked_value = Z.of_string y;
+    solution = Z.of_string y;
     vdf_proof = Z.of_string z;
   }
 
@@ -182,8 +179,8 @@ let hash_to_prime rsa_public ~time value key =
    https://crypto.stanford.edu/~dabo/pubs/papers/VDFsurvey.pdf page 3
    where g is the time-locked value.
 *)
-let prove_wesolowski rsa_public ~time locked_value unlocked_value =
-  let l = hash_to_prime rsa_public ~time locked_value unlocked_value in
+let prove_wesolowski rsa_public ~time locked_value solution =
+  let l = hash_to_prime rsa_public ~time locked_value solution in
   let pi, r = Z.(ref one, ref one) in
   for _ = 1 to time do
     let two_r = Z.(!r lsl 1) in
@@ -195,23 +192,17 @@ let prove_wesolowski rsa_public ~time locked_value unlocked_value =
   done ;
   Z.(!pi mod rsa_public)
 
-let prove rsa_public ~time locked_value unlocked_value =
-  let vdf_proof =
-    prove_wesolowski rsa_public ~time locked_value unlocked_value
-  in
-  let vdf_tuple = {locked_value; unlocked_value; vdf_proof} in
+let prove rsa_public ~time locked_value solution =
+  let vdf_proof = prove_wesolowski rsa_public ~time locked_value solution in
+  let vdf_tuple = {locked_value; solution; vdf_proof} in
   {vdf_tuple; nonce = Z.one}
 
 let verify_wesolowski rsa_public ~time vdf_tuple =
   let l =
-    hash_to_prime
-      rsa_public
-      ~time
-      vdf_tuple.locked_value
-      vdf_tuple.unlocked_value
+    hash_to_prime rsa_public ~time vdf_tuple.locked_value vdf_tuple.solution
   in
   let r = Z.(powm (of_int 2) (Z.of_int time) l) in
-  vdf_tuple.unlocked_value
+  vdf_tuple.solution
   = Z.(
       powm vdf_tuple.vdf_proof l rsa_public
       * powm vdf_tuple.locked_value r rsa_public
@@ -246,8 +237,8 @@ let rec unlock_timelock rsa_public ~time locked_value =
 (* Gives the value that was timelocked from the timelock, the public modulus
    and the time. Works in linear time in [time] *)
 let unlock_and_prove rsa_public ~time locked_value =
-  let unlocked_value = unlock_timelock rsa_public ~time locked_value in
-  prove rsa_public ~time locked_value unlocked_value
+  let solution = unlock_timelock rsa_public ~time locked_value in
+  prove rsa_public ~time locked_value solution
 
 let precompute_timelock ?(locked_value = None) ?(precompute_path = None) ~time
     () =
@@ -257,8 +248,8 @@ let precompute_timelock ?(locked_value = None) ?(precompute_path = None) ~time
     | Some c -> Z.(c mod rsa2048)
   in
   let compute_tuple () =
-    let unlocked_value = unlock_timelock rsa2048 ~time locked_value in
-    (prove rsa2048 ~time locked_value unlocked_value).vdf_tuple
+    let solution = unlock_timelock rsa2048 ~time locked_value in
+    (prove rsa2048 ~time locked_value solution).vdf_tuple
   in
   match precompute_path with
   | None -> compute_tuple ()
@@ -276,7 +267,7 @@ let precompute_timelock ?(locked_value = None) ?(precompute_path = None) ~time
 let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
   if
     Z.compare vdf_tuple.locked_value rsa_public > 0
-    || Z.compare vdf_tuple.unlocked_value rsa_public > 0
+    || Z.compare vdf_tuple.solution rsa_public > 0
   then
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
@@ -291,7 +282,7 @@ let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
 let timelock_proof_to_symmetric_key rsa_public proof =
-  let updated = Z.powm proof.vdf_tuple.unlocked_value proof.nonce rsa_public in
+  let updated = Z.powm proof.vdf_tuple.solution proof.nonce rsa_public in
   let kdf_key = "Tezoskdftimelockv1" in
   let to_hash = Z.to_string updated in
   let hash = Blake2B.(to_bytes @@ hash_string ~key:kdf_key [to_hash]) in
@@ -371,7 +362,7 @@ module Internal_for_tests = struct
 
   let locked_value_to_z x = x
 
-  let unlocked_value_to_z x = x
+  let solution_to_z x = x
 
   let vdf_proof_to_z x = x
 

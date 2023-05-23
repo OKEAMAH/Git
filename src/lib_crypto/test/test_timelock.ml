@@ -65,7 +65,7 @@ let bench () =
   let proof = unlock_and_prove rsa2048 ~time locked in
   let start_bench = Unix.gettimeofday () in
   for _i = 0 to 100 do
-    let _ = prove rsa2048 ~time locked proof.vdf_tuple.unlocked_value in
+    let _ = prove rsa2048 ~time locked proof.vdf_tuple.solution in
     ()
   done ;
   let end_bench = Unix.gettimeofday () in
@@ -92,11 +92,11 @@ let test_high_level_negative () =
   let proof_wrong =
     unlock_and_prove rsa2048 ~time:wrong_time chest.locked_value
   in
-  let unlocked_wrong = proof_wrong.vdf_tuple.unlocked_value in
+  let solution_wrong = proof_wrong.vdf_tuple.solution in
   let vdf_wrong = proof_wrong.vdf_tuple.vdf_proof in
-  let proof_incorrect_unlocked =
+  let proof_incorrect_solution =
     {
-      vdf_tuple = {chest_key.vdf_tuple with unlocked_value = unlocked_wrong};
+      vdf_tuple = {chest_key.vdf_tuple with solution = solution_wrong};
       nonce = chest_key.nonce;
     }
   in
@@ -110,7 +110,7 @@ let test_high_level_negative () =
     {vdf_tuple = chest_key.vdf_tuple; nonce = Z.zero}
   in
   let opening_result_wrong_expected = Bogus_opening in
-  let opening_result_wrong = open_chest chest ~time proof_incorrect_unlocked in
+  let opening_result_wrong = open_chest chest ~time proof_incorrect_solution in
   assert (opening_result_wrong = opening_result_wrong_expected) ;
   let opening_result_wrong = open_chest chest ~time proof_incorrect_vdf in
   assert (opening_result_wrong = opening_result_wrong_expected) ;
@@ -130,7 +130,7 @@ let test_low_level_negative () =
       (locked |> Z.to_string, Z.(locked + one |> to_string))
     in
     let c, c' =
-      let challenge = unlocked_value_to_z chest_key.vdf_tuple.unlocked_value in
+      let challenge = solution_to_z chest_key.vdf_tuple.solution in
       (challenge |> Z.to_string, Z.(challenge + one |> to_string))
     in
     let pi, pi' =
@@ -172,7 +172,7 @@ let test_wesolowski () =
   let rsa, g, c, pi =
     ( rsa_public_to_z chest.rsa_public,
       locked_value_to_z chest_key.vdf_tuple.locked_value,
-      unlocked_value_to_z chest_key.vdf_tuple.unlocked_value,
+      solution_to_z chest_key.vdf_tuple.solution,
       vdf_proof_to_z chest_key.vdf_tuple.vdf_proof )
   in
   (* Memory intensive proof generation *)
@@ -182,7 +182,7 @@ let test_wesolowski () =
         chest.rsa_public
         ~time
         chest.locked_value
-        chest_key.vdf_tuple.unlocked_value
+        chest_key.vdf_tuple.solution
     in
     let exponent = Z.(pow (of_int 2) time / l) in
     Z.powm g exponent rsa

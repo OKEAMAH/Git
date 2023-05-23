@@ -66,7 +66,7 @@ val to_locked_value_unsafe : string -> locked_value
 
 (** Member of the RSA group that we will lock. In our case it represents a
     symmetric key. *)
-type unlocked_value
+type solution
 
 (** VDF proof (Wesolowski). *)
 type vdf_proof
@@ -80,7 +80,7 @@ type ciphertext
     one. *)
 type vdf_tuple = {
   locked_value : locked_value;
-  unlocked_value : unlocked_value;
+  solution : solution;
   vdf_proof : vdf_proof;
 }
 
@@ -119,7 +119,7 @@ val gen_locked_value_unsafe : rsa_public -> locked_value
 val gen_locked_value_opt : rsa_public -> locked_value option
 
 (** Hashes a number mod n to a symmetric key for authenticated encryption,
-    where the number is unlocked_value**nonce mod rsa_public. *)
+    where the number is solution**nonce mod rsa_public. *)
 val timelock_proof_to_symmetric_key :
   rsa_public -> timelock_proof -> symmetric_key
 
@@ -128,10 +128,9 @@ val timelock_proof_to_symmetric_key :
 val unlock_and_prove : rsa_public -> time:int -> locked_value -> timelock_proof
 
 (** Produces a proof certifying that the result is indeed what had been locked. *)
-val prove :
-  rsa_public -> time:int -> locked_value -> unlocked_value -> timelock_proof
+val prove : rsa_public -> time:int -> locked_value -> solution -> timelock_proof
 
-(** Verifies that [locked_value] indeed contains [unlocked_value] with
+(** Verifies that [locked_value] indeed contains [solution] with
     parameters [rsa_public] and [time:int]. *)
 val verify : rsa_public -> time:int -> locked_value -> timelock_proof -> bool
 
@@ -152,7 +151,7 @@ val proof_of_vdf_tuple :
 
 (** Receives a claim opening with a proof and potentially secret.
     If the proof is valid hashes the opening using
-    [unlocked_value_to_symmetric_key], returns None otherwise. *)
+    [solution_to_symmetric_key], returns None otherwise. *)
 val locked_value_to_symmetric_key :
   rsa_public ->
   time:int ->
@@ -195,7 +194,7 @@ val chest_key_encoding : chest_key Data_encoding.t
 
 (** Result of the opening of a chest.
     The opening can fail in two ways which we distinguish to blame the right
-    party. One can provide a false unlocked_value or unlocked_proof, in which
+    party. One can provide a false solution or unlocked_proof, in which
     case we return [Bogus_opening] and the provider of the chest key is at
     fault. Otherwise we return [Correct payload] where [payload] is
     the content that had originally been put in the chest. *)
@@ -213,19 +212,18 @@ val get_plaintext_size : chest -> int
 module Internal_for_tests : sig
   val locked_value_to_z : locked_value -> Z.t
 
-  val unlocked_value_to_z : unlocked_value -> Z.t
+  val solution_to_z : solution -> Z.t
 
   val vdf_proof_to_z : vdf_proof -> Z.t
 
   val rsa_public_to_z : rsa_public -> Z.t
 
   val prove_wesolowski :
-    rsa_public -> time:int -> locked_value -> unlocked_value -> vdf_proof
+    rsa_public -> time:int -> locked_value -> solution -> vdf_proof
 
   val verify_wesolowski : rsa_public -> time:int -> vdf_tuple -> bool
 
-  val hash_to_prime :
-    rsa_public -> time:int -> locked_value -> unlocked_value -> Z.t
+  val hash_to_prime : rsa_public -> time:int -> locked_value -> solution -> Z.t
 end
 
 (*----End protocol exposure -----*)
