@@ -49,6 +49,7 @@ module type T = sig
        and type Operation_list_hash.t = Operation_list_hash.t
        and type Operation_list_list_hash.t = Operation_list_list_hash.t
        and type Context.t = Context.t
+       and type Context.tree = Context.tree
        and type Context.cache_key = Environment_context.Context.cache_key
        and type Context.cache_value = Environment_context.Context.cache_value
        and type Context_hash.t = Context_hash.t
