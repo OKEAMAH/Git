@@ -32,6 +32,9 @@ let originated_rollup op =
   in
   Contract.Internal_for_tests.originated_contract nonce
 
+module Arith_pvm = Pvm_in_memory.Arith
+module Wasm_pvm = Pvm_in_memory.Wasm
+
 module Make_in_memory_context (Context : sig
   type tree
 
@@ -90,19 +93,8 @@ struct
     .tree_proof_encoding
 end
 
-module In_memory_context =
-  Make_in_memory_context (Tezos_context_memory.Context_binary)
 module Wrong_in_memory_context =
   Make_in_memory_context (Tezos_context_memory.Context)
-
-module Arith_pvm :
-  Sc_rollup.PVM.S
-    with type context = In_memory_context.Tree.t
-     and type state = In_memory_context.tree
-     and type proof =
-      Tezos_context_memory.Context.Proof.tree
-      Tezos_context_memory.Context.Proof.t =
-  Sc_rollup.ArithPVM.Make (In_memory_context)
 
 module Wrong_arith_pvm :
   Sc_rollup.PVM.S
@@ -113,30 +105,17 @@ module Wrong_arith_pvm :
       Tezos_context_memory.Context.Proof.t =
   Sc_rollup.ArithPVM.Make (Wrong_in_memory_context)
 
-module Wasm_pvm :
-  Sc_rollup.PVM.S
-    with type context = In_memory_context.Tree.t
-     and type state = In_memory_context.tree
-     and type proof =
-      Tezos_context_memory.Context.Proof.tree
-      Tezos_context_memory.Context.Proof.t =
-  Sc_rollup.Wasm_2_0_0PVM.Make (Environment.Wasm_2_0_0.Make) (In_memory_context)
-
-let make_empty_context = Tezos_context_memory.Context_binary.make_empty_context
-
-let make_empty_tree = Tezos_context_memory.Context_binary.make_empty_tree
-
 let compute_origination_proof ~boot_sector = function
   | Sc_rollup.Kind.Example_arith ->
       let open Lwt_syntax in
-      let context = make_empty_context () in
+      let context = Arith_pvm.make_empty_context () in
       let+ proof = Arith_pvm.produce_origination_proof context boot_sector in
       let proof = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
       WithExceptions.Result.get_ok ~loc:__LOC__
       @@ Sc_rollup.Proof.serialize_pvm_step ~pvm:(module Arith_pvm) proof
   | Sc_rollup.Kind.Wasm_2_0_0 ->
       let open Lwt_syntax in
-      let context = make_empty_context () in
+      let context = Wasm_pvm.make_empty_context () in
       let+ proof = Wasm_pvm.produce_origination_proof context boot_sector in
       let proof = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
       WithExceptions.Result.get_ok ~loc:__LOC__
@@ -177,7 +156,7 @@ let wrap_origination_proof ~kind ~boot_sector proof_string_opt :
 let genesis_commitment ~boot_sector ~origination_level = function
   | Sc_rollup.Kind.Example_arith ->
       let open Lwt_syntax in
-      let context = make_empty_context () in
+      let context = Arith_pvm.make_empty_context () in
       let* proof = Arith_pvm.produce_origination_proof context boot_sector in
       let proof = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
       let genesis_state_hash = Arith_pvm.proof_stop_state proof in
@@ -186,7 +165,7 @@ let genesis_commitment ~boot_sector ~origination_level = function
           genesis_commitment ~origination_level ~genesis_state_hash)
   | Sc_rollup.Kind.Wasm_2_0_0 ->
       let open Lwt_syntax in
-      let context = make_empty_context () in
+      let context = Wasm_pvm.make_empty_context () in
       let* proof = Wasm_pvm.produce_origination_proof context boot_sector in
       let proof = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
       let genesis_state_hash = Wasm_pvm.proof_stop_state proof in
