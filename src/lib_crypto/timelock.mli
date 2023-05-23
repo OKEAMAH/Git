@@ -102,18 +102,6 @@ type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
     challenge "RSA-2048". *)
 val rsa2048 : rsa_public
 
-(** Generates almost uniformly an integer mod n.
-    It is in the RSA group with overwhelming probability.
-    We use this since we want to lock symmetric keys, not pre-determined
-    messages.
-
-    @raise Failure if there is not enough entropy available. *)
-val gen_puzzle_unsafe : rsa_public -> puzzle
-
-(** Returns None if [rsa_public] is not RSA2048, otherwise
-    returns Some [gen_puzzle_unsafe] [rsa_public]. *)
-val gen_puzzle_opt : rsa_public -> puzzle option
-
 (** Hashes a number mod n to a symmetric key for authenticated encryption,
     where the number is solution**randomness mod rsa_public. *)
 val timelock_proof_to_symmetric_key :

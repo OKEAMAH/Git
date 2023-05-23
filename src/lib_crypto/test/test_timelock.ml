@@ -59,7 +59,7 @@ let test_raw_scenario time () =
 
 let bench () =
   let open Timelock in
-  let puzzle = gen_puzzle_unsafe rsa2048 in
+  let puzzle = to_puzzle_unsafe default_challenge in
   (* Corresponds to ~1s, increases linearly *)
   let time = 10_000 in
   let proof = unlock_and_prove rsa2048 ~time puzzle in

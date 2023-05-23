@@ -141,10 +141,6 @@ let gen_puzzle_unsafe rsa_public =
   (* We divide by 8 to convert to bytes *)
   Z.erem (random_z ((size_rsa2048 / 8) + 16)) rsa_public
 
-let gen_puzzle_opt rsa_public =
-  if not @@ Z.equal rsa_public rsa2048 then None
-  else Some (gen_puzzle_unsafe rsa_public)
-
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime rsa_public ~time value key =
   let personalization = "\032" in
