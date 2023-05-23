@@ -3092,33 +3092,33 @@ let commands_rw () =
     command
       ~group
       ~desc:"Precompute timelock tuple."
-      (args1 timelock_locked_value_arg)
+      (args1 timelock_puzzle_arg)
       (prefixes ["timelock"; "precompute"]
       @@ prefix "for"
       @@ param ~name:"time" ~desc:" timelock difficulty" int_parameter
       @@ prefix "in"
       @@ param ~name:"file" ~desc:" updates dir" string_parameter
       @@ stop)
-      (fun locked (time : int) (timelock_path : string) cctxt ->
+      (fun puzzle (time : int) (timelock_path : string) cctxt ->
         let open Lwt_result_syntax in
         let open Tezos_crypto.Timelock in
-        let* locked_value =
-          match locked with
+        let* puzzle =
+          match puzzle with
           | None -> return_none
           | Some l ->
-              let locked_option = to_locked_value_opt l in
+              let locked_option = to_puzzle_opt l in
               if Option.is_none locked_option then
                 let*! () =
                   cctxt#warning
                     "%s"
                     "Locked value not in RSA group, using its residue."
                 in
-                return_some @@ to_locked_value_unsafe l
+                return_some @@ to_puzzle_unsafe l
               else return locked_option
         in
         let _ =
           precompute_timelock
-            ~locked_value
+            ~puzzle
             ~precompute_path:(Some timelock_path)
             ~time
             ()
