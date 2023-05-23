@@ -159,6 +159,7 @@ val stop_of_pvm_step :
 *)
 val valid :
   pvm:('state, 'proof, 'output) Sc_rollups.PVM.implementation ->
+  Sc_rollup_PVM_sig.constant ->
   metadata:Sc_rollup_metadata_repr.t ->
   Sc_rollup_inbox_repr.history_proof ->
   Raw_level_repr.t ->
@@ -227,7 +228,7 @@ module type PVM_with_context_and_state = sig
   end
 end
 
-(** [produce ~metadata pvm_and_state inbox_context inbox_history
+(** [produce constant ~metadata pvm_and_state inbox_context inbox_history
     commit_inbox_level] will construct a full refutation game proof out of
     the [state] given in [pvm_and_state].  It uses the [inbox] if necessary to
     provide input in the proof. If the input is above or at [commit_level] it
@@ -249,6 +250,7 @@ end
     state.
 *)
 val produce :
+  Sc_rollup_PVM_sig.constant ->
   metadata:Sc_rollup_metadata_repr.t ->
   (module PVM_with_context_and_state) ->
   Raw_level_repr.t ->

@@ -298,9 +298,9 @@ module Dal_proofs = struct
 end
 
 let valid (type state proof output)
-    ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation) ~metadata
-    snapshot commit_inbox_level dal_snapshot dal_parameters ~dal_attestation_lag
-    (proof : proof t) =
+    ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation) constant
+    ~metadata snapshot commit_inbox_level dal_snapshot dal_parameters
+    ~dal_attestation_lag (proof : proof t) =
   let open Lwt_result_syntax in
   let (module P) = pvm in
   let origination_level = metadata.Sc_rollup_metadata_repr.origination_level in
@@ -340,7 +340,8 @@ let valid (type state proof output)
   let input =
     Option.bind input (cut_at_level ~origination_level ~commit_inbox_level)
   in
-  let* input_requested = P.verify_proof input proof.pvm_step in
+
+  let* input_requested = P.verify_proof constant input proof.pvm_step in
   let* () =
     match (proof.input_proof, input_requested) with
     | None, No_input_required -> return_unit
@@ -415,7 +416,7 @@ module type PVM_with_context_and_state = sig
   end
 end
 
-let produce ~metadata pvm_and_state commit_inbox_level =
+let produce constant ~metadata pvm_and_state commit_inbox_level =
   let open Lwt_result_syntax in
   let (module P : PVM_with_context_and_state) = pvm_and_state in
   let open P in
@@ -491,7 +492,9 @@ let produce ~metadata pvm_and_state commit_inbox_level =
       input_given
       (cut_at_level ~origination_level ~commit_inbox_level)
   in
-  let* pvm_step_proof = P.produce_proof P.context input_given P.state in
+  let* pvm_step_proof =
+    P.produce_proof constant P.context input_given P.state
+  in
   let*? pvm_step = serialize_pvm_step ~pvm:(module P) pvm_step_proof in
   return {pvm_step; input_proof}
 

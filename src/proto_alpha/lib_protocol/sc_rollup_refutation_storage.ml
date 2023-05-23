@@ -450,12 +450,14 @@ let game_move ctxt rollup ~player ~opponent ~step ~choice =
   | None -> (
       let play_cost = Sc_rollup_game_repr.cost_play ~step ~choice in
       let*? ctxt = Raw_context.consume_gas ctxt play_cost in
+      let constant = Constants_storage.sc_rollup_pvm_constant ctxt in
       let* move_result =
         Sc_rollup_game_repr.play
           kind
           dal.cryptobox_parameters
           ~dal_attestation_lag:dal.attestation_lag
           ~stakers
+          constant
           metadata
           game
           ~step

@@ -378,7 +378,7 @@ module V2_0_0 = struct
       in
       aux [] Z.zero
 
-    let set_input_state input =
+    let set_input_state _constant input =
       let open Monad.Syntax in
       match input with
       | PS.Inbox_message input ->
@@ -414,7 +414,7 @@ module V2_0_0 = struct
              Handle DAL pages in wasm PVM. *)
           assert false
 
-    let set_input input = state_of @@ set_input_state input
+    let set_input constant input = state_of @@ set_input_state constant input
 
     let eval_step =
       let open Monad.Syntax in
@@ -424,7 +424,7 @@ module V2_0_0 = struct
 
     let eval state = state_of eval_step state
 
-    let step_transition input_given state =
+    let step_transition constant input_given state =
       let open Lwt_syntax in
       let* request = is_input_state state in
       let* state =
@@ -432,22 +432,27 @@ module V2_0_0 = struct
         | PS.No_input_required -> eval state
         | _ -> (
             match input_given with
-            | Some input -> set_input input state
+            | Some input -> set_input constant input state
             | None -> return state)
       in
       return (state, request)
 
-    let verify_proof input_given proof =
+    let verify_proof constant input_given proof =
       let open Lwt_result_syntax in
-      let*! result = Context.verify_proof proof (step_transition input_given) in
+      let*! result =
+        Context.verify_proof proof (step_transition constant input_given)
+      in
       match result with
       | None -> tzfail WASM_proof_verification_failed
       | Some (_state, request) -> return request
 
-    let produce_proof context input_given state =
+    let produce_proof constant context input_given state =
       let open Lwt_result_syntax in
       let*! result =
-        Context.produce_proof context state (step_transition input_given)
+        Context.produce_proof
+          context
+          state
+          (step_transition constant input_given)
       in
       match result with
       | Some (tree_proof, _requested) -> return tree_proof

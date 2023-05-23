@@ -1231,12 +1231,13 @@ module Make (Context : P) :
     let* () = Current_tick.set (Sc_rollup_tick_repr.next tick) in
     m
 
-  let set_input_monadic input =
+  let set_input_monadic _constant input =
     match input with
     | PS.Inbox_message m -> set_inbox_message_monadic m
     | PS.Reveal s -> reveal_monadic s
 
-  let set_input input = set_input_monadic input |> ticked |> state_of
+  let set_input constant input =
+    set_input_monadic constant input |> ticked |> state_of
 
   let next_char =
     let open Monad.Syntax in
@@ -1531,7 +1532,7 @@ module Make (Context : P) :
 
   let eval state = state_of (ticked eval_step) state
 
-  let step_transition input_given state =
+  let step_transition constant input_given state =
     let open Lwt_syntax in
     let* request = is_input_state state in
     let error msg = state_of (internal_error msg) state in
@@ -1548,7 +1549,7 @@ module Make (Context : P) :
           Some (PS.Reveal (Dal_page _) as input) ) ->
           (* For all the cases above, the input request matches the given input, so
              we proceed by setting the input. *)
-          set_input input state
+          set_input constant input state
       | (PS.Initial | PS.First_after _), _ ->
           error "Invalid set_input: expecting inbox message, got a reveal."
       | PS.Needs_reveal (Reveal_raw_data _hash), _ ->
@@ -1568,17 +1569,19 @@ module Make (Context : P) :
 
   type error += Arith_proof_verification_failed
 
-  let verify_proof input_given proof =
+  let verify_proof constant input_given proof =
     let open Lwt_result_syntax in
-    let*! result = Context.verify_proof proof (step_transition input_given) in
+    let*! result =
+      Context.verify_proof proof (step_transition constant input_given)
+    in
     match result with
     | None -> tzfail Arith_proof_verification_failed
     | Some (_state, request) -> return request
 
-  let produce_proof context input_given state =
+  let produce_proof constant context input_given state =
     let open Lwt_result_syntax in
     let*! result =
-      Context.produce_proof context state (step_transition input_given)
+      Context.produce_proof context state (step_transition constant input_given)
     in
     match result with
     | Some (tree_proof, _requested) -> return tree_proof

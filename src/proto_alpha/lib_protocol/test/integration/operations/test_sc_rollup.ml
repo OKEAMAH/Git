@@ -2183,15 +2183,21 @@ let init_with_conflict () =
 
 module Arith_pvm = Sc_rollup_helpers.Arith_pvm
 
-let dumb_proof ~choice =
+let dumb_proof ctxt ~choice =
   let open Lwt_result_syntax in
+  let* constants = Context.get_constants ctxt in
+  let pvm_constant = constants.parametric.sc_rollup.pvm_constant in
   let context_arith_pvm = Arith_pvm.make_empty_context () in
   let empty = Arith_pvm.make_empty_state () in
   let*! arith_state = Arith_pvm.initial_state ~empty in
   let*! arith_state = Arith_pvm.install_boot_sector arith_state "" in
   let input = Sc_rollup_helpers.make_external_input "c4c4" in
   let* pvm_step =
-    Arith_pvm.produce_proof context_arith_pvm (Some input) arith_state
+    Arith_pvm.produce_proof
+      pvm_constant
+      context_arith_pvm
+      (Some input)
+      arith_state
     >|= Environment.wrap_tzresult
   in
   let pvm_step =
@@ -2221,7 +2227,7 @@ let test_draw_with_two_invalid_moves () =
   let* block =
     let* p1_refutation =
       let choice = Sc_rollup.Tick.initial in
-      dumb_proof ~choice
+      dumb_proof (B block) ~choice
     in
     let* p1_final_move_op =
       Op.sc_rollup_refute (B block) p1 rollup p2_pkh p1_refutation
@@ -2237,7 +2243,7 @@ let test_draw_with_two_invalid_moves () =
   let* incr =
     let* p2_refutation =
       let choice = Sc_rollup.Tick.initial in
-      dumb_proof ~choice
+      dumb_proof (B block) ~choice
     in
     let* p2_final_move_op =
       Op.sc_rollup_refute (B block) p2 rollup p1_pkh p2_refutation
@@ -2281,7 +2287,7 @@ let test_timeout_during_final_move () =
   let* block =
     let* p1_refutation =
       let choice = Sc_rollup.Tick.initial in
-      dumb_proof ~choice
+      dumb_proof (B block) ~choice
     in
 
     let* p1_final_move_op =
@@ -2313,7 +2319,7 @@ let test_dissection_during_final_move () =
   let* block =
     let* p1_refutation =
       let choice = Sc_rollup.Tick.initial in
-      dumb_proof ~choice
+      dumb_proof (B block) ~choice
     in
 
     let* p1_final_move_op =
@@ -2357,7 +2363,7 @@ let init_arith_state ~boot_sector =
 
     [boot_sector] defaults to [""].
 *)
-let make_arith_state ?(boot_sector = "") metadata =
+let make_arith_state pvm_constant ?(boot_sector = "") metadata =
   let open Lwt_syntax in
   let* context, state = init_arith_state ~boot_sector in
   let* state_hash1 = Arith_pvm.state_hash state in
@@ -2372,16 +2378,19 @@ let make_arith_state ?(boot_sector = "") metadata =
   assert (input_required = Sc_rollup.Needs_reveal Reveal_metadata) ;
   (* 3. We feed the state with the metadata. *)
   let input = Sc_rollup.(Reveal (Metadata metadata)) in
-  let* state = Arith_pvm.set_input input state in
+  (*   let constant = Default_ *)
+  let* state = Arith_pvm.set_input pvm_constant input state in
   let* state_hash3 = Arith_pvm.state_hash state in
   let* input_required = Arith_pvm.is_input_state state in
   assert (input_required = Sc_rollup.Initial) ;
 
   return (context, state, state_hash1, state_hash2, state_hash3)
 
-let make_set_input_refutation context state input input_proof =
+let make_set_input_refutation pvm_constant context state input input_proof =
   let open Lwt_syntax in
-  let* proof = Arith_pvm.produce_proof context (Some input) state in
+  let* proof =
+    Arith_pvm.produce_proof pvm_constant context (Some input) state
+  in
   let pvm_step = WithExceptions.Result.get_ok ~loc:__LOC__ proof in
   let pvm_step =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -2424,10 +2433,13 @@ let test_refute_set_input
   let p2_input, p2_input_proof = p2_info rollup genesis_info in
   let* context, prior_state = make_state_before rollup genesis_info in
 
+  let* constants = Context.get_constants (B block) in
+  let pvm_constant = constants.parametric.sc_rollup.pvm_constant in
+
   let post_commitment_from_set_input block account input =
     let* inbox_level = next_inbox_level (B block) rollup in
     let*! state_hash1 = Arith_pvm.state_hash prior_state in
-    let*! state = Arith_pvm.set_input input prior_state in
+    let*! state = Arith_pvm.set_input pvm_constant input prior_state in
     let*! state_hash2 = Arith_pvm.state_hash state in
     let commitment : Sc_rollup.Commitment.t =
       {
@@ -2497,14 +2509,24 @@ let test_refute_set_input
   (* [p2] plays its [set_input], he is expected to play an invalid one. *)
   let* p2_final_move_op =
     let*! proof =
-      make_set_input_refutation context prior_state p2_input p2_input_proof
+      make_set_input_refutation
+        pvm_constant
+        context
+        prior_state
+        p2_input
+        p2_input_proof
     in
     Op.sc_rollup_refute (B block) p2 rollup pkh1 proof
   in
   (* [p1] plays it [set_input] too. *)
   let* p1_final_move_op =
     let*! proof =
-      make_set_input_refutation context prior_state p1_input p1_input_proof
+      make_set_input_refutation
+        pvm_constant
+        context
+        prior_state
+        p1_input
+        p1_input_proof
     in
     Op.sc_rollup_refute (B block) p1 rollup pkh2 proof
   in
@@ -2546,16 +2568,16 @@ let test_refute_invalid_metadata () =
     Starts by creating a state with {!make_arith_state}, then triggers the
     [Needs_reveal] state through an external message annoucing the [hash].
 *)
-let arith_state_before_reveal metadata hash =
+let arith_state_before_reveal pvm_constant metadata hash =
   let open Lwt_result_syntax in
-  let*! context, state, _, _, _ = make_arith_state metadata in
+  let*! context, state, _, _, _ = make_arith_state pvm_constant metadata in
   let input =
     Sc_rollup_helpers.make_external_input
       ~inbox_level:Raw_level.root
       ~message_counter:Z.zero
       ("hash:" ^ hash)
   in
-  let*! state = Arith_pvm.set_input input state in
+  let*! state = Arith_pvm.set_input pvm_constant input state in
   let rec eval_until_needs_reveal state =
     let*! input_request = Arith_pvm.is_input_state state in
     match input_request with
@@ -2587,7 +2609,11 @@ let test_refute_invalid_reveal () =
       Sc_rollup.Metadata.
         {address = rollup; origination_level = genesis_info.level}
     in
-    arith_state_before_reveal metadata hash
+    let pvm_constant =
+      Tezos_protocol_alpha_parameters.Default_parameters
+      .default_sc_rollup_pvm_constant
+    in
+    arith_state_before_reveal pvm_constant metadata hash
   in
   test_refute_set_input p1_info p2_info make_state_before
 
@@ -3181,7 +3207,7 @@ let test_winner_by_forfeit_with_draw () =
   (* A and B will both make an invalid move and ends up in a draw. *)
   let* dumb_move =
     let choice = Sc_rollup.Tick.initial in
-    dumb_proof ~choice
+    dumb_proof (B block) ~choice
   in
   let* pA_dumb_move_op =
     Op.sc_rollup_refute (B block) pA rollup pB_pkh dumb_move

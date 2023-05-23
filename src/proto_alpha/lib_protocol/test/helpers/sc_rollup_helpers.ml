@@ -35,6 +35,8 @@ let originated_rollup op =
 module Arith_pvm = Pvm_in_memory.Arith
 module Wasm_pvm = Pvm_in_memory.Wasm
 
+let default_pvm_constant = Default_parameters.default_sc_rollup_pvm_constant
+
 module Make_in_memory_context (Context : sig
   type tree
 

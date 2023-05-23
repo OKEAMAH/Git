@@ -864,7 +864,7 @@ module Arith_test_pvm = struct
 
      the following is almost the same code as in the rollup node, expect that it
      creates the association list (tick, state_hash). *)
-  let eval_until_input ~fuel ~our_states start_tick state =
+  let eval_until_input pvm_constant ~fuel ~our_states start_tick state =
     let open Lwt_syntax in
     let rec go ~our_states fuel (tick : int) state =
       let* input_request = is_input_state state in
@@ -882,7 +882,7 @@ module Arith_test_pvm = struct
                  We assume that there are no confirmed Dal slots.
                  We'll reuse the infra to provide Dal pages in the future. *)
               let input = Sc_rollup.(Reveal (Dal_page None)) in
-              let* state = set_input input state in
+              let* state = set_input pvm_constant input state in
               let* state_hash = state_hash state in
               let our_states = (tick, state_hash) :: our_states in
               go ~our_states (consume_fuel fuel) (tick + 1) state
@@ -893,45 +893,45 @@ module Arith_test_pvm = struct
     in
     go ~our_states fuel start_tick state
 
-  let eval_metadata ~fuel ~our_states tick state ~metadata =
+  let eval_metadata pvm_constant ~fuel ~our_states tick state ~metadata =
     let open Lwt_syntax in
     continue_with_fuel ~our_states ~tick fuel state
     @@ fun tick our_states fuel state ->
     let input = Sc_rollup.(Reveal (Metadata metadata)) in
-    let* state = set_input input state in
+    let* state = set_input pvm_constant input state in
     let* state_hash = state_hash state in
     let our_states = (tick, state_hash) :: our_states in
     let tick = succ tick in
     return (state, fuel, tick, our_states)
 
-  let feed_input ~fuel ~our_states ~tick state input =
+  let feed_input pvm_constant ~fuel ~our_states ~tick state input =
     let open Lwt_syntax in
     let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
+      eval_until_input pvm_constant ~fuel ~our_states tick state
     in
     continue_with_fuel ~our_states ~tick fuel state
     @@ fun tick our_states fuel state ->
-    let* state = set_input input state in
+    let* state = set_input pvm_constant input state in
     let* state_hash = state_hash state in
     let our_states = (tick, state_hash) :: our_states in
     let tick = tick + 1 in
     let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
+      eval_until_input pvm_constant ~fuel ~our_states tick state
     in
     return (state, fuel, tick, our_states)
 
-  let eval_inbox ?fuel ~inputs ~tick state =
+  let eval_inbox pvm_constant ?fuel ~inputs ~tick state =
     let open Lwt_result_syntax in
     List.fold_left_es
       (fun (state, fuel, tick, our_states) input ->
         let*! state, fuel, tick, our_states =
-          feed_input ~fuel ~our_states ~tick state input
+          feed_input pvm_constant ~fuel ~our_states ~tick state input
         in
         return (state, fuel, tick, our_states))
       (state, fuel, tick, [])
       inputs
 
-  let eval_inputs ~metadata ?fuel inputs_per_levels =
+  let eval_inputs pvm_constant ~metadata ?fuel inputs_per_levels =
     let open Lwt_result_syntax in
     let*! state = initial_state () in
     let*! state_hash = state_hash state in
@@ -940,18 +940,18 @@ module Arith_test_pvm = struct
     let tick = succ tick in
     (* 1. We evaluate the boot sector. *)
     let*! state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
+      eval_until_input pvm_constant ~fuel ~our_states tick state
     in
     (* 2. We evaluate the metadata. *)
     let*! state, fuel, tick, our_states =
-      eval_metadata ~fuel ~our_states tick state ~metadata
+      eval_metadata pvm_constant ~fuel ~our_states tick state ~metadata
     in
     (* 3. We evaluate the inbox. *)
     let* state, _fuel, tick, our_states =
       List.fold_left_es
         (fun (state, fuel, tick, our_states) inputs ->
           let* state, fuel, tick, our_states' =
-            eval_inbox ?fuel ~inputs ~tick state
+            eval_inbox pvm_constant ?fuel ~inputs ~tick state
           in
           return (state, fuel, tick, our_states @ our_states'))
         (state, fuel, tick, our_states)
@@ -1071,7 +1071,7 @@ module Player_client = struct
   (** Generate [our_states] for [payloads_per_levels] based on the strategy.
       It needs [start_level] and [max_level] in case it will need to generate
       new inputs. *)
-  let gen_our_states ~metadata strategy ~start_level ~max_level
+  let gen_our_states pvm_constant ~metadata strategy ~start_level ~max_level
       payloads_per_levels =
     let open QCheck2.Gen in
     let eval_inputs (payloads_per_levels : payloads_per_level list) =
@@ -1081,7 +1081,9 @@ module Player_client = struct
       let inputs_per_levels =
         List.map (fun {inputs; _} -> inputs) payloads_per_levels
       in
-      let*! r = Arith_test_pvm.eval_inputs ~metadata inputs_per_levels in
+      let*! r =
+        Arith_test_pvm.eval_inputs pvm_constant ~metadata inputs_per_levels
+      in
       Lwt.return @@ WithExceptions.Result.get_ok ~loc:__LOC__ r
     in
     match strategy with
@@ -1208,8 +1210,8 @@ module Player_client = struct
   (** [gen ~inbox ~rollup ~origination_level ~start_level ~max_level player
       payloads_per_levels] generates a {!player_client} based on
       its {!player.strategy}. *)
-  let gen ~inbox ~rollup ~origination_level ~start_level ~max_level player
-      payloads_per_levels =
+  let gen pvm_constant ~inbox ~rollup ~origination_level ~start_level ~max_level
+      player payloads_per_levels =
     let open QCheck2.Gen in
     let ctxt : Context_helpers.In_memory.Tree.t =
       ArithPVM.make_empty_context ()
@@ -1217,6 +1219,7 @@ module Player_client = struct
     let metadata = Sc_rollup.Metadata.{address = rollup; origination_level} in
     let* tick, our_states, payloads_per_levels =
       gen_our_states
+        pvm_constant
         ~metadata
         player.strategy
         ~start_level
@@ -1274,7 +1277,7 @@ let operation_publish_commitment ctxt rollup predecessor inbox_level
 (** [build_proof ~player_client start_tick game] builds a valid proof
     regarding the vision [player_client] has. The proof refutes the
     [start_tick]. *)
-let build_proof ~player_client start_tick (game : Game.t) =
+let build_proof pvm_constant ~player_client start_tick (game : Game.t) =
   let open Lwt_result_syntax in
   (* No messages are added between [game.start_level] and the current level
      so we can take the existing inbox of players. Otherwise, we should find the
@@ -1295,7 +1298,9 @@ let build_proof ~player_client start_tick (game : Game.t) =
   let inputs_per_levels =
     List.map (fun {inputs; _} -> inputs) player_client.payloads_per_levels
   in
-  let*! r = Arith_test_pvm.eval_inputs ~metadata ~fuel inputs_per_levels in
+  let*! r =
+    Arith_test_pvm.eval_inputs pvm_constant ~metadata ~fuel inputs_per_levels
+  in
   let state, _, _ = WithExceptions.Result.get_ok ~loc:__LOC__ r in
   let module P = struct
     include Arith_test_pvm
@@ -1332,7 +1337,9 @@ let build_proof ~player_client start_tick (game : Game.t) =
         Default_parameters.constants_test.dal.attestation_lag
     end
   end in
-  let*! proof = Sc_rollup.Proof.produce ~metadata (module P) game.inbox_level in
+  let*! proof =
+    Sc_rollup.Proof.produce pvm_constant ~metadata (module P) game.inbox_level
+  in
   return (WithExceptions.Result.get_ok ~loc:__LOC__ proof)
 
 (** [next_move ~number_of_sections ~player_client game] produces
@@ -1341,7 +1348,7 @@ let build_proof ~player_client start_tick (game : Game.t) =
     If there is a disputed section where the distance is one tick, it
     produces a proof. Otherwise, provides another dissection.
 *)
-let next_move ~player_client (game : Game.t) =
+let next_move pvm_constant ~player_client (game : Game.t) =
   let open Lwt_result_syntax in
   match game.game_state with
   | Dissecting {dissection; default_number_of_sections} -> (
@@ -1355,7 +1362,7 @@ let next_move ~player_client (game : Game.t) =
       match single_tick_disputed_sections with
       | (start_chunk, _stop_chunk) :: _ ->
           let tick = start_chunk.tick in
-          let+ proof = build_proof ~player_client tick game in
+          let+ proof = build_proof pvm_constant ~player_client tick game in
           Game.(Move {choice = tick; step = Proof proof})
       | [] ->
           (* If we reach this case, there is necessarily a disputed section. *)
@@ -1372,7 +1379,7 @@ let next_move ~player_client (game : Game.t) =
               Move {choice = start_chunk.tick; step = Dissection dissection}))
   | Final_move {agreed_start_chunk; refuted_stop_chunk = _} ->
       let tick = agreed_start_chunk.tick in
-      let+ proof = build_proof ~player_client tick game in
+      let+ proof = build_proof pvm_constant ~player_client tick game in
       Game.(Move {choice = tick; step = Proof proof})
 
 type game_result_for_tests = Defender_wins | Refuter_wins
@@ -1385,7 +1392,8 @@ type game_result_for_tests = Defender_wins | Refuter_wins
     - A player played an invalid refutation and was rejected by the
       protocol.
 *)
-let play_until_game_result ~refuter_client ~defender_client ~rollup block =
+let play_until_game_result pvm_constant ~refuter_client ~defender_client ~rollup
+    block =
   let rec play ~player_turn ~opponent block =
     let open Lwt_result_syntax in
     let* games =
@@ -1396,7 +1404,7 @@ let play_until_game_result ~refuter_client ~defender_client ~rollup block =
     in
     let game_opt = List.hd games in
     let game, _, _ = WithExceptions.Option.get ~loc:__LOC__ game_opt in
-    let* refutation = next_move ~player_client:player_turn game in
+    let* refutation = next_move pvm_constant ~player_client:player_turn game in
     let* incr = Incremental.begin_construction block in
     let* operation_refutation =
       Op.sc_rollup_refute
@@ -1462,6 +1470,11 @@ let gen_game ~p1_strategy ~p2_strategy =
       .sc_rollup
       .commitment_period_in_blocks
   in
+  let pvm_constant =
+    Tezos_protocol_alpha_parameters.Default_parameters.constants_mainnet
+      .sc_rollup
+      .pvm_constant
+  in
   let origination_level =
     Raw_level.to_int32 genesis_info.level |> Int32.to_int
   in
@@ -1474,9 +1487,9 @@ let gen_game ~p1_strategy ~p2_strategy =
   let block, payloads_per_levels =
     construct_inbox_proto block payloads_per_levels contract3
   in
-
   let* p1_client =
     Player_client.gen
+      pvm_constant
       ~inbox
       ~origination_level:genesis_info.level
       ~start_level
@@ -1487,6 +1500,7 @@ let gen_game ~p1_strategy ~p2_strategy =
   in
   let* p2_client =
     Player_client.gen
+      pvm_constant
       ~inbox
       ~origination_level:genesis_info.level
       ~start_level
@@ -1698,8 +1712,11 @@ let test_game ?(count = 10) ~p1_strategy ~p2_strategy () =
           p1_client
           p2_client
       in
+      let* constants = Context.get_constants (B block) in
+      let pvm_constant = constants.parametric.sc_rollup.pvm_constant in
       let* game_result =
         play_until_game_result
+          pvm_constant
           ~rollup
           ~refuter_client:refuter
           ~defender_client:defender

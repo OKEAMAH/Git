@@ -3705,14 +3705,15 @@ module Sc_rollup : sig
 
       val is_input_state : state -> input_request Lwt.t
 
-      val set_input : input -> state -> state Lwt.t
+      val set_input : constant -> input -> state -> state Lwt.t
 
       val eval : state -> state Lwt.t
 
-      val verify_proof : input option -> proof -> input_request tzresult Lwt.t
+      val verify_proof :
+        constant -> input option -> proof -> input_request tzresult Lwt.t
 
       val produce_proof :
-        context -> input option -> state -> proof tzresult Lwt.t
+        constant -> context -> input option -> state -> proof tzresult Lwt.t
 
       val verify_origination_proof : proof -> string -> bool Lwt.t
 
@@ -3887,7 +3888,7 @@ module Sc_rollup : sig
       val get_outbox : Raw_level.t -> state -> output list Lwt.t
 
       val produce_proof :
-        context -> input option -> state -> proof tzresult Lwt.t
+        constant -> context -> input option -> state -> proof tzresult Lwt.t
     end
 
     module Protocol_implementation :
@@ -4035,6 +4036,7 @@ module Sc_rollup : sig
 
     val valid :
       pvm:('state, 'proof, 'output) PVM.implementation ->
+      constant ->
       metadata:Metadata.t ->
       Inbox.history_proof ->
       Raw_level.t ->
@@ -4045,6 +4047,7 @@ module Sc_rollup : sig
       (input option * input_request) tzresult Lwt.t
 
     val produce :
+      constant ->
       metadata:Metadata.t ->
       (module PVM_with_context_and_state) ->
       Raw_level.t ->
@@ -4148,6 +4151,7 @@ module Sc_rollup : sig
       Dal.parameters ->
       dal_attestation_lag:int ->
       stakers:Index.t ->
+      constant ->
       Metadata.t ->
       t ->
       step:step ->

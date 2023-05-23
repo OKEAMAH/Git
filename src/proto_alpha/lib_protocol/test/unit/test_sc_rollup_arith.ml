@@ -149,7 +149,7 @@ let test_metadata () =
       }
   in
   let input = Reveal (Metadata metadata) in
-  let*! state = set_input input state in
+  let*! state = set_input Sc_rollup_helpers.default_pvm_constant input state in
   let*! input_request = is_input_state state in
   match input_request with
   | Initial -> return ()
@@ -162,7 +162,7 @@ let test_input_message () =
   let open Sc_rollup_PVM_sig in
   boot "" @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr "MESSAGE" in
-  set_input input state >>= fun state ->
+  set_input Sc_rollup_helpers.default_pvm_constant input state >>= fun state ->
   eval state >>= fun state ->
   is_input_state state >>= function
   | Initial | Needs_reveal _ | First_after _ ->
@@ -186,8 +186,7 @@ let go ~max_steps target_status state =
 let test_parsing_message ~valid (source, expected_code) =
   boot "" @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr source in
-  set_input input state >>= fun state ->
-  eval state >>= fun state ->
+  set_input Sc_rollup_helpers.default_pvm_constant input state >>= fun state ->
   go ~max_steps:10000 Evaluating state >>=? fun state ->
   get_parsing_result state >>= fun result ->
   Assert.equal
@@ -247,7 +246,7 @@ let test_evaluation_message ~valid
     (boot_sector, source, expected_stack, expected_vars) =
   boot boot_sector @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr source in
-  set_input input state >>= fun state ->
+  set_input Sc_rollup_helpers.default_pvm_constant input state >>= fun state ->
   eval state >>= fun state ->
   go ~max_steps:10000 Waiting_for_input_message state >>=? fun state ->
   if valid then
@@ -319,7 +318,7 @@ let boot_then_reveal_metadata sc_rollup_address origination_level =
     Sc_rollup_metadata_repr.{address = sc_rollup_address; origination_level}
   in
   let input = Reveal (Metadata metadata) in
-  let*! state = set_input input state in
+  let*! state = set_input Sc_rollup_helpers.default_pvm_constant input state in
   let*! input_state = is_input_state state in
   match input_state with
   | Initial -> return state
@@ -339,9 +338,14 @@ let test_reveal () =
   in
   let source = "hash:" ^ Sc_rollup_reveal_hash.to_hex raw_data_hash in
   let input = Sc_rollup_helpers.make_external_input_repr source in
-  let*! state = set_input input state in
+  let*! state = set_input Sc_rollup_helpers.default_pvm_constant input state in
   let* state = go ~max_steps:10_000 Waiting_for_reveal state in
-  let*! state = set_input (Reveal (Raw_data raw_data)) state in
+  let*! state =
+    set_input
+      Sc_rollup_helpers.default_pvm_constant
+      (Reveal (Raw_data raw_data))
+      state
+  in
   let* state = go ~max_steps:10_000 Waiting_for_input_message state in
   get_stack state >>= function
   | [2] -> return_unit
@@ -355,7 +359,7 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
       ~inbox_level:(Raw_level_repr.of_int32_exn (Int32.of_int inbox_level))
       source
   in
-  let*! state = set_input input state in
+  let*! state = set_input Sc_rollup_helpers.default_pvm_constant input state in
   let*! state = eval state in
   let* state = go ~max_steps:10000 Waiting_for_input_message state in
   let check_output output =
@@ -518,7 +522,7 @@ let test_filter_internal_message () =
     Sc_rollup_metadata_repr.{address; origination_level = Raw_level_repr.root}
   in
   let input = Reveal (Metadata metadata) in
-  let*! state = set_input input state in
+  let*! state = set_input Sc_rollup_helpers.default_pvm_constant input state in
 
   (* We will set an input where the destination is the same as the one given
      in the static metadata. The pvm should process the input. *)
@@ -532,7 +536,9 @@ let test_filter_internal_message () =
           payload = internal_transfer;
         }
     in
-    let*! state = set_input input state in
+    let*! state =
+      set_input Sc_rollup_helpers.default_pvm_constant input state
+    in
     let*! input_state = is_input_state state in
     match input_state with
     | No_input_required -> return ()
@@ -555,7 +561,9 @@ let test_filter_internal_message () =
           payload = internal_transfer;
         }
     in
-    let*! state = set_input input state in
+    let*! state =
+      set_input Sc_rollup_helpers.default_pvm_constant input state
+    in
     let*! input_state = is_input_state state in
     match input_state with
     | No_input_required ->

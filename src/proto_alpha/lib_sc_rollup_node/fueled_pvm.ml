@@ -136,6 +136,9 @@ module Make (PVM : Pvm.S) = struct
       let dal_attestation_lag =
         node_ctxt.protocol_constants.parametric.dal.attestation_lag
       in
+      let pvm_constant =
+        node_ctxt.protocol_constants.parametric.sc_rollup.pvm_constant
+      in
       let reveal_builtins =
         Tezos_scoru_wasm.Builtins.
           {
@@ -253,14 +256,16 @@ module Make (PVM : Pvm.S) = struct
             let* data =
               get_reveal ~data_dir:node_ctxt.data_dir reveal_map hash
             in
-            let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
+            let*! next_state =
+              PVM.set_input pvm_constant (Reveal (Raw_data data)) state
+            in
             match F.consume F.one_tick_consumption fuel with
             | None -> abort state fuel current_tick
             | Some fuel ->
                 go fuel (Int64.succ current_tick) failing_ticks next_state)
         | Needs_reveal Reveal_metadata -> (
             let*! next_state =
-              PVM.set_input (Reveal (Metadata metadata)) state
+              PVM.set_input pvm_constant (Reveal (Metadata metadata)) state
             in
             match F.consume F.one_tick_consumption fuel with
             | None -> abort state fuel current_tick
@@ -274,7 +279,7 @@ module Make (PVM : Pvm.S) = struct
                 page_id
             in
             let*! next_state =
-              PVM.set_input (Reveal (Dal_page content_opt)) state
+              PVM.set_input pvm_constant (Reveal (Dal_page content_opt)) state
             in
             match F.consume F.one_tick_consumption fuel with
             | None -> abort state fuel current_tick
@@ -307,6 +312,10 @@ module Make (PVM : Pvm.S) = struct
         state input =
       let open Lwt_result_syntax in
       let open Delayed_write_monad.Lwt_result_syntax in
+      let pvm_constant =
+        node_ctxt.Node_context.protocol_constants.parametric.sc_rollup
+          .pvm_constant
+      in
       let>* res =
         eval_until_input
           node_ctxt
@@ -341,7 +350,9 @@ module Make (PVM : Pvm.S) = struct
                     else return (input, failing_ticks)
                 | [] -> return (input, failing_ticks)
               in
-              let*! state = PVM.set_input (Inbox_message input) state in
+              let*! state =
+                PVM.set_input pvm_constant (Inbox_message input) state
+              in
               let>* res =
                 eval_until_input
                   node_ctxt

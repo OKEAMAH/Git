@@ -392,6 +392,7 @@ val play :
   Dal_slot_repr.parameters ->
   dal_attestation_lag:int ->
   stakers:Index.t ->
+  Sc_rollup_PVM_sig.constant ->
   Sc_rollup_metadata_repr.t ->
   t ->
   step:step ->

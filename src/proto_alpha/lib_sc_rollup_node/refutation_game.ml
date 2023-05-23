@@ -289,9 +289,17 @@ module Make (Interpreter : Interpreter.S) :
       end
     end in
     let metadata = Node_context.metadata node_ctxt in
+    let pvm_constant =
+      node_ctxt.Node_context.protocol_constants.parametric.sc_rollup
+        .pvm_constant
+    in
     let* proof =
       trace (Sc_rollup_node_errors.Cannot_produce_proof game)
-      @@ (Sc_rollup.Proof.produce ~metadata (module P) game.inbox_level
+      @@ (Sc_rollup.Proof.produce
+            pvm_constant
+            ~metadata
+            (module P)
+            game.inbox_level
          >|= Environment.wrap_tzresult)
     in
     let*? pvm_step =
@@ -301,6 +309,7 @@ module Make (Interpreter : Interpreter.S) :
     let proof = {proof with pvm_step} in
     let*! res =
       Sc_rollup.Proof.valid
+        pvm_constant
         ~metadata
         snapshot
         game.inbox_level

@@ -249,7 +249,13 @@ let test_invalid_serialized_inbox_proof () =
   (* We evaluate the boot sector, so the [input_requested] is a
      [First_after]. *)
   let*! state = Arith_pvm.eval state in
-  let*! pvm_step = Arith_pvm.produce_proof ctxt None state in
+  let*! pvm_step =
+    Arith_pvm.produce_proof
+      Sc_rollup_helpers.default_pvm_constant
+      ctxt
+      None
+      state
+  in
   let pvm_step = WithExceptions.Result.get_ok ~loc:__LOC__ pvm_step in
 
   (* We create an obviously invalid inbox *)
@@ -269,6 +275,7 @@ let test_invalid_serialized_inbox_proof () =
   let*! res =
     wrap
     @@ Sc_rollup.Proof.valid
+         Sc_rollup_helpers.default_pvm_constant (* TODO not the protocol one. *)
          ~pvm:(module Arith_pvm)
          ~metadata
          snapshot
