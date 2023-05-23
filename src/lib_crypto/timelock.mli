@@ -75,19 +75,6 @@ type ciphertext
     one. *)
 type vdf_tuple = {puzzle : puzzle; solution : solution; vdf_proof : vdf_proof}
 
-(** Function taking as input a [time] and three strings
-    representing a locked and unlocked value as well as a wesolowski proof and
-    returning Some vdf_tuple if the elements are in the RSA group
-    with rsa2048 as modulus and the Wesolowski proof verifies,
-    None otherwise. *)
-val to_vdf_tuple_opt :
-  time:int -> string -> string -> string -> vdf_tuple option
-
-(** Function taking as input three strings representing a locked and unlocked
-    value as well as a wesolowski proof and returning a
-    vdf_tuple. *)
-val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
-
 (** Proof that the opening of a value is the claimed value.
     It is concretely an optional vdf_tuple and a member of the RSA
     group. *)
@@ -174,6 +161,9 @@ module Internal_for_tests : sig
   val solution_to_z : solution -> Z.t
 
   val vdf_proof_to_z : vdf_proof -> Z.t
+
+  (* [to_vdf_tuple_unsafe puzzle solution vdf_proof] *)
+  val to_vdf_tuple_unsafe : Z.t -> Z.t -> Z.t -> vdf_tuple
 
   val prove_wesolowski : time:int -> puzzle -> solution -> vdf_proof
 
