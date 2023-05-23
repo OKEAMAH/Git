@@ -84,10 +84,6 @@ type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
     where the number is solution**randomness mod rsa2048. *)
 val timelock_proof_to_symmetric_key : timelock_proof -> symmetric_key
 
-(** Unlock a timelock value and produces a proof certifying that the result is
-    indeed what had been locked. *)
-val unlock_and_prove : time:int -> puzzle -> timelock_proof
-
 (** Produces a proof certifying that the result is indeed what had been locked. *)
 val prove : time:int -> puzzle -> solution -> timelock_proof
 
@@ -105,9 +101,14 @@ val precompute_timelock :
   unit ->
   vdf_tuple
 
-(** Randomizes a [vdf_tuple] given a [time:int]
-    (to verify the [vdf_tuple] is correct). *)
-val proof_of_vdf_tuple : time:int -> vdf_tuple -> puzzle * timelock_proof
+(** Generates a fresh timelock [puzzle] and corresponding [timelock_proof] by
+     randomizing a [vdf_tuple] with a freshly generated randomness given a
+     [time:int]. *)
+val lock_timelock : time:int -> vdf_tuple -> puzzle * timelock_proof
+
+(** Opens a timelock [puzzle] and returns the corresponding [solution] given a
+    [time:int]. *)
+val open_timelock : time:int -> puzzle -> solution
 
 (** encrypt using authenticated encryption, i.e. ciphertext contains
     a ciphertext and a message authentication code. *)

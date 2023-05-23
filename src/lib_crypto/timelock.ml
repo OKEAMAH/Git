@@ -214,17 +214,11 @@ let verify ~time puzzle proof =
   (* Return *)
   b_exp && b_weso
 
-let rec unlock_timelock ~time puzzle =
+let rec open_timelock ~time puzzle =
   if time = 0 then puzzle
   else if puzzle = Z.zero then Z.zero
   else if puzzle = Z.one then Z.one
-  else unlock_timelock ~time:Int.(pred time) Z.(puzzle * puzzle mod rsa2048)
-
-(* Gives the value that was timelocked from the timelock, the public modulus
-   and the time. Works in linear time in [time] *)
-let unlock_and_prove ~time puzzle =
-  let solution = unlock_timelock ~time puzzle in
-  prove ~time puzzle solution
+  else open_timelock ~time:Int.(pred time) Z.(puzzle * puzzle mod rsa2048)
 
 let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   let puzzle =
@@ -236,7 +230,7 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
         c_mod
   in
   let compute_tuple () =
-    let solution = unlock_timelock ~time puzzle in
+    let solution = open_timelock ~time puzzle in
     (prove ~time puzzle solution).vdf_tuple
   in
   match precompute_path with
@@ -254,7 +248,7 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
 
 (* Optional argument [rand] allows to use an unsafe function to generate
    randomness for benching. *)
-let proof_of_vdf_tuple_aux ?rand ~time vdf_tuple =
+let lock_timelock_aux ?rand ~time vdf_tuple =
   if Z.compare vdf_tuple.puzzle Z.one < 1 then
     raise (Invalid_argument "Timelock puzzle is smaller than 1.") ;
   if Z.compare vdf_tuple.solution Z.zero < 1 then
@@ -276,7 +270,7 @@ let proof_of_vdf_tuple_aux ?rand ~time vdf_tuple =
     (randomized_puzzle, proof)
   else raise (Invalid_argument "Timelock tuple verification failed.")
 
-let proof_of_vdf_tuple ~time vdf_tuple = proof_of_vdf_tuple_aux ~time vdf_tuple
+let lock_timelock ~time vdf_tuple = lock_timelock_aux ~time vdf_tuple
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
 let timelock_proof_to_symmetric_key proof =
@@ -315,7 +309,7 @@ let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
          "Timelock.create_chest_and_chest_key: the time bound must be positive") ;
   let puzzle, proof =
     let vdf_tuple = precompute_timelock ~time ~precompute_path () in
-    proof_of_vdf_tuple ~time vdf_tuple
+    lock_timelock ~time vdf_tuple
   in
   let sym_key = timelock_proof_to_symmetric_key proof in
   let ciphertext = encrypt sym_key payload in
@@ -326,7 +320,8 @@ let create_chest_key chest ~time =
     raise
       (Invalid_argument
          "Timelock.create_chest_key: the time bound must be positive") ;
-  unlock_and_prove ~time chest.puzzle
+  let solution = open_timelock ~time chest.puzzle in
+  prove ~time chest.puzzle solution
 
 let get_plaintext_size chest =
   assert (Bytes.length chest.ciphertext.payload > Crypto_box.tag_length) ;
