@@ -302,13 +302,13 @@ let chest_key_encoding = proof_encoding
 
 type opening_result = Correct of Bytes.t | Bogus_opening
 
-let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
+let create_chest_and_chest_key ?precompute_path ~payload ~time () =
   if time <= 0 then
     raise
       (Invalid_argument
          "Timelock.create_chest_and_chest_key: the time bound must be positive") ;
   let puzzle, proof =
-    let vdf_tuple = precompute_timelock ~time ~precompute_path () in
+    let vdf_tuple = precompute_timelock ~time ?precompute_path () in
     lock_timelock ~time vdf_tuple
   in
   let sym_key = timelock_proof_to_symmetric_key proof in
