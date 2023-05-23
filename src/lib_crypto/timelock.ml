@@ -134,12 +134,15 @@ let proof_encoding =
        (obj2 (req "vdf_tuple" vdf_tuple_encoding) (req "randomness" n))
 
 (* -------- Timelock low level functions -------- *)
-(* A random Z arith element of size [size] bytes *)
-let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 
-(* Generates almost uniformly a Zarith element between 0 and [public key].
-   Intended for generating the timelock *)
-let gen_puzzle_unsafe () = Z.erem (random_z (size_rsa2048 + 16)) rsa2048
+(* Generates almost uniformly a Zarith element between 2 and [public key].
+   Optional argument [rand] allows to use an unsafe function to generate
+   randomness for benching. *)
+let rec generate_z ?(rand = Hacl.Rand.gen) () =
+  (* A random Z arith element of size [size] bytes *)
+  let random_z size = rand size |> Bytes.to_string |> Z.of_bits in
+  let res = Z.erem (random_z (size_rsa2048 + 16)) rsa2048 in
+  if Z.(equal res zero) || Z.(equal res one) then generate_z () else res
 
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime ~time value key =
@@ -215,9 +218,7 @@ let unlock_and_prove ~time puzzle =
 
 let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   let puzzle =
-    match puzzle with
-    | None -> gen_puzzle_unsafe ()
-    | Some c -> Z.(c mod rsa2048)
+    match puzzle with None -> generate_z () | Some c -> Z.(c mod rsa2048)
   in
   let compute_tuple () =
     let solution = unlock_timelock ~time puzzle in
@@ -236,7 +237,9 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
         write_enc filepath filename vdf_tuple_encoding precomputed ;
         precomputed
 
-let proof_of_vdf_tuple ~time vdf_tuple =
+(* Optional argument [rand] allows to use an unsafe function to generate
+   randomness for benching. *)
+let proof_of_vdf_tuple_aux ?rand ~time vdf_tuple =
   if
     Z.compare vdf_tuple.puzzle rsa2048 > 0
     || Z.compare vdf_tuple.solution rsa2048 > 0
@@ -244,11 +247,13 @@ let proof_of_vdf_tuple ~time vdf_tuple =
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
   if verify_wesolowski ~time vdf_tuple then
-    let randomness = random_z (size_rsa2048 + 16) in
+    let randomness = generate_z ?rand () in
     let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa2048 in
     let proof = {vdf_tuple; randomness} in
     (randomized_puzzle, proof)
   else raise (Invalid_argument "Timelock tuple verification failed.")
+
+let proof_of_vdf_tuple ~time vdf_tuple = proof_of_vdf_tuple_aux ~time vdf_tuple
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
 let timelock_proof_to_symmetric_key proof =
