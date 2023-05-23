@@ -112,7 +112,16 @@ let vdf_tuple_encoding =
   @@ conv_with_guard
        (fun vdf_tuple ->
          (vdf_tuple.puzzle, vdf_tuple.solution, vdf_tuple.vdf_proof))
-       (fun (puzzle, solution, vdf_proof) -> Ok {puzzle; solution; vdf_proof})
+       (fun (puzzle, solution, vdf_proof) ->
+         if Z.Compare.(puzzle < Z.zero || puzzle >= rsa2048) then
+           Error "puzzle is not in the rsa group"
+         else if Z.Compare.(puzzle <= Z.one) then
+           Error "invalid value for puzzle"
+         else if Z.Compare.(solution < Z.zero || solution >= rsa2048) then
+           Error "solution is not in the rsa group"
+         else if Z.Compare.(vdf_proof < Z.zero || vdf_proof >= rsa2048) then
+           Error "VDF proof is not in the rsa group"
+         else Ok {puzzle; solution; vdf_proof})
        (obj3 (req "puzzle" n) (req "solution" n) (req "vdf_proof" n))
 
 (* Timelock proof:
@@ -125,7 +134,18 @@ let proof_encoding =
   def "timelock.proof"
   @@ conv_with_guard
        (fun proof -> (proof.vdf_tuple, proof.randomness))
-       (fun (vdf_tuple, randomness) -> Ok {vdf_tuple; randomness})
+       (fun (t, r) ->
+         if Z.Compare.(t.puzzle < Z.zero || t.puzzle >= rsa2048) then
+           Error "puzzle is not in the rsa group"
+         else if Z.Compare.(t.puzzle <= Z.one) then
+           Error "invalid value for puzzle"
+         else if Z.Compare.(t.solution < Z.zero || t.solution >= rsa2048) then
+           Error "solution is not in the rsa group"
+         else if Z.Compare.(t.vdf_proof < Z.zero || t.vdf_proof >= rsa2048) then
+           Error "VDF proof is not in the rsa group"
+         else if Z.Compare.(r < Z.one) then
+           Error "randomness is null or negative"
+         else Ok {vdf_tuple = t; randomness = r})
        (obj2 (req "vdf_tuple" vdf_tuple_encoding) (req "randomness" n))
 
 (* -------- Timelock low level functions -------- *)
@@ -196,6 +216,8 @@ let verify ~time puzzle proof =
 
 let rec unlock_timelock ~time puzzle =
   if time = 0 then puzzle
+  else if puzzle = Z.zero then Z.zero
+  else if puzzle = Z.one then Z.one
   else unlock_timelock ~time:Int.(pred time) Z.(puzzle * puzzle mod rsa2048)
 
 (* Gives the value that was timelocked from the timelock, the public modulus
@@ -206,7 +228,12 @@ let unlock_and_prove ~time puzzle =
 
 let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
   let puzzle =
-    match puzzle with None -> generate_z () | Some c -> Z.(c mod rsa2048)
+    match puzzle with
+    | None -> generate_z ()
+    | Some c ->
+        let c_mod = Z.(c mod rsa2048) in
+        assert (Z.compare c_mod Z.one = 1) ;
+        c_mod
   in
   let compute_tuple () =
     let solution = unlock_timelock ~time puzzle in
@@ -228,12 +255,20 @@ let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
 (* Optional argument [rand] allows to use an unsafe function to generate
    randomness for benching. *)
 let proof_of_vdf_tuple_aux ?rand ~time vdf_tuple =
+  if Z.compare vdf_tuple.puzzle Z.one < 1 then
+    raise (Invalid_argument "Timelock puzzle is smaller than 1.") ;
+  if Z.compare vdf_tuple.solution Z.zero < 1 then
+    raise (Invalid_argument "Timelock solution is smaller than 0.") ;
+  if Z.compare vdf_tuple.vdf_proof Z.zero < 1 then
+    raise (Invalid_argument "Timelock proof is smaller than 0.") ;
   if
-    Z.compare vdf_tuple.puzzle rsa2048 > 0
-    || Z.compare vdf_tuple.solution rsa2048 > 0
+    Z.compare vdf_tuple.puzzle rsa2048 > -1
+    || Z.compare vdf_tuple.solution rsa2048 > -1
+    || Z.compare vdf_tuple.vdf_proof rsa2048 > -1
   then
     raise
-      (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
+      (Invalid_argument
+         "Invalid timelock tuple, its elements are not in the RSA group.") ;
   if verify_wesolowski ~time vdf_tuple then
     let randomness = generate_z ?rand () in
     let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa2048 in
@@ -261,6 +296,7 @@ let chest_encoding =
        (fun (puzzle, ciphertext) ->
          if Z.Compare.(puzzle < Z.zero || puzzle >= rsa2048) then
            Error "puzzle is not in the RSA group"
+         else if Z.Compare.(puzzle <= Z.one) then Error "invalid puzzle"
          else if not @@ (Bytes.length ciphertext.payload > Crypto_box.tag_length)
          then Error "unexpected payload (smaller than expected tag length)"
          else Ok {puzzle; ciphertext})
