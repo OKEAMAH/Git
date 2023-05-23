@@ -4260,6 +4260,8 @@ module Protocol : sig
 
   val plugin_registerer : t -> target option
 
+  val sc_rollup : t -> target option
+
   val dal : t -> target option
 
   val dac : t -> target option
@@ -4377,6 +4379,7 @@ end = struct
     baking_commands_registration : target option;
     plugin : target option;
     plugin_registerer : target option;
+    sc_rollup : target option;
     dal : target option;
     dac : target option;
     test_helpers : target option;
@@ -4386,9 +4389,9 @@ end = struct
   }
 
   let make ?client ?client_commands ?client_commands_registration
-      ?baking_commands_registration ?plugin ?plugin_registerer ?dal ?dac
-      ?test_helpers ?parameters ?benchmarks_proto ?baking ~status ~name ~main
-      ~embedded () =
+      ?baking_commands_registration ?plugin ?plugin_registerer ?sc_rollup ?dal
+      ?dac ?test_helpers ?parameters ?benchmarks_proto ?baking ~status ~name
+      ~main ~embedded () =
     {
       status;
       name;
@@ -4400,6 +4403,7 @@ end = struct
       baking_commands_registration;
       plugin;
       plugin_registerer;
+      sc_rollup;
       dal;
       dac;
       test_helpers;
@@ -4453,6 +4457,8 @@ end = struct
   let plugin_exn p = mandatory "plugin" p p.plugin
 
   let plugin_registerer p = p.plugin_registerer
+
+  let sc_rollup p = p.sc_rollup
 
   let dal p = p.dal
 
@@ -5460,6 +5466,7 @@ let hash = Protocol.hash
             octez_shell_services |> open_;
             octez_plompiler |> if_ N.(number >= 015);
             octez_crypto_dal |> if_ N.(number >= 016) |> open_;
+            octez_sc_rollup |> if_some |> if_ N.(number >= 018) |> open_;
           ]
     in
     let _plugin_tests =
@@ -6372,6 +6379,7 @@ let hash = Protocol.hash
          ?baking_commands_registration
          ?plugin
          ?plugin_registerer
+         ?sc_rollup:octez_sc_rollup
          ?dal
          ?dac
          ?test_helpers
@@ -7359,6 +7367,7 @@ let octez_scoru_wasm_regressions =
         octez_scoru_wasm_helpers;
         octez_test_helpers;
         Protocol.(main alpha);
+        Protocol.(sc_rollup alpha) |> if_some |> open_;
         tezt_lib |> open_ |> open_ ~m:"Base";
       ]
     ~preprocess:[staged_pps [ppx_import; ppx_deriving_show]]
