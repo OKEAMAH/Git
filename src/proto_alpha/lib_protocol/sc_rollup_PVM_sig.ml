@@ -366,6 +366,8 @@ let pp_output fmt {outbox_level; message_index; message} =
     Sc_rollup_outbox_message_repr.pp
     message
 
+type constant = Constants_parametric_repr.sc_rollup_pvm_constant
+
 module type S = sig
   (** The state of the PVM denotes a state of the rollup.
 

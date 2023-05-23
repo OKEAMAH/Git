@@ -57,6 +57,8 @@ let sc_rollup_max_outbox_messages_per_level = 100
 *)
 let sc_rollup_timeout_period_in_blocks = 40_320
 
+let default_sc_rollup_pvm_constant = ()
+
 (** We want to allow a max lookahead in blocks of 4 weeks, so the rollup
     can still move forward even if its impossible to cement commitments.
 
@@ -279,6 +281,7 @@ let constants_mainnet =
             mempool. *)
         max_number_of_stored_cemented_commitments = 5;
         max_number_of_parallel_games = 32;
+        pvm_constant = default_sc_rollup_pvm_constant;
       };
     zk_rollup =
       {

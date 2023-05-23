@@ -210,6 +210,10 @@ let sc_rollup_enable c =
   let sc_rollup = Raw_context.sc_rollup c in
   sc_rollup.enable
 
+let sc_rollup_pvm_constant c =
+  let sc_rollup = Raw_context.sc_rollup c in
+  sc_rollup.pvm_constant
+
 let sc_rollup_arith_pvm_enable c =
   let sc_rollup = Raw_context.sc_rollup c in
   sc_rollup.arith_pvm_enable

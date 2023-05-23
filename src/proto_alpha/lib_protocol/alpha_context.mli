@@ -818,6 +818,8 @@ module Constants : sig
       sunset_level : int32;
     }
 
+    type sc_rollup_pvm_constant = unit
+
     type sc_rollup = {
       enable : bool;
       arith_pvm_enable : bool;
@@ -832,6 +834,7 @@ module Constants : sig
       timeout_period_in_blocks : int;
       max_number_of_stored_cemented_commitments : int;
       max_number_of_parallel_games : int;
+      pvm_constant : sc_rollup_pvm_constant;
     }
 
     type zk_rollup = {
@@ -1007,6 +1010,8 @@ module Constants : sig
   val sc_rollup_enable : context -> bool
 
   val sc_rollup_arith_pvm_enable : context -> bool
+
+  val sc_rollup_pvm_constant : context -> Parametric.sc_rollup_pvm_constant
 
   val dal_enable : context -> bool
 
@@ -3665,6 +3670,8 @@ module Sc_rollup : sig
       | Dissection_invalid_distribution of Z.t
       | Dissection_invalid_successive_states_shape
   end
+
+  type constant = Constants.Parametric.sc_rollup_pvm_constant
 
   module PVM : sig
     type boot_sector = string

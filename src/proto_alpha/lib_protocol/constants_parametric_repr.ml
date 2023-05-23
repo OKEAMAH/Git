@@ -101,6 +101,10 @@ type tx_rollup = {
   sunset_level : int32;
 }
 
+type sc_rollup_pvm_constant = unit
+
+let sc_rollup_pvm_constant_encoding = Data_encoding.unit
+
 type sc_rollup = {
   enable : bool;
   arith_pvm_enable : bool;
@@ -115,6 +119,7 @@ type sc_rollup = {
   timeout_period_in_blocks : int;
   max_number_of_stored_cemented_commitments : int;
   max_number_of_parallel_games : int;
+  pvm_constant : sc_rollup_pvm_constant;
 }
 
 type zk_rollup = {
@@ -269,7 +274,8 @@ let sc_rollup_encoding =
         ( c.number_of_sections_in_dissection,
           c.timeout_period_in_blocks,
           c.max_number_of_stored_cemented_commitments,
-          c.max_number_of_parallel_games ) ))
+          c.max_number_of_parallel_games,
+          c.pvm_constant ) ))
     (fun ( ( sc_rollup_enable,
              sc_rollup_arith_pvm_enable,
              sc_rollup_origination_size,
@@ -282,7 +288,8 @@ let sc_rollup_encoding =
            ( sc_rollup_number_of_sections_in_dissection,
              sc_rollup_timeout_period_in_blocks,
              sc_rollup_max_number_of_cemented_commitments,
-             sc_rollup_max_number_of_parallel_games ) ) ->
+             sc_rollup_max_number_of_parallel_games,
+             sc_rollup_pvm_constant ) ) ->
       {
         enable = sc_rollup_enable;
         arith_pvm_enable = sc_rollup_arith_pvm_enable;
@@ -299,6 +306,7 @@ let sc_rollup_encoding =
         max_number_of_stored_cemented_commitments =
           sc_rollup_max_number_of_cemented_commitments;
         max_number_of_parallel_games = sc_rollup_max_number_of_parallel_games;
+        pvm_constant = sc_rollup_pvm_constant;
       })
     (merge_objs
        (obj9
@@ -311,11 +319,12 @@ let sc_rollup_encoding =
           (req "smart_rollup_max_lookahead_in_blocks" int32)
           (req "smart_rollup_max_active_outbox_levels" int32)
           (req "smart_rollup_max_outbox_messages_per_level" int31))
-       (obj4
+       (obj5
           (req "smart_rollup_number_of_sections_in_dissection" uint8)
           (req "smart_rollup_timeout_period_in_blocks" int31)
           (req "smart_rollup_max_number_of_cemented_commitments" int31)
-          (req "smart_rollup_max_number_of_parallel_games" int31)))
+          (req "smart_rollup_max_number_of_parallel_games" int31)
+          (req "smart_rollup_pvm_constant" sc_rollup_pvm_constant_encoding)))
 
 let zk_rollup_encoding =
   let open Data_encoding in

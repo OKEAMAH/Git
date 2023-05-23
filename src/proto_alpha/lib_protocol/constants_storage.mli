@@ -127,6 +127,9 @@ val delay_increment_per_round : Raw_context.t -> Period_repr.t
 
 val sc_rollup_enable : Raw_context.t -> bool
 
+val sc_rollup_pvm_constant :
+  Raw_context.t -> Constants_parametric_repr.sc_rollup_pvm_constant
+
 val sc_rollup_arith_pvm_enable : Raw_context.t -> bool
 
 val sc_rollup_origination_size : Raw_context.t -> int

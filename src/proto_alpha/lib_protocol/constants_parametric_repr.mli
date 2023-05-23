@@ -85,6 +85,8 @@ type tx_rollup = {
   sunset_level : int32;
 }
 
+type sc_rollup_pvm_constant = unit
+
 type sc_rollup = {
   enable : bool;
   arith_pvm_enable : bool;
@@ -124,6 +126,7 @@ type sc_rollup = {
   max_number_of_stored_cemented_commitments : int;
   (* The maximum number of parallel games played by a given staker. *)
   max_number_of_parallel_games : int;
+  pvm_constant : sc_rollup_pvm_constant;
 }
 
 type zk_rollup = {

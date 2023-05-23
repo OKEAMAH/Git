@@ -32,6 +32,8 @@ val constants_sandbox : Constants.Parametric.t
 
 val constants_test : Constants.Parametric.t
 
+val default_sc_rollup_pvm_constant : Constants.Parametric.sc_rollup_pvm_constant
+
 val test_commitments : Commitment.t list lazy_t
 
 val make_bootstrap_account :
