@@ -273,6 +273,10 @@ let chest_key_encoding = proof_encoding
 type opening_result = Correct of Bytes.t | Bogus_opening
 
 let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
+  if time <= 0 then
+    raise
+      (Invalid_argument
+         "Timelock.create_chest_and_chest_key: the time bound must be positive") ;
   let puzzle, proof =
     let vdf_tuple = precompute_timelock ~time ~precompute_path () in
     proof_of_vdf_tuple ~time vdf_tuple
@@ -281,7 +285,12 @@ let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
   let ciphertext = encrypt sym_key payload in
   ({puzzle; ciphertext}, proof)
 
-let create_chest_key chest ~time = unlock_and_prove ~time chest.puzzle
+let create_chest_key chest ~time =
+  if time <= 0 then
+    raise
+      (Invalid_argument
+         "Timelock.create_chest_key: the time bound must be positive") ;
+  unlock_and_prove ~time chest.puzzle
 
 let get_plaintext_size chest =
   assert (Bytes.length chest.ciphertext.payload > Crypto_box.tag_length) ;
