@@ -3216,7 +3216,7 @@ let commands_rw () =
               let m = Hex.of_bytes msg |> Hex.show in
               cctxt#message "Timelock chest verified, message is: %s" m
           | Bogus_opening ->
-              cctxt#error "Error opening: incorrect proof or unlocked value."
+              cctxt#error "Error opening: incorrect proof or solution."
         in
         return_unit);
     command
