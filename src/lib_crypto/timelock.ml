@@ -94,13 +94,13 @@ let rsa_public_encoding =
        (obj1 (req "rsa_public" n))
 
 (* Timelock challenge, also called "locked" value *)
-type locked_value = Z.t
+type puzzle = Z.t
 
-let to_locked_value_opt x =
+let to_puzzle_opt x =
   let y = Z.of_string x in
   if y >= rsa2048 then None else Some y
 
-let to_locked_value_unsafe = Z.of_string
+let to_puzzle_unsafe = Z.of_string
 
 (* Timelock opening, also called "unlocked" value. *)
 type solution = Z.t
@@ -109,28 +109,19 @@ type solution = Z.t
 type vdf_proof = Z.t
 
 (* Timelock tuple: challenge, opening and VDF proof *)
-type vdf_tuple = {
-  locked_value : locked_value;
-  solution : solution;
-  vdf_proof : vdf_proof;
-}
+type vdf_tuple = {puzzle : puzzle; solution : solution; vdf_proof : vdf_proof}
 
 let vdf_tuple_encoding =
   let open Data_encoding in
   def "timelock.vdf_tuple"
   @@ conv_with_guard
        (fun vdf_tuple ->
-         (vdf_tuple.locked_value, vdf_tuple.solution, vdf_tuple.vdf_proof))
-       (fun (locked_value, solution, vdf_proof) ->
-         Ok {locked_value; solution; vdf_proof})
-       (obj3 (req "locked_value" n) (req "solution" n) (req "vdf_proof" n))
+         (vdf_tuple.puzzle, vdf_tuple.solution, vdf_tuple.vdf_proof))
+       (fun (puzzle, solution, vdf_proof) -> Ok {puzzle; solution; vdf_proof})
+       (obj3 (req "puzzle" n) (req "solution" n) (req "vdf_proof" n))
 
 let to_vdf_tuple_unsafe x y z =
-  {
-    locked_value = Z.of_string x;
-    solution = Z.of_string y;
-    vdf_proof = Z.of_string z;
-  }
+  {puzzle = Z.of_string x; solution = Z.of_string y; vdf_proof = Z.of_string z}
 
 (* Timelock proof:
    - a VDF tuple, and a random coin
@@ -151,14 +142,14 @@ let random_z size = Hacl.Rand.gen size |> Bytes.to_string |> Z.of_bits
 
 (* Generates almost uniformly a Zarith element between 0 and [public key].
    Intended for generating the timelock *)
-let gen_locked_value_unsafe rsa_public =
+let gen_puzzle_unsafe rsa_public =
   let size_rsa2048 = Z.to_bits rsa_public |> String.length in
   (* We divide by 8 to convert to bytes *)
   Z.erem (random_z ((size_rsa2048 / 8) + 16)) rsa_public
 
-let gen_locked_value_opt rsa_public =
+let gen_puzzle_opt rsa_public =
   if not @@ Z.equal rsa_public rsa2048 then None
-  else Some (gen_locked_value_unsafe rsa_public)
+  else Some (gen_puzzle_unsafe rsa_public)
 
 (* The resulting prime has size 256 bits or slightly more. *)
 let hash_to_prime rsa_public ~time value key =
@@ -179,33 +170,31 @@ let hash_to_prime rsa_public ~time value key =
    https://crypto.stanford.edu/~dabo/pubs/papers/VDFsurvey.pdf page 3
    where g is the time-locked value.
 *)
-let prove_wesolowski rsa_public ~time locked_value solution =
-  let l = hash_to_prime rsa_public ~time locked_value solution in
+let prove_wesolowski rsa_public ~time puzzle solution =
+  let l = hash_to_prime rsa_public ~time puzzle solution in
   let pi, r = Z.(ref one, ref one) in
   for _ = 1 to time do
     let two_r = Z.(!r lsl 1) in
     (* r <- 2*r mod l *)
     (r := Z.(two_r mod l)) ;
     let pi_sqr = Z.(!pi * !pi mod rsa_public) in
-    (* pi <- pi^2 * locked_value^b where b = floor(2*r/l) in [0,1] *)
-    pi := if two_r >= l then Z.(pi_sqr * locked_value) else pi_sqr
+    (* pi <- pi^2 * puzzle^b where b = floor(2*r/l) in [0,1] *)
+    pi := if two_r >= l then Z.(pi_sqr * puzzle) else pi_sqr
   done ;
   Z.(!pi mod rsa_public)
 
-let prove rsa_public ~time locked_value solution =
-  let vdf_proof = prove_wesolowski rsa_public ~time locked_value solution in
-  let vdf_tuple = {locked_value; solution; vdf_proof} in
+let prove rsa_public ~time puzzle solution =
+  let vdf_proof = prove_wesolowski rsa_public ~time puzzle solution in
+  let vdf_tuple = {puzzle; solution; vdf_proof} in
   {vdf_tuple; nonce = Z.one}
 
 let verify_wesolowski rsa_public ~time vdf_tuple =
-  let l =
-    hash_to_prime rsa_public ~time vdf_tuple.locked_value vdf_tuple.solution
-  in
+  let l = hash_to_prime rsa_public ~time vdf_tuple.puzzle vdf_tuple.solution in
   let r = Z.(powm (of_int 2) (Z.of_int time) l) in
   vdf_tuple.solution
   = Z.(
       powm vdf_tuple.vdf_proof l rsa_public
-      * powm vdf_tuple.locked_value r rsa_public
+      * powm vdf_tuple.puzzle r rsa_public
       mod rsa_public)
 
 let to_vdf_tuple_opt rsa_public ~time x y z =
@@ -215,41 +204,40 @@ let to_vdf_tuple_opt rsa_public ~time x y z =
   let b_weso = verify_wesolowski rsa_public ~time tuple in
   if b_group && b_weso then Some tuple else None
 
-let verify rsa_public ~time locked_value proof =
+let verify rsa_public ~time puzzle proof =
   (* Verify link between precomputed tuple, challenge and evaluation *)
   let randomized_challenge =
-    Z.powm proof.vdf_tuple.locked_value proof.nonce rsa_public
+    Z.powm proof.vdf_tuple.puzzle proof.nonce rsa_public
   in
-  let b_exp = Z.(equal randomized_challenge locked_value) in
+  let b_exp = Z.(equal randomized_challenge puzzle) in
   (* Verify Wesolowski proof *)
   let b_weso = verify_wesolowski rsa_public ~time proof.vdf_tuple in
   (* Return *)
   b_exp && b_weso
 
-let rec unlock_timelock rsa_public ~time locked_value =
-  if time = 0 then locked_value
+let rec unlock_timelock rsa_public ~time puzzle =
+  if time = 0 then puzzle
   else
     unlock_timelock
       rsa_public
       ~time:Int.(pred time)
-      Z.(locked_value * locked_value mod rsa_public)
+      Z.(puzzle * puzzle mod rsa_public)
 
 (* Gives the value that was timelocked from the timelock, the public modulus
    and the time. Works in linear time in [time] *)
-let unlock_and_prove rsa_public ~time locked_value =
-  let solution = unlock_timelock rsa_public ~time locked_value in
-  prove rsa_public ~time locked_value solution
+let unlock_and_prove rsa_public ~time puzzle =
+  let solution = unlock_timelock rsa_public ~time puzzle in
+  prove rsa_public ~time puzzle solution
 
-let precompute_timelock ?(locked_value = None) ?(precompute_path = None) ~time
-    () =
-  let locked_value =
-    match locked_value with
-    | None -> gen_locked_value_unsafe rsa2048
+let precompute_timelock ?(puzzle = None) ?(precompute_path = None) ~time () =
+  let puzzle =
+    match puzzle with
+    | None -> gen_puzzle_unsafe rsa2048
     | Some c -> Z.(c mod rsa2048)
   in
   let compute_tuple () =
-    let solution = unlock_timelock rsa2048 ~time locked_value in
-    (prove rsa2048 ~time locked_value solution).vdf_tuple
+    let solution = unlock_timelock rsa2048 ~time puzzle in
+    (prove rsa2048 ~time puzzle solution).vdf_tuple
   in
   match precompute_path with
   | None -> compute_tuple ()
@@ -266,18 +254,16 @@ let precompute_timelock ?(locked_value = None) ?(precompute_path = None) ~time
 
 let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
   if
-    Z.compare vdf_tuple.locked_value rsa_public > 0
+    Z.compare vdf_tuple.puzzle rsa_public > 0
     || Z.compare vdf_tuple.solution rsa_public > 0
   then
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
   if verify_wesolowski rsa_public ~time vdf_tuple then
     let nonce = random_z (128 + (Z.to_bits rsa_public |> String.length)) in
-    let randomized_locked_value =
-      Z.powm vdf_tuple.locked_value nonce rsa_public
-    in
+    let randomized_puzzle = Z.powm vdf_tuple.puzzle nonce rsa_public in
     let proof = {vdf_tuple; nonce} in
-    (randomized_locked_value, proof)
+    (randomized_puzzle, proof)
   else raise (Invalid_argument "Timelock tuple verification failed.")
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
@@ -288,31 +274,27 @@ let timelock_proof_to_symmetric_key rsa_public proof =
   let hash = Blake2B.(to_bytes @@ hash_string ~key:kdf_key [to_hash]) in
   Crypto_box.Secretbox.unsafe_of_bytes hash
 
-let locked_value_to_symmetric_key rsa_public ~time locked_value proof =
-  if verify rsa_public ~time locked_value proof then
+let puzzle_to_symmetric_key rsa_public ~time puzzle proof =
+  if verify rsa_public ~time puzzle proof then
     Some (timelock_proof_to_symmetric_key rsa_public proof)
   else None
 
 (* -------- Timelock high level functions (used in Tezos) -------- *)
-type chest = {
-  locked_value : locked_value;
-  rsa_public : rsa_public;
-  ciphertext : ciphertext;
-}
+type chest = {puzzle : puzzle; rsa_public : rsa_public; ciphertext : ciphertext}
 
 let chest_encoding =
   let open Data_encoding in
   def "timelock.chest"
   @@ conv_with_guard
-       (fun chest -> (chest.locked_value, chest.rsa_public, chest.ciphertext))
-       (fun (locked_value, rsa_public, ciphertext) ->
-         if Z.Compare.(locked_value < Z.zero || locked_value >= rsa_public) then
-           Error "locked value is not in the rsa group"
+       (fun chest -> (chest.puzzle, chest.rsa_public, chest.ciphertext))
+       (fun (puzzle, rsa_public, ciphertext) ->
+         if Z.Compare.(puzzle < Z.zero || puzzle >= rsa_public) then
+           Error "puzzle is not in the RSA group"
          else if not @@ Z.equal rsa_public rsa2048 then
            Error "not RSA2048 rsa2048"
-         else Ok {locked_value; rsa_public; ciphertext})
+         else Ok {puzzle; rsa_public; ciphertext})
        (obj3
-          (req "locked_value" n)
+          (req "puzzle" n)
           (req "rsa_public" n)
           (req "ciphertext" ciphertext_encoding))
 
@@ -323,16 +305,16 @@ let chest_key_encoding = proof_encoding
 type opening_result = Correct of Bytes.t | Bogus_opening
 
 let create_chest_and_chest_key ?(precompute_path = None) ~payload ~time () =
-  let locked_value, proof =
+  let puzzle, proof =
     let vdf_tuple = precompute_timelock ~time ~precompute_path () in
     proof_of_vdf_tuple rsa2048 ~time vdf_tuple
   in
   let sym_key = timelock_proof_to_symmetric_key rsa2048 proof in
   let ciphertext = encrypt sym_key payload in
-  ({locked_value; rsa_public = rsa2048; ciphertext}, proof)
+  ({puzzle; rsa_public = rsa2048; ciphertext}, proof)
 
 let create_chest_key chest ~time =
-  unlock_and_prove chest.rsa_public ~time chest.locked_value
+  unlock_and_prove chest.rsa_public ~time chest.puzzle
 
 let get_plaintext_size chest =
   Bytes.length chest.ciphertext.payload - Crypto_box.tag_length
@@ -343,11 +325,7 @@ let open_chest chest chest_key ~time =
       (Invalid_argument "Timelock.open_chest: the time bound must be positive")
   else
     let sym_key_opt =
-      locked_value_to_symmetric_key
-        chest.rsa_public
-        ~time
-        chest.locked_value
-        chest_key
+      puzzle_to_symmetric_key chest.rsa_public ~time chest.puzzle chest_key
     in
     match sym_key_opt with
     | None -> Bogus_opening
@@ -360,7 +338,7 @@ let open_chest chest chest_key ~time =
 module Internal_for_tests = struct
   let rsa_public_to_z x = x
 
-  let locked_value_to_z x = x
+  let puzzle_to_z x = x
 
   let solution_to_z x = x
 

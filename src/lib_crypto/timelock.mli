@@ -54,15 +54,15 @@ type rsa_public
 
 (** Locked value that can be accessed with a number of sequential operations.
     It is concretely a member of the RSA group. *)
-type locked_value
+type puzzle
 
-(** Function taking as input a string and returning Some locked_value if the
+(** Function taking as input a string and returning Some puzzle if the
     element is in the RSA group with RSA2048 as modulus, None otherwise. *)
-val to_locked_value_opt : string -> locked_value option
+val to_puzzle_opt : string -> puzzle option
 
-(** Function taking as input a string and returning a locked_value with no
+(** Function taking as input a string and returning a puzzle with no
     check. *)
-val to_locked_value_unsafe : string -> locked_value
+val to_puzzle_unsafe : string -> puzzle
 
 (** Member of the RSA group that we will lock. In our case it represents a
     symmetric key. *)
@@ -78,11 +78,7 @@ type ciphertext
 (** Tuple of the RSA group comprising the locked and unlocked values as well as
     (Wesolowski) proof that the unlocked value indeed correspond to the locked
     one. *)
-type vdf_tuple = {
-  locked_value : locked_value;
-  solution : solution;
-  vdf_proof : vdf_proof;
-}
+type vdf_tuple = {puzzle : puzzle; solution : solution; vdf_proof : vdf_proof}
 
 (** Function taking as input an rsa_public, a time and three strings
     representing a locked and unlocked value as well as a wesolowski proof and
@@ -112,11 +108,11 @@ val rsa2048 : rsa_public
     messages.
 
     @raise Failure if there is not enough entropy available. *)
-val gen_locked_value_unsafe : rsa_public -> locked_value
+val gen_puzzle_unsafe : rsa_public -> puzzle
 
 (** Returns None if [rsa_public] is not RSA2048, otherwise
-    returns Some [gen_locked_value_unsafe] [rsa_public]. *)
-val gen_locked_value_opt : rsa_public -> locked_value option
+    returns Some [gen_puzzle_unsafe] [rsa_public]. *)
+val gen_puzzle_opt : rsa_public -> puzzle option
 
 (** Hashes a number mod n to a symmetric key for authenticated encryption,
     where the number is solution**nonce mod rsa_public. *)
@@ -125,20 +121,20 @@ val timelock_proof_to_symmetric_key :
 
 (** Unlock a timelock value and produces a proof certifying that the result is
     indeed what had been locked. *)
-val unlock_and_prove : rsa_public -> time:int -> locked_value -> timelock_proof
+val unlock_and_prove : rsa_public -> time:int -> puzzle -> timelock_proof
 
 (** Produces a proof certifying that the result is indeed what had been locked. *)
-val prove : rsa_public -> time:int -> locked_value -> solution -> timelock_proof
+val prove : rsa_public -> time:int -> puzzle -> solution -> timelock_proof
 
-(** Verifies that [locked_value] indeed contains [solution] with
+(** Verifies that [puzzle] indeed contains [solution] with
     parameters [rsa_public] and [time:int]. *)
-val verify : rsa_public -> time:int -> locked_value -> timelock_proof -> bool
+val verify : rsa_public -> time:int -> puzzle -> timelock_proof -> bool
 
-(** Precomputes a [vdf_tuple] given a [time:int] and optionally [locked_value].
+(** Precomputes a [vdf_tuple] given a [time:int] and optionally [puzzle].
     If [precompute_path] is given, it will instead read [vdf_tuple] locally and
     if not found, will write the newly computed [vdf_tuple] there. *)
 val precompute_timelock :
-  ?locked_value:locked_value option ->
+  ?puzzle:puzzle option ->
   ?precompute_path:string option ->
   time:int ->
   unit ->
@@ -147,17 +143,13 @@ val precompute_timelock :
 (** Randomizes a [vdf_tuple] given a [rsa_public] and a [time:int]
     (to verify the [vdf_tuple] is correct). *)
 val proof_of_vdf_tuple :
-  rsa_public -> time:int -> vdf_tuple -> locked_value * timelock_proof
+  rsa_public -> time:int -> vdf_tuple -> puzzle * timelock_proof
 
 (** Receives a claim opening with a proof and potentially secret.
     If the proof is valid hashes the opening using
     [solution_to_symmetric_key], returns None otherwise. *)
-val locked_value_to_symmetric_key :
-  rsa_public ->
-  time:int ->
-  locked_value ->
-  timelock_proof ->
-  symmetric_key option
+val puzzle_to_symmetric_key :
+  rsa_public -> time:int -> puzzle -> timelock_proof -> symmetric_key option
 
 (** encrypt using authenticated encryption, i.e. ciphertext contains
     a ciphertext and a message authentication code. *)
@@ -179,11 +171,7 @@ val proof_encoding : timelock_proof Data_encoding.t
 
 (** Contains a value (the decryption of the ciphertext) that can be provably
     recovered in [time] sequential operation. *)
-type chest = {
-  locked_value : locked_value;
-  rsa_public : rsa_public;
-  ciphertext : ciphertext;
-}
+type chest = {puzzle : puzzle; rsa_public : rsa_public; ciphertext : ciphertext}
 
 val chest_encoding : chest Data_encoding.t
 
@@ -210,7 +198,7 @@ val open_chest : chest -> chest_key -> time:int -> opening_result
 val get_plaintext_size : chest -> int
 
 module Internal_for_tests : sig
-  val locked_value_to_z : locked_value -> Z.t
+  val puzzle_to_z : puzzle -> Z.t
 
   val solution_to_z : solution -> Z.t
 
@@ -219,11 +207,11 @@ module Internal_for_tests : sig
   val rsa_public_to_z : rsa_public -> Z.t
 
   val prove_wesolowski :
-    rsa_public -> time:int -> locked_value -> solution -> vdf_proof
+    rsa_public -> time:int -> puzzle -> solution -> vdf_proof
 
   val verify_wesolowski : rsa_public -> time:int -> vdf_tuple -> bool
 
-  val hash_to_prime : rsa_public -> time:int -> locked_value -> solution -> Z.t
+  val hash_to_prime : rsa_public -> time:int -> puzzle -> solution -> Z.t
 end
 
 (*----End protocol exposure -----*)
