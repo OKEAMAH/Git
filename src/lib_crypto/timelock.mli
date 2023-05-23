@@ -96,7 +96,7 @@ val to_vdf_tuple_unsafe : string -> string -> string -> vdf_tuple
 (** Proof that the opening of a value is the claimed value.
     It is concretely an optional vdf_tuple and a member of the RSA
     group. *)
-type timelock_proof = {vdf_tuple : vdf_tuple; nonce : Z.t}
+type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
 
 (** Default modulus for RSA-based timelock, chosen as 2048 bit RSA modulus
     challenge "RSA-2048". *)
@@ -115,7 +115,7 @@ val gen_puzzle_unsafe : rsa_public -> puzzle
 val gen_puzzle_opt : rsa_public -> puzzle option
 
 (** Hashes a number mod n to a symmetric key for authenticated encryption,
-    where the number is solution**nonce mod rsa_public. *)
+    where the number is solution**randomness mod rsa_public. *)
 val timelock_proof_to_symmetric_key :
   rsa_public -> timelock_proof -> symmetric_key
 

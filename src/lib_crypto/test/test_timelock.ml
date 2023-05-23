@@ -95,17 +95,17 @@ let test_high_level_negative () =
   let proof_incorrect_solution =
     {
       vdf_tuple = {chest_key.vdf_tuple with solution = solution_wrong};
-      nonce = chest_key.nonce;
+      randomness = chest_key.randomness;
     }
   in
   let proof_incorrect_vdf =
     {
       vdf_tuple = {chest_key.vdf_tuple with vdf_proof = vdf_wrong};
-      nonce = chest_key.nonce;
+      randomness = chest_key.randomness;
     }
   in
   let proof_incorrect_rand =
-    {vdf_tuple = chest_key.vdf_tuple; nonce = Z.zero}
+    {vdf_tuple = chest_key.vdf_tuple; randomness = Z.zero}
   in
   let opening_result_wrong_expected = Bogus_opening in
   let opening_result_wrong = open_chest chest ~time proof_incorrect_solution in
@@ -136,11 +136,23 @@ let test_low_level_negative () =
       (proof |> Z.to_string, Z.(proof + one |> to_string))
     in
     [
-      {vdf_tuple = to_vdf_tuple_unsafe g' c pi; nonce = chest_key.nonce};
-      {vdf_tuple = to_vdf_tuple_unsafe g c' pi; nonce = chest_key.nonce};
-      {vdf_tuple = to_vdf_tuple_unsafe g c pi'; nonce = chest_key.nonce};
-      {vdf_tuple = chest_key.vdf_tuple; nonce = Z.(chest_key.nonce + one)};
-      {vdf_tuple = chest_key.vdf_tuple; nonce = proof.nonce};
+      {
+        vdf_tuple = to_vdf_tuple_unsafe g' c pi;
+        randomness = chest_key.randomness;
+      };
+      {
+        vdf_tuple = to_vdf_tuple_unsafe g c' pi;
+        randomness = chest_key.randomness;
+      };
+      {
+        vdf_tuple = to_vdf_tuple_unsafe g c pi';
+        randomness = chest_key.randomness;
+      };
+      {
+        vdf_tuple = chest_key.vdf_tuple;
+        randomness = Z.(chest_key.randomness + one);
+      };
+      {vdf_tuple = chest_key.vdf_tuple; randomness = proof.randomness};
     ]
   in
   assert (

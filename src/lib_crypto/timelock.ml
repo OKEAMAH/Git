@@ -126,15 +126,15 @@ let to_vdf_tuple_unsafe x y z =
 (* Timelock proof:
    - a VDF tuple, and a random coin
    - a scalar, either the random coin for the precomputer or 1 *)
-type timelock_proof = {vdf_tuple : vdf_tuple; nonce : Z.t}
+type timelock_proof = {vdf_tuple : vdf_tuple; randomness : Z.t}
 
 let proof_encoding =
   let open Data_encoding in
   def "timelock.proof"
   @@ conv_with_guard
-       (fun proof -> (proof.vdf_tuple, proof.nonce))
-       (fun (vdf_tuple, nonce) -> Ok {vdf_tuple; nonce})
-       (obj2 (req "vdf_tuple" vdf_tuple_encoding) (req "nonce" n))
+       (fun proof -> (proof.vdf_tuple, proof.randomness))
+       (fun (vdf_tuple, randomness) -> Ok {vdf_tuple; randomness})
+       (obj2 (req "vdf_tuple" vdf_tuple_encoding) (req "randomness" n))
 
 (* -------- Timelock low level functions -------- *)
 (* A random Z arith element of size [size] bytes *)
@@ -186,7 +186,7 @@ let prove_wesolowski rsa_public ~time puzzle solution =
 let prove rsa_public ~time puzzle solution =
   let vdf_proof = prove_wesolowski rsa_public ~time puzzle solution in
   let vdf_tuple = {puzzle; solution; vdf_proof} in
-  {vdf_tuple; nonce = Z.one}
+  {vdf_tuple; randomness = Z.one}
 
 let verify_wesolowski rsa_public ~time vdf_tuple =
   let l = hash_to_prime rsa_public ~time vdf_tuple.puzzle vdf_tuple.solution in
@@ -205,9 +205,9 @@ let to_vdf_tuple_opt rsa_public ~time x y z =
   if b_group && b_weso then Some tuple else None
 
 let verify rsa_public ~time puzzle proof =
-  (* Verify link between precomputed tuple, challenge and evaluation *)
+  (* Verify link between precomputed tuple, randomness and evaluation *)
   let randomized_challenge =
-    Z.powm proof.vdf_tuple.puzzle proof.nonce rsa_public
+    Z.powm proof.vdf_tuple.puzzle proof.randomness rsa_public
   in
   let b_exp = Z.(equal randomized_challenge puzzle) in
   (* Verify Wesolowski proof *)
@@ -260,15 +260,15 @@ let proof_of_vdf_tuple rsa_public ~time vdf_tuple =
     raise
       (Invalid_argument "Invalid timelock tuple, its elements are not in group.") ;
   if verify_wesolowski rsa_public ~time vdf_tuple then
-    let nonce = random_z (128 + (Z.to_bits rsa_public |> String.length)) in
-    let randomized_puzzle = Z.powm vdf_tuple.puzzle nonce rsa_public in
-    let proof = {vdf_tuple; nonce} in
+    let randomness = random_z (128 + (Z.to_bits rsa_public |> String.length)) in
+    let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa_public in
+    let proof = {vdf_tuple; randomness} in
     (randomized_puzzle, proof)
   else raise (Invalid_argument "Timelock tuple verification failed.")
 
 (* Creates a symmetric key using hash based key derivation from the time locked value*)
 let timelock_proof_to_symmetric_key rsa_public proof =
-  let updated = Z.powm proof.vdf_tuple.solution proof.nonce rsa_public in
+  let updated = Z.powm proof.vdf_tuple.solution proof.randomness rsa_public in
   let kdf_key = "Tezoskdftimelockv1" in
   let to_hash = Z.to_string updated in
   let hash = Blake2B.(to_bytes @@ hash_string ~key:kdf_key [to_hash]) in
