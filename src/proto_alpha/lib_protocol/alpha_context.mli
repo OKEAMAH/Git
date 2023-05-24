@@ -3456,7 +3456,9 @@ module Sc_rollup : sig
 
       val proof_encoding : proof Data_encoding.t
 
-      val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
+      val reveal :
+        Sc_rollup_reveal_hash.t ->
+        string option Lwt.t
 
       module Inbox_with_history : sig
         val inbox : Inbox.history_proof
