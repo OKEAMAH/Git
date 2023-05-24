@@ -57,7 +57,7 @@ module Make (C : AUTOMATON_CONFIG) :
 
   type nonrec limits = (Topic.t, Peer.t, Message_id.t, span) limits
 
-  type nonrec parameters = (Peer.t, Message_id.t) parameters
+  type nonrec parameters = (Peer.t, Message.t, Message_id.t) parameters
 
   type add_peer = {direct : bool; outbound : bool; peer : Peer.t}
 

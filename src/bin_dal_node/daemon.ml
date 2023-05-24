@@ -337,7 +337,7 @@ let run ~data_dir cctxt =
     in
     let open Worker_parameters in
     Gossipsub.Worker.(
-      make ~events_logging:Logging.event rng limits peer_filter_parameters
+      make ~events_logging:Logging.event rng limits (filter_parameters ())
       |> start [])
   in
   (* Create a transport (P2P) layer instance. *)

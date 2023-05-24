@@ -70,6 +70,9 @@ let limits =
     score_limits;
   }
 
-let peer_filter_parameters =
-  let open Gossipsub.Worker.Default_parameters.Peer_filter in
-  {peer_filter}
+let filter_parameters =
+  let open Gossipsub.Worker.Default_parameters in
+  fun ?(peer_filter = Peer_filter.peer_filter)
+      ?(message_filter = Message_filter.message_filter)
+      () ->
+    {peer_filter; message_filter}

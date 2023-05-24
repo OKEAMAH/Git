@@ -28,4 +28,9 @@ open Gs_interface
 
 val limits : (topic, peer, message_id, Span.t) Gossipsub_intf.limits
 
-val peer_filter_parameters : (peer, message_id) Gossipsub_intf.parameters
+val filter_parameters :
+  ?peer_filter:
+    (peer -> [`IHave of message_id | `IWant of message_id | `Graft] -> bool) ->
+  ?message_filter:(message -> message_id -> [`Valid | `Unknown | `Invalid]) ->
+  unit ->
+  (peer, message, message_id) Gossipsub_intf.parameters

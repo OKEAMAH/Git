@@ -94,7 +94,11 @@ let default_limits =
     score_limits;
   }
 
-let parameters = {peer_filter = (fun _peer _action -> true)}
+let parameters =
+  {
+    peer_filter = (fun _peer _action -> true);
+    message_filter = (fun _message _message_id -> `Valid);
+  }
 
 (* This is to use a seed with Tezt. *)
 let rng =

@@ -308,9 +308,10 @@ type ('topic, 'peer, 'message_id, 'span) limits = {
           [seen_history_length] heartbeats. *)
 }
 
-type ('peer, 'message_id) parameters = {
+type ('peer, 'message, 'message_id) parameters = {
   peer_filter :
     'peer -> [`IHave of 'message_id | `IWant of 'message_id | `Graft] -> bool;
+  message_filter : 'message -> 'message_id -> [`Valid | `Unknown | `Invalid];
 }
 
 (** The [SCORE] module type describes primitives used to update the scores
@@ -538,7 +539,7 @@ module type AUTOMATON = sig
   type limits := (Topic.t, Peer.t, Message_id.t, span) limits
 
   (** Parameters of the gossipsub protocol. *)
-  type parameters := (Peer.t, Message_id.t) parameters
+  type parameters := (Peer.t, Message.t, Message_id.t) parameters
 
   (** The types of payloads for inputs to the gossipsub automaton. *)
 
@@ -1041,7 +1042,7 @@ module type WORKER = sig
     ?events_logging:(event -> unit Monad.t) ->
     Random.State.t ->
     (GS.Topic.t, GS.Peer.t, GS.Message_id.t, GS.span) limits ->
-    (GS.Peer.t, GS.Message_id.t) parameters ->
+    (GS.Peer.t, GS.Message.t, GS.Message_id.t) parameters ->
     t
 
   (** [start topics state] runs the (not already started) worker whose [state]

@@ -147,3 +147,7 @@ end
 module Peer_filter = struct
   let peer_filter _peer _action = true
 end
+
+module Message_filter = struct
+  let message_filter _message _message_id = `Valid
+end
