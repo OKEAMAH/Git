@@ -24,272 +24,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let force_switch =
-  Tezos_clic.switch
-    ~long:"force"
-    ~doc:"Overwrites the configuration file when it exists."
-    ()
-
-let sc_rollup_address_param =
-  Smart_rollup_alias.Address.param
-    ~name:"smart-rollup-address"
-    ~desc:"The smart rollup address"
-
-let sc_rollup_address_arg =
-  Tezos_clic.arg
-    ~long:"rollup"
-    ~placeholder:"smart-rollup-address"
-    ~doc:"The smart rollup address (required when no configuration file exists)"
-    (Smart_rollup_alias.Address.parameter ())
-
-let sc_rollup_node_operator_param =
-  let open Lwt_result_syntax in
-  Tezos_clic.param
-    ~name:"operator"
-    ~desc:
-      (Printf.sprintf
-         "Public key hash, or alias, of a smart rollup node operator. An \
-          operator can be specialized to a particular purpose by prefixing its \
-          key or alias by said purpose, e.g. publish:alias_of_my_operator. The \
-          possible purposes are: %s."
-         (String.concat ", "
-         @@ Configuration.(List.map string_of_purpose purposes)))
-  @@ Tezos_clic.parameter
-  @@ fun cctxt s ->
-  let parse_pkh s =
-    let from_alias s = Client_keys.Public_key_hash.find cctxt s in
-    let from_key s =
-      match Signature.Public_key_hash.of_b58check_opt s with
-      | None ->
-          failwith "Could not read public key hash for rollup node operator"
-      | Some pkh -> return pkh
-    in
-    Client_aliases.parse_alternatives
-      [("alias", from_alias); ("key", from_key)]
-      s
-  in
-  match String.split ~limit:1 ':' s with
-  | [_] ->
-      let+ pkh = parse_pkh s in
-      `Default pkh
-  | [purpose; operator_s] -> (
-      match Configuration.purpose_of_string purpose with
-      | Some purpose ->
-          let+ pkh = parse_pkh operator_s in
-          `Purpose (purpose, pkh)
-      | None ->
-          let+ pkh = parse_pkh s in
-          `Default pkh)
-  | _ ->
-      (* cannot happen due to String.split's implementation. *)
-      assert false
-
-let possible_modes = List.map Configuration.string_of_mode Configuration.modes
-
-let mode_parameter =
-  Tezos_clic.parameter
-    ~autocomplete:(fun _ -> return possible_modes)
-    (fun _ m -> Lwt.return (Configuration.mode_of_string m))
-
-let mode_doc =
-  Format.asprintf
-    "The mode for the rollup node (%s)@\n%a"
-    (String.concat ", " possible_modes)
-    (Format.pp_print_list (fun fmt mode ->
-         Format.fprintf
-           fmt
-           "- %s: %s"
-           (Configuration.string_of_mode mode)
-           (Configuration.description_of_mode mode)))
-    Configuration.modes
-
-let mode_param = Tezos_clic.param ~name:"mode" ~desc:mode_doc mode_parameter
-
-let mode_arg =
-  Tezos_clic.arg
-    ~long:"mode"
-    ~placeholder:"mode"
-    ~doc:(mode_doc ^ "\n(required when no configuration file exists)")
-    mode_parameter
-
-let rpc_addr_arg =
-  let default = Configuration.default_rpc_addr in
-  Tezos_clic.arg
-    ~long:"rpc-addr"
-    ~placeholder:"rpc-address|ip"
-    ~doc:
-      (Format.sprintf
-         "The address the smart rollup node listens to. Default value is %s"
-         default)
-    Client_proto_args.string_parameter
-
-let metrics_addr_arg =
-  Tezos_clic.arg
-    ~long:"metrics-addr"
-    ~placeholder:
-      "ADDR:PORT or :PORT (by default ADDR is localhost and PORT is 9933)"
-    ~doc:"The address of the smart rollup node metrics server."
-    Client_proto_args.string_parameter
-
-let dal_node_endpoint_arg =
-  Tezos_clic.arg
-    ~long:"dal-node"
-    ~placeholder:"dal-node-endpoint"
-    ~doc:
-      (Format.sprintf
-         "The address of the dal node from which the smart rollup node \
-          downloads slots. When not provided, the rollup node will not support \
-          the DAL. In production, a DAL node must be provided if DAL is \
-          enabled and used in the rollup.")
-    (Tezos_clic.parameter (fun _ s -> Lwt.return_ok (Uri.of_string s)))
-
-let dac_observer_endpoint_arg =
-  Tezos_clic.arg
-    ~long:"dac-observer"
-    ~placeholder:"dac-observer-endpoint"
-    ~doc:
-      (Format.sprintf
-         "The address of the DAC observer node from which the smart rollup \
-          node downloads preimages requested through the reveal channel.")
-    (Tezos_clic.parameter (fun _ s -> Lwt.return_ok (Uri.of_string s)))
-
-let dac_timeout_arg =
-  Tezos_clic.arg
-    ~long:"dac-timeout"
-    ~placeholder:"seconds"
-    ~doc:
-      "Timeout in seconds for which the DAC observer client will wait for a \
-       preimage"
-    Client_proto_args.z_parameter
-
-let rpc_port_arg =
-  let default = Configuration.default_rpc_port |> string_of_int in
-  Tezos_clic.arg
-    ~long:"rpc-port"
-    ~placeholder:"rpc-port"
-    ~doc:
-      (Format.sprintf
-         "The port the smart rollup node listens to. Default value is %s"
-         default)
-    Client_proto_args.int_parameter
-
-let data_dir_arg =
-  let default = Configuration.default_data_dir in
-  Tezos_clic.default_arg
-    ~long:"data-dir"
-    ~placeholder:"data-dir"
-    ~doc:
-      (Format.sprintf
-         "The path to the smart rollup node data directory. Default value is %s"
-         default)
-    ~default
-    Client_proto_args.string_parameter
-
-let loser_mode_arg =
-  Tezos_clic.arg
-    ~long:"loser-mode"
-    ~placeholder:"mode"
-    ~doc:"Set the rollup node failure points (for test only!)."
-    (Tezos_clic.parameter (fun _ s ->
-         match Loser_mode.make s with
-         | Some t -> return t
-         | None -> failwith "Invalid syntax for failure points"))
-
-let reconnection_delay_arg =
-  let default =
-    Format.sprintf "%.1f" Configuration.default_reconnection_delay
-  in
-  let doc =
-    Format.asprintf
-      "The first reconnection delay, in seconds, to wait before reconnecting \
-       to the Tezos node. The default delay is %s.\n\
-       The actual delay varies to follow a randomized exponential backoff \
-       (capped to 1.5h): [1.5^reconnection_attempt * delay ± 50%%]."
-      default
-  in
-  Tezos_clic.arg
-    ~long:"reconnection-delay"
-    ~placeholder:"delay"
-    ~doc
-    (Tezos_clic.parameter (fun _ p ->
-         try return (float_of_string p) with _ -> failwith "Cannot read float"))
-
-let injector_retention_period_arg =
-  Tezos_clic.arg
-    ~long:"injector-retention-period"
-    ~placeholder:"blocks"
-    ~doc:
-      (Format.sprintf
-         "The number of blocks the injector keeps in memory. Decrease to free \
-          memory, and increase to be able to query information about included \
-          messages for longer. Default value is %d"
-         Configuration.default_injector.retention_period)
-  @@ Tezos_clic.map_parameter Client_proto_args.int_parameter ~f:(fun p ->
-         if p > Configuration.max_injector_retention_period || p < 0 then
-           Format.ksprintf
-             Stdlib.failwith
-             "injector-retention-period should be a positive number smaller \
-              than %d"
-             Configuration.max_injector_retention_period ;
-         p)
-
-let injector_attempts_arg =
-  Tezos_clic.arg
-    ~long:"injector-attempts"
-    ~placeholder:"number"
-    ~doc:
-      (Format.sprintf
-         "The number of attempts that the injector will make to inject an \
-          operation when it fails. Default value is %d"
-         Configuration.default_injector.attempts)
-  @@ Tezos_clic.map_parameter Client_proto_args.int_parameter ~f:(fun p ->
-         if p < 0 then
-           Format.ksprintf
-             Stdlib.failwith
-             "injector-attempts should be positive" ;
-         p)
-
-let injection_ttl_arg =
-  Tezos_clic.arg
-    ~long:"injection-ttl"
-    ~placeholder:"number"
-    ~doc:
-      (Format.sprintf
-         "The number of blocks after which an operation that is injected but \
-          never included is retried. Default value is %d"
-         Configuration.default_injector.injection_ttl)
-  @@ Tezos_clic.map_parameter Client_proto_args.int_parameter ~f:(fun p ->
-         if p < 1 then Stdlib.failwith "injection-ttl should be > 1" ;
-         p)
-
-let log_kernel_debug_arg =
-  Tezos_clic.switch
-    ~long:"log-kernel-debug"
-    ~doc:"Log the kernel debug output to kernel.log in the data directory"
-    ()
-
-let log_kernel_debug_file_arg =
-  Tezos_clic.arg
-    ~long:"log-kernel-debug-file"
-    ~placeholder:"file"
-    ~doc:""
-    Client_proto_args.string_parameter
-
-let boot_sector_file_arg =
-  Tezos_clic.arg
-    ~long:"boot-sector-file"
-    ~placeholder:"file"
-    ~doc:
-      "Path to the boot sector. The argument is optional, if the rollup node \
-       was originated via the smart rollup originate operation, the rollup \
-       node will fetch the boot sector itself. This argument is required only \
-       if it's a bootstrapped smart rollup."
-    (Tezos_clic.parameter (fun _ path ->
-         let open Lwt_result_syntax in
-         let*! exists = Lwt_unix.file_exists path in
-         if exists then return path
-         else failwith "Boot sector not found at path %S" path))
-
 let group =
   {
     Tezos_clic.name = "sc_rollup.node";
@@ -299,25 +33,26 @@ let group =
 let config_init_command =
   let open Lwt_result_syntax in
   let open Tezos_clic in
+  let open Cli in
   command
     ~group
     ~desc:"Configure the smart rollup node."
     (args15
-       force_switch
+       (force_switch ())
        data_dir_arg
        rpc_addr_arg
        rpc_port_arg
        metrics_addr_arg
-       loser_mode_arg
-       reconnection_delay_arg
-       dal_node_endpoint_arg
-       dac_observer_endpoint_arg
+       (loser_mode_arg ())
+       (reconnection_delay_arg ())
+       (dal_node_endpoint_arg ())
+       (dac_observer_endpoint_arg ())
        dac_timeout_arg
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
-       log_kernel_debug_arg
-       boot_sector_file_arg)
+       (log_kernel_debug_arg ())
+       (boot_sector_file_arg ()))
     (prefix "init" @@ mode_param
     @@ prefixes ["config"; "for"]
     @@ sc_rollup_address_param
@@ -372,27 +107,28 @@ let config_init_command =
 let legacy_run_command =
   let open Tezos_clic in
   let open Lwt_result_syntax in
+  let open Cli in
   command
     ~group
     ~desc:"Run the rollup node daemon (deprecated)."
     (args17
        data_dir_arg
-       mode_arg
-       sc_rollup_address_arg
+       (mode_arg ())
+       (sc_rollup_address_arg ())
        rpc_addr_arg
        rpc_port_arg
        metrics_addr_arg
-       loser_mode_arg
-       reconnection_delay_arg
-       dal_node_endpoint_arg
-       dac_observer_endpoint_arg
+       (loser_mode_arg ())
+       (reconnection_delay_arg ())
+       (dal_node_endpoint_arg ())
+       (dac_observer_endpoint_arg ())
        dac_timeout_arg
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
-       log_kernel_debug_arg
+       (log_kernel_debug_arg ())
        log_kernel_debug_file_arg
-       boot_sector_file_arg)
+       (boot_sector_file_arg ()))
     (prefixes ["run"] @@ stop)
     (fun ( data_dir,
            mode,
@@ -437,6 +173,7 @@ let legacy_run_command =
 let run_command =
   let open Tezos_clic in
   let open Lwt_result_syntax in
+  let open Cli in
   command
     ~group
     ~desc:
@@ -447,17 +184,17 @@ let run_command =
        rpc_addr_arg
        rpc_port_arg
        metrics_addr_arg
-       loser_mode_arg
-       reconnection_delay_arg
-       dal_node_endpoint_arg
-       dac_observer_endpoint_arg
+       (loser_mode_arg ())
+       (reconnection_delay_arg ())
+       (dal_node_endpoint_arg ())
+       (dac_observer_endpoint_arg ())
        dac_timeout_arg
        injector_retention_period_arg
        injector_attempts_arg
        injection_ttl_arg
-       log_kernel_debug_arg
+       (log_kernel_debug_arg ())
        log_kernel_debug_file_arg
-       boot_sector_file_arg)
+       (boot_sector_file_arg ()))
     (prefixes ["run"] @@ mode_param @@ prefixes ["for"]
    @@ sc_rollup_address_param
     @@ prefixes ["with"; "operators"]
