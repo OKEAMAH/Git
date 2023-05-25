@@ -46,6 +46,7 @@ let test_execution_correspondance ~version skip count () =
       let open Lwt_result_syntax in
       let*! tree =
         initial_tree
+          ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
           ~version
           ~from_binary:true
           ~ticks_per_snapshot:40_000L

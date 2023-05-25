@@ -236,7 +236,7 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
     let* tree = T.remove tree ["wasm"] in
     Tree_encoding_runner.encode pvm_state_encoding pvm_state tree
 
-  let initial_state version empty_tree =
+  let initial_state ?protocol_version version empty_tree =
     let open Lwt.Syntax in
     let* durable =
       Tree_encoding_runner.decode durable_storage_encoding empty_tree
@@ -250,6 +250,16 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
         durable
         Constants.version_key
         version_str
+    in
+    let* durable =
+      match protocol_version with
+      | Some protocol_version ->
+          Durable.set_value_exn
+            ~edit_readonly:true
+            durable
+            Constants.protocol_version_key
+            protocol_version
+      | None -> Lwt.return durable
     in
     Tree_encoding_runner.encode durable_storage_encoding durable empty_tree
 

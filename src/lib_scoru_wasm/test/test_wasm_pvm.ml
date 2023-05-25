@@ -36,6 +36,9 @@ open Tezos_scoru_wasm_helpers.Encodings_util
 open Wasm_utils
 open Tztest_helper
 
+let initial_tree =
+  initial_tree ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
+
 let should_boot_unreachable_kernel ~version ~batch_size kernel =
   let open Lwt_syntax in
   (* we call recursively the eval function on given increment *)

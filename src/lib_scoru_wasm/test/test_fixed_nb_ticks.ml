@@ -33,6 +33,9 @@
 open Wasm_utils
 open Tztest_helper
 
+let initial_tree =
+  initial_tree ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
+
 let loop_module =
   {|
   (module

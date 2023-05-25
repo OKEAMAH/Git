@@ -12100,7 +12100,8 @@ type info = {
 
 module Make
     (Tree : Context.TREE with type key = string list and type value = bytes) : sig
-  val initial_state : version -> Tree.tree -> Tree.tree Lwt.t
+  val initial_state :
+    ?protocol_version:string -> version -> Tree.tree -> Tree.tree Lwt.t
 
   val install_boot_sector :
     ticks_per_snapshot:Z.t ->

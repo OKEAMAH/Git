@@ -34,6 +34,9 @@ open Tezos_scoru_wasm
 open Wasm_utils
 open Tztest_helper
 
+let initial_tree =
+  initial_tree ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
+
 let test_memory0_export ~version () =
   let open Lwt_result_syntax in
   (* This module does not export its memory therefore it should fail. *)

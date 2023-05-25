@@ -35,6 +35,9 @@ open Tezos_scoru_wasm
 open Wasm_utils
 open Tztest_helper
 
+let initial_tree =
+  initial_tree ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
+
 let reveal_preimage_module hash hash_addr hash_size preimage_addr max_bytes =
   Format.sprintf
     {|

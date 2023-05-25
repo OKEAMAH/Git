@@ -262,7 +262,11 @@ module V2_0_0 = struct
 
     open Monad
 
-    let initial_state ~empty = WASM_machine.initial_state current_version empty
+    let initial_state ~empty =
+      WASM_machine.initial_state
+        ~protocol_version:Constants_repr.version_value
+        current_version
+        empty
 
     let install_boot_sector state boot_sector =
       WASM_machine.install_boot_sector
