@@ -84,3 +84,17 @@ type txpool_slot = {address : string; transactions : (int64 * JSON.t) list}
 (** [txpool_content proxy_server] returns the transaction hash and nonce
     contained in the `pending` and `queued` pools. *)
 val txpool_content : t -> (txpool_slot list * txpool_slot list) Lwt.t
+
+(** Value resulting from calling the `debug_traceTransaction` RPC. Note that
+    `resultLogs` is not implemented and its type is a placeholder for now, it
+    will always return an empty list. *)
+type trace_transaction = {
+  gas : int64;
+  return_value : string;
+  struct_logs : string list;
+}
+
+(** [trace_transaction proxy_server transaction_hash] calls the RPC
+    `debug_traceTransaction` on a specific transaction hash and returns its
+    trace. The logs are not implemented yet and are always empty. *)
+val trace_transaction : t -> string -> trace_transaction Lwt.t

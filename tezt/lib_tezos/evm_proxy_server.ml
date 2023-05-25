@@ -172,6 +172,8 @@ let batch_evm_rpc proxy_server requests =
   let endpoint = endpoint proxy_server in
   RPC.Curl.post endpoint (batch_requests requests) |> Runnable.run
 
+let extract_result response = JSON.(response |-> "result")
+
 let fetch_contract_code evm_proxy_server contract_address =
   let* code =
     call_evm_rpc
@@ -181,7 +183,7 @@ let fetch_contract_code evm_proxy_server contract_address =
         parameters = `A [`String contract_address; `String "latest"];
       }
   in
-  return JSON.(code |-> "result" |> as_string)
+  return (extract_result code |> JSON.as_string)
 
 type txpool_slot = {address : string; transactions : (int64 * JSON.t) list}
 
@@ -192,7 +194,7 @@ let txpool_content evm_proxy_server =
       {method_ = "txpool_content"; parameters = `A []}
   in
   Log.info "Result: %s" (JSON.encode txpool) ;
-  let txpool = JSON.(txpool |-> "result") in
+  let txpool = extract_result txpool in
   let parse field =
     let open JSON in
     let pool = txpool |-> field in
@@ -210,3 +212,26 @@ let txpool_content evm_proxy_server =
              {address; transactions})
   in
   return (parse "pending", parse "queued")
+
+type trace_transaction = {
+  gas : int64;
+  return_value : string;
+  struct_logs : string list;
+}
+
+let trace_transaction evm_proxy_server tx_hash =
+  let open JSON in
+  (* Note that the indexer doesn't support `tracerConfig` and would discard it
+     if provided. *)
+  let* trace_result =
+    call_evm_rpc
+      evm_proxy_server
+      {method_ = "debug_traceTransaction"; parameters = `A [`String tx_hash]}
+  in
+  let trace_result = extract_result trace_result in
+  let gas = trace_result |-> "gas" |> as_int64 in
+  let return_value = trace_result |-> "returnValue" |> as_string in
+  let struct_logs =
+    trace_result |-> "structLogs" |> as_list |> List.map as_string
+  in
+  return {gas; return_value; struct_logs}

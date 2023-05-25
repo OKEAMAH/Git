@@ -561,6 +561,45 @@ let test_rpc_web3_clientVersion =
     ~error_msg:"Expected version %%R, got %%L." ;
   unit
 
+let test_rpc_debug_traceTransaction =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "trace_transaction"]
+    ~title:"Check RPC debug_traceTransaction is available and valid"
+  @@ fun protocol ->
+  let* {node; client; sc_rollup_node; evm_proxy_server; _} =
+    setup_past_genesis protocol
+  in
+  let sender, receiver =
+    (Eth_account.bootstrap_accounts.(0), Eth_account.bootstrap_accounts.(1))
+  in
+  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
+  let* tx_hash =
+    send_and_wait_until_tx_mined
+      ~sc_rollup_node
+      ~node
+      ~client
+      ~source_private_key:sender.private_key
+      ~to_public_key:receiver.address
+      ~value:(Wei.of_eth_int 10)
+      ~evm_proxy_server_endpoint
+      ()
+  in
+  (* The result of `debug_traceTransaction` is not complete, the actual values
+     except for gas are not relevant. This test only checks the RPC result has
+     the correct encoding and returns the correct gas amount: `structLogs`
+     always returns an empty array, `returnValue` is the empty string. *)
+  let* trace = Evm_proxy_server.trace_transaction evm_proxy_server tx_hash in
+  let* tx_object =
+    Eth_cli.transaction_get ~endpoint:evm_proxy_server_endpoint ~tx_hash
+  in
+  let expected_gas =
+    Option.map (fun obj -> Int64.of_int32 obj.Transaction.gas) tx_object
+  in
+  Check.((Some trace.Evm_proxy_server.gas = expected_gas) (option int64))
+    ~error_msg:"Expected %R for gas, but got %L" ;
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -574,6 +613,7 @@ let register_evm_proxy_server ~protocols =
   test_chunked_transaction protocols ;
   test_l2_deploy protocols ;
   test_rpc_txpool_content protocols ;
-  test_rpc_web3_clientVersion protocols
+  test_rpc_web3_clientVersion protocols ;
+  test_rpc_debug_traceTransaction protocols
 
 let register ~protocols = register_evm_proxy_server ~protocols
