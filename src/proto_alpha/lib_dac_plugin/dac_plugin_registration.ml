@@ -65,10 +65,14 @@ end) : Dac_plugin.T = struct
   let equal h1 h2 =
     Protocol.Sc_rollup_reveal_hash.equal (to_reveal_hash h1) (to_reveal_hash h2)
 
-  let dac_hash_to_proto_supported_hashes = function
+  let dac_hash_to_proto_supported_hashes :
+      Dac_plugin.supported_hashes ->
+      Protocol.Sc_rollup_reveal_hash.supported_hashes = function
     | Dac_plugin.Blake2B -> Protocol.Sc_rollup_reveal_hash.Blake2B
 
-  let proto_to_dac_hash_supported_hashes = function
+  let proto_to_dac_hash_supported_hashes :
+      Protocol.Sc_rollup_reveal_hash.supported_hashes ->
+      Dac_plugin.supported_hashes = function
     | Protocol.Sc_rollup_reveal_hash.Blake2B -> Dac_plugin.Blake2B
 
   let hash_string ~(scheme : Dac_plugin.supported_hashes) ?key strings =
