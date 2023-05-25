@@ -45,20 +45,52 @@ module Blake2B = struct
   let () = Base58.check_encoded_prefix b58check_encoding "scrrh1" 56
 end
 
+module Merkelized_bytes =
+  Merkle_list.Make
+    (struct
+      include Bytes
+
+      let to_bytes b = b
+    end)
+    (Blake2B)
+
 type supported_hashes = Blake2B
 
-type t = Blake2B of Blake2B.t
+type t =
+  | Blake2B of Blake2B.t
+  | Merkle_root_Blake2B of {index : int; root : Merkelized_bytes.h}
 
 let zero ~(scheme : supported_hashes) =
   match scheme with Blake2B -> Blake2B Blake2B.zero
 
-let pp ppf hash = match hash with Blake2B hash -> Blake2B.pp ppf hash
+let pp ppf hash =
+  match hash with
+  | Blake2B hash -> Blake2B.pp ppf hash
+  | Merkle_root_Blake2B {root; index} ->
+      Format.fprintf
+        ppf
+        "Merkelized_Blake2B:@,Index: %a@,Root: '%a'"
+        Format.pp_print_int
+        index
+        Blake2B.pp
+        root
 
 let equal h1 h2 =
-  match (h1, h2) with Blake2B h1, Blake2B h2 -> Blake2B.equal h1 h2
+  match (h1, h2) with
+  | Blake2B h1, Blake2B h2 -> Blake2B.equal h1 h2
+  | ( Merkle_root_Blake2B {root = r1; index = i1},
+      Merkle_root_Blake2B {root = r2; index = i2} ) ->
+      Blake2B.equal r1 r2 && Compare.Int.equal i1 i2
+  | _, _ -> false
 
 let compare h1 h2 =
-  match (h1, h2) with Blake2B h1, Blake2B h2 -> Blake2B.compare h1 h2
+  match (h1, h2) with
+  | Blake2B h1, Blake2B h2 -> Blake2B.compare h1 h2
+  | ( Merkle_root_Blake2B {root = r1; index = i1},
+      Merkle_root_Blake2B {root = r2; index = i2} ) -> (
+      match Blake2B.compare r1 r2 with 0 -> Compare.Int.compare i1 i2 | c -> c)
+  | Blake2B _, Merkle_root_Blake2B _ -> -1
+  | Merkle_root_Blake2B _, Blake2B _ -> 1
 
 module Map = Map.Make (struct
   type tmp = t
@@ -84,8 +116,14 @@ let encoding =
         ~title:"Reveal_data_hash_v0"
         (Tag 0)
         Blake2B.encoding
-        (fun (Blake2B s) -> Some s)
+        (function Blake2B s -> Some s | Merkle_root_Blake2B _ -> None)
         (fun s -> Blake2B s);
+      case
+        ~title:"Reveal_data_hash_v1"
+        (Tag 1)
+        (obj2 (req "index" int31) (req "root" Blake2B.encoding))
+        (function Merkle_root_Blake2B t -> Some (t.index, t.root) | _ -> None)
+        (fun (index, root) -> Merkle_root_Blake2B {index; root});
     ]
 
 let hash_string ~(scheme : supported_hashes) ?key strings =
@@ -95,7 +133,8 @@ let hash_bytes ~(scheme : supported_hashes) ?key bytes =
   match scheme with Blake2B -> Blake2B (Blake2B.hash_bytes ?key bytes)
 
 let scheme_of_hash hash =
-  match hash with Blake2B _hash -> (Blake2B : supported_hashes)
+  match hash with
+  | Blake2B _ | Merkle_root_Blake2B _ -> (Blake2B : supported_hashes)
 
 let to_hex hash =
   let (`Hex hash) =
@@ -108,6 +147,9 @@ let of_hex hex =
   let open Option_syntax in
   let* hash = Hex.to_bytes (`Hex hex) in
   Data_encoding.Binary.of_bytes_opt encoding hash
+
+let reveal_hash_merkle ~index ~merkle_root =
+  Merkle_root_Blake2B {index; root = merkle_root}
 
 let rpc_arg =
   let construct = to_hex in

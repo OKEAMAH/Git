@@ -31,6 +31,12 @@ type t
 (** The hashing schemes supported by the reveal hash. *)
 type supported_hashes = Blake2B
 
+module Blake2B : S.HASH
+
+(** A Merkle tree module for storing byte-indexed values. *)
+module Merkelized_bytes :
+  Merkle_list.T with type elt = Bytes.t and type h = Blake2B.t
+
 (** A Map module for storing reveal-hash-indexed values. *)
 module Map : Map.S with type key = t
 
@@ -79,5 +85,9 @@ val scheme_of_hash : t -> supported_hashes
 val of_hex : string -> t option
 
 val to_hex : t -> string
+
+(** [reveal_hash_merkle index merkle_root] returns a reveal hash consisting
+    of the [index] of the Merkle leaf and Merkle tree root [merkle_root]. *)
+val reveal_hash_merkle : index:int -> merkle_root:Blake2B.t -> t
 
 val rpc_arg : t RPC_arg.t
