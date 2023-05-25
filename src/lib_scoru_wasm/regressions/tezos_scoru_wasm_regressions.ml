@@ -31,6 +31,10 @@ open Tezos_scoru_wasm_helpers.Wasm_utils
 (* Helpers *)
 module Context_binary = Tezos_context_memory.Context_binary
 
+let initial_tree =
+  initial_tree
+    ~protocol_version:Tezos_protocol_alpha.Protocol.Constants_repr.version_value
+
 module Prover = struct
   open Tezos_protocol_alpha
   open Tezos_protocol_alpha.Protocol

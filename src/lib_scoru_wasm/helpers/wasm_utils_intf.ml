@@ -20,6 +20,7 @@ module type S = sig
   type tree
 
   val initial_tree :
+    ?protocol_version:string ->
     version:Wasm_pvm_state.version ->
     ?ticks_per_snapshot:int64 ->
     ?max_reboots:Z.t ->

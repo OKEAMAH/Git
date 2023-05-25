@@ -153,6 +153,7 @@ let test_against_both ~version ?write_debug ?(fast_should_run = true)
 
   let* initial_tree =
     Wasm_utils.initial_tree
+      ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
       ~version
       ~ticks_per_snapshot:Wasm_utils.production_max_tick
       ~from_binary
@@ -804,6 +805,7 @@ let test_compute_step_many_pauses_at_snapshot_when_flag_set ~version () =
   in
   let*! initial_tree =
     Wasm_utils.initial_tree
+      ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
       ~version
       ~ticks_per_snapshot:Wasm_utils.production_max_tick
       ~from_binary:false
@@ -875,6 +877,7 @@ let test_check_nb_ticks ~version () =
   in
   let*! initial_tree =
     Wasm_utils.initial_tree
+      ~protocol_version:Tezos_scoru_wasm.Constants.proto_alpha_name
       ~version
       ~ticks_per_snapshot:Wasm_utils.production_max_tick
       ~from_binary:false

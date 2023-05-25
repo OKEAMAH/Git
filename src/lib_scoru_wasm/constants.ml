@@ -67,7 +67,11 @@ let reboot_counter_key =
 
 let version_key = Durable.key_of_string_exn "/readonly/wasm_version"
 
+let protocol_version_key = Durable.key_of_string_exn "readonly/protocol_version"
+
 let stack_size_limit = 300
+
+let mumbai_name = "mumbai_016"
 
 let nairobi_name = "nairobi_017"
 

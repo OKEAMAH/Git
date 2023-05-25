@@ -1145,7 +1145,7 @@ struct
         let wrap t = PVM_tree t
       end)
 
-      let initial_state = initial_state V0
+      let initial_state = initial_state ~protocol_version:"mumbai_016" V0
     end
   end
 

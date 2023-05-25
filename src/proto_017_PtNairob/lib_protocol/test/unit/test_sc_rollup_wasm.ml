@@ -235,7 +235,10 @@ let test_output () =
   in
   let*! boot_sector = Encode.encode parsed in
   let*! tree =
-    Wasm.initial_state Sc_rollup_wasm.V2_0_0.current_version empty_tree
+    Wasm.initial_state
+      ~protocol_version:"nairobi_017"
+      Sc_rollup_wasm.V2_0_0.current_version
+      empty_tree
   in
   let*! tree =
     Wasm.install_boot_sector

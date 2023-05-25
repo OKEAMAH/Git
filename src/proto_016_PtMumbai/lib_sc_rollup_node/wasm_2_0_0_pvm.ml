@@ -65,7 +65,7 @@ end
 module Make_backend (Tree : TreeS) = struct
   include Tezos_scoru_wasm_fast.Pvm.Make (Make_wrapped_tree (Tree))
 
-  let initial_state = initial_state V0
+  let initial_state = initial_state ~protocol_version:"mumbai_016" V0
 end
 
 (** Durable part of the storage of this PVM. *)
