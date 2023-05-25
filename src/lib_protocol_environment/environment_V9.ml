@@ -120,10 +120,12 @@ module type T = sig
        and type Wasm_2_0_0.output = Tezos_scoru_wasm.Wasm_pvm_state.output_info
        and type Wasm_2_0_0.reveal_hash =
         Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
-       and type Wasm_2_0_0.reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal
+       and type Wasm_2_0_0.reveal =
+        Tezos_scoru_wasm.Wasm_pvm_state.reveal_legacy_v10
        and type Wasm_2_0_0.input_request =
-        Tezos_scoru_wasm.Wasm_pvm_state.input_request
-       and type Wasm_2_0_0.info = Tezos_scoru_wasm.Wasm_pvm_state.info
+        Tezos_scoru_wasm.Wasm_pvm_state.input_request_legacy_v10
+       and type Wasm_2_0_0.info =
+        Tezos_scoru_wasm.Wasm_pvm_state.info_legacy_v10
 
   type error += Ecoproto_error of Error_monad.error
 
@@ -1113,16 +1115,17 @@ struct
 
     type reveal_hash = Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
 
-    type reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal =
+    type reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal_legacy_v10 =
       | Reveal_raw_data of reveal_hash
       | Reveal_metadata
 
-    type input_request = Tezos_scoru_wasm.Wasm_pvm_state.input_request =
+    type input_request =
+          Tezos_scoru_wasm.Wasm_pvm_state.input_request_legacy_v10 =
       | No_input_required
       | Input_required
       | Reveal_required of reveal
 
-    type info = Tezos_scoru_wasm.Wasm_pvm_state.info = {
+    type info = Tezos_scoru_wasm.Wasm_pvm_state.info_legacy_v10 = {
       current_tick : Z.t;
       last_input_read : input option;
       input_request : input_request;
@@ -1146,6 +1149,8 @@ struct
 
         let wrap t = PVM_tree t
       end)
+
+      let get_info = get_info_legacy_v10
     end
   end
 

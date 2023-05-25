@@ -5,7 +5,12 @@ type available_memories =
 
 type reveal_destination = {base : int32; max_bytes : int32}
 
-type reveal = Reveal_raw_data of string | Reveal_metadata
+type reveal_legacy_v10 = Reveal_raw_data of string | Reveal_metadata
+
+type reveal =
+  | Reveal_raw_data of string
+  | Reveal_partial_raw_data of {commitment : string; index : int32}
+  | Reveal_metadata
 
 type ticks = Z.t
 

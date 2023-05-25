@@ -993,6 +993,17 @@ let reveal_encoding =
         (value [] Data_encoding.unit)
         (function Host_funcs.Reveal_metadata -> Some () | _ -> None)
         (fun () -> Reveal_metadata);
+      case
+        "Reveal_partial_raw_data"
+        (tup2
+           ~flatten:true
+           (scope ["commitment"] reveal_hash_encoding)
+           (value ["index"] Data_encoding.int32))
+        (function
+          | Host_funcs.Reveal_partial_raw_data {commitment; index} ->
+              Some (commitment, index)
+          | _ -> None)
+        (fun (commitment, index) -> Reveal_partial_raw_data {commitment; index});
     ]
 
 let invoke_step_kont_encoding =

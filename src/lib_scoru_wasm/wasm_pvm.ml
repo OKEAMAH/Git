@@ -325,6 +325,11 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
         | None -> Lwt.return None)
       (fun _ -> Lwt.return None)
 
+  let get_info_legacy_v10 tree : Wasm_pvm_state.info_legacy_v10 Lwt.t =
+    let open Lwt_syntax in
+    let* pvm_state = decode tree in
+    Wasm_vm.get_info_legacy_v10 pvm_state
+
   let get_info tree =
     let open Lwt_syntax in
     let* pvm_state = decode tree in
