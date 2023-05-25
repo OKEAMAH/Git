@@ -1157,7 +1157,8 @@ struct
 
     type version = Tezos_scoru_wasm.Wasm_pvm_state.version
 
-    let v1 = Tezos_scoru_wasm.Wasm_pvm_state.V1
+    let version_from_protocol_version_str =
+      Tezos_scoru_wasm.Wasm_pvm_state.version_from_protocol_version_str
 
     module Make
         (Tree : Context.TREE with type key = string list and type value = bytes) =

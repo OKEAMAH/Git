@@ -30,6 +30,14 @@ let versions = [("2.0.0", V0); ("2.0.0-r1", V1)]
 
 let versions_flip = List.map (fun (x, y) -> (y, x)) versions
 
+let version_for_protocol : Pvm_input_kind.protocol -> version = function
+  | Nairobi | Proto_alpha -> V1
+
+let version_from_protocol_version_str (protocol_version : string) : version =
+  Pvm_input_kind.protocol_from_raw protocol_version
+  |> Option.map version_for_protocol
+  |> Option.value ~default:(version_for_protocol Proto_alpha)
+
 let version_encoding =
   (* This encoding is directly used by the protocol. As a consequence,
      any change done to it needs to be backward compatible!

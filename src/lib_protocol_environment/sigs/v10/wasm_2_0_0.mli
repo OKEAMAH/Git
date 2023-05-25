@@ -25,7 +25,7 @@
 
 type version
 
-val v1 : version
+val version_from_protocol_version_str : string -> version
 
 type input = {inbox_level : Bounded.Non_negative_int32.t; message_counter : Z.t}
 

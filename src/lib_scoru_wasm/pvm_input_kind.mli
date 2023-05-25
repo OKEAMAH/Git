@@ -25,6 +25,8 @@
 
 type protocol = Nairobi | Proto_alpha
 
+val protocol_from_raw : string -> protocol option
+
 (** [internal_message_kind] represent an internal message in a inbox. *)
 type internal_message_kind =
   | Transfer (* Generic internal message. *)

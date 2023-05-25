@@ -57,10 +57,12 @@ let protocol_from_raw payload =
     let payload = String.sub payload 2 (String.length payload - 2) in
     match Data_encoding.(Binary.of_string_exn string payload) with
     | payload when String.equal payload Constants.proto_alpha_name ->
-        Some (Protocol_migration Proto_alpha)
-    | payload when String.equal payload Constants.nairobi_name ->
-        Some (Protocol_migration Nairobi)
+        Some Proto_alpha
+    | payload when String.equal payload Constants.nairobi_name -> Some Nairobi
     | _ -> None
+
+let protocol_migration_from_raw payload =
+  protocol_from_raw payload |> Option.map (fun p -> Protocol_migration p)
 
 let internal_from_raw payload =
   if String.length payload < 2 then None
@@ -70,7 +72,7 @@ let internal_from_raw payload =
     | '\001' when String.length payload = 2 -> Some Start_of_level
     | '\002' when String.length payload = 2 -> Some End_of_level
     | '\003' -> Some Info_per_level
-    | '\004' -> protocol_from_raw payload
+    | '\004' -> protocol_migration_from_raw payload
     | _ -> None
 
 let from_raw_input payload =
