@@ -214,6 +214,7 @@ let register_protocol_tests_that_use_supports_correctly () =
 let register_protocol_specific_because_regression_tests () =
   Dal.register ~protocols:[Alpha] ;
   Dac.register ~protocols:[Alpha] ;
+  Dac_api_regression.register ~protocols:[Alpha] ;
   Dac.register_with_unsupported_protocol ~protocols:[Mumbai] ;
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4652
            re-enable Mumbai when DAC is separated from Dal node. *)
