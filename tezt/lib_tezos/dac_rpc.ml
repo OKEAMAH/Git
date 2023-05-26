@@ -27,7 +27,7 @@ let make ?data ?query_string =
   RPC.make
     ?data
     ?query_string
-    ~get_host:Dac_node.rpc_host
+    ~get_host:Dac_node.external_rpc_host
     ~get_port:Dac_node.rpc_port
     ~get_scheme:(Fun.const "http")
 

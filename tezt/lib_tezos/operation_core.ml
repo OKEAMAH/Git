@@ -139,7 +139,8 @@ let inject ?(request = `Inject) ?(force = false) ?protocol ?signature ?error t
     | Some (Proxy_server _) ->
         Test.fail
           "Operation.inject: Node endpoint expected instead of proxy server"
-    | Some (Node node) -> Node.wait_for_request ~request node
+    | Some (Node node | Address (node, _, _)) ->
+        Node.wait_for_request ~request node
   in
   let runnable = RPC.Client.spawn client @@ inject_rpc (Data (`String op)) in
   match error with
@@ -166,7 +167,8 @@ let inject_operations ?protocol ?(request = `Inject) ?(force = false) ?error
     | Some (Proxy_server _) ->
         Test.fail
           "Operation.inject: Node endpoint expected instead of proxy server"
-    | Some (Node node) -> Node.wait_for_request ~request node
+    | Some (Node node | Address (node, _, _)) ->
+        Node.wait_for_request ~request node
   in
   let rpc =
     RPC.post_private_injection_operations ?use_tmp_file ~force ~ops ()

@@ -31,7 +31,9 @@ type t
 val create :
   ?runner:Runner.t ->
   ?name:string ->
+  ?path:string ->
   ?base_dir:string ->
+  ?rpc_host:string ->
   ?color:Log.Color.t ->
   Dac_node.t ->
   t

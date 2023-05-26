@@ -100,16 +100,16 @@ impl<T: From<OwnedPath>> Layer<T> {
     /// when the object does so.
     pub(crate) fn create_new(
         &mut self,
-        host: &impl Runtime,
+        _host: &impl Runtime,
         id: &impl Path,
     ) -> Result<Option<T>, StorageError> {
         let account_path = concat(&self.path, id)?;
 
-        if has_subtree_res(host.store_has(&account_path)) {
-            Ok(None)
-        } else {
-            Ok(Some(T::from(account_path)))
-        }
+        // if has_subtree_res(host.store_has(&account_path)) {
+        //     Ok(None)
+        // } else {
+        Ok(Some(T::from(account_path)))
+        // }
     }
 
     /// Get existing object
@@ -118,16 +118,16 @@ impl<T: From<OwnedPath>> Layer<T> {
     /// that there is some data in durable storage for the object in this layer.
     pub(crate) fn get(
         &self,
-        host: &impl Runtime,
+        _host: &impl Runtime,
         id: &impl Path,
     ) -> Result<Option<T>, StorageError> {
         let account_path = concat(&self.path, id)?;
 
-        if has_subtree_res(host.store_has(&account_path)) {
-            Ok(Some(T::from(account_path)))
-        } else {
-            Ok(None)
-        }
+        // if has_subtree_res(host.store_has(&account_path)) {
+        Ok(Some(T::from(account_path)))
+        // } else {
+        // Ok(None)
+        // }
     }
 
     /// Get or create a new object

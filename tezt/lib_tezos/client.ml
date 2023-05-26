@@ -27,13 +27,17 @@
 open Runnable.Syntax
 open Cli_arg
 
-type endpoint = Node of Node.t | Proxy_server of Proxy_server.t
+type endpoint =
+  | Node of Node.t
+  | Proxy_server of Proxy_server.t
+  | Address of (Node.t * string * int)
 
 type media_type = Json | Binary | Any
 
 let rpc_port = function
   | Node n -> Node.rpc_port n
   | Proxy_server ps -> Proxy_server.rpc_port ps
+  | Address (_, _, p) -> p
 
 type mode =
   | Client of endpoint option * media_type option
@@ -90,10 +94,12 @@ let runner endpoint =
   match endpoint with
   | Node node -> Node.runner node
   | Proxy_server ps -> Proxy_server.runner ps
+  | Address (node, _, _) -> Node.runner node
 
 let address ?(hostname = false) ?from peer =
   match from with
   | None -> Runner.address ~hostname (runner peer)
+  | Some (Address (_, address, _)) -> address
   | Some endpoint ->
       Runner.address ~hostname ?from:(runner endpoint) (runner peer)
 
@@ -106,17 +112,6 @@ let create_with_mode ?runner ?(path = Constant.tezos_client)
   in
   let additional_bootstraps = [] in
   {path; admin_path; name; color; base_dir; additional_bootstraps; mode; runner}
-
-let create ?runner ?path ?admin_path ?name ?color ?base_dir ?endpoint
-    ?media_type () =
-  create_with_mode
-    ?runner
-    ?path
-    ?admin_path
-    ?name
-    ?color
-    ?base_dir
-    (Client (endpoint, media_type))
 
 let base_dir_arg client = ["--base-dir"; client.base_dir]
 
@@ -144,7 +139,29 @@ let endpoint_arg ?(endpoint : endpoint option) client =
   match either endpoint (mode_to_endpoint client.mode) with
   | None -> []
   | Some e ->
-      ["--endpoint"; sf "http://%s:%d" (address ~hostname:true e) (rpc_port e)]
+      let args =
+        [
+          "--endpoint";
+          sf "http://%s:%d" (address ~hostname:true ~from:e e) (rpc_port e);
+        ]
+      in
+      Log.info "Client endpoint: %s" @@ String.concat " " args ;
+      args
+
+let create ?runner ?path ?admin_path ?name ?color ?base_dir ?endpoint
+    ?media_type () =
+  let client =
+    create_with_mode
+      ?runner
+      ?path
+      ?admin_path
+      ?name
+      ?color
+      ?base_dir
+      (Client (endpoint, media_type))
+  in
+  let _ = endpoint_arg client in
+  client
 
 let media_type_arg client =
   match client with
@@ -659,7 +676,10 @@ let activate_protocol ?endpoint ?block ?protocol ?protocol_hash ?fitness ?key
     client
   |> Process.check
 
-let node_of_endpoint = function Node n -> Some n | Proxy_server _ -> None
+let node_of_endpoint = function
+  | Node n -> Some n
+  | Proxy_server _ -> None
+  | Address (n, _, _) -> Some n
 
 let node_of_client_mode = function
   | Client (Some endpoint, _) -> node_of_endpoint endpoint
