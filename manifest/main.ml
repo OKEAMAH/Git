@@ -7334,6 +7334,7 @@ let _tezt_1mtps_orchestrator =
     ~synopsis:"Run a bunch of nodes locally"
     ~bisect_ppx:No
     ~static:false
+    ~with_macos_security_framework:true
     ~deps:
       [
         tezt_lib;

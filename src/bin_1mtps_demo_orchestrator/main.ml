@@ -636,6 +636,7 @@ let setup_dac_observer ~coordinator ~rollup_id ~reveal_data_dir client node
       ~node
       ~coordinator_rpc_host:coord_group.internal
       ~coordinator_rpc_port:(Dac_node.rpc_port coordinator)
+      ~committee_member_rpcs:[]
       ~client
       ~reveal_data_dir
       ()
@@ -707,7 +708,7 @@ let setup_dac (rollup : rollup_runner) =
   in
   Log.info "Setup DAC %d - testing coordinator reachable" rollup.rollup_id ;
   let* _ =
-    Dac_client.send_payload_from_hex dac_client
+    Dac_client.send_hex_payload dac_client
     @@ Hex.of_string @@ String.make 100 '\000'
   in
   Log.info "Setup DAC %d - creating member 1" rollup.rollup_id ;
