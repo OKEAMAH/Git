@@ -39,6 +39,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
   module View = GS.Introspection
   module Topic = GS.Topic
   module Peer = GS.Peer
+  module Point = GS.Point
   module Message_id = GS.Message_id
   module Message = GS.Message
 

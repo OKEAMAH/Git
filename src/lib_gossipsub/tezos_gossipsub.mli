@@ -30,6 +30,7 @@ module Make (C : Gossipsub_intf.AUTOMATON_CONFIG) :
     with type Time.t = C.Time.t
      and type Span.t = C.Time.span
      and module Peer = C.Subconfig.Peer
+     and module Point = C.Subconfig.Point
      and module Topic = C.Subconfig.Topic
      and module Message_id = C.Subconfig.Message_id
      and module Message = C.Subconfig.Message

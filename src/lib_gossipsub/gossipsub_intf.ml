@@ -45,6 +45,8 @@ end
 module type AUTOMATON_SUBCONFIG = sig
   module Peer : ITERABLE
 
+  module Point : PRINTABLE
+
   module Topic : ITERABLE
 
   module Message_id : sig
@@ -502,6 +504,9 @@ end
 module type AUTOMATON = sig
   (** Module for peer *)
   module Peer : ITERABLE
+
+  (** Module for points *)
+  module Point : PRINTABLE
 
   (** Module for topic *)
   module Topic : ITERABLE

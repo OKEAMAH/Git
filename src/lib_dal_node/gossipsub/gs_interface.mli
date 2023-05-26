@@ -66,6 +66,8 @@ type message = {share : Cryptobox.share; shard_proof : Cryptobox.shard_proof}
     identities). *)
 type peer = P2p_peer.Id.t
 
+type point = P2p_point.Id.t
+
 module Span : Gossipsub_intf.SPAN
 
 (** Encodings for various types above. *)
@@ -94,6 +96,7 @@ module Worker_config :
      and type GS.Message_id.t = message_id
      and type GS.Message.t = message
      and type GS.Peer.t = peer
+     and type GS.Point.t = point
      and module GS.Span = Span
      and module Monad = Monad
 
@@ -103,6 +106,7 @@ module Worker_instance :
      and type GS.Message_id.t = message_id
      and type GS.Message.t = message
      and type GS.Peer.t = peer
+     and type GS.Point.t = point
      and module GS.Span = Span
      and module Monad = Monad
 

@@ -122,6 +122,7 @@ module Automaton_config :
     with type Time.t = Milliseconds.t
      and type Span.t = Milliseconds.span
      and type Subconfig.Peer.t = int
+     and type Subconfig.Point.t = int
      and type Subconfig.Topic.t = string
      and type Subconfig.Message_id.t = int
      and type Subconfig.Message.t = string = struct
@@ -153,6 +154,7 @@ module Automaton_config :
 
   module Subconfig = struct
     module Peer = Int_iterable
+    module Point = Int_iterable
     module Topic = String_iterable
 
     module Message_id = struct

@@ -61,6 +61,8 @@ type message = {share : Cryptobox.share; shard_proof : Cryptobox.shard_proof}
 
 type peer = P2p_peer.Id.t
 
+type point = P2p_point.Id.t
+
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5607
 
    Bound / add checks for bounds of these encodings *)
@@ -250,6 +252,7 @@ module Automaton_config :
     with type Time.t = Ptime.t
      and module Span = Span
      and type Subconfig.Peer.t = peer
+     and type Subconfig.Point.t = point
      and type Subconfig.Topic.t = topic
      and type Subconfig.Message_id.t = message_id
      and type Subconfig.Message.t = message = struct
@@ -258,6 +261,7 @@ module Automaton_config :
 
   module Subconfig = struct
     module Peer = Peer
+    module Point = P2p_point.Id
     module Topic = Topic
     module Message_id = Message_id
     module Message = Message
@@ -281,6 +285,7 @@ module Worker_config :
      and type GS.Message_id.t = message_id
      and type GS.Message.t = message
      and type GS.Peer.t = peer
+     and type GS.Point.t = point
      and module GS.Span = Span
      and module Monad = Monad = struct
   module GS = Tezos_gossipsub.Make (Automaton_config)

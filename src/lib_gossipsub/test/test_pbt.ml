@@ -34,6 +34,7 @@ open Test_gossipsub_shared
 open Gossipsub_intf
 open Tezt_core.Base
 module Peer = C.Subconfig.Peer
+module Point = C.Subconfig.Point
 module Topic = C.Subconfig.Topic
 module Message_id = C.Subconfig.Message_id
 module Message = C.Subconfig.Message

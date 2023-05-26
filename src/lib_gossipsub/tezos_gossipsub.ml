@@ -38,10 +38,12 @@ module Make (C : AUTOMATON_CONFIG) :
     with type Time.t = C.Time.t
      and module Span = C.Span
      and module Peer = C.Subconfig.Peer
+     and module Point = C.Subconfig.Point
      and module Topic = C.Subconfig.Topic
      and module Message_id = C.Subconfig.Message_id
      and module Message = C.Subconfig.Message = struct
   module Peer = C.Subconfig.Peer
+  module Point = C.Subconfig.Point
   module Topic = C.Subconfig.Topic
   module Message_id = C.Subconfig.Message_id
   module Message = C.Subconfig.Message
