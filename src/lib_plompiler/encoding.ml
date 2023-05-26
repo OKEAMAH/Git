@@ -23,10 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Lang_stdlib
+open Lang_core
 
-module Encodings (L : LIB) = struct
-  open L
+module Encodings (C : COMMON) = struct
+  open C
 
   (**
     Encoding type for encapsulating encoding/decoding/input functions.
