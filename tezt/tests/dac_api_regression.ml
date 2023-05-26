@@ -42,6 +42,8 @@ let make ?data ?query_string =
 
 (** [V0] module is used for regression testing [V0] API. *)
 module V0 = struct
+  let v0_api_prefix = Dac_rpc.V0.api_prefix
+
   let encode_bytes_to_hex_string raw =
     "\"" ^ match Hex.of_string raw with `Hex s -> s ^ "\""
 
@@ -55,13 +57,24 @@ module V0 = struct
         (encode_bytes_to_hex_string "test")
     in
     let data : RPC_core.data = Data (JSON.unannotate post_preimage_request) in
-    make ~data POST [Dac_rpc.V0.api_prefix; "preimage"] Fun.id
+    make ~data POST [v0_api_prefix; "preimage"] Fun.id
+
+  (** [get_preimage page_hash] asserts the binding contract of
+      "GET v0/preimage" request. *)
+  let get_preimage page_hash =
+    make GET [v0_api_prefix; "preimage"; page_hash] Fun.id
+
+  let assert_json_as_string response =
+    let _string = JSON.as_string response in
+    Lwt.return_unit
 
   (** [assert_post_preimage_reponse] asserts the binding contract of
       "POST v0/preimage response". *)
-  let assert_post_preimage_response reponse =
-    let _root_hash = JSON.as_string reponse in
-    Lwt.return_unit
+  let assert_post_preimage_response = assert_json_as_string
+
+  (** [assert_get_preimage_response] asserts the binding contract of
+      "GET v0/preimage" response. *)
+  let assert_get_preimage_response = assert_json_as_string
 
   (** [test_coordinator_post_preimage] tests Cooordinator's
       "POST v0/preimage". *)
@@ -70,6 +83,19 @@ module V0 = struct
        2. Test binding contract of RPC response. *)
     let* response = RPC.call coordinator_node post_preimage in
     assert_post_preimage_response response
+
+  (** [test_get_preimage] tests "GET v0/preimage". *)
+  let test_get_preimage Scenarios.{coordinator_node; _} =
+    (* First we prepare Coordinator by pushing payload to it. *)
+    let* root_hash =
+      let* response = RPC.call coordinator_node post_preimage in
+      return @@ JSON.as_string response
+    in
+    (* Regression test starts here:
+       1. Assert binding shape of RPC request,
+       2. Assert binding shape of RPC response. *)
+    let* response = RPC.call coordinator_node (get_preimage root_hash) in
+    assert_get_preimage_response response
 end
 
 let register ~protocols =
@@ -80,4 +106,12 @@ let register ~protocols =
     ~tags:["dac"; "dac_node"; "api_regression"]
     "test Coordinator's post preimage"
     V0.test_coordinator_post_preimage
+    protocols ;
+  scenario_with_full_dac_infrastructure
+    ~__FILE__
+    ~observers:0
+    ~committee_size:0
+    ~tags:["dac"; "dac_node"; "api_regression"]
+    "test GET v0/preimage"
+    V0.test_get_preimage
     protocols
