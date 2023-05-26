@@ -339,7 +339,7 @@ let cost_N_IMul_nattez = S.safe_int 50
 let cost_N_IMul_teznat = S.safe_int 50
 
 (* model N_IEdiv_teznat *)
-let cost_N_IEdiv_teznat = S.safe_int 70
+let cost_N_IEdiv_teznat = S.safe_int 80
 
 (* model N_IMul_bls12_381_fr *)
 (* when benchmarking, compile bls12-381 without ADX *)
@@ -691,7 +691,7 @@ let cost_DECODING_SIGNATURE_secp256k1 = S.safe_int 35
 let cost_DECODING_SIGNATURE_bls = S.safe_int 40
 
 (* model DECODING_Chest_key *)
-let cost_DECODING_Chest_key = S.safe_int 5900
+let cost_DECODING_Chest_key = S.safe_int 12500
 
 (* model DECODING_Chest *)
 (* Approximating 0.039349 x term *)
@@ -740,7 +740,7 @@ let cost_ENCODING_SIGNATURE_secp256k1 = S.safe_int 45
 let cost_ENCODING_SIGNATURE_bls = S.safe_int 55
 
 (* model ENCODING_Chest_key *)
-let cost_ENCODING_Chest_key = S.safe_int 10_000
+let cost_ENCODING_Chest_key = S.safe_int 21_000
 
 (* model ENCODING_Chest *)
 (* Approximating 0.120086 x term *)
