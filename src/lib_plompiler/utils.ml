@@ -65,9 +65,38 @@ let bitlist : ?le:bool -> bytes -> bool list =
   in
   List.rev @@ loop_byte [] start
 
+let of_bitlist : ?le:bool -> bool list -> bytes =
+ fun ?(le = false) bl ->
+  (* only multiples of a byte *)
+  assert (List.length bl mod 8 = 0) ;
+  let rec loop_byte acc rest =
+    match rest with
+    | [] ->
+        let res = if le then List.rev acc else acc in
+        Bytes.(concat empty res)
+    | _ ->
+        let rec loop_bit acc pos rest =
+          if pos = 8 then (acc, rest)
+          else
+            match rest with
+            | [] -> assert false
+            | bit :: rest ->
+                let mask = if bit then 1 lsl pos else 0 in
+                let acc = acc lor mask in
+                loop_bit acc (succ pos) rest
+        in
+        let byte_as_int, rest = loop_bit 0 0 rest in
+        let byte = Bytes.create 1 in
+        Bytes.set_uint8 byte 0 byte_as_int ;
+        loop_byte (byte :: acc) rest
+  in
+  loop_byte [] bl
+
 let bytes_of_hex hs =
   let h = `Hex hs in
   Hex.to_bytes h
+
+let hex_of_bytes bs = Hex.of_bytes bs |> Hex.show
 
 let bool_list_to_scalar : bool list -> S.t =
  fun b_list ->
