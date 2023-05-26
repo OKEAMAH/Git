@@ -264,7 +264,10 @@ let lock_timelock_aux ?rand ~time vdf_tuple =
       (Invalid_argument
          "Invalid timelock tuple, its elements are not in the RSA group.") ;
   if verify_wesolowski ~time vdf_tuple then
-    let randomness = generate_z ?rand () in
+    let randomness =
+      (Option.value rand ~default:Hacl.Rand.gen) 16
+      |> Bytes.to_string |> Z.of_bits
+    in
     let randomized_puzzle = Z.powm vdf_tuple.puzzle randomness rsa2048 in
     let proof = {vdf_tuple; randomness} in
     (randomized_puzzle, proof)
