@@ -23,7 +23,7 @@ trace
   - location: 32 (just consumed gas: 0.010)
     [ 10
       0 ]
-  - location: 33 (just consumed gas: 0.070)
+  - location: 33 (just consumed gas: 0.080)
     [ None ]
   - location: 34 (just consumed gas: 0.010)
     [ (Right None) ]

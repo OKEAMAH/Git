@@ -23,7 +23,7 @@ trace
   - location: 32 (just consumed gas: 0.010)
     [ 5
       10 ]
-  - location: 33 (just consumed gas: 0.070)
+  - location: 33 (just consumed gas: 0.080)
     [ (Some (Pair 0 5)) ]
   - location: 34 (just consumed gas: 0.010)
     [ (Right (Some (Pair 0 5))) ]

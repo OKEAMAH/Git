@@ -368,7 +368,7 @@ This sequence of operations was run:
 
 ./octez-client --mode mockup call KT1TxqZ8QtKvLu3V3JH7Gx58n7Co8pgtpQU5 from bootstrap3 --entrypoint tokenToXtz --arg '(Pair "tz1faswCTDciRzE4oJ9jn2Vm2dvjeyA9fUzU" 100 0 "2050-01-01T00:00:00Z")' --burn-cap 10
 Node is bootstrapped.
-Estimated gas: 7082.329 units (will add 100 for safety)
+Estimated gas: 7082.339 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is 'opJHQtGsMm6n6hsovsN5LeksJQjisvdJmfJGFhrkn57YhnnUHXX'
@@ -400,7 +400,7 @@ This sequence of operations was run:
           0x01e927f00ef734dfc85919635e9afc9166c83ef9fc00 ;
           0x0115eb0104481a6d7921160bc982c5e0a561cd8a3a00 }
       Storage size: 4636 bytes
-      Consumed gas: 920.795
+      Consumed gas: 920.805
       Internal operations:
         Internal Transaction:
           Amount: ꜩ0
