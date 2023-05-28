@@ -2512,11 +2512,15 @@ let check_disconnection_event dal_node ~peer_id =
 
 type peer_id = string
 
+type point_id = string
+
+type px_peer = {peer : peer_id; point : point_id}
+
 type event_with_topic =
   | Subscribe of peer_id
   | Unsubscribe of peer_id
   | Graft of peer_id
-  | Prune of peer_id
+  | Prune of {expected_peer : peer_id; expected_px : px_peer list}
   | Join
   | Leave
 
@@ -2546,13 +2550,25 @@ let check_events_with_topic ~event_with_topic dal_node ~num_slots expected_pkh =
       match event_with_topic with
       | Subscribe expected_peer
       | Unsubscribe expected_peer
-      | Graft expected_peer
-      | Prune expected_peer ->
+      | Graft expected_peer ->
           let*?? () =
-            check_expected
-              expected_peer
-              JSON.(event |-> "peer" |> JSON.as_string)
+            check_expected expected_peer JSON.(event |-> "peer" |> as_string)
           in
+          Some JSON.(event |-> "topic")
+      | Prune {expected_peer; expected_px} ->
+          let*?? () =
+            check_expected expected_peer JSON.(event |-> "peer" |> as_string)
+          in
+          let px =
+            JSON.(
+              event |-> "px" |> as_list
+              |> List.map (fun obj ->
+                     {
+                       peer = obj |-> "peer" |> as_string;
+                       point = obj |-> "point" |> as_string;
+                     }))
+          in
+          let*?? () = check_expected expected_px px in
           Some JSON.(event |-> "topic")
       | Join | Leave -> Some event
     in
@@ -3120,7 +3136,7 @@ let test_gs_prune_ihave_and_iwant protocol parameters _cryptobox node client
      invalid messages. *)
   let event_waiter_prune =
     check_events_with_topic
-      ~event_with_topic:(Prune peer_id2)
+      ~event_with_topic:(Prune {expected_peer = peer_id2; expected_px = []})
       dal_node1
       ~num_slots
       pkh1
