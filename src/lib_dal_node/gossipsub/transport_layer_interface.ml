@@ -28,25 +28,9 @@
 
    Version this type to ease future migrations. *)
 module P2p_message_V1 = struct
-  type p2p_message =
-    | Graft of {topic : Gs_interface.topic}
-    | Prune of {
-        topic : Gs_interface.topic;
-        px : Gs_interface.Worker_instance.GS.px_peer Seq.t;
-        backoff : Gs_interface.Span.t;
-      }
-    | IHave of {
-        topic : Gs_interface.topic;
-        message_ids : Gs_interface.message_id list;
-      }
-    | IWant of {message_ids : Gs_interface.message_id list}
-    | Subscribe of {topic : Gs_interface.topic}
-    | Unsubscribe of {topic : Gs_interface.topic}
-    | Message_with_header of {
-        message : Gs_interface.message;
-        topic : Gs_interface.topic;
-        message_id : Gs_interface.message_id;
-      }
+  module W = Gs_interface.Worker_instance
+
+  type p2p_message = W.p2p_message
 
   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5564
 
@@ -63,7 +47,7 @@ module P2p_message_V1 = struct
         (obj2
            (req "kind" (constant "graft"))
            (req "topic" Gs_interface.topic_encoding))
-        (function Graft {topic} -> Some ((), topic) | _ -> None)
+        (function W.Graft {topic} -> Some ((), topic) | _ -> None)
         (fun ((), topic) -> Graft {topic});
       case
         ~tag:0x11
@@ -74,7 +58,7 @@ module P2p_message_V1 = struct
            (req "px" (list Gs_interface.px_encoding))
            (req "backoff" Gs_interface.span_encoding))
         (function
-          | Prune {topic; px; backoff} ->
+          | W.Prune {topic; px; backoff} ->
               Some ((), topic, List.of_seq px, backoff)
           | _ -> None)
         (fun ((), topic, px, backoff) ->
@@ -87,7 +71,7 @@ module P2p_message_V1 = struct
            (req "topic" Gs_interface.topic_encoding)
            (req "message_ids" (list Gs_interface.message_id_encoding)))
         (function
-          | IHave {topic; message_ids} -> Some ((), topic, message_ids)
+          | W.IHave {topic; message_ids} -> Some ((), topic, message_ids)
           | _ -> None)
         (fun ((), topic, message_ids) -> IHave {topic; message_ids});
       case
@@ -96,7 +80,7 @@ module P2p_message_V1 = struct
         (obj2
            (req "kind" (constant "iwant"))
            (req "message_ids" (list Gs_interface.message_id_encoding)))
-        (function IWant {message_ids} -> Some ((), message_ids) | _ -> None)
+        (function W.IWant {message_ids} -> Some ((), message_ids) | _ -> None)
         (fun ((), message_ids) -> IWant {message_ids});
       case
         ~tag:0x14
@@ -104,7 +88,7 @@ module P2p_message_V1 = struct
         (obj2
            (req "kind" (constant "subscribe"))
            (req "topic" Gs_interface.topic_encoding))
-        (function Subscribe {topic} -> Some ((), topic) | _ -> None)
+        (function W.Subscribe {topic} -> Some ((), topic) | _ -> None)
         (fun ((), topic) -> Subscribe {topic});
       case
         ~tag:0x15
@@ -112,7 +96,7 @@ module P2p_message_V1 = struct
         (obj2
            (req "kind" (constant "unsubscribe"))
            (req "topic" Gs_interface.topic_encoding))
-        (function Unsubscribe {topic} -> Some ((), topic) | _ -> None)
+        (function W.Unsubscribe {topic} -> Some ((), topic) | _ -> None)
         (fun ((), topic) -> Unsubscribe {topic});
       case
         ~tag:0x16
@@ -123,7 +107,7 @@ module P2p_message_V1 = struct
            (req "topic" Gs_interface.topic_encoding)
            (req "message_id" Gs_interface.message_id_encoding))
         (function
-          | Message_with_header {message; topic; message_id} ->
+          | W.Message_with_header {message; topic; message_id} ->
               Some ((), message, topic, message_id)
           | _ -> None)
         (fun ((), message, topic, message_id) ->

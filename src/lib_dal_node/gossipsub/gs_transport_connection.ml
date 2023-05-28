@@ -86,36 +86,6 @@ let new_connections_handler gs_worker p2p_layer peer conn =
 let disconnections_handler gs_worker peer =
   Worker.(Disconnection {peer} |> p2p_input gs_worker)
 
-(* This function translates a Worker p2p_message to the type of messages sent
-   via the P2P layer. The two types don't coincide because of Prune. *)
-let wrap_p2p_message =
-  let module W = Worker in
-  let open Transport_layer_interface in
-  function
-  | W.Graft {topic} -> Graft {topic}
-  | W.Prune {topic; px; backoff} -> Prune {topic; px; backoff}
-  | W.IHave {topic; message_ids} -> IHave {topic; message_ids}
-  | W.IWant {message_ids} -> IWant {message_ids}
-  | W.Subscribe {topic} -> Subscribe {topic}
-  | W.Unsubscribe {topic} -> Unsubscribe {topic}
-  | W.Message_with_header {message; topic; message_id} ->
-      Message_with_header {message; topic; message_id}
-
-(* This function translates a message received via the P2P layer to a Worker
-   p2p_message. The two types don't coincide because of Prune. *)
-let unwrap_p2p_message =
-  let open Worker in
-  let module I = Transport_layer_interface in
-  function
-  | I.Graft {topic} -> Graft {topic}
-  | I.Prune {topic; px; backoff} -> Prune {topic; px; backoff}
-  | I.IHave {topic; message_ids} -> IHave {topic; message_ids}
-  | I.IWant {message_ids} -> IWant {message_ids}
-  | I.Subscribe {topic} -> Subscribe {topic}
-  | I.Unsubscribe {topic} -> Unsubscribe {topic}
-  | I.Message_with_header {message; topic; message_id} ->
-      Message_with_header {message; topic; message_id}
-
 (** This handler pops and processes the items put by the worker in the p2p
     output stream. The out messages are sent to the corresponding peers and the
     directives to the P2P layer to connect or disconnect peers are handled. *)
@@ -139,8 +109,7 @@ let gs_worker_p2p_output_handler gs_worker p2p_layer =
               Events.(emit no_connection_for_peer to_peer)
           | Some conn ->
               Error_monad.dont_wait
-                (fun () ->
-                  wrap_p2p_message p2p_message |> P2p.send p2p_layer conn)
+                (fun () -> P2p.send p2p_layer conn p2p_message)
                 (Format.eprintf
                    "Uncaught error in %s: %a\n%!"
                    __FUNCTION__
@@ -167,11 +136,10 @@ let gs_worker_p2p_output_handler gs_worker p2p_layer =
 let transport_layer_inputs_handler gs_worker p2p_layer =
   let open Lwt_syntax in
   let rec loop () =
-    let* conn, msg = P2p.recv_any p2p_layer in
+    let* conn, p2p_message = P2p.recv_any p2p_layer in
     let {P2p_connection.Info.peer_id; _} = P2p.connection_info p2p_layer conn in
     Worker.(
-      In_message {from_peer = peer_id; p2p_message = unwrap_p2p_message msg}
-      |> p2p_input gs_worker) ;
+      In_message {from_peer = peer_id; p2p_message} |> p2p_input gs_worker) ;
     loop ()
   in
   loop ()

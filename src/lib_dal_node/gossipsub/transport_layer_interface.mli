@@ -36,29 +36,9 @@
     calling {!P2p.create}.
 *)
 
-(** Without piggybacking, {!p2p_message} is almost identical to
-    {!Gs_interface.p2p_message}, except that for the [Prune] case,
-    {!P2p_peer.Id.t} elements in [px] are replaced by their {!P2p_point.Id.t}
-    counterpart. *)
-type p2p_message =
-  | Graft of {topic : Gs_interface.topic}
-  | Prune of {
-      topic : Gs_interface.topic;
-      px : Gs_interface.Worker_instance.GS.px_peer Seq.t;
-      backoff : Gs_interface.Span.t;
-    }
-  | IHave of {
-      topic : Gs_interface.topic;
-      message_ids : Gs_interface.message_id list;
-    }
-  | IWant of {message_ids : Gs_interface.message_id list}
-  | Subscribe of {topic : Gs_interface.topic}
-  | Unsubscribe of {topic : Gs_interface.topic}
-  | Message_with_header of {
-      message : Gs_interface.message;
-      topic : Gs_interface.topic;
-      message_id : Gs_interface.message_id;
-    }
+(** Without piggybacking, {!p2p_message} is identical to
+    {!Gs_interface.p2p_message}. *)
+type p2p_message = Gs_interface.Worker_instance.p2p_message
 
 (** {!peer_metadata} is not used. So, its value is [unit]. *)
 type peer_metadata = unit
