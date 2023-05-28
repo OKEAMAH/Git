@@ -350,19 +350,18 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         | Ignore_PX_score_too_low _ | No_PX ) ) ->
         gstate
     | gstate, GS.PX peers ->
+        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5425
+
+           The automaton doesn't filter out the alternative peers we are already
+           connected to. *)
+        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5426
+
+           prevent "love bombing attack" when connecting to advertised peers. *)
         send_p2p_output
           ~emit_p2p_output
           ~mk_output:(fun {GS.peer; point = _} -> Connect {peer})
           peers ;
         gstate
-  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5425
-
-     The automaton doesn't filter out the alternative peers we are already
-     connected to. *)
-  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5426
-
-     The automaton doesn't filter out the alternative peers we are already
-     connected to. *)
 
   (** On a [Heartbeat] events, the worker sends graft and prune messages
       following the automaton's output. It also sends [IHave] messages (computed
