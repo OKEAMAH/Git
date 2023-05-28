@@ -93,11 +93,7 @@ let wrap_p2p_message =
   let open Transport_layer_interface in
   function
   | W.Graft {topic} -> Graft {topic}
-  | W.Prune _ ->
-      (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
-
-         Handle Prune messages in GS/P2P interconnection. *)
-      assert false
+  | W.Prune {topic; px; backoff} -> Prune {topic; px; backoff}
   | W.IHave {topic; message_ids} -> IHave {topic; message_ids}
   | W.IWant {message_ids} -> IWant {message_ids}
   | W.Subscribe {topic} -> Subscribe {topic}
@@ -112,11 +108,7 @@ let unwrap_p2p_message =
   let module I = Transport_layer_interface in
   function
   | I.Graft {topic} -> Graft {topic}
-  | I.Prune _ ->
-      (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5646
-
-         Handle Prune messages in GS/P2P interconnection. *)
-      assert false
+  | I.Prune {topic; px; backoff} -> Prune {topic; px; backoff}
   | I.IHave {topic; message_ids} -> IHave {topic; message_ids}
   | I.IWant {message_ids} -> IWant {message_ids}
   | I.Subscribe {topic} -> Subscribe {topic}
