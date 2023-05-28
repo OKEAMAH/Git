@@ -357,6 +357,10 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5426
 
            prevent "love bombing attack" when connecting to advertised peers. *)
+        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5732
+
+           Use bounded or unbounded cache for advertised PXs? Useful to detect
+           real outbound connections. *)
         send_p2p_output
           ~emit_p2p_output
           ~mk_output:(fun {GS.peer; point = _} -> Connect {peer})
