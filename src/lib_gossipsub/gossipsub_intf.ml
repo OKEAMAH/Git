@@ -554,6 +554,8 @@ module type AUTOMATON = sig
     point : Point.t option;
   }
 
+  type px_peer = {peer : Peer.t; point : Point.t}
+
   type remove_peer = {peer : Peer.t}
 
   type ihave = {peer : Peer.t; topic : Topic.t; message_ids : Message_id.t list}
@@ -565,7 +567,7 @@ module type AUTOMATON = sig
   type prune = {
     peer : Peer.t;
     topic : Topic.t;
-    px : Peer.t Seq.t;
+    px : px_peer Seq.t;
     backoff : span;
   }
 
@@ -661,7 +663,7 @@ module type AUTOMATON = sig
     | No_PX : [`Prune] output
         (** The given peer has been pruned for the given topic. No
             alternatives peers was provided in {!prune}. *)
-    | PX : Peer.Set.t -> [`Prune] output
+    | PX : px_peer Seq.t -> [`Prune] output
         (** The given peer has been pruned for the given topic. The given set of
             peers alternatives in {!prune} for that topic is returned. *)
     | Publish_message : {to_publish : Peer.Set.t} -> [`Publish_message] output
@@ -818,7 +820,7 @@ module type AUTOMATON = sig
     peer_to_prune:Peer.t ->
     Topic.t ->
     noPX_peers:Peer.Set.t ->
-    Peer.t list
+    px_peer list
 
   (** Select the gossip messages to be sent. These are IHave control messages
       referring to recently seen messages (that is, sent during the last
@@ -1009,7 +1011,7 @@ module type WORKER = sig
       receive from or sent to the P2P layer. *)
   type p2p_message =
     | Graft of {topic : GS.Topic.t}
-    | Prune of {topic : GS.Topic.t; px : GS.Peer.t Seq.t; backoff : GS.Span.t}
+    | Prune of {topic : GS.Topic.t; px : GS.px_peer Seq.t; backoff : GS.Span.t}
     | IHave of {topic : GS.Topic.t; message_ids : GS.Message_id.t list}
     | IWant of {message_ids : GS.Message_id.t list}
     | Subscribe of {topic : GS.Topic.t}

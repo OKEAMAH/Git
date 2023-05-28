@@ -156,11 +156,13 @@ module Events = struct
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ~pp3:Span.pp
-      ~pp4:(Format.pp_print_list P2p_peer.Id.pp)
+      ~pp4:
+        (Format.pp_print_list (fun fmtr {GS.peer; point} ->
+             Format.fprintf fmtr "%a:%a" GS.Peer.pp peer GS.Point.pp point))
       ("peer", P2p_peer.Id.encoding)
       ("topic", topic_encoding)
       ("backoff", span_encoding)
-      ("px", list P2p_peer.Id.encoding)
+      ("px", list px_encoding)
 
   let ihave =
     declare_3

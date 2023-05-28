@@ -91,7 +91,7 @@ val pp_trace :
 
 (** {2 Input generation helpers.} *)
 
-val add_peer : gen_peer:Peer.t t -> add_peer t
+val add_peer : gen_peer:Peer.t t -> gen_point_opt:Point.t option t -> add_peer t
 
 val remove_peer : gen_peer:Peer.t t -> remove_peer t
 
@@ -112,6 +112,7 @@ val graft : gen_peer:Peer.t t -> gen_topic:Topic.t t -> GS.graft t
 
 val prune :
   gen_peer:Peer.t t ->
+  gen_point:Point.t t ->
   gen_topic:Topic.t t ->
   gen_span:span t ->
   int ->

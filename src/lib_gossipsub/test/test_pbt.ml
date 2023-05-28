@@ -45,8 +45,8 @@ module Basic_fragments = struct
 
   let prune_backoff = Milliseconds.Span.of_int_s 10
 
-  let add_then_remove_peer ~gen_peer : t =
-    of_input_gen (add_peer ~gen_peer) @@ fun ap ->
+  let add_then_remove_peer ~gen_peer ~gen_point_opt : t =
+    of_input_gen (add_peer ~gen_peer ~gen_point_opt) @@ fun ap ->
     [I.add_peer ap; I.remove_peer {peer = ap.peer}]
 
   let join_then_leave_topic ~gen_topic : t =
@@ -75,7 +75,9 @@ module Basic_fragments = struct
     let many_peer_gens =
       List.init ~when_negative_length:() count (fun i ->
           let open M in
-          let+ ap = add_peer ~gen_peer:(M.return i) in
+          let gen_point_opt = M.option (M.return i) in
+          let gen_peer = M.return i in
+          let+ ap = add_peer ~gen_peer ~gen_point_opt in
           (* Setting [direct=false] otherwise the peers won't be grafted. *)
           if i < count_outbound then {ap with direct = false; outbound = true}
           else ap)
@@ -381,6 +383,8 @@ module Test_remove_peer = struct
 
   let all_peers = [0; 1; 2; 3]
 
+  let all_points = Stdlib.List.init 10 (fun i -> i)
+
   let fail_if_in_map peers map ~on_error =
     let fail = List.find_opt (fun peer -> GS.Peer.Map.mem peer map) peers in
     match fail with None -> Ok () | Some peer -> Error (on_error peer)
@@ -444,6 +448,7 @@ module Test_remove_peer = struct
     let open Fragment in
     let open Basic_fragments in
     let gen_peer = M.oneofl all_peers in
+    let gen_point_opt = M.option @@ M.oneofl all_points in
     let gen_topic =
       M.oneofl ["topicA"; "topicB"; "topicC"; "topicD"; "topicE"]
     in
@@ -460,7 +465,7 @@ module Test_remove_peer = struct
         + (Milliseconds.Span.to_int_s limits.heartbeat_interval * 2)
       in
       let heartbeat_cleanup_ticks = limits.backoff_cleanup_ticks in
-      add_then_remove_peer ~gen_peer
+      add_then_remove_peer ~gen_peer ~gen_point_opt
       @% repeat expire tick
       @% repeat heartbeat_cleanup_ticks heartbeat
     in

@@ -329,3 +329,10 @@ let span_encoding : Span.t Data_encoding.t =
        (obj1 (req "span" int16))
 
 module Worker_instance = Tezos_gossipsub.Worker (Worker_config)
+
+let px_encoding =
+  let open Data_encoding in
+  conv
+    (fun Worker_instance.GS.{point; peer} -> (point, peer))
+    (fun (point, peer) -> {point; peer})
+    (obj2 (req "point" P2p_point.Id.encoding) (req "peer" P2p_peer.Id.encoding))

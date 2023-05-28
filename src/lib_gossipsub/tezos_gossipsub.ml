@@ -68,6 +68,8 @@ module Make (C : AUTOMATON_CONFIG) :
     point : Point.t option;
   }
 
+  type px_peer = {peer : Peer.t; point : Point.t}
+
   type remove_peer = {peer : Peer.t}
 
   type ihave = {peer : Peer.t; topic : Topic.t; message_ids : Message_id.t list}
@@ -79,7 +81,7 @@ module Make (C : AUTOMATON_CONFIG) :
   type prune = {
     peer : Peer.t;
     topic : Topic.t;
-    px : Peer.t Seq.t;
+    px : px_peer Seq.t;
     backoff : span;
   }
 
@@ -142,7 +144,7 @@ module Make (C : AUTOMATON_CONFIG) :
     | Peer_not_in_mesh : [`Prune] output
     | Ignore_PX_score_too_low : Score.t -> [`Prune] output
     | No_PX : [`Prune] output
-    | PX : Peer.Set.t -> [`Prune] output
+    | PX : px_peer Seq.t -> [`Prune] output
     | Publish_message : {to_publish : Peer.Set.t} -> [`Publish_message] output
     | Already_published : [`Publish_message] output
     | Route_message : {to_route : Peer.Set.t} -> [`Receive_message] output
@@ -484,15 +486,38 @@ module Make (C : AUTOMATON_CONFIG) :
 
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/5391
        Optimize by having a topic to peers map *)
-    let select_connections_peers connections scores rng topic ~filter ~max =
+    let select_connections_peers_generic ~selector connections scores rng topic
+        ~filter ~max =
       Peer.Map.bindings connections
       |> List.filter_map (fun (peer, connection) ->
              let score = get_scores_score_or_zero scores peer in
              let topics = connection.topics in
              if filter peer connection score && Topic.Set.mem topic topics then
-               Some peer
+               selector peer connection
              else None)
       |> List.shuffle ~rng |> List.take_n max
+
+    let select_connections_peers connections scores rng topic ~filter ~max =
+      select_connections_peers_generic
+        connections
+        scores
+        rng
+        topic
+        ~filter
+        ~max
+        ~selector:(fun peer _connection -> Some peer)
+
+    let select_connections_peers_with_points connections scores rng topic
+        ~filter ~max =
+      select_connections_peers_generic
+        connections
+        scores
+        rng
+        topic
+        ~filter
+        ~max
+        ~selector:(fun peer connection ->
+          Option.map (fun point -> {peer; point}) connection.point)
 
     let select_peers topic ~filter ~max =
       let open Monad.Syntax in
@@ -957,8 +982,7 @@ module Make (C : AUTOMATON_CONFIG) :
       let* () = set_mesh_topic topic mesh in
       let* () = set_backoff_for_peer backoff topic peer in
       let* () = update_score peer (fun s -> Score.prune s topic) in
-      let px = Peer.Set.of_seq px in
-      if Peer.Set.is_empty px then No_PX |> return
+      if Seq.is_empty px then No_PX |> return
       else
         let*? () = check_px_score peer in
         return (PX px)
@@ -1940,7 +1964,7 @@ module Make (C : AUTOMATON_CONFIG) :
       (not (Peer.equal peer_to_prune peer)) && Score.(score >= zero)
     in
     if do_px && not (Peer.Set.mem peer_to_prune noPX_peers) then
-      select_connections_peers
+      select_connections_peers_with_points
         state.connections
         state.scores
         state.rng
@@ -2017,6 +2041,9 @@ module Make (C : AUTOMATON_CONFIG) :
 
   (* Helpers. *)
 
+  let pp_px_peer fmtr {peer; point} =
+    Format.fprintf fmtr "%a:%a" Peer.pp peer Point.pp point
+
   let pp_add_peer fmtr ({direct; outbound; peer; point} : add_peer) =
     let open Format in
     fprintf
@@ -2068,7 +2095,7 @@ module Make (C : AUTOMATON_CONFIG) :
       peer
       Topic.pp
       topic
-      (pp_print_list ~pp_sep:(fun fmtr () -> fprintf fmtr ";") Peer.pp)
+      (pp_print_list ~pp_sep:(fun fmtr () -> fprintf fmtr ";") pp_px_peer)
       (List.of_seq px)
       Span.pp
       backoff
@@ -2123,6 +2150,8 @@ module Make (C : AUTOMATON_CONFIG) :
     Fmt.Dump.iter_bindings Message_id.Map.iter Fmt.nop Message_id.pp pp_elt
 
   let pp_peer_set = Fmt.Dump.iter Peer.Set.iter Fmt.nop Peer.pp
+
+  let pp_px_peer_seq = Fmt.Dump.iter Seq.iter Fmt.nop pp_px_peer
 
   let pp_topic_set = Fmt.Dump.iter Topic.Set.iter Fmt.nop Topic.pp
 
@@ -2195,7 +2224,7 @@ module Make (C : AUTOMATON_CONFIG) :
     | Ignore_PX_score_too_low score ->
         fprintf fmtr "Ignore_PX_score_too_low %a" Score.pp score
     | No_PX -> fprintf fmtr "No_PX"
-    | PX peer_set -> fprintf fmtr "PX %a" pp_peer_set peer_set
+    | PX px_peers -> fprintf fmtr "PX %a" pp_px_peer_seq px_peers
     | Publish_message {to_publish} ->
         fprintf
           fmtr

@@ -69,7 +69,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
 
   type p2p_message =
     | Graft of {topic : Topic.t}
-    | Prune of {topic : Topic.t; px : Peer.t Seq.t; backoff : GS.Span.t}
+    | Prune of {topic : Topic.t; px : GS.px_peer Seq.t; backoff : GS.Span.t}
     | IHave of {topic : Topic.t; message_ids : Message_id.t list}
     | IWant of {message_ids : Message_id.t list}
     | Subscribe of {topic : Topic.t}
@@ -119,6 +119,15 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     app_output_stream : app_output Stream.t;
     events_logging : event -> unit Monad.t;
   }
+
+  let mk_prune ?(do_px = true) gstate topic backoff ~peer_to_prune ~noPX_peers =
+    let px =
+      if do_px then
+        GS.select_px_peers gstate ~peer_to_prune topic ~noPX_peers
+        |> List.to_seq
+      else Seq.empty
+    in
+    Prune {topic; px; backoff}
 
   let send_p2p_output ~emit_p2p_output ~mk_output =
     let emit to_peer = emit_p2p_output @@ mk_output to_peer in
@@ -210,11 +219,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
           (fun peer_to_prune ->
             (* Send Prune messages with adequate px. *)
             let prune =
-              let px =
-                GS.select_px_peers gstate ~peer_to_prune topic ~noPX_peers
-                |> List.to_seq
-              in
-              Prune {topic; px; backoff}
+              mk_prune gstate topic backoff ~peer_to_prune ~noPX_peers
             in
             send_p2p_message ~emit_p2p_output prune (Seq.return peer_to_prune))
           to_prune ;
@@ -252,17 +257,13 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     let backoff = View.(view gstate |> limits).prune_backoff in
     let do_prune ~do_px =
       let prune =
-        let px =
-          if do_px then
-            GS.select_px_peers
-              gstate
-              ~peer_to_prune:peer
-              topic
-              ~noPX_peers:Peer.Set.empty
-            |> List.to_seq
-          else Seq.empty
-        in
-        Prune {topic; px; backoff}
+        mk_prune
+          ~do_px
+          gstate
+          topic
+          backoff
+          ~peer_to_prune:peer
+          ~noPX_peers:Peer.Set.empty
       in
       send_p2p_message ~emit_p2p_output prune (Seq.return peer)
     in
@@ -351,8 +352,8 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     | gstate, GS.PX peers ->
         send_p2p_output
           ~emit_p2p_output
-          ~mk_output:(fun to_peer -> Connect {peer = to_peer})
-          (Peer.Set.to_seq peers) ;
+          ~mk_output:(fun {GS.peer; point = _} -> Connect {peer})
+          peers ;
         gstate
   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5425
 
@@ -385,11 +386,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         (* Send Prune messages with adequate px. *)
         let backoff = View.(view gstate |> limits).prune_backoff in
         iter to_prune (fun peer_to_prune topic ->
-            let px =
-              GS.select_px_peers gstate ~peer_to_prune topic ~noPX_peers
-              |> List.to_seq
-            in
-            Prune {topic; px; backoff}) ;
+            mk_prune gstate topic backoff ~peer_to_prune ~noPX_peers) ;
         (* Send IHave messages. *)
         GS.select_gossip_messages gstate
         |> List.iter (fun GS.{peer; topic; message_ids} ->
@@ -611,7 +608,8 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
           "Prune{topic=%a, px=%a, backoff=%a}"
           Topic.pp
           topic
-          (pp_list Peer.pp)
+          (pp_list (fun fmt {GS.peer; point} ->
+               Format.fprintf fmt "%a/%a" Peer.pp peer Point.pp point))
           (List.of_seq px)
           GS.Span.pp
           backoff

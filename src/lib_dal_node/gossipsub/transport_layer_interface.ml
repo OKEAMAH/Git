@@ -32,7 +32,7 @@ module P2p_message_V1 = struct
     | Graft of {topic : Gs_interface.topic}
     | Prune of {
         topic : Gs_interface.topic;
-        px : P2p_point.Id.t Seq.t;
+        px : Gs_interface.Worker_instance.GS.px_peer Seq.t;
         backoff : Gs_interface.Span.t;
       }
     | IHave of {
@@ -71,7 +71,7 @@ module P2p_message_V1 = struct
         (obj4
            (req "kind" (constant "prune"))
            (req "topic" Gs_interface.topic_encoding)
-           (req "px" (list P2p_point.Id.encoding))
+           (req "px" (list Gs_interface.px_encoding))
            (req "backoff" Gs_interface.span_encoding))
         (function
           | Prune {topic; px; backoff} ->

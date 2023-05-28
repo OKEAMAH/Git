@@ -128,9 +128,12 @@ struct
       (pp_print_list ~pp_sep:(fun fmtr () -> fprintf fmtr "@,") pp)
       trace
 
-  let add_peer ~gen_peer =
-    let+ direct = bool and+ outbound = bool and+ peer = gen_peer in
-    ({direct; outbound; peer} : GS.add_peer)
+  let add_peer ~gen_peer ~gen_point_opt =
+    let+ direct = bool
+    and+ outbound = bool
+    and+ peer = gen_peer
+    and+ point = gen_point_opt in
+    ({direct; outbound; peer; point} : GS.add_peer)
 
   let remove_peer ~gen_peer =
     let+ peer = gen_peer in
@@ -153,12 +156,15 @@ struct
     let+ peer = gen_peer and+ topic = gen_topic in
     ({peer; topic} : GS.graft)
 
-  let prune ~gen_peer ~gen_topic ~gen_span px_count =
+  let prune ~gen_peer ~gen_point ~gen_topic ~gen_span px_count =
     let+ peer = gen_peer
     and+ topic = gen_topic
     and+ px =
-      let+ l = list_repeat px_count gen_peer in
-      List.to_seq l
+      let+ l = list_repeat px_count (pair gen_peer gen_point) in
+      List.fold_left
+        (fun seq (peer, point) -> Seq.cons GS.{peer; point} seq)
+        Seq.empty
+        l
     and+ backoff = gen_span in
     ({peer; topic; px; backoff} : GS.prune)
 

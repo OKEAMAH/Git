@@ -44,7 +44,7 @@ type p2p_message =
   | Graft of {topic : Gs_interface.topic}
   | Prune of {
       topic : Gs_interface.topic;
-      px : P2p_point.Id.t Seq.t;
+      px : Gs_interface.Worker_instance.GS.px_peer Seq.t;
       backoff : Gs_interface.Span.t;
     }
   | IHave of {
