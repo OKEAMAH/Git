@@ -143,7 +143,9 @@ let add_and_subscribe_peers (topics : Topic.t list) (peers : Peer.t list)
   List.fold_left
     (fun state peer ->
       let state, output =
-        GS.add_peer {direct = direct peer; outbound = outbound peer; peer} state
+        GS.add_peer
+          {direct = direct peer; outbound = outbound peer; peer; point = None}
+          state
       in
       assert_output ~__LOC__ output Peer_added ;
       subscribe_peer_to_topics peer topics state)
@@ -1086,10 +1088,14 @@ let test_accept_only_outbound_peer_grafts_when_mesh_full rng limits parameters =
   let inbound_peer = 99 in
   let outbound_peer = 98 in
   let state, _ =
-    GS.add_peer {direct = false; outbound = false; peer = inbound_peer} state
+    GS.add_peer
+      {direct = false; outbound = false; peer = inbound_peer; point = None}
+      state
   in
   let state, _ =
-    GS.add_peer {direct = false; outbound = true; peer = outbound_peer} state
+    GS.add_peer
+      {direct = false; outbound = true; peer = outbound_peer; point = None}
+      state
   in
   (* Send grafts. *)
   let state, _ = GS.handle_graft {peer = inbound_peer; topic} state in

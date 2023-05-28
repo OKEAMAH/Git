@@ -61,7 +61,12 @@ module Make (C : AUTOMATON_CONFIG) :
 
   type nonrec parameters = (Peer.t, Message_id.t) parameters
 
-  type add_peer = {direct : bool; outbound : bool; peer : Peer.t}
+  type add_peer = {
+    direct : bool;
+    outbound : bool;
+    peer : Peer.t;
+    point : Point.t option;
+  }
 
   type remove_peer = {peer : Peer.t}
 
@@ -173,7 +178,9 @@ module Make (C : AUTOMATON_CONFIG) :
     direct : bool;
         (** A direct (aka explicit) connection is a connection to which we
             forward all the messages. *)
-    outbound : bool;  (** An outbound connection is a connection we initiated. *)
+    outbound : bool;
+        (** An outbound connection is a connection we initiated. *)
+    point : Point.t option;
   }
 
   type fanout_peers = {peers : Peer.Set.t; last_published_time : time}
@@ -1794,14 +1801,16 @@ module Make (C : AUTOMATON_CONFIG) :
   let heartbeat : [`Heartbeat] output Monad.t = Heartbeat.handle
 
   module Add_peer = struct
-    let handle ~direct ~outbound peer : [`Add_peer] output Monad.t =
+    let handle ~direct ~outbound peer point : [`Add_peer] output Monad.t =
       let open Monad.Syntax in
       let*! connections in
       let*! scores in
       let*! score_limits in
       match Peer.Map.find peer connections with
       | None ->
-          let connection = {direct; topics = Topic.Set.empty; outbound} in
+          let connection =
+            {direct; topics = Topic.Set.empty; outbound; point}
+          in
           let connections = Peer.Map.add peer connection connections in
           let scores =
             Peer.Map.update
@@ -1818,7 +1827,8 @@ module Make (C : AUTOMATON_CONFIG) :
   end
 
   let add_peer : add_peer -> [`Add_peer] output Monad.t =
-   fun {direct; outbound; peer} -> Add_peer.handle ~direct ~outbound peer
+   fun {direct; outbound; peer; point} ->
+    Add_peer.handle ~direct ~outbound peer point
 
   module Remove_peer = struct
     let handle peer : [`Remove_peer] output Monad.t =
@@ -2007,15 +2017,17 @@ module Make (C : AUTOMATON_CONFIG) :
 
   (* Helpers. *)
 
-  let pp_add_peer fmtr ({direct; outbound; peer} : add_peer) =
+  let pp_add_peer fmtr ({direct; outbound; peer; point} : add_peer) =
     let open Format in
     fprintf
       fmtr
-      "{ direct=%b; outbound=%b; peer=%a }"
+      "{ direct=%b; outbound=%b; peer=%a; point=%a }"
       direct
       outbound
       Peer.pp
       peer
+      (Format.pp_print_option Point.pp)
+      point
 
   let pp_remove_peer fmtr ({peer} : remove_peer) =
     let open Format in
@@ -2261,6 +2273,7 @@ module Make (C : AUTOMATON_CONFIG) :
       topics : Topic.Set.t;
       direct : bool;
       outbound : bool;
+      point : Point.t option;
     }
 
     type nonrec fanout_peers = fanout_peers = {

@@ -74,7 +74,12 @@ let new_connections_handler gs_worker p2p_layer peer conn =
 
      Add the ability to have direct peers. *)
   let direct = false in
-  Worker.(New_connection {peer; direct; outbound} |> p2p_input gs_worker)
+  let point =
+    match info.P2p_connection.Info.id_point with
+    | _addr, None -> None
+    | addr, Some port -> Some (addr, port)
+  in
+  Worker.(New_connection {peer; direct; outbound; point} |> p2p_input gs_worker)
 
 (** This handler forwards information about P2P disconnections to the Gossipsub
     worker. *)
