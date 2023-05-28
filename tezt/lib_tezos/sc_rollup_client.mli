@@ -278,3 +278,5 @@ val import_secret_key :
   Account.aggregate_key ->
   t ->
   unit Lwt.t
+
+val get_hash : ?hooks:Process_hooks.t -> string:string -> t -> string Lwt.t
