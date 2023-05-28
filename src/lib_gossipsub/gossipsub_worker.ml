@@ -101,7 +101,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     | Out_message of {to_peer : Peer.t; p2p_message : p2p_message}
     | Disconnect of {peer : Peer.t}
     | Kick of {peer : Peer.t}
-    | Connect of {peer : Peer.t}
+    | Connect of {peer : Peer.t; point : Point.t}
 
   type app_output = message_with_header
 
@@ -363,7 +363,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
            real outbound connections. *)
         send_p2p_output
           ~emit_p2p_output
-          ~mk_output:(fun {GS.peer; point = _} -> Connect {peer})
+          ~mk_output:(fun {GS.peer; point} -> Connect {peer; point})
           peers ;
         gstate
 
@@ -640,7 +640,14 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
   let pp_p2p_output fmt = function
     | Disconnect {peer} -> Format.fprintf fmt "Disconnect{peer=%a}" Peer.pp peer
     | Kick {peer} -> Format.fprintf fmt "Kick{peer=%a}" Peer.pp peer
-    | Connect {peer} -> Format.fprintf fmt "Connect{peer=%a}" Peer.pp peer
+    | Connect {peer; point} ->
+        Format.fprintf
+          fmt
+          "Connect{peer=%a; point=%a}"
+          Peer.pp
+          peer
+          Point.pp
+          point
     | Out_message {to_peer; p2p_message} ->
         Format.fprintf
           fmt
