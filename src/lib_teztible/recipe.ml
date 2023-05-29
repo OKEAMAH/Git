@@ -23,24 +23,36 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+type agent = {
+  name : Agent_name.t;
+  address : string;
+  user : string;
+  port : int;
+  identity : string;
+}
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type t = {agents : agent list; vars : Global_variables.t; stages : Stage.t list}
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+let agent_encoding =
+  Data_encoding.(
+    conv
+      (fun {name; address; user; port; identity} ->
+        (name, address, user, port, identity))
+      (fun (name, address, user, port, identity) ->
+        {name; address; user; port; identity})
+      (obj5
+         (req "name" Agent_name.encoding)
+         (req "address" string)
+         (req "user" string)
+         (req "port" int31)
+         (req "identity" string)))
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
-
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+let encoding =
+  Data_encoding.(
+    conv
+      (fun {agents; vars; stages} -> (agents, vars, stages))
+      (fun (agents, vars, stages) -> {agents; vars; stages})
+      (obj3
+         (req "agents" (list agent_encoding))
+         Global_variables.(dft "vars" encoding empty)
+         (req "stages" (list Stage.encoding))))

@@ -46,6 +46,8 @@ type argument =
     do request to. *)
 val rpc_port : t -> int
 
+val rpc_host : t -> string
+
 (** Get the runner associated to a proxy server.
 
     Return [None] if the proxy server runs on the local machine. *)

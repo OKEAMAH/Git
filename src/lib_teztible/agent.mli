@@ -23,24 +23,35 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** This module introduces the business logic run by a Teztible agent on a
+    remote runner. *)
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type request = {
+  proc_id : int;
+  procedure : Uri.agent_uri Remote_procedure.packed;
+}
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+type state
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+val initial_state : home_dir:string -> unit -> state
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+(** [run ~input ~output state] changes the current working directory of the
+    process to the [state]’s home directory (see {!initial_state}), starts an
+    event loop, reading request from [input] and writing the results to
+    [output].
+
+    For a request [{proc_id; procedure}], the expected encoding to be read from
+    the standard input is the Json encoding specified by {!request_encoding}.
+    
+    The agent responds with the [<<[{proc_id}] :] (that is, if [proc_id] is
+    equal to 1, the magic string is [<<[1]: ], followed by a Json response as
+    specified by the encodings defined in the {!Remote_procedure} module).*)
+val run :
+  input:Lwt_io.input_channel ->
+  output:Lwt_io.output_channel ->
+  state ->
+  unit Lwt.t
+
+(** {2 Encodings} *)
+
+val request_encoding : request Data_encoding.t

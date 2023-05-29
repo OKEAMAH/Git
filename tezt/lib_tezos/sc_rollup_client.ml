@@ -26,10 +26,14 @@
 
 open Runnable.Syntax
 
+type endpoint =
+  | Node of Sc_rollup_node.t
+  | Remote of {runner : Runner.t; rpc_port : int}
+
 type t = {
   name : string;
   path : string;
-  sc_node : Sc_rollup_node.t;
+  sc_node : endpoint;
   base_dir : string;
   color : Log.Color.t;
   runner : Runner.t option;
@@ -104,19 +108,32 @@ let fresh_name () =
 
 let () = Test.declare_reset_function @@ fun () -> next_name := 1
 
-let create ~protocol ?runner ?name ?base_dir ?(color = Log.Color.FG.green)
-    sc_node =
+let create_with_endpoint ?protocol ?path ?runner ?name ?base_dir
+    ?(color = Log.Color.FG.green) endpoint =
   let name = match name with None -> fresh_name () | Some name -> name in
-  let path = Protocol.sc_rollup_client protocol in
+  let path =
+    match path with
+    | Some path -> path
+    | None -> Protocol.sc_rollup_node (Option.get protocol)
+  in
   let base_dir =
     match base_dir with None -> Temp.dir ?runner name | Some dir -> dir
   in
-  {name; path; sc_node; base_dir; color; runner}
+  {name; path; sc_node = endpoint; base_dir; color; runner}
+
+let create ~protocol ?runner ?name ?base_dir ?color sc_node =
+  create_with_endpoint ~protocol ?runner ?name ?base_dir ?color (Node sc_node)
 
 let base_dir_arg sc_client = ["--base-dir"; sc_client.base_dir]
 
 let endpoint_arg sc_client =
-  ["--endpoint"; Sc_rollup_node.endpoint sc_client.sc_node]
+  [
+    "--endpoint";
+    (match sc_client.sc_node with
+    | Node sc_node -> Sc_rollup_node.endpoint sc_node
+    | Remote {runner; rpc_port} ->
+        Printf.sprintf "http://%s:%d" (Runner.address (Some runner)) rpc_port);
+  ]
 
 let spawn_command ?hooks sc_client command =
   let process =

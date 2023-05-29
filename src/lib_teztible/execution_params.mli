@@ -23,24 +23,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** Should a sequence of tasks be executed in concurrently or sequentially? *)
+type mode = Sequential | Concurrent
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+(** [traverse mode f seq] iterates over each element of a lazy sequence [seq]
+    either concurrently or sequentially, depending on the value of [mode] *)
+val traverse : mode -> ('a -> unit Lwt.t) -> 'a Seq.t -> unit Lwt.t
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
-
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
-
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+val mode_encoding : mode Data_encoding.t

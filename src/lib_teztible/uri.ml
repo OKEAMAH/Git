@@ -23,24 +23,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+type global_uri =
+  | Managed of {owner : Agent_name.t; name : string}
+  | Remote of {endpoint : string}
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type agent_uri = Owned of {name : string} | Remote of {endpoint : string}
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+let global_uri_of_string ~self str =
+  match str =~** rex {|^(.*)://(.*)$|} with
+  | Some ("self", name) -> Managed {owner = self; name}
+  | Some (p, name) -> (
+      match Agent_name.name_of_string_opt p with
+      | Some owner -> Managed {owner; name}
+      | None -> Remote {endpoint = str})
+  | None -> Remote {endpoint = str}
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+let agent_uri_encoding =
+  let c = Helpers.make_mk_case () in
+  Data_encoding.(
+    union
+      [
+        c.mk_case
+          "owned"
+          (obj1 (req "owned" string))
+          (function Owned {name} -> Some name | _ -> None)
+          (fun name -> Owned {name});
+        c.mk_case
+          "remote"
+          (obj1 (req "remote" string))
+          (function Remote {endpoint} -> Some endpoint | _ -> None)
+          (fun endpoint -> Remote {endpoint});
+      ])
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+let agent_uri_of_global_uri ~services ~(self : Agent_name.t) = function
+  | Managed {owner; name} ->
+      if Agent_name.equal owner self then Owned {name}
+      else
+        let url, port = services owner name in
+        Remote {endpoint = Format.sprintf "%s:%d" url port}
+  | Remote {endpoint} -> Remote {endpoint}

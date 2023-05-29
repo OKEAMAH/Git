@@ -23,24 +23,46 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** This modules introduces the table of global variables which can is
+    manipulated by jobs. *)
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+(** The contents of a global variable. *)
+type var
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+(** The possible types of a global variable, when it exists. If it does not,
+    the global variable is assumed to be [null]. *)
+type ty = String | Int | Bool
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+(** The description of an update to apply to the table of global variables. *)
+type update = {key : string; value : string option; var_type : ty}
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+type t
+
+val empty : t
+
+(** {1 Accessors} *)
+
+val get : t -> string -> var
+
+(** [update vars u] applies the update encoded in [u] to the table of global
+    variables [vars]. If [u.value = None], then the variable [u.key] is removed
+    from the table. *)
+val update : t -> update -> t
+
+(** {1 Templates conversions} *)
+
+(** The table of global variables is used in conjunction with {!Jingoo}’s
+    template to easily customize jobs based on the dynamic state curated by
+    these states. *)
+
+val tvalue_of_var : var -> Jingoo.Jg_types.tvalue
+
+val tvalue_of_vars : t -> Jingoo.Jg_types.tvalue
+
+(** {1 Encodings} *)
+
+val encoding : t Data_encoding.t
+
+val var_encoding : var Data_encoding.t
+
+val updates_encoding : update list Data_encoding.t

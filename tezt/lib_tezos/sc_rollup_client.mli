@@ -24,6 +24,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type endpoint =
+  | Node of Sc_rollup_node.t
+  | Remote of {runner : Runner.t; rpc_port : int}
+
 (** Smart-Contract Rollup client state *)
 type t
 
@@ -63,6 +67,16 @@ val create :
   ?base_dir:string ->
   ?color:Log.Color.t ->
   Sc_rollup_node.t ->
+  t
+
+val create_with_endpoint :
+  ?protocol:Protocol.t ->
+  ?path:string ->
+  ?runner:Runner.t ->
+  ?name:string ->
+  ?base_dir:string ->
+  ?color:Log.Color.t ->
+  endpoint ->
   t
 
 (** [sc_rollup_address client] returns the smart contract rollup

@@ -23,24 +23,41 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+type t = {
+  name : string;
+  with_agents : string list;
+  run_agents : Execution_params.mode;
+  run_jobs : Execution_params.mode;
+  jobs : string Job.t list;
+}
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
-
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
-
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
-
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+let encoding =
+  Data_encoding.(
+    conv
+      (fun {name; with_agents; run_agents; run_jobs; jobs} ->
+        (name, with_agents, run_agents, run_jobs, jobs))
+      (fun (name, with_agents, run_agents, run_jobs, jobs) ->
+        {name; with_agents; run_agents; run_jobs; jobs})
+      (obj5
+         (req "name" string)
+         (dft
+            "with_agents"
+            (union
+               [
+                 case
+                   ~title:"string"
+                   (Tag 0)
+                   string
+                   (function [x] -> Some x | _ -> None)
+                   (fun x -> [x]);
+                 case
+                   ~title:"list"
+                   (Tag 1)
+                   (list string)
+                   (fun x -> Some x)
+                   (fun x -> x);
+               ])
+            [".*"])
+         (dft "run_agents" Execution_params.mode_encoding Concurrent)
+         (dft "run_jobs" Execution_params.mode_encoding Sequential)
+         (req "jobs" (list Job.encoding))))

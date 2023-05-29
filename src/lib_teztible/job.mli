@@ -23,24 +23,34 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** This module introduces the definition of a Teztible job, that is an
+    interaction between the orchestrator and one agent.
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+    Note that one job can result in several interactions, depending on how the
+    [with_item] field of the job [header] is used. *)
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+type item = Global_variables.var
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+type header = {
+  name : string;
+  with_items : item list option;
+      (** The job’ body will be executed once for every item listed in the
+          [with_items] field, where each execution has its [{{ item }}]
+          variable customized for the current value.
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+          If [with_item] is [None], then the job’s body is executed once, with
+          [{{ item }}] equal to [null]. *)
+  mode : Execution_params.mode;
+  vars_updates : Global_variables.update list;
+}
+
+type 'uri body =
+  | Remote_procedure of {procedure : 'uri Remote_procedure.packed}
+      (** Request the targeted agent to execute the [procedure]. *)
+  | Copy of {source : string; destination : string}
+      (** Copy [destination] to the targeted agent, relatively to
+          [destination]. *)
+
+type 'uri t = {header : header; body : 'uri body}
+
+val encoding : string t Data_encoding.t

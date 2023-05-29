@@ -23,12 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type file = Local of {path : string} | Remote of {url : string}
+
 type t = {
   network : string;
       (** The url of the network, as passed by to the Octez node with the
           [--network] command-line argument. Fetched from the configuration
           file. *)
-  snapshot : string option;
+  snapshot : file option;
       (** The url of the snapshot to use to bootstrap the Octez
           node. Fetched from the configuration file.
           The snapshot can be omitted, the node will bootstrap
@@ -41,7 +43,11 @@ type t = {
           of creating and bootstrapping one. *)
 }
 
+val encoding : t Data_encoding.t
+
 (** [get_testnet_config path] returns the configuration of the network
     to use to run the scenarios, based on the contents of the file
     stored under [path]. *)
 val get_testnet_config : string -> t
+
+val from_cli : unit -> t

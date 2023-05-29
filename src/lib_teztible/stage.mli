@@ -23,24 +23,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** A stage defines an ordered set of jobs to be executed on a set of agents
+    known to the orchestrator. *)
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type t = {
+  name : string;
+  with_agents : string list;
+      (** A list of regular expression used to select the subset of agents
+          expected to run the jobs. *)
+  run_agents : Execution_params.mode;
+      (** Decide if the jobs of the stage has to be executed by each agent
+          sequentially (there is at most one agent running jobs at a time) or
+          concurrently (all agents start executing their job at the same time). *)
+  run_jobs : Execution_params.mode;
+      (** Decide if the job constituting a stage has to be run concurrently or
+      sequentially by a given agent.  *)
+  jobs : string Job.t list;
+}
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
-
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
-
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+val encoding : t Data_encoding.t

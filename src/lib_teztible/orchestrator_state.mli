@@ -23,24 +23,33 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+type t
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+val initial_state : Global_variables.t -> t
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+val iter_agents :
+  Execution_params.mode -> t -> (Remote_agent.t -> unit Lwt.t) -> unit Lwt.t
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+val record_agent : t -> Remote_agent.t -> unit
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+val forget_agent : t -> Agent_name.t -> unit
+
+val get_global_variables : t -> Global_variables.t
+
+(** [with_global_variables state f] uses the blocking function [f] to update
+    the global variables of [state]. This is the only way to modify the global
+    variables, as a mitigation for the highly asynchronous nature of the
+    orchestrator.
+
+    That is, you get the freshest version possible of the global variables
+    before you update it, compare to using a [get]/[set] pattern. *)
+val with_global_variables :
+  t -> (Global_variables.t -> Global_variables.t) -> unit
+
+val get_service_info :
+  Services_cache.node_kind ->
+  Services_cache.service_kind ->
+  t ->
+  Agent_name.t ->
+  string ->
+  string * int

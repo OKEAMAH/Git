@@ -23,24 +23,55 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** This module introduces the means to spawn and control agents on remote
+    machine. *)
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+(** A handler controlling an agent remotely. *)
+type t
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
+(** A handler identifying an asynchronous procedure sent to an agent, to be
+    used to fetch its response. *)
+type 'a request_handler
+
+(** [wait agent] returns when the remote agent has successfully terminated. *)
+val wait : t -> Unix.process_status Lwt.t
+
+val name : t -> Agent_name.t
+
+val runner : t -> Runner.t
+
+val scope : t -> string -> string
+
+val create :
+  runner:Runner.t ->
+  name:Agent_name.t ->
   ?path:string ->
-  ?runner:Runner.t ->
+  ?color:Log.Color.t ->
+  ?event_pipe:string ->
   unit ->
-  (Client.t * Node.t) Lwt.t
+  t
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+val run :
+  ?on_terminate:(Unix.process_status -> unit Lwt.t) ->
+  ?event_level:Daemon.Level.default_level ->
+  ?event_sections_levels:(string * Daemon.Level.level) list ->
+  t ->
+  unit Lwt.t
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+(** [wait_for_ready agent] returns when the remote agent has been through its
+    initialization process and is ready for receiving requests. *)
+val wait_for_ready : t -> unit Lwt.t
+
+(** [start_request state proc] creates a new request for the execution of
+    [proc] and returns its handler. Use {!wait_for_request} to get the response
+    back, when ready. *)
+val start_request :
+  t -> ('a, Uri.agent_uri) Remote_procedure.t -> 'a request_handler Lwt.t
+
+(** [wait_for_request state handler] waits for the request identified by
+    [handler] to complete, and the agent responsible for executing it to return
+    its response. *)
+val wait_for_request : t -> 'a request_handler -> 'a Lwt.t
+
+val get_service_info :
+  Services_cache.node_kind -> Services_cache.service_kind -> t -> string -> int

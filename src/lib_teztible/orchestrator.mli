@@ -23,24 +23,25 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+(** [run_recipe r] unrolls the recipe [r], that is it starts its agents,
+    orchestrates its jobs, then clean-up. *)
+val run_recipe : Recipe.t -> unit Lwt.t
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+(** {1 Developers API} *)
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+(** For developers interested in program Teztible scenarios though OCaml rather
+    than the intended YAML recipe file. *)
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+val initialize_agents :
+  state:Orchestrator_state.t -> Recipe.agent list -> unit Lwt.t
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+val terminate_agents : state:Orchestrator_state.t -> unit Lwt.t
+
+val run_job :
+  state:Orchestrator_state.t ->
+  agent:Remote_agent.t ->
+  re:Jingoo.Jg_types.tvalue ->
+  string Job.t ->
+  unit Lwt.t
+
+val run_stage : state:Orchestrator_state.t -> Stage.t -> unit Lwt.t

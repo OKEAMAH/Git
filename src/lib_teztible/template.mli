@@ -23,24 +23,39 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+open Jingoo.Jg_types
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+val expand_update_var :
+  vars:Global_variables.t ->
+  agent:Remote_agent.t ->
+  re:tvalue ->
+  item:tvalue ->
+  res:tvalue ->
+  Global_variables.update ->
+  Global_variables.update
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+val expand_remote_procedure :
+  vars:Global_variables.t ->
+  agent:Remote_agent.t ->
+  re:tvalue ->
+  item:tvalue ->
+  string Remote_procedure.packed ->
+  Uri.global_uri Remote_procedure.packed
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+val expand_job_body :
+  vars:Global_variables.t ->
+  agent:Remote_agent.t ->
+  re:tvalue ->
+  item:tvalue ->
+  string Job.body ->
+  Uri.global_uri Job.body
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+val expand_item :
+  vars:Global_variables.t ->
+  agent:Remote_agent.t ->
+  re:tvalue ->
+  Job.item ->
+  tvalue Seq.t
+
+val expand_agent :
+  vars:Global_variables.t -> ?agent:Remote_agent.t -> string -> string

@@ -340,6 +340,10 @@ let uutf = external_lib ~js_compatible:true "uutf" V.True
 let vdf =
   external_lib ~js_compatible:true "class_group_vdf" V.(at_least "0.0.4")
 
+let jingoo = external_lib "jingoo" V.True
+
+let yaml = external_lib "yaml" V.True
+
 (* The signature of the [Z] module has changed in 1.12. *)
 let zarith =
   external_lib
@@ -3771,6 +3775,33 @@ let _tezt_testnet_scenarios =
         tezt_lib |> open_ |> open_ ~m:"Base";
         tezt_tezos |> open_ |> open_ ~m:"Runnable.Syntax";
         tezt_ethereum |> open_;
+      ]
+
+let octez_teztible =
+  public_lib
+    "octez-teztible"
+    ~path:"src/lib_teztible"
+    ~synopsis:"An Ansible-inspired environment to run scenarios and experiments"
+    ~deps:
+      [
+        tezt_lib |> open_ |> open_ ~m:"Base";
+        tezt_tezos |> open_ |> open_ ~m:"Runnable.Syntax";
+        jingoo;
+      ]
+
+let _octez_teztible_bin =
+  public_exe
+    "octez-teztible"
+    ~path:"src/bin_teztible"
+    ~internal_name:"teztible_main"
+    ~release_status:Experimental
+    ~opam:"octez-teztible"
+    ~deps:
+      [
+        tezt_lib |> open_ |> open_ ~m:"Base";
+        tezt_tezos |> open_ |> open_ ~m:"Runnable.Syntax";
+        octez_teztible;
+        yaml;
       ]
 
 let octez_openapi =

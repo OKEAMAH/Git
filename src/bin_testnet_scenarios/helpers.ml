@@ -29,7 +29,12 @@
 let download ?runner url filename =
   Log.info "Download %s" url ;
   let path = Tezt.Temp.file filename in
-  let*! _ = RPC.Curl.get_raw ?runner ~args:["--output"; path] url in
+  let*! _ =
+    RPC.Curl.get_raw
+      ?runner
+      ~args:["--keepalive-time"; "2"; "--output"; path]
+      url
+  in
   Log.info "%s downloaded" url ;
   Lwt.return path
 
@@ -45,7 +50,7 @@ let rec wait_for_funded_key node client expected_amount key =
     wait_for_funded_key node client expected_amount key)
   else unit
 
-let setup_octez_node ~(testnet : Testnet.t) ?runner () =
+let setup_octez_node ~(testnet : Testnet.t) ?path ?runner () =
   let l1_node_args =
     Node.[Expected_pow 26; Synchronisation_threshold 1; Network testnet.network]
   in
@@ -53,20 +58,25 @@ let setup_octez_node ~(testnet : Testnet.t) ?runner () =
     match testnet.data_dir with
     | Some data_dir ->
         (* Runs a node using the existing data-dir. *)
-        return (Node.create ~data_dir l1_node_args)
+        return (Node.create ?path ~data_dir l1_node_args)
     | None ->
         (* By default, Tezt set the difficulty to generate the identity file
            of the Octez node to 0 (`--expected-pow 0`). The default value
            used in network like mainnet, Mondaynet etc. is 26 (see
            `lib_node_config/config_file.ml`). *)
-        let node = Node.create ?runner l1_node_args in
+        let node = Node.create ?path ?runner l1_node_args in
         let* () = Node.config_init node [] in
         let* () =
           match testnet.snapshot with
           | Some snapshot ->
               Log.info "Import snapshot" ;
-              let* snapshot = download ?runner snapshot "snapshot" in
-              let* () = Node.snapshot_import node snapshot in
+              let* snapshot =
+                match snapshot with
+                | Remote {url = snapshot} ->
+                    download ?runner snapshot "snapshot"
+                | Local {path} -> return path
+              in
+              let* () = Node.snapshot_import ~no_check:true node snapshot in
               Log.info "Snapshot imported" ;
               unit
           | None -> unit
@@ -80,3 +90,45 @@ let setup_octez_node ~(testnet : Testnet.t) ?runner () =
   let* () = Client.bootstrapped client in
   Log.info "Node bootstrapped" ;
   return (client, node)
+
+let mkdir_runnable ?runner ?(p = false) path =
+  let process =
+    Process.spawn ?runner "mkdir" @@ (if p then ["-p"] else []) @ [path]
+  in
+  Runnable.{value = process; run = (fun process -> Process.check process)}
+
+let mkdir ?runner ?p path = Runnable.run @@ mkdir_runnable ?runner ?p path
+
+let deploy_runnable ~(runner : Runner.t) ?(r = false) local_file dst =
+  let recursive = if r then ["-r"] else [] in
+  let identity =
+    Option.fold ~none:[] ~some:(fun i -> ["-i"; i]) runner.ssh_id
+  in
+  let port =
+    Option.fold
+      ~none:[]
+      ~some:(fun p -> ["-P"; Format.sprintf "%d" p])
+      runner.ssh_port
+  in
+  let dst =
+    Format.(
+      sprintf
+        "%s%s:%s"
+        (Option.fold ~none:"" ~some:(fun u -> sprintf "%s@" u) runner.ssh_user)
+        runner.address
+        dst)
+  in
+  let process =
+    Process.spawn
+      "scp"
+      (*Use -O for original transfer protocol *)
+      ((* ["-O"] @ *)
+       identity @ recursive @ port @ [local_file] @ [dst])
+  in
+  Runnable.{value = process; run = (fun process -> Process.check process)}
+
+let deploy ~for_runner ?r targets =
+  Lwt_list.iter_p
+    (fun (local_file, dst) ->
+      Runnable.run @@ deploy_runnable ~runner:for_runner ?r local_file dst)
+    targets

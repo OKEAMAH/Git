@@ -113,6 +113,9 @@ let create ?runner ?name ?rpc_port ?(args = []) node =
 
 let rpc_port ({persistent_state; _} : t) = persistent_state.rpc_port
 
+let rpc_host ({persistent_state; _} : t) =
+  Format.sprintf "http://%s" (Runner.address persistent_state.runner)
+
 let runner node = node.persistent_state.runner
 
 let run ?(on_terminate = fun _ -> ()) ?event_level ?event_sections_levels

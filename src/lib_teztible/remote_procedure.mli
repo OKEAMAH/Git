@@ -23,24 +23,66 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+type file = Local of {path : string} | Remote of {url : string}
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type (_, 'uri) t =
+  | Quit : (unit, 'uri) t
+  | Echo : {payload : string} -> (echo_r, 'uri) t
+  | Start_octez_node : {
+      network : string;
+      snapshot : file option;
+      sync_threshold : int;
+    }
+      -> (start_octez_node_r, 'uri) t
+  | Originate_smart_rollup : {
+      with_wallet : string option;
+      with_endpoint : 'uri;
+      alias : string;
+      src : string;
+    }
+      -> (originate_smart_rollup_r, 'uri) t
+  | Start_rollup_node : {
+      with_wallet : string;
+      with_endpoint : 'uri;
+      operator : string;
+      mode : string;
+      address : string;
+    }
+      -> (start_rollup_node_r, 'uri) t
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+and echo_r = {payload : string}
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+and start_octez_node_r = {name : string; rpc_port : int}
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+and originate_smart_rollup_r = {address : string}
+
+and start_rollup_node_r =
+  | Start_rollup_node_r of {name : string; rpc_port : int}
+
+type 'uri packed = Packed : ('a, 'uri) t -> 'uri packed
+
+(** {1 Encodings} *)
+
+val file_encoding : file Data_encoding.t
+
+val packed_encoding : string packed Data_encoding.t
+
+val agent_packed_encoding : Uri.agent_uri packed Data_encoding.t
+
+val response_encoding : ('a, 'uri) t -> 'a Data_encoding.t
+
+val echo_obj_encoding : string Data_encoding.t
+
+val start_octez_node_obj_encoding : (string * file option * int) Data_encoding.t
+
+val originate_smart_rollup_obj_encoding :
+  'uri Data_encoding.t ->
+  (string * string * 'uri * string option) Data_encoding.t
+
+val start_rollup_node_obj_encoding :
+  'uri Data_encoding.t ->
+  (string * 'uri * string * string * string) Data_encoding.t
+
+val quit_obj_encoding : unit Data_encoding.t
+
+val tvalue_of_response : ('a, 'uri) t -> 'a -> Jingoo.Jg_types.tvalue

@@ -50,6 +50,7 @@
 (package (name octez-snoop))
 (package (name octez-srs-extraction))
 (package (name octez-testnet-scenarios))
+(package (name octez-teztible))
 (package (name tezos-016-PtMumbai-test-helpers))
 (package (name tezos-017-PtNairob-test-helpers))
 (package (name tezos-alpha-test-helpers))

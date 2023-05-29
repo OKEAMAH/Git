@@ -23,24 +23,43 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val download : ?runner:Runner.t -> string -> string -> string Lwt.t
+module SMap = Agent_name.Dictionary
 
-(** [wait_for_funded_key node client amount key] will not return
-    before [key] has been funded with [amount] tez. *)
-val wait_for_funded_key :
-  Node.t -> Client.t -> Tez.t -> Account.key -> unit Lwt.t
+type t = {
+  mutable agents : Remote_agent.t SMap.t;
+  mutable vars : Global_variables.t;
+}
 
-(** [setup_octez_node ~testnet ?runner ()] setups a new Octez node.
-    Bootstrap the node using the snapshot in [testnet.snapshot] if provided,
-    otherwise bootstrap itself. *)
-val setup_octez_node :
-  testnet:Testnet.t ->
-  ?path:string ->
-  ?runner:Runner.t ->
-  unit ->
-  (Client.t * Node.t) Lwt.t
+let initial_state vars = {agents = SMap.empty; vars}
 
-val mkdir : ?runner:Runner.t -> ?p:bool -> string -> unit Lwt.t
+let iter_agent_p state f =
+  Lwt_seq.iter_p
+    (fun (_, agent) -> f agent)
+    (SMap.to_seq state.agents |> Lwt_seq.of_seq)
 
-val deploy :
-  for_runner:Runner.t -> ?r:bool -> (string * string) list -> unit Lwt.t
+let iter_agent_s state f =
+  Lwt_seq.iter_s
+    (fun (_, agent) -> f agent)
+    (SMap.to_seq state.agents |> Lwt_seq.of_seq)
+
+let iter_agents mode =
+  match mode with
+  | Execution_params.Concurrent -> iter_agent_p
+  | Sequential -> iter_agent_s
+
+let record_agent state agent =
+  state.agents <- SMap.add (Remote_agent.name agent) agent state.agents
+
+let forget_agent state name = state.agents <- SMap.remove name state.agents
+
+let get_global_variables state = state.vars
+
+let with_global_variables state k = state.vars <- k state.vars
+
+let get_service_info node_kind service_kind state agent_name node_name =
+  let agent = SMap.find agent_name state.agents in
+  let ip =
+    Remote_agent.get_service_info node_kind service_kind agent node_name
+  in
+  let runner = Remote_agent.runner agent in
+  (Runner.address (Some runner), ip)
