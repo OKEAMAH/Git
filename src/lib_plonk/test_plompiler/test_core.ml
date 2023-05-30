@@ -731,6 +731,20 @@ functor
 
     open Utils (L)
 
+    let bytes_of_hex = Plompiler.Utils.bytes_of_hex
+
+    let test_constant ~le b () =
+      let b = bytes_of_hex b in
+      let* o' = input @@ input_bytes ~le (bytes_of_hex "0f") in
+      let* o = Bytes.constant ~le b in
+      assert_equal o o'
+
+    let tests_constant =
+      [
+        test ~valid:true ~name:"Bytes.test_add" @@ test_constant ~le:false "0f";
+        test ~valid:true ~name:"Bytes.test_add" @@ test_constant ~le:true "0f";
+      ]
+
     let test_add a b z () =
       let* a = input ~kind:`Public a in
       let* b = input b in
@@ -752,8 +766,6 @@ functor
       let* z = input z in
       let* z' = xor a b in
       assert_equal z z'
-
-    let bytes_of_hex = Plompiler.Utils.bytes_of_hex
 
     let tests_xor =
       let i = input_bytes @@ bytes_of_hex "08" in
@@ -834,7 +846,8 @@ functor
         ]
 
     let tests =
-      tests_add @ tests_xor @ tests_ifthenelse_bytes @ tests_rotate_right
+      tests_constant @ tests_add @ tests_xor @ tests_ifthenelse_bytes
+      @ tests_rotate_right
   end
 
 module ECC : Test =
