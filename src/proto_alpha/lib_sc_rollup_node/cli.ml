@@ -42,107 +42,25 @@ let sc_rollup_address_arg () =
     ~doc:"The smart rollup address (required when no configuration file exists)"
     (Smart_rollup_alias.Address.parameter ())
 
-let sc_rollup_node_operator_param next =
-  let open Lwt_result_syntax in
-  Tezos_clic.param
-    ~name:"operator"
-    ~desc:
-      (Printf.sprintf
-         "Public key hash, or alias, of a smart rollup node operator. An \
-          operator can be specialized to a particular purpose by prefixing its \
-          key or alias by said purpose, e.g. publish:alias_of_my_operator. The \
-          possible purposes are: %s."
-         (String.concat ", "
-         @@ Configuration.(List.map string_of_purpose purposes)))
-    ( Tezos_clic.parameter @@ fun cctxt s ->
-      let parse_pkh s =
-        let from_alias s = Client_keys.Public_key_hash.find cctxt s in
-        let from_key s =
-          match Signature.Public_key_hash.of_b58check_opt s with
-          | None ->
-              failwith "Could not read public key hash for rollup node operator"
-          | Some pkh -> return pkh
-        in
-        Client_aliases.parse_alternatives
-          [("alias", from_alias); ("key", from_key)]
-          s
-      in
-      match String.split ~limit:1 ':' s with
-      | [_] ->
-          let+ pkh = parse_pkh s in
-          `Default pkh
-      | [purpose; operator_s] -> (
-          match Configuration.purpose_of_string purpose with
-          | Some purpose ->
-              let+ pkh = parse_pkh operator_s in
-              `Purpose (purpose, pkh)
-          | None ->
-              let+ pkh = parse_pkh s in
-              `Default pkh)
-      | _ ->
-          (* cannot happen due to String.split's implementation. *)
-          assert false )
-    next
-
-let possible_modes = List.map Configuration.string_of_mode Configuration.modes
-
-let mode_parameter () =
-  Tezos_clic.parameter
-    ~autocomplete:(fun _ -> return possible_modes)
-    (fun _ m -> Lwt.return (Configuration.mode_of_string m))
-
-let mode_doc =
-  Format.asprintf
-    "The mode for the rollup node (%s)@\n%a"
-    (String.concat ", " possible_modes)
-    (Format.pp_print_list (fun fmt mode ->
-         Format.fprintf
-           fmt
-           "- %s: %s"
-           (Configuration.string_of_mode mode)
-           (Configuration.description_of_mode mode)))
-    Configuration.modes
-
-let mode_param params =
-  Tezos_clic.param ~name:"mode" ~desc:mode_doc (mode_parameter ()) params
-
-let mode_arg () =
-  Tezos_clic.arg
-    ~long:"mode"
-    ~placeholder:"mode"
-    ~doc:(mode_doc ^ "\n(required when no configuration file exists)")
-    (mode_parameter ())
-
-let rpc_addr_arg =
+let rpc_addr_arg component =
   let default = Configuration.default_rpc_addr in
   Tezos_clic.arg
     ~long:"rpc-addr"
     ~placeholder:"rpc-address|ip"
     ~doc:
       (Format.sprintf
-         "The address the smart rollup node listens to. Default value is %s"
+         "The address the %s listens to. Default value is %s"
+         component
          default)
     Client_proto_args.string_parameter
 
-let metrics_addr_arg =
+let metrics_addr_arg component =
   Tezos_clic.arg
     ~long:"metrics-addr"
     ~placeholder:
       "ADDR:PORT or :PORT (by default ADDR is localhost and PORT is 9933)"
-    ~doc:"The address of the smart rollup node metrics server."
+    ~doc:(Format.sprintf "The address of the %s metrics server." component)
     Client_proto_args.string_parameter
-
-let dal_node_endpoint_arg () =
-  Tezos_clic.arg
-    ~long:"dal-node"
-    ~placeholder:"dal-node-endpoint"
-    ~doc:
-      (Format.sprintf
-         "The address of the dal node from which the smart rollup node \
-          downloads slots. When not provided, the rollup node will not support \
-          the DAL. In production, a DAL node must be provided if DAL is \
-          enabled and used in the rollup.")
-    (Tezos_clic.parameter (fun _ s -> Lwt.return_ok (Uri.of_string s)))
 
 let dac_observer_endpoint_arg () =
   Tezos_clic.arg
@@ -185,16 +103,6 @@ let data_dir_arg =
          default)
     ~default
     Client_proto_args.string_parameter
-
-let loser_mode_arg () =
-  Tezos_clic.arg
-    ~long:"loser-mode"
-    ~placeholder:"mode"
-    ~doc:"Set the rollup node failure points (for test only!)."
-    (Tezos_clic.parameter (fun _ s ->
-         match Loser_mode.make s with
-         | Some t -> return t
-         | None -> failwith "Invalid syntax for failure points"))
 
 let reconnection_delay_arg () =
   let default =
