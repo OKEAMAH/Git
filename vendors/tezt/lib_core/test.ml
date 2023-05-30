@@ -1109,8 +1109,6 @@ let run_with_scheduler scheduler =
     "tag"
     known_tags
     (Cli.options.tags_to_run @ Cli.options.tags_not_to_run) ;
-  (* Apply --job if needed. *)
-  select_job () ;
   (* Apply --skip and --only if needed. *)
   skip_test () ;
   (* Print a warning if no test was selected. *)
@@ -1153,6 +1151,8 @@ let run_with_scheduler scheduler =
   List.iter
     Record.(fun filename -> use_past (input_file filename))
     Cli.options.from_records ;
+  (* Apply --job if needed. *)
+  select_job () ;
   if Cli.options.resume then (
     if Cli.options.resume_file = None then
       Cli.options.resume_file <- Some "tezt-resume.json" ;
