@@ -267,7 +267,7 @@ module Bool = struct
     assert (not b) ;
     ret U
 
-  let constant_bool : bool -> bool repr t = fun b -> ret (B b)
+  let constant : bool -> bool repr t = fun b -> ret (B b)
 
   let band (B l) (B r) = ret @@ B (l && r)
 

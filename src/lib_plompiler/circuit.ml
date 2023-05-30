@@ -672,7 +672,7 @@ end
 module Bool = struct
   include Num
 
-  let constant_bool : bool -> bool repr t =
+  let constant : bool -> bool repr t =
    fun b ->
     let s = if b then S.one else S.zero in
     let* (Scalar s) = constant_scalar s in
@@ -819,7 +819,7 @@ module Bool = struct
     with_label ~label:"Bool.band_list"
     @@
     match l with
-    | [] -> constant_bool true
+    | [] -> constant true
     | hd :: tl ->
         let* sum =
           foldM Num.add (scalar_of_bool hd) (List.map scalar_of_bool tl)
@@ -854,7 +854,7 @@ let equal : type a. a repr -> a repr -> bool repr t =
     let open Bool in
     let open Num in
     match (a, b) with
-    | Unit, Unit -> constant_bool true
+    | Unit, Unit -> Bool.constant true
     | Bool a, Bool b ->
         let* s = sub (Scalar a) (Scalar b) in
         is_zero s
@@ -867,7 +867,7 @@ let equal : type a. a repr -> a repr -> bool repr t =
         band le re
     | List ls, List rs ->
         let lrs = List.map2 pair ls rs in
-        let* acc = constant_bool true in
+        let* acc = Bool.constant true in
         foldM
           (fun acc (Pair (l, r)) ->
             let* e = aux l r in
