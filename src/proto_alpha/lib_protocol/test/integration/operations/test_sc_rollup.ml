@@ -2509,18 +2509,25 @@ let test_refute_invalid_reveal () =
   test_refute_set_input p1_info p2_info make_state_before
 
 let full_history_inbox (genesis_predecessor_timestamp, genesis_predecessor)
-    all_external_messages =
+    messages =
   let open Sc_rollup_helpers in
   let payloads_per_levels =
     List.map
-      (fun (pred_info, level, external_messages) ->
-        wrap_messages ~pred_info level external_messages)
-      all_external_messages
+      (fun (pred_info, level, messages) ->
+        wrap_messages ~pred_info level messages)
+      messages
   in
   Sc_rollup_helpers.Node_inbox.construct_inbox
     ~genesis_predecessor_timestamp
     ~genesis_predecessor
     payloads_per_levels
+
+let info_per_block (block : Block.t) = (block.header.shell.timestamp, block.hash)
+
+let level_zero_info =
+  ( Time.Protocol.epoch,
+    Block_hash.of_b58check_exn
+      "BLockGenesisGenesisGenesisGenesisGenesisCCCCCeZiLHU" )
 
 let input_included ~snapshot ~full_history_inbox (l, n) =
   let open Lwt_result_syntax in
@@ -2547,25 +2554,24 @@ let input_included ~snapshot ~full_history_inbox (l, n) =
        (fun inbox_message -> Sc_rollup.Inbox_message inbox_message)
        inbox_message_verified
 
+let assert_input_included ~__LOC__ ~snapshot ~full_history_inbox (l, n) input =
+  let open Lwt_result_syntax in
+  let* input_verified = input_included ~snapshot ~full_history_inbox (l, n) in
+  Assert.equal
+    ~loc:__LOC__
+    (Option.equal Sc_rollup.input_equal)
+    "Input found with the proof is different from input provided"
+    (fun ppf v ->
+      match v with
+      | None -> Format.pp_print_string ppf "None"
+      | Some v -> Sc_rollup.pp_input ppf v)
+    input_verified
+    input
+
 (** Test that the protocol adds a [SOL], [Info_per_level] and [EOL] for each
     Tezos level, even if no messages are added to the inbox. *)
 let test_automatically_added_internal_messages () =
   let open Lwt_result_syntax in
-  let assert_input_included ~__LOC__ ~snapshot ~full_history_inbox (l, n) input
-      =
-    let* input_verified = input_included ~snapshot ~full_history_inbox (l, n) in
-    Assert.equal
-      ~loc:__LOC__
-      (Option.equal Sc_rollup.input_equal)
-      "Input found with the proof is different from input provided"
-      (fun ppf v ->
-        match v with
-        | None -> Format.pp_print_string ppf "None"
-        | Some v -> Sc_rollup.pp_input ppf v)
-      input_verified
-      input
-  in
-
   let assert_sol ~snapshot ~full_history_inbox ~inbox_level =
     let sol = Sc_rollup_helpers.make_sol ~inbox_level in
     assert_input_included
@@ -2619,18 +2625,8 @@ let test_automatically_added_internal_messages () =
       None
   in
 
-  let info_per_block (block : Block.t) =
-    (block.header.shell.timestamp, block.hash)
-  in
-
   (* Create the first block. *)
   let* block, account = context_init Context.T1 in
-
-  let level_zero_info =
-    ( Time.Protocol.epoch,
-      Block_hash.of_b58check_exn
-        "BLockGenesisGenesisGenesisGenesisGenesisCCCCCeZiLHU" )
-  in
 
   let level_one_info = info_per_block block in
   (* Bake a second block. *)
@@ -2650,7 +2646,10 @@ let test_automatically_added_internal_messages () =
   let*? ({inbox; _} as full_history_inbox) =
     full_history_inbox
       level_zero_info
-      [(level_one_info, level_one, []); (level_two_info, level_two, ["foo"])]
+      [
+        (level_one_info, level_one, []);
+        (level_two_info, level_two, [Sc_rollup.Inbox_message.External "foo"]);
+      ]
   in
 
   (* Assertions about level 0. *)
@@ -3331,21 +3330,31 @@ code
   }
 |}
   in
+  let level_one_info = level_zero_info in
+  let level_one = Raw_level.of_int32_exn 1l in
   let* block, account, sc_rollup =
     init_and_originate ~parameters_ty:"ticket bytes" Context.T1
   in
+  let source = Context.Contract.pkh account in
+
+  let level_two_info = info_per_block block in
+  let level_two = Raw_level.of_int32_exn 2l in
   let* contract, _script, block =
     Contract_helpers.originate_contract_from_string_hash
-      ~baker:(Context.Contract.pkh account)
+      ~baker:source
       ~source_contract:account
       ~script
       ~storage:"Unit"
       block
   in
+
+  let level_three_info = info_per_block block in
+  let level_three = Raw_level.of_int32_exn 3l in
+  let payload = String.make 12_000 '1' in
   let parameters =
     Format.sprintf
       "Pair (Pair 0x%s 10) %S "
-      (String.make 12_000 '1')
+      payload
       (Sc_rollup.Address.to_b58check sc_rollup)
   in
   let parameters = Script.lazy_expr (Expr.from_string parameters) in
@@ -3359,7 +3368,50 @@ code
       ~gas_limit:High
   in
   (* Fails because the payload in the internal message is too large. *)
-  let* _block = Block.bake ~operation block in
+  let* block = Block.bake ~operation block in
+
+  let* inbox = Context.Sc_rollup.inbox (B block) in
+  let snapshot = Sc_rollup.Inbox.take_snapshot inbox in
+
+  let expected_messages =
+    let contract_str =
+      Data_encoding.Binary.to_string_exn Contract_hash.encoding contract
+      |> Hex.of_string |> Hex.show
+    in
+    let open Sc_rollup.Inbox_message in
+    [
+      New_chunked_transfer {source; destination = sc_rollup; sender = contract};
+      Transfer_chunk
+        (`Hex
+           (Format.sprintf
+              "07070a0000001601%s0007070a00001770%s"
+              contract_str
+              (String.make 8116 '1'))
+        |> Hex.to_string |> Option.value ~default:"");
+      Transfer_chunk
+        (`Hex (Format.sprintf "%s000a" (String.make 3884 '1'))
+        |> Hex.to_string |> Option.value ~default:"");
+    ]
+    |> List.map (fun x -> Internal x)
+  in
+
+  let*? ({inbox = our_inbox; _} as _full_history_inbox) =
+    full_history_inbox
+      level_zero_info
+      [
+        (level_one_info, level_one, []);
+        (level_two_info, level_two, []);
+        (level_three_info, level_three, expected_messages);
+      ]
+  in
+  let our_snapshot = Sc_rollup.Inbox.take_snapshot our_inbox in
+
+  let* () =
+    Assert.equal_bool
+      ~loc:__LOC__
+      true
+      (Sc_rollup.Inbox.equal_history_proof our_snapshot snapshot)
+  in
   return_unit
 
 let tests =

@@ -361,7 +361,8 @@ let gen_arith_pvm_messages ~gen_size =
           ]
   in
   let+ inputs = sized_size gen_size @@ fix produce_inputs in
-  snd inputs |> List.rev |> String.concat " "
+  let payload = snd inputs |> List.rev |> String.concat " " in
+  Sc_rollup.Inbox_message.External payload
 
 (** Generate a list of level and associated arith pvm messages. *)
 let gen_arith_pvm_payloads_for_levels ~start_level ~max_level =

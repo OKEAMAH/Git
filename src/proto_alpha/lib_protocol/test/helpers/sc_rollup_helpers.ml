@@ -221,7 +221,8 @@ type message = {
     [level] is useful for (1) (2) (3).
  *)
 type payloads_per_level = {
-  messages : string list;  (** List of external messages. *)
+  messages : Sc_rollup.Inbox_message.t list;
+      (** List of manually added messages. *)
   payloads : Sc_rollup.Inbox_message.serialized list;
       (** List of external serialized messages. *)
   predecessor_timestamp : Time.Protocol.t;
@@ -270,7 +271,7 @@ let strs_to_inputs inbox_level messages =
     messages
 
 (** Transform the list of all inputs the PVM should read. *)
-let make_inputs ~first_block predecessor_timestamp predecessor messages
+let make_inputs ~first_block predecessor_timestamp predecessor payloads
     inbox_level =
   (* SOL is at index 0. *)
   let sol = make_sol ~inbox_level in
@@ -284,18 +285,17 @@ let make_inputs ~first_block predecessor_timestamp predecessor messages
   (* External inputs start at index 2. *)
   let external_inputs =
     List.mapi
-      (fun i message ->
-        make_external_input
+      (fun i ->
+        make_input
           ~inbox_level
-          ~message_counter:(Z.of_int (2 + List.length mig + i))
-          message)
-      messages
+          ~message_counter:(Z.of_int (2 + List.length mig + i)))
+      payloads
   in
   (* EOL is after SOL/Info_per_level and all external inputs, therefore,
      at index [2 + List.length messages]. *)
   let eol =
     let message_counter =
-      Z.of_int (2 + List.length mig + List.length messages)
+      Z.of_int (2 + List.length mig + List.length payloads)
     in
     make_eol ~inbox_level ~message_counter
   in
@@ -313,13 +313,13 @@ let wrap_messages level
     ?(pred_info = predecessor_timestamp_and_hash_from_level level) messages :
     payloads_per_level =
   let predecessor_timestamp, predecessor = pred_info in
-  let payloads = List.map make_external_inbox_message messages in
+  let payloads = List.map message_serialize messages in
   let inputs =
     make_inputs
       ~first_block:(level = Raw_level.root || level = Raw_level.(succ root))
       predecessor_timestamp
       predecessor
-      messages
+      payloads
       level
   in
   {payloads; predecessor_timestamp; predecessor; messages; level; inputs}
@@ -605,11 +605,6 @@ module Node_inbox = struct
          } :
           payloads_per_level)
         :: rst ->
-          let messages =
-            List.map
-              (fun message -> Sc_rollup.Inbox_message.External message)
-              messages
-          in
           let* payloads_history, history, inbox, witness, _messages =
             Environment.wrap_tzresult
             @@ Sc_rollup.Inbox.add_all_messages
@@ -708,11 +703,6 @@ module Protocol_inbox = struct
          } :
           payloads_per_level)
         :: rst ->
-          let payloads =
-            List.map
-              (fun message -> Sc_rollup.Inbox_message.(External message))
-              messages
-          in
           let* _, _, inbox, _, _ =
             Environment.wrap_tzresult
             @@ Sc_rollup.Inbox.add_all_messages
@@ -722,7 +712,7 @@ module Protocol_inbox = struct
                  ~predecessor
                  (Sc_rollup.Inbox.History.empty ~capacity:1000L)
                  inbox
-                 payloads
+                 messages
           in
           aux inbox rst
     in
@@ -784,6 +774,17 @@ module Protocol_inbox_with_ctxt = struct
                 let* block = Block.bake block in
                 return block
             | messages ->
+                let messages =
+                  List.map
+                    (function
+                      | Sc_rollup.Inbox_message.External s -> s
+                      | _ ->
+                          raise
+                            (Invalid_argument
+                               "Protocol_inbox_with_ctxt.fill_inbox support \
+                                only external messages"))
+                    messages
+                in
                 let* operation_add_message =
                   Op.sc_rollup_add_messages (B block) contract messages
                 in
