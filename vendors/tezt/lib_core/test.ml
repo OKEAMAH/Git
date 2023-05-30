@@ -875,9 +875,12 @@ let split_tests_into_balanced_jobs job_count =
     (* Give a default duration of 1 second as specified by --help.
        This allows to split jobs even with no time data (otherwise all jobs
        would be grouped together). *)
-    max
-      1L
-      (Summed_durations.total_nanoseconds test.past_records_successful_runs)
+    let total, count =
+      Summed_durations.
+        ( test.past_records_successful_runs |> total_nanoseconds,
+          test.past_records_successful_runs |> count )
+    in
+    if count = 0 || total = 0L then 1L else Int64.(div total (of_int count))
   in
   let tests = String_map.bindings !registered |> List.map snd in
   let weighted_tests = List.map (fun test -> (test_time test, test)) tests in
