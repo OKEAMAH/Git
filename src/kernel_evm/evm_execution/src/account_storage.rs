@@ -373,12 +373,9 @@ impl EthereumAccount {
         let path = concat(&self.path, &CODE_PATH)?;
 
         match host.store_has(&path) {
-            Ok(Some(ValueType::Value | ValueType::ValueWithSubtree)) => {
-                let code_size = host.store_value_size(&path)?;
-
-                host.store_read(&path, 0, code_size)
-                    .map_err(AccountStorageError::from)
-            }
+            Ok(Some(ValueType::Value | ValueType::ValueWithSubtree)) => host
+                .store_read_all(&path)
+                .map_err(AccountStorageError::from),
             Ok(_) => Ok(vec![]),
             Err(err) => Err(AccountStorageError::from(err)),
         }
@@ -434,7 +431,7 @@ impl EthereumAccount {
             host.store_delete(&code_path)?;
         }
 
-        host.store_write(&code_path, code, 0)
+        host.store_write_all(&code_path, code)
             .map_err(AccountStorageError::from)
     }
 
