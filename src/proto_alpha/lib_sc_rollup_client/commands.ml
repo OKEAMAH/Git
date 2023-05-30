@@ -256,6 +256,28 @@ let get_output_message_encoding () =
       | Error _ -> cctxt#message "Error while encoding outbox message.")
       >>= fun () -> return_unit)
 
+let get_hash () =
+  Tezos_clic.command
+    ~desc:"Hash string."
+    Tezos_clic.no_options
+    (Tezos_clic.prefixes ["get"; "hash"]
+    @@ Tezos_clic.string ~name:"string" ~desc:"string"
+    @@ Tezos_clic.stop)
+    (fun () data (cctxt : #Configuration.sc_client_context) ->
+      match Tezos_stdlib.TzString.chunk_bytes 4096 (Bytes.of_string data) with
+      | Ok l ->
+          let strings = List.map Bytes.of_string l in
+          let hash =
+            Protocol.Sc_rollup_reveal_hash.Merkelized_bytes.(
+              root (of_list strings))
+            |> Protocol.Sc_rollup_reveal_hash.Blake2B.to_bytes
+            |> String.of_bytes
+          in
+          cctxt#message "%s" hash >>= fun () -> return_unit
+      | Error _ ->
+          cctxt#message "Error: Tezos_stdlib.TzString.chunk_bytes" >>= fun () ->
+          return_unit)
+
 let call ?body meth raw_url (cctxt : #Configuration.sc_client_context) =
   let open Lwt_result_syntax in
   let uri = Uri.of_string raw_url in
@@ -390,6 +412,7 @@ let all () =
     get_state_value_command ();
     get_output_proof ();
     get_output_message_encoding ();
+    get_hash ();
     Keys.generate_keys ();
     Keys.list_keys ();
     Keys.show_address ();
