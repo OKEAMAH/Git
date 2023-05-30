@@ -256,6 +256,53 @@ let get_output_message_encoding () =
       | Error _ -> cctxt#message "Error while encoding outbox message.")
       >>= fun () -> return_unit)
 
+(** TODO: https://gitlab.com/tezos/tezos/-/issues/5893
+    "Internal for tests" section in the SC rollup client commands *)
+let get_blake2b_merkle_tree_root_hash () =
+  let file_or_literal_with_origin_param () =
+    Tezos_clic.param
+      ~name:"source"
+      ~desc:"literal or a path to a file"
+      (Tezos_clic.parameter (fun (cctxt : #Configuration.sc_client_context) ->
+           Client_proto_args.file_or_text
+             ~from_text:Lwt_result_syntax.return
+             ~read_file:cctxt#read_file))
+  in
+  Tezos_clic.command
+    ~desc:
+      "Returns the root hash of the Merkle tree instantiated with the Blake2B \
+       hash function from a string or a file."
+    Tezos_clic.no_options
+    (Tezos_clic.prefixes ["get"; "blake2b"; "merkle"; "tree"; "root"; "hash"]
+    @@ file_or_literal_with_origin_param ()
+    @@ Tezos_clic.stop)
+    (fun () content_with_origin (cctxt : #Configuration.sc_client_context) ->
+      let data =
+        Client_proto_args.content_of_file_or_text content_with_origin
+      in
+      match
+        Tezos_stdlib.TzString.chunk_bytes
+          Constants.sc_rollup_message_size_limit
+          (Bytes.of_string data)
+      with
+      | Ok strings ->
+          let strings = List.map Bytes.of_string strings in
+          let (module Blake) =
+            Protocol.(
+              Sc_rollup_partial_reveal_hash.to_mod Sc_rollup_reveal_hash.Blake2B)
+          in
+          let hash =
+            Protocol.Sc_rollup_partial_reveal_hash.(
+              merkle_tree (module Blake) ~elts:strings |> fun tree ->
+              merkle_root (module Blake) ~tree)
+            |> Protocol.Sc_rollup_reveal_hash.Blake2B.to_bytes
+            |> String.of_bytes |> Hex.of_string |> Hex.show
+          in
+          cctxt#message "%s" hash >>= fun () -> return_unit
+      | Error _ ->
+          cctxt#message "Error: Tezos_stdlib.TzString.chunk_bytes" >>= fun () ->
+          return_unit)
+
 let call ?body meth raw_url (cctxt : #Configuration.sc_client_context) =
   let open Lwt_result_syntax in
   let uri = Uri.of_string raw_url in
@@ -390,6 +437,7 @@ let all () =
     get_state_value_command ();
     get_output_proof ();
     get_output_message_encoding ();
+    get_blake2b_merkle_tree_root_hash ();
     Keys.generate_keys ();
     Keys.list_keys ();
     Keys.show_address ();
