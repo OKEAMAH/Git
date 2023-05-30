@@ -393,6 +393,8 @@ module Make (C : AUTOMATON_CONFIG) :
 
     let peer_filter state = state.parameters.peer_filter
 
+    let message_filter state = state.parameters.message_filter
+
     let message_cache state = state.message_cache
 
     let rng state = state.rng
@@ -961,7 +963,8 @@ module Make (C : AUTOMATON_CONFIG) :
   module Receive_message = struct
     let check_valid sender topic message message_id =
       let open Monad.Syntax in
-      match Message.valid message message_id with
+      let*! message_filter in
+      match message_filter message message_id with
       | `Valid -> unit
       | `Unknown ->
           (* FIXME https://gitlab.com/tezos/tezos/-/issues/5486
