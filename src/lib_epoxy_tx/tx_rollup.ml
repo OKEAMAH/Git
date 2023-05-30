@@ -1456,7 +1456,7 @@ module V (L : LIB) = struct
        in
        with_bool_check (Bool.bor is_tez_or_bal_0 equal_dst)
        >* (* ----------------- Check new leaves -----------------------*)
-       let* z = constant_scalar S.zero in
+       let* z = Num.zero in
        let* ticket_amount =
          Bool.ifthenelse is_tez z (coerce tx.payload.msg.amount.amount)
        in
@@ -1691,7 +1691,7 @@ module V (L : LIB) = struct
                 ~signature:tx.payload.signature
                 ())
            >* let* b_tx = get_checks_wire in
-              let* z = constant_scalar S.zero in
+              let* z = Num.zero in
               let* expected_fee =
                 Bool.ifthenelse b_tx (coerce tx.payload.msg.fee) z
               in
@@ -1731,7 +1731,7 @@ module V (L : LIB) = struct
           tx_s.dst.account.proof.path
           tx_s.dst.leaf.path
           tx_s.dst.account.proof.root
-        >* 
+        >*
         (* Leaves contain their position to check that the proof's
            path actually corresponds to the correct leaf. *)(* ------------------- Assert positions --------------------- *)
         assert_equal (coerce tx.payload.dst) (coerce tx_s.dst.leaf.before.pos)
@@ -1753,7 +1753,7 @@ module V (L : LIB) = struct
            in
            with_bool_check (Bool.bor is_tez_or_eq_id bal_0)
            >* (* ----------------- Check new leaf and acc ---------------------- *)
-           let* z = constant_scalar S.zero in
+           let* z = Num.zero in
            let* ticket_amount =
              Bool.ifthenelse is_tez z (coerce tx.payload.amount.amount)
            in
@@ -1855,7 +1855,7 @@ module V (L : LIB) = struct
           tx_s.src.account.proof.path
           tx_s.src.leaf.path
           tx_s.src.account.proof.root
-        >* 
+        >*
         (* Leaves contain their position to check that the proof's
            path actually corresponds to the correct leaf. *)(* ------------------- Assert positions --------------------- *)
         assert_equal
@@ -1874,7 +1874,7 @@ module V (L : LIB) = struct
            in
            with_bool_check (Bool.bor is_tez eq_id)
            >* (* ----------------- Check new leaves -----------------------*)
-           let* z = constant_scalar S.zero in
+           let* z = Num.zero in
            let* ticket_amount =
              Bool.ifthenelse is_tez z (coerce tx.payload.msg.amount.amount)
            in
@@ -1985,7 +1985,7 @@ module V (L : LIB) = struct
       Plompiler_Curve.(input_point @@ affine_to_point Schnorr.g)
     in
     let op_code = S.zero in
-    let* z = constant_scalar S.zero in
+    let* z = Num.zero in
     let z = Bounded_u.make_unsafe ~bound:Constants.Bound.max_amount z in
     let* computed_root, computed_fees =
       fold2M
