@@ -80,6 +80,25 @@ val create :
   Node.t ->
   t
 
+(** Do not assume we are running the rollup node against a local octez node. *)
+val create_with_endpoint :
+  ?protocol:Protocol.t ->
+  ?runner:Runner.t ->
+  ?path:string ->
+  ?name:string ->
+  ?color:Log.Color.t ->
+  ?data_dir:string ->
+  base_dir:string ->
+  ?event_pipe:string ->
+  ?rpc_host:string ->
+  ?rpc_port:int ->
+  ?operators:(string * string) list ->
+  ?default_operator:string ->
+  ?dal_node:Dal_node.t ->
+  mode ->
+  Client.endpoint ->
+  t
+
 (** Get the name of an sc node. *)
 val name : t -> string
 
@@ -194,6 +213,8 @@ val wait_for_ready : t -> unit Lwt.t
    If [timeout] is provided, stop waiting if [timeout] seconds have
    passed. *)
 val wait_for_level : ?timeout:float -> t -> int -> int Lwt.t
+
+val unsafe_wait_sync : ?timeout:float -> t -> int Lwt.t
 
 (** Wait until the layer 1 of the sc node is synchronized with its
     underlying l1 node. *)

@@ -143,6 +143,9 @@ let mode_to_endpoint = function
   | Client (Some endpoint, _) | Light (_, endpoint :: _) | Proxy endpoint ->
       Some endpoint
 
+let string_of_endpoint ?hostname e =
+  sf "%s://%s:%d" (scheme e) (address ?hostname e) (rpc_port e)
+
 (* [?endpoint] can be used to override the default node stored in the client.
    Mockup nodes do not use [--endpoint] at all: RPCs are mocked up.
    Light mode needs a file (specified with [--sources] on the CLI)
@@ -153,11 +156,7 @@ let endpoint_arg ?(endpoint : endpoint option) client =
   (* pass [?endpoint] first: it has precedence over client.mode *)
   match either endpoint (mode_to_endpoint client.mode) with
   | None -> []
-  | Some e ->
-      [
-        "--endpoint";
-        sf "%s://%s:%d" (scheme e) (address ~hostname:true e) (rpc_port e);
-      ]
+  | Some e -> ["--endpoint"; string_of_endpoint ~hostname:true e]
 
 let media_type_arg client =
   match client with
