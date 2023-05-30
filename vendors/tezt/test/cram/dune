@@ -1,0 +1,7 @@
+(executable
+ (name main)
+ (libraries tezt)
+ (flags (:standard) -open Tezt -open Tezt.Base))
+
+(cram
+ (deps tezt.sh main.exe))

@@ -1,0 +1,7 @@
+(executable (name main) (modes js) (libraries tezt_common_tests tezt.js))
+
+(rule
+ (alias runtest)
+ (package tezt)
+ (deps main.bc.js)
+ (action (run node main.bc.js)))

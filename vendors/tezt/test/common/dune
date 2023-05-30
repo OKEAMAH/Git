@@ -1,0 +1,4 @@
+(library
+ (name tezt_common_tests)
+ (libraries tezt.core)
+ (flags (:standard -linkall)))
