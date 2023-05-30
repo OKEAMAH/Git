@@ -69,6 +69,17 @@ type internal_inbox_message =
           (** Predecessor of the block this message is pushed. *)
     }
   | Protocol_migration of string
+  | New_chunked_transfer of {
+      sender : Contract_hash.t;
+      source : Signature.public_key_hash;
+      destination : Sc_rollup_repr.Address.t;
+    }
+      (** Announce a new chunked transfer, where the payload could not fit
+          in a single [Transfer]. Must be followed by at least two
+          [Transfer_chunk]. *)
+  | Transfer_chunk of string
+      (** Transfer chunk pre-announced by [New_chunked_transfer], contains
+          one chunk of the transfer's payload. *)
 
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
     originated from Layer 1 smart-contracts and external ones are messages from
@@ -105,3 +116,22 @@ val end_of_level_serialized : serialized
 (** {!info_per_level_serialized ~predecessor_timestamp ~predecessor} is the serialized representation of the internal message for {!Info_per_level}. *)
 val info_per_level_serialized :
   predecessor_timestamp:Time.t -> predecessor:Block_hash.t -> serialized
+
+(** Maximum encode size of an internal message. *)
+val internal_transfer_max_total_size : int
+
+(** Size of a chunk in a [Transfer_chunk]. *)
+val internal_transfer_chunk_size : int
+
+(** Split a large transfer in chunks using [New_chunked_transfer] and
+    [Transfer_chunk]s.
+
+    It is the responsibility of the caller to make sure the [payload_bytes]
+    does not fit in a single transfer.
+*)
+val split_transfer_in_chunks :
+  payload_bytes:bytes ->
+  sender:Contract_hash.t ->
+  source:Signature.public_key_hash ->
+  destination:Sc_rollup_repr.t ->
+  internal_inbox_message list

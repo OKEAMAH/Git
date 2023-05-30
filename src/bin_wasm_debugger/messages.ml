@@ -138,6 +138,13 @@ let pp_input ppf bytes =
           predecessor_timestamp
           Block_hash.pp
           predecessor
+    | Internal (New_chunked_transfer _) as msg ->
+        let json =
+          Data_encoding.Json.construct Sc_rollup.Inbox_message.encoding msg
+        in
+        Data_encoding.Json.pp ppf json
+    | Internal (Transfer_chunk payload) ->
+        Format.fprintf ppf "Transfer_chunk of %d bytes" (String.length payload)
     | External msg -> Format.fprintf ppf "%a" Hex.pp (Hex.of_string msg)
   in
   match

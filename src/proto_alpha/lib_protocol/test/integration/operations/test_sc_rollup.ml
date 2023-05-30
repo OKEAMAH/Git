@@ -3360,7 +3360,6 @@ code
   in
   (* Fails because the payload in the internal message is too large. *)
   let* _block = Block.bake ~operation block in
-
   return_unit
 
 let tests =

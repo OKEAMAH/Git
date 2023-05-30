@@ -68,6 +68,12 @@ type internal_inbox_message =
       predecessor : Block_hash.t;
     }
   | Protocol_migration of string
+  | New_chunked_transfer of {
+      sender : Contract_hash.t;
+      source : Signature.public_key_hash;
+      destination : Sc_rollup_repr.Address.t;
+    }
+  | Transfer_chunk of string
 
 let internal_inbox_message_encoding =
   let open Data_encoding in
@@ -120,6 +126,26 @@ let internal_inbox_message_encoding =
         (obj2 (kind "protocol_migration") (req "protocol" (string Hex)))
         (function Protocol_migration proto -> Some ((), proto) | _ -> None)
         (fun ((), proto) -> Protocol_migration proto);
+      case
+        (Tag 5)
+        ~title:"New_chunked_transfer"
+        (obj4
+           (kind "new_chunked_transfer")
+           (req "sender" Contract_hash.encoding)
+           (req "source" Signature.Public_key_hash.encoding)
+           (req "destination" Sc_rollup_repr.Address.encoding))
+        (function
+          | New_chunked_transfer {sender; source; destination} ->
+              Some ((), sender, source, destination)
+          | _ -> None)
+        (fun ((), sender, source, destination) ->
+          New_chunked_transfer {sender; source; destination});
+      case
+        (Tag 6)
+        ~title:"Transfer_chunk"
+        (obj2 (kind "transfer_chunk") (req "chunk" (Variable.string Hex)))
+        (function Transfer_chunk chunk -> Some ((), chunk) | _ -> None)
+        (fun ((), chunk) -> Transfer_chunk chunk);
     ]
 
 type t = Internal of internal_inbox_message | External of string
@@ -221,3 +247,17 @@ let (_dummy_serialized_info_per_level_serialized : serialized) =
   info_per_level_serialized
     ~predecessor_timestamp:(Time.of_seconds Int64.min_int)
     ~predecessor:Block_hash.zero
+
+let internal_transfer_max_total_size =
+  Constants_repr.sc_rollup_message_size_limit - 1 (* internal/external tag *)
+  - 1 (* internal_message tag *)
+
+let internal_transfer_chunk_size = internal_transfer_max_total_size
+
+let split_transfer_in_chunks ~payload_bytes ~sender ~source ~destination =
+  let new_chunk = New_chunked_transfer {sender; source; destination} in
+  let chunks =
+    String.chunk_bytes_loose internal_transfer_max_total_size payload_bytes
+  in
+  let chunks = List.map (fun chunk -> Transfer_chunk chunk) chunks in
+  new_chunk :: chunks

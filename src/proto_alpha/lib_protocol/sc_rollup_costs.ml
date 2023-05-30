@@ -83,6 +83,8 @@ let cost_serialize_internal_inbox_message
   | End_of_level -> Saturation_repr.zero
   | Protocol_migration _ -> Saturation_repr.zero
   | Info_per_level _ -> Saturation_repr.zero
+  | New_chunked_transfer _ -> Saturation_repr.zero
+  | Transfer_chunk _ -> Saturation_repr.zero
 
 (* Derived from benchmark in
    [Sc_rollup_benchmarks.Sc_rollup_deserialize_output_proof_benchmark] and model

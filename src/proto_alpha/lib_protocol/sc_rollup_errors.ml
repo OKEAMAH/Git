@@ -99,6 +99,8 @@ type error +=
       Sc_rollup_no_commitment_to_cement of Raw_level_repr.t
   | (* `Permanent *)
       Sc_rollup_double_publish of Sc_rollup_commitment_repr.Hash.t
+  | (* `Permanent *)
+      Sc_rollup_error_encode_transfer_payload
 
 let () =
   register_error_kind
@@ -693,4 +695,14 @@ let () =
     (function
       | Sc_rollup_double_publish commitment_hash -> Some commitment_hash
       | _ -> None)
-    (fun commitment_hash -> Sc_rollup_double_publish commitment_hash)
+    (fun commitment_hash -> Sc_rollup_double_publish commitment_hash) ;
+  let msg = "Failed to encode the internal transfer payload" in
+  register_error_kind
+    `Permanent
+    ~id:"smart_rollup_error_encode_transfer_payload"
+    ~title:msg
+    ~pp:(fun fmt () -> Format.fprintf fmt "%s" msg)
+    ~description:msg
+    Data_encoding.unit
+    (function Sc_rollup_error_encode_transfer_payload -> Some () | _ -> None)
+    (fun () -> Sc_rollup_error_encode_transfer_payload)

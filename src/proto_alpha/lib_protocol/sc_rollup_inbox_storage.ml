@@ -107,11 +107,57 @@ let add_internal_message ctxt internal_message =
   let*? message, ctxt = serialize_internal_message ctxt internal_message in
   add_messages ctxt [message]
 
-let add_deposit ctxt ~payload ~sender ~source ~destination =
-  let internal_message : Sc_rollup_inbox_message_repr.internal_inbox_message =
-    Transfer {destination; payload; sender; source}
+let split_transfer_in_chunks ctxt ~payload ~sender ~source ~destination =
+  let open Result_syntax in
+  (* Consume gas to encode the payload. *)
+  let* ctxt =
+    let lexpr = Script_repr.lazy_expr payload in
+    let expr_cost = Script_repr.force_bytes_cost lexpr in
+    Raw_context.consume_gas ctxt expr_cost
   in
-  add_internal_message ctxt internal_message
+  (* Encode the payload. *)
+  let* payload_bytes =
+    match
+      Data_encoding.Binary.to_bytes_opt Script_repr.expr_encoding payload
+    with
+    | Some payload_bytes -> return payload_bytes
+    | None -> tzfail Sc_rollup_errors.Sc_rollup_error_encode_transfer_payload
+  in
+  let messages =
+    Sc_rollup_inbox_message_repr.split_transfer_in_chunks
+      ~payload_bytes
+      ~sender
+      ~source
+      ~destination
+  in
+  return (ctxt, messages)
+
+let internal_transfer_size payload =
+  let payload_size =
+    Data_encoding.Binary.length Script_repr.expr_encoding payload
+  in
+  payload_size + Contract_hash.size + Signature.Public_key_hash.size
+  + Sc_rollup_repr.Address.size
+
+let add_deposit ctxt ~payload ~sender ~source ~destination =
+  let open Lwt_result_syntax in
+  let total_size = internal_transfer_size payload in
+  if
+    Compare.Int.(
+      total_size > Sc_rollup_inbox_message_repr.internal_transfer_max_total_size)
+  then
+    let*? ctxt, internal_messages =
+      split_transfer_in_chunks ctxt ~payload ~sender ~source ~destination
+    in
+    List.fold_left_es
+      (fun ctxt internal_message -> add_internal_message ctxt internal_message)
+      ctxt
+      internal_messages
+  else
+    let internal_message : Sc_rollup_inbox_message_repr.internal_inbox_message =
+      Transfer {destination; payload; sender; source}
+    in
+    add_internal_message ctxt internal_message
 
 let finalize_inbox_level ctxt =
   let open Lwt_result_syntax in

@@ -2755,6 +2755,12 @@ module Sc_rollup : sig
           predecessor : Block_hash.t;
         }
       | Protocol_migration of string
+      | New_chunked_transfer of {
+          sender : Contract_hash.t;
+          source : public_key_hash;
+          destination : t;
+        }
+      | Transfer_chunk of string
 
     val protocol_migration_internal_message : internal_inbox_message
 

@@ -1147,6 +1147,12 @@ module Make (Context : P) :
       | Ok (Internal (Info_per_level _)) ->
           let* () = incr_internal_message_counter in
           return None
+      | Ok (Internal (New_chunked_transfer _)) ->
+          let* () = incr_internal_message_counter in
+          return None
+      | Ok (Internal (Transfer_chunk _)) ->
+          let* () = incr_internal_message_counter in
+          return None
     in
     match payload with
     | Some payload ->
