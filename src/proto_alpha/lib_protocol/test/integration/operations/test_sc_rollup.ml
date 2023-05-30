@@ -3308,6 +3308,61 @@ let test_start_game_on_cemented_commitment () =
       return_unit)
     hashes
 
+let test_large_deposit () =
+  let open Lwt_result_syntax in
+  let script =
+    {|
+parameter (pair (pair bytes nat) (contract (ticket bytes)) );
+storage unit;
+code
+  {
+    UNPAIR;
+    UNPAIR;
+    UNPAIR;
+    TICKET;
+    ASSERT_SOME;
+    PUSH mutez 0;
+    SWAP;
+    TRANSFER_TOKENS;
+    NIL operation;
+    SWAP;
+    CONS;
+    PAIR
+  }
+|}
+  in
+  let* block, account, sc_rollup =
+    init_and_originate ~parameters_ty:"ticket bytes" Context.T1
+  in
+  let* contract, _script, block =
+    Contract_helpers.originate_contract_from_string_hash
+      ~baker:(Context.Contract.pkh account)
+      ~source_contract:account
+      ~script
+      ~storage:"Unit"
+      block
+  in
+  let parameters =
+    Format.sprintf
+      "Pair (Pair 0x%s 10) %S "
+      (String.make 12_000 '1')
+      (Sc_rollup.Address.to_b58check sc_rollup)
+  in
+  let parameters = Script.lazy_expr (Expr.from_string parameters) in
+  let* operation =
+    Op.transaction
+      (B block)
+      account
+      (Contract.Originated contract)
+      Tez.zero
+      ~parameters
+      ~gas_limit:High
+  in
+  (* Fails because the payload in the internal message is too large. *)
+  let* _block = Block.bake ~operation block in
+
+  return_unit
+
 let tests =
   [
     Tztest.tztest
@@ -3445,6 +3500,7 @@ let tests =
       "cannot start a game on a cemented commitment"
       `Quick
       test_start_game_on_cemented_commitment;
+    Tztest.tztest "large deposit in chunks" `Quick test_large_deposit;
   ]
 
 let () =
