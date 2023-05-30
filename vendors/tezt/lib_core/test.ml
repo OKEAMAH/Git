@@ -876,7 +876,7 @@ let split_tests_into_balanced_jobs job_count =
        This allows to split jobs even with no time data (otherwise all jobs
        would be grouped together). *)
     max
-      1_000_000L
+      1L
       (Summed_durations.total_nanoseconds test.past_records_successful_runs)
   in
   let tests = String_map.bindings !registered |> List.map snd in
