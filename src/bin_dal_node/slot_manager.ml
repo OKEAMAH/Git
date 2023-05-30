@@ -141,12 +141,13 @@ let add_commitment_shards ~shards_proofs_precomputation node_store cryptobox
     Store.Legacy.save_shard_proofs node_store commitment shard_proofs |> return
   else return_unit
 
-let store_slot_headers ~level_committee ~block_level ~block_hash cryptobox
-    proto_parameters slot_headers node_store =
+let store_slot_headers ~level_committee ~block_level ~block_hash gs_worker
+    cryptobox proto_parameters slot_headers node_store =
   Store.Legacy.add_slot_headers
     ~level_committee
     ~block_level
     ~block_hash
+    gs_worker
     cryptobox
     proto_parameters
     slot_headers

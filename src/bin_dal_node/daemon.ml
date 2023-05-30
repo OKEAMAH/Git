@@ -140,6 +140,27 @@ module Handler = struct
             (message_id, err)) ;
         `Invalid
 
+  let connect_gossipsub_with_p2p gs_worker transport_layer node_store =
+    let open Gossipsub in
+    let shards_handler ({shard_store; shards_watcher; _} : Store.node_store) =
+      let save_and_notify =
+        Store.Shards.save_and_notify shard_store shards_watcher
+      in
+      fun ({share; _} : message) ({commitment; shard_index; _} : message_id) ->
+        Seq.return {Cryptobox.share; index = shard_index}
+        |> save_and_notify commitment |> Errors.to_tzresult
+    in
+    Lwt.dont_wait
+      (fun () ->
+        Transport_layer_hooks.activate
+          gs_worker
+          transport_layer
+          ~app_messages_callback:(shards_handler node_store))
+      (fun exn ->
+        "[dal_node] error in Daemon.connect_gossipsub_with_p2p: "
+        ^ Printexc.to_string exn
+        |> Stdlib.failwith)
+
   let resolve_plugin_and_set_ready config ctxt cctxt =
     (* Monitor heads and try resolve the DAL protocol plugin corresponding to
        the protocol of the targeted node. *)
@@ -163,7 +184,48 @@ module Handler = struct
           let* cryptobox =
             init_cryptobox config.Configuration.use_unsafe_srs proto_parameters
           in
-          Node_context.set_ready ctxt plugin cryptobox proto_parameters ;
+          let {Configuration.network_name; peers; _} =
+            Node_context.get_config ctxt
+          in
+          (* Create and start a GS worker *)
+          let gs_worker =
+            let rng =
+              let seed =
+                Random.self_init () ;
+                Random.bits ()
+              in
+              Random.State.make [|seed|]
+            in
+            let open Worker_parameters in
+            Gossipsub.Worker.(
+              make
+                ~events_logging:Logging.event
+                rng
+                limits
+                (filter_parameters ())
+              |> start [])
+          in
+          (* Create a transport (P2P) layer instance. *)
+          let* transport_layer =
+            let open Transport_layer_parameters in
+            let* p2p_config = p2p_config config in
+            Gossipsub.Transport_layer.create p2p_config p2p_limits ~network_name
+          in
+          (* activate the p2p instance. *)
+          Gossipsub.Transport_layer.activate
+            ~additional_points:peers
+            transport_layer ;
+          connect_gossipsub_with_p2p
+            gs_worker
+            transport_layer
+            (Node_context.get_store ctxt) ;
+          Node_context.set_ready
+            ctxt
+            plugin
+            cryptobox
+            proto_parameters
+            gs_worker
+            transport_layer ;
           (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4441
 
              The hook below should be called each time cryptobox parameters
@@ -196,6 +258,8 @@ module Handler = struct
             plugin = (module Dal_plugin);
             proto_parameters;
             cryptobox;
+            gs_worker;
+            transport_layer = _;
             shards_proofs_precomputation = _;
           } ->
           let block_level = header.shell.level in
@@ -211,6 +275,7 @@ module Handler = struct
           let* () =
             Slot_manager.store_slot_headers
               ~level_committee:(Node_context.fetch_committee ctxt)
+              gs_worker
               cryptobox
               proto_parameters
               ~block_level
@@ -295,64 +360,17 @@ let daemonize handlers =
    return_unit)
   |> lwt_map_error (List.fold_left (fun acc errs -> errs @ acc) [])
 
-let connect_gossipsub_with_p2p gs_worker transport_layer node_store =
-  let open Gossipsub in
-  let shards_handler ({shard_store; shards_watcher; _} : Store.node_store) =
-    let save_and_notify =
-      Store.Shards.save_and_notify shard_store shards_watcher
-    in
-    fun ({share; _} : message) ({commitment; shard_index; _} : message_id) ->
-      Seq.return {Cryptobox.share; index = shard_index}
-      |> save_and_notify commitment |> Errors.to_tzresult
-  in
-  Lwt.dont_wait
-    (fun () ->
-      Transport_layer_hooks.activate
-        gs_worker
-        transport_layer
-        ~app_messages_callback:(shards_handler node_store))
-    (fun exn ->
-      "[dal_node] error in Daemon.connect_gossipsub_with_p2p: "
-      ^ Printexc.to_string exn
-      |> Stdlib.failwith)
-
 (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3605
    Improve general architecture, handle L1 disconnection etc
 *)
 let run ~data_dir cctxt =
   let open Lwt_result_syntax in
   let*! () = Event.(emit starting_node) () in
-  let* ({network_name; rpc_addr; rpc_port; peers; _} as config) =
-    Configuration.load ~data_dir
-  in
+  let* ({rpc_addr; rpc_port; _} as config) = Configuration.load ~data_dir in
   let config = {config with data_dir} in
-  (* Create and start a GS worker *)
-  let gs_worker =
-    let rng =
-      let seed =
-        Random.self_init () ;
-        Random.bits ()
-      in
-      Random.State.make [|seed|]
-    in
-    let open Worker_parameters in
-    Gossipsub.Worker.(
-      make ~events_logging:Logging.event rng limits (filter_parameters ())
-      |> start [])
-  in
-  (* Create a transport (P2P) layer instance. *)
-  let* transport_layer =
-    let open Transport_layer_parameters in
-    let* p2p_config = p2p_config config in
-    Gossipsub.Transport_layer.create p2p_config p2p_limits ~network_name
-  in
-  let* store = Store.init gs_worker config in
-  let ctxt = Node_context.init config store gs_worker transport_layer cctxt in
+  let* store = Store.init config in
+  let ctxt = Node_context.init config store cctxt in
   let* rpc_server = RPC_server.(start config ctxt) in
-  (* activate the p2p instance. *)
-  Gossipsub.Transport_layer.activate ~additional_points:peers transport_layer ;
-  connect_gossipsub_with_p2p gs_worker transport_layer store ;
-
   let _ = RPC_server.install_finalizer rpc_server in
   let*! () = Event.(emit rpc_server_is_ready (rpc_addr, rpc_port)) in
   (* Start daemon to resolve current protocol plugin *)

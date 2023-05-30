@@ -26,10 +26,15 @@
 (** This module provides different handlers related to DAL profiles. *)
 
 (** Adds a profile to the dal [node_store]. If already present,
-    the store does not change. *)
+    the store does not change.
+
+    If the given profile is an [Attestor pkh], the given Gossipsub worker joins
+    all topics of [pkh].
+*)
 val add_profile :
   Dal_plugin.proto_parameters ->
   Store.node_store ->
+  Gossipsub.Worker.t ->
   Services.Types.profile ->
   unit tzresult Lwt.t
 

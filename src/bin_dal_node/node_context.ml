@@ -30,6 +30,8 @@ type ready_ctxt = {
   proto_parameters : Dal_plugin.proto_parameters;
   plugin : (module Dal_plugin.T);
   shards_proofs_precomputation : Cryptobox.shards_proofs_precomputation;
+  gs_worker : Gossipsub.Worker.t;
+  transport_layer : Gossipsub.Transport_layer.t;
 }
 
 type status = Ready of ready_ctxt | Starting
@@ -41,11 +43,9 @@ type t = {
   tezos_node_cctxt : Client_context.full;
   neighbors_cctxts : Dal_node_client.cctxt list;
   committee_cache : Committee_cache.t;
-  gs_worker : Gossipsub.Worker.t;
-  transport_layer : Gossipsub.Transport_layer.t;
 }
 
-let init config store gs_worker transport_layer cctxt =
+let init config store cctxt =
   let neighbors_cctxts =
     List.map
       (fun Configuration.{addr; port} ->
@@ -63,11 +63,9 @@ let init config store gs_worker transport_layer cctxt =
     neighbors_cctxts;
     committee_cache =
       Committee_cache.create ~max_size:Constants.committee_cache_size;
-    gs_worker;
-    transport_layer;
   }
 
-let set_ready ctxt plugin cryptobox proto_parameters =
+let set_ready ctxt plugin cryptobox proto_parameters gs_worker transport_layer =
   match ctxt.status with
   | Starting ->
       let shards_proofs_precomputation =
@@ -75,7 +73,14 @@ let set_ready ctxt plugin cryptobox proto_parameters =
       in
       ctxt.status <-
         Ready
-          {plugin; cryptobox; proto_parameters; shards_proofs_precomputation}
+          {
+            plugin;
+            cryptobox;
+            proto_parameters;
+            shards_proofs_precomputation;
+            gs_worker;
+            transport_layer;
+          }
   | Ready _ -> raise Status_already_ready
 
 type error += Node_not_ready

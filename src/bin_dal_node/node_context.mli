@@ -35,6 +35,8 @@ type ready_ctxt = {
   proto_parameters : Dal_plugin.proto_parameters;
   plugin : (module Dal_plugin.T);
   shards_proofs_precomputation : Cryptobox.shards_proofs_precomputation;
+  gs_worker : Gossipsub.Worker.t;
+  transport_layer : Gossipsub.Transport_layer.t;
 }
 
 (** The status of the dal node *)
@@ -48,13 +50,7 @@ type t
     status set to [Starting] using the given dal node configuration [config],
     node store [store], gossipsub worker instance [gs_worker], transport layer
     instance [transport_layer], and tezos node client context [cctx]. *)
-val init :
-  Configuration.t ->
-  Store.node_store ->
-  Gossipsub.Worker.t ->
-  Gossipsub.Transport_layer.t ->
-  Client_context.full ->
-  t
+val init : Configuration.t -> Store.node_store -> Client_context.full -> t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready
@@ -69,6 +65,8 @@ val set_ready :
   (module Tezos_dal_node_lib.Dal_plugin.T) ->
   Cryptobox.t ->
   Dal_plugin.proto_parameters ->
+  Gossipsub.Worker.t ->
+  Gossipsub.Transport_layer.t ->
   unit
 
 type error += Node_not_ready
