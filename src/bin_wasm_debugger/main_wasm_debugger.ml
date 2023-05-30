@@ -76,7 +76,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
   (* Starting point of the module after reading the kernel file: parsing,
      typechecking and linking for safety before feeding kernel to the PVM, then
      installation into a tree for the PVM interpreter. *)
-  let handle_module version binary name module_ =
+  let handle_module ?protocol_version version binary name module_ =
     let open Lwt_result_syntax in
     let open Tezos_protocol_alpha.Protocol.Alpha_context.Sc_rollup in
     let* ast, functions =
@@ -91,6 +91,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     let* _ = link ast in
     let*! tree =
       Wasm.initial_tree
+        ?protocol_version
         ~version
         ~ticks_per_snapshot:(Z.to_int64 Wasm_2_0_0PVM.ticks_per_snapshot)
         ~outbox_validity_period:Wasm_2_0_0PVM.outbox_validity_period
@@ -101,11 +102,11 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     let*! tree = Wasm.eval_until_input_requested tree in
     return (tree, Commands.{functions})
 
-  let start version binary file =
+  let start ?protocol_version version binary file =
     let open Lwt_result_syntax in
     let module_name = Filename.(file |> basename |> chop_extension) in
     let*! buffer = Repl_helpers.read_file file in
-    handle_module version binary module_name buffer
+    handle_module ?protocol_version version binary module_name buffer
 
   (* REPL main loop: reads an input, does something out of it, then loops. *)
   let repl tree inboxes level config extra =
@@ -198,14 +199,59 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       ~placeholder:"preimage-dir"
       dir_parameter
 
+  let protocol_version_parameter =
+    let open Lwt_result_syntax in
+    Tezos_clic.(
+      parameter (fun _ protocol_version ->
+          if
+            List.mem
+              ~equal:String.equal
+              protocol_version
+              Tezos_scoru_wasm.Constants.known_protocol_name
+          then ()
+          else
+            Format.printf
+              "Unknown protocol version : `%s`. The command will use it, but \
+               some functionality might be wrongfully activated or not \
+               activated."
+              protocol_version ;
+          return protocol_version))
+
+  let protocol_version_arg =
+    Tezos_clic.arg
+      ~doc:
+        (Format.sprintf
+           "Protocol version to use. If not specified it defaults to `%s`"
+           Tezos_scoru_wasm.Constants.proto_alpha_name)
+      ~long:"protocol_version"
+      ~placeholder:"protocol-version"
+      protocol_version_parameter
+
   let main_command =
     let open Tezos_clic in
     let open Lwt_result_syntax in
     command
       ~desc:"Start the eval loop"
-      (args3 input_arg rollup_arg preimage_directory_arg)
+      (args4 input_arg rollup_arg preimage_directory_arg protocol_version_arg)
       (wasm_param @@ stop)
-      (fun (inputs, rollup_arg, preimage_directory) wasm_file version ->
+      (fun
+        (inputs, rollup_arg, preimage_directory, protocol_version)
+        wasm_file
+        version
+      ->
+        let protocol_version =
+          match protocol_version with
+          | Some protocol_version
+            when protocol_version = Tezos_scoru_wasm.Constants.mumbai_name
+                 && protocol_version = Tezos_scoru_wasm.Constants.nairobi_name
+            ->
+              None
+              (* Protocol_version in the durable storage is used only
+                 after 018. *)
+          | Some protocol_version -> Some protocol_version
+          | None -> Some Tezos_scoru_wasm.Constants.proto_alpha_name
+        in
+
         let version =
           Option.value
             ~default:
@@ -221,7 +267,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
           else if Filename.check_suffix wasm_file ".wast" then Ok false
           else error_with "Kernels should have .wasm or .wast file extension"
         in
-        let* tree, extra = start version binary wasm_file in
+        let* tree, extra = start ?protocol_version version binary wasm_file in
         let* inboxes =
           match inputs with
           | Some inputs -> Messages.parse_inboxes inputs config
