@@ -56,12 +56,7 @@ module type AUTOMATON_SUBCONFIG = sig
     val get_topic : t -> Topic.t
   end
 
-  module Message : sig
-    include PRINTABLE
-
-    (** [valid] performs an application layer-level validity check on a message. *)
-    val valid : t -> Message_id.t -> [`Valid | `Unknown | `Invalid]
-  end
+  module Message : PRINTABLE
 end
 
 module type SPAN = sig
