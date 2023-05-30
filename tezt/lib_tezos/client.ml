@@ -27,13 +27,17 @@
 open Runnable.Syntax
 open Cli_arg
 
-type endpoint = Node of Node.t | Proxy_server of Proxy_server.t
+type endpoint =
+  | Node of Node.t
+  | Proxy_server of Proxy_server.t
+  | Foreign_endpoint of Foreign_endpoint.t
 
 type media_type = Json | Binary | Any
 
 let rpc_port = function
   | Node n -> Node.rpc_port n
   | Proxy_server ps -> Proxy_server.rpc_port ps
+  | Foreign_endpoint fe -> Foreign_endpoint.rpc_port fe
 
 type mode =
   | Client of endpoint option * media_type option
@@ -90,6 +94,12 @@ let runner endpoint =
   match endpoint with
   | Node node -> Node.runner node
   | Proxy_server ps -> Proxy_server.runner ps
+  | Foreign_endpoint {host; _} -> Some (Runner.create ~address:host ())
+
+let scheme = function
+  | Node n -> Node.rpc_scheme n
+  | Proxy_server _ -> "http"
+  | Foreign_endpoint fe -> Foreign_endpoint.rpc_scheme fe
 
 let address ?(hostname = false) ?from peer =
   match from with
@@ -144,7 +154,10 @@ let endpoint_arg ?(endpoint : endpoint option) client =
   match either endpoint (mode_to_endpoint client.mode) with
   | None -> []
   | Some e ->
-      ["--endpoint"; sf "http://%s:%d" (address ~hostname:true e) (rpc_port e)]
+      [
+        "--endpoint";
+        sf "%s://%s:%d" (scheme e) (address ~hostname:true e) (rpc_port e);
+      ]
 
 let media_type_arg client =
   match client with
@@ -659,7 +672,9 @@ let activate_protocol ?endpoint ?block ?protocol ?protocol_hash ?fitness ?key
     client
   |> Process.check
 
-let node_of_endpoint = function Node n -> Some n | Proxy_server _ -> None
+let node_of_endpoint = function
+  | Node n -> Some n
+  | Proxy_server _ | Foreign_endpoint _ -> None
 
 let node_of_client_mode = function
   | Client (Some endpoint, _) -> node_of_endpoint endpoint
