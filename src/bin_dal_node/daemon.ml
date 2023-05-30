@@ -188,6 +188,7 @@ module Handler = struct
             Node_context.get_config ctxt
           in
           (* Create and start a GS worker *)
+          let message_filter = gossipsub_app_messages_validation cryptobox in
           let gs_worker =
             let rng =
               let seed =
@@ -202,7 +203,7 @@ module Handler = struct
                 ~events_logging:Logging.event
                 rng
                 limits
-                (filter_parameters ())
+                (filter_parameters ~message_filter ())
               |> start [])
           in
           (* Create a transport (P2P) layer instance. *)
@@ -230,8 +231,6 @@ module Handler = struct
 
              The hook below should be called each time cryptobox parameters
              change. *)
-          Gossipsub.Worker.Validate_message_hook.set
-            (gossipsub_app_messages_validation cryptobox) ;
           let*! () = Event.(emit node_is_ready ()) in
           stopper () ;
           return_unit
