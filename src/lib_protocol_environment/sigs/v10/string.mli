@@ -240,3 +240,8 @@ val split_on_char: char -> string -> string list
 
     @since 4.04.0
 *)
+
+(** [chunk_bytes_loose n b] chunks the sequence of bytes [b] into a
+    list of strings, each of length [n], the last chunk may be a
+    non-empty string of length less than [n]. *)
+val chunk_bytes_loose : int -> bytes -> string list

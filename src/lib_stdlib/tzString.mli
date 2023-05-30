@@ -44,6 +44,11 @@ val split : char -> ?limit:int -> string -> string list
     [split_no_empty ',' ",hello,,world,"] returns ["hello"; "world"] *)
 val split_no_empty : char -> ?limit:int -> string -> string list
 
+(** [chunk_bytes_loose n b] chunks the sequence of bytes [b] into a
+    list of strings, each of length [n], the last chunk may be a
+    non-empty string of length less than [n]. *)
+val chunk_bytes_loose : int -> bytes -> string list
+
 (** [chunk_bytes n b] chunks the sequence of bytes [b] into a list of strings,
     each of length [n]. The last chunk may be a non-empty string of length less
     than [n], in which case the behaviour of the function depends on whether
@@ -51,8 +56,7 @@ val split_no_empty : char -> ?limit:int -> string -> string list
       {ul
         {li If [error_on_partial_chunk] is set, then the function returns
         [Error error_on_partial_chunk],}
-        {li Otherwise, the function return the list of chunks, where the
-        last chunk is a non-empty string of length less than [n].}
+        {li Otherwise, calls {!chunk_bytes_loose}}
       }
 
     @raise Invalid_argument if [n <= 0]. *)

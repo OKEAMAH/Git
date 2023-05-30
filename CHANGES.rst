@@ -106,6 +106,8 @@ Protocol Compiler And Environment
   - Exposed a limited API to manipulate an Irmin binary tree within the
     protocol.
 
+  - Extend the module ``String`` with ``chunk_bytes_loose``.
+
 Codec
 -----
 

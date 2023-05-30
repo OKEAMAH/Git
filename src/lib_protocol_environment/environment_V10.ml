@@ -224,7 +224,14 @@ struct
   module Char = Char
   module Bytes = Tezos_base.TzPervasives.Bytes
   module Hex = Tezos_stdlib.Hex
-  module String = String
+
+  module String = struct
+    include String
+
+    let chunk_bytes_loose = TzString.chunk_bytes_loose
+  end
+
+  module TzString = TzString
   module Bits = Bits
   module TzEndian = TzEndian
   module Set = Tezos_error_monad.TzLwtreslib.Set
