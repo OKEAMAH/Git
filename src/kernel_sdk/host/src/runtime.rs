@@ -449,7 +449,7 @@ where
         while offset < length {
             let limit = usize::min(offset + MAX_FILE_CHUNK_SIZE, length);
             Runtime::store_write(self, path, &value[offset..limit], offset)?;
-            offset += limit;
+            offset = limit;
         }
         Ok(())
     }

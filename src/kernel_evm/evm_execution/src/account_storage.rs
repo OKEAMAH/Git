@@ -12,6 +12,7 @@ use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
 use tezos_smart_rollup_storage::storage::Storage;
 use thiserror::Error;
+use debug::debug_msg;
 
 /// The size of one 256 bit word. Size in bytes
 pub const WORD_SIZE: usize = 32_usize;
@@ -430,6 +431,8 @@ impl EthereumAccount {
         if store_has_program.is_some() {
             host.store_delete(&code_path)?;
         }
+
+        debug_msg!(host, "Writing {} bytes of contract code", code.len());
 
         host.store_write_all(&code_path, code)
             .map_err(AccountStorageError::from)
@@ -934,6 +937,54 @@ mod test {
         );
         assert_eq!(
             a1.code_hash(&host)
+                .expect("Could not get code hash for account"),
+            sample_code_hash
+        );
+    }
+
+    #[test]
+    fn test_account_code_large_size() {
+        let mut host = MockHost::default();
+        let mut storage =
+            init_account_storage().expect("Could not create EVM accounts storage API");
+
+        let path = RefPath::assert_from(b"/asdf");
+        let sample_code: Vec<u8> = [11_u8; 10000_usize].to_vec();
+        let sample_code_hash: H256 = bytes_hash(&sample_code);
+
+        storage
+            .begin_transaction(&mut host)
+            .expect("Could not begin transaction");
+
+        let mut account = storage
+            .create_new(&mut host, &path)
+            .expect("Could not create new account")
+            .expect("Account already exists in storage");
+
+        account.set_code(&mut host, &sample_code);
+
+        storage
+            .commit_transaction(&mut host)
+            .expect("Could not commit transaction");
+
+        let account = storage
+            .get(&host, &path)
+            .expect("Could not get account")
+            .expect("Account does not exist");
+
+        assert_eq!(
+            account.code_size(&host)
+                .expect("Could not get code size for account"),
+            sample_code.len().into()
+        );
+
+        assert_eq!(
+            account.code(&host).expect("Could not get code for account"),
+            sample_code
+        );
+
+        assert_eq!(
+            account.code_hash(&host)
                 .expect("Could not get code hash for account"),
             sample_code_hash
         );
