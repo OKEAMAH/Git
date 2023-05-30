@@ -76,3 +76,5 @@ let mumbai_name = "mumbai_016"
 let nairobi_name = "nairobi_017"
 
 let proto_alpha_name = "alpha_current"
+
+let known_protocol_name = [mumbai_name; nairobi_name; proto_alpha_name]
