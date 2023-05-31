@@ -128,17 +128,21 @@ module type MOD_ARITH = functor (L : LIB) -> sig
 
   (* val assert_equal : mod_int repr -> mod_int repr -> unit repr t *)
 
-  (* val equal : mod_int repr -> mod_int repr -> bool repr t *)
+  val equal : mod_int repr -> mod_int repr -> bool repr t
 
   val add : mod_int repr -> mod_int repr -> mod_int repr t
 
   val sub : mod_int repr -> mod_int repr -> mod_int repr t
 
-  (* val mul : mod_int repr -> mod_int repr -> mod_int repr t *)
+  val mul : mod_int repr -> mod_int repr -> mod_int repr t
 
-  (* val div : mod_int repr -> mod_int repr -> mod_int repr t *)
+  val div : mod_int repr -> mod_int repr -> mod_int repr t
 
   val neg : mod_int repr -> mod_int repr t
+
+  val add_constant : mod_int repr -> Z.t -> mod_int repr t
+
+  val mul_constant : mod_int repr -> Z.t -> mod_int repr t
 
   (* val inv : mod_int repr -> mod_int repr t *)
 end
@@ -364,6 +368,16 @@ functor
         ~moduli:moduli_add
         ~qm_bound:(fst bounds_add)
         ~ts_bounds:(snd bounds_add)
+
+    let mul = failwith "TODO: provide implementation for mul"
+
+    let div = failwith "TODO: provide implementation for div"
+
+    let add_constant = failwith "TODO: provide implementation for add_constant"
+
+    let mul_constant = failwith "TODO: provide implementation for mul_constant"
+
+    let equal = failwith "TODO: provide implementation for equal"
 
     let neg xs =
       let* zs = zero in
