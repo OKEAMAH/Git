@@ -86,6 +86,16 @@ module Summed_durations : sig
 
   val total_nanoseconds : t -> int64
 
+  val mean_nanoseconds : t -> int64
+
+  val median_nanoseconds : t -> int64
+
+  val stddev_nanoseconds : t -> float
+
+  val percentile_90th_nanoseconds : t -> int64
+
+  val max_nanoseconds : t -> int64
+
   val count : t -> int
 
   val encode : t -> JSON.u
@@ -98,23 +108,58 @@ end = struct
      and [count] contains the number of runs.
      By storing integers we ensure commutativity and associativity (which would not
      be the case with floats). *)
-  type t = {total_time : int64; count : int}
+  type t = {total_time : int64; count : int; values : int64 list}
 
-  let zero = {total_time = 0L; count = 0}
+  let zero = {total_time = 0L; count = 0; values = []}
 
   let single_seconds time =
-    {total_time = Int64.of_float (time *. 1_000_000.); count = 1}
+    let value = Int64.of_float (time *. 1_000_000.) in
+    {total_time = value; count = 1; values = [value]}
 
   let ( + ) a b =
     {
       total_time = Int64.add a.total_time b.total_time;
       count = a.count + b.count;
+      values = List.append a.values b.values;
     }
 
-  let total_seconds {total_time; count = _} =
+  let total_seconds {total_time; count = _; values = _} =
     Int64.to_float total_time /. 1_000_000.
 
-  let total_nanoseconds {total_time; count = _} = total_time
+  let total_nanoseconds {total_time; count = _; values = _} = total_time
+
+  let mean_nanoseconds {total_time; count; values = _} =
+    Int64.(div total_time (of_int count))
+
+  let median_nanoseconds {total_time; count; values} =
+    let sorted = List.sort Int64.compare values |> Array.of_list in
+    if count > 0 then
+      if count mod 2 = 0 then
+        let i = count / 2 in
+        Int64.(div (add sorted.(i - 1) sorted.(i)) (of_int 2))
+      else sorted.(count / 2)
+    else invalid_arg "Summed_durations.median_nanoseconds: empty list"
+
+  let stddev_nanoseconds ({total_time; count; values} as t) =
+    let list_mean = mean_nanoseconds t in
+    let squared_diffs =
+      List.map
+        (fun x ->
+          let d = Int64.(sub x list_mean) in
+          Int64.mul d d)
+        values
+    in
+    let mean_squared_diffs =
+      Int64.(div (List.fold_left add Int64.zero squared_diffs) (of_int count))
+    in
+    sqrt (mean_squared_diffs |> Int64.to_float)
+
+  let percentile_90th_nanoseconds t =
+    let mean = mean_nanoseconds t in
+    let stddev = stddev_nanoseconds t in
+    Int64.(add mean (of_float (1.282 *. stddev)))
+
+  let max_nanoseconds t = List.fold_left Int64.max Int64.zero t.values
 
   let count {count; _} = count
 
@@ -130,9 +175,11 @@ end = struct
   let decode (json : JSON.t) =
     if JSON.is_null json then zero
     else
+      let total_time = JSON.(json |-> "total_time" |> as_int64) in
       {
-        total_time = JSON.(json |-> "total_time" |> as_int64);
+        total_time;
         count = JSON.(json |-> "count" |> as_int);
+        values = [total_time];
       }
 end
 
@@ -871,6 +918,10 @@ let knapsack (type a) bag_count (items : (int64 * a) list) :
   bags
 
 let split_tests_into_balanced_jobs job_count =
+  let min = Cli.get_int ~default:1 "job_selection_threshold" |> Int64.of_int in
+  let job_selection_weighting =
+    Cli.get_string ~default:"mean" "job_selection_weight"
+  in
   let test_time test =
     (* Give a default duration of 1 second as specified by --help.
        This allows to split jobs even with no time data (otherwise all jobs
@@ -880,7 +931,27 @@ let split_tests_into_balanced_jobs job_count =
         ( test.past_records_successful_runs |> total_nanoseconds,
           test.past_records_successful_runs |> count )
     in
-    if count = 0 || total = 0L then 1L else Int64.(div total (of_int count))
+    if count = 0 || total = 0L then min
+    else
+      max
+        min
+        (match job_selection_weighting with
+        | "mean" ->
+            Summed_durations.(
+              mean_nanoseconds test.past_records_successful_runs)
+        | "median" ->
+            Summed_durations.(
+              median_nanoseconds test.past_records_successful_runs)
+        | "90th" ->
+            Summed_durations.(
+              percentile_90th_nanoseconds test.past_records_successful_runs)
+        | "max" ->
+            Summed_durations.(max_nanoseconds test.past_records_successful_runs)
+        | _ ->
+            Printf.eprintf
+              "'job_selection_weight' must be one of 'mean', 'median', '90th' \
+               or 'max'.\n" ;
+            exit 1)
   in
   let tests = String_map.bindings !registered |> List.map snd in
   let weighted_tests = List.map (fun test -> (test_time test, test)) tests in
