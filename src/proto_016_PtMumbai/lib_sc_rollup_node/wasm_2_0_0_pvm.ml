@@ -126,7 +126,7 @@ end
 module type S = sig
   module Durable_state : Durable_state with type state = Context.tree
 
-  include Pvm.S
+  include Pvm_sig.S
 end
 
 module Impl : S = struct
