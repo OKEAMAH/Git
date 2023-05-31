@@ -867,7 +867,8 @@ let check_and_update_protocol_version ctxt =
          failwith "Internal error: previously initialized context."
        else if Compare.String.(s = "genesis") then
          get_proto_param ctxt >|=? fun (param, ctxt) -> (Genesis param, ctxt)
-       else if Compare.String.(s = "nairobi_017") then return (Nairobi_017, ctxt)
+       else if Compare.String.(s = Constants_repr.previous_version_value) then
+         return (Nairobi_017, ctxt)
        else Lwt.return @@ storage_error (Incompatible_protocol_version s))
   >>=? fun (previous_proto, ctxt) ->
   Context.add ctxt version_key (Bytes.of_string Constants_repr.version_value)
