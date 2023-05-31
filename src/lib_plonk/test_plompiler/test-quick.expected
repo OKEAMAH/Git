@@ -1103,13 +1103,13 @@ ECC.test_edwards_add_optimized:
 Constraints: 11
 
 Bytes.test_add:
-Constraints: 24
+Constraints: 18
 
 Bytes.test_add_optimized:
 Constraints: 8
 
 Bytes.test_add:
-Constraints: 24
+Constraints: 18
 
 Bytes.test_add_optimized:
 Constraints: 8
@@ -1685,16 +1685,16 @@ Blake.test_mixing_optimized:
 Constraints: 1998
 
 Blake.test_compression:
-Constraints: 87808
+Constraints: 87458
 
 Blake.test_compression_optimized:
-Constraints: 87264
+Constraints: 86946
 
 Blake.test_blake2s:
-Constraints: 174377
+Constraints: 173418
 
 Blake.test_blake2s_optimized:
-Constraints: 174089
+Constraints: 173162
 
 Poseidon.test_poseidon:
 Constraints: 273
@@ -1805,28 +1805,28 @@ SHA256.test_sum1_optimized:
 Constraints: 96
 
 SHA256.test_padding:
-Constraints: 1536
+Constraints: 1050
 
 SHA256.test_padding_optimized:
-Constraints: 536
+Constraints: 1022
 
 SHA256.test_initial_hash:
-Constraints: 320
+Constraints: 66
 
 SHA256.test_initial_hash_optimized:
-Constraints: 32
+Constraints: 62
 
 SHA256.test_digest:
-Constraints: 259416
+Constraints: 127506
 
 SHA256.test_digest_optimized:
-Constraints: 130136
+Constraints: 127250
 
 SHA256.test_digest:
-Constraints: 518064
+Constraints: 254898
 
 SHA256.test_digest_optimized:
-Constraints: 259344
+Constraints: 254226
 
 Anemoi.test_round.valid:
 Constraints: 20
@@ -2585,7 +2585,7 @@ Encoding.test_foo_optimized:
 Constraints: 6
 
 Encoding.test_assertion:
-Constraints: 4
+Constraints: 3
 
 Encoding.test_assertion_optimized:
 Constraints: 2
