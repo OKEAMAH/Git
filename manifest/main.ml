@@ -7381,6 +7381,7 @@ let octez_scoru_sequencer =
         Protocol.(octez_sc_rollup_layer2 alpha |> if_some |> open_);
         Protocol.(main alpha) |> open_;
         Protocol.(octez_sc_rollup_node alpha) |> if_some;
+        octez_workers |> open_;
         octez_rpc;
         octez_rpc_http;
         octez_rpc_http_server;

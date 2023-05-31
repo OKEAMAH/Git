@@ -38,12 +38,12 @@ module type Batcher_sig = sig
     _ Node_context.t ->
     unit tzresult Lwt.t
 
-  (** Create L2 batches of operations from the queue and pack them in an L1 batch
-    operation. The batch operation is queued in the injector for injection on
-    the Tezos node. *)
-  val batch : unit -> unit tzresult Lwt.t
+  (** Notify a new L2 head to the batcher worker.
 
-  (** Notify a new L2 head to the batcher worker. *)
+      Create L2 batches of operations from the queue and pack them in an L1 batch
+      operation. The batch operation is queued in the injector for injection on
+      the Tezos node.
+  *)
   val new_head : Layer1.head -> unit tzresult Lwt.t
 
   (** Shutdown the batcher, waiting for the ongoing request to be processed. *)
