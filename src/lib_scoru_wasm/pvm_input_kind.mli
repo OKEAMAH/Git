@@ -47,6 +47,8 @@ type t = Internal of internal_message_kind | External | Other
     returns its kind. *)
 val from_raw_input : string -> t
 
+val string_from_protocol : protocol -> string
+
 module Internal_for_tests : sig
   (** [to_binary_input kind input] returns the serialized representation of an
       [input] according to its [kind]. Internal message payloads and external
