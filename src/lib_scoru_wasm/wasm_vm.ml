@@ -687,6 +687,17 @@ let set_input_step input_info message pvm_state =
                    Wasm_pvm_state.version_encoding
                    (version_for_protocol proto))
             in
+            let* durable =
+              match proto with
+              (* TODO: Should Mumbai to Nairobi update this storage?  *)
+              | Nairobi -> Lwt.return durable
+              | _ ->
+                  Durable.set_value_exn
+                    ~edit_readonly:true
+                    durable
+                    Constants.protocol_version_key
+                    (Pvm_input_kind.string_from_protocol proto)
+            in
             return ~durable Collect
         | Internal Start_of_level ->
             update_output_buffer pvm_state raw_level ;

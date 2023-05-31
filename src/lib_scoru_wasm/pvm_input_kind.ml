@@ -85,12 +85,13 @@ let from_raw_input payload =
     | '\001' -> External
     | _ -> Other
 
+let string_from_protocol = function
+  | Nairobi -> Constants.nairobi_name
+  | Proto_alpha -> Constants.proto_alpha_name
+
 module Internal_for_tests = struct
-  let proto_to_binary = function
-    | Nairobi ->
-        Data_encoding.(Binary.to_string_exn string Constants.nairobi_name)
-    | Proto_alpha ->
-        Data_encoding.(Binary.to_string_exn string Constants.proto_alpha_name)
+  let proto_to_binary proto =
+    Data_encoding.(Binary.to_string_exn string (string_from_protocol proto))
 
   let to_binary_input input message =
     match (input, message) with
