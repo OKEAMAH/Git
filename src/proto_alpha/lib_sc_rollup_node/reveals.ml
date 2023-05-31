@@ -147,3 +147,47 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
     |> return
   in
   return contents
+
+let get_proof ?dac_client ~data_dir ~pvm_kind hash =
+  let open Lwt_result_syntax in
+  match hash with
+  | Reveal_hash.Merkle_root_Blake2B {index; _} -> (
+      let* contents =
+        let filename = path data_dir (Sc_rollup.Kind.to_string pvm_kind) hash in
+        let*! file_contents =
+          Lwt.catch
+            (fun () ->
+              let*! contents = Lwt_utils_unix.read_file filename in
+              return_some contents)
+            (fun _ -> return_none)
+        in
+        match file_contents with
+        | Ok (Some contents) -> return contents
+        | Ok None -> (
+            match dac_client with
+            | None -> tzfail (Could_not_open_preimage_file filename)
+            | Some dac_client ->
+                Dac_observer_client.fetch_preimage dac_client hash)
+        | Error e -> Lwt.return @@ Lwt_utils_unix.tzfail_of_io_error e
+      in
+      let* (_encoded : bytes) =
+        (* Check that the reveal input can be encoded within the bounds enforced by
+           the protocol. *)
+        trace Could_not_encode_raw_data
+        @@ protect
+        @@ fun () ->
+        Data_encoding.Binary.to_bytes_exn
+          Sc_rollup.input_encoding
+          (Reveal (Raw_data contents))
+        |> return
+      in
+      let*? strings =
+        Tezos_stdlib.TzString.chunk_bytes 4096 (Bytes.of_string contents)
+      in
+      let tree =
+        Reveal_hash.Merkelized_bytes.of_list (List.map Bytes.of_string strings)
+      in
+      match Reveal_hash.Merkelized_bytes.compute_path tree index with
+      | Ok path -> return_some (path, String.sub contents (index * 4096) 4096)
+      | Error _ -> return_none)
+  | _ -> return_none

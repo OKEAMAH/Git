@@ -182,9 +182,11 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val reveal :
+  val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
+
+  val get_proof :
     Sc_rollup_reveal_hash.t ->
-    string option Lwt.t
+    (Sc_rollup_reveal_hash.Merkelized_bytes.path * string) option Lwt.t
 
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof

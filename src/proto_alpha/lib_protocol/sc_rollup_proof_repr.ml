@@ -430,9 +430,11 @@ module type PVM_with_context_and_state = sig
 
   val proof_encoding : proof Data_encoding.t
 
-  val reveal :
+  val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
+
+  val get_proof :
     Sc_rollup_reveal_hash.t ->
-    string option Lwt.t
+    (Sc_rollup_reveal_hash.Merkelized_bytes.path * string) option Lwt.t
 
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof
@@ -508,13 +510,21 @@ let produce ~metadata pvm_and_state commit_inbox_level =
             }
         in
         return (Some inbox_proof, input)
-    | Needs_reveal (Reveal_raw_data h) -> (
+    | Needs_reveal (Reveal_raw_data (Blake2B _ as h)) -> (
         let*! res = reveal h in
         match res with
         | None -> proof_error "No reveal"
         | Some data ->
             return
               ( Some (Reveal_proof (Raw_data_proof data)),
+                Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
+    | Needs_reveal (Reveal_raw_data (Merkle_root_Blake2B _ as h)) -> (
+        let*! res = get_proof h in
+        match res with
+        | None -> proof_error "No proof"
+        | Some (proof, data) ->
+            return
+              ( Some (Reveal_proof (Partial_raw_data_proof {data; proof})),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
     | Needs_reveal Reveal_metadata ->
         return

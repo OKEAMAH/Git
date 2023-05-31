@@ -2600,6 +2600,48 @@ let test_refute_invalid_partial_reveal_index () =
   in
   test_refute_set_input p1_info p2_info make_state_before
 
+let test_refute_invalid_partial_reveal () =
+  let open Lwt_result_wrap_syntax in
+  let data =
+    String.make (10 * Constants_repr.sc_rollup_message_size_limit) 'f'
+  in
+  let*?@ strings =
+    String.chunk_bytes
+      Constants_repr.sc_rollup_message_size_limit
+      (Bytes.of_string data)
+  in
+  let bytes = List.map Bytes.of_string strings in
+  let merkelized_data = Sc_rollup_reveal_hash.Merkelized_bytes.of_list bytes in
+  let merkelized_data_hash =
+    Sc_rollup_reveal_hash.Merkelized_bytes.root merkelized_data
+  in
+  let partial_reveal =
+    Sc_rollup_reveal_hash.(
+      reveal_hash_merkle ~index:0 ~merkle_root:merkelized_data_hash |> to_hex)
+  in
+  let p1_info _rollup _genesis_info =
+    Sc_rollup.(
+      Needs_reveal
+        (Reveal_raw_data
+           (Merkle_root_Blake2B {root = merkelized_data_hash; index = 0})))
+  in
+  let p2_info _rollup _genesis_info =
+    Sc_rollup.(
+      Needs_reveal
+        (Reveal_raw_data
+           (Merkle_root_Blake2B
+              {root = Sc_rollup_reveal_hash.Blake2B.zero; index = 0})))
+  in
+  let make_state_before rollup
+      (genesis_info : Sc_rollup.Commitment.genesis_info) =
+    let metadata =
+      Sc_rollup.Metadata.
+        {address = rollup; origination_level = genesis_info.level}
+    in
+    arith_state_before_reveal metadata partial_reveal
+  in
+  test_refute_set_input p1_info p2_info make_state_before
+
 let full_history_inbox (genesis_predecessor_timestamp, genesis_predecessor)
     all_external_messages =
   let open Sc_rollup_helpers in

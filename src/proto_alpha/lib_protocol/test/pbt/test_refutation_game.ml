@@ -1312,6 +1312,8 @@ let build_proof ~player_client start_tick (game : Game.t) =
 
     let reveal _ = assert false
 
+    let get_proof _ = assert false
+
     module Inbox_with_history = struct
       let inbox = history_proof
 

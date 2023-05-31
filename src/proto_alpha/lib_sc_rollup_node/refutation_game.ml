@@ -238,6 +238,17 @@ module Make (Interpreter : Interpreter.S) :
         in
         match res with Ok data -> return @@ Some data | Error _ -> return None
 
+      let get_proof hash =
+        let open Lwt_syntax in
+        let* res =
+          Reveals.get_proof
+            ?dac_client:node_ctxt.dac_client
+            ~data_dir:node_ctxt.data_dir
+            ~pvm_kind:PVM.kind
+            hash
+        in
+        match res with Ok data -> return data | Error _ -> return None
+
       module Inbox_with_history = struct
         let inbox = snapshot
 
