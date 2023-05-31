@@ -24,6 +24,12 @@ Smart Rollups
 - Remove the origination proof from the smart rollups’ origination operation.
   (MR :gl:`!8817`)
 
+- Add two new internal messages: ``New_chunked_transfer`` and ``Transfer_chunk``.
+  When an internal transfer contains a payload that exceeds the maximum
+  size allowed per message, the payload is chunked and sent into multiple
+  consecutives ``Transfer_chunk`` preceeded by a ``New_chunked_transfer``.
+  (MR :gl:`!8905`)
+
 Zero Knowledge Rollups (ongoing)
 --------------------------------
 
