@@ -640,12 +640,9 @@ let run node_ctxt configuration
         {
           cctxt = (node_ctxt.cctxt :> Client_context.full);
           fee_parameters = configuration.fee_parameters;
-          minimal_block_delay =
-            node_ctxt.protocol_constants.Constants.parametric
-              .minimal_block_delay |> Period.to_seconds;
+          minimal_block_delay = node_ctxt.protocol_constants.minimal_block_delay;
           delay_increment_per_round =
-            node_ctxt.protocol_constants.Constants.parametric
-              .delay_increment_per_round |> Period.to_seconds;
+            node_ctxt.protocol_constants.delay_increment_per_round;
         }
         ~data_dir:node_ctxt.data_dir
         ~signers
@@ -765,6 +762,36 @@ module Internal_for_tests = struct
     return l2_block
 end
 
+let constants_of_parametric
+    Constants.Parametric.
+      {
+        minimal_block_delay;
+        delay_increment_per_round;
+        sc_rollup = {challenge_window_in_blocks; commitment_period_in_blocks; _};
+        dal = {feature_enable; attestation_lag; number_of_slots; _};
+        _;
+      } =
+  Node_context.
+    {
+      minimal_block_delay = Period.to_seconds minimal_block_delay;
+      delay_increment_per_round = Period.to_seconds delay_increment_per_round;
+      sc_rollup = {challenge_window_in_blocks; commitment_period_in_blocks};
+      dal = {feature_enable; attestation_lag; number_of_slots};
+    }
+
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/2901
+   The constants are retrieved from the latest tezos block. These constants can
+   be different from the ones used at the creation at the rollup because of a
+   protocol amendment that modifies some of them. This need to be fixed when the
+   rollup nodes will be able to handle the migration of protocol.
+*)
+let retrieve_constants cctxt =
+  let open Lwt_result_syntax in
+  let+ {parametric; _} =
+    Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
+  in
+  constants_of_parametric parametric
+
 module Rollup_node_daemon_components : Daemon_components.S = struct
   module Batcher = Batcher
   module RPC_server = RPC_server
@@ -801,6 +828,7 @@ let run
     Layer1.fetch_tezos_shell_header l1_ctxt head.header.predecessor
   in
   let*! () = Event.received_first_block head.hash Protocol.hash in
+  let* constants = retrieve_constants cctxt in
   let* node_ctxt =
     Node_context.init
       cctxt
@@ -808,6 +836,7 @@ let run
       ?log_kernel_debug_file
       Read_write
       l1_ctxt
+      constants
       ~proto_level:predecessor.proto_level
       configuration
   in

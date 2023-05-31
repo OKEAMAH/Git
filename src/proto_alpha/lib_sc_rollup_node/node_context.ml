@@ -29,6 +29,24 @@ open Alpha_context
 
 type lcc = {commitment : Sc_rollup.Commitment.Hash.t; level : Raw_level.t}
 
+type dal_constants = {
+  feature_enable : bool;
+  attestation_lag : int;
+  number_of_slots : int;
+}
+
+type sc_rollup_constants = {
+  challenge_window_in_blocks : int;
+  commitment_period_in_blocks : int;
+}
+
+type protocol_constants = {
+  minimal_block_delay : int64;
+  delay_increment_per_round : int64;
+  sc_rollup : sc_rollup_constants;
+  dal : dal_constants;
+}
+
 type 'a store = 'a Store.t
 
 type debug_logger = string -> unit Lwt.t
@@ -49,7 +67,7 @@ type 'a t = {
   kind : Sc_rollup.Kind.t;
   pvm : (module Pvm.S);
   fee_parameters : Configuration.fee_parameters;
-  protocol_constants : Constants.t;
+  protocol_constants : protocol_constants;
   proto_level : int;
   loser_mode : Loser_mode.t;
   lockfile : Lwt_unix.file_descr;
@@ -80,15 +98,6 @@ let is_loser {loser_mode; _} = loser_mode <> Loser_mode.no_failures
 let get_fee_parameter node_ctxt purpose =
   Configuration.Operator_purpose_map.find purpose node_ctxt.fee_parameters
   |> Option.value ~default:(Configuration.default_fee_parameter ~purpose ())
-
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/2901
-   The constants are retrieved from the latest tezos block. These constants can
-   be different from the ones used at the creation at the rollup because of a
-   protocol amendment that modifies some of them. This need to be fixed when the
-   rollup nodes will be able to handle the migration of protocol.
-*)
-let retrieve_constants cctxt =
-  Protocol.Constants_services.all cctxt (cctxt#chain, cctxt#block)
 
 let get_last_cemented_commitment (cctxt : Protocol_client_context.full)
     rollup_address =
@@ -269,7 +278,7 @@ let check_config config =
   ()
 
 let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
-    mode l1_ctxt ~proto_level
+    mode l1_ctxt protocol_constants ~proto_level
     Configuration.(
       {
         sc_rollup_address = rollup_address;
@@ -307,8 +316,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
     (* Convert to protocol rollup address *)
     Sc_rollup_proto_types.Address.of_octez rollup_address
   in
-  let* protocol_constants = retrieve_constants cctxt
-  and* lcc = get_last_cemented_commitment cctxt rollup_address
+  let* lcc = get_last_cemented_commitment cctxt rollup_address
   and* lpc =
     Option.filter_map_es
       (get_last_published_commitment cctxt rollup_address)
@@ -324,7 +332,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       ~kind:(Sc_rollup_proto_types.Kind.to_octez kind)
   in
   let*! () =
-    if dal_cctxt = None && protocol_constants.parametric.dal.feature_enable then
+    if dal_cctxt = None && protocol_constants.dal.feature_enable then
       Event.warn_dal_enabled_no_node ()
     else Lwt.return_unit
   in
@@ -423,8 +431,7 @@ let metadata node_ctxt =
   Sc_rollup.Metadata.{address; origination_level}
 
 let dal_supported node_ctxt =
-  node_ctxt.dal_cctxt <> None
-  && node_ctxt.protocol_constants.parametric.dal.feature_enable
+  node_ctxt.dal_cctxt <> None && node_ctxt.protocol_constants.dal.feature_enable
 
 let readonly (node_ctxt : _ t) =
   {
@@ -1203,18 +1210,9 @@ let save_confirmed_slots_histories {store; _} block hist =
     (Sc_rollup_proto_types.Dal.Slot_history_cache.to_octez hist)
 
 module Internal_for_tests = struct
-  let create_node_context cctxt
-      ?(constants = Default_parameters.constants_mainnet) ~data_dir kind =
+  let create_node_context cctxt protocol_constants ~data_dir kind =
     let open Lwt_result_syntax in
     let l2_blocks_cache_size = Configuration.default_l2_blocks_cache_size in
-    let protocol_constants =
-      constants
-      |> Data_encoding.Binary.to_bytes_exn Constants.Parametric.encoding
-      |> Data_encoding.Binary.of_bytes_exn Constants_parametric_repr.encoding
-      |> Constants_repr.all_of_parametric
-      |> Data_encoding.Binary.to_bytes_exn Constants_repr.encoding
-      |> Data_encoding.Binary.of_bytes_exn Constants.encoding
-    in
     let* lockfile = lock ~data_dir in
     let* store =
       Store.load
