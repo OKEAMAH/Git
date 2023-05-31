@@ -24,6 +24,8 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+val previous_version_value : string
+
 val version_value : string
 
 val version : string

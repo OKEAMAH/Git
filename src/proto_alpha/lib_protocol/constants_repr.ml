@@ -24,6 +24,9 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+let previous_version_value = "nairobi_017"
+
 let version_value = "alpha_current"
 
 let version = "v1"
