@@ -354,13 +354,37 @@ end = struct
         (SMap.singleton "q_table" [|Scalar.zero|])
         Custom_gates.gates_list
     in
+
+    (* let exception Constraint_not_satisfied of string in *)
+    (* try *)
+    (* We check in each gate, constraint by constraint, that all ids are satisfied *)
+    List.iteri
+      (fun i gate ->
+        Printf.printf
+          "\n\nGate %i: %s"
+          i
+          (Plompiler.Csir.CS.to_string_gate gate) ;
+        let b = sat_gate identities gate trace tables in
+        if b then ()
+        else
+          (* just to exit the iter *)
+          (* raise
+             (Constraint_not_satisfied
+                (Printf.sprintf "\nGate #%i not satisfied." i)) *)
+          ())
+      cs ;
+    (* with Constraint_not_satisfied _ -> false *)
+    Printf.printf "\n\n------------------------\n" ;
+
     let exception Constraint_not_satisfied of string in
     try
       (* We check in each gate, constraint by constraint, that all ids are satisfied *)
       List.iteri
         (fun i gate ->
-          (* Printf.printf "\n\nGate %i: %s" i
-                (Plompiler.Csir.CS.to_string_gate gate); *)
+          Printf.printf
+            "\n\nGate %i: %s"
+            i
+            (Plompiler.Csir.CS.to_string_gate gate) ;
           let b = sat_gate identities gate trace tables in
           if b then ()
           else
