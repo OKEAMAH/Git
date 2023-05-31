@@ -340,6 +340,11 @@ module Make_pvm (Wasm_vm : Wasm_vm_sig.S) (T : Tezos_tree_encoding.TREE) :
     let* pvm_state = decode tree in
     Wasm_vm.get_info pvm_state
 
+  let get_protocol_version tree =
+    let open Lwt_syntax in
+    let* pvm_state = decode tree in
+    Wasm_vm.get_protocol_version pvm_state
+
   let set_input_step input_info message tree =
     let open Lwt_syntax in
     let* pvm_state = decode tree in

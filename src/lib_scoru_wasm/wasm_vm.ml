@@ -744,6 +744,19 @@ let get_info ({current_tick; last_input_info; _} as pvm_state) =
   @@ Wasm_pvm_state.
        {current_tick; last_input_read = last_input_info; input_request}
 
+let get_protocol_version {durable; _} =
+  let open Lwt_syntax in
+  let* protocol_version =
+    Durable.find_value durable Constants.protocol_version_key
+  in
+  match protocol_version with
+  | Some protocol_version ->
+      let* protocol_version =
+        Tezos_lazy_containers.Chunked_byte_vector.to_string protocol_version
+      in
+      Lwt.return_some protocol_version
+  | None -> Lwt.return_none
+
 module Internal_for_tests = struct
   let compute_step_many_with_hooks ?reveal_builtins ?write_debug
       ?after_fast_exec:_ =

@@ -90,6 +90,10 @@ module type Generic = sig
       which the WASM PVM operates. *)
   val get_wasm_version : state -> version Lwt.t
 
+  (** [get_protocol_version pvm_state] returns the protocol version at
+      which the WASM PVM was originated. *)
+  val get_protocol_version : state -> string option Lwt.t
+
   module Internal_for_tests : Internal_for_tests with type state := state
 end
 
