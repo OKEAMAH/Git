@@ -210,6 +210,8 @@ module type COMMON = sig
 
   val with_label : label:string -> 'a t -> 'a t
 
+  val debug : string -> 'a repr -> unit t
+
   module Num :
     NUM
       with type scalar = scalar

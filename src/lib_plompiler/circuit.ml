@@ -262,6 +262,8 @@ let with_label ~label m s =
   let s'', a = m s' in
   ({s'' with labels = s.labels}, a)
 
+let debug _ _ = ret ()
+
 let add_solver : solver:Solver.solver_desc -> unit repr t =
  fun ~solver s -> ({s with solver = Solver.append_solver solver s.solver}, Unit)
 
