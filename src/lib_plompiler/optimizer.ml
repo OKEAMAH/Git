@@ -705,7 +705,7 @@ let inline_renamings ~nb_inputs ~range_checked gates =
         (partitions, false)
         renaming_pairs
     in
-    if changed then build_partitions () else partitions
+    if changed then build_partitions ~partitions () else partitions
   in
   let renaming_partitions = build_partitions () in
   (* Each wire will be renamed (if it is not an input wire) to the
