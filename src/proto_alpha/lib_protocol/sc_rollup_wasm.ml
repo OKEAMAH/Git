@@ -303,6 +303,17 @@ module V2_0_0 = struct
       let open Sc_rollup_PVM_sig in
       let* s = get in
       let* info = lift (WASM_machine.get_info s) in
+      let* protocol_version = lift (WASM_machine.get_protocol_version s) in
+      (* If no protocol_version in the wasm storage then we are in an
+         old version. this is a bit hackish but does the trick. the
+         env fonction could always return a string or in a future env
+         we could rework the fct to return a `string` and not an
+         `string option`. *)
+      let protocol_version =
+        Option.value
+          ~default:Constants_repr.previous_version_value
+          protocol_version
+      in
       return
       @@
       match info.input_request with
@@ -314,7 +325,15 @@ module V2_0_0 = struct
               Sc_rollup_reveal_hash.encoding
               hash
           with
-          | Some hash -> Waiting_for_reveal (Reveal_raw_data hash)
+          | Some (Sc_rollup_reveal_hash.Blake2B _ as hash) ->
+              Waiting_for_reveal (Reveal_raw_data hash)
+          | Some (Sc_rollup_reveal_hash.Merkle_root_Blake2B _ as hash) ->
+              if
+                String.equal
+                  protocol_version
+                  Constants_repr.previous_version_value
+              then Waiting_for_reveal (Reveal_raw_data well_known_reveal_hash)
+              else Waiting_for_reveal (Reveal_raw_data hash)
           | None ->
               (* In case of an invalid hash, the rollup is
                  blocked. Any commitment will be invalid. *)
