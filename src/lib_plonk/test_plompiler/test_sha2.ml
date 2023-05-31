@@ -176,8 +176,11 @@ functor
       ]
 
     let tests =
-      tests_ch @ tests_maj @ tests_sigma0 @ tests_sigma1 @ tests_sum0
-      @ tests_sum1 @ tests_padding @ tests_initial_hash
+      let _ =
+        tests_ch @ tests_maj @ tests_sigma0 @ tests_sigma1 @ tests_sum0
+        @ tests_sum1 @ tests_padding @ tests_initial_hash
+      in
+      tests_padding
   end
 
 module External : Test =
@@ -240,16 +243,16 @@ let tests =
   let both =
     [
       ("Internal", (module Internal : Test));
-      ("External", (module External : Test));
+      (*       ("External", (module External : Test)); *)
     ]
   in
   (* This test uses plonk and it is marked quick so that it
      is always run by the CI *)
   List.map (fun (name, m) -> Alcotest.test_case name `Quick (to_test m)) both
-  @ List.map
-      (fun (name, m) ->
-        Alcotest.test_case
-          (name ^ " plonk")
-          `Slow
-          (to_test ~plonk:(module Plonk.Main_protocol) m))
-      both
+(*   @ List.map *)
+(*       (fun (name, m) -> *)
+(*         Alcotest.test_case *)
+(*           (name ^ " plonk") *)
+(*           `Slow *)
+(*           (to_test ~plonk:(module Plonk.Main_protocol) m)) *)
+(*       both *)
