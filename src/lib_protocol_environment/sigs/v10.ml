@@ -12120,6 +12120,8 @@ module Make
   val get_output : output -> Tree.tree -> string option Lwt.t
 
   val get_info : Tree.tree -> info Lwt.t
+
+  val get_protocol_version : Tree.tree -> string option Lwt.t
 end
 end
 # 134 "v10.in.ml"
