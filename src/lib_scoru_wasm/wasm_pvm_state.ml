@@ -63,6 +63,7 @@ type output_info = {
 type reveal_hash = string
 
 type reveal = Tezos_webassembly_interpreter.Host_funcs.reveal =
+  | Partial_reveal_raw_data
   | Reveal_raw_data of reveal_hash
   | Reveal_metadata
 

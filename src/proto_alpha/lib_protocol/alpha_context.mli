@@ -2865,6 +2865,7 @@ module Sc_rollup : sig
   module Input_hash : S.HASH
 
   type reveal =
+    | Partial_reveal_raw_data
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
     | Reveal_metadata
     | Request_dal_page of Dal.Page.t

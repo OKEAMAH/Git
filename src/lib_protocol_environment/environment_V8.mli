@@ -116,10 +116,15 @@ module type T = sig
        and type Wasm_2_0_0.output = Tezos_scoru_wasm.Wasm_pvm_state.output_info
        and type Wasm_2_0_0.reveal_hash =
         Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
-       and type Wasm_2_0_0.reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal
+       and type Wasm_2_0_0.reveal =
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .reveal
        and type Wasm_2_0_0.input_request =
-        Tezos_scoru_wasm.Wasm_pvm_state.input_request
-       and type Wasm_2_0_0.info = Tezos_scoru_wasm.Wasm_pvm_state.info
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .input_request
+       and type Wasm_2_0_0.info =
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .info
 
   (** An [Ecoproto_error e] is a shell error that carry a protocol error.
 

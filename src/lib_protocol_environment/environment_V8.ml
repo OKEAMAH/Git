@@ -116,10 +116,15 @@ module type T = sig
        and type Wasm_2_0_0.output = Tezos_scoru_wasm.Wasm_pvm_state.output_info
        and type Wasm_2_0_0.reveal_hash =
         Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
-       and type Wasm_2_0_0.reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal
+       and type Wasm_2_0_0.reveal =
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .reveal
        and type Wasm_2_0_0.input_request =
-        Tezos_scoru_wasm.Wasm_pvm_state.input_request
-       and type Wasm_2_0_0.info = Tezos_scoru_wasm.Wasm_pvm_state.info
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .input_request
+       and type Wasm_2_0_0.info =
+        Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+        .info
 
   type error += Ecoproto_error of Error_monad.error
 
@@ -1113,18 +1118,26 @@ struct
       message_index : Z.t;
     }
 
-    type reveal_hash = Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
+    type reveal_hash =
+      Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+      .reveal_hash
 
-    type reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal =
+    type reveal =
+          Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+          .reveal =
       | Reveal_raw_data of reveal_hash
       | Reveal_metadata
 
-    type input_request = Tezos_scoru_wasm.Wasm_pvm_state.input_request =
+    type input_request =
+          Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+          .input_request =
       | No_input_required
       | Input_required
       | Reveal_required of reveal
 
-    type info = Tezos_scoru_wasm.Wasm_pvm_state.info = {
+    type info =
+          Tezos_protocol_environment_structs.V8.Tezos_scoru_wasm.Wasm_pvm_state
+          .info = {
       current_tick : Z.t;
       last_input_read : input option;
       input_request : input_request;
@@ -1146,6 +1159,21 @@ struct
       end)
 
       let initial_state = initial_state ~protocol_version:"mumbai_016" V0
+
+      let get_info tree =
+        let open Lwt_syntax in
+        let* {current_tick; last_input_read; input_request} = get_info tree in
+        let input_request =
+          match input_request with
+          | No_input_required -> No_input_required
+          | Input_required -> Input_required
+          | Reveal_required reveal -> (
+              match reveal with
+              | Partial_reveal_raw_data -> assert false
+              | Reveal_raw_data hash -> Reveal_required (Reveal_raw_data hash)
+              | Reveal_metadata -> Reveal_required Reveal_metadata)
+        in
+        return {current_tick; last_input_read; input_request}
     end
   end
 

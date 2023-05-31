@@ -122,6 +122,11 @@ module V8 = struct
   module Array = V7_array
   module Plonk = V8_plonk
   module Seq = V3_seq_monad
+
+  module Tezos_scoru_wasm = struct
+    include Tezos_scoru_wasm
+    module Wasm_pvm_state = V8_wasm_pvm
+  end
 end
 
 module V9 = struct
@@ -130,6 +135,11 @@ module V9 = struct
   module Array = V7_array
   module Plonk = V8_plonk
   module Seq = V9_seq_monad
+
+  module Tezos_scoru_wasm = struct
+    include Tezos_scoru_wasm
+    module Wasm_pvm_state = V8_wasm_pvm
+  end
 end
 
 module V10 = V9

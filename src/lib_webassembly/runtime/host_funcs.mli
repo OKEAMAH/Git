@@ -5,7 +5,10 @@ type available_memories =
 
 type reveal_destination = {base : int32; max_bytes : int32}
 
-type reveal = Reveal_raw_data of string | Reveal_metadata
+type reveal =
+  | Partial_reveal_raw_data
+  | Reveal_raw_data of string
+  | Reveal_metadata
 
 type ticks = Z.t
 
