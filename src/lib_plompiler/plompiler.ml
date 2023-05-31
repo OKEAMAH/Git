@@ -75,6 +75,8 @@ module Gadget = struct
   module JubjubWeierstrass =
     Gadget_weierstrass.MakeAffine (Mec.Curve.Jubjub.AffineWeierstrass)
   module Schnorr = Gadget_schnorr.Make (Mec.Curve.Jubjub.AffineEdwards)
+  module Ed25519 = Gadget_eddsa.Make (Mec.Curve.Curve25519.AffineEdwards)
+  module EdDSA_Jubjub = Gadget_eddsa.Make (Mec.Curve.Jubjub.AffineEdwards)
   module Blake2s = Gadget_blake2s.Blake2s
 end
 
