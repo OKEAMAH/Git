@@ -31,6 +31,7 @@ pub enum StorageInitialisationError {
     Base(TransactionalStorageError),
     EVMBlockInit(TransactionalStorageError),
     TxReceiptInit(TransactionalStorageError),
+    TxObjectInit(TransactionalStorageError),
 }
 
 #[derive(Debug)]

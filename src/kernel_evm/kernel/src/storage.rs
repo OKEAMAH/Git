@@ -13,7 +13,9 @@ use tezos_smart_rollup_storage::storage::Storage;
 
 use crate::error::StorageCommitmentStatus::{Begin, Commit, Rollback};
 use crate::error::StorageError::{StorageCommitment, StorageInitialisation};
-use crate::error::StorageInitialisationError::{Base, EVMBlockInit, TxReceiptInit};
+use crate::error::StorageInitialisationError::{
+    Base, EVMBlockInit, TxObjectInit, TxReceiptInit,
+};
 use crate::error::{Error, StorageError};
 use evm_execution::account_storage::store_write_all;
 use tezos_ethereum::block::L2Block;
@@ -50,8 +52,7 @@ const TRANSACTION_CUMULATIVE_GAS_USED: RefPath =
 const TRANSACTION_RECEIPT_TYPE: RefPath = RefPath::assert_from(b"/type");
 const TRANSACTION_RECEIPT_STATUS: RefPath = RefPath::assert_from(b"/status");
 
-const EVM_TRANSACTIONS_OBJECTS: RefPath =
-    RefPath::assert_from(b"/evm/transactions_objects");
+const TRANSACTIONS_OBJECTS: RefPath = RefPath::assert_from(b"/transactions_objects");
 const TRANSACTION_OBJECT_BLOCK_HASH: RefPath = RefPath::assert_from(b"/block_hash");
 const TRANSACTION_OBJECT_BLOCK_NUMBER: RefPath = RefPath::assert_from(b"/block_number");
 const TRANSACTION_OBJECT_FROM: RefPath = RefPath::assert_from(b"/from");
@@ -153,13 +154,6 @@ fn write_u256(
     let mut bytes: [u8; WORD_SIZE] = value.into();
     value.to_little_endian(&mut bytes);
     host.store_write(path, &bytes, 0).map_err(Error::from)
-}
-
-pub fn object_path(object_hash: &TransactionHash) -> Result<OwnedPath, Error> {
-    let hash = hex::encode(object_hash);
-    let raw_object_path: Vec<u8> = format!("/{}", &hash).into();
-    let object_path = OwnedPath::try_from(raw_object_path)?;
-    concat(&EVM_TRANSACTIONS_OBJECTS, &object_path).map_err(Error::from)
 }
 
 // WrappedStorage for SDK's storage to make all the transactional storage
@@ -498,6 +492,60 @@ impl EVM {
             concat(&self.path, &TRANSACTION_CUMULATIVE_GAS_USED)?;
         read_u256(host, &cumulative_gas_used_path)
     }
+
+    // ======================== TxObject ======================== //
+
+    pub fn store_tx_object<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block_hash: H256,
+        block_number: U256,
+        object: &TransactionObject,
+    ) -> Result<(), Error> {
+        // Block hash
+        let block_hash_path = concat(&self.path, &TRANSACTION_OBJECT_BLOCK_HASH)?;
+        host.store_write(&block_hash_path, block_hash.as_bytes(), 0)?;
+        // Block number
+        let block_number_path = concat(&self.path, &TRANSACTION_OBJECT_BLOCK_NUMBER)?;
+        write_u256(host, &block_number_path, block_number)?;
+        // From
+        let from_path = concat(&self.path, &TRANSACTION_OBJECT_FROM)?;
+        host.store_write(&from_path, object.from.as_bytes(), 0)?;
+        // Gas used
+        let gas_used_path = concat(&self.path, &TRANSACTION_OBJECT_GAS_USED)?;
+        write_u256(host, &gas_used_path, object.gas_used)?;
+        // Gas price
+        let gas_price_path = concat(&self.path, &TRANSACTION_OBJECT_GAS_PRICE)?;
+        write_u256(host, &gas_price_path, object.gas_price)?;
+        // Input
+        let input_path = concat(&self.path, &TRANSACTION_OBJECT_INPUT)?;
+        store_write_all(host, &input_path, &object.input)?;
+        // Nonce
+        let nonce_path = concat(&self.path, &TRANSACTION_OBJECT_NONCE)?;
+        write_u256(host, &nonce_path, object.nonce)?;
+        // To
+        if let Some(to) = object.to {
+            let to_path = concat(&self.path, &TRANSACTION_OBJECT_TO)?;
+            host.store_write(&to_path, to.as_bytes(), 0)?;
+        };
+        // Index
+        let index_path = concat(&self.path, &TRANSACTION_OBJECT_INDEX)?;
+        host.store_write(&index_path, &object.index.to_le_bytes(), 0)?;
+        // Value
+        let value_path = concat(&self.path, &TRANSACTION_OBJECT_VALUE)?;
+        write_u256(host, &value_path, object.value)?;
+        // V
+        let v_path = concat(&self.path, &TRANSACTION_OBJECT_V)?;
+        write_u256(host, &v_path, object.v)?;
+        // R
+        let r_path = concat(&self.path, &TRANSACTION_OBJECT_R)?;
+        host.store_write(&r_path, object.r.as_bytes(), 0)?;
+        // S
+        let s_path = concat(&self.path, &TRANSACTION_OBJECT_S)?;
+        host.store_write(&s_path, object.s.as_bytes(), 0)?;
+
+        Ok(())
+    }
 }
 
 pub struct EVMStorage {
@@ -577,70 +625,22 @@ impl EVMStorage {
             .get_or_create(host, &path)
             .map_err(|e| Error::Storage(StorageInitialisation(TxReceiptInit(e))))
     }
-}
 
-pub fn store_transaction_object<Host: Runtime>(
-    object_path: &OwnedPath,
-    host: &mut Host,
-    block_hash: H256,
-    block_number: U256,
-    object: &TransactionObject,
-) -> Result<(), Error> {
-    // Block hash
-    let block_hash_path = concat(object_path, &TRANSACTION_OBJECT_BLOCK_HASH)?;
-    host.store_write(&block_hash_path, block_hash.as_bytes(), 0)?;
-    // Block number
-    let block_number_path = concat(object_path, &TRANSACTION_OBJECT_BLOCK_NUMBER)?;
-    write_u256(host, &block_number_path, block_number)?;
-    // From
-    let from_path = concat(object_path, &TRANSACTION_OBJECT_FROM)?;
-    host.store_write(&from_path, object.from.as_bytes(), 0)?;
-    // Gas used
-    let gas_used_path = concat(object_path, &TRANSACTION_OBJECT_GAS_USED)?;
-    write_u256(host, &gas_used_path, object.gas_used)?;
-    // Gas price
-    let gas_price_path = concat(object_path, &TRANSACTION_OBJECT_GAS_PRICE)?;
-    write_u256(host, &gas_price_path, object.gas_price)?;
-    // Input
-    let input_path = concat(object_path, &TRANSACTION_OBJECT_INPUT)?;
-    store_write_all(host, &input_path, &object.input)?;
-    // Nonce
-    let nonce_path = concat(object_path, &TRANSACTION_OBJECT_NONCE)?;
-    write_u256(host, &nonce_path, object.nonce)?;
-    // To
-    if let Some(to) = object.to {
-        let to_path = concat(object_path, &TRANSACTION_OBJECT_TO)?;
-        host.store_write(&to_path, to.as_bytes(), 0)?;
-    };
-    // Index
-    let index_path = concat(object_path, &TRANSACTION_OBJECT_INDEX)?;
-    host.store_write(&index_path, &object.index.to_le_bytes(), 0)?;
-    // Value
-    let value_path = concat(object_path, &TRANSACTION_OBJECT_VALUE)?;
-    write_u256(host, &value_path, object.value)?;
-    // V
-    let v_path = concat(object_path, &TRANSACTION_OBJECT_V)?;
-    write_u256(host, &v_path, object.v)?;
-    // R
-    let r_path = concat(object_path, &TRANSACTION_OBJECT_R)?;
-    host.store_write(&r_path, object.r.as_bytes(), 0)?;
-    // S
-    let s_path = concat(object_path, &TRANSACTION_OBJECT_S)?;
-    host.store_write(&s_path, object.s.as_bytes(), 0)?;
+    pub fn tx_object(
+        &mut self,
+        host: &mut impl Runtime,
+        path: &TransactionHash,
+    ) -> Result<EVM, Error> {
+        let hash = hex::encode(path);
+        let raw_hash_path: Vec<u8> = format!("/{}", hash).into();
+        let hash_path = OwnedPath::try_from(raw_hash_path)?;
+        let path = concat(&TRANSACTIONS_OBJECTS, &hash_path).map_err(Error::from)?;
 
-    Ok(())
-}
-
-pub fn store_transaction_objects<Host: Runtime>(
-    host: &mut Host,
-    block: &L2Block,
-    objects: &[TransactionObject],
-) -> Result<(), Error> {
-    for object in objects {
-        let object_path = object_path(&object.hash)?;
-        store_transaction_object(&object_path, host, block.hash, block.number, object)?;
+        self.storage
+            .0
+            .get_or_create(host, &path)
+            .map_err(|e| Error::Storage(StorageInitialisation(TxObjectInit(e))))
     }
-    Ok(())
 }
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
