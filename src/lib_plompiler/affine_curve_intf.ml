@@ -31,36 +31,48 @@ module type S = sig
 
   open L
 
+  (** Represents a point on the curve in affine coordinates *)
   type point = scalar * scalar
 
+  (** Returns a Plompiler representation of a point *)
   val input_point : ?kind:input_kind -> S.t * S.t -> point repr t
 
+  (** [is_on_curve p] checks whether a point [p] is on the curve *)
   val is_on_curve : point repr -> bool repr t
 
+  (** [assert_is_on_curve p] asserts that a point [p] is on the curve *)
   val assert_is_on_curve : point repr -> unit repr t
 
-  (** Also checks that the point is on the curve (but not necessarily in the
-    subgroup). *)
+  (** [from_coordinates x y] constructs a point [p = (x, y)] from coordinates
+      [x] and [y]. The function also checks whether the point is on the curve
+      (but not necessarily in the subgroup) *)
   val from_coordinates : scalar repr -> scalar repr -> point repr t
 
   (** [unsafe_from_coordinates x y] is similar to {!from_coordinates} but
       does not verify the point is on the curve. It can be used to build a
-      variable of type *point* without adding any constraint.
-  *)
+      variable of type [point] without adding any constraint *)
   val unsafe_from_coordinates : scalar repr -> scalar repr -> point repr t
 
+  (** [get_x_coordinate p] returns a first coordinate [x] of a point [p] *)
   val get_x_coordinate : point repr -> scalar repr
 
+  (** [get_y_coordinate p] returns a second coordinate [y] of a point [p] *)
   val get_y_coordinate : point repr -> scalar repr
 
+  (** [add p q] computes a point addition [p + q] *)
   val add : point repr -> point repr -> point repr t
 
+  (** [double p] computes a point doubling [p + p] *)
   val double : point repr -> point repr t
 
+  (** [scalar_mul s p] computes a point multiplication [p] by a scalar [s].
+      The scalar [s] is encoded in little-endian order *)
   val scalar_mul : bool list repr -> point repr -> point repr t
 
+  (** Returns the order of the prime-order subgroup of the elliptic curve group *)
   val scalar_order : Z.t
 
+  (** Returns the prime number defining the underlying field *)
   val base_order : Z.t
 end
 
@@ -69,11 +81,15 @@ module type S_Edwards = sig
 
   open L
 
-  (** The identity element of the curve (0, 1). *)
+  (** Returns the point at infinity of the curve (additive identity) *)
   val id : S.t * S.t
 
+  (** [cond_add p q b] returns [p + b * q], i.e., either a point addition [p] and [q]
+      or a point [p] based on the value [b] *)
   val cond_add : point repr -> point repr -> bool repr -> point repr t
 
+  (** [multi_scalar_mul ls lp] computes the multi-scalar multiplication
+      [s₁·p₁ + s₂·p₂ + … + sₖ·pₖ] *)
   val multi_scalar_mul : bool list list repr -> point list repr -> point repr t
 end
 
