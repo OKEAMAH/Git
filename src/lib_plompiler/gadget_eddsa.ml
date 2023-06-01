@@ -1,3 +1,28 @@
+(*****************************************************************************)
+(*                                                                           *)
+(* MIT License                                                               *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(*                                                                           *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
 module Make
     (Curve : Mec.CurveSig.AffineEdwardsT) (H : sig
       module P : Hash_sig.P_HASH
@@ -23,65 +48,66 @@ struct
 
     type msg = S.t
 
-    type sign_parameters = sk * pk
+    (* Compute the expanded keys for the EdDSA signature *)
+    let expand_keys sk =
+      (* h = (h_0, h_1, .., h_{2b-1}) <- H (sk) *)
+      let h =
+        let sk = Curve.Scalar.to_z sk |> S.of_z in
+        H.direct ~input_length:1 [|sk|] |> S.to_bytes
+      in
+      let b = Bytes.length h / 2 in
+      let h_low = Bytes.sub h 0 b in
+      let h_high = Bytes.sub h b b in
+      (* Curve.cofactor = 2^c *)
+      (* c <= n < b *)
+      (* TODO: compute s <- 2^n + \sum_i h_i * 2^i for c <= i < n *)
+      let s = Curve.Scalar.of_bytes_exn h_low in
+      (* pk <- [s]G *)
+      let pk = Curve.mul Curve.one s in
+      let prefix = S.of_bytes_exn h_high in
+      (s, pk, prefix)
 
-    let neuterize sk = Curve.mul Curve.one sk
+    let neuterize sk =
+      let _s, pk, _prefix = expand_keys sk in
+      pk
 
     let bls_scalar_to_curve_scalar s = Curve.Scalar.of_z (S.to_z s)
 
-    (* TODO changer nb_bits_base *)
-    let nb_bits_base = Z.numbits S.order
-    (* /!\ hash output are scalar to respect the hash signature *)
+    (* NOTE: H.direct returns a Bls12_381.Fr scalar *)
+    (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
+    let compute_h ?(compressed = false) msg pk r =
+      ignore compressed ;
+      let r_u = Curve.get_u_coordinate r |> to_bls_scalar in
+      let r_v = Curve.get_v_coordinate r |> to_bls_scalar in
+      let pk_u = Curve.get_u_coordinate pk |> to_bls_scalar in
+      let pk_v = Curve.get_v_coordinate pk |> to_bls_scalar in
+      H.direct ~input_length:5 [|r_u; r_v; pk_u; pk_v; msg|]
+      |> bls_scalar_to_curve_scalar
 
     let sign ?(compressed = false) sk msg =
-      ignore compressed ;
-      let s, pk, prefix =
-        let h =
-          let sk = Curve.Scalar.to_z sk |> S.of_z in
-          H.direct ~input_length:1 [|sk|] |> S.to_bytes
-        in
-        let h2 = Bytes.length h / 2 in
-        let s = Curve.Scalar.of_bytes_exn (Bytes.sub h 0 h2) in
-        let pk = neuterize s in
-        let prefix = Bytes.sub h h2 h2 |> S.of_bytes_exn in
-        (s, pk, prefix)
-      in
+      let s, pk, prefix = expand_keys sk in
+      (* r <- H (prefix || msg) *)
       let r = H.direct [|prefix; msg|] |> bls_scalar_to_curve_scalar in
-      let rg = Curve.mul Curve.one r in
-      let k =
-        let ur = Curve.get_u_coordinate rg |> to_bls_scalar in
-        let vr = Curve.get_v_coordinate rg |> to_bls_scalar in
-        let upk = Curve.get_u_coordinate pk |> to_bls_scalar in
-        let vpk = Curve.get_v_coordinate pk |> to_bls_scalar in
-        H.direct [|ur; vr; upk; vpk; msg|]
-      in
-      Printf.printf "\nk = %s" (S.string_of_scalar k) ;
-      let k = k |> bls_scalar_to_curve_scalar in
-      Printf.printf
-        "\nk = %s"
-        (S.string_of_scalar (Curve.Scalar.to_z k |> S.of_z)) ;
-      let s =
-        Curve.Scalar.(r + (k * s))
+      (* R <- [r]G *)
+      let sig_r = Curve.mul Curve.one r in
+      (* h <- H (compressed (R) || compressed (pk) || msg ) *)
+      let h = compute_h ~compressed msg pk sig_r in
+      (* s <- (r + h * s) mod Curve.Scalar.order *)
+      let sig_s =
+        Curve.Scalar.(r + (h * s))
         |> Curve.Scalar.to_z
-        |> Utils.bool_list_of_z ~nb_bits:nb_bits_base
+        |> Utils.bool_list_of_z ~nb_bits:(Z.numbits Curve.Scalar.order)
       in
-      (pk, {r = rg; s})
+      {r = sig_r; s = sig_s}
 
-    (* todo do we need to multiply by cofactor ? *)
-    (* The fact that s < l is enforced by the fact that s is a Curve.Scalar.t ; the fact that pk & r are on curve is enforced by the fact they are Curve.t *)
+    (* The fact that s < l is enforced by the fact that s is a Curve.Scalar.t ;
+       the fact that pk & r are on curve is enforced by the fact they are Curve.t *)
     let verify ?(compressed = false) ~msg ~pk ~signature () =
-      ignore compressed ;
-      ignore msg ;
-      let k =
-        let ur = Curve.get_u_coordinate signature.r |> to_bls_scalar in
-        let vr = Curve.get_v_coordinate signature.r |> to_bls_scalar in
-        let upk = Curve.get_u_coordinate pk |> to_bls_scalar in
-        let vpk = Curve.get_v_coordinate pk |> to_bls_scalar in
-        H.direct ~input_length:5 [|ur; vr; upk; vpk; msg|]
-        |> bls_scalar_to_curve_scalar
-      in
-      let s = Curve.Scalar.of_z @@ Utils.bool_list_to_z signature.s in
-      Curve.(eq (mul Curve.one s) (add signature.r (mul pk k)))
+      (* h <- H (compressed (R) || compressed (pk) || msg ) *)
+      let h = compute_h ~compressed msg pk signature.r in
+      let sig_s = Curve.Scalar.of_z @@ Utils.bool_list_to_z signature.s in
+      (* [s]G =?= R + [h]pk *)
+      Curve.(eq (mul Curve.one sig_s) (add signature.r (mul pk h)))
   end
 
   open Lang_stdlib
@@ -129,43 +155,36 @@ struct
           (obj2_encoding point_encoding (atomic_list_encoding bool_encoding))
     end
 
-    (* let hash ~compressed sig_r pk msg =
-       ignore compressed ;
-       with_label ~label:"EdDSA.hash"
-       @@
-       let sig_r_u = get_u_coordinate sig_r in
-       let sig_r_v = get_v_coordinate sig_r in
-       let pk_u = get_u_coordinate pk in
-       let pk_v = get_v_coordinate pk in
-       digest ~input_length:5 @@ to_list [sig_r_u; sig_r_v; pk_u; pk_v; msg] *)
+    (* NOTE: digest returns a Bls12_381.Fr scalar *)
+    (* h <- H (compressed (R) || compressed (pk) || msg ) *)
+    let compute_h ?(compressed = false) msg pk r : scalar repr t =
+      ignore compressed ;
+      with_label ~label:"EdDSA.compute_h"
+      @@
+      let r_x = get_x_coordinate r in
+      let r_y = get_y_coordinate r in
+      let pk_x = get_x_coordinate pk in
+      let pk_y = get_y_coordinate pk in
+      digest ~input_length:5 @@ to_list [r_x; r_y; pk_x; pk_y; msg]
 
     (* TODO: now msg is just one scalar, it will probably be a list of scalars *)
     (* assert s < Curve.Scalar.order *)
     (* reduce h modulo Curve.Scalar.order *)
     (* assert r & pk are on curve *)
     let verify ?(compressed = false) ~g ~msg ~pk ~signature () =
-      ignore compressed ;
       with_label ~label:"EdDSA.verify"
       @@
       let {r; s} = signature in
-
-      let* h =
-        with_label ~label:"EdDSA.hash"
-        @@
-        let sig_r_u = get_x_coordinate r in
-        let sig_r_v = get_y_coordinate r in
-        let pk_u = get_x_coordinate pk in
-        let pk_v = get_y_coordinate pk in
-        digest @@ to_list [sig_r_u; sig_r_v; pk_u; pk_v; msg]
-      in
-      (* TODO how many bits ? *)
-      let* h = bits_of_scalar ~nb_bits:(Z.numbits Curve.Scalar.order) h in
-      with_label ~label:"Mul curve"
+      (* h <- H (compressed (R) || compressed (pk) || msg ) *)
+      let* h = compute_h ~compressed msg pk r in
+      (* NOTE: we do not reduce a result of compute_h modulo Curve.Scalar.order *)
+      let* h = bits_of_scalar ~nb_bits:(Z.numbits S.order) h in
+      with_label ~label:"EdDSA.scalar_mul"
       (* It would be better to compute R = sg - h Pk using multiexp *)
+      (* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
       @@ let* sg = scalar_mul s g in
          let* hpk = scalar_mul h pk in
          let* rhpk = add r hpk in
-         (* do we need the cofactor here ? *)
-         with_label ~label:"Check" @@ equal sg rhpk
+         with_label ~label:"EdDSA.check" @@ equal sg rhpk
   end
 end
