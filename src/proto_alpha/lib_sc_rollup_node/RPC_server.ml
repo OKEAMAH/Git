@@ -173,7 +173,7 @@ let simulate_messages (node_ctxt : Node_context.ro) block ~reveal_pages
     ~insight_requests messages =
   let open Lwt_result_syntax in
   let open Alpha_context in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let reveal_map =
     match reveal_pages with
     | Some pages ->
@@ -226,7 +226,7 @@ let () =
   @@ fun (node_ctxt, block) () () ->
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! tick = PVM.get_tick state in
   return tick
 
@@ -235,7 +235,7 @@ let () =
   @@ fun (node_ctxt, block) () () ->
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! hash = PVM.state_hash state in
   return hash
 
@@ -244,7 +244,7 @@ let () =
   @@ fun (node_ctxt, block) () () ->
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! current_level = PVM.get_current_level state in
   return current_level
 
@@ -304,7 +304,7 @@ let () =
   @@ fun (node_ctxt, block) () () ->
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! status = PVM.get_status state in
   return (PVM.string_of_status status)
 
@@ -326,7 +326,7 @@ let () =
   @@ fun (node_ctxt, block, outbox_level) () () ->
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
-  let module PVM = (val node_ctxt.pvm) in
+  let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! outbox = PVM.get_outbox outbox_level state in
   return outbox
 
