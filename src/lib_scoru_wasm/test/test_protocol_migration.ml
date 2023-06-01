@@ -42,22 +42,49 @@ let noop_module =
       nop))
 |}
 
+let assert_version_and_protocol_version tree ~expected_version
+    ~expected_protocol_version =
+  let* version = Wasm.get_wasm_version tree in
+  assert (version = expected_version) ;
+  let* protocol_version = Wasm.get_protocol_version tree in
+  assert (protocol_version = expected_protocol_version) ;
+  unit
+
 let test_protocol_migration_message () =
   let open Lwt_syntax in
-  let* tree =
-    initial_tree ~protocol_version:"no_protocol" ~version:V0 noop_module
-  in
+  let* tree = initial_tree ~version:V0 noop_module in
   let* tree = eval_until_input_requested tree in
-  let* version = Wasm.get_wasm_version tree in
-  assert (version = V0) ;
+  let* () =
+    assert_version_and_protocol_version
+      tree
+      ~expected_version:V0
+      ~expected_protocol_version:None
+  in
   let* tree = set_empty_inbox_step 0l tree in
   let* tree = eval_until_input_requested tree in
-  let* version = Wasm.get_wasm_version tree in
-  assert (version = V0) ;
+  let* () =
+    assert_version_and_protocol_version
+      tree
+      ~expected_version:V0
+      ~expected_protocol_version:None
+  in
+  let* tree = set_empty_inbox_step ~migrate_to:Nairobi 0l tree in
+  let* tree = eval_until_input_requested tree in
+  let* () =
+    assert_version_and_protocol_version
+      tree
+      ~expected_version:V1
+      ~expected_protocol_version:None
+  in
   let* tree = set_empty_inbox_step ~migrate_to:Proto_alpha 0l tree in
   let* tree = eval_until_input_requested tree in
-  let* version = Wasm.get_wasm_version tree in
-  assert (version = V1) ;
+  let* () =
+    assert_version_and_protocol_version
+      tree
+      ~expected_version:V1
+      ~expected_protocol_version:
+        (Some Tezos_scoru_wasm.Constants.proto_alpha_name)
+  in
   Lwt_result_syntax.return_unit
 
 let tests =
