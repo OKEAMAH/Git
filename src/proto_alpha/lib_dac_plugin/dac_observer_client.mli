@@ -26,14 +26,11 @@
 (* Client module for interacting with a Dac Node in Observer mode. This client
    should only used by components that are compiled with a protocol. *)
 
-module Reveal_hash = Protocol.Sc_rollup_reveal_hash
-
 type error +=
   | Failed_to_initialize_dac_plugin
-  | Failed_to_fetch_missing_page_from_observer of Reveal_hash.t
-  | Failed_to_verify_raw_data_with_hash of (Reveal_hash.t * Protocol_hash.t)
+  | Failed_to_fetch_missing_page_from_observer of Dac_plugin.raw_hash
   | Timeout of Z.t
-  | Wrong_hash of {found : Reveal_hash.t; expected : Reveal_hash.t}
+  | Wrong_hash of {found : Dac_plugin.raw_hash; expected : Dac_plugin.raw_hash}
 
 type t
 
@@ -51,5 +48,4 @@ val init : Configuration.t -> t tzresult Lwt.t
 (** [fetch_preimage dac_observer_client hash] requests the preimage of [hash]
     from a Dac Observer Node.
 *)
-val fetch_preimage :
-  t -> Protocol.Sc_rollup_reveal_hash.t -> string tzresult Lwt.t
+val fetch_preimage : t -> Dac_plugin.raw_hash -> string tzresult Lwt.t

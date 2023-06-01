@@ -72,6 +72,18 @@ let raw_hash_rpc_arg =
     ~construct
     ()
 
+let hash_string ~scheme ?key messages =
+  match scheme with
+  | Blake2B ->
+      Tezos_crypto.Blake2B.hash_string ?key messages
+      |> Tezos_crypto.Blake2B.to_bytes
+
+let hash_bytes ~scheme ?key messages =
+  match scheme with
+  | Blake2B ->
+      Tezos_crypto.Blake2B.hash_bytes ?key messages
+      |> Tezos_crypto.Blake2B.to_bytes
+
 type cannot_convert_raw_hash_to_hash = {
   raw_hash : raw_hash;
   proto : Protocol_hash.t;

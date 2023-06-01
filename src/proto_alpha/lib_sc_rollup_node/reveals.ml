@@ -104,7 +104,17 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
     | None -> (
         match dac_client with
         | None -> tzfail (Could_not_open_preimage_file filename)
-        | Some dac_client -> Dac_observer_client.fetch_preimage dac_client hash)
+        | Some dac_client ->
+            let (module P) =
+              WithExceptions.Option.get ~loc:__LOC__
+              @@ Tezos_dac_lib.Dac_plugin.get Protocol.hash
+            in
+            hash
+            |> Data_encoding.Binary.to_bytes_exn
+                 Protocol.Sc_rollup_reveal_hash.encoding
+            |> Data_encoding.Binary.of_bytes_exn P.encoding
+            |> Tezos_dac_lib.Dac_plugin.hash_to_raw
+            |> Dac_observer_client.fetch_preimage dac_client)
   in
   let*? () =
     let contents_hash =

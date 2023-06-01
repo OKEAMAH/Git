@@ -69,9 +69,24 @@ val raw_hash_rpc_arg : raw_hash Tezos_rpc.Arg.arg
 (** [pp_raw_hash] is a pretty printer for [raw_hash] values. *)
 val pp_raw_hash : Format.formatter -> raw_hash -> unit
 
+(** [raw_hash_of_hex hex] decodes a hex into raw hash. *)
+val raw_hash_of_hex : Hex.t -> raw_hash option
+
+(** [raw_hash_to_hex hash] encodes raw hash into hex. *)
+val raw_hash_to_hex : raw_hash -> Hex.t
+
 (** FIXME: https://gitlab.com/tezos/tezos/-/issues/4856
     Fix static supported_hashes type. *)
 type supported_hashes = Blake2B
+
+(** [hash_string ~scheme ?key strings] hashes [strings] using the supported
+    hashing [scheme] given in input and returns the corresponding [raw_hash]. *)
+val hash_string :
+  scheme:supported_hashes -> ?key:string -> string list -> raw_hash
+
+(** [hash_bytes ~scheme ?key strings] hashes [bytes] using the supported hashing
+    [scheme] given in input and returns the corresponding [raw_hash]. *)
+val hash_bytes : scheme:supported_hashes -> ?key:bytes -> bytes list -> raw_hash
 
 (** Type used to track exception when impossible to convert
     [raw_hash] to [hash]. *)
