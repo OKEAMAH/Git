@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
+// SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 //
 // SPDX-License-Identifier: MIT
 use core::str::Utf8Error;
@@ -6,6 +7,7 @@ use primitive_types::U256;
 use rlp::DecoderError;
 use tezos_smart_rollup_host::path::{OwnedPath, PathError};
 use tezos_smart_rollup_host::runtime::RuntimeError;
+use tezos_smart_rollup_storage::StorageError as TransactionalStorageError;
 
 #[derive(Debug)]
 pub enum TransferError {
@@ -18,11 +20,26 @@ pub enum TransferError {
 }
 
 #[derive(Debug)]
+pub enum StorageCommitmentStatus {
+    Begin(TransactionalStorageError),
+    Commit(TransactionalStorageError),
+    Rollback(TransactionalStorageError),
+}
+
+#[derive(Debug)]
+pub enum StorageInitialisationError {
+    Base(TransactionalStorageError),
+    EVMBlockInit(TransactionalStorageError),
+}
+
+#[derive(Debug)]
 pub enum StorageError {
     Path(PathError),
     Runtime(RuntimeError),
     AccountInitialisation,
     GenesisAccountInitialisation,
+    StorageCommitment(StorageCommitmentStatus),
+    StorageInitialisation(StorageInitialisationError),
     InvalidLoadValue { expected: usize, actual: usize },
     InvalidEncoding { path: OwnedPath, value: Vec<u8> },
 }

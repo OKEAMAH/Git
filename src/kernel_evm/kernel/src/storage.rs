@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
+// SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 //
 // SPDX-License-Identifier: MIT
 #![allow(dead_code)]
@@ -8,7 +9,11 @@ use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_host::path::*;
 use tezos_smart_rollup_host::runtime::{Runtime, ValueType};
+use tezos_smart_rollup_storage::storage::Storage;
 
+use crate::error::StorageCommitmentStatus::{Begin, Commit, Rollback};
+use crate::error::StorageError::{StorageCommitment, StorageInitialisation};
+use crate::error::StorageInitialisationError::{Base, EVMBlockInit};
 use crate::error::{Error, StorageError};
 use evm_execution::account_storage::store_write_all;
 use tezos_ethereum::block::L2Block;
@@ -23,8 +28,10 @@ use primitive_types::{H160, H256, U256};
 const SMART_ROLLUP_ADDRESS: RefPath =
     RefPath::assert_from(b"/metadata/smart_rollup_address");
 
-const EVM_CURRENT_BLOCK: RefPath = RefPath::assert_from(b"/evm/blocks/current");
-const EVM_BLOCKS: RefPath = RefPath::assert_from(b"/evm/blocks");
+const EVM_STORAGE: RefPath = RefPath::assert_from(b"/evm");
+
+const BLOCKS: RefPath = RefPath::assert_from(b"/blocks");
+const CURRENT_BLOCK: RefPath = RefPath::assert_from(b"/blocks/current");
 const BLOCKS_NUMBER: RefPath = RefPath::assert_from(b"/number");
 const BLOCKS_HASH: RefPath = RefPath::assert_from(b"/hash");
 const BLOCKS_TRANSACTIONS: RefPath = RefPath::assert_from(b"/transactions");
@@ -149,13 +156,6 @@ fn write_u256(
     host.store_write(path, &bytes, 0).map_err(Error::from)
 }
 
-pub fn block_path(number: U256) -> Result<OwnedPath, Error> {
-    let number: &str = &number.to_string();
-    let raw_number_path: Vec<u8> = format!("/{}", &number).into();
-    let number_path = OwnedPath::try_from(raw_number_path)?;
-    concat(&EVM_BLOCKS, &number_path).map_err(Error::from)
-}
-
 pub fn receipt_path(receipt_hash: &TransactionHash) -> Result<OwnedPath, Error> {
     let hash = hex::encode(receipt_hash);
     let raw_receipt_path: Vec<u8> = format!("/{}", &hash).into();
@@ -170,138 +170,236 @@ pub fn object_path(object_hash: &TransactionHash) -> Result<OwnedPath, Error> {
     concat(&EVM_TRANSACTIONS_OBJECTS, &object_path).map_err(Error::from)
 }
 
-pub fn read_current_block_number<Host: Runtime>(host: &mut Host) -> Result<U256, Error> {
-    let path = concat(&EVM_CURRENT_BLOCK, &BLOCKS_NUMBER)?;
-    let mut buffer = [0_u8; 8];
-    store_read_slice(host, &path, &mut buffer, 8)?;
-    Ok(U256::from_little_endian(&buffer))
+// WrappedStorage for SDK's storage to make all the transactional storage
+// benefit from begin/commit/rollback mechanism
+pub struct WStorage<T: From<OwnedPath>>(Storage<T>);
+
+impl<T: From<OwnedPath>> WStorage<T> {
+    pub fn begin(&mut self, host: &mut impl Runtime) -> Result<(), Error> {
+        self.0
+            .begin_transaction(host)
+            .map_err(|e| Error::Storage(StorageCommitment(Begin(e))))
+    }
+
+    pub fn commit(&mut self, host: &mut impl Runtime) -> Result<(), Error> {
+        self.0
+            .commit_transaction(host)
+            .map_err(|e| Error::Storage(StorageCommitment(Commit(e))))
+    }
+
+    pub fn rollback(&mut self, host: &mut impl Runtime) -> Result<(), Error> {
+        self.0
+            .rollback_transaction(host)
+            .map_err(|e| Error::Storage(StorageCommitment(Rollback(e))))
+    }
 }
 
-fn read_nth_block_transactions<Host: Runtime>(
-    host: &mut Host,
-    block_path: &OwnedPath,
-) -> Result<Vec<TransactionHash>, Error> {
-    let path = concat(block_path, &BLOCKS_TRANSACTIONS)?;
-
-    let transactions_bytes =
-        store_read_empty_safe(host, &path, 0, MAX_TRANSACTION_HASHES)?;
-
-    Ok(transactions_bytes
-        .chunks(TRANSACTION_HASH_SIZE)
-        .filter_map(|tx_hash_bytes: &[u8]| -> Option<TransactionHash> {
-            tx_hash_bytes.try_into().ok()
-        })
-        .collect::<Vec<TransactionHash>>())
+pub struct EVM {
+    pub path: OwnedPath,
 }
 
-fn read_current_block_nodebug<Host: Runtime>(host: &mut Host) -> Result<L2Block, Error> {
-    let number = read_current_block_number(host)?;
-    let block_path = block_path(number)?;
-    let transactions = read_nth_block_transactions(host, &block_path)?;
-
-    Ok(L2Block::new(number, transactions))
+impl From<OwnedPath> for EVM {
+    fn from(path: OwnedPath) -> Self {
+        Self { path }
+    }
 }
 
-pub fn read_current_block<Host: Runtime>(host: &mut Host) -> Result<L2Block, Error> {
-    match read_current_block_nodebug(host) {
-        Ok(block) => {
-            debug_msg!(
-                host,
-                "Reading block {} at number {} containing {} transaction(s).\n",
-                block.hash.as_bytes().encode_hex::<String>(),
-                block.number,
-                block.transactions.len()
-            );
-            Ok(block)
+impl EVM {
+    // ======================== L2Block ======================== //
+
+    fn read_l2block_transactions<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+    ) -> Result<Vec<TransactionHash>, Error> {
+        let path = concat(&self.path, &BLOCKS_TRANSACTIONS)?;
+
+        let transactions_bytes =
+            store_read_empty_safe(host, &path, 0, MAX_TRANSACTION_HASHES)?;
+
+        Ok(transactions_bytes
+            .chunks(TRANSACTION_HASH_SIZE)
+            .filter_map(|tx_hash_bytes: &[u8]| -> Option<TransactionHash> {
+                tx_hash_bytes.try_into().ok()
+            })
+            .collect::<Vec<TransactionHash>>())
+    }
+
+    pub fn read_l2block_number<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+    ) -> Result<U256, Error> {
+        let path = concat(&self.path, &BLOCKS_NUMBER)?;
+        let mut buffer = [0_u8; 8];
+        store_read_slice(host, &path, &mut buffer, 8)?;
+        Ok(U256::from_little_endian(&buffer))
+    }
+
+    fn read_l2block_nodebug<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+    ) -> Result<L2Block, Error> {
+        let number = self.read_l2block_number(host)?;
+        let transactions = self.read_l2block_transactions(host)?;
+
+        Ok(L2Block::new(number, transactions))
+    }
+
+    pub fn read_l2block<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+    ) -> Result<L2Block, Error> {
+        match self.read_l2block_nodebug(host) {
+            Ok(block) => {
+                debug_msg!(
+                    host,
+                    "Reading block {} at number {} containing {} transaction(s).\n",
+                    block.hash.as_bytes().encode_hex::<String>(),
+                    block.number,
+                    block.transactions.len()
+                );
+
+                Ok(block)
+            }
+            Err(e) => {
+                debug_msg!(
+                    host,
+                    "Block reading failed for path {:?} because {:?}\n",
+                    self.path,
+                    e
+                );
+                Err(e)
+            }
         }
-        Err(e) => {
-            debug_msg!(host, "Block reading failed: {:?}\n", e);
-            Err(e)
+    }
+
+    fn store_l2block_number<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block_number: &U256,
+    ) -> Result<(), Error> {
+        let path = concat(&self.path, &BLOCKS_NUMBER)?;
+        let mut le_block_number: [u8; 32] = [0; 32];
+        block_number.to_little_endian(&mut le_block_number);
+        host.store_write(&path, &le_block_number, 0)
+            .map_err(Error::from)
+    }
+
+    fn store_l2block_hash<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block_hash: &H256,
+    ) -> Result<(), Error> {
+        let path = concat(&self.path, &BLOCKS_HASH)?;
+        host.store_write(&path, block_hash.as_bytes(), 0)
+            .map_err(Error::from)
+    }
+
+    fn store_l2block_transactions<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block_transactions: &[TransactionHash],
+    ) -> Result<(), Error> {
+        let path = concat(&self.path, &BLOCKS_TRANSACTIONS)?;
+        let block_transactions = &block_transactions.concat()[..];
+        // TODO: use `store_write_all` when available
+        host.store_write(&path, block_transactions, 0)
+            .map_err(Error::from)
+    }
+
+    fn store_l2block_nodebug<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block: &L2Block,
+    ) -> Result<(), Error> {
+        self.store_l2block_number(host, &block.number)?;
+        self.store_l2block_hash(host, &block.hash)?;
+        self.store_l2block_transactions(host, &block.transactions)
+    }
+
+    pub fn store_l2block<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        block: &L2Block,
+    ) -> Result<(), Error> {
+        match self.store_l2block_nodebug(host, block) {
+            Ok(()) => {
+                debug_msg!(
+                    host,
+                    "Storing block {} at number {} containing {} transaction(s).\n",
+                    block.hash.as_bytes().encode_hex::<String>(),
+                    block.number,
+                    block.transactions.len()
+                );
+                Ok(())
+            }
+            Err(e) => {
+                debug_msg!(host, "Block storing failed: {:?}\n", e);
+                Err(e)
+            }
         }
     }
 }
 
-fn store_block_number<Host: Runtime>(
-    host: &mut Host,
-    block_path: &OwnedPath,
-    block_number: U256,
-) -> Result<(), Error> {
-    let path = concat(block_path, &BLOCKS_NUMBER)?;
-    let mut le_block_number: [u8; 32] = [0; 32];
-    block_number.to_little_endian(&mut le_block_number);
-    host.store_write(&path, &le_block_number, 0)
-        .map_err(Error::from)
+pub struct EVMStorage {
+    pub storage: WStorage<EVM>,
 }
 
-fn store_block_hash<Host: Runtime>(
-    host: &mut Host,
-    block_path: &OwnedPath,
-    block_hash: &H256,
-) -> Result<(), Error> {
-    let path = concat(block_path, &BLOCKS_HASH)?;
-    host.store_write(&path, block_hash.as_bytes(), 0)
-        .map_err(Error::from)
+pub fn init_evm_storage() -> Result<EVMStorage, Error> {
+    let storage = WStorage(
+        Storage::<EVM>::init(&EVM_STORAGE)
+            .map_err(|e| Error::Storage(StorageInitialisation(Base(e))))?,
+    );
+    Ok(EVMStorage { storage })
 }
 
-fn store_block_transactions<Host: Runtime>(
-    host: &mut Host,
-    block_path: &OwnedPath,
-    block_transactions: &[TransactionHash],
-) -> Result<(), Error> {
-    let path = concat(block_path, &BLOCKS_TRANSACTIONS)?;
-    let block_transactions = &block_transactions.concat()[..];
-    host.store_write(&path, block_transactions, 0)
-        .map_err(Error::from)
-}
+impl EVMStorage {
+    pub fn block(&mut self, host: &mut impl Runtime, path: &U256) -> Result<EVM, Error> {
+        let raw_number_path: Vec<u8> = format!("/{}", path).into();
+        let number_path = OwnedPath::try_from(raw_number_path)?;
+        let path = concat(&BLOCKS, &number_path).map_err(Error::from)?;
+        self.storage
+            .0
+            .get_or_create(host, &path)
+            .map_err(|e| Error::Storage(StorageInitialisation(EVMBlockInit(e))))
+    }
 
-fn store_block<Host: Runtime>(
-    host: &mut Host,
-    block: &L2Block,
-    block_path: &OwnedPath,
-) -> Result<(), Error> {
-    store_block_number(host, block_path, block.number)?;
-    store_block_hash(host, block_path, &block.hash)?;
-    store_block_transactions(host, block_path, &block.transactions)
-}
+    fn current_block_number(&mut self, host: &mut impl Runtime) -> Result<U256, Error> {
+        let mut current_evm_block = self
+            .storage
+            .0
+            .get_or_create(host, &CURRENT_BLOCK)
+            .map_err(|e| Error::Storage(StorageInitialisation(EVMBlockInit(e))))?;
 
-pub fn store_block_by_number<Host: Runtime>(
-    host: &mut Host,
-    block: &L2Block,
-) -> Result<(), Error> {
-    let block_path = block_path(block.number)?;
-    store_block(host, block, &block_path)
-}
+        current_evm_block.read_l2block_number(host)
+    }
 
-fn store_current_block_nodebug<Host: Runtime>(
-    host: &mut Host,
-    block: &L2Block,
-) -> Result<(), Error> {
-    let current_block_path = OwnedPath::from(EVM_CURRENT_BLOCK);
-    // We only need to store current block's number so we avoid the storage of duplicate informations.
-    store_block_number(host, &current_block_path, block.number)?;
-    // When storing the current block's infos we need to store it under the [evm/blocks/<block_number>]
-    store_block_by_number(host, block)
-}
+    pub fn current_block(&mut self, host: &mut impl Runtime) -> Result<EVM, Error> {
+        let current_block_number = self.current_block_number(host)?;
+        self.block(host, &current_block_number)
+    }
 
-pub fn store_current_block<Host: Runtime>(
-    host: &mut Host,
-    block: &L2Block,
-) -> Result<(), Error> {
-    match store_current_block_nodebug(host, block) {
-        Ok(()) => {
-            debug_msg!(
-                host,
-                "Storing block {} at number {} containing {} transaction(s).\n",
-                block.hash.as_bytes().encode_hex::<String>(),
-                block.number,
-                block.transactions.len()
-            );
-            Ok(())
-        }
-        Err(e) => {
-            debug_msg!(host, "Block storing failed: {:?}\n", e);
-            Err(e)
-        }
+    // Note that this function is here to help for an optimisation on storing
+    // the current block. As information of the current block needs to be stored
+    // under </block_number> path as well, it makes sense to only store the block
+    // number under </current>'s path and everything under </block_number>'s one at
+    // some point, i.e we don't need to duplicate the information in durable storage.
+    //
+    // NB: If something wrong happens at some point during all this process this side
+    // effect will be rollbacked.
+    pub fn set_and_get_current_block(
+        &mut self,
+        host: &mut impl Runtime,
+        block_number: &U256,
+    ) -> Result<EVM, Error> {
+        let mut evm_block = self
+            .storage
+            .0
+            .get_or_create(host, &CURRENT_BLOCK)
+            .map_err(|e| Error::Storage(StorageInitialisation(EVMBlockInit(e))))?;
+
+        evm_block.store_l2block_number(host, block_number)?;
+
+        self.block(host, block_number)
     }
 }
 

@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
 # SPDX-FileCopyrightText: 2023 TriliTech <contact@trili.tech>
+# SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -34,6 +35,9 @@ path = "../../kernel_sdk/mock"
 
 [dev-dependencies.tezos_data_encoding]
 version = "0.5"
+
+[dependencies.tezos-smart-rollup-storage]
+path = "../../kernel_sdk/storage"
 
 [dependencies]
 tezos_ethereum = { path = "../ethereum" }
