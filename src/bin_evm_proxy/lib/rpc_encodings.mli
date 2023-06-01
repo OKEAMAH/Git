@@ -94,9 +94,13 @@ end
 (* Errors returned by the RPC server, to be embedded as data to the JSON-RPC
    error object. *)
 module Error : sig
-  type t = unit
+  type data = Data_encoding.json
 
-  val encoding : unit Data_encoding.t
+  type t = data JSONRPC.error
+
+  val data_encoding : data Data_encoding.t
+
+  val encoding : t Data_encoding.t
 end
 
 (** Extensible variant representing the possible input requests extended by the
@@ -107,7 +111,7 @@ type input = ..
     application of the method generator. *)
 type output = ..
 
-type 'result rpc_result = ('result, Error.t JSONRPC.error) result
+type 'result rpc_result = ('result, Error.t) result
 
 (** API of an Ethereum method. *)
 module type METHOD_DEF = sig
@@ -137,7 +141,7 @@ module type METHOD = sig
   type input += Input of m_input option
 
   (** Variant representing the method's response. *)
-  type output += Output of m_output rpc_result
+  type output += Output of m_output
 
   (** See METHOD_DEF.method_ *)
   val method_ : string
@@ -147,17 +151,15 @@ module type METHOD = sig
   (** [request input] builds a request object of the current method. *)
   val request : m_input option -> JSONRPC.id -> m_input JSONRPC.request
 
-  val response_encoding : (m_output, Error.t) JSONRPC.response Data_encoding.t
+  val result_encoding : m_output Data_encoding.t
 
   (** [response output] returns a response object for the method. *)
   val response :
-    (m_output, Error.t JSONRPC.error) result ->
-    JSONRPC.id ->
-    (m_output, Error.t) JSONRPC.response
+    m_output rpc_result -> JSONRPC.id -> (m_output, Error.data) JSONRPC.response
 
   (** [response_ok output] is a shortcut for [reponse (Ok output)]. *)
   val response_ok :
-    m_output -> JSONRPC.id -> (m_output, Error.t) JSONRPC.response
+    m_output -> JSONRPC.id -> (m_output, Error.data) JSONRPC.response
 end
 
 (** Builds a full Method module out of a method description. *)
@@ -180,7 +182,7 @@ end
 module Output : sig
   type nonrec 'a result = ('a, error JSONRPC.error) result
 
-  val encoding : (output * JSONRPC.id) Data_encoding.t
+  val encoding : output Data_encoding.t
 end
 
 module Network_id : METHOD with type m_input = unit and type m_output = string

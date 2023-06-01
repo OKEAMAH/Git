@@ -117,12 +117,16 @@ type input = ..
 type output = ..
 
 module Error = struct
-  type t = unit
+  type data = Data_encoding.json
 
-  let encoding = Data_encoding.unit
+  type t = data JSONRPC.error
+
+  let data_encoding = Data_encoding.json
+
+  let encoding = JSONRPC.error_encoding data_encoding
 end
 
-type 'result rpc_result = ('result, Error.t JSONRPC.error) result
+type 'result rpc_result = ('result, Error.t) result
 
 module type METHOD_DEF = sig
   val method_ : string
@@ -144,7 +148,7 @@ module type METHOD = sig
   (* The parameters MAY be omitted. See JSONRPC Specification. *)
   type input += Input of m_input option
 
-  type output += Output of m_output rpc_result
+  type output += Output of m_output
 
   val method_ : string
 
@@ -152,15 +156,13 @@ module type METHOD = sig
 
   val request : m_input option -> JSONRPC.id -> m_input JSONRPC.request
 
-  val response_encoding : (m_output, Error.t) JSONRPC.response Data_encoding.t
+  val result_encoding : m_output Data_encoding.t
 
   val response :
-    (m_output, Error.t JSONRPC.error) result ->
-    JSONRPC.id ->
-    (m_output, Error.t) JSONRPC.response
+    m_output rpc_result -> JSONRPC.id -> (m_output, Error.data) JSONRPC.response
 
   val response_ok :
-    m_output -> JSONRPC.id -> (m_output, Error.t) JSONRPC.response
+    m_output -> JSONRPC.id -> (m_output, Error.data) JSONRPC.response
 end
 
 module MethodMaker (M : METHOD_DEF) :
@@ -171,7 +173,7 @@ module MethodMaker (M : METHOD_DEF) :
 
   type input += Input of m_input option
 
-  type output += Output of m_output rpc_result
+  type output += Output of m_output
 
   let method_ = M.method_
 
@@ -179,8 +181,7 @@ module MethodMaker (M : METHOD_DEF) :
 
   let request parameters id = JSONRPC.{method_; parameters; id}
 
-  let response_encoding =
-    JSONRPC.response_encoding M.output_encoding Error.encoding
+  let result_encoding = M.output_encoding
 
   let response value id = JSONRPC.{value; id}
 
@@ -479,11 +480,9 @@ module Output = struct
     case
       ~title:M.method_
       (Tag tag_id)
-      M.response_encoding
-      (function
-        | M.Output accounts, id -> Some JSONRPC.{value = accounts; id}
-        | _ -> None)
-      (fun {value = req; id} -> (M.Output req, id))
+      M.result_encoding
+      (function M.Output output -> Some output | _ -> None)
+      (fun output -> M.Output output)
 
   let encoding =
     let open Data_encoding in

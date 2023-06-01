@@ -73,7 +73,9 @@ let dispatch_service =
   Service.post_service
     ~query:Query.empty
     ~input:(request_encoding Input.encoding)
-    ~output:(request_encoding Output.encoding)
+    ~output:
+      (request_encoding
+         (JSONRPC.response_encoding Output.encoding Error.data_encoding))
     Path.(root)
 
 let get_block ~full_transaction_object block_param
@@ -88,69 +90,62 @@ let dispatch_input
     ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) (input, id)
     =
   let open Lwt_result_syntax in
-  let* output =
-    match input with
-    | Accounts.Input _ -> return (Accounts.Output (Ok []))
-    | Network_id.Input _ ->
-        let* (Qty chain_id) = Rollup_node_rpc.chain_id () in
-        let net_version = Z.to_string chain_id in
-        return (Network_id.Output (Ok net_version))
-    | Chain_id.Input _ ->
-        let* chain_id = Rollup_node_rpc.chain_id () in
-        return (Chain_id.Output (Ok chain_id))
-    | Get_balance.Input (Some (address, _block_param)) ->
-        let* balance = Rollup_node_rpc.balance address in
-        return (Get_balance.Output (Ok balance))
-    | Block_number.Input _ ->
-        let* block_number = Rollup_node_rpc.current_block_number () in
-        return (Block_number.Output (Ok block_number))
-    | Get_block_by_number.Input (Some (block_param, full_transaction_object)) ->
-        let* block =
-          get_block
-            ~full_transaction_object
-            block_param
-            (module Rollup_node_rpc)
-        in
-        return (Get_block_by_number.Output (Ok block))
-    | Get_block_by_number.Input None ->
-        return
-          (Get_block_by_number.Output
-             (Ok Mockup.(block (TxHash [transaction_hash]))))
-    | Get_block_by_hash.Input _ ->
-        return
-          (Get_block_by_hash.Output
-             (Ok Mockup.(block (TxHash [transaction_hash]))))
-    | Get_code.Input (Some (address, _)) ->
-        let* code = Rollup_node_rpc.code address in
-        return (Get_code.Output (Ok code))
-    | Gas_price.Input _ -> return (Gas_price.Output (Ok Mockup.gas_price))
-    | Get_transaction_count.Input (Some (address, _)) ->
-        let* nonce = Rollup_node_rpc.nonce address in
-        return (Get_transaction_count.Output (Ok nonce))
-    | Get_transaction_receipt.Input (Some tx_hash) ->
-        let* receipt = Rollup_node_rpc.transaction_receipt tx_hash in
-        return (Get_transaction_receipt.Output (Ok receipt))
-    | Get_transaction_by_hash.Input (Some tx_hash) ->
-        let* transaction_object = Rollup_node_rpc.transaction_object tx_hash in
-        return (Get_transaction_by_hash.Output (Ok transaction_object))
-    | Send_raw_transaction.Input (Some tx_raw) ->
-        let* tx_hash =
-          Rollup_node_rpc.inject_raw_transaction ~smart_rollup_address tx_raw
-        in
-        return (Send_raw_transaction.Output (Ok tx_hash))
-    | Send_transaction.Input _ ->
-        return (Send_transaction.Output (Ok Mockup.transaction_hash))
-    | Eth_call.Input _ -> return (Eth_call.Output (Ok Mockup.call))
-    | Get_estimate_gas.Input _ ->
-        return (Get_estimate_gas.Output (Ok Mockup.gas_price))
-    | Txpool_content.Input _ ->
-        let* txpool = Rollup_node_rpc.txpool () in
-        return (Txpool_content.Output (Ok txpool))
-    | Web3_clientVersion.Input _ ->
-        return (Web3_clientVersion.Output (Ok client_version))
-    | _ -> Error_monad.failwith "Unsupported method\n%!"
-  in
-  return (output, id)
+  let return value = return JSONRPC.{value = Ok value; id} in
+  match input with
+  | Accounts.Input _ -> return (Accounts.Output [])
+  | Network_id.Input _ ->
+      let* (Qty chain_id) = Rollup_node_rpc.chain_id () in
+      let net_version = Z.to_string chain_id in
+      return (Network_id.Output net_version)
+  | Chain_id.Input _ ->
+      let* chain_id = Rollup_node_rpc.chain_id () in
+      return (Chain_id.Output chain_id)
+  | Get_balance.Input (Some (address, _block_param)) ->
+      let* balance = Rollup_node_rpc.balance address in
+      return (Get_balance.Output balance)
+  | Block_number.Input _ ->
+      let* block_number = Rollup_node_rpc.current_block_number () in
+      return (Block_number.Output block_number)
+  | Get_block_by_number.Input (Some (block_param, full_transaction_object)) ->
+      let* block =
+        get_block ~full_transaction_object block_param (module Rollup_node_rpc)
+      in
+      return (Get_block_by_number.Output block)
+  | Get_block_by_number.Input None ->
+      return
+        (Get_block_by_number.Output Mockup.(block (TxHash [transaction_hash])))
+  | Get_block_by_hash.Input _ ->
+      return
+        (Get_block_by_hash.Output Mockup.(block (TxHash [transaction_hash])))
+  | Get_code.Input (Some (address, _)) ->
+      let* code = Rollup_node_rpc.code address in
+      return (Get_code.Output code)
+  | Gas_price.Input _ -> return (Gas_price.Output Mockup.gas_price)
+  | Get_transaction_count.Input (Some (address, _)) ->
+      let* nonce = Rollup_node_rpc.nonce address in
+      return (Get_transaction_count.Output nonce)
+  | Get_transaction_receipt.Input (Some tx_hash) ->
+      let* receipt = Rollup_node_rpc.transaction_receipt tx_hash in
+      return (Get_transaction_receipt.Output receipt)
+  | Get_transaction_by_hash.Input (Some tx_hash) ->
+      let* transaction_object = Rollup_node_rpc.transaction_object tx_hash in
+      return (Get_transaction_by_hash.Output transaction_object)
+  | Send_raw_transaction.Input (Some tx_raw) ->
+      let* tx_hash =
+        Rollup_node_rpc.inject_raw_transaction ~smart_rollup_address tx_raw
+      in
+      return (Send_raw_transaction.Output tx_hash)
+  | Send_transaction.Input _ ->
+      return (Send_transaction.Output Mockup.transaction_hash)
+  | Eth_call.Input _ -> return (Eth_call.Output Mockup.call)
+  | Get_estimate_gas.Input _ ->
+      return (Get_estimate_gas.Output Mockup.gas_price)
+  | Txpool_content.Input _ ->
+      let* txpool = Rollup_node_rpc.txpool () in
+      return (Txpool_content.Output txpool)
+  | Web3_clientVersion.Input _ ->
+      return (Web3_clientVersion.Output client_version)
+  | _ -> Error_monad.failwith "Unsupported method\n%!"
 
 let dispatch ctx dir =
   Directory.register0 dir dispatch_service (fun () input ->
