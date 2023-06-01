@@ -107,7 +107,7 @@ let chunks bytes size =
   collect 0 [] |> List.rev
 
 module Durable_storage_path = struct
-  let accounts = "/evm/eth_accounts"
+  let accounts = "/eth_accounts"
 
   let balance = "/balance"
 

@@ -221,7 +221,7 @@ let test_originate_evm_kernel =
   Check.(level = first_evm_run_level)
     Check.int
     ~error_msg:"Current level has moved past first EVM run (%L = %R)" ;
-  let evm_key = "evm" in
+  let eth_accounts_key = "eth_accounts" in
   let*! storage_root_keys =
     Sc_rollup_client.inspect_durable_state_value
       ~hooks
@@ -233,7 +233,7 @@ let test_originate_evm_kernel =
   Check.(
     list_mem
       string
-      evm_key
+      eth_accounts_key
       storage_root_keys
       ~error_msg:"Expected %L to be initialized by the EVM kernel.") ;
   unit
