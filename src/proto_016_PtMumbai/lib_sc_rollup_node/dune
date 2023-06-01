@@ -22,6 +22,7 @@
   tezos-workers
   tezos-dal-node-services
   tezos-dal-node-lib
+  tezos-dac-client-lib
   tezos-shell-services
   tezos-smart-rollup-016-PtMumbai
   tezos-smart-rollup-layer2-016-PtMumbai
@@ -54,6 +55,7 @@
   -open Tezos_protocol_016_PtMumbai_parameters
   -open Tezos_workers
   -open Tezos_dal_node_lib
+  -open Tezos_dac_client_lib
   -open Tezos_shell_services
   -open Tezos_smart_rollup_016_PtMumbai
   -open Tezos_smart_rollup_layer2_016_PtMumbai

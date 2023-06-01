@@ -6022,6 +6022,7 @@ let hash = Protocol.hash
             |> if_ N.(number >= 018)
             (* [dac] is needed for the DAC observer client which is not available in Nairobi and earlier. *)
             |> open_;
+            octez_dac_client_lib |> open_;
             octez_shell_services |> open_;
             octez_sc_rollup |> if_some |> open_;
             octez_sc_rollup_layer2 |> if_some |> open_;
