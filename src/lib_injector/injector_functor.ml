@@ -1440,6 +1440,13 @@ module Make (Parameters : PARAMETERS) = struct
         Signature.Public_key_hash.Map.empty
         signers
     in
+    let*? () =
+      List.iter_e
+        (fun (_proto_hash, proto_client) ->
+          let module Proto_client = (val proto_client : PROTOCOL_CLIENT) in
+          Proto_client.checks state)
+        (Inj_proto.registered_proto_clients ())
+    in
     let*! l1_ctxt = Layer_1.start ~name:"injector" ~reconnection_delay cctxt in
     let* head_protocols = protocols_of_head cctxt in
     let* () =

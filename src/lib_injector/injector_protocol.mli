@@ -44,4 +44,7 @@ module Make (Parameters : PARAMETERS) : sig
         this case the injector will not be able to inject operations in blocks
         of this protocol.  *)
   val proto_client_for_protocol : Protocol_hash.t -> proto_client
+
+  (** Returns the list of protocol clients registered. *)
+  val registered_proto_clients : unit -> (Protocol_hash.t * proto_client) list
 end

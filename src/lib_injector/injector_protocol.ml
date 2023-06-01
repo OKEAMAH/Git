@@ -43,4 +43,7 @@ module Make (Parameters : PARAMETERS) = struct
   let proto_client_for_protocol protocol =
     WithExceptions.Option.to_exn ~none:Protocol_not_found
     @@ Protocol_hash.Table.find proto_clients protocol
+
+  let registered_proto_clients () =
+    Protocol_hash.Table.to_seq proto_clients |> List.of_seq
 end
