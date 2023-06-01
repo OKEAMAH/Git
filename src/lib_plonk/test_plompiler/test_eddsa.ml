@@ -35,16 +35,16 @@ module P = struct
   module P = Ed25519.P
   module A = Ed25519.Curve
 
-  let test_vanilla_schnorr () =
+  let test_vanilla_ed25519 () =
     let sk = A.Scalar.random () in
     let msg = S.random () in
-    let pk, signature = P.sign sk msg in
-    assert (P.verify ~msg ~pk ~signature ())
-  (* ;
-     let msg = S.random () in
-     assert (not @@ P.verify ~msg ~pk ~signature ()) *)
+    let pk = P.neuterize sk in
+    let signature = P.sign sk msg in
+    assert (P.verify ~msg ~pk ~signature ()) ;
+    let msg = S.random () in
+    assert (not @@ P.verify ~msg ~pk ~signature ())
 
-  let test = test_vanilla_schnorr
+  let test = test_vanilla_ed25519
 end
 
 module Ed25519 (L : LIB) = struct
@@ -66,11 +66,7 @@ module Ed25519 (L : LIB) = struct
     Plompiler.Utils.bool_list_of_z ~nb_bits
     @@ A.Scalar.to_z @@ A.Scalar.random ()
 
-  let test_circuit_verify () =
-    let g = Sc.Encoding.pk_encoding.input A.one in
-    let sk = A.Scalar.random () in
-    let msg = S.random () in
-    let pk, signature = Ed25519.P.sign sk msg in
+  let test_circuit_verify g pk msg signature () =
     let msg = Input.scalar msg in
     with_label ~label:"EdDSA.test"
     @@ let* g = input ~kind:`Public g in
@@ -91,21 +87,29 @@ module Ed25519 (L : LIB) = struct
   (* let* t = (constant_bool true) in Bool.assert_true t *)
 
   let tests =
+    let g = Sc.Encoding.pk_encoding.input A.one in
+    let sk = A.Scalar.random () in
+    let msg = S.random () in
+    let pk = Ed25519.P.neuterize sk in
+    let signature = Ed25519.P.sign sk msg in
     [
-      test ~valid:true ~name:"Ed25519.test_circuit_verify" test_circuit_verify;
-      (* test
-         ~valid:false
-         ~name:"Ed25519.test_circuit_verify"
-         (test_circuit_verify g pk msg {signature with s = wrong_s}); *)
+      test
+        ~valid:true
+        ~name:"Ed25519.test_circuit_verify"
+        (test_circuit_verify g pk msg signature);
+      test
+        ~valid:false
+        ~name:"Ed25519.test_circuit_verify"
+        (test_circuit_verify g pk msg {signature with s = wrong_s});
     ]
 end
 
 let tests =
   [
-    (* Alcotest.test_case "P" `Quick P.test; *)
+    Alcotest.test_case "P" `Quick P.test;
     Alcotest.test_case "Ed25519" `Quick (to_test (module Ed25519 : Test));
-    (* Alcotest.test_case
-       "Ed25519 plonk"
-       `Slow
-       (to_test ~plonk:(module Plonk.Main_protocol) (module Ed25519 : Test)); *)
+    Alcotest.test_case
+      "Ed25519 plonk"
+      `Slow
+      (to_test ~plonk:(module Plonk.Main_protocol) (module Ed25519 : Test));
   ]
