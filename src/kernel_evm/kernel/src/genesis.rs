@@ -7,8 +7,7 @@ use std::str::FromStr;
 
 use crate::error::Error;
 use crate::error::StorageError::{GenesisAccountInitialisation, Path};
-use crate::storage;
-use crate::storage::receipt_path;
+use crate::storage::EVMStorage;
 use crate::L2Block;
 use evm_execution::account_storage::account_path;
 use evm_execution::account_storage::init_account_storage;
@@ -120,6 +119,7 @@ fn store_genesis_transaction_object<Host: Runtime>(
     index: u32,
     account: &MintAccount,
     genesis_address: &H160,
+    evm_storage: &mut EVMStorage,
 ) -> Result<(), Error> {
     let object = TransactionObject {
         from: *genesis_address,
@@ -139,14 +139,8 @@ fn store_genesis_transaction_object<Host: Runtime>(
         s: H256::zero(),
     };
 
-    let object_path = storage::object_path(&object.hash)?;
-    storage::store_transaction_object(
-        &object_path,
-        host,
-        block.hash,
-        block.number,
-        &object,
-    )
+    let mut object_path = evm_storage.tx_object(host, &object.hash)?;
+    object_path.store_tx_object(host, block.hash, block.number, &object)
 }
 
 fn store_genesis_transaction_receipt<Host: Runtime>(
@@ -156,6 +150,7 @@ fn store_genesis_transaction_receipt<Host: Runtime>(
     index: u32,
     account: &MintAccount,
     genesis_address: &H160,
+    evm_storage: &mut EVMStorage,
 ) -> Result<(), Error> {
     let receipt = TransactionReceipt {
         hash: *hash,
@@ -172,14 +167,14 @@ fn store_genesis_transaction_receipt<Host: Runtime>(
         status: TransactionStatus::Success,
     };
 
-    let receipt_path = receipt_path(&receipt.hash)?;
-    storage::store_transaction_receipt(&receipt_path, host, &receipt)?;
-    storage::store_transaction_receipt(&receipt_path, host, &receipt)
+    let mut receipt_path = evm_storage.tx_receipt(host, &receipt.hash)?;
+    receipt_path.store_tx_receipt(host, &receipt)
 }
 
 fn store_genesis_transactions<Host: Runtime>(
     host: &mut Host,
     genesis_block: L2Block,
+    evm_storage: &mut EVMStorage,
 ) -> Result<(), Error> {
     let genesis_address: H160 = GENESIS_ADDRESSS.into();
 
@@ -193,6 +188,7 @@ fn store_genesis_transactions<Host: Runtime>(
             index,
             mint_account,
             &genesis_address,
+            evm_storage,
         )?;
 
         store_genesis_transaction_receipt(
@@ -202,20 +198,39 @@ fn store_genesis_transactions<Host: Runtime>(
             index,
             mint_account,
             &genesis_address,
+            evm_storage,
         )?;
     }
 
     Ok(())
 }
 
-pub fn init_block<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+pub fn init_block<Host: Runtime>(
+    host: &mut Host,
+    evm_storage: &mut EVMStorage,
+) -> Result<(), Error> {
     // Forge the genesis' transactions that will mint the very first accounts
     let transaction_hashes = bootstrap_genesis_accounts(host)?;
 
     // Produce and store genesis' block
+    evm_storage.storage.begin(host)?;
+    let mut current_block_storage =
+        evm_storage.set_and_get_current_block(host, &GENESIS_LEVEL)?;
     let genesis_block = L2Block::new(GENESIS_LEVEL, transaction_hashes);
-    storage::store_current_block(host, &genesis_block)?;
-    store_genesis_transactions(host, genesis_block)?;
+
+    match current_block_storage.store_l2block(host, &genesis_block) {
+        Ok(()) => match store_genesis_transactions(host, genesis_block, evm_storage) {
+            Ok(()) => evm_storage.storage.commit(host),
+            receipt_storage_error => {
+                evm_storage.storage.rollback(host)?;
+                receipt_storage_error
+            }
+        },
+        block_storage_error => {
+            evm_storage.storage.rollback(host)?;
+            block_storage_error
+        }
+    }?;
 
     debug_msg!(host, "Genesis block was initialized.\n");
     Ok(())
@@ -224,6 +239,7 @@ pub fn init_block<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::init_evm_storage;
 
     use tezos_ethereum::wei;
     use tezos_smart_rollup_host::runtime::ValueType;
@@ -245,9 +261,10 @@ mod tests {
     // are initialized with the appropriate amounts.
     fn test_init_genesis_block() {
         let mut host = MockHost::default();
+        let mut evm_storage = init_evm_storage().unwrap();
         let mut evm_account_storage = init_account_storage().unwrap();
 
-        match init_block(&mut host) {
+        match init_block(&mut host, &mut evm_storage) {
             Ok(()) => (),
             Err(_) => panic!("The initialization of block genesis failed."),
         }
@@ -266,21 +283,24 @@ mod tests {
     // storage.
     fn test_genesis_transactions() {
         let mut host = MockHost::default();
+        let mut evm_storage = init_evm_storage().unwrap();
 
-        match init_block(&mut host) {
+        match init_block(&mut host, &mut evm_storage) {
             Ok(()) => (),
             Err(_) => panic!("The initialization of block genesis failed."),
         }
 
-        let block = storage::read_current_block(&mut host).unwrap();
+        let mut current_block = evm_storage.current_block(&mut host).unwrap();
+
+        let block = current_block.read_l2block(&mut host).unwrap();
 
         assert_eq!(block.number, U256::zero());
 
         for transaction in block.transactions {
-            let object_path = storage::object_path(&transaction).unwrap();
-            assert_eq!(host.store_has(&object_path), Ok(Some(ValueType::Subtree)));
-            let receipt_path = storage::receipt_path(&transaction).unwrap();
-            assert_eq!(host.store_has(&receipt_path), Ok(Some(ValueType::Subtree)));
+            let object = evm_storage.tx_object(&mut host, &transaction).unwrap();
+            assert_eq!(host.store_has(&object.path), Ok(Some(ValueType::Subtree)));
+            let receipt = evm_storage.tx_receipt(&mut host, &transaction).unwrap();
+            assert_eq!(host.store_has(&receipt.path), Ok(Some(ValueType::Subtree)));
         }
     }
 }

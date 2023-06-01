@@ -3,23 +3,23 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::blueprint::Queue;
+use crate::blueprint::{Blueprint, Queue};
 use crate::error::Error;
 use crate::error::StorageError::AccountInitialisation;
 use crate::error::TransferError::{
     CumulativeGasUsedOverflow, InvalidCallerAddress, InvalidNonce,
 };
 use crate::inbox::Transaction;
-use crate::storage;
-use evm_execution::account_storage::init_account_storage;
+use crate::storage::EVMStorage;
 use evm_execution::account_storage::EthereumAccountStorage;
 use evm_execution::handler::ExecutionOutcome;
+use evm_execution::precompiles::PrecompileBTreeMap;
 use evm_execution::{precompiles, run_transaction};
 use tezos_ethereum::transaction::{TransactionHash, TransactionObject};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 use primitive_types::{H160, U256};
-use tezos_ethereum::block::L2Block;
+use tezos_ethereum::block::{BlockConstants, L2Block};
 use tezos_ethereum::transaction::{
     TransactionReceipt, TransactionStatus, TransactionType,
 };
@@ -162,73 +162,143 @@ fn check_nonce<Host: Runtime>(
     }
 }
 
-pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error> {
-    let mut current_block = storage::read_current_block(host)?;
-    let mut evm_account_storage =
-        init_account_storage().map_err(|_| Error::Storage(AccountInitialisation))?;
+fn store_tx_receipts<Host: Runtime>(
+    host: &mut Host,
+    receipts: &[TransactionReceipt],
+    evm_storage: &mut EVMStorage,
+) -> Result<(), Error> {
+    for receipt in receipts {
+        let mut tx_receipt = evm_storage.tx_receipt(host, &receipt.hash)?;
+        tx_receipt.store_tx_receipt(host, receipt)?;
+    }
+    Ok(())
+}
+
+// Note that this is not efficient nor "properly" implemented. This
+// is a temporary hack to answer to third-party tools that asks
+// for transaction objects.
+pub fn store_tx_objects<Host: Runtime>(
+    host: &mut Host,
+    block: &L2Block,
+    objects: &[TransactionObject],
+    evm_storage: &mut EVMStorage,
+) -> Result<(), Error> {
+    for object in objects {
+        let mut tx_object = evm_storage.tx_object(host, &object.hash)?;
+        tx_object.store_tx_object(host, block.hash, block.number, object)?;
+    }
+    Ok(())
+}
+
+fn store_block_and_tx_infos<Host: Runtime>(
+    host: &mut Host,
+    new_block: &L2Block,
+    receipts_infos: Vec<TransactionReceiptInfo>,
+    objects: Vec<TransactionObject>,
+    evm_storage: &mut EVMStorage,
+) -> Result<(), Error> {
+    let mut current_block_storage =
+        evm_storage.set_and_get_current_block(host, &new_block.number)?;
+
+    match current_block_storage.store_l2block(host, new_block) {
+        Ok(()) => match store_tx_receipts(
+            host,
+            &make_receipts(new_block, receipts_infos)?,
+            evm_storage,
+        ) {
+            Ok(()) => store_tx_objects(host, new_block, &objects, evm_storage),
+            tx_receipts_storage_error => tx_receipts_storage_error,
+        },
+        block_storage_error => block_storage_error,
+    }
+}
+
+fn compute<Host: Runtime>(
+    host: &mut Host,
+    proposal: Blueprint,
+    block_constants: &BlockConstants,
+    next_level: U256,
+    precompiles: &PrecompileBTreeMap<Host>,
+    evm_storage: &mut EVMStorage,
+    evm_account_storage: &mut EthereumAccountStorage,
+) -> Result<L2Block, Error> {
+    let mut valid_txs = Vec::new();
+    let mut objects = Vec::new();
+    let mut receipts_infos = Vec::new();
+    let transactions = proposal.transactions;
+
+    for (transaction, index) in transactions.into_iter().zip(0u32..) {
+        let caller = transaction
+            .tx
+            .caller()
+            .map_err(|_| Error::Transfer(InvalidCallerAddress))?;
+        check_nonce(host, transaction.tx.nonce, caller, evm_account_storage)?;
+        let receipt_info = match run_transaction(
+            host,
+            &block_constants,
+            evm_account_storage,
+            &precompiles,
+            transaction.tx.to,
+            caller,
+            transaction.tx.data.clone(),
+            Some(transaction.tx.gas_limit),
+            Some(transaction.tx.value),
+        ) {
+            Ok(outcome) => {
+                valid_txs.push(transaction.tx_hash);
+                make_receipt_info(
+                    transaction.tx_hash,
+                    index,
+                    Some(outcome),
+                    caller,
+                    transaction.tx.to,
+                )
+            }
+            Err(_) => make_receipt_info(
+                transaction.tx_hash,
+                index,
+                None,
+                caller,
+                transaction.tx.to,
+            ),
+        };
+
+        let gas_used = match &receipt_info.execution_outcome {
+            Some(execution_outcome) => execution_outcome.gas_used.into(),
+            None => U256::zero(),
+        };
+        let object = make_object(transaction, caller, index, gas_used);
+        objects.push(object);
+        receipts_infos.push(receipt_info)
+    }
+
+    let new_block = L2Block::new(next_level, valid_txs);
+    store_block_and_tx_infos(host, &new_block, receipts_infos, objects, evm_storage)?;
+
+    Ok(new_block)
+}
+
+pub fn produce<Host: Runtime>(
+    host: &mut Host,
+    queue: Queue,
+    evm_storage: &mut EVMStorage,
+    evm_account_storage: &mut EthereumAccountStorage,
+) -> Result<(), Error> {
+    let mut current_evm_block = evm_storage.current_block(host)?;
+    let mut current_block = current_evm_block.read_l2block(host)?;
     let precompiles = precompiles::precompile_set::<Host>();
 
     for proposal in queue.proposals {
-        let mut valid_txs = Vec::new();
-        let mut receipts_infos = Vec::new();
-        let mut objects = Vec::new();
-        let transactions = proposal.transactions;
-
-        for (transaction, index) in transactions.into_iter().zip(0u32..) {
-            let caller = transaction
-                .tx
-                .caller()
-                .map_err(|_| Error::Transfer(InvalidCallerAddress))?;
-            check_nonce(host, transaction.tx.nonce, caller, &mut evm_account_storage)?;
-            let receipt_info = match run_transaction(
-                host,
-                &current_block.constants(),
-                &mut evm_account_storage,
-                &precompiles,
-                transaction.tx.to,
-                caller,
-                transaction.tx.data.clone(),
-                Some(transaction.tx.gas_limit),
-                Some(transaction.tx.value),
-            ) {
-                Ok(outcome) => {
-                    valid_txs.push(transaction.tx_hash);
-                    make_receipt_info(
-                        transaction.tx_hash,
-                        index,
-                        Some(outcome),
-                        caller,
-                        transaction.tx.to,
-                    )
-                }
-                Err(_) => make_receipt_info(
-                    transaction.tx_hash,
-                    index,
-                    None,
-                    caller,
-                    transaction.tx.to,
-                ),
-            };
-            let gas_used = match &receipt_info.execution_outcome {
-                Some(execution_outcome) => execution_outcome.gas_used.into(),
-                None => U256::zero(),
-            };
-            let object = make_object(transaction, caller, index, gas_used);
-            objects.push(object);
-            receipts_infos.push(receipt_info)
-        }
-
-        let new_block = L2Block::new(current_block.number + 1, valid_txs);
-        storage::store_current_block(host, &new_block)?;
-        storage::store_transaction_receipts(
+        compute(
             host,
-            &make_receipts(&new_block, receipts_infos)?,
-        )?;
-        // Note that this is not efficient nor "properly" implemented. This
-        // is a temporary hack to answer to third-party tools that asks
-        // for transaction objects.
-        storage::store_transaction_objects(host, &new_block, &objects)?;
-        current_block = new_block;
+            proposal,
+            &current_block.constants(),
+            current_block.number + 1,
+            &precompiles,
+            evm_storage,
+            evm_account_storage,
+        )
+        .map(|new_block| current_block = new_block)?;
     }
     Ok(())
 }
@@ -239,14 +309,14 @@ mod tests {
     use crate::blueprint::Blueprint;
     use crate::genesis;
     use crate::inbox::Transaction;
-    use crate::storage::internal_for_tests::{
-        read_transaction_receipt, read_transaction_receipt_status,
+    use crate::storage::init_evm_storage;
+    use evm_execution::account_storage::{
+        account_path, init_account_storage, EthereumAccountStorage,
     };
-    use evm_execution::account_storage::{account_path, EthereumAccountStorage};
     use primitive_types::{H160, H256};
     use std::str::FromStr;
     use tezos_ethereum::signatures::EthereumTransactionCommon;
-    use tezos_ethereum::transaction::{TransactionStatus, TRANSACTION_HASH_SIZE};
+    use tezos_ethereum::transaction::TRANSACTION_HASH_SIZE;
     use tezos_smart_rollup_mock::MockHost;
 
     fn address_from_str(s: &str) -> Option<H160> {
@@ -376,9 +446,10 @@ mod tests {
 
     fn produce_block_with_several_valid_txs(
         host: &mut MockHost,
+        evm_storage: &mut EVMStorage,
         evm_account_storage: &mut EthereumAccountStorage,
     ) {
-        let _ = genesis::init_block(host);
+        let _ = genesis::init_block(host, evm_storage);
 
         let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
         let tx_hash_1 = [1; TRANSACTION_HASH_SIZE];
@@ -406,11 +477,16 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(host, queue).expect("The block production failed.")
+        produce(host, queue, evm_storage, evm_account_storage)
+            .expect("The block production failed.")
     }
 
-    fn assert_current_block_reading_validity(host: &mut MockHost) {
-        match storage::read_current_block(host) {
+    fn assert_current_block_reading_validity(
+        host: &mut MockHost,
+        evm_storage: &mut EVMStorage,
+    ) {
+        let mut current_evm_block = evm_storage.current_block(host).unwrap();
+        match current_evm_block.read_l2block(host) {
             Ok(_) => (),
             Err(e) => {
                 panic!("Block reading failed: {:?}\n", e)
@@ -422,7 +498,9 @@ mod tests {
     // Test if the invalid transactions are producing receipts with invalid status
     fn test_invalid_transactions_receipt_status() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
 
@@ -436,18 +514,23 @@ mod tests {
             proposals: vec![Blueprint { transactions }],
         };
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
-        let status = read_transaction_receipt_status(&mut host, &tx_hash)
+        let mut tx_receipt = evm_storage.tx_receipt(&mut host, &tx_hash).unwrap();
+        let status = tx_receipt
+            .read_tx_receipt_status(&mut host)
             .expect("Should have found receipt");
-        assert_eq!(TransactionStatus::Failure, status);
+        assert_eq!(TransactionStatus::Failure, status)
     }
 
     #[test]
     // Test if a valid transaction is producing a receipt with a success status
     fn test_valid_transactions_receipt_status() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
 
@@ -462,7 +545,6 @@ mod tests {
         };
 
         let sender = H160::from_str("f95abdf6ede4c3703e0e9453771fbee8592d31e9").unwrap();
-        let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
             &mut host,
             &mut evm_account_storage,
@@ -470,18 +552,23 @@ mod tests {
             U256::from(5000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
-        let status = read_transaction_receipt_status(&mut host, &tx_hash)
+        let mut tx_receipt = evm_storage.tx_receipt(&mut host, &tx_hash).unwrap();
+        let status = tx_receipt
+            .read_tx_receipt_status(&mut host)
             .expect("Should have found receipt");
-        assert_eq!(TransactionStatus::Success, status);
+        assert_eq!(TransactionStatus::Success, status)
     }
 
     #[test]
     // Test if a valid transaction is producing a receipt with a contract address
     fn test_valid_transactions_receipt_contract_address() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
         let tx = dummy_eth_transaction_deploy();
@@ -500,7 +587,6 @@ mod tests {
         };
 
         let sender = H160::from_str("af1276cbb260bb13deddb4209ae99ae6e497f446").unwrap();
-        let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
             &mut host,
             &mut evm_account_storage,
@@ -508,10 +594,14 @@ mod tests {
             U256::from(5000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
-        let receipt = read_transaction_receipt(&mut host, &tx_hash)
+        let mut tx_receipt = evm_storage.tx_receipt(&mut host, &tx_hash).unwrap();
+        let receipt = tx_receipt
+            .read_tx_receipt(&mut host, &tx_hash)
             .expect("should have found receipt");
+
         assert_eq!(TransactionStatus::Success, receipt.status);
         assert_eq!(
             H160::from_str("af1276cbb260bb13deddb4209ae99ae6e497f446").unwrap(),
@@ -527,9 +617,14 @@ mod tests {
     // Test if several valid transactions can be performed
     fn test_several_valid_transactions() {
         let mut host = MockHost::default();
+        let mut evm_storage = init_evm_storage().unwrap();
         let mut evm_account_storage = init_account_storage().unwrap();
 
-        produce_block_with_several_valid_txs(&mut host, &mut evm_account_storage);
+        produce_block_with_several_valid_txs(
+            &mut host,
+            &mut evm_storage,
+            &mut evm_account_storage,
+        );
 
         let dest_address =
             H160::from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea").unwrap();
@@ -543,7 +638,9 @@ mod tests {
     // Test if several valid proposals can produce valid blocks
     fn test_several_valid_proposals() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
 
         let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
         let tx_hash_1 = [1; TRANSACTION_HASH_SIZE];
@@ -570,7 +667,6 @@ mod tests {
         };
 
         let sender = H160::from_str("f95abdf6ede4c3703e0e9453771fbee8592d31e9").unwrap();
-        let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
             &mut host,
             &mut evm_account_storage,
@@ -578,7 +674,8 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
         let dest_address =
             H160::from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea").unwrap();
@@ -592,7 +689,9 @@ mod tests {
     // Test transfers gas consumption consistency
     fn test_cumulative_transfers_gas_consumption() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
         let base_gas = U256::from(21000);
 
         let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
@@ -616,7 +715,6 @@ mod tests {
         };
 
         let sender = H160::from_str("f95abdf6ede4c3703e0e9453771fbee8592d31e9").unwrap();
-        let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
             &mut host,
             &mut evm_account_storage,
@@ -624,10 +722,15 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
         for transaction in transactions {
-            let receipt = read_transaction_receipt(&mut host, &transaction.tx_hash)
+            let mut tx_receipt = evm_storage
+                .tx_receipt(&mut host, &transaction.tx_hash)
+                .unwrap();
+            let receipt = tx_receipt
+                .read_tx_receipt(&mut host, &transaction.tx_hash)
                 .expect("should have found receipt");
             // NB: we do not use any gas for now, hence the following assertion
             assert_eq!(receipt.cumulative_gas_used, base_gas);
@@ -639,12 +742,15 @@ mod tests {
     // a block production
     fn test_read_storage_current_block_after_block_production_with_empty_queue() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
         let queue = Queue { proposals: vec![] };
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage)
+            .expect("The block production failed.");
 
-        assert_current_block_reading_validity(&mut host);
+        assert_current_block_reading_validity(&mut host, &mut evm_storage);
     }
 
     #[test]
@@ -652,18 +758,25 @@ mod tests {
     // a block production
     fn test_read_storage_current_block_after_block_production_with_filled_queue() {
         let mut host = MockHost::default();
+        let mut evm_storage = init_evm_storage().unwrap();
         let mut evm_account_storage = init_account_storage().unwrap();
 
-        produce_block_with_several_valid_txs(&mut host, &mut evm_account_storage);
+        produce_block_with_several_valid_txs(
+            &mut host,
+            &mut evm_storage,
+            &mut evm_account_storage,
+        );
 
-        assert_current_block_reading_validity(&mut host);
+        assert_current_block_reading_validity(&mut host, &mut evm_storage);
     }
 
     #[test]
     // Test that the same transaction can not be replayed twice
     fn test_replay_attack() {
         let mut host = MockHost::default();
-        let _ = genesis::init_block(&mut host);
+        let mut evm_storage = init_evm_storage().unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let _ = genesis::init_block(&mut host, &mut evm_storage);
 
         let tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
@@ -682,7 +795,6 @@ mod tests {
         };
 
         let sender = H160::from_str("f95abdf6ede4c3703e0e9453771fbee8592d31e9").unwrap();
-        let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
             &mut host,
             &mut evm_account_storage,
@@ -690,7 +802,7 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        match produce(&mut host, queue) {
+        match produce(&mut host, queue, &mut evm_storage, &mut evm_account_storage) {
             Err(Error::Transfer(InvalidNonce { .. })) => (),
             _ => panic!("An error should be thrown because of a replay attack attempt."),
         }
