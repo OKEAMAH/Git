@@ -30,6 +30,7 @@ pub enum StorageCommitmentStatus {
 pub enum StorageInitialisationError {
     Base(TransactionalStorageError),
     EVMBlockInit(TransactionalStorageError),
+    TxReceiptInit(TransactionalStorageError),
 }
 
 #[derive(Debug)]
