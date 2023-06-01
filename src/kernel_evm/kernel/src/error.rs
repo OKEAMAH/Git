@@ -51,6 +51,7 @@ pub enum Error {
     Transfer(TransferError),
     Storage(StorageError),
     InvalidConversion,
+    InvalidRunTransaction,
 }
 
 impl From<PathError> for Error {

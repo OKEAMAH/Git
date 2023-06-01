@@ -14,6 +14,9 @@ use crate::storage::EVMStorage;
 use evm_execution::account_storage::EthereumAccountStorage;
 use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
+use evm_execution::EthereumError::{
+    EthereumAccountError, EthereumStorageError, InternalTrapError,
+};
 use evm_execution::{precompiles, run_transaction};
 use tezos_ethereum::transaction::{TransactionHash, TransactionObject};
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -246,30 +249,44 @@ fn compute<Host: Runtime>(
         ) {
             Ok(outcome) => {
                 valid_txs.push(transaction.tx_hash);
-                make_receipt_info(
+                Ok(make_receipt_info(
                     transaction.tx_hash,
                     index,
                     Some(outcome),
                     caller,
                     transaction.tx.to,
-                )
+                ))
             }
-            Err(_) => make_receipt_info(
+            Err(
+                InternalTrapError | EthereumAccountError(_) | EthereumStorageError(_),
+            ) => Err(Error::InvalidRunTransaction),
+            Err(_) => Ok(make_receipt_info(
                 transaction.tx_hash,
                 index,
                 None,
                 caller,
                 transaction.tx.to,
-            ),
+            )),
         };
 
-        let gas_used = match &receipt_info.execution_outcome {
-            Some(execution_outcome) => execution_outcome.gas_used.into(),
-            None => U256::zero(),
-        };
-        let object = make_object(transaction, caller, index, gas_used);
-        objects.push(object);
-        receipts_infos.push(receipt_info)
+        match receipt_info {
+            Ok(receipt_info) => {
+                let gas_used = match &receipt_info.execution_outcome {
+                    Some(execution_outcome) => execution_outcome.gas_used.into(),
+                    None => U256::zero(),
+                };
+                let object = make_object(transaction, caller, index, gas_used);
+                objects.push(object);
+                receipts_infos.push(receipt_info)
+            }
+            Err(run_transaction_error) => {
+                // TODO: https://gitlab.com/tezos/tezos/-/issues/5665
+                // Because the proposal's state is unclear, and we do not have a sequencer
+                // if an error that leads to a durable storage corruption is caught, we
+                // invalidate the entire proposal.
+                return Err(run_transaction_error);
+            }
+        }
     }
 
     let new_block = L2Block::new(next_level, valid_txs);
