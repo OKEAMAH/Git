@@ -29,6 +29,10 @@
       one must simply create a [V1] module with the new definition 
     of [type t]. *)
 module V0 : sig
+  type aggregate_signature = Tezos_crypto.Aggregate_signature.signature
+
+  type witnesses = Z.t
+
   (** Representation of a Data Availibility Committee Certificate.
      Type is private to make sure correct [version] is used.
      Use [make] function to create a [Certificate_repr.V0.t]. *)
@@ -37,11 +41,7 @@ module V0 : sig
   (** Create a [Certificate_repr.V0.t] from given [Dac_plugin.raw_hash],
      [Tezos_crypto.Aggregate_signature.signature] and [Z.t].
      This function is in charge to add the correct [version]. *)
-  val make :
-    Dac_plugin.raw_hash ->
-    Tezos_crypto.Aggregate_signature.signature ->
-    Z.t ->
-    t
+  val make : Dac_plugin.raw_hash -> aggregate_signature -> witnesses -> t
 
   (** All the following functions are related to the Protocol.
       They are used only by the `command_handlers` module
@@ -54,23 +54,28 @@ module V0 : sig
     val serialize_certificate :
       Dac_plugin.t ->
       root_hash:Dac_plugin.hash ->
-      aggregate_signature:Tezos_crypto.Aggregate_signature.signature ->
-      witnesses:Z.t ->
+      aggregate_signature:aggregate_signature ->
+      witnesses:witnesses ->
       Bytes.t
   end
 
+  (** Representation of a Data Availability Committee Certificate store
+      in Irmin store. It is basically a [V0.t] without the [root_hash] field. *)
   type storage_certificate = {
-    aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
-    witnesses : Z.t;
+    aggregate_signature : aggregate_signature;
+    witnesses : witnesses;
   }
 
-  val make_storage :
-    Tezos_crypto.Aggregate_signature.signature -> Z.t -> storage_certificate
+  (** Create a [Certificate_repr.V0.storage_certificate] from given
+     [aggregate_signature] and [witnesses]. *)
+  val make_storage : aggregate_signature -> witnesses -> storage_certificate
 end
 
-type t = V0 of V0.t
-
 module Storage : sig
+  (** Store certificate is differnet from certificate returned in HTTP
+      APIs because it does not contain the [root_hash] field, but it will
+      evolve alongside the [Certificate] and will have as many
+      versions as [Certificate_repr.t] will have. *)
   type t = V0 of V0.storage_certificate
 
   val encoding : t Data_encoding.t
@@ -81,6 +86,8 @@ module Storage : sig
   (** Helper to get [witnesses] from any given version of [Certificate_repr]. *)
   val get_witnesses : t -> Z.t
 end
+
+type t = V0 of V0.t
 
 (** Used to return any version of [Certificate_repr] on 
      DAC RPC endpoints. *)

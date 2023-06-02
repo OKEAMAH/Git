@@ -28,6 +28,14 @@
    Update Certificate repr to handle a dynamic dac.
 *)
 module V0 = struct
+  type aggregate_signature = Tezos_crypto.Aggregate_signature.signature
+
+  let aggregate_signature_encoding = Tezos_crypto.Aggregate_signature.encoding
+
+  type witnesses = Z.t
+
+  let witnesses_encoding = Data_encoding.z
+
   (** Current version of the [Certificate]
       must be equal to the version of the module, 0 in this case. *)
   let version = 0
@@ -37,8 +45,8 @@ module V0 = struct
      Use [make] function to create a [Certificate_repr.V0.t] *)
   type t = {
     root_hash : Dac_plugin.raw_hash;
-    aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
-    witnesses : Z.t;
+    aggregate_signature : aggregate_signature;
+    witnesses : witnesses;
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/4853
            Use BitSet for witnesses field in external message
         *)
@@ -53,8 +61,8 @@ module V0 = struct
         obj4
           (req "version" Data_encoding.uint8)
           (req "root_hash" Dac_plugin.raw_hash_encoding)
-          (req "aggregate_signature" Tezos_crypto.Aggregate_signature.encoding)
-          (req "witnesses" z))
+          (req "aggregate_signature" aggregate_signature_encoding)
+          (req "witnesses" witnesses_encoding))
     in
     Data_encoding.(
       conv_with_guard
@@ -66,7 +74,7 @@ module V0 = struct
         obj_enc)
 
   type storage_certificate = {
-    aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
+    aggregate_signature : aggregate_signature;
     witnesses : Z.t;
   }
 
@@ -78,8 +86,8 @@ module V0 = struct
       Data_encoding.(
         obj3
           (req "version" Data_encoding.uint8)
-          (req "aggregate_signature" Tezos_crypto.Aggregate_signature.encoding)
-          (req "witnesses" z))
+          (req "aggregate_signature" aggregate_signature_encoding)
+          (req "witnesses" witnesses_encoding))
     in
     Data_encoding.(
       conv_with_guard
@@ -105,8 +113,8 @@ module V0 = struct
         active protocol. *)
     type t = {
       root_hash : Dac_plugin.hash;
-      aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
-      witnesses : Z.t;
+      aggregate_signature : aggregate_signature;
+      witnesses : witnesses;
     }
 
     (** This encoding is protocol dependant because the SDK Kernel
@@ -123,10 +131,8 @@ module V0 = struct
               {root_hash; aggregate_signature; witnesses})
             (obj3
                (req "root_hash" Plugin.encoding)
-               (req
-                  "aggregate_signature"
-                  Tezos_crypto.Aggregate_signature.encoding)
-               (req "witnesses" z)))
+               (req "aggregate_signature" aggregate_signature_encoding)
+               (req "witnesses" witnesses_encoding)))
       in
       Data_encoding.(
         union
