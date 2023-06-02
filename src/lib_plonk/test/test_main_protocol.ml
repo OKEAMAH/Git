@@ -98,20 +98,21 @@ struct
           ]
     in
     List.map
-      (fun case ->
-        Cases.
-          ( case.name,
-            H.run_test_case {case with name = pc_name ^ "." ^ case.name} ))
+      Cases.(
+        fun case ->
+          let name = pc_name ^ "." ^ case.name in
+          (name, H.run_test_case {case with name}))
       (Cases.list @ Cases.Lookup.list)
     @ List.map (H.test_aggregated_cases ~prefix:pc_name) aggregated_cases
-    @ [("test_encodings", test_encodings)]
+    @ [(pc_name ^ "." ^ "test_encodings", test_encodings)]
 
   let tests_slow pc_name =
     let open Plonk_test in
     List.map
-      (fun case ->
-        let case = Cases.{case with name = pc_name ^ "." ^ case.name} in
-        (Cases.(case.name), H.run_test_case case))
+      Cases.(
+        fun case ->
+          let name = pc_name ^ "." ^ case.name in
+          (name, H.run_test_case {case with name}))
       Cases.list_slow
 
   let several_circuits_one_input ~zero_knowledge () =

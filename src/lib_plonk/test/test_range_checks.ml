@@ -25,7 +25,8 @@ module External (PC : Polynomial_commitment.S) = struct
   let tests_quick pc_name =
     List.map
       (fun case ->
-        (case.name, H.run_test_case {case with name = pc_name ^ "." ^ case.name}))
+        let name = pc_name ^ "." ^ case.name in
+        (name, H.run_test_case {case with name}))
       Range_Checks.list
     @ List.map
         (H.test_aggregated_cases ~prefix:pc_name)
