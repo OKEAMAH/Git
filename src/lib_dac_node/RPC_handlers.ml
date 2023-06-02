@@ -164,7 +164,11 @@ module V0 = struct
     let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
     let+ value_opt = Store.Certificate_store.find node_store root_hash in
     Option.map
-      (fun Store.{aggregate_signature; witnesses} ->
+      (fun certificate ->
+        let aggregate_signature =
+          Certificate_repr.Storage.get_aggregate_signature certificate
+        in
+        let witnesses = Certificate_repr.Storage.get_witnesses certificate in
         Certificate_repr.(
           V0 (V0.make raw_root_hash aggregate_signature witnesses)))
       value_opt
@@ -174,13 +178,14 @@ module V0 = struct
     let*? root_hash = Dac_plugin.raw_to_hash dac_plugin raw_root_hash in
     let* value_opt = Store.Certificate_store.find node_store root_hash in
     match value_opt with
-    | Some Store.{aggregate_signature; witnesses} ->
+    | Some certificate ->
         let serialized_certificate =
           Certificate_repr.V0.Protocol_dependant.serialize_certificate
             dac_plugin
             ~root_hash
-            ~aggregate_signature
-            ~witnesses
+            ~aggregate_signature:
+              (Certificate_repr.Storage.get_aggregate_signature certificate)
+            ~witnesses:(Certificate_repr.Storage.get_witnesses certificate)
         in
         return @@ Some (String.of_bytes serialized_certificate)
     | None -> return_none
@@ -225,7 +230,14 @@ module V0 = struct
       | Ok current_certificate_store_value ->
           let () =
             Option.iter
-              (fun Store.{aggregate_signature; witnesses} ->
+              (fun storage_certif ->
+                let aggregate_signature =
+                  Certificate_repr.Storage.get_aggregate_signature
+                    storage_certif
+                in
+                let witnesses =
+                  Certificate_repr.Storage.get_witnesses storage_certif
+                in
                 let certificate =
                   Certificate_repr.(
                     V0 (V0.make raw_root_hash aggregate_signature witnesses))

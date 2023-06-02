@@ -277,7 +277,8 @@ let update_aggregate_sig_store node_store dac_members_pk_opt root_hash =
         Store.Certificate_store.add
           node_store
           root_hash
-          Store.{aggregate_signature; witnesses}
+          Certificate_repr.(
+            Storage.V0 (V0.make_storage aggregate_signature witnesses))
       in
       return @@ (aggregate_signature, witnesses)
 

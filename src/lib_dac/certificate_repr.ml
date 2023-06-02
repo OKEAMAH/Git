@@ -65,7 +65,32 @@ module V0 = struct
           else Error "invalid version of certificate.")
         obj_enc)
 
-  let all_committee_members_have_signed committee_members {witnesses; _} =
+  type storage_certificate = {
+    aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
+    witnesses : Z.t;
+  }
+
+  let make_storage aggregate_signature witnesses =
+    {aggregate_signature; witnesses}
+
+  let storage_encoding =
+    let obj_enc =
+      Data_encoding.(
+        obj3
+          (req "version" Data_encoding.uint8)
+          (req "aggregate_signature" Tezos_crypto.Aggregate_signature.encoding)
+          (req "witnesses" z))
+    in
+    Data_encoding.(
+      conv_with_guard
+        (fun {aggregate_signature; witnesses} ->
+          (0, aggregate_signature, witnesses))
+        (fun (version, aggregate_signature, witnesses) ->
+          if version == 0 then Ok {aggregate_signature; witnesses}
+          else Error "invalid version of certificate.")
+        obj_enc)
+
+  let all_committee_members_have_signed committee_members ({witnesses; _} : t) =
     let length = List.length committee_members in
     (* TODO: https://gitlab.com/tezos/tezos/-/issues/4562
        The following is equivalent to Bitset.fill length. The Bitset module
@@ -142,7 +167,27 @@ let encoding =
         (fun s -> V0 s);
     ]
 
-let get_root_hash t = match t with V0 t -> t.root_hash
+module Storage = struct
+  type t = V0 of V0.storage_certificate
+
+  let encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"certificate_repr_V0"
+          (Tag 0)
+          V0.storage_encoding
+          (function V0 s -> Some s)
+          (fun s -> V0 s);
+      ]
+
+  let get_aggregate_signature t = match t with V0 t -> t.aggregate_signature
+
+  let get_witnesses t = match t with V0 t -> t.witnesses
+end
+
+let get_root_hash (t : t) = match t with V0 t -> t.root_hash
 
 let get_aggregate_signature t = match t with V0 t -> t.aggregate_signature
 
@@ -150,7 +195,7 @@ let get_witnesses t = match t with V0 t -> t.witnesses
 
 let get_version t = match t with V0 _t -> V0.version
 
-let all_committee_members_have_signed committee_members certificate =
+let all_committee_members_have_signed committee_members (certificate : t) =
   match certificate with
   | V0 certificate ->
       V0.all_committee_members_have_signed committee_members certificate

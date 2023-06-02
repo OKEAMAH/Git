@@ -58,9 +58,29 @@ module V0 : sig
       witnesses:Z.t ->
       Bytes.t
   end
+
+  type storage_certificate = {
+    aggregate_signature : Tezos_crypto.Aggregate_signature.signature;
+    witnesses : Z.t;
+  }
+
+  val make_storage :
+    Tezos_crypto.Aggregate_signature.signature -> Z.t -> storage_certificate
 end
 
 type t = V0 of V0.t
+
+module Storage : sig
+  type t = V0 of V0.storage_certificate
+
+  val encoding : t Data_encoding.t
+
+  (** Helper to get [aggregate_signature] from any given version of [Certificate_repr]. *)
+  val get_aggregate_signature : t -> Tezos_crypto.Aggregate_signature.signature
+
+  (** Helper to get [witnesses] from any given version of [Certificate_repr]. *)
+  val get_witnesses : t -> Z.t
+end
 
 (** Used to return any version of [Certificate_repr] on 
      DAC RPC endpoints. *)
