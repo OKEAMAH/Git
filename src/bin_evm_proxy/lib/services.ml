@@ -69,6 +69,26 @@ let batchable_encoding kind =
           (fun i -> Batch i);
       ])
 
+type 'a failable = Valid of 'a | Invalid of Data_encoding.json
+
+let failable_encoding input_encoding =
+  Data_encoding.(
+    union
+      [
+        case
+          ~title:"valid"
+          (Tag 0)
+          input_encoding
+          (function Valid (input, id) -> Some (input, id) | _ -> None)
+          (fun (input, id) -> Valid (input, id));
+        case
+          ~title:"invalid"
+          (Tag 1)
+          json
+          (function Invalid json -> Some json | _ -> None)
+          (fun json -> Invalid json);
+      ])
+
 let dispatch_service =
   Service.post_service
     ~query:Query.empty
@@ -87,6 +107,8 @@ let get_block ~full_transaction_object block_param
       Rollup_node_rpc.nth_block ~full_transaction_object n
   | Latest | Earliest | Pending ->
       Rollup_node_rpc.current_block ~full_transaction_object
+
+let rpc_fail err id = JSONRPC.{value = Error (Error.rpc_error_of_kind err); id}
 
 let dispatch_input
     ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) (input, id)
@@ -147,7 +169,68 @@ let dispatch_input
       return (Txpool_content.Output txpool)
   | Web3_clientVersion.Input _ ->
       return (Web3_clientVersion.Output client_version)
-  | _ -> Error_monad.failwith "Unsupported method\n%!"
+  | _ ->
+      Lwt.return_ok
+        (rpc_fail
+           (Error.Invalid_method_parameters
+              ("", Data_encoding.Json.construct Input.encoding (input, id)))
+           id)
+
+let rpc_id fields =
+  match List.assoc_opt ~equal:String.equal "id" fields with
+  | None -> None
+  | Some id -> (
+      try Some (Data_encoding.Json.destruct JSONRPC.id_repr_encoding id)
+      with _ -> None)
+
+let is_method_implemented m =
+  List.exists (fun (module M : METHOD) -> M.method_ = m) methods
+
+(* If the method is known but still cannot be decoded, this implies that the
+   parameters are invalid. *)
+let if_field_method_exists meth fields json =
+  match meth with
+  | `String m when is_method_implemented m -> (
+      match List.assoc_opt ~equal:String.equal "params" fields with
+      | Some input -> rpc_fail (Error.Invalid_method_parameters (m, input))
+      | _ -> rpc_fail (Error.Invalid_request json))
+  | `String m -> rpc_fail (Error.Method_not_found m)
+  | _ -> rpc_fail (Error.Invalid_request json)
+
+(* Check the only fields are the one from JSONRPC specification, and returns the
+   method name. *)
+let check_fields_and_return_method fields =
+  if
+    List.for_all
+      (function
+        | "jsonrpc", version -> version = `String JSONRPC.version
+        | "method", _ | "params", _ | "id", _ -> true
+        | _ -> false)
+      fields
+  then List.assoc_opt ~equal:String.equal "method" fields
+  else None
+
+(* [on_invalid_input json] is used when decoding fails and attempts to find the
+   most precise error:
+   - If the JSON is not an object then the request is invalid.
+   - If the JSON does not have exclusively the JSONRPC specified fields then the
+   request is invalid.
+   - If the method is not in the list of known methods, then the method is not
+   implemented.
+   - Otherwise this implies the parameters for the given method are invalid.
+*)
+let on_invalid_input json =
+  match json with
+  | `O fields -> (
+      let id = rpc_id fields in
+      match check_fields_and_return_method fields with
+      | Some meth -> if_field_method_exists meth fields json id
+      | _ -> rpc_fail (Error.Invalid_request json) id)
+  | _ -> rpc_fail (Error.Invalid_request json) None
+
+let dispatch_failable_input ctx = function
+  | Valid input -> dispatch_input ctx input
+  | Invalid json -> Lwt.return_ok (on_invalid_input json)
 
 let dispatch ctx dir =
   Directory.register0 dir dispatch_service (fun () input ->
@@ -162,7 +245,7 @@ let dispatch ctx dir =
       | `A inputs ->
           let+ outputs = List.map_es decode_and_dispatch inputs in
           Batch outputs
-      | _ -> Error_monad.failwith "Invalid request\n%!")
+      | _ -> return (Singleton (rpc_fail (Error.Invalid_request input) None)))
 
 let directory (rollup_node_config : (module Rollup_node.S) * string) =
   Directory.empty |> version |> dispatch rollup_node_config

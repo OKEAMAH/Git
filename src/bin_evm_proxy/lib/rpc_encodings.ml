@@ -124,6 +124,33 @@ module Error = struct
   let data_encoding = Data_encoding.json
 
   let encoding = JSONRPC.error_encoding data_encoding
+
+  type kind =
+    | Invalid_request of Data_encoding.json
+    | Method_not_found of string
+    | Invalid_method_parameters of string * Data_encoding.json
+
+  let rpc_error_of_kind = function
+    (* The three following errors and error codes are described in the JSONRPC
+       specification (https://www.jsonrpc.org/specification#error_object). Note
+       that the `data` field is not mandatory and up to the implementor's
+       discretion. *)
+    | Invalid_request json ->
+        JSONRPC.{code = -32600; message = "Invalid request"; data = Some json}
+    | Method_not_found method_ ->
+        JSONRPC.
+          {
+            code = -32601;
+            message = "Method not found";
+            data = Some (`String method_);
+          }
+    | Invalid_method_parameters (method_, input) ->
+        JSONRPC.
+          {
+            code = -32602;
+            message = "Invalid method parameter(s)";
+            data = Some (`O [("method", `String method_); ("params", input)]);
+          }
 end
 
 type 'result rpc_result = ('result, Error.t) result
@@ -456,7 +483,7 @@ let methods : (module METHOD) list =
   ]
 
 module Input = struct
-  type t = input
+  type t = input * JSONRPC.id
 
   let case_maker tag_id (module M : METHOD) =
     let open Data_encoding in
@@ -473,7 +500,7 @@ module Input = struct
 end
 
 module Output = struct
-  type nonrec 'a result = ('a, error JSONRPC.error) result
+  type t = output
 
   let case_maker tag_id (module M : METHOD) =
     let open Data_encoding in

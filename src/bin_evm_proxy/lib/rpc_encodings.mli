@@ -101,6 +101,13 @@ module Error : sig
   val data_encoding : data Data_encoding.t
 
   val encoding : t Data_encoding.t
+
+  type kind =
+    | Invalid_request of Data_encoding.json
+    | Method_not_found of string
+    | Invalid_method_parameters of string * Data_encoding.json
+
+  val rpc_error_of_kind : kind -> data JSONRPC.error
 end
 
 (** Extensible variant representing the possible input requests extended by the
@@ -170,20 +177,23 @@ module MethodMaker : functor (M : METHOD_DEF) ->
 val methods : (module METHOD) list
 
 (** [Input] defines the input encoding matching the defined methods in
-    [methods]. *)
+    [methods], with the identifier of the request. *)
 module Input : sig
-  type t = input
+  type t = input * JSONRPC.id
 
-  val encoding : (input * JSONRPC.id) Data_encoding.t
+  val encoding : t Data_encoding.t
 end
 
 (** [Output] defines the output encoding matching the defined methods in
     [methods]. *)
 module Output : sig
-  type nonrec 'a result = ('a, error JSONRPC.error) result
+  type t = output
 
-  val encoding : output Data_encoding.t
+  val encoding : t Data_encoding.t
 end
+
+(** Each of the following module is an instantiation of a specific method of the
+    Ethereum JSONRPC API. *)
 
 module Network_id : METHOD with type m_input = unit and type m_output = string
 
