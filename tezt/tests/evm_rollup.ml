@@ -1064,6 +1064,42 @@ let test_inject_100_transactions =
        hasn't changed" ;
   unit
 
+let test_input_errors =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "errors"]
+    ~title:"Check input errors"
+  @@ fun _protocol ->
+  let* evm_proxy_server = setup_mockup () in
+  let invalid_json_and_code =
+    (`A [`String "this is an invalid JSON object"], -32600)
+  in
+  let invalid_method_and_code =
+    ( Evm_proxy_server.(
+        request_to_JSON {method_ = "unknown_method"; parameters = `Null}),
+      -32601 )
+  in
+  let invalid_parameters_and_code =
+    ( Evm_proxy_server.(
+        request_to_JSON {method_ = "eth_sendRawTransaction"; parameters = `Null}),
+      -32602 )
+  in
+  let call_rpc rpc =
+    let endpoint = Evm_proxy_server.endpoint evm_proxy_server in
+    RPC.Curl.post endpoint (JSON.annotate ~origin:"evm_mockup_proxy_server" rpc)
+    |> Runnable.run
+  in
+  let check_rpc (request, code) =
+    let* result = call_rpc request in
+    let error = Evm_proxy_server.extract_error result in
+    Check.((error.code = code) int) ~error_msg:"Expected error code %R, got %L" ;
+    unit
+  in
+  let* () = check_rpc invalid_json_and_code in
+  let* () = check_rpc invalid_method_and_code in
+  let* () = check_rpc invalid_parameters_and_code in
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -1084,6 +1120,7 @@ let register_evm_proxy_server ~protocols =
   test_l2_deploy_simple_storage protocols ;
   test_l2_call_simple_storage protocols ;
   test_l2_deploy_erc20 protocols ;
-  test_inject_100_transactions protocols
+  test_inject_100_transactions protocols ;
+  test_input_errors protocols
 
 let register ~protocols = register_evm_proxy_server ~protocols

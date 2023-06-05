@@ -175,6 +175,17 @@ let batch_evm_rpc proxy_server requests =
 
 let extract_result json = JSON.(json |-> "result")
 
+type error = {code : int; message : string; data : JSON.t option}
+
+let extract_error json =
+  let open JSON in
+  let err_json = json |-> "error" in
+  {
+    code = err_json |-> "code" |> as_int;
+    message = err_json |-> "message" |> as_string;
+    data = err_json |-> "data" |> as_opt;
+  }
+
 let fetch_contract_code evm_proxy_server contract_address =
   let* code =
     call_evm_rpc

@@ -65,6 +65,10 @@ val endpoint : t -> string
 (** JSON-RPC request. *)
 type request = {method_ : string; parameters : JSON.u}
 
+(** [request_to_JSON req] builds a valid JSONRPC request object out of a request
+    [req]. *)
+val request_to_JSON : request -> JSON.u
+
 (** [call_evm_rpc proxy_server ~request] sends a JSON-RPC request to the
     [proxy_server], for the given [request]. *)
 val call_evm_rpc : t -> request -> JSON.t Lwt.t
@@ -75,6 +79,12 @@ val batch_evm_rpc : t -> request list -> JSON.t Lwt.t
 
 (** [extract_result json] expects a JSON-RPC `result` and returns the value. *)
 val extract_result : JSON.t -> JSON.t
+
+(** Error messages returned by the JSONRPC specification. *)
+type error = {code : int; message : string; data : JSON.t option}
+
+(** [extract_error json] expects a JSONRPC error and returns its value. *)
+val extract_error : JSON.t -> error
 
 (** [fetch_contract_code proxy_server contract] returns the code associated to
     the given contract in the rollup. *)
