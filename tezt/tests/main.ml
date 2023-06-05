@@ -225,7 +225,8 @@ let register_protocol_specific_because_regression_tests () =
   Tx_sc_rollup.register ~protocols:[Alpha] ;
   Snoop_codegen.register ~protocols:[Alpha] ;
   Timelock.register ~protocols:[Alpha] ;
-  Timelock_disabled.register ~protocols:[Mumbai]
+  Timelock_disabled.register ~protocols:[Mumbai] ;
+  Injector_test.register ~protocols:[Alpha]
 
 let () =
   register_protocol_independent_tests () ;
