@@ -7606,6 +7606,20 @@ let _octez_evm_signer_exe =
         evm_proxy_lib;
       ]
 
+let _octez_evm_tx_generator =
+  private_exe
+    "octez_evm_tx_generator"
+    ~path:"src/bin_evm_proxy/generator"
+    ~synopsis:"Generate transactions for the EVM Kernel"
+    ~opam:"octez-evm-tx-generator"
+    ~deps:
+      [
+        tezt_lib |> open_ |> open_ ~m:"Base";
+        tezt_tezos |> open_ |> open_ ~m:"Runnable.Syntax";
+        tezt_ethereum |> open_;
+        evm_proxy_lib;
+      ]
+
 let octez_scoru_wasm_regressions =
   private_lib
     "tezos_scoru_wasm_regressions"

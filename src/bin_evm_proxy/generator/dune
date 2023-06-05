@@ -1,0 +1,18 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(executable
+ (name octez_evm_tx_generator)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezt
+  tezt-tezos
+  tezt_ethereum
+  evm_proxy_lib)
+ (flags
+  (:standard)
+  -open Tezt
+  -open Tezt.Base
+  -open Tezt_tezos
+  -open Tezt_tezos.Runnable.Syntax
+  -open Tezt_ethereum))
