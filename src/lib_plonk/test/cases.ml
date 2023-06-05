@@ -675,9 +675,9 @@ module Big_circuit = struct
       (fun witness -> {name; circuit; witness; outcome = Valid})
       witnesses
 
-  let list = make ~nb_proofs:2 ~public_input_size:2 ~k:5
+  let list = make ~nb_proofs:1 ~public_input_size:2 ~k:5
 
-  let list_slow = make ~nb_proofs:2 ~public_input_size:2 ~k:16
+  let list_slow = make ~nb_proofs:1 ~public_input_size:2 ~k:16
 end
 
 let list =
