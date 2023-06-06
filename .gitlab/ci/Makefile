@@ -119,7 +119,9 @@ endif
 .PHONY: doc-build-all
 doc-build-all:
 	cd ${CI_PROJECT_DIR} && \
+		./scripts/remove-old-protocols.sh .old-protocols && \
 		make all && \
+		./scripts/restore-old-protocols.sh .old-protocols && \
 		make -C docs -j all
 
 .PHONY: doc-publish
