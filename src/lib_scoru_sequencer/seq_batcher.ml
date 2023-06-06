@@ -43,22 +43,6 @@ end
 
 module Batched_messages = Hash_queue.Make (L2_message.Hash) (L2_batched_message)
 
-module Sequencer = struct
-  type msg = Sequence of string
-
-  let msg_content (Sequence cnt) = cnt
-
-  let sequence_message_overhead_size messages_num =
-    64 (* 64 bytes for signature *) + 4
-    (* 4 bytes for delayed inbox size *)
-    + (4 * messages_num)
-  (* each message prepended with its size *)
-
-  let make_sequence_message (_delayed_messages : int)
-      (_l2_messages : L2_message.t list) : msg =
-    Sequence ""
-end
-
 type state = {
   node_ctxt : Node_context.ro;
   signer : Signature.public_key_hash;
@@ -70,10 +54,7 @@ type state = {
 (* Takes sequencer message to inject and L2 messages included into it *)
 let inject_sequence state (sequencer_message, l2_messages) =
   let open Lwt_result_syntax in
-  let operation =
-    L1_operation.Add_messages
-      {messages = [Sequencer.msg_content sequencer_message]}
-  in
+  let operation = L1_operation.Add_messages {messages = [sequencer_message]} in
   let+ l1_hash =
     Injector.add_pending_operation ~source:state.signer operation
   in
@@ -121,7 +102,10 @@ let get_batch_sequences state head =
   *)
   let l2_messages = Message_queue.elements state.messages in
   ( [
-      ( Sequencer.make_sequence_message delayed_inbox_size l2_messages,
+      ( Kernel_message.encode_sequence_message
+          state.node_ctxt.rollup_address
+          (Int32.of_int delayed_inbox_size)
+          l2_messages,
         l2_messages );
     ],
     delayed_inbox_size )
@@ -160,7 +144,7 @@ let simulate node_ctxt simulation_ctxt (messages : L2_message.t list) =
 *)
 let max_single_l2_msg_size =
   Protocol.Constants_repr.sc_rollup_message_size_limit
-  - Sequencer.sequence_message_overhead_size 1
+  - Kernel_message.sequence_message_overhead_size 1
   - 4 (* each L2 message prepended with it size *)
 
 let get_simulation_context state =
