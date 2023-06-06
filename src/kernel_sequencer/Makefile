@@ -7,7 +7,7 @@ all: build check test
 
 .PHONY: build
 build:
-	@cargo build --release
+	@cargo build --release --target wasm32-unknown-unknown --features sequencer-example
 
 .PHONY: check
 check:

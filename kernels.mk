@@ -18,11 +18,13 @@ evm_kernel.wasm::
 	@wasm-strip $@
 
 .PHONY: kernel_sequencer
-kernel_sequencer:
+kernel_sequencer.wasm:
 	@make -C src/kernel_sequencer build
+	@cp src/kernel_sequencer/target/wasm32-unknown-unknown/release/kernel_sequencer.wasm $@
+	@wasm-strip $@
 
 .PHONY: build
-build: ${KERNELS} kernel_sdk kernel_sequencer
+build: ${KERNELS} kernel_sdk kernel_sequencer.wasm
 
 .PHONY: build-dev-deps
 build-dev-deps: build-deps

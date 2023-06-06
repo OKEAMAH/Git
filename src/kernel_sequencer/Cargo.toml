@@ -8,6 +8,9 @@ version = "0.1.0"
 edition = "2021"
 description = "Sequencer framework for Tezos Smart Rollups"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies.tezos-smart-rollup-core]
 path = "../kernel_sdk/core"
 version = "0.1.0"
@@ -27,7 +30,7 @@ version = "0.5"
 [dependencies.tezos_data_encoding_derive]
 version = "0.5"
 
-[dependencies.nom] 
+[dependencies.nom]
 version = "7.1"
 
 [dependencies.tezos_crypto_rs]
@@ -40,3 +43,7 @@ version = "0.1.0"
 
 [dev-dependencies.tezos_crypto_rs]
 version = "0.5.0"
+
+[features]
+default = []
+sequencer-example = []
