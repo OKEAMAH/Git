@@ -4,7 +4,7 @@
 SPHINXOPTS    = -j auto -aE -n -W --keep-going
 SPHINXBUILD   = poetry run sphinx-build
 SOURCEDIR     = .
-TMPDOCDIR     = /tmp/octezdoc
+TMPDOCDIR     = $(shell mktemp -d)
 BUILDDIR      = _build
 TOPBUILDDIR   = ../_build/default
 
@@ -78,7 +78,6 @@ odoc: docexes
 	@cp -r $$(pwd)/../_build/default/_doc $$(pwd)/_build/api/odoc
 
 odoc-lite: docexes
-	rm -rf $(TMPDOCDIR)/
 	mkdir -p $(TMPDOCDIR)/
 	rsync --recursive --links --perms \
 	  --include="src/proto_016*" \
