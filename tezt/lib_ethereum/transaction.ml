@@ -77,7 +77,8 @@ type transaction_receipt = {
 let transaction_receipt_of_json json =
   let open JSON in
   {
-    status = json |-> "status" |> as_bool;
+    (* Status is returned as a quantity, 0 being `false`, 1 being `true`. *)
+    status = json |-> "status" |> as_int |> ( == ) 1;
     blockHash = json |-> "blockHash" |> as_string;
     blockNumber = json |-> "blockNumber" |> as_int32;
     transactionHash = json |-> "transactionHash" |> as_string;

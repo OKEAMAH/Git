@@ -129,6 +129,35 @@ let next_evm_level ~sc_rollup_node ~node ~client =
     sc_rollup_node
     (Node.get_level node)
 
+(** [wait_for_transaction_receipt ~evm_proxy_server ~raw_transaction] takes an
+    encoded transaction for the rollup, extracts its hash, and returns only when
+    the receipt is non null, or [count] blocks have passed and the receipt is
+    still not available. *)
+let wait_for_transaction_receipt ?(count=3) ~evm_proxy_server ~raw_transaction () =
+  let (`Hex hash) =
+    (* A transaction has the format [rollup address (20B) | tag (1B) |
+       | transaction_hash(32B) | RLP encoded transaction (variable)] *)
+    String.sub raw_transaction (20 + 1) (* Rollup address + tag *) 32
+    (* Hash length *) |> Hex.of_string
+  in
+  let rec loop count =
+    let* () = Lwt_unix.sleep 5. in
+    let* receipt =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {
+            method_ = "eth_getTransactionReceipt";
+            parameters = `A [`String ("0x" ^ hash)];
+          })
+    in
+    if receipt |> Evm_proxy_server.extract_result |> JSON.is_null && count > 0 then loop (count - 1)
+    else
+      receipt |> Evm_proxy_server.extract_result
+      |> Transaction.transaction_receipt_of_json |> return
+  in
+  loop count
+
 let wait_for_application ~sc_rollup_node ~node ~client apply () =
   let* start_level = Client.level client in
   let max_iteration = 10 in
@@ -960,6 +989,104 @@ let test_eth_call_nullable_recipient =
   let _result = call_result |> Evm_proxy_server.extract_result in
   unit
 
+let test_inject_100_transactions =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "bigger_blocks"]
+    ~title:"Check blocks can contain more than 64 transactions"
+  @@ fun protocol ->
+  let* {
+         evm_proxy_server;
+         sc_rollup_client;
+         sc_rollup_node;
+         node;
+         client;
+         sc_rollup_address;
+         _;
+       } =
+    setup_past_genesis protocol
+  in
+  (* This file contains a unique inbox of 100 external messages. *)
+  let inputs = JSON.parse_file (kernel_inputs_path ^ "/inputs-100-txs.json") in
+  let first_inbox = JSON.as_list inputs |> List.hd |> JSON.as_list in
+  let (`Hex hex_rollup_address) =
+    Tezos_crypto.Hashed.Smart_rollup_address.(
+      of_b58check_exn sc_rollup_address |> to_hex)
+  in
+  (* For each message, replaces the rollup address, since it is hardcoded for
+     the rollup of address `zero`. *)
+  let replace_rollup_in_message msg =
+    let length = String.length hex_rollup_address in
+    let msg_without_rollup =
+      String.sub msg length (String.length msg - length)
+    in
+    `Hex (hex_rollup_address ^ msg_without_rollup)
+  in
+  (** Retrieves all the messages and prepare them for the current rollup. *)
+  let messages =
+    JSON.(
+      List.map
+        (fun json ->
+          json |-> "external" |> as_string |> replace_rollup_in_message
+          |> Hex.to_string)
+        first_inbox)
+  in
+  let* _injector_hashes =
+    Sc_rollup_client.inject sc_rollup_client messages |> Runnable.run
+  in
+  (** Let's wait until one of the transactions is injected into a block, and
+      test this block contains the 100 transactions as expected. *)
+  let* receipt =
+    wait_for_application
+      ~sc_rollup_node
+      ~node
+      ~client
+      (wait_for_transaction_receipt
+         ~evm_proxy_server
+         ~raw_transaction:(List.hd messages))
+      ()
+  in
+  let* block_with_100tx =
+    Evm_proxy_server.(
+      call_evm_rpc
+        evm_proxy_server
+        {
+          method_ = "eth_getBlockByNumber";
+          parameters =
+            `A
+              [`String (Format.sprintf "%#lx" receipt.blockNumber); `Bool false];
+        })
+  in
+  let block_with_100tx =
+    block_with_100tx |> Evm_proxy_server.extract_result |> Block.of_json
+  in
+  (match block_with_100tx.Block.transactions with
+  | Block.Empty -> Test.fail "Expected a non empty block"
+  | Block.Full _ ->
+      Test.fail "Block is supposed to contain only transaction hashes"
+  | Block.Hash hashes ->
+      Check.((List.length hashes = List.length messages) int)
+        ~error_msg:"Expected %R transactions in the latest block, got %L") ;
+
+  let* _level = next_evm_level ~sc_rollup_node ~node ~client in
+  let* latest_evm_level =
+    Evm_proxy_server.(
+      call_evm_rpc
+        evm_proxy_server
+        {method_ = "eth_blockNumber"; parameters = `A []})
+  in
+  let latest_evm_level =
+    latest_evm_level |> Evm_proxy_server.extract_result |> JSON.as_int32
+  in
+  (* At each loop, the kernel reads the previous block. Until the patch, the
+     kernel failed to read the previous block if there was more than 64 hash,
+     this test ensures it works by assessing new blocks are produced. *)
+  Check.((latest_evm_level >= Int32.succ block_with_100tx.Block.number) int32)
+    ~error_msg:
+      "Expected a new block after the one with 100 transactions, but level \
+       hasn't changed" ;
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -979,6 +1106,7 @@ let register_evm_proxy_server ~protocols =
   test_eth_call_nullable_recipient protocols ;
   test_l2_deploy_simple_storage protocols ;
   test_l2_call_simple_storage protocols ;
-  test_l2_deploy_erc20 protocols
+  test_l2_deploy_erc20 protocols ;
+  test_inject_100_transactions protocols
 
 let register ~protocols = register_evm_proxy_server ~protocols
