@@ -22,12 +22,11 @@
  (public_name tezos-protocol-014-PtKathma.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-014-PtKathma.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_014_PtKathma
   -open Tezos_protocol_environment_014_PtKathma.Pervasives
   -open Tezos_protocol_environment_014_PtKathma.Error_monad)
@@ -241,6 +240,7 @@
  (public_name tezos-protocol-014-PtKathma)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-014-PtKathma.raw)

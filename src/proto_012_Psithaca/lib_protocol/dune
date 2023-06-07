@@ -22,13 +22,12 @@
  (public_name tezos-protocol-012-Psithaca.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-012-Psithaca.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -51
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_012_Psithaca
   -open Tezos_protocol_environment_012_Psithaca.Pervasives
   -open Tezos_protocol_environment_012_Psithaca.Error_monad)
@@ -153,6 +152,7 @@
  (public_name tezos-protocol-012-Psithaca)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-012-Psithaca.raw)

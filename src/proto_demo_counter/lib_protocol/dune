@@ -22,12 +22,11 @@
  (public_name tezos-protocol-demo-counter.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-demo-counter.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_demo_counter
   -open Tezos_protocol_environment_demo_counter.Pervasives
   -open Tezos_protocol_environment_demo_counter.Error_monad)
@@ -47,6 +46,7 @@
  (public_name tezos-protocol-demo-counter)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-demo-counter.raw)

@@ -22,13 +22,12 @@
  (public_name tezos-protocol-003-PsddFKi3.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-003-PsddFKi3.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_003_PsddFKi3
   -open Tezos_protocol_environment_003_PsddFKi3.Pervasives
   -open Tezos_protocol_environment_003_PsddFKi3.Error_monad)
@@ -107,6 +106,7 @@
  (public_name tezos-protocol-003-PsddFKi3)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-003-PsddFKi3.raw)

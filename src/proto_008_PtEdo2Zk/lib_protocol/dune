@@ -22,13 +22,12 @@
  (public_name tezos-protocol-008-PtEdo2Zk.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-008-PtEdo2Zk.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_008_PtEdo2Zk
   -open Tezos_protocol_environment_008_PtEdo2Zk.Pervasives
   -open Tezos_protocol_environment_008_PtEdo2Zk.Error_monad)
@@ -115,6 +114,7 @@
  (public_name tezos-protocol-008-PtEdo2Zk)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-008-PtEdo2Zk.raw)

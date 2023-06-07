@@ -22,13 +22,12 @@
  (public_name tezos-protocol-000-Ps9mPmXa.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-000-Ps9mPmXa.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_000_Ps9mPmXa
   -open Tezos_protocol_environment_000_Ps9mPmXa.Pervasives
   -open Tezos_protocol_environment_000_Ps9mPmXa.Error_monad)
@@ -39,6 +38,7 @@
  (public_name tezos-protocol-000-Ps9mPmXa)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-000-Ps9mPmXa.raw)

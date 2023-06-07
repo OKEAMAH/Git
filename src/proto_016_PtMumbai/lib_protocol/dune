@@ -22,12 +22,11 @@
  (public_name tezos-protocol-016-PtMumbai.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-016-PtMumbai.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_016_PtMumbai
   -open Tezos_protocol_environment_016_PtMumbai.Pervasives
   -open Tezos_protocol_environment_016_PtMumbai.Error_monad)
@@ -281,6 +280,7 @@
  (public_name tezos-protocol-016-PtMumbai)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-016-PtMumbai.raw)

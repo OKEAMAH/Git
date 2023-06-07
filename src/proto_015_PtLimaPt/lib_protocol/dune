@@ -22,12 +22,11 @@
  (public_name tezos-protocol-015-PtLimaPt.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-015-PtLimaPt.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_015_PtLimaPt
   -open Tezos_protocol_environment_015_PtLimaPt.Pervasives
   -open Tezos_protocol_environment_015_PtLimaPt.Error_monad)
@@ -265,6 +264,7 @@
  (public_name tezos-protocol-015-PtLimaPt)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-015-PtLimaPt.raw)

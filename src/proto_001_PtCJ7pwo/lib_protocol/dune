@@ -22,13 +22,12 @@
  (public_name tezos-protocol-001-PtCJ7pwo.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-001-PtCJ7pwo.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_001_PtCJ7pwo
   -open Tezos_protocol_environment_001_PtCJ7pwo.Pervasives
   -open Tezos_protocol_environment_001_PtCJ7pwo.Error_monad)
@@ -106,6 +105,7 @@
  (public_name tezos-protocol-001-PtCJ7pwo)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-001-PtCJ7pwo.raw)

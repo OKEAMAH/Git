@@ -22,13 +22,12 @@
  (public_name tezos-protocol-005-PsBABY5H.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-005-PsBABY5H.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_005_PsBABY5H
   -open Tezos_protocol_environment_005_PsBABY5H.Pervasives
   -open Tezos_protocol_environment_005_PsBABY5H.Error_monad)
@@ -108,6 +107,7 @@
  (public_name tezos-protocol-005-PsBABY5H)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-005-PsBABY5H.raw)

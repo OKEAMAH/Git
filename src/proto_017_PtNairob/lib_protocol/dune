@@ -22,12 +22,11 @@
  (public_name tezos-protocol-017-PtNairob.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-017-PtNairob.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_017_PtNairob
   -open Tezos_protocol_environment_017_PtNairob.Pervasives
   -open Tezos_protocol_environment_017_PtNairob.Error_monad)
@@ -284,6 +283,7 @@
  (public_name tezos-protocol-017-PtNairob)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-017-PtNairob.raw)

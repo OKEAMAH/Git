@@ -22,13 +22,12 @@
  (public_name tezos-protocol-013-PtJakart.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-013-PtJakart.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -51
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_013_PtJakart
   -open Tezos_protocol_environment_013_PtJakart.Pervasives
   -open Tezos_protocol_environment_013_PtJakart.Error_monad)
@@ -218,6 +217,7 @@
  (public_name tezos-protocol-013-PtJakart)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-013-PtJakart.raw)

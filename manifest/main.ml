@@ -4974,12 +4974,13 @@ include Tezos_protocol_environment.V%d.Make(Name)()
           ~modules:tezos_protocol.modules
           ~flags:
             (Flags.standard
-               ~nopervasives:true
-               ~nostdlib:true
+               ~nopervasives:false
+               ~nostdlib:false
                ~disable_warnings
                ())
           ~deps:
             [
+              octez_epoxy_tx;
               environment |> open_ |> open_ ~m:"Pervasives"
               |> open_ ~m:"Error_monad";
             ]
@@ -5004,6 +5005,7 @@ include Tezos_protocol_environment.V%d.Make(Name)()
           ~flags:(Flags.standard ~nopervasives:true ~disable_warnings ())
           ~deps:
             [
+              octez_epoxy_tx;
               octez_protocol_environment;
               tezos_protocol_environment_sigs;
               raw_protocol;

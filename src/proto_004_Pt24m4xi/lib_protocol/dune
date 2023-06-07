@@ -22,13 +22,12 @@
  (public_name tezos-protocol-004-Pt24m4xi.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-004-Pt24m4xi.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_004_Pt24m4xi
   -open Tezos_protocol_environment_004_Pt24m4xi.Pervasives
   -open Tezos_protocol_environment_004_Pt24m4xi.Error_monad)
@@ -107,6 +106,7 @@
  (public_name tezos-protocol-004-Pt24m4xi)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-004-Pt24m4xi.raw)

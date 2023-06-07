@@ -22,13 +22,12 @@
  (public_name tezos-protocol-005-PsBabyM1.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-005-PsBabyM1.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
   -w -6-7-9-16-29-32-51-68
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_005_PsBabyM1
   -open Tezos_protocol_environment_005_PsBabyM1.Pervasives
   -open Tezos_protocol_environment_005_PsBabyM1.Error_monad)
@@ -108,6 +107,7 @@
  (public_name tezos-protocol-005-PsBabyM1)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-005-PsBabyM1.raw)

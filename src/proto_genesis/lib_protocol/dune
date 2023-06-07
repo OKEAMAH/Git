@@ -22,12 +22,11 @@
  (public_name tezos-protocol-genesis.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-genesis.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_genesis
   -open Tezos_protocol_environment_genesis.Pervasives
   -open Tezos_protocol_environment_genesis.Error_monad)
@@ -38,6 +37,7 @@
  (public_name tezos-protocol-genesis)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-genesis.raw)

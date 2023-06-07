@@ -22,12 +22,11 @@
  (public_name tezos-protocol-alpha.raw)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-alpha.environment)
  (library_flags (:standard -linkall))
  (flags
   (:standard)
-  -nostdlib
-  -nopervasives
   -open Tezos_protocol_environment_alpha
   -open Tezos_protocol_environment_alpha.Pervasives
   -open Tezos_protocol_environment_alpha.Error_monad)
@@ -90,6 +89,7 @@
   Sc_rollup_PVM_sig
   Sc_rollup_arith
   Sc_rollup_wasm
+  Sc_rollup_epoxy_tx
   Sc_rollup_machine_no_proofs
   Sc_rollups
   Sc_rollup_data_version_sig
@@ -257,6 +257,7 @@
  (public_name tezos-protocol-alpha)
  (instrumentation (backend bisect_ppx))
  (libraries
+  octez-epoxy-tx
   tezos-protocol-environment
   tezos-protocol-environment.sigs
   tezos-protocol-alpha.raw)
@@ -347,6 +348,7 @@
   sc_rollup_PVM_sig.ml
   sc_rollup_arith.ml sc_rollup_arith.mli
   sc_rollup_wasm.ml sc_rollup_wasm.mli
+  sc_rollup_epoxy_tx.ml
   sc_rollup_machine_no_proofs.ml sc_rollup_machine_no_proofs.mli
   sc_rollups.ml sc_rollups.mli
   sc_rollup_data_version_sig.ml
@@ -607,6 +609,7 @@
   sc_rollup_PVM_sig.ml
   sc_rollup_arith.ml sc_rollup_arith.mli
   sc_rollup_wasm.ml sc_rollup_wasm.mli
+  sc_rollup_epoxy_tx.ml
   sc_rollup_machine_no_proofs.ml sc_rollup_machine_no_proofs.mli
   sc_rollups.ml sc_rollups.mli
   sc_rollup_data_version_sig.ml
@@ -851,6 +854,7 @@
   sc_rollup_PVM_sig.ml
   sc_rollup_arith.ml sc_rollup_arith.mli
   sc_rollup_wasm.ml sc_rollup_wasm.mli
+  sc_rollup_epoxy_tx.ml
   sc_rollup_machine_no_proofs.ml sc_rollup_machine_no_proofs.mli
   sc_rollups.ml sc_rollups.mli
   sc_rollup_data_version_sig.ml
