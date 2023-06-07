@@ -39,6 +39,22 @@ module P = struct
 
   type 'a ticket = {id : S.t; amount : 'a Bounded.t}
 
+  let ticket_balance_data_encoding : balance ticket Data_encoding.t =
+    let amount_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {id; amount} -> (id, amount))
+        (fun (id, amount) -> {id; amount})
+        (obj2 (req "id" S.data_encoding) (req "amount" amount_encoding)))
+
+  let ticket_amount_data_encoding : amount ticket Data_encoding.t =
+    let amount_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {id; amount} -> (id, amount))
+        (fun (id, amount) -> {id; amount})
+        (obj2 (req "id" S.data_encoding) (req "amount" amount_encoding)))
+
   type tezos_pkh = bytes
 
   type tezos_zkru = bytes
@@ -77,6 +93,20 @@ module P = struct
     rollup_id : tezos_zkru;
   }
 
+  let header_data_encoding : header Data_encoding.t =
+    let op_code_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {op_code; price; l1_dst; rollup_id} ->
+          (op_code, price, l1_dst, rollup_id))
+        (fun (op_code, price, l1_dst, rollup_id) ->
+          {op_code; price; l1_dst; rollup_id})
+        (obj4
+           (req "op_code" op_code_encoding)
+           (req "price" ticket_balance_data_encoding)
+           (req "l1_dst" bytes)
+           (req "rollup_id" bytes)))
+
   type unsigned_transfer_payload = {
     cnt : counter Bounded.t;
     src : position Bounded.t;
@@ -85,10 +115,49 @@ module P = struct
     fee : fee Bounded.t;
   }
 
+  let unsigned_transfer_payload_data_encoding :
+      unsigned_transfer_payload Data_encoding.t =
+    let cnt_encoding = Bounded.data_encoding in
+    let pos_encoding = Bounded.data_encoding in
+    let fee_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {cnt; src; dst; amount; fee} -> (cnt, src, dst, amount, fee))
+        (fun (cnt, src, dst, amount, fee) -> {cnt; src; dst; amount; fee})
+        (obj5
+           (req "cnt" cnt_encoding)
+           (req "src" pos_encoding)
+           (req "dst" pos_encoding)
+           (req "amount" ticket_amount_data_encoding)
+           (req "fee" fee_encoding)))
+
   type transfer_payload = {
     msg : unsigned_transfer_payload;
     signature : Schnorr.signature;
   }
+
+  let curve_data_encoding =
+    Data_encoding.(conv Curve.to_bytes Curve.of_bytes_exn bytes)
+
+  let signature_data_encoding : Schnorr.signature Data_encoding.t =
+    let open Schnorr in
+    Data_encoding.(
+      conv
+        (fun {sig_u_bytes; sig_r; c_bytes} -> (sig_u_bytes, sig_r, c_bytes))
+        (fun (sig_u_bytes, sig_r, c_bytes) -> {sig_u_bytes; sig_r; c_bytes})
+        (obj3
+           (req "sig_u_bytes" (list bool))
+           (req "sig_r" curve_data_encoding)
+           (req "c_bytes" (list bool))))
+
+  let transfer_payload_data_encoding : transfer_payload Data_encoding.t =
+    Data_encoding.(
+      conv
+        (fun {msg; signature} -> (msg, signature))
+        (fun (msg, signature) -> {msg; signature})
+        (obj2
+           (req "msg" unsigned_transfer_payload_data_encoding)
+           (req "signature" signature_data_encoding)))
 
   type unsigned_transfer = {
     header : header;
@@ -97,18 +166,54 @@ module P = struct
 
   type transfer = {header : header; payload : transfer_payload}
 
+  let transfer_data_encoding =
+    Data_encoding.(
+      conv
+        (fun {header; payload} -> (header, payload))
+        (fun (header, payload) -> {header; payload})
+        (obj2
+           (req "header" header_data_encoding)
+           (req "payload" transfer_payload_data_encoding)))
+
   type transfer_storage = {src : tree_el; dst : tree_el; valid : bool}
 
   type unsigned_create_payload = {pk : Schnorr.pk; fee : fee Bounded.t}
+
+  let unsigned_create_payload_data_encoding :
+      unsigned_create_payload Data_encoding.t =
+    let fee_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {pk; fee} -> (pk, fee))
+        (fun (pk, fee) -> {pk; fee})
+        (obj2 (req "pk" curve_data_encoding) (req "fee" fee_encoding)))
 
   type create_payload = {
     msg : unsigned_create_payload;
     signature : Schnorr.signature;
   }
 
+  let create_payload_data_encoding : create_payload Data_encoding.t =
+    Data_encoding.(
+      conv
+        (fun {msg; signature} -> (msg, signature))
+        (fun (msg, signature) -> {msg; signature})
+        (obj2
+           (req "msg" unsigned_create_payload_data_encoding)
+           (req "signature" signature_data_encoding)))
+
   type unsigned_create = {header : header; payload : unsigned_create_payload}
 
   type create = {header : header; payload : create_payload}
+
+  let create_data_encoding =
+    Data_encoding.(
+      conv
+        (fun {header; payload} -> (header, payload))
+        (fun (header, payload) -> {header; payload})
+        (obj2
+           (req "header" header_data_encoding)
+           (req "payload" create_payload_data_encoding)))
 
   type create_storage = {dst : tree_el; next_empty : tree_el; valid : bool}
 
@@ -118,7 +223,28 @@ module P = struct
     amount : amount ticket;
   }
 
+  let credit_payload_data_encoding : credit_payload Data_encoding.t =
+    let cnt_encoding = Bounded.data_encoding in
+    let pos_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {cnt; dst; amount} -> (cnt, dst, amount))
+        (fun (cnt, dst, amount) -> {cnt; dst; amount})
+        (obj3
+           (req "cnt" cnt_encoding)
+           (req "dst" pos_encoding)
+           (req "amount" ticket_amount_data_encoding)))
+
   type credit = {header : header; payload : credit_payload}
+
+  let credit_data_encoding =
+    Data_encoding.(
+      conv
+        (fun {header; payload} -> (header, payload))
+        (fun (header, payload) -> {header; payload})
+        (obj2
+           (req "header" header_data_encoding)
+           (req "payload" credit_payload_data_encoding)))
 
   type credit_storage = {dst : tree_el; valid : bool}
 
@@ -128,14 +254,45 @@ module P = struct
     amount : amount ticket;
   }
 
+  let unsigned_debit_payload_data_encoding :
+      unsigned_debit_payload Data_encoding.t =
+    let cnt_encoding = Bounded.data_encoding in
+    let pos_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {cnt; src; amount} -> (cnt, src, amount))
+        (fun (cnt, src, amount) -> {cnt; src; amount})
+        (obj3
+           (req "cnt" cnt_encoding)
+           (req "src" pos_encoding)
+           (req "amount" ticket_amount_data_encoding)))
+
   type debit_payload = {
     msg : unsigned_debit_payload;
     signature : Schnorr.signature;
   }
 
+  let debit_payload_data_encoding : debit_payload Data_encoding.t =
+    Data_encoding.(
+      conv
+        (fun {msg; signature} -> (msg, signature))
+        (fun (msg, signature) -> {msg; signature})
+        (obj2
+           (req "msg" unsigned_debit_payload_data_encoding)
+           (req "signature" signature_data_encoding)))
+
   type unsigned_debit = {header : header; payload : unsigned_debit_payload}
 
   type debit = {header : header; payload : debit_payload}
+
+  let debit_data_encoding =
+    Data_encoding.(
+      conv
+        (fun {header; payload} -> (header, payload))
+        (fun (header, payload) -> {header; payload})
+        (obj2
+           (req "header" header_data_encoding)
+           (req "payload" debit_payload_data_encoding)))
 
   type debit_storage = {src : tree_el; valid : bool}
 
@@ -150,6 +307,45 @@ module P = struct
     | Create of create
     | Credit of credit
     | Debit of debit
+
+  let tx_data_encoding =
+    let open Data_encoding in
+    let transfer_tag = 0 in
+    let create_tag = 1 in
+    let credit_tag = 2 in
+    let debit_tag = 3 in
+    matching
+      (function
+        | Transfer tx -> matched transfer_tag transfer_data_encoding tx
+        | Create tx -> matched create_tag create_data_encoding tx
+        | Credit tx -> matched credit_tag credit_data_encoding tx
+        | Debit tx -> matched debit_tag debit_data_encoding tx)
+      [
+        case
+          ~title:"Transfer"
+          (Tag transfer_tag)
+          transfer_data_encoding
+          (function Transfer tx -> Some tx | _ -> None)
+          (fun tx -> Transfer tx);
+        case
+          ~title:"Create"
+          (Tag create_tag)
+          create_data_encoding
+          (function Create tx -> Some tx | _ -> None)
+          (fun tx -> Create tx);
+        case
+          ~title:"Credit"
+          (Tag credit_tag)
+          credit_data_encoding
+          (function Credit tx -> Some tx | _ -> None)
+          (fun tx -> Credit tx);
+        case
+          ~title:"Debit"
+          (Tag debit_tag)
+          debit_data_encoding
+          (function Debit tx -> Some tx | _ -> None)
+          (fun tx -> Debit tx);
+      ]
 
   type tx_storage =
     | Transfer of transfer_storage

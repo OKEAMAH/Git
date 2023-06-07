@@ -1266,6 +1266,7 @@ let octez_plompiler =
         octez_bls12_381_hash;
         octez_polynomial;
         octez_mec;
+        data_encoding;
       ]
     ~preprocess:[staged_pps [ppx_repr; ppx_deriving_show]]
 

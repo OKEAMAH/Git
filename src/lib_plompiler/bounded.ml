@@ -35,6 +35,8 @@ struct
   module P : sig
     type 'a t = private Z.t * Z.t
 
+    val data_encoding : 'a t Data_encoding.t
+
     val make : ?unsafe:bool -> Z.t -> bound:'a Bound.t -> 'a t
 
     val v : 'a t -> Z.t
@@ -54,6 +56,8 @@ struct
     val f : 'a t -> unit t
   end = struct
     type 'a t = Z.t * Z.t
+
+    let data_encoding = Data_encoding.(tup2 z z)
 
     let make ?(unsafe = false) v ~bound =
       let bound = (bound : 'a Bound.t :> Z.t) in

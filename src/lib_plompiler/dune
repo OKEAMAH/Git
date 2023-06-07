@@ -11,5 +11,6 @@
   hacl-star
   octez-bls12-381-hash
   octez-polynomial
-  octez-mec)
+  octez-mec
+  data-encoding)
  (preprocess (staged_pps ppx_repr ppx_deriving.show)))

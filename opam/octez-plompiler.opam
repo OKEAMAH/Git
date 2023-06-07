@@ -18,6 +18,7 @@ depends: [
   "octez-bls12-381-hash"
   "octez-polynomial"
   "octez-mec"
+  "data-encoding" { >= "0.7.1" & < "1.0.0" }
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]
