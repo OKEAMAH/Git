@@ -325,6 +325,8 @@ module Script = struct
   let consume_decoding_gas available_gas lexpr =
     let gas_cost = Script_repr.stable_force_decode_cost lexpr in
     Gas.consume_from available_gas gas_cost
+
+  let is_unit_parameter (expr : lazy_expr) = Script_repr.is_unit_parameter expr
 end
 
 module Level = struct

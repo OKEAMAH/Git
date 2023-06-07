@@ -763,6 +763,8 @@ module Script : sig
   val strip_annotations_cost : node -> Gas.cost
 
   val strip_annotations : node -> node
+
+  val is_unit_parameter : lazy_expr -> bool
 end
 
 (** This module re-exports definitions from {!Constants_repr} and
