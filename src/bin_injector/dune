@@ -17,7 +17,7 @@
   tezos-event-logging
   tezos-stdlib-unix
   data-encoding
-  tezos-protocol-alpha)
+  octez-injector-alpha)
  (link_flags
   (:standard)
   (:include %{workspace_root}/static-link-flags.sexp)
@@ -32,4 +32,5 @@
   -open Tezos_client_base
   -open Tezos_client_base_unix
   -open Tezos_event_logging
-  -open Tezos_stdlib_unix))
+  -open Tezos_stdlib_unix
+  -open Octez_injector_alpha))

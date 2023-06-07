@@ -529,6 +529,8 @@ opam:octez-injector:
   variables:
     package: octez-injector
 
+# Ignoring unreleased package octez-injector-alpha.
+
 # Ignoring unreleased package octez-injector-server.
 
 opam:octez-mec:

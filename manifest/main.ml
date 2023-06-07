@@ -4331,6 +4331,8 @@ module Protocol : sig
 
   val octez_sc_rollup_node : t -> target option
 
+  val octez_injector : t -> target option
+
   val baking_exn : t -> target
 
   val genesis : t
@@ -4448,12 +4450,13 @@ end = struct
     baking : target option;
     octez_sc_rollup_layer2 : target option;
     octez_sc_rollup_node : target option;
+    octez_injector : target option;
   }
 
   let make ?client ?client_commands ?client_commands_registration
       ?baking_commands_registration ?plugin ?plugin_registerer ?dal ?dac
       ?test_helpers ?parameters ?benchmarks_proto ?octez_sc_rollup_layer2
-      ?octez_sc_rollup_node ?baking ~status ~name ~main ~embedded () =
+      ?octez_sc_rollup_node ?octez_injector ?baking ~status ~name ~main ~embedded () =
     {
       status;
       name;
@@ -4473,6 +4476,7 @@ end = struct
       baking;
       octez_sc_rollup_layer2;
       octez_sc_rollup_node;
+      octez_injector;
     }
 
   let all_rev : t list ref = ref []
@@ -4534,6 +4538,8 @@ end = struct
   let octez_sc_rollup_layer2 p = p.octez_sc_rollup_layer2
 
   let octez_sc_rollup_node p = p.octez_sc_rollup_node
+
+  let octez_injector p = p.octez_injector
 
   (* N as in "protocol number in the Alpha family". *)
   module N = struct
@@ -6030,6 +6036,23 @@ let hash = Protocol.hash
             alcotezt;
           ]
     in
+    let octez_injector =
+      only_if N.(number >= 018) @@ fun () ->
+      public_lib
+        (sf "octez-injector-%s" name_dash)
+        ~path:(path // "lib_injector")
+        ~synopsis:
+          "Tezos/Protocol: protocol-specific library for the injector binary"
+        ~deps:
+          [
+            octez_base |> open_ ~m:"TzPervasives";
+            main |> open_;
+            octez_injector_lib |> open_;
+            client |> if_some |> open_;
+            octez_client_base |> open_;
+          ]
+        ~linkall:true
+    in
     let octez_sc_rollup_layer2 =
       only_if N.(number >= 016) @@ fun () ->
       public_lib
@@ -6456,6 +6479,7 @@ let hash = Protocol.hash
          ?baking
          ?octez_sc_rollup_layer2
          ?octez_sc_rollup_node
+         ?octez_injector
          ()
 
   let active = register_alpha_family Active
@@ -7114,7 +7138,6 @@ let _octez_snoop =
         ]
 
 let _octez_injector =
-  let protocol_deps = [Protocol.(main alpha)] in
   public_exe
     "octez-injector-server"
     ~internal_name:"injector_main"
@@ -7124,19 +7147,19 @@ let _octez_injector =
     ~with_macos_security_framework:true
     ~linkall:true
     ~deps:
-      ([
-         octez_base |> open_ ~m:"TzPervasives";
-         octez_injector_lib |> open_;
-         octez_rpc_http_server |> open_;
-         octez_rpc_http |> open_;
-         octez_clic;
-         octez_client_base |> open_;
-         octez_client_base_unix |> open_;
-         octez_event_logging |> open_;
-         octez_stdlib_unix |> open_;
-         data_encoding;
-       ]
-      @ protocol_deps)
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_injector_lib |> open_;
+        octez_rpc_http_server |> open_;
+        octez_rpc_http |> open_;
+        octez_clic;
+        octez_client_base |> open_;
+        octez_client_base_unix |> open_;
+        octez_event_logging |> open_;
+        octez_stdlib_unix |> open_;
+        data_encoding;
+        Protocol.(octez_injector alpha |> if_some |> open_);
+      ]
 
 (* We use Dune's select statement and keep uTop optional *)
 (* Keeping uTop optional lets `make build` succeed, *)

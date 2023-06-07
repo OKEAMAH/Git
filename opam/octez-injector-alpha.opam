@@ -11,20 +11,14 @@ depends: [
   "dune" { >= "3.0" }
   "ocaml" { >= "4.14" }
   "tezos-base"
+  "tezos-protocol-alpha"
   "octez-injector"
-  "tezos-rpc-http-server"
-  "tezos-rpc-http"
-  "tezos-clic"
+  "tezos-client-alpha"
   "tezos-client-base"
-  "tezos-client-base-unix"
-  "tezos-event-logging"
-  "tezos-stdlib-unix"
-  "data-encoding" { >= "0.7.1" & < "1.0.0" }
-  "octez-injector-alpha"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-synopsis: "Octez injector"
+synopsis: "Tezos/Protocol: protocol-specific library for the injector binary"
