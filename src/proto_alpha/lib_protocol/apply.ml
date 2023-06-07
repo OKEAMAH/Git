@@ -2364,6 +2364,13 @@ let begin_application ctxt chain_id ~migration_balance_updates
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
   in
+  let* ctxt, adaptive_inflation_toggle_ema =
+    let adaptive_inflation_vote =
+      block_header.Block_header.protocol_data.contents.toggle_votes
+        .adaptive_inflation_vote
+    in
+    Adaptive_inflation.update_ema ctxt ~vote:adaptive_inflation_vote
+  in
   let* ctxt =
     Sc_rollup.Inbox.add_level_info
       ~predecessor:block_header.shell.predecessor
@@ -2388,8 +2395,7 @@ let begin_application ctxt chain_id ~migration_balance_updates
       op_count = 0;
       migration_balance_updates;
       liquidity_baking_toggle_ema;
-      adaptive_inflation_toggle_ema =
-        Toggle_votes.Adaptive_inflation_launch_EMA.zero;
+      adaptive_inflation_toggle_ema;
       implicit_operations_results =
         Apply_results.pack_migration_operation_results
           migration_operation_results
@@ -2425,6 +2431,12 @@ let begin_full_construction ctxt chain_id ~migration_balance_updates
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
   in
+  let* ctxt, adaptive_inflation_toggle_ema =
+    let adaptive_inflation_vote =
+      block_data_contents.toggle_votes.adaptive_inflation_vote
+    in
+    Adaptive_inflation.update_ema ctxt ~vote:adaptive_inflation_vote
+  in
   let* ctxt =
     Sc_rollup.Inbox.add_level_info ~predecessor:predecessor_hash ctxt
   in
@@ -2448,8 +2460,7 @@ let begin_full_construction ctxt chain_id ~migration_balance_updates
       op_count = 0;
       migration_balance_updates;
       liquidity_baking_toggle_ema;
-      adaptive_inflation_toggle_ema =
-        Toggle_votes.Adaptive_inflation_launch_EMA.zero;
+      adaptive_inflation_toggle_ema;
       implicit_operations_results =
         Apply_results.pack_migration_operation_results
           migration_operation_results
@@ -2463,6 +2474,10 @@ let begin_partial_construction ctxt chain_id ~migration_balance_updates
   let toggle_vote = Toggle_votes.Toggle_vote_pass in
   let* ctxt, liquidity_baking_operations_results, liquidity_baking_toggle_ema =
     apply_liquidity_baking_subsidy ctxt ~toggle_vote
+  in
+  let* ctxt, adaptive_inflation_toggle_ema =
+    let adaptive_inflation_vote = Toggle_votes.Toggle_vote_pass in
+    Adaptive_inflation.update_ema ctxt ~vote:adaptive_inflation_vote
   in
   let* ctxt =
     (* The mode [Partial_construction] is used in simulation. We try to
@@ -2482,8 +2497,7 @@ let begin_partial_construction ctxt chain_id ~migration_balance_updates
       op_count = 0;
       migration_balance_updates;
       liquidity_baking_toggle_ema;
-      adaptive_inflation_toggle_ema =
-        Toggle_votes.Adaptive_inflation_launch_EMA.zero;
+      adaptive_inflation_toggle_ema;
       implicit_operations_results =
         Apply_results.pack_migration_operation_results
           migration_operation_results
