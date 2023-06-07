@@ -25,6 +25,8 @@
 
 open Sc_rollup_repr
 module PS = Sc_rollup_PVM_sig
+module TxTypes = Epoxy_tx.Types.P
+module TxLogic = Epoxy_tx.Tx_rollup.P
 
 module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
@@ -48,9 +50,33 @@ module type P = sig
     Tree.t -> tree -> (tree -> (tree * 'a) Lwt.t) -> (proof * 'a) option Lwt.t
 end
 
+module type S = sig
+  include PS.S
+
+  val parse_boot_sector : string -> string option
+
+  val pp_boot_sector : Format.formatter -> string -> unit
+
+  val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
+
+  val get_tick : state -> Sc_rollup_tick_repr.t Lwt.t
+
+  type status =
+    | Halted
+    | Waiting_for_input_message
+    | Waiting_for_reveal
+    | Waiting_for_metadata
+    | Evaluating
+
+  val get_status : state -> status Lwt.t
+
+  val get_outbox :
+    Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t
+
+  type instruction = TxTypes.tx
+end
+
 module Make (Context : P) = struct
-  module TxTypes = Epoxy_tx.Types.P
-  module TxLogic = Epoxy_tx.Tx_rollup.P
   module ZkTree = Plompiler.Merkle (Plompiler.Anemoi128)
   module S = Plompiler.S
 
@@ -61,7 +87,6 @@ module Make (Context : P) = struct
     | Waiting_for_input_message
     | Waiting_for_reveal
     | Waiting_for_metadata
-    | Parsing
     | Evaluating
 
   type state = {optimistic : Context.Tree.tree; instant : TxTypes.state}
@@ -94,7 +119,7 @@ module Make (Context : P) = struct
     type key = OKey of Tree.key | IKey of int
 
     module Monad : sig
-      type 'a t
+      type 'a t = state -> (state * 'a option) Lwt.t
 
       val run : 'a t -> state -> (state * 'a option) Lwt.t
 
@@ -396,36 +421,6 @@ module Make (Context : P) = struct
       let name = "tick"
     end)
 
-    (* module Code = Make_deque (struct
-         type t = instruction
-
-         let name = "code"
-
-         let encoding =
-           Data_encoding.(
-             union
-               [
-                 case
-                   ~title:"push"
-                   (Tag 0)
-                   Data_encoding.int31
-                   (function IPush x -> Some x | _ -> None)
-                   (fun x -> IPush x);
-                 case
-                   ~title:"add"
-                   (Tag 1)
-                   Data_encoding.unit
-                   (function IAdd -> Some () | _ -> None)
-                   (fun () -> IAdd);
-                 case
-                   ~title:"store"
-                   (Tag 2)
-                   Data_encoding.(string Plain)
-                   (function IStore x -> Some x | _ -> None)
-                   (fun x -> IStore x);
-               ])
-       end) *)
-
     module Status = Make_var (struct
       type t = status
 
@@ -438,7 +433,6 @@ module Make (Context : P) = struct
             ("Waiting_for_input_message", Waiting_for_input_message);
             ("Waiting_for_reveal", Waiting_for_reveal);
             ("Waiting_for_metadata", Waiting_for_metadata);
-            ("Parsing", Parsing);
             ("Evaluating", Evaluating);
           ]
 
@@ -449,10 +443,21 @@ module Make (Context : P) = struct
         | Waiting_for_input_message -> "Waiting for input message"
         | Waiting_for_reveal -> "Waiting for reveal"
         | Waiting_for_metadata -> "Waiting for metadata"
-        | Parsing -> "Parsing"
         | Evaluating -> "Evaluating"
 
       let pp fmt status = Format.fprintf fmt "%s" (string_of_status status)
+    end)
+
+    module Tx = Make_var (struct
+      type t = TxTypes.tx option
+
+      let initial = None
+
+      let encoding = Data_encoding.option TxTypes.tx_data_encoding
+
+      let name = "tx"
+
+      let pp _fmt _v = failwith "TODO"
     end)
 
     module Required_reveal = Make_var (struct
@@ -672,7 +677,7 @@ module Make (Context : P) = struct
         | None -> internal_error "Internal error: Reveal invariant broken"
         | Some reveal -> return (PS.Needs_reveal reveal))
     | Waiting_for_metadata -> return PS.(Needs_reveal Reveal_metadata)
-    | Halted | Parsing | Evaluating -> return PS.No_input_required
+    | Halted | Evaluating -> return PS.No_input_required
 
   let is_input_state =
     result_of ~default:PS.No_input_required @@ is_input_state_monadic
@@ -683,14 +688,8 @@ module Make (Context : P) = struct
     let* () = Current_tick.set (Sc_rollup_tick_repr.next tick) in
     m
 
-  let start_parsing : unit t =
-    let open Monad.Syntax in
-    let* () = Status.set Parsing in
-    let* () = Parsing_result.set None in
-    let* () = Parser_state.set SkipLayout in
-    let* () = Lexer_state.set (0, 0) in
-    let* () = Code.clear in
-    return ()
+  let update_waiting_for_data_status ~published_level:_ () =
+    internal_error "TODO"
 
   let set_inbox_message_monadic {PS.inbox_level; message_counter; payload} =
     let open Monad.Syntax in
@@ -728,7 +727,6 @@ module Make (Context : P) = struct
         let* () = Current_level.set inbox_level in
         let* () = Message_counter.set (Some message_counter) in
         let* () = Next_message.set (Some payload) in
-        let* () = start_parsing in
         return ()
     | None -> (
         let* () = Current_level.set inbox_level in
@@ -767,7 +765,81 @@ module Make (Context : P) = struct
   let set_input_monadic input =
     match input with
     | PS.Inbox_message m -> set_inbox_message_monadic m
-    | PS.Reveal _s -> failwith "TODO"
+    | PS.Reveal _s -> internal_error "TODO"
 
   let set_input input = set_input_monadic input |> ticked |> state_of
+
+  let reboot = Status.set Waiting_for_input_message
+
+  let apply : instruction -> state -> state =
+   fun tx state ->
+    (* TODO: what to do when invalid *)
+    (* TODO: where do we store the rollup address? *)
+    let address = TxTypes.Dummy.tezos_zkru in
+    let instant, _, _ = TxLogic.preprocess_operation state.instant tx address in
+    {state with instant}
+
+  let lift : (state -> state) -> unit t = fun f s -> Lwt.return (f s, Some ())
+
+  let evaluate =
+    let open Monad.Syntax in
+    let* tx = Tx.get in
+    match tx with
+    | None -> internal_error "tx isn't set"
+    | Some tx ->
+        let* () = lift (apply tx) in
+        let* () = Tx.set None in
+        Status.set Waiting_for_input_message
+
+  let eval_step =
+    let open Monad.Syntax in
+    let* x = is_stuck in
+    match x with
+    | Some _ -> reboot
+    | None -> (
+        let* status = Status.get in
+        match status with
+        | Halted -> boot
+        | Waiting_for_input_message | Waiting_for_reveal | Waiting_for_metadata
+          -> (
+            let* msg = Next_message.get in
+            match msg with
+            | None -> internal_error "An input state was not provided an input."
+            | Some bytes -> (
+                match
+                  Data_encoding.Binary.of_string_opt
+                    TxTypes.tx_data_encoding
+                    bytes
+                with
+                | None -> internal_error "bad message"
+                | Some tx ->
+                    let* () = Tx.set (Some tx) in
+                    Status.set Evaluating))
+        | Evaluating -> evaluate)
+
+  let eval state = state_of (ticked eval_step) state
+
+  let verify_proof _input_given _proof = failwith "TODO verify_proof"
+
+  let produce_proof _context _input_given _state = failwith "TODO produce_proof"
+
+  type output_proof = unit
+
+  let output_proof_encoding = Data_encoding.unit
+
+  let output_of_output_proof = Fun.id
+
+  let state_of_output_proof _ = failwith "TODO state_of_output_proof"
+
+  let verify_output_proof _ = failwith "TODO verify_output_proof"
+
+  let produce_output_proof _ _ _ = failwith "TODO produce_output_proof"
+
+  let check_dissection ~default_number_of_sections:_ ~start_chunk:_
+      ~stop_chunk:_ =
+    failwith "check_dissection"
+
+  module Internal_for_tests = struct
+    let insert_failure _s = failwith "insert_failure"
+  end
 end
