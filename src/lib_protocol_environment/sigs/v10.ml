@@ -12394,9 +12394,9 @@ module State_hash : sig
 
   type unreachable__use_context_hash_to_state_hash
 
-  val hash_bytes : unreachable__use_context_hash_to_state_hash
+  (* val hash_bytes : unreachable__use_context_hash_to_state_hash
 
-  val hash_string : unreachable__use_context_hash_to_state_hash
+     val hash_string : unreachable__use_context_hash_to_state_hash *)
 end
 
 (** Smart rollup inbox hashes *)

@@ -35,6 +35,6 @@ val context_hash_to_state_hash : Context_hash.t -> t
     {!context_hash_to_state_hash} (without changing content of {!S.HASH}). *)
 type unreachable__use_context_hash_to_state_hash
 
-val hash_bytes : unreachable__use_context_hash_to_state_hash
+(* val hash_bytes : unreachable__use_context_hash_to_state_hash
 
-val hash_string : unreachable__use_context_hash_to_state_hash
+   val hash_string : unreachable__use_context_hash_to_state_hash *)

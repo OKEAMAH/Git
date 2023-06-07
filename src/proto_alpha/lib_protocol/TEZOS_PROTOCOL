@@ -64,6 +64,7 @@
         "Sc_rollup_PVM_sig",
         "Sc_rollup_arith",
         "Sc_rollup_wasm",
+        "Sc_rollup_epoxy_tx",
         "Sc_rollup_machine_no_proofs",
         "Sc_rollups",
         "Sc_rollup_data_version_sig",

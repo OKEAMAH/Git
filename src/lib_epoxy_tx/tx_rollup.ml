@@ -329,6 +329,8 @@ module P = struct
         Debit {header; payload = {msg = {src; amount; cnt}; signature}}
     | Credit t -> Credit t
 
+  let state_scalar (state : state) = Merkle.root state.accounts_tree
+
   (* Check if an operation is valid in a certain state and, if possible,
      return the storage needed to make the proof.
      The only case where the storage isn't computed is for ill-formed ops,
