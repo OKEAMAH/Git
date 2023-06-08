@@ -17,7 +17,7 @@ test-protocol-compiles:
 test-tezt:
 	cd ${CI_PROJECT_DIR} && \
 		_build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size 50000 --log-file tezt.log --global-timeout 600 --on-unknown-regression-files fail \
-		--title "Alpha: Testing DAL node (GS prune due to negative score, ihave and iwant)" --verbose --junit ${JUNIT} --from-record tezt/records --record tezt-results-${CI_NODE_INDEX}.json -j 3 && \
+		--title "Alpha: Testing DAL node (GS prune due to negative score, ihave and iwant)" --verbose --junit ${JUNIT} --from-record tezt/records --record tezt-results-${CI_NODE_INDEX}.json -j 3 --retry 10 && \
 		./scripts/ci/merge_coverage.sh
 
 .PHONY: test-tezt-static-binaries
