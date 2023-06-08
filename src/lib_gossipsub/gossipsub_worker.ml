@@ -291,19 +291,26 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
       [IWant] message. *)
   let handle_ihave ~emit_p2p_output ({peer; _} : GS.ihave) = function
     | gstate, GS.Message_requested_message_ids message_ids ->
+        Format.eprintf
+          "## Request IWant %d messages@.@."
+          (List.length message_ids) ;
         if not (List.is_empty message_ids) then
           send_p2p_message
             ~emit_p2p_output
             (IWant {message_ids})
             (Seq.return peer) ;
         gstate
-    | ( gstate,
-        ( GS.Ihave_from_peer_with_low_score _ | Too_many_recv_ihave_messages _
-        | Too_many_sent_iwant_messages _ | Message_topic_not_tracked ) ) ->
-        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5424
-
-           Penalize peers with negative score or non expected behaviour
-           (revisit all the outputs in different apply event functions). *)
+    | gstate, GS.Ihave_from_peer_with_low_score _ ->
+        Format.eprintf "## Ihave_from_peer_with_low_score @.@." ;
+        gstate
+    | gstate, Too_many_recv_ihave_messages _ ->
+        Format.eprintf "## Too_many_recv_ihave_messages @.@." ;
+        gstate
+    | gstate, Too_many_sent_iwant_messages _ ->
+        Format.eprintf "## Too_many_sent_iwant_messages: @.@." ;
+        gstate
+    | gstate, Message_topic_not_tracked ->
+        Format.eprintf "## Message_topic_not_tracked: @.@." ;
         gstate
 
   (** When an [IWant] control message from a remote peer is received, the

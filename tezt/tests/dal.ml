@@ -2650,7 +2650,8 @@ let event_with_message_id_to_string = function
 let check_events_with_message_id ~event_with_message_id dal_node ~from_shard
     ~to_shard ~expected_commitment ~expected_level ~expected_pkh ~expected_slot
     ~expected_peer =
-  let remaining = ref (to_shard - from_shard + 1) in
+  let total = to_shard - from_shard + 1 in
+  let remaining = ref total in
   let seen = Array.make !remaining false in
   let get_shard_indices_of_messages event =
     let*?? () =
@@ -2681,10 +2682,8 @@ let check_events_with_message_id ~event_with_message_id dal_node ~from_shard
            Some shard_index)
          message_ids
   in
-  wait_for_gossipsub_worker_event
-    ~name:(event_with_message_id_to_string event_with_message_id)
-    dal_node
-    (fun event ->
+  let name = event_with_message_id_to_string event_with_message_id in
+  wait_for_gossipsub_worker_event ~name dal_node (fun event ->
       let*?? shard_indices = get_shard_indices_of_messages event in
       List.iter
         (fun shard_index_opt ->
@@ -2702,6 +2701,7 @@ let check_events_with_message_id ~event_with_message_id dal_node ~from_shard
               seen.(index) <- true ;
               decr remaining)
         shard_indices ;
+      Log.info "## %s remaining: %d out of %d@." name !remaining total ;
       if !remaining = 0 && Array.for_all (fun b -> b) seen then Some ()
       else None)
 

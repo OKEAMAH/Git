@@ -42,7 +42,7 @@ module Events = struct
       ~section
       ~name:(prefix "heartbeat")
       ~msg:"Process Heartbeat"
-      ~level:Info
+      ~level:Notice
       ()
 
   let publish_message =
@@ -50,7 +50,7 @@ module Events = struct
       ~section
       ~name:(prefix "publish_message")
       ~msg:"Process Publish_message id {message_id} with topic {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:GS.Topic.pp
       ~pp2:GS.Message_id.pp
       ("topic", topic_encoding)
@@ -61,7 +61,7 @@ module Events = struct
       ~section
       ~name:(prefix "join")
       ~msg:"Process Join {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:GS.Topic.pp
       ("topic", topic_encoding)
 
@@ -70,7 +70,7 @@ module Events = struct
       ~section
       ~name:(prefix "leave")
       ~msg:"Process Leave {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:GS.Topic.pp
       ("topic", topic_encoding)
 
@@ -81,7 +81,7 @@ module Events = struct
       ~msg:
         "Process New_connection from/to {peer} (direct={direct}, \
          outbound={outbound})"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ("peer", P2p_peer.Id.encoding)
       ("direct", bool)
@@ -92,7 +92,7 @@ module Events = struct
       ~section
       ~name:(prefix "disconnection")
       ~msg:"Process Disconnection of {peer}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ("peer", P2p_peer.Id.encoding)
 
@@ -103,7 +103,7 @@ module Events = struct
       ~msg:
         "Process Message_with_header from {peer} with id {message_id} and \
          topic {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ~pp3:GS.Message_id.pp
@@ -116,7 +116,7 @@ module Events = struct
       ~section
       ~name:(prefix "subscribe")
       ~msg:"Process Subscribe {peer} to {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
@@ -127,7 +127,7 @@ module Events = struct
       ~section
       ~name:(prefix "unsubscribe")
       ~msg:"Process Unsubscribe {peer} from {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
@@ -138,7 +138,7 @@ module Events = struct
       ~section
       ~name:(prefix "graft")
       ~msg:"Process Graft {peer} for {topic}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
@@ -149,7 +149,7 @@ module Events = struct
       ~section
       ~name:(prefix "prune")
       ~msg:"Process Prune {peer} for {topic} with backoff {backoff} and px {px}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ~pp3:Span.pp
@@ -165,7 +165,7 @@ module Events = struct
       ~name:(prefix "ihave")
       ~msg:
         "Process IHave from {peer} for {topic} with message_ids {message_ids}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ~pp3:(Format.pp_print_list GS.Message_id.pp)
@@ -178,7 +178,7 @@ module Events = struct
       ~section
       ~name:(prefix "iwant")
       ~msg:"Process IWant from {peer} with message_ids {message_ids}"
-      ~level:Info
+      ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ~pp2:(Format.pp_print_list GS.Message_id.pp)
       ("peer", P2p_peer.Id.encoding)
