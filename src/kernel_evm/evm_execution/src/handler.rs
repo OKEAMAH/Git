@@ -1854,7 +1854,10 @@ mod test {
                 let expected_result =
                     (ExitReason::Succeed(ExitSucceed::Returned), None, vec![]);
                 assert_eq!(result, expected_result);
-                assert_eq!(get_balance(&mut handler, &address), U256::from(100_u32));
+                assert_eq!(
+                    get_balance(&mut handler, &address),
+                    U256::exp10(21) + U256::from(100_u32)
+                );
                 assert_eq!(get_balance(&mut handler, &caller), U256::from(1_u32));
                 assert_eq!(handler.gas_used(), 6);
             }
@@ -1920,7 +1923,7 @@ mod test {
                 AccountStorageError::BalanceUnderflow,
             )) => {
                 assert_eq!(get_balance(&mut handler, &caller), U256::from(99_u32));
-                assert_eq!(get_balance(&mut handler, &address), U256::zero());
+                assert_eq!(get_balance(&mut handler, &address), U256::exp10(21));
                 assert_eq!(handler.gas_used(), 0);
             }
             Err(err) => {

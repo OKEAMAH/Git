@@ -274,13 +274,14 @@ impl EthereumAccount {
     /// Get the **balance** of an account in Wei held by the account.
     pub fn balance(&self, host: &impl Runtime) -> Result<U256, AccountStorageError> {
         let path = concat(&self.path, &BALANCE_PATH)?;
+        let default_balance = U256::exp10(21);
 
         match host.store_has(&path) {
             Ok(Some(ValueType::Value | ValueType::ValueWithSubtree)) => {
                 let value = read_u256(host, &path)?;
-                Ok(value.unwrap_or(U256::zero()))
+                Ok(value.unwrap_or(default_balance))
             }
-            Ok(_) => Ok(U256::zero()),
+            Ok(_) => Ok(default_balance),
             Err(err) => Err(AccountStorageError::from(err)),
         }
     }
@@ -617,7 +618,7 @@ mod test {
         assert_eq!(
             a1.balance(&host)
                 .expect("Could not get balance for account"),
-            U256::zero()
+            U256::exp10(21)
         );
     }
 
@@ -631,7 +632,7 @@ mod test {
 
         let v1: U256 = 17_u32.into();
         let v2: U256 = 119_u32.into();
-        let v3: U256 = v1 + v2;
+        let v3: U256 = v1 + v2 + U256::exp10(21);
 
         // Act - create an account with no funds
         storage
@@ -675,7 +676,7 @@ mod test {
 
         let v1: U256 = 170_u32.into();
         let v2: U256 = 19_u32.into();
-        let v3: U256 = v1 - v2;
+        let v3: U256 = v1 - v2 + U256::exp10(21);
 
         // Act - create an account with no funds
         storage
@@ -718,7 +719,7 @@ mod test {
         let a1_path = RefPath::assert_from(b"/dfkjd");
 
         let v1: U256 = 17_u32.into();
-        let v2: U256 = 190_u32.into();
+        let v2: U256 = U256::from(190) + U256::exp10(21);
 
         // Act - create an account with no funds
         storage
@@ -750,7 +751,7 @@ mod test {
         assert_eq!(
             a1.balance(&host)
                 .expect("Could not get balance for account"),
-            v1
+            v1 + U256::exp10(21),
         );
     }
 

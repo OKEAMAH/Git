@@ -504,6 +504,10 @@ mod tests {
             proposals: vec![Blueprint { transactions }],
         };
 
+        let sender = H160::from_str("f95abdf6ede4c3703e0e9453771fbee8592d31e9").unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        set_balance(&mut host, &mut evm_account_storage, &sender, U256::zero());
+
         produce(&mut host, queue).expect("The block production failed.");
 
         let status = read_transaction_receipt_status(&mut host, &tx_hash)
@@ -604,7 +608,7 @@ mod tests {
         let dest_balance =
             get_balance(&mut host, &mut evm_account_storage, &dest_address);
 
-        assert_eq!(dest_balance, U256::from(1000000000u64))
+        assert_eq!(dest_balance, U256::from(1000000000u64) + U256::exp10(21))
     }
 
     #[test]
@@ -653,7 +657,7 @@ mod tests {
         let dest_balance =
             get_balance(&mut host, &mut evm_account_storage, &dest_address);
 
-        assert_eq!(dest_balance, U256::from(1000000000u64))
+        assert_eq!(dest_balance, U256::from(1000000000u64) + U256::exp10(21))
     }
 
     #[test]
@@ -767,6 +771,6 @@ mod tests {
             get_balance(&mut host, &mut evm_account_storage, &dest_address);
 
         assert_eq!(sender_balance, U256::from(9999999999500000000u64));
-        assert_eq!(dest_balance, U256::from(500000000u64))
+        assert_eq!(dest_balance, U256::from(500000000u64) + U256::exp10(21))
     }
 }

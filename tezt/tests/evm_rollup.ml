@@ -338,7 +338,7 @@ let test_rpc_getBalance =
       ~account:Eth_account.bootstrap_accounts.(0).address
       ~endpoint:evm_proxy_server_endpoint
   in
-  Check.((balance = Wei.of_eth_int 9999) Wei.typ)
+  Check.((balance = Wei.of_eth_int 10999) Wei.typ)
     ~error_msg:
       (sf
          "Expected balance of %s should be %%R, but got %%L"

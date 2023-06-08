@@ -883,7 +883,7 @@ mod test {
         );
         assert_eq!(
             get_balance(&mut mock_runtime, &mut evm_account_storage, &address),
-            U256::zero()
+            U256::exp10(21)
         );
     }
 

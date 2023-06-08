@@ -251,7 +251,7 @@ mod tests {
             let mint_address = H160::from_str(account.mint_address).unwrap();
             assert_eq!(
                 get_balance(&mut host, &mut evm_account_storage, &mint_address),
-                wei::from_eth(9999)
+                wei::from_eth(9999) + wei::from_eth(1_000)
             );
         }
     }

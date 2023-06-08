@@ -232,6 +232,9 @@ module RPC = struct
           pp_print_trace
           tztrace
 
+  let default_balance =
+    Ethereum_types.Qty (Z.of_string "10000000000000000000000")
+
   let balance base address =
     let open Lwt_result_syntax in
     let key = Durable_storage_path.balance_path address in
@@ -239,7 +242,7 @@ module RPC = struct
     match answer with
     | Some bytes ->
         Bytes.to_string bytes |> Z.of_bits |> Ethereum_types.quantity_of_z
-    | None -> Ethereum_types.Qty Z.zero
+    | None -> default_balance
 
   let nonce base address =
     let open Lwt_result_syntax in
