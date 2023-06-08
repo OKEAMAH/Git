@@ -28,6 +28,8 @@ module PS = Sc_rollup_PVM_sig
 module TxTypes = Epoxy_tx.Types.P
 module TxLogic = Epoxy_tx.Tx_rollup.P
 
+[@@@warning "-32"]
+
 module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
 
@@ -53,8 +55,6 @@ end
 module type S = sig
   include PS.S
 
-  val parse_boot_sector : string -> string option
-
   val pp_boot_sector : Format.formatter -> string -> unit
 
   val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
@@ -70,13 +70,13 @@ module type S = sig
 
   val get_status : state -> status Lwt.t
 
-  val get_outbox :
-    Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t
+  (* val get_outbox :
+     Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t *)
 
   type instruction = TxTypes.tx
 end
 
-module Make (Context : P) = struct
+module Make (Context : P) : S = struct
   module ZkTree = Plompiler.Merkle (Plompiler.Anemoi128)
   module S = Plompiler.S
 
@@ -91,11 +91,15 @@ module Make (Context : P) = struct
 
   type state = {optimistic : Context.Tree.tree; instant : TxTypes.state}
 
-  let pp _ = failwith "TODO"
-
   type hash = State_hash.t
 
   type proof = unit
+
+  let proof_encoding = Data_encoding.unit
+
+  let proof_start_state _proof = failwith "TODO proof_start_state"
+
+  let proof_stop_state _proof = failwith "TODO proof_stop_state"
 
   type instruction = TxTypes.tx
 
@@ -116,7 +120,7 @@ module Make (Context : P) = struct
 
     type nonrec state = state
 
-    type key = OKey of Tree.key | IKey of int
+    (* type key = OKey of Tree.key | IKey of int *)
 
     module Monad : sig
       type 'a t = state -> (state * 'a option) Lwt.t
@@ -133,20 +137,20 @@ module Make (Context : P) = struct
         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
       end
 
-      val remove_o : Tree.key -> unit t
+      (* val remove_o : Tree.key -> unit t *)
 
       val find_value_o : Tree.key -> 'a Data_encoding.t -> 'a option t
 
-      val find_value_i :
-        int -> (TxTypes.account * TxTypes.leaf array * ZkTree.P.tree) t
+      (* val find_value_i :
+         int -> (TxTypes.account * TxTypes.leaf array * ZkTree.P.tree) t *)
 
       val children : Tree.key -> 'a Data_encoding.t -> (string * 'a) list t
 
-      val get_value_o : default:'a -> Tree.key -> 'a Data_encoding.t -> 'a t
+      (* val get_value_o : default:'a -> Tree.key -> 'a Data_encoding.t -> 'a t *)
 
       val set_value_o : Tree.key -> 'a Data_encoding.t -> 'a -> unit t
 
-      val set_value_i : int -> TxTypes.account -> unit t
+      (* val set_value_i : int -> TxTypes.account -> unit t *)
     end = struct
       type 'a t = state -> (state * 'a option) Lwt.t
 
@@ -177,10 +181,10 @@ module Make (Context : P) = struct
         let* v = Tree.find s.optimistic internal_error_key in
         return (s, Some (Option.map Bytes.to_string v))
 
-      let remove_o key (state : state) =
-        let open Lwt_syntax in
-        let* optimistic = Tree.remove state.optimistic key in
-        return ({state with optimistic}, Some ())
+      (* let remove_o key (state : state) =
+         let open Lwt_syntax in
+         let* optimistic = Tree.remove state.optimistic key in
+         return ({state with optimistic}, Some ()) *)
 
       let decode encoding bytes state =
         let open Lwt_syntax in
@@ -197,9 +201,9 @@ module Make (Context : P) = struct
             let* state, value = decode encoding bytes state in
             return (state, Some value)
 
-      let find_value_i pos (state : state) =
-        let open Lwt_syntax in
-        return (state, Some (TxLogic.get_account pos state.instant.accounts))
+      (* let find_value_i pos (state : state) =
+         let open Lwt_syntax in
+         return (state, Some (TxLogic.get_account pos state.instant.accounts)) *)
 
       let children key encoding (state : state) =
         let open Lwt_syntax in
@@ -222,10 +226,10 @@ module Make (Context : P) = struct
         in
         aux children
 
-      let get_value_o ~default key encoding =
-        let open Syntax in
-        let* ov = find_value_o key encoding in
-        match ov with None -> return default | Some x -> return x
+      (* let get_value_o ~default key encoding =
+         let open Syntax in
+         let* ov = find_value_o key encoding in
+         match ov with None -> return default | Some x -> return x *)
 
       let set_value_o key encoding value (state : state) =
         let open Lwt_syntax in
@@ -235,26 +239,26 @@ module Make (Context : P) = struct
             let* optimistic = Tree.add state.optimistic key bytes in
             return ({state with optimistic}, Some ())
 
-      let set_value_i pos value (state : state) =
-        let open Lwt_syntax in
-        let TxTypes.{accounts; accounts_tree; next_position} = state.instant in
-        let accounts =
-          TxTypes.IMap.update
-            pos
-            (function
-              | Some (_acc, leaves, tree) -> Some (value, leaves, tree)
-              | None -> failwith "account not found in set_value_i")
-            accounts
-        in
-        let accounts_tree =
-          ZkTree.P.update_tree
-            ~input_length:2
-            accounts_tree
-            pos
-            (TxLogic.scalar_of_account value)
-        in
-        let instant = TxTypes.{accounts; accounts_tree; next_position} in
-        return ({state with instant}, Some ())
+      (* let set_value_i pos value (state : state) =
+         let open Lwt_syntax in
+         let TxTypes.{accounts; accounts_tree; next_position} = state.instant in
+         let accounts =
+           TxTypes.IMap.update
+             pos
+             (function
+               | Some (_acc, leaves, tree) -> Some (value, leaves, tree)
+               | None -> failwith "account not found in set_value_i")
+             accounts
+         in
+         let accounts_tree =
+           ZkTree.P.update_tree
+             ~input_length:2
+             accounts_tree
+             pos
+             (TxLogic.scalar_of_account value)
+         in
+         let instant = TxTypes.{accounts; accounts_tree; next_position} in
+         return ({state with instant}, Some ()) *)
     end
 
     open Monad
@@ -324,95 +328,6 @@ module Make (Context : P) = struct
           Format.fprintf fmt "@[%s : %a@]" key P.pp value
         in
         return @@ fun fmt () -> Format.pp_print_list pp_elem fmt l
-    end
-
-    module Make_deque (P : sig
-      type t
-
-      val name : string
-
-      val encoding : t Data_encoding.t
-    end) =
-    struct
-      (*
-
-       A stateful deque.
-
-       [[head; end[] is the index range for the elements of the deque.
-
-       The length of the deque is therefore [end - head].
-
-    *)
-
-      let head_key = [P.name; "head"]
-
-      let end_key = [P.name; "end"]
-
-      let get_head = get_value_o ~default:Z.zero head_key Data_encoding.z
-
-      let set_head = set_value_o head_key Data_encoding.z
-
-      let get_end = get_value_o ~default:(Z.of_int 0) end_key Data_encoding.z
-
-      let set_end = set_value_o end_key Data_encoding.z
-
-      let idx_key idx = [P.name; Z.to_string idx]
-
-      let top =
-        let open Monad.Syntax in
-        let* head_idx = get_head in
-        let* end_idx = get_end in
-        let* v = find_value_o (idx_key head_idx) P.encoding in
-        if Z.(leq end_idx head_idx) then return None
-        else
-          match v with
-          | None -> (* By invariants of the Deque. *) assert false
-          | Some x -> return (Some x)
-
-      let push x =
-        let open Monad.Syntax in
-        let* head_idx = get_head in
-        let head_idx' = Z.pred head_idx in
-        let* () = set_head head_idx' in
-        set_value_o (idx_key head_idx') P.encoding x
-
-      let pop =
-        let open Monad.Syntax in
-        let* head_idx = get_head in
-        let* end_idx = get_end in
-        if Z.(leq end_idx head_idx) then return None
-        else
-          let* v = find_value_o (idx_key head_idx) P.encoding in
-          match v with
-          | None -> (* By invariants of the Deque. *) assert false
-          | Some x ->
-              let* () = remove_o (idx_key head_idx) in
-              let head_idx = Z.succ head_idx in
-              let* () = set_head head_idx in
-              return (Some x)
-
-      let inject x =
-        let open Monad.Syntax in
-        let* end_idx = get_end in
-        let end_idx' = Z.succ end_idx in
-        let* () = set_end end_idx' in
-        set_value_o (idx_key end_idx) P.encoding x
-
-      let to_list =
-        let open Monad.Syntax in
-        let* head_idx = get_head in
-        let* end_idx = get_end in
-        let rec aux l idx =
-          if Z.(lt idx head_idx) then return l
-          else
-            let* v = find_value_o (idx_key idx) P.encoding in
-            match v with
-            | None -> (* By invariants of deque *) assert false
-            | Some v -> aux (v :: l) (Z.pred idx)
-        in
-        aux [] (Z.pred end_idx)
-
-      let clear = remove_o [P.name]
     end
 
     module Current_tick = Make_var (struct
@@ -628,7 +543,18 @@ module Make (Context : P) = struct
     let* state, _ = run m empty in
     return state
 
-  let install_boot_sector state _boot_sector = return state
+  let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
+
+  let install_boot_sector state boot_sector =
+    match
+      Data_encoding.Binary.of_string_opt
+        TxLogic.balances_data_encoding
+        boot_sector
+    with
+    | None -> Lwt.return state
+    | Some bals ->
+        let instant = TxLogic.make_state bals in
+        Lwt.return {state with instant}
 
   let state_hash (state : state) =
     let instant_root_bytes =
@@ -660,6 +586,8 @@ module Make (Context : P) = struct
     return s
 
   let get_tick = result_of ~default:Sc_rollup_tick_repr.initial Current_tick.get
+
+  let get_status = result_of ~default:Waiting_for_input_message @@ Status.get
 
   let is_input_state_monadic =
     let open Monad.Syntax in
@@ -827,7 +755,7 @@ module Make (Context : P) = struct
 
   let output_proof_encoding = Data_encoding.unit
 
-  let output_of_output_proof = Fun.id
+  let output_of_output_proof _ = failwith "TODO output_of_output_proof"
 
   let state_of_output_proof _ = failwith "TODO state_of_output_proof"
 
@@ -835,9 +763,10 @@ module Make (Context : P) = struct
 
   let produce_output_proof _ _ _ = failwith "TODO produce_output_proof"
 
-  let check_dissection ~default_number_of_sections:_ ~start_chunk:_
-      ~stop_chunk:_ =
-    failwith "check_dissection"
+  let get_current_level state =
+    let open Lwt_syntax in
+    let* _state_, current_level = Monad.run Current_level.get state in
+    return current_level
 
   module Internal_for_tests = struct
     let insert_failure _s = failwith "insert_failure"

@@ -175,6 +175,11 @@ module P = struct
     let accounts = IMap.of_seq @@ Array.to_seq accounts in
     {accounts; accounts_tree; next_position = 0}
 
+  let balances_data_encoding :
+      (Schnorr.pk * Z.t * balance ticket array) list Data_encoding.t =
+    Data_encoding.(
+      list @@ tup3 curve_data_encoding z (array ticket_balance_data_encoding))
+
   let make_state (bals : (Schnorr.pk * Z.t * balance ticket array) list) =
     let open Bound in
     let s = empty_state () in
