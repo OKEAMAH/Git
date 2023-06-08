@@ -3209,7 +3209,7 @@ module Sc_rollup : sig
   end
 
   module Kind : sig
-    type t = Example_arith | Wasm_2_0_0
+    type t = Example_arith | Wasm_2_0_0 | Epoxy_tx
 
     val encoding : t Data_encoding.t
 
@@ -3227,6 +3227,67 @@ module Sc_rollup : sig
   end
 
   val genesis_state_hash_of : boot_sector:string -> Kind.t -> State_hash.t Lwt.t
+
+  module Epoxy_tx : sig
+    module type P = sig
+      module Tree :
+        Context.TREE with type key = string list and type value = bytes
+
+      type tree = Tree.tree
+
+      val hash_tree : tree -> State_hash.t
+
+      type proof
+
+      val proof_encoding : proof Data_encoding.t
+
+      val proof_before : proof -> State_hash.t
+
+      val proof_after : proof -> State_hash.t
+
+      val verify_proof :
+        proof -> (tree -> (tree * 'a) Lwt.t) -> (tree * 'a) option Lwt.t
+
+      val produce_proof :
+        Tree.t ->
+        tree ->
+        (tree -> (tree * 'a) Lwt.t) ->
+        (proof * 'a) option Lwt.t
+    end
+
+    module type S = sig
+      include PVM.S
+
+      val parse_boot_sector : string -> string option
+
+      val pp_boot_sector : Format.formatter -> string -> unit
+
+      val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
+
+      val get_tick : state -> Sc_rollup_tick_repr.t Lwt.t
+
+      type status =
+        | Halted
+        | Waiting_for_input_message
+        | Waiting_for_reveal
+        | Waiting_for_metadata
+        | Evaluating
+
+      val get_status : state -> status Lwt.t
+
+      (* val get_outbox :
+         Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t *)
+
+      type instruction = Epoxy_tx.Types.P.tx
+    end
+
+    module Make (C : P) : S
+
+    val reference_initial_state_hash : State_hash.t
+
+    module Protocol_implementation :
+        module type of Sc_rollup_epoxy_tx.Protocol_implementation
+  end
 
   module ArithPVM : sig
     module type P = sig

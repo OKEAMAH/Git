@@ -30,6 +30,11 @@ module TxLogic = Epoxy_tx.Tx_rollup.P
 
 [@@@warning "-32"]
 
+(* TODO: update this *)
+let reference_initial_state_hash =
+  State_hash.of_b58check_exn
+    "srs11Z9V76SGd97kGmDQXV8tEF67C48GMy77RuaHdF1kWLk6UTmMfj"
+
 module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
 
@@ -54,6 +59,8 @@ end
 
 module type S = sig
   include PS.S
+
+  val parse_boot_sector : string -> string option
 
   val pp_boot_sector : Format.formatter -> string -> unit
 
@@ -543,6 +550,8 @@ module Make (Context : P) : S = struct
     let* state, _ = run m empty in
     return state
 
+  let parse_boot_sector s = Some s
+
   let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
 
   let install_boot_sector state boot_sector =
@@ -772,3 +781,41 @@ module Make (Context : P) : S = struct
     let insert_failure _s = failwith "insert_failure"
   end
 end
+
+module Protocol_implementation = Make (struct
+  module Tree = struct
+    include Context.Tree
+
+    type tree = Context.tree
+
+    type t = Context.t
+
+    type key = string list
+
+    type value = bytes
+  end
+
+  type tree = Context.tree
+
+  let hash_tree t = State_hash.context_hash_to_state_hash (Tree.hash t)
+
+  type proof = Context.Proof.tree Context.Proof.t
+
+  let verify_proof p f =
+    let open Lwt_option_syntax in
+    let*? () = Result.to_option (Context_binary_proof.check_is_binary p) in
+    Lwt.map Result.to_option (Context.verify_tree_proof p f)
+
+  let produce_proof _context _state _f =
+    (* Can't produce proof without full context*)
+    Lwt.return None
+
+  let kinded_hash_to_state_hash = function
+    | `Value hash | `Node hash -> State_hash.context_hash_to_state_hash hash
+
+  let proof_before proof = kinded_hash_to_state_hash proof.Context.Proof.before
+
+  let proof_after proof = kinded_hash_to_state_hash proof.Context.Proof.after
+
+  let proof_encoding = Context.Proof_encoding.V2.Tree2.tree_proof_encoding
+end)

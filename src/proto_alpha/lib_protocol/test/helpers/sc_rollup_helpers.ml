@@ -141,6 +141,7 @@ let genesis_commitment_raw ~boot_sector ~origination_level kind =
     match kind with
     | Sc_rollups.Kind.Example_arith -> Sc_rollup.Kind.Example_arith
     | Sc_rollups.Kind.Wasm_2_0_0 -> Sc_rollup.Kind.Wasm_2_0_0
+    | Sc_rollups.Kind.Epoxy_tx -> Sc_rollup.Kind.Epoxy_tx
   in
   let* res = genesis_commitment ~boot_sector ~origination_level kind in
   let res =

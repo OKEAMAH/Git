@@ -52,17 +52,19 @@ module Kind = struct
       - to update [Sc_rollups.wrapped_proof] and [wrapped_proof_encoding].
 
   *)
-  type t = Example_arith | Wasm_2_0_0
+  type t = Example_arith | Wasm_2_0_0 | Epoxy_tx
 
-  let all = [Example_arith; Wasm_2_0_0]
+  let all = [Example_arith; Wasm_2_0_0; Epoxy_tx]
 
   let to_string = function
     | Example_arith -> "arith"
     | Wasm_2_0_0 -> "wasm_2_0_0"
+    | Epoxy_tx -> "epoxy_tx"
 
   let of_string = function
     | "arith" -> Some Example_arith
     | "wasm_2_0_0" -> Some Wasm_2_0_0
+    | "epoxy_tx" -> Some Epoxy_tx
     | _ -> None
 
   let encoding =
@@ -71,11 +73,13 @@ module Kind = struct
   let pp fmt = function
     | Example_arith -> Format.pp_print_string fmt "arith"
     | Wasm_2_0_0 -> Format.pp_print_string fmt "wasm_2_0_0"
+    | Epoxy_tx -> Format.pp_print_string fmt "epoxy_tx"
 
   let equal x y =
     match (x, y) with
     | Example_arith, Example_arith -> true
     | Wasm_2_0_0, Wasm_2_0_0 -> true
+    | Epoxy_tx, Epoxy_tx -> true
     | _ -> false
 
   let example_arith_pvm =
@@ -84,18 +88,24 @@ module Kind = struct
   let wasm_2_0_0_pvm =
     PVM.Packed (module Sc_rollup_wasm.V2_0_0.Protocol_implementation)
 
+  let epoxy_tx_pvm =
+    PVM.Packed (module Sc_rollup_epoxy_tx.Protocol_implementation)
+
   let reference_initial_state_hash_of = function
     | Example_arith -> Sc_rollup_arith.reference_initial_state_hash
     | Wasm_2_0_0 -> Sc_rollup_wasm.V2_0_0.reference_initial_state_hash
+    | Epoxy_tx -> Sc_rollup_epoxy_tx.reference_initial_state_hash
 
   let pvm_of = function
     | Example_arith -> example_arith_pvm
     | Wasm_2_0_0 -> wasm_2_0_0_pvm
+    | Epoxy_tx -> epoxy_tx_pvm
 
   let no_proof_machine_of : t -> (module Sc_rollup_machine_no_proofs.S) =
     function
     | Example_arith -> (module Sc_rollup_machine_no_proofs.Arith)
     | Wasm_2_0_0 -> (module Sc_rollup_machine_no_proofs.Wasm)
+    | Epoxy_tx -> failwith "TODO no_proof_machine_of"
 end
 
 let genesis_state_hash_of ~boot_sector kind =

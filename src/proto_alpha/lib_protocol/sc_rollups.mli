@@ -55,7 +55,7 @@ module Kind : sig
 
      This list must only be appended for backward compatibility.
   *)
-  type t = Example_arith | Wasm_2_0_0
+  type t = Example_arith | Wasm_2_0_0 | Epoxy_tx
 
   val encoding : t Data_encoding.t
 

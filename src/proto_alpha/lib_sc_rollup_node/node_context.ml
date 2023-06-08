@@ -174,6 +174,7 @@ let pvm_of_kind : Protocol.Alpha_context.Sc_rollup.Kind.t -> (module Pvm.S) =
   function
   | Example_arith -> (module Arith_pvm)
   | Wasm_2_0_0 -> (module Wasm_2_0_0_pvm)
+  | Epoxy_tx -> Stdlib.failwith "TODO"
 
 let check_fee_parameters Configuration.{fee_parameters; _} =
   let check_value purpose name compare to_string mempool_default value =
