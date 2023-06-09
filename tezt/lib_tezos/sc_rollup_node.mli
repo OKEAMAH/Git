@@ -127,6 +127,15 @@ val run :
   string list ->
   unit Lwt.t
 
+val run_sequencer :
+  ?event_level:Daemon.Level.default_level ->
+  ?event_sections_levels:(string * Daemon.Level.level) list ->
+  ?wait_ready:bool ->
+  t ->
+  string ->
+  string list ->
+  unit Lwt.t
+
 (** [spawn_run node rollup_address arguments] is a lightweight version of {!run}
     that spawns a process. *)
 val spawn_run : t -> string -> string list -> Process.t

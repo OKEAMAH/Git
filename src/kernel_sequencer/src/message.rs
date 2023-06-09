@@ -49,7 +49,7 @@ pub struct Bytes {
 /// The sequence contains the number of messages
 /// that should be processed from the delayed inbox
 /// and the messages from the sequencer
-///  
+///
 /// The delayed messages will be processed first
 /// And then the messages will be processed
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
@@ -224,6 +224,7 @@ mod tests {
         let (public_key, secret) =
             key_pair("edsk3a5SDDdMWw3Q5hPiJwDXUosmZMTuKQkriPqY6UqtSfdLifpZbB");
         let signature = secret.sign([0x0]).expect("sign should work");
+        println!("HASH SIZE {}", signature.as_ref().len());
 
         let sequence = KernelMessage::SetSequencer(Framed {
             destination: SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb")

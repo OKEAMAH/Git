@@ -41,6 +41,10 @@ default-features = false
 path = "../kernel_sdk/encoding"
 version = "0.1.0"
 
+[dependencies.tezos-smart-rollup-debug]
+path = "../kernel_sdk/debug"
+version = "0.1.0"
+
 [dev-dependencies.tezos_crypto_rs]
 version = "0.5.0"
 

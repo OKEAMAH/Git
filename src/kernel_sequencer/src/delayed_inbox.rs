@@ -5,6 +5,7 @@
 
 use tezos_data_encoding::nom::NomReader;
 use tezos_data_encoding_derive::BinWriter;
+use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_host::{
     input::Message,
     metadata::{RollupMetadata, RAW_ROLLUP_ADDRESS_SIZE},
@@ -62,7 +63,7 @@ pub fn read_input<Host: Runtime>(
                         );
                     }
                     Ok((_, KernelMessage::Sequence(framed))) => {
-                        handle_sequence_message(framed, &raw_rollup_address)
+                        handle_sequence_message(host, framed, &raw_rollup_address)
                     }
                     Ok((_, KernelMessage::SetSequencer(framed))) => {
                         handle_set_sequencer_message(framed, &raw_rollup_address)
@@ -76,6 +77,7 @@ pub fn read_input<Host: Runtime>(
 
 /// Handle Sequence message
 fn handle_sequence_message(
+    host: &impl Runtime,
     framed: Framed<Sequence>,
     rollup_address: &[u8; RAW_ROLLUP_ADDRESS_SIZE],
 ) {
@@ -85,6 +87,11 @@ fn handle_sequence_message(
     } = framed;
 
     if destination.hash().as_ref() == rollup_address {
+        debug_msg!(
+            host,
+            "Received a sequence message {:?} targeting our rollup",
+            framed.payload
+        );
         // process the sequence
     }
 }
@@ -115,6 +122,12 @@ fn handle_message<H: Runtime>(
 ) -> Result<(), RuntimeError> {
     // Check if the message should be included in the delayed inbox
     if filter_behavior.predicate(user_message.as_ref(), rollup_address) {
+        debug_msg!(
+            host,
+            "Received user message {:?} targeting our rollup, hence, will be added to the delayed inbox",
+            user_message
+        );
+
         // add the message to the delayed inbox
         let user_message = UserMessage {
             timeout_level: level + timeout_window,
