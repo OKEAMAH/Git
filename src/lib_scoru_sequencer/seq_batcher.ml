@@ -112,16 +112,20 @@ let get_batch_sequences state head =
       l2_messages
     |> Environment.wrap_tzresult
   in
-  return
-    ( [
-        ( Kernel_message.encode_sequence_message
-            state.node_ctxt.rollup_address
-            ~prefix:(Int32.of_int (delayed_inbox_size - 1))
-            ~suffix:1l
-            l2_messages_serialized,
-          l2_messages );
-      ],
-      delayed_inbox_size )
+  if delayed_inbox_size = 0 then
+    (* That might happen only for the genesis + 1 block level *)
+    return ([], 0)
+  else
+    return
+      ( [
+          ( Kernel_message.encode_sequence_message
+              state.node_ctxt.rollup_address
+              ~prefix:(Int32.of_int (delayed_inbox_size - 1))
+              ~suffix:1l
+              l2_messages_serialized,
+            l2_messages );
+        ],
+        delayed_inbox_size )
 
 let produce_batch_sequences state head =
   let open Lwt_result_syntax in
