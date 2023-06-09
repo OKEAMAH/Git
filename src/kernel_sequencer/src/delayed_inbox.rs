@@ -3,10 +3,10 @@
 //
 // SPDX-License-Identifier: MIT
 
+use tezos_crypto_rs::PublicKeySignatureVerifier;
 use tezos_data_encoding::enc::BinWriter;
 use tezos_data_encoding::nom::NomReader;
 use tezos_smart_rollup_debug::debug_msg;
-use tezos_smart_rollup_encoding::smart_rollup::SmartRollupAddress;
 use tezos_smart_rollup_host::{
     input::Message,
     metadata::{RollupMetadata, RAW_ROLLUP_ADDRESS_SIZE},
@@ -14,7 +14,7 @@ use tezos_smart_rollup_host::{
 };
 
 use crate::{
-    message::{Framed, KernelMessage, Sequence, SequencerMsg, SetSequencer},
+    message::{Framed, KernelMessage, Sequence, SequencerMsg, SetSequencer, Signed},
     queue::Queue,
     routing::FilterBehavior,
     state::{update_state, State},
@@ -61,24 +61,22 @@ pub fn read_input<Host: Runtime>(
                 match message {
                     Err(_) => {}
                     Ok((_, message)) => match message {
-                        KernelMessage::Sequencer(Framed {
-                            destination,
-                            payload: SequencerMsg::Sequence(sequence),
-                        }) => handle_sequence_message(
-                            host,
-                            sequence,
-                            destination,
-                            &raw_rollup_address,
-                            state,
-                        ),
-                        KernelMessage::Sequencer(Framed {
-                            destination,
-                            payload: SequencerMsg::SetSequencer(set_sequence),
-                        }) => handle_set_sequencer_message(
-                            set_sequence,
-                            destination,
-                            &raw_rollup_address,
-                        ),
+                        KernelMessage::Sequencer(sequencer_msg) => {
+                            let Ok(payload) = extract_payload(
+                                sequencer_msg,
+                                &raw_rollup_address,
+                                state,
+                            ) else { continue;};
+
+                            match payload {
+                                SequencerMsg::Sequence(sequence) => {
+                                    handle_sequence_message(sequence)
+                                }
+                                SequencerMsg::SetSequencer(set_sequencer) => {
+                                    handle_set_sequencer_message(set_sequencer)
+                                }
+                            }
+                        }
                         KernelMessage::DelayedMessage(user_message) => {
                             let _ = handle_message(
                                 host,
@@ -97,37 +95,59 @@ pub fn read_input<Host: Runtime>(
     }
 }
 
-/// Handle Sequence message
-fn handle_sequence_message(
-    host: &impl Runtime,
-    sequence: Sequence,
-    destination: SmartRollupAddress,
+/// Extracts the payload of the message sent by the sequencer.
+///
+/// The destination has to match the current rollup address.
+/// The state of the kernel has to be `Sequenced`.
+/// The signature has to be valid.
+fn extract_payload(
+    sequencer_msg: Signed<Framed<SequencerMsg>>,
     rollup_address: &[u8; RAW_ROLLUP_ADDRESS_SIZE],
     state: State,
-) {
+) -> Result<SequencerMsg, RuntimeError> {
+    let Signed {
+        body: Framed {
+            destination,
+            payload: _,
+        },
+        signature,
+    } = &sequencer_msg;
+
+    // Verify if the destination is for this rollup.
     if destination.hash().as_ref() != rollup_address {
-        return;
+        return Err(RuntimeError::HostErr(
+            tezos_smart_rollup_host::Error::GenericInvalidAccess,
+        ));
     }
 
-    debug_msg!(
-        host,
-        "Received a sequence message {:?} targeting our rollup",
-        sequence
-    );
+    // Check if state is sequenced.
+    let State::Sequenced(sequencer_address) = state else {
+        return Err(RuntimeError::HostErr(
+            tezos_smart_rollup_host::Error::GenericInvalidAccess,
+        ));
+    };
 
-    let State::Sequenced(_) = state else {return;};
+    // Verify the signature of the message.
+    let hash = sequencer_msg.hash()?;
+    let signature_is_correct = sequencer_address
+        .verify_signature(signature, hash.as_ref())
+        .map_err(|_| RuntimeError::HostErr(tezos_smart_rollup_host::Error::GenericInvalidAccess))?;
+    if !signature_is_correct {
+        return Err(RuntimeError::HostErr(
+            tezos_smart_rollup_host::Error::GenericInvalidAccess,
+        ));
+    }
 
+    Ok(sequencer_msg.body.payload)
+}
+
+/// Handle Sequence message
+fn handle_sequence_message(_sequence: Sequence) {
     // process the sequence
 }
 
-fn handle_set_sequencer_message(
-    _set_sequencer: SetSequencer,
-    destination: SmartRollupAddress,
-    rollup_address: &[u8; RAW_ROLLUP_ADDRESS_SIZE],
-) {
-    if destination.hash().as_ref() == rollup_address {
-        // process the set sequencer message
-    }
+fn handle_set_sequencer_message(_set_sequencer: SetSequencer) {
+    // process the set sequencer message
 }
 
 /// Handle messages

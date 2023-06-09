@@ -8,13 +8,40 @@ use nom::{
     combinator::{all_consuming, map},
     sequence::preceded,
 };
-use tezos_crypto_rs::hash::Signature;
+use tezos_crypto_rs::{blake2b, hash::Signature};
 use tezos_data_encoding::{
     enc::{self, BinResult, BinWriter},
     nom::{NomReader, NomResult},
 };
 use tezos_smart_rollup_encoding::public_key::PublicKey;
 use tezos_smart_rollup_encoding::smart_rollup::SmartRollupAddress;
+use tezos_smart_rollup_host::runtime::RuntimeError;
+
+#[derive(Debug, Clone, PartialEq, Eq, BinWriter, NomReader)]
+pub struct Signed<A>
+where
+    A: NomReader + BinWriter,
+{
+    pub body: A,
+    pub signature: Signature,
+}
+
+impl<A> Signed<A>
+where
+    A: NomReader + BinWriter,
+{
+    /// Returns the hash of the message
+    pub fn hash(&self) -> Result<Vec<u8>, RuntimeError> {
+        // Get the bytes of the body.
+        let mut bytes = Vec::new();
+        self.body
+            .bin_write(&mut bytes)
+            .map_err(|_| RuntimeError::DecodingError)?;
+
+        // Returns the hash of the body.
+        blake2b::digest_256(&bytes).map_err(|_| RuntimeError::DecodingError)
+    }
+}
 
 /// Framing protocol v0
 ///
@@ -58,7 +85,6 @@ pub struct Sequence {
     delayed_messages_suffix: u32,
     #[encoding(dynamic, list)]
     messages: Vec<Bytes>,
-    signature: Signature,
 }
 
 /// Message to set the appropriate sequencer
@@ -70,7 +96,6 @@ pub struct SetSequencer {
     nonce: u32,
     admin_public_key: PublicKey,
     sequencer_public_key: PublicKey,
-    signature: Signature,
 }
 
 #[derive(NomReader, BinWriter, Debug, Clone, Eq, PartialEq)]
@@ -81,7 +106,7 @@ pub enum SequencerMsg {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelMessage {
-    Sequencer(Framed<SequencerMsg>),
+    Sequencer(Signed<Framed<SequencerMsg>>),
     DelayedMessage(Vec<u8>),
 }
 
@@ -128,7 +153,7 @@ impl NomReader for KernelMessage {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
         all_consuming(alt((
             all_consuming(map(
-                preceded(tag([1]), Framed::<SequencerMsg>::nom_read),
+                preceded(tag([1]), Signed::<Framed<SequencerMsg>>::nom_read),
                 KernelMessage::Sequencer,
             )),
             map(
@@ -155,11 +180,12 @@ impl BinWriter for KernelMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::message::{Framed, SequencerMsg};
+    use crate::message::{Bytes, Framed, SequencerMsg, Signed};
 
     use super::{KernelMessage, Sequence};
     use crate::message::SetSequencer;
-    use tezos_crypto_rs::hash::{SecretKeyEd25519, SeedEd25519};
+    use tezos_crypto_rs::hash::{PublicKeyEd25519, SecretKeyEd25519, SeedEd25519, Signature};
+    use tezos_crypto_rs::PublicKeySignatureVerifier;
     use tezos_data_encoding::enc::{self, BinWriter};
     use tezos_data_encoding::nom::NomReader;
     use tezos_smart_rollup_encoding::public_key::PublicKey;
@@ -181,7 +207,7 @@ mod tests {
         let (_, secret) = key_pair("edsk3a5SDDdMWw3Q5hPiJwDXUosmZMTuKQkriPqY6UqtSfdLifpZbB");
         let signature = secret.sign([0x0]).expect("sign should work");
 
-        let sequence = KernelMessage::Sequencer(Framed {
+        let body = Framed {
             destination: SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb")
                 .expect("decoding should work"),
             payload: SequencerMsg::Sequence(Sequence {
@@ -189,9 +215,10 @@ mod tests {
                 delayed_messages_prefix: 0,
                 delayed_messages_suffix: 0,
                 messages: Vec::default(),
-                signature,
             }),
-        });
+        };
+
+        let sequence = KernelMessage::Sequencer(Signed { body, signature });
 
         // Serializing
         let mut bin: Vec<u8> = Vec::new();
@@ -209,16 +236,17 @@ mod tests {
             key_pair("edsk3a5SDDdMWw3Q5hPiJwDXUosmZMTuKQkriPqY6UqtSfdLifpZbB");
         let signature = secret.sign([0x0]).expect("sign should work");
 
-        let sequence = KernelMessage::Sequencer(Framed {
+        let body = Framed {
             destination: SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb")
                 .expect("decoding should work"),
             payload: SequencerMsg::SetSequencer(SetSequencer {
                 nonce: 0,
                 admin_public_key: public_key.clone(),
                 sequencer_public_key: public_key,
-                signature,
             }),
-        });
+        };
+
+        let sequence = KernelMessage::Sequencer(Signed { body, signature });
 
         // Serializing
         let mut bin: Vec<u8> = Vec::new();
@@ -249,17 +277,18 @@ mod tests {
         let (_, secret) = key_pair("edsk3a5SDDdMWw3Q5hPiJwDXUosmZMTuKQkriPqY6UqtSfdLifpZbB");
         let signature = secret.sign([0x0]).expect("sign should work");
 
-        let sequence = KernelMessage::Sequencer(Framed {
+        let body = Framed {
             destination: SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb")
                 .expect("decoding should work"),
             payload: SequencerMsg::Sequence(Sequence {
                 nonce: 0,
-                signature,
                 delayed_messages_prefix: 5,
                 delayed_messages_suffix: 5,
                 messages: Vec::default(),
             }),
-        });
+        };
+
+        let sequence = KernelMessage::Sequencer(Signed { body, signature });
 
         // Serializing
         let mut bin: Vec<u8> = Vec::new();
@@ -272,5 +301,251 @@ mod tests {
 
         assert!(remaining.is_empty());
         assert_eq!(msg_read, KernelMessage::DelayedMessage(bin))
+    }
+
+    /// Deserialize a string to a KernelMessage
+    fn from_string(hex: &str) -> KernelMessage {
+        let hex = hex::decode(hex).expect("valid hexadecimal");
+        let (_, msg) = KernelMessage::nom_read(&hex).expect("deserialization should work");
+        msg
+    }
+
+    #[test]
+    fn test_deserialization_empty_sequence() {
+        let kernel_message = from_string("01006227a8721213bd7ddb9b56227e3acb01161b1e67000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let rollup_address =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+        let sign = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+
+        match kernel_message {
+            KernelMessage::Sequencer(Signed {
+                body:
+                    Framed {
+                        destination,
+                        payload:
+                            SequencerMsg::Sequence(Sequence {
+                                nonce,
+                                delayed_messages_prefix,
+                                delayed_messages_suffix,
+                                messages,
+                            }),
+                    },
+                signature,
+            }) => {
+                assert_eq!(destination, rollup_address);
+                assert_eq!(nonce, 0);
+                assert_eq!(delayed_messages_prefix, 0);
+                assert_eq!(delayed_messages_suffix, 0);
+                assert_eq!(messages, vec![]);
+                assert_eq!(signature, sign)
+            }
+            _ => panic!("Wrong message encoding"),
+        }
+    }
+
+    #[test]
+    fn test_deserialization_one_empty_message_sequence() {
+        let kernel_message = from_string("01006227a8721213bd7ddb9b56227e3acb01161b1e6700000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let rollup_address =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+        let sign = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+
+        println!("{:?}", kernel_message);
+
+        match kernel_message {
+            KernelMessage::Sequencer(Signed {
+                body:
+                    Framed {
+                        destination,
+                        payload:
+                            SequencerMsg::Sequence(Sequence {
+                                nonce,
+                                delayed_messages_prefix,
+                                delayed_messages_suffix,
+                                messages,
+                            }),
+                    },
+                signature,
+            }) => {
+                assert_eq!(destination, rollup_address);
+                assert_eq!(nonce, 0);
+                assert_eq!(delayed_messages_prefix, 0);
+                assert_eq!(delayed_messages_suffix, 0);
+                assert_eq!(messages, vec![Bytes { inner: vec![] }]);
+                assert_eq!(signature, sign)
+            }
+            _ => panic!("Wrong message encoding"),
+        }
+    }
+
+    #[test]
+    fn test_deserialization_one_message_sequence() {
+        let kernel_message = from_string("01006227a8721213bd7ddb9b56227e3acb01161b1e6700000000000000000000000000000000090000000568656c6c6f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let rollup_address =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+        let sign = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+
+        println!("{:?}", kernel_message);
+
+        match kernel_message {
+            KernelMessage::Sequencer(Signed {
+                body:
+                    Framed {
+                        destination,
+                        payload:
+                            SequencerMsg::Sequence(Sequence {
+                                nonce,
+                                delayed_messages_prefix,
+                                delayed_messages_suffix,
+                                messages,
+                            }),
+                    },
+                signature,
+            }) => {
+                assert_eq!(destination, rollup_address);
+                assert_eq!(nonce, 0);
+                assert_eq!(delayed_messages_prefix, 0);
+                assert_eq!(delayed_messages_suffix, 0);
+                assert_eq!(
+                    messages,
+                    vec![Bytes {
+                        inner: b"hello".to_vec()
+                    }]
+                );
+                assert_eq!(signature, sign)
+            }
+            _ => panic!("Wrong message encoding"),
+        }
+    }
+
+    #[test]
+    fn test_deserialization_two_messages_sequence() {
+        let kernel_message = from_string("01006227a8721213bd7ddb9b56227e3acb01161b1e6700000000000000000000000000000000120000000568656c6c6f00000005776f726c6400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let rollup_address =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+        let sign = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+
+        println!("{:?}", kernel_message);
+
+        match kernel_message {
+            KernelMessage::Sequencer(Signed {
+                body:
+                    Framed {
+                        destination,
+                        payload:
+                            SequencerMsg::Sequence(Sequence {
+                                nonce,
+                                delayed_messages_prefix,
+                                delayed_messages_suffix,
+                                messages,
+                            }),
+                    },
+                signature,
+            }) => {
+                assert_eq!(destination, rollup_address);
+                assert_eq!(nonce, 0);
+                assert_eq!(delayed_messages_prefix, 0);
+                assert_eq!(delayed_messages_suffix, 0);
+                assert_eq!(
+                    messages,
+                    vec![
+                        Bytes {
+                            inner: b"hello".to_vec()
+                        },
+                        Bytes {
+                            inner: b"world".to_vec()
+                        }
+                    ]
+                );
+                assert_eq!(signature, sign)
+            }
+            _ => panic!("Wrong message encoding"),
+        }
+    }
+
+    /// Generate a signed sequence
+    fn generate_signed_sequence(
+        secret: SecretKeyEd25519,
+        destination: SmartRollupAddress,
+        nonce: u32,
+        delayed_messages_prefix: u32,
+        delayed_messages_suffix: u32,
+        messages: Vec<Bytes>,
+    ) -> Signed<Framed<SequencerMsg>> {
+        let tmp_sig = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+        let mut unsigned = Signed {
+            body: Framed {
+                destination,
+                payload: SequencerMsg::Sequence(Sequence {
+                    nonce,
+                    delayed_messages_prefix,
+                    delayed_messages_suffix,
+                    messages,
+                }),
+            },
+            signature: tmp_sig,
+        };
+
+        let hash = unsigned.hash().unwrap();
+
+        let signature = secret.sign(hash).unwrap();
+        unsigned.signature = signature;
+        unsigned
+    }
+
+    #[test]
+    fn test_incorrect_sequence_signature() {
+        let destination =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+        let nonce = 0;
+        let delayed_messages_prefix = 0;
+        let delayed_messages_suffix = 0;
+        let messages = vec![];
+        let signature = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+
+        let message = Signed {
+            body: Framed {
+                destination,
+                payload: SequencerMsg::Sequence(Sequence {
+                    nonce,
+                    delayed_messages_prefix,
+                    delayed_messages_suffix,
+                    messages,
+                }),
+            },
+            signature: signature.clone(),
+        };
+
+        let hash = message.hash().expect("hash failure");
+
+        let public_key = PublicKey::Ed25519(
+            PublicKeyEd25519::from_base58_check(
+                "edpkuDMUm7Y53wp4gxeLBXuiAhXZrLn8XB1R83ksvvesH8Lp8bmCfK",
+            )
+            .unwrap(),
+        );
+
+        let is_correct = public_key.verify_signature(&signature, &hash);
+
+        matches!(is_correct, Ok(false));
+    }
+
+    #[test]
+    fn test_correct_sequence_signature() {
+        let destination =
+            SmartRollupAddress::from_b58check("sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb").unwrap();
+
+        let seed = SeedEd25519::from_base58_check(
+            "edsk3a5SDDdMWw3Q5hPiJwDXUosmZMTuKQkriPqY6UqtSfdLifpZbB",
+        )
+        .unwrap();
+
+        let (public_key, secret_key) = seed.keypair().unwrap();
+
+        let sequence = generate_signed_sequence(secret_key, destination, 0, 0, 0, vec![]);
+
+        let hash = sequence.hash().unwrap();
+        let is_correct = public_key.verify_signature(&sequence.signature, &hash);
+        matches!(is_correct, Ok(true));
     }
 }
