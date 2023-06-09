@@ -27,6 +27,7 @@ open Protocol
 open Alpha_context
 open Store_sigs
 module Context_encoding = Tezos_context_encoding.Context_binary
+module TxTypes = Epoxy_tx.Types.P
 
 (* We shadow [Tezos_context_encoding] to prevent accidentally using
    [Tezos_context_encoding.Context] instead of
@@ -45,6 +46,10 @@ module IStoreTree =
   Tezos_context_helpers.Context.Make_tree (Context_encoding.Conf) (IStore)
 
 type tree = IStore.tree
+
+type instant_state = TxTypes.state
+
+type state = {optimistic : Context.tree; instant : TxTypes.state}
 
 type 'a raw_index = {path : string; repo : IStore.Repo.t}
 
@@ -185,7 +190,7 @@ end
 
 (** State of the PVM that this rollup node deals with. *)
 module PVMState = struct
-  type value = tree
+  type value = state
 
   let key = ["pvm_state"]
 

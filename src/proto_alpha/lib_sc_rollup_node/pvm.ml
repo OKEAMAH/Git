@@ -32,7 +32,6 @@ module type S = sig
   include
     Sc_rollup.PVM.S
       with type context = Context.rw_index
-       and type state = Context.tree
        and type hash = Sc_rollup.State_hash.t
 
   (** Kind of the PVM. *)

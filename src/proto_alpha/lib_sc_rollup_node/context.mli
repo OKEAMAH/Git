@@ -38,6 +38,10 @@ type ro_index = [`Read] index
 (** The type of trees stored in the context, i.e. the actual data. *)
 type tree
 
+type instant_state
+
+type state = {optimistic : tree; instant : instant_state}
+
 (** The type of context with its content. *)
 type 'a t constraint 'a = [< `Read | `Write > `Read]
 
@@ -140,9 +144,14 @@ end) : sig
 end
 
 (** State of the PVM that this rollup node deals with *)
-module PVMState : sig
+module PVMState : functor
+  (S : sig
+     type state
+   end)
+  -> sig
+  open S
   (** The value of a PVM state *)
-  type value = tree
+  type value = state
 
   (** [empty ()] is the empty PVM state. *)
   val empty : unit -> value
