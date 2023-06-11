@@ -46,3 +46,4 @@ rlp = "0.5.2"
 [features]
 default = ["panic-hook"]
 panic-hook = []
+proto-nairobi = ["tezos-smart-rollup-core/proto-nairobi", "tezos-smart-rollup-host/proto-nairobi", "tezos-smart-rollup-mock/proto-nairobi"]

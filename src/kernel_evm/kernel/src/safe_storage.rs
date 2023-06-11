@@ -71,9 +71,25 @@ impl<Host: Runtime> Runtime for SafeStorage<&mut Host> {
         self.0.store_write(&path, src, at_offset)
     }
 
+    #[cfg(feature = "proto-nairobi")]
+    fn store_write_all<T: Path>(
+        &mut self,
+        path: &T,
+        src: &[u8],
+    ) -> Result<(), RuntimeError> {
+        let path = safe_path(path)?;
+        self.0.store_write_all(&path, src)
+    }
+
     fn store_delete<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
         let path = safe_path(path)?;
         self.0.store_delete(&path)
+    }
+
+    #[cfg(feature = "proto-nairobi")]
+    fn store_delete_value<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
+        let path = safe_path(path)?;
+        self.0.store_delete_value(&path)
     }
 
     fn store_count_subkeys<T: Path>(&self, prefix: &T) -> Result<u64, RuntimeError> {
