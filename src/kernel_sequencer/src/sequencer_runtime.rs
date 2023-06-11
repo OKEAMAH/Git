@@ -89,8 +89,18 @@ where
         self.host.store_write(path, src, at_offset)
     }
 
+    #[cfg(feature = "proto-nairobi")]
+    fn store_write_all<T: Path>(&mut self, path: &T, src: &[u8]) -> Result<(), RuntimeError> {
+        self.host.store_write_all(path, src)
+    }
+
     fn store_delete<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
         self.host.store_delete(path)
+    }
+
+    #[cfg(feature = "proto-nairobi")]
+    fn store_delete_value<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
+        self.host.store_delete_value(path)
     }
 
     fn store_count_subkeys<T: Path>(&self, prefix: &T) -> Result<u64, RuntimeError> {

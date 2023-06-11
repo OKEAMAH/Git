@@ -27,3 +27,6 @@ version = "0.1.0"
 
 [dev-dependencies.tezos_crypto_rs]
 version = "0.5.0"
+
+[features]
+proto-nairobi = ["tezos-smart-rollup-core/proto-nairobi", "tezos-smart-rollup-host/proto-nairobi", "tezos-smart-rollup-mock/proto-nairobi"]
