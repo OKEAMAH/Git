@@ -2,6 +2,8 @@
 
 ## Version next
 
+- Introduce support for Michelson ``or`` type and its Micheline encoding in ``tezos-smart-rollup-encoding``.
+
 ### SDK
 
 - Add functionality in `dac::certificate` to verify that a certificate has been a signed by a number of

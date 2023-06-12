@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2022 TriliTech <contact@trili.tech>
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
+// SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
 //
 // SPDX-License-Identifier: MIT
 
@@ -25,6 +26,8 @@ pub const MICHELINE_INT_TAG: u8 = 0;
 pub const MICHELINE_STRING_TAG: u8 = 1;
 /// no-argument primitive (without annotations) encoding case tag.
 pub const MICHELINE_PRIM_NO_ARGS_NO_ANNOTS_TAG: u8 = 3;
+/// 1-argument primitive (without annotations) encoding case tag.
+pub const MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG: u8 = 5;
 /// 2-argument primitive (without annotations) encoding case tag.
 pub const MICHELINE_PRIM_2_ARGS_NO_ANNOTS_TAG: u8 = 7;
 /// Bytes encoding case tag.
@@ -63,7 +66,7 @@ pub struct MichelinePrimNoArgsNoAnnots<const PRIM_TAG: u8>;
 ///
 /// Encoded as an `obj3`, prefixed by [MICHELINE_PRIM_2_ARGS_NO_ANNOTS_TAG], with fields:
 /// - `prim` - the `PRIM_TAG`
-/// - `arg2` - the first argument
+/// - `arg1` - the first argument
 /// - `arg2` - the second argument
 #[derive(Debug, PartialEq, Eq)]
 pub struct MichelinePrim2ArgsNoAnnots<Arg1, Arg2, const PRIM_TAG: u8>
@@ -74,6 +77,14 @@ where
     pub(crate) arg1: Arg1,
     pub(crate) arg2: Arg2,
 }
+
+/// lib_micheline *prim-1 no annotations* encoding.
+///
+/// Encoded as an `obj2`, prefixed by [MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG], with fields:
+/// - `prim` - the `PRIM_TAG`
+/// - `arg` - the only argument
+#[derive(Debug, PartialEq, Eq)]
+pub struct MichelinePrim1ArgNoAnnots<Arg, const PRIM_TAG: u8>(pub(crate) Arg);
 
 // ----------
 // CONVERSION
@@ -101,6 +112,12 @@ where
     Arg1: Debug + PartialEq + Eq,
     Arg2: Debug + PartialEq + Eq,
 {
+    fn encoding() -> Encoding {
+        Encoding::Custom
+    }
+}
+
+impl<Arg, const PRIM_TAG: u8> HasEncoding for MichelinePrim1ArgNoAnnots<Arg, PRIM_TAG> {
     fn encoding() -> Encoding {
         Encoding::Custom
     }
@@ -152,6 +169,18 @@ where
     }
 }
 
+impl<Arg: NomReader, const PRIM_TAG: u8> NomReader
+    for MichelinePrim1ArgNoAnnots<Arg, PRIM_TAG>
+{
+    fn nom_read(input: &[u8]) -> NomResult<Self> {
+        let parse = preceded(
+            tag([MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG, PRIM_TAG]),
+            Arg::nom_read,
+        );
+        map(parse, Self)(input)
+    }
+}
+
 impl<const PRIM_TAG: u8> NomReader for MichelinePrimNoArgsNoAnnots<PRIM_TAG> {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
         map(
@@ -194,6 +223,14 @@ where
         bin_write_prim_2_args_no_annots::<_, _, { PRIM_TAG }>(
             &self.arg1, &self.arg2, output,
         )
+    }
+}
+
+impl<Arg: BinWriter, const PRIM_TAG: u8> BinWriter
+    for MichelinePrim1ArgNoAnnots<Arg, PRIM_TAG>
+{
+    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+        bin_write_prim_1_arg_no_annots::<_, { PRIM_TAG }>(&self.0, output)
     }
 }
 
@@ -253,6 +290,22 @@ where
     Ok(())
 }
 
+/// Write `PRIM_TAG`, `arg` into an `obj2` encoding, prefixed with the
+/// [MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG].
+pub(crate) fn bin_write_prim_1_arg_no_annots<Arg, const PRIM_TAG: u8>(
+    arg: &Arg,
+    output: &mut Vec<u8>,
+) -> BinResult
+where
+    Arg: BinWriter,
+{
+    enc::put_bytes(&[MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG, PRIM_TAG], output);
+
+    arg.bin_write(output)?;
+
+    Ok(())
+}
+
 pub(crate) fn bin_write_prim_no_args_no_annots<const PRIM_TAG: u8>(
     output: &mut Vec<u8>,
 ) -> BinResult {
@@ -304,6 +357,8 @@ pub(crate) fn bin_write_micheline_int(data: &Zarith, output: &mut Vec<u8>) -> Bi
 
 #[cfg(test)]
 mod test {
+    use crate::michelson::v1_primitives::{LEFT_TAG, RIGHT_TAG};
+
     use super::*;
 
     // z_bignum test cases from tezedge/tezos-encoding, prefixed by
@@ -466,5 +521,59 @@ mod test {
     fn hex_to_bigint(s: &str) -> num_bigint::BigInt {
         use num_traits::FromPrimitive;
         num_bigint::BigInt::from_u64(u64::from_str_radix(s, 16).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn michelson_or_encode_left() {
+        // This is generated from
+        //     octez-client convert data 'Left "abc"' from michelson to binary
+        let expected = [
+            0x5, // Prim_1
+            0x5, // D_LEFT
+            0x1, // String
+            0x0, 0x0, 0x0, 0x3, // length: 3
+            b'a', b'b', b'c', // ASCII "abc"
+        ];
+        let (rest, MichelinePrim1ArgNoAnnots(MichelineString(value))) =
+            MichelinePrim1ArgNoAnnots::<MichelineString, { LEFT_TAG }>::nom_read(
+                &expected,
+            )
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, "abc");
+        let mut actual = vec![];
+        MichelinePrim1ArgNoAnnots::<MichelineString, { LEFT_TAG }>(MichelineString(
+            value,
+        ))
+        .bin_write(&mut actual)
+        .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn michelson_or_encode_right() {
+        // This is generated from
+        //     octez-client convert data 'Right "abc"' from michelson to binary
+        let expected = [
+            0x5, // Prim_1
+            0x8, // D_RIGHT
+            0x1, // String
+            0x0, 0x0, 0x0, 0x3, // length: 3
+            b'a', b'b', b'c', // ASCII "abc"
+        ];
+        let (rest, MichelinePrim1ArgNoAnnots(MichelineString(value))) =
+            MichelinePrim1ArgNoAnnots::<MichelineString, { RIGHT_TAG }>::nom_read(
+                &expected,
+            )
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, "abc");
+        let mut actual = vec![];
+        MichelinePrim1ArgNoAnnots::<MichelineString, { RIGHT_TAG }>(MichelineString(
+            value,
+        ))
+        .bin_write(&mut actual)
+        .unwrap();
+        assert_eq!(actual, expected);
     }
 }

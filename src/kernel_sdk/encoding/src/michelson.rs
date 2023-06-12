@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
+// SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
 // SPDX-License-Identifier: MIT
 
 //! Definitions & tezos-encodings for *michelson* data.
+use nom::branch::alt;
 use nom::combinator::map;
 use std::fmt::Debug;
 use tezos_data_encoding::enc::{self, BinResult, BinWriter};
@@ -13,6 +15,8 @@ use tezos_data_encoding::types::Zarith;
 mod micheline;
 #[cfg(feature = "alloc")]
 pub mod ticket;
+
+use self::micheline::{bin_write_prim_1_arg_no_annots, MichelinePrim1ArgNoAnnots};
 
 use super::contract::Contract;
 use micheline::{
@@ -33,6 +37,12 @@ pub mod v1_primitives {
 
     /// unit encoding case tag.
     pub const UNIT_TAG: u8 = 11;
+
+    /// `("Left", D_Left)` case tag.
+    pub const LEFT_TAG: u8 = 5;
+
+    /// `("Right", D_Right)` case tag.
+    pub const RIGHT_TAG: u8 = 8;
 }
 
 /// marker trait for michelson encoding
@@ -52,6 +62,7 @@ where
     Arg1: Michelson,
 {
 }
+impl<Arg0: Michelson, Arg1: Michelson> Michelson for MichelsonOr<Arg0, Arg1> {}
 
 /// Michelson *unit* encoding.
 #[derive(Debug, PartialEq, Eq)]
@@ -68,6 +79,15 @@ pub struct MichelsonPair<Arg0, Arg1>(pub Arg0, pub Arg1)
 where
     Arg0: Debug + PartialEq + Eq,
     Arg1: Debug + PartialEq + Eq;
+
+/// Michelson *or* encoding.
+#[derive(Debug, PartialEq, Eq)]
+pub enum MichelsonOr<Arg0, Arg1> {
+    /// The *Left* case
+    Left(Arg0),
+    /// The *Right* case
+    Right(Arg1),
+}
 
 /// Michelson String encoding.
 #[derive(Debug, PartialEq, Eq)]
@@ -133,6 +153,12 @@ where
     }
 }
 
+impl<Arg0, Arg1> HasEncoding for MichelsonOr<Arg0, Arg1> {
+    fn encoding() -> Encoding {
+        Encoding::Custom
+    }
+}
+
 impl HasEncoding for MichelsonString {
     fn encoding() -> Encoding {
         Encoding::Custom
@@ -185,6 +211,21 @@ where
     }
 }
 
+impl<Arg0: NomReader, Arg1: NomReader> NomReader for MichelsonOr<Arg0, Arg1> {
+    fn nom_read(input: &[u8]) -> NomResult<Self> {
+        alt((
+            map(
+                MichelinePrim1ArgNoAnnots::<_, { prim::LEFT_TAG }>::nom_read,
+                |MichelinePrim1ArgNoAnnots(arg)| Self::Left(arg),
+            ),
+            map(
+                MichelinePrim1ArgNoAnnots::<_, { prim::RIGHT_TAG }>::nom_read,
+                |MichelinePrim1ArgNoAnnots(arg)| Self::Right(arg),
+            ),
+        ))(input)
+    }
+}
+
 impl NomReader for MichelsonString {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
         map(nom_read_micheline_string, MichelsonString)(input)
@@ -227,6 +268,23 @@ where
         bin_write_prim_2_args_no_annots::<_, _, { prim::PAIR_TAG }>(
             &self.0, &self.1, output,
         )
+    }
+}
+
+impl<Arg0, Arg1> BinWriter for MichelsonOr<Arg0, Arg1>
+where
+    Arg0: BinWriter,
+    Arg1: BinWriter,
+{
+    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+        match self {
+            MichelsonOr::Left(left) => {
+                bin_write_prim_1_arg_no_annots::<_, { prim::LEFT_TAG }>(left, output)
+            }
+            MichelsonOr::Right(right) => {
+                bin_write_prim_1_arg_no_annots::<_, { prim::RIGHT_TAG }>(right, output)
+            }
+        }
     }
 }
 
