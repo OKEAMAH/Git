@@ -69,6 +69,7 @@ pub fn process_inbox_message<'a, Host: Runtime>(
                 ethereum_transaction,
             )
         }
+        InboxMessage::Internal(InternalInboxMessage::ProtocolMigration(_)) => Ok(()),
     }
 }
 

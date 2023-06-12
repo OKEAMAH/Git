@@ -58,6 +58,7 @@ SDK
   protocol.
 - Implement host function ``store_delete_value`` introduced in the ``Nairobi`` protocol.
 - Introduce ``PublicKey`` definition in ``tezos-smart-rollup-encoding``
+- Add new internal inbox message ``ProtocolMigration`` containing the new version value.
 
 Installer client
 ----------------

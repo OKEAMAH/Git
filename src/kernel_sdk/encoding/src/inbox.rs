@@ -124,6 +124,12 @@ impl Display for InfoPerLevel {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, NomReader, HasEncoding, BinWriter)]
+/// Version value announced by the protocol at migration, e.g. "alpha_current"
+pub struct VersionValue {
+    value: String,
+}
+
 /// Internal inbox message - known to be sent by the protocol
 #[derive(Debug, PartialEq, Eq, NomReader, HasEncoding, BinWriter)]
 pub enum InternalInboxMessage<Expr: Michelson> {
@@ -135,6 +141,8 @@ pub enum InternalInboxMessage<Expr: Michelson> {
     EndOfLevel,
     /// Info per level, goes after StartOfLevel
     InfoPerLevel(InfoPerLevel),
+    /// Protocol migration message.
+    ProtocolMigration(VersionValue),
 }
 
 impl<Expr: Michelson> Display for InternalInboxMessage<Expr> {
@@ -144,6 +152,9 @@ impl<Expr: Michelson> Display for InternalInboxMessage<Expr> {
             Self::StartOfLevel => write!(f, "StartOfLevel"),
             Self::EndOfLevel => write!(f, "EndOfLevel"),
             Self::InfoPerLevel(ipl) => write!(f, "{}", ipl),
+            Self::ProtocolMigration(version) => {
+                write!(f, "ProtocolMigration {}", version.value)
+            }
         }
     }
 }
@@ -233,6 +244,7 @@ mod test {
     use super::ExternalMessageFrame;
     use super::InboxMessage;
     use super::InternalInboxMessage;
+    use super::VersionValue;
     use crate::michelson::Michelson;
     use crate::michelson::MichelsonUnit;
     use crate::smart_rollup::SmartRollupAddress;
@@ -262,6 +274,26 @@ mod test {
         ];
 
         let inbox_message = InboxMessage::Internal(InternalInboxMessage::EndOfLevel);
+
+        test_encode_decode::<MichelsonUnit>(expected_bytes, inbox_message)
+    }
+
+    #[test]
+    fn test_encode_decode_protocol_migration() {
+        // binary encoding produced by lightly-modified (to print encoded data) protocol test
+        let expected_bytes = vec![
+            // Inbox message start
+            0, // Internal tag
+            4, // Protocol migration tag
+            0, // Version value bytes
+            0, 0, 13, 97, 108, 112, 104, 97, 95, 99, 117, 114, 114, 101, 110, 116,
+        ];
+
+        let inbox_message = InboxMessage::Internal(
+            InternalInboxMessage::ProtocolMigration(VersionValue {
+                value: String::from("alpha_current"),
+            }),
+        );
 
         test_encode_decode::<MichelsonUnit>(expected_bytes, inbox_message)
     }
