@@ -233,6 +233,27 @@ impl HostState {
         Ok(())
     }
 
+    #[cfg(feature = "proto-nairobi")]
+    pub(crate) fn handle_store_create(
+        &mut self,
+        prefix: &[u8],
+        size: usize,
+    ) -> Result<(), Error> {
+        let durable_prefix = validate_path(prefix)?;
+
+        if self.store.has_entry(&durable_prefix) {
+            return Err(Error::StoreValueAlreadyExists);
+        };
+        // Values are limited to (2^31-1 bytes)
+        if size >= (1 << 31) {
+            return Err(Error::StoreValueSizeExceeded);
+        }
+
+        let zero_value = vec![0_u8; size];
+        self.store.set_value(&durable_prefix, zero_value);
+        Ok(())
+    }
+
     pub(crate) fn handle_store_list_size(&self, prefix: &[u8]) -> Result<i64, Error> {
         let prefix = validate_path(prefix)?;
         self.store
@@ -526,6 +547,61 @@ mod tests {
         );
 
         assert_eq!(Ok(10), state.handle_store_list_size(prefix.as_bytes()));
+    }
+
+    #[test]
+    fn test_store_create() {
+        // Arrange
+        let mut state = HostState::default();
+
+        // Test creating a value at a non-existing path
+        let empty_prefix = "/an/empty/prefix";
+        const EMPTY_VALUE_SIZE: usize = 10;
+
+        assert_eq!(
+            state.handle_store_create(empty_prefix.as_bytes(), EMPTY_VALUE_SIZE),
+            Ok(())
+        );
+        assert_eq!(
+            state.handle_store_read(empty_prefix.as_bytes(), 0, EMPTY_VALUE_SIZE),
+            Ok(vec![0; EMPTY_VALUE_SIZE])
+        );
+
+        // Test creating a value at an already existing path containing a value
+        let prefix_with_value = "/already/has/value";
+        let existing_value = vec![10_u8; 50];
+        state
+            .handle_store_write(prefix_with_value.as_bytes(), 0, &existing_value)
+            .expect("Writing should have worked");
+
+        assert_eq!(
+            state.handle_store_create(prefix_with_value.as_bytes(), 10),
+            Err(Error::StoreValueAlreadyExists)
+        );
+        assert_eq!(
+            state.handle_store_value_size(prefix_with_value.as_bytes()),
+            Ok(existing_value.len().try_into().unwrap())
+        );
+        assert_eq!(
+            state.handle_store_read(
+                prefix_with_value.as_bytes(),
+                0,
+                existing_value.len()
+            ),
+            Ok(existing_value)
+        );
+
+        // Test creating a value bigger than 2GB
+        let too_large_value_prefix = "/too/large/value";
+        let invalid_size: usize = (1 << 31) + 100;
+        assert_eq!(
+            state.handle_store_create(too_large_value_prefix.as_bytes(), invalid_size),
+            Err(Error::StoreValueSizeExceeded)
+        );
+        assert_eq!(
+            state.handle_store_has(too_large_value_prefix.as_bytes()),
+            Ok(VALUE_TYPE_NONE)
+        );
     }
 
     #[test]
