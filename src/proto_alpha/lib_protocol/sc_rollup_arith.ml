@@ -1046,7 +1046,7 @@ module Make (Context : P) :
         match counter with
         | Some n -> return (PS.First_after (level, n))
         | None -> return PS.Initial)
-    | Waiting_for_reveal (Reveal_raw_data _) -> (
+    | Waiting_for_reveal (Reveal_raw_data _ | Reveal_partial_raw_data _) -> (
         let* r = Required_reveal.get in
         match r with
         | None -> internal_error "Internal error: Reveal invariant broken"
@@ -1191,7 +1191,7 @@ module Make (Context : P) :
         | _, Some Reveal_metadata ->
             (* Should not happen. *)
             assert false
-        | _, Some (Reveal_raw_data _) ->
+        | _, Some (Reveal_raw_data _ | Reveal_partial_raw_data _) ->
             (* Note that, providing a DAC input via a DAL page will interrupt
                the interpretation of the next DAL pages of the same level, as the
                content of [Required_reveal] is lost. We should use two
@@ -1503,7 +1503,14 @@ module Make (Context : P) :
   let evaluate_preimage_request hash =
     let open Monad.Syntax in
     match Sc_rollup_reveal_hash.of_hex hash with
-    | None -> stop_evaluating false
+    | None -> (
+        match Sc_rollup_partial_reveal_hash.of_hex hash with
+        | None -> stop_evaluating false
+        | Some hash ->
+            let reveal : PS.reveal = Reveal_partial_raw_data hash in
+            let* () = Required_reveal.set (Some reveal) in
+            let* () = Status.set (Waiting_for_reveal reveal) in
+            return ())
     | Some hash ->
         let reveal : Sc_rollup_PVM_sig.reveal = Reveal_raw_data hash in
         let* () = Required_reveal.set (Some reveal) in
@@ -1626,6 +1633,8 @@ module Make (Context : P) :
       | (PS.Initial | PS.First_after _), Some (PS.Inbox_message _ as input)
       | ( PS.Needs_reveal (Reveal_raw_data _),
           Some (PS.Reveal (Raw_data _) as input) )
+      | ( PS.Needs_reveal (Reveal_partial_raw_data _),
+          Some (PS.Reveal (Raw_data _) as input) )
       | PS.Needs_reveal Reveal_metadata, Some (PS.Reveal (Metadata _) as input)
       | ( PS.Needs_reveal (PS.Request_dal_page _),
           Some (PS.Reveal (Dal_page _) as input) ) ->
@@ -1638,6 +1647,10 @@ module Make (Context : P) :
           error
             "Invalid set_input: expecting a raw data reveal, got an inbox \
              message or a reveal metadata."
+      | PS.Needs_reveal (Reveal_partial_raw_data _), _ ->
+          error
+            "Invalid set_input: expecting a partial raw data reveal, got an \
+             inbox message or a reveal metadata."
       | PS.Needs_reveal Reveal_metadata, _ ->
           error
             "Invalid set_input: expecting a metadata reveal, got an inbox \

@@ -31,6 +31,7 @@ type raw_data = {blake2B : Raw_level_repr.t}
 (** Associates reveal kinds to their activation level. *)
 type t = {
   raw_data : raw_data;
+  partial_raw_data : raw_data;
   metadata : Raw_level_repr.t;
   dal_page : Raw_level_repr.t;
 }

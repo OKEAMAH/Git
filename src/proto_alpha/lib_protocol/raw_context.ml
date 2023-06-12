@@ -972,6 +972,7 @@ let prepare_first_block ~level ~timestamp ctxt =
       let reveal_enabled : Reveal_enabled_repr.t =
         {
           raw_data = {blake2B = Raw_level_repr.root};
+          partial_raw_data = {blake2B = Raw_level_repr.root};
           metadata = Raw_level_repr.root;
           dal_page = Raw_level_repr.root;
         }

@@ -152,6 +152,11 @@ module Impl : S = struct
           "Waiting for preimage reveal %a"
           Sc_rollup_reveal_hash.pp
           hash
+    | Waiting_for_reveal (Sc_rollup.Reveal_partial_raw_data hash) ->
+        Format.asprintf
+          "Waiting for preimage reveal %a"
+          Sc_rollup_partial_reveal_hash.pp
+          hash
     | Waiting_for_reveal Sc_rollup.Reveal_metadata -> "Waiting for metadata"
     | Waiting_for_reveal (Sc_rollup.Request_dal_page page_id) ->
         Format.asprintf "Waiting for page data %a" Dal.Page.pp page_id

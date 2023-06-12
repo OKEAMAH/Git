@@ -39,6 +39,8 @@ type u = {index : int; root : Sc_rollup_reveal_hash.t}
 
 val encoding : u Data_encoding.t
 
+val pp : Format.formatter -> u -> unit
+
 val to_hex : u -> string
 
 val of_hex : string -> u option

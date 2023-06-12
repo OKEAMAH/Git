@@ -472,6 +472,8 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
             return
               ( Some (Reveal_proof (Raw_data_proof data)),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
+    | Needs_reveal (Reveal_partial_raw_data _) ->
+        proof_error "Feature not yet active."
     | Needs_reveal Reveal_metadata ->
         return
           ( Some (Reveal_proof Metadata_proof),

@@ -64,6 +64,9 @@ let encoding : u Data_encoding.t =
         (fun (index, root) -> {index; root});
     ]
 
+let pp ppf (hash : u) =
+  Format.(fprintf ppf "(%d, %a)" hash.index Sc_rollup_reveal_hash.pp hash.root)
+
 let to_hex hash =
   let (`Hex hash) =
     (* The [hash] can be encoded safely ([Data_encoding.Binary.to_string_exn]

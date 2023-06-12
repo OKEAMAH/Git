@@ -281,6 +281,7 @@ let constants_mainnet =
         reveal_enabled =
           {
             raw_data = {blake2B = Protocol.Raw_level_repr.root};
+            partial_raw_data = {blake2B = Protocol.Raw_level_repr.root};
             metadata = Protocol.Raw_level_repr.root;
             dal_page = Protocol.Raw_level_repr.root;
           };
