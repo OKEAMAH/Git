@@ -158,4 +158,14 @@ fn yaml_config_execute() {
         host.store_read(&AUXILIARY_KERNEL_BOOT_PATH, 0, MAX_FILE_CHUNK_SIZE),
         Err(RuntimeError::PathNotFound)
     );
+
+    let to = RefPath::assert_from(b"/tmp/foo");
+    let expected = String::from("Un festival de GADT");
+
+    let mut buffer = vec![0; expected.len()];
+    host.store_read_slice(&to, 0, &mut buffer)
+        .expect("Failed to read previously set value");
+    let actual = String::from_utf8(buffer).unwrap();
+
+    assert_eq!(expected, actual)
 }
