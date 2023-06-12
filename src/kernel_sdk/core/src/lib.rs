@@ -65,6 +65,9 @@ pub const STORE_NOT_A_NODE: i32 = -10;
 /// The outbox is full an cannot accept new messages at this level.
 pub const FULL_OUTBOX: i32 = -11;
 
+/// The value cannot be created as it already exists.
+pub const STORE_VALUE_ALREADY_EXISTS: i32 = -13;
+
 /// None ValueType discriminant.
 pub const VALUE_TYPE_NONE: i32 = 0;
 

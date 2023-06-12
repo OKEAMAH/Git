@@ -51,6 +51,8 @@ pub enum Error {
     StoreNotANode = tezos_smart_rollup_core::STORE_NOT_A_NODE,
     /// The outbox is full
     FullOutbox = tezos_smart_rollup_core::FULL_OUTBOX,
+    /// The value to create already exists.
+    StoreValueAlreadyExists = tezos_smart_rollup_core::STORE_VALUE_ALREADY_EXISTS,
 }
 
 impl core::fmt::Display for Error {
@@ -67,6 +69,7 @@ impl core::fmt::Display for Error {
             Self::StoreReadonlyValue => write!(f, "StoreReadonlyValue"),
             Self::StoreNotANode => write!(f, "StoreNotANode"),
             Self::FullOutbox => write!(f, "FullOutbox"),
+            Self::StoreValueAlreadyExists => write!(f, "StoreValueAlreadyExists"),
         }
     }
 }
@@ -87,6 +90,9 @@ impl From<i32> for Error {
             tezos_smart_rollup_core::STORE_READONLY_VALUE => Self::StoreReadonlyValue,
             tezos_smart_rollup_core::STORE_NOT_A_NODE => Self::StoreNotANode,
             tezos_smart_rollup_core::FULL_OUTBOX => Self::FullOutbox,
+            tezos_smart_rollup_core::STORE_VALUE_ALREADY_EXISTS => {
+                Self::StoreValueAlreadyExists
+            }
             _ => Error::GenericInvalidAccess,
         }
     }
