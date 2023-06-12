@@ -36,9 +36,16 @@ pub struct RevealInstruction<Path, Bytes> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct SetInstruction<Path, Bytes> {
+    pub value: Bytes,
+    pub to: Path,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum ConfigInstruction<Path, Bytes> {
     Reveal(RevealInstruction<Path, Bytes>),
     Move(MoveInstruction<Path>),
+    Set(SetInstruction<Path, Bytes>),
 }
 
 pub type RefConfigInstruction<'a> = ConfigInstruction<RefPath<'a>, RefBytes<'a>>;
@@ -83,6 +90,10 @@ pub mod owned {
 
         pub fn move_instr(from: OwnedPath, to: OwnedPath) -> Self {
             OwnedConfigInstruction::Move(MoveInstruction { from, to })
+        }
+
+        pub fn set_instr(value: OwnedBytes, to: OwnedPath) -> Self {
+            OwnedConfigInstruction::Set(SetInstruction { value, to })
         }
     }
 }

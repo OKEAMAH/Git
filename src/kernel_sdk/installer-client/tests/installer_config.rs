@@ -9,13 +9,25 @@ use tezos_smart_rollup::core_unsafe::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup::dac::pages::prepare_preimages;
 use tezos_smart_rollup::dac::PreimageHash;
 use tezos_smart_rollup::host::Runtime;
-use tezos_smart_rollup_host::path::RefPath;
+use tezos_smart_rollup_host::path::{OwnedPath, RefPath};
 use tezos_smart_rollup_host::runtime::RuntimeError;
 use tezos_smart_rollup_installer::config::create_installer_config;
 use tezos_smart_rollup_installer::installer::with_config_program;
 use tezos_smart_rollup_installer::KERNEL_BOOT_PATH;
-use tezos_smart_rollup_installer_config::binary::owned::OwnedConfigProgram;
+use tezos_smart_rollup_installer_config::binary::owned::{
+    OwnedBytes, OwnedConfigInstruction, OwnedConfigProgram,
+};
 use tezos_smart_rollup_mock::MockHost;
+
+fn write_kernel_to_boot_path(host: &mut MockHost, kernel: Vec<u8>) {
+    let mut i = 0;
+    while i < kernel.len() {
+        let r = usize::min(kernel.len(), i + MAX_FILE_CHUNK_SIZE);
+        host.store_write(&KERNEL_BOOT_PATH, &kernel[i..r], i)
+            .unwrap();
+        i = r;
+    }
+}
 
 #[test]
 fn reveal_and_move_binary_config() {
@@ -38,13 +50,7 @@ fn reveal_and_move_binary_config() {
     let kernel_with_config = with_config_program(config);
 
     // Write it to the boot path
-    let mut i = 0;
-    while i < kernel_with_config.len() {
-        let r = usize::min(kernel_with_config.len(), i + MAX_FILE_CHUNK_SIZE);
-        host.store_write(&KERNEL_BOOT_PATH, &kernel_with_config[i..r], i)
-            .unwrap();
-        i = r;
-    }
+    write_kernel_to_boot_path(&mut host, kernel_with_config);
 
     // Execute config
     installer_kernel::installer(&mut host);
@@ -53,6 +59,30 @@ fn reveal_and_move_binary_config() {
         .store_read(&KERNEL_BOOT_PATH, 0, MAX_FILE_CHUNK_SIZE)
         .unwrap();
     assert_eq!(original_kernel, boot_kernel);
+}
+
+#[test]
+fn set_instr_config() {
+    let mut host = MockHost::default();
+
+    let to: OwnedPath =
+        OwnedPath::try_from(String::from("/foo/tmp")).expect("Invalid owned path");
+    let value_str = "Un festival de GADT";
+    let value = OwnedBytes(value_str.as_bytes().to_vec());
+
+    let instrs = vec![OwnedConfigInstruction::set_instr(value, to.clone())];
+
+    let kernel = with_config_program(OwnedConfigProgram(instrs));
+    write_kernel_to_boot_path(&mut host, kernel);
+
+    installer_kernel::installer(&mut host);
+
+    let mut buffer = vec![0; value_str.len()];
+    host.store_read_slice(&to, 0, &mut buffer)
+        .expect("Failed to read previously set value");
+
+    let actual = String::from_utf8(buffer).unwrap();
+    assert_eq!(value_str, actual)
 }
 
 #[test]
@@ -110,13 +140,7 @@ fn yaml_config_execute() {
     let kernel_with_config = with_config_program(config);
 
     // Write it to the boot path
-    let mut i = 0;
-    while i < kernel_with_config.len() {
-        let r = usize::min(kernel_with_config.len(), i + MAX_FILE_CHUNK_SIZE);
-        host.store_write(&KERNEL_BOOT_PATH, &kernel_with_config[i..r], i)
-            .unwrap();
-        i = r;
-    }
+    write_kernel_to_boot_path(&mut host, kernel_with_config);
 
     // Execute config
     installer_kernel::installer(&mut host);

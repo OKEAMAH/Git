@@ -48,5 +48,9 @@ pub fn handle_instruction(
             Runtime::store_move(host, &from_path, &to_path)
                 .map_err(|_| "Couldn't move path during config application")
         }
+        RefConfigInstruction::Set(instr) => {
+            Runtime::store_write(host, &instr.to, instr.value.0, 0)
+                .map_err(|_| "Couldn't set key during config application")
+        }
     }
 }

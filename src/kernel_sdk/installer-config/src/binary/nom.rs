@@ -11,7 +11,9 @@ use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_host::path::{Path, RefPath, PATH_MAX_SIZE};
 use tezos_smart_rollup_host::runtime::Runtime;
 
-use super::{ConfigInstruction, MoveInstruction, RefBytes, RevealInstruction};
+use super::{
+    ConfigInstruction, MoveInstruction, RefBytes, RevealInstruction, SetInstruction,
+};
 
 // Those types and helpers copy paseted from tezos_data_encoding.
 // As it's required to parse refs, lifetime 'a added to NomReader
@@ -122,6 +124,18 @@ impl<'a> NomReader<'a> for MoveInstruction<RefPath<'a>> {
     }
 }
 
+impl<'a> NomReader<'a> for SetInstruction<RefPath<'a>, RefBytes<'a>> {
+    fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
+        map(
+            nom::sequence::tuple((
+                <RefBytes<'a> as NomReader>::nom_read,
+                nom_read_ref_path,
+            )),
+            |(value, to)| SetInstruction { value, to },
+        )(bytes)
+    }
+}
+
 impl<'a> NomReader<'a> for ConfigInstruction<RefPath<'a>, RefBytes<'a>> {
     fn nom_read(bytes: &'a [u8]) -> NomResult<Self> {
         let (input, tag) = nom::number::complete::u8(bytes)?;
@@ -133,6 +147,10 @@ impl<'a> NomReader<'a> for ConfigInstruction<RefPath<'a>, RefBytes<'a>> {
             1 => (map(
                 <MoveInstruction<RefPath<'a>> as NomReader>::nom_read,
                 ConfigInstruction::Move,
+            ))(input)?,
+            2 => (map(
+                <SetInstruction<RefPath<'a>, RefBytes<'a>> as NomReader>::nom_read,
+                ConfigInstruction::Set,
             ))(input)?,
             _ => {
                 return Err(nom::Err::Error(nom::error::Error {
