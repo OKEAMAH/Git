@@ -39,6 +39,7 @@ let () =
               ("Anemoi", Test_anemoi.tests);
               ("Enum", Test_enum.tests);
               ("Schnorr", Test_schnorr.tests);
+              ("EdDSA", Test_eddsa.tests);
               ("Merkle", Test_merkle.tests);
               ("Merkle N-arity: Plonk integration", Test_merkle_narity.tests);
               ("ModularArith", Test_mod_arith.tests);
