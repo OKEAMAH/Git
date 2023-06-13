@@ -56,7 +56,6 @@ pub fn read_input<Host: Runtime>(
     loop {
         let msg = host.read_input()?;
         match msg {
-            None => return Ok(None), // No more messages to be processed
             Some(msg) => {
                 let level = msg.level;
                 let payload = msg.as_ref();
@@ -111,6 +110,7 @@ pub fn read_input<Host: Runtime>(
                     },
                 }
             }
+            None => return handle_pending_inbox(host, pending_inbox_queue),
         }
     }
 }
@@ -250,4 +250,16 @@ fn handle_message<H: Runtime>(
     }
 
     Ok(())
+}
+
+/// Empty the pending inbox and returns the message
+fn handle_pending_inbox<H: Runtime>(
+    host: &mut H,
+    pending_inbox_queue: &mut Queue,
+) -> Result<Option<Message>, RuntimeError> {
+    let pending_message = pending_inbox_queue.pop(host)?;
+    let Some(PendingUserMessage {id, level, payload}) = pending_message else {return Ok(None)};
+
+    let msg = Message::new(level, id, payload);
+    Ok(Some(msg))
 }
