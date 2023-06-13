@@ -31,6 +31,11 @@ open Alpha_context
 
 type lcc = {commitment : Sc_rollup.Commitment.Hash.t; level : Raw_level.t}
 
+type genesis_info = {
+  level : int32;
+  commitment_hash : Octez_smart_rollup.Commitment.Hash.t;
+}
+
 type dal_constants = {
   feature_enable : bool;
   attestation_lag : int;
@@ -73,7 +78,7 @@ type 'a t = {
       (** Mode of the node, see {!Configuration.mode}. *)
   operators : Configuration.operators;
       (** Addresses of the rollup node operators by purposes. *)
-  genesis_info : Sc_rollup.Commitment.genesis_info;
+  genesis_info : genesis_info;
       (** Origination information of the smart rollup. *)
   injector_retention_period : int;
       (** Number of blocks the injector will keep information about included
@@ -143,10 +148,10 @@ val get_fee_parameter :
     protocol. *)
 val protocol_max_batch_size : int
 
-(** [init cctxt ~data_dir mode l1_ctxt constants ~proto_level configuration]
-    initializes the rollup representation. The rollup origination level and kind
-    are fetched via an RPC call to the layer1 node that [cctxt] uses for RPC
-    requests.
+(** [init cctxt ~data_dir mode l1_ctxt constants genesis_info ~proto_level
+    configuration] initializes the rollup representation. The rollup origination
+    level and kind are fetched via an RPC call to the layer1 node that [cctxt]
+    uses for RPC requests.
 *)
 val init :
   Protocol_client_context.full ->
@@ -155,6 +160,7 @@ val init :
   'a Store_sigs.mode ->
   Layer1.t ->
   protocol_constants ->
+  genesis_info ->
   proto_level:int ->
   Configuration.t ->
   'a t tzresult Lwt.t
@@ -165,10 +171,6 @@ val close : _ t -> unit tzresult Lwt.t
 (** [checkout_context node_ctxt block_hash] returns the context at block
     [block_hash]. *)
 val checkout_context : 'a t -> Block_hash.t -> 'a Context.t tzresult Lwt.t
-
-(** [metadata node_ctxt] creates a {!Sc_rollup.Metadata.t} using the information
-    stored in [node_ctxt]. *)
-val metadata : _ t -> Sc_rollup.Metadata.t
 
 (** Returns [true] if the rollup node supports the DAL and if DAL is enabled for
     the current protocol. *)

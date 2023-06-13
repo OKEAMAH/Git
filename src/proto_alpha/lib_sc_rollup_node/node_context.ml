@@ -29,6 +29,11 @@ open Alpha_context
 
 type lcc = {commitment : Sc_rollup.Commitment.Hash.t; level : Raw_level.t}
 
+type genesis_info = {
+  level : int32;
+  commitment_hash : Octez_smart_rollup.Commitment.Hash.t;
+}
+
 type dal_constants = {
   feature_enable : bool;
   attestation_lag : int;
@@ -61,7 +66,7 @@ type 'a t = {
   boot_sector_file : string option;
   mode : Configuration.mode;
   operators : Configuration.operators;
-  genesis_info : Sc_rollup.Commitment.genesis_info;
+  genesis_info : genesis_info;
   injector_retention_period : int;
   block_finality_time : int;
   kind : Sc_rollup.Kind.t;
@@ -278,7 +283,7 @@ let check_config config =
   ()
 
 let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
-    mode l1_ctxt protocol_constants ~proto_level
+    mode l1_ctxt protocol_constants genesis_info ~proto_level
     Configuration.(
       {
         sc_rollup_address = rollup_address;
@@ -323,8 +328,6 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       publisher
   and* kind =
     RPC.Sc_rollup.kind cctxt (cctxt#chain, cctxt#block) rollup_address ()
-  and* genesis_info =
-    RPC.Sc_rollup.genesis_info cctxt (cctxt#chain, cctxt#block) rollup_address
   in
   let*! () =
     Event.rollup_exists
@@ -424,11 +427,6 @@ let checkout_context node_ctxt block_hash =
         (Sc_rollup_node_errors.Cannot_checkout_context
            (block_hash, Some context_hash))
   | Some ctxt -> return ctxt
-
-let metadata node_ctxt =
-  let address = node_ctxt.rollup_address in
-  let origination_level = node_ctxt.genesis_info.Sc_rollup.Commitment.level in
-  Sc_rollup.Metadata.{address; origination_level}
 
 let dal_supported node_ctxt =
   node_ctxt.dal_cctxt <> None && node_ctxt.protocol_constants.dal.feature_enable
@@ -635,7 +633,7 @@ let tick_search ~big_step_blocks node_ctxt head tick =
       (* The starting block contains the tick we want, we are done. *)
       return_some head
   else
-    let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
+    let genesis_level = node_ctxt.genesis_info.level in
     let rec find_big_step (end_block : Sc_rollup_block.t) =
       let start_level =
         Int32.sub end_block.header.level (Int32.of_int big_step_blocks)
@@ -825,7 +823,7 @@ let find_inbox_by_block_hash ({store; _} as node_ctxt) block_hash =
         (Sc_rollup_proto_types.Inbox_hash.of_octez inbox_hash)
 
 let genesis_inbox node_ctxt =
-  let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
+  let genesis_level = node_ctxt.genesis_info.level in
   Plugin.RPC.Sc_rollup.inbox
     node_ctxt.cctxt
     (node_ctxt.cctxt#chain, `Level genesis_level)
@@ -840,7 +838,7 @@ let inbox_of_head node_ctxt Layer1.{hash = block_hash; level = block_level} =
          That is, every block after the origination level. We then join
          the bandwagon and build the inbox on top of the protocol's inbox
          at the end of the origination level. *)
-      let genesis_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
+      let genesis_level = node_ctxt.genesis_info.level in
       if block_level = genesis_level then genesis_inbox node_ctxt
       else if block_level > genesis_level then
         (* Invariant broken, the inbox for this level should exist. *)
@@ -1224,7 +1222,7 @@ module Internal_for_tests = struct
       Context.load Read_write (Configuration.default_context_dir data_dir)
     in
     let genesis_info =
-      Sc_rollup.Commitment.{level = Raw_level.root; commitment_hash = Hash.zero}
+      {level = 0l; commitment_hash = Octez_smart_rollup.Commitment.Hash.zero}
     in
     let l1_ctxt = Layer1.Internal_for_tests.dummy cctxt in
     let lcc =
