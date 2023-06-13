@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 use hex::ToHex;
+use tezos_crypto_rs::hash::{ContractKt1Hash, HashTrait};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -24,6 +25,8 @@ use primitive_types::{H160, H256, U256};
 
 const SMART_ROLLUP_ADDRESS: RefPath =
     RefPath::assert_from(b"/metadata/smart_rollup_address");
+
+const TICKETER: RefPath = RefPath::assert_from(b"/ticketer");
 
 const EVM_CURRENT_BLOCK: RefPath = RefPath::assert_from(b"/blocks/current");
 const EVM_BLOCKS: RefPath = RefPath::assert_from(b"/blocks");
@@ -639,6 +642,14 @@ pub fn read_kernel_upgrade_nonce<Host: Runtime>(host: &mut Host) -> Result<u32, 
     let slice_of_bytes: [u8; UPGRADE_NONCE_SIZE] =
         bytes[..].try_into().map_err(|_| Error::InvalidConversion)?;
     Ok(u32::from_le_bytes(slice_of_bytes))
+}
+
+/// Reads the ticketer address set by the installer, if any, encoded in b58.
+pub fn read_ticketer<Host: Runtime>(host: &mut Host) -> Option<ContractKt1Hash> {
+    let mut buffer = [0; 36];
+    store_read_slice(host, &TICKETER, &mut buffer, 36).ok()?;
+    let kt1_b58 = String::from_utf8(buffer.to_vec()).ok()?;
+    ContractKt1Hash::from_b58check(&kt1_b58).ok()
 }
 
 pub(crate) mod internal_for_tests {
