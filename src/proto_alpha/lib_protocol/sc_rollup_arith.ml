@@ -1726,7 +1726,7 @@ module Protocol_implementation = Make (struct
 
   type state = tree
 
-  let tree_of_state state = (state, Fun.id)
+  let tree_of_state state = (state, Stdlib.Fun.id)
 
   let tree_only t = t
 

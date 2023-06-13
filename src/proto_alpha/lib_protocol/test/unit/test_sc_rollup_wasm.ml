@@ -57,6 +57,12 @@ module Wasm_context = struct
 
   type tree = Context.tree
 
+  type state = tree
+
+  let tree_of_state state = (state, Stdlib.Fun.id)
+
+  let tree_only t = t
+
   type proof = Context.Proof.tree Context.Proof.t
 
   let verify_proof p f =
@@ -108,7 +114,7 @@ let test_initial_state_hash_wasm_pvm () =
 let test_initial_state_hash_wasm_machine () =
   let open Lwt_result_syntax in
   let open Sc_rollup_machine_no_proofs in
-  let*! state = Wasm.initial_state ~empty:(empty_tree ()) in
+  let*! state = Wasm.initial_state ~empty:(empty_state ()) in
   let*! hash = Wasm.state_hash state in
   let expected = Sc_rollup_wasm.V2_0_0.reference_initial_state_hash in
   if Sc_rollup_repr.State_hash.(hash = expected) then return_unit

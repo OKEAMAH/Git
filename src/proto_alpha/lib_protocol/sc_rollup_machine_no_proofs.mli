@@ -33,7 +33,7 @@ type t = Context_binary.t
 
 type tree = Context_binary.tree
 
-type instant_state = Epoxy_tx.Types.P.state
+type instant_state = Epoxy_tx.Types.P.state option
 
 type state = {optimistic : tree; instant : instant_state}
 

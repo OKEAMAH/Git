@@ -96,7 +96,9 @@ module Make (Context : P) : S = struct
     | Waiting_for_metadata
     | Evaluating
 
-  type state = {optimistic : Context.Tree.tree; instant : TxTypes.state}
+  type tree = Context.Tree.tree
+
+  type state = {optimistic : tree; instant : TxTypes.state}
 
   type hash = State_hash.t
 

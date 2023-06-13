@@ -3300,6 +3300,10 @@ module Sc_rollup : sig
 
       type state
 
+      val tree_of_state : state -> tree * (tree -> state)
+
+      val tree_only : tree -> state
+
       val hash_tree : tree -> State_hash.t
 
       type proof
@@ -3349,6 +3353,7 @@ module Sc_rollup : sig
       PVM.S
         with type context = Context.t
          and type tree = Context.tree
+         and type state = Context.tree
          and type proof = Context.Proof.tree Context.Proof.t
   end
 
@@ -3370,6 +3375,12 @@ module Sc_rollup : sig
       type tree = Tree.tree
 
       type proof
+
+      type state
+
+      val tree_of_state : state -> tree * (tree -> state)
+
+      val tree_only : tree -> state
 
       val proof_encoding : proof Data_encoding.t
 
@@ -3393,7 +3404,8 @@ module Sc_rollup : sig
       include
         PVM.S
           with type context = C.Tree.t
-           and type state = C.tree
+           and type tree = C.tree
+           and type state = C.state
            and type proof = C.proof
 
       val get_tick : state -> Tick.t Lwt.t
@@ -3415,6 +3427,7 @@ module Sc_rollup : sig
       PVM.S
         with type context = Context.t
          and type tree = Context.tree
+         and type state = Context.tree
          and type proof = Context.Proof.tree Context.Proof.t
 
     val reference_initial_state_hash : State_hash.t

@@ -136,6 +136,12 @@ module V2_0_0 = struct
 
     type tree = Tree.tree
 
+    type state
+
+    val tree_of_state : state -> tree * (tree -> state)
+
+    val tree_only : tree -> state
+
     type proof
 
     val proof_encoding : proof Data_encoding.t
@@ -182,7 +188,8 @@ module V2_0_0 = struct
   module Make (Make_backend : Make_wasm) (Context : P) :
     S
       with type context = Context.Tree.t
-       and type state = Context.tree
+       and type tree = Context.tree
+       and type state = Context.state
        and type proof = Context.proof = struct
     module Tree = Context.Tree
 
@@ -204,13 +211,15 @@ module V2_0_0 = struct
 
     type tree = Tree.tree
 
+    type state = Context.state
+
     type status =
       | Computing
       | Waiting_for_input_message
       | Waiting_for_reveal of Sc_rollup_PVM_sig.reveal
 
     module State = struct
-      type state = tree
+      type nonrec state = state
 
       module Monad : sig
         type 'a t
@@ -244,15 +253,13 @@ module V2_0_0 = struct
 
         let run m state = m state
 
-        let get s = Lwt.return (s, s)
+        let get s = Lwt.return (s, fst @@ Context.tree_of_state s)
 
-        let set s _ = Lwt.return (s, ())
+        let set s _ = Lwt.return (Context.tree_only s, ())
 
         let lift m s = Lwt.map (fun r -> (s, r)) m
       end
     end
-
-    type state = State.state
 
     module WASM_machine = Make_backend (Tree)
     open State
@@ -262,18 +269,23 @@ module V2_0_0 = struct
 
     open Monad
 
-    let initial_state ~empty = WASM_machine.initial_state current_version empty
+    let initial_state ~(empty : state) =
+      let empty, rebuild = Context.tree_of_state empty in
+      Lwt.map rebuild @@ WASM_machine.initial_state current_version empty
 
     let install_boot_sector state boot_sector =
-      WASM_machine.install_boot_sector
-        ~ticks_per_snapshot
-        ~outbox_validity_period
-        ~outbox_message_limit
-        boot_sector
-        state
+      let state, rebuild = Context.tree_of_state state in
+      Lwt.map rebuild
+      @@ WASM_machine.install_boot_sector
+           ~ticks_per_snapshot
+           ~outbox_validity_period
+           ~outbox_message_limit
+           boot_sector
+           state
 
     let state_hash state =
-      let context_hash = Tree.hash state in
+      let tree, _ = Context.tree_of_state state in
+      let context_hash = Tree.hash tree in
       Lwt.return @@ State_hash.context_hash_to_state_hash context_hash
 
     let result_of m state =
@@ -342,11 +354,12 @@ module V2_0_0 = struct
       | Computing -> return PS.No_input_required
       | Waiting_for_reveal reveal -> return (PS.Needs_reveal reveal)
 
-    let is_input_state = result_of is_input_state
+    let is_input_state state = result_of is_input_state state
 
     let get_status : state -> status Lwt.t = result_of get_status
 
     let get_outbox outbox_level state =
+      let state, _ = Context.tree_of_state state in
       let outbox_level_int32 =
         Raw_level_repr.to_int32_non_negative outbox_level
       in
@@ -437,9 +450,19 @@ module V2_0_0 = struct
       in
       return (state, request)
 
+    let on_tree (f : state -> (state * 'a) Lwt.t) (tree : tree) :
+        (tree * 'a) Lwt.t =
+      let open Lwt_syntax in
+      let state = Context.tree_only tree in
+      let* state, b = f state in
+      let tree, _ = Context.tree_of_state state in
+      return (tree, b)
+
     let verify_proof input_given proof =
       let open Lwt_result_syntax in
-      let*! result = Context.verify_proof proof (step_transition input_given) in
+      let*! result =
+        Context.verify_proof proof (on_tree @@ step_transition input_given)
+      in
       match result with
       | None -> tzfail WASM_proof_verification_failed
       | Some (_state, request) -> return request
@@ -447,7 +470,10 @@ module V2_0_0 = struct
     let produce_proof context input_given state =
       let open Lwt_result_syntax in
       let*! result =
-        Context.produce_proof context state (step_transition input_given)
+        Context.produce_proof
+          context
+          (fst @@ Context.tree_of_state state)
+          (on_tree @@ step_transition input_given)
       in
       match result with
       | Some (tree_proof, _requested) -> return tree_proof
@@ -503,15 +529,15 @@ module V2_0_0 = struct
     let verify_output_proof p =
       let open Lwt_syntax in
       let transition = run @@ has_output p.output_proof_output in
-      let* result = Context.verify_proof p.output_proof transition in
+      let* result = Context.verify_proof p.output_proof (on_tree transition) in
       match result with None -> return false | Some _ -> return true
 
     let produce_output_proof context state output_proof_output =
       let open Lwt_result_syntax in
       let*! output_proof_state = state_hash state in
       let*! result =
-        Context.produce_proof context state
-        @@ run
+        Context.produce_proof context (fst @@ Context.tree_of_state state)
+        @@ on_tree @@ run
         @@ has_output output_proof_output
       in
       match result with
@@ -649,6 +675,12 @@ module V2_0_0 = struct
         let open Lwt_syntax in
         let* n = Tree.length state ["failures"] in
         add n
+
+      let insert_failure (state : state) =
+        let open Lwt_syntax in
+        let tree, rebuild = Context.tree_of_state state in
+        let* tree = insert_failure tree in
+        return (rebuild tree)
     end
   end
 
@@ -669,6 +701,12 @@ module V2_0_0 = struct
         end
 
         type tree = Context.tree
+
+        type state = tree
+
+        let tree_of_state s = (s, Stdlib.Fun.id)
+
+        let tree_only t = t
 
         type proof = Context.Proof.tree Context.Proof.t
 

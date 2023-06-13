@@ -154,6 +154,7 @@ module Protocol_implementation :
   S
     with type context = Context.t
      and type tree = Context.tree
+     and type state = Context.tree
      and type proof = Context.Proof.tree Context.Proof.t
 
 (** This is the state hash of reference that both the prover of the

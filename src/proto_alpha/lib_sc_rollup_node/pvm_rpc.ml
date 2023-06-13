@@ -38,3 +38,4 @@ let of_kind = function
   | Protocol.Alpha_context.Sc_rollup.Kind.Example_arith -> no_rpc
   | Wasm_2_0_0 ->
       (module Wasm_2_0_0_rpc.Make_RPC (Wasm_2_0_0_pvm.Durable_state) : S)
+  | Protocol.Alpha_context.Sc_rollup.Kind.Epoxy_tx -> no_rpc

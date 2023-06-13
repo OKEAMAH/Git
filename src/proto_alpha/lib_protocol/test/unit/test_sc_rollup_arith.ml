@@ -57,6 +57,12 @@ module Arith_Context = struct
 
   type tree = Tree.tree
 
+  type state = tree
+
+  let tree_of_state state = (state, Stdlib.Fun.id)
+
+  let tree_only t = t
+
   let hash_tree tree =
     Sc_rollup_repr.State_hash.context_hash_to_state_hash (Tree.hash tree)
 

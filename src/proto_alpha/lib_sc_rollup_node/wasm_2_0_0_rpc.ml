@@ -27,7 +27,7 @@
 open RPC_directory_helpers
 
 module Make_RPC
-    (Durable_state : Wasm_2_0_0_pvm.Durable_state with type state = Context.tree) =
+    (Durable_state : Wasm_2_0_0_pvm.Durable_state with type tree = Context.tree) =
 struct
   module Block_directory = Make_directory (struct
     include Sc_rollup_services.Global.Block
@@ -53,7 +53,7 @@ struct
     @@ fun (node_ctxt, block) {key} () ->
       let open Lwt_result_syntax in
       let* state = get_state node_ctxt block in
-      let*! value = Durable_state.lookup state key in
+      let*! value = Durable_state.lookup state.Context.optimistic key in
       return value ) ;
 
     ( Block_directory.register0
@@ -61,7 +61,7 @@ struct
     @@ fun (node_ctxt, block) {key} () ->
       let open Lwt_result_syntax in
       let* state = get_state node_ctxt block in
-      let*! leng = Durable_state.value_length state key in
+      let*! leng = Durable_state.value_length state.Context.optimistic key in
       return leng ) ;
 
     Block_directory.register0
@@ -69,7 +69,7 @@ struct
     @@ fun (node_ctxt, block) {key} () ->
     let open Lwt_result_syntax in
     let* state = get_state node_ctxt block in
-    let*! subkeys = Durable_state.list state key in
+    let*! subkeys = Durable_state.list state.Context.optimistic key in
     return subkeys
 
   let build_directory node_ctxt =

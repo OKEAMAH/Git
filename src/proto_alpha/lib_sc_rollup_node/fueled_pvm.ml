@@ -32,7 +32,7 @@ open Alpha_context
 module type S = sig
   type fuel
 
-  type pvm_state = Context.tree
+  type pvm_state = Context.state
 
   (** Evaluation state for the PVM.  *)
   type eval_state = {
@@ -84,7 +84,7 @@ end
 module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
   type fuel = F.t
 
-  type pvm_state = Context.tree
+  type pvm_state = Context.state
 
   type eval_state = {
     state : pvm_state;

@@ -67,6 +67,12 @@ module V2_0_0 : sig
 
     type tree = Tree.tree
 
+    type state
+
+    val tree_of_state : state -> tree * (tree -> state)
+
+    val tree_only : tree -> state
+
     type proof
 
     val proof_encoding : proof Data_encoding.t
@@ -88,13 +94,15 @@ module V2_0_0 : sig
   module Make (Lib_scoru_Wasm : Make_wasm) (Context : P) :
     S
       with type context = Context.Tree.t
-       and type state = Context.tree
+       and type tree = Context.tree
+       and type state = Context.state
        and type proof = Context.proof
 
   (** This PVM is used for verification in the Protocol. [produce_proof] always returns [None]. *)
   module Protocol_implementation :
     S
       with type context = Context.t
+       and type tree = Context.tree
        and type state = Context.tree
        and type proof = Context.Proof.tree Context.Proof.t
 

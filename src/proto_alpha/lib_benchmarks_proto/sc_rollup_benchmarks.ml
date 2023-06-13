@@ -57,6 +57,12 @@ module Pvm_state_generator = struct
 
     type tree = Context.tree
 
+    type state = tree
+
+    let tree_of_state state = (state, Stdlib.Fun.id)
+
+    let tree_only t = t
+
     type proof = Context.Proof.tree Context.Proof.t
 
     let verify_proof p f =

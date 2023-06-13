@@ -57,6 +57,12 @@ struct
 
   type tree = Tree.tree
 
+  type state = tree
+
+  let tree_of_state s = (s, fun s -> s)
+
+  let tree_only s = s
+
   type proof = Context.Proof.tree Context.Proof.t
 
   let hash_tree _ = assert false

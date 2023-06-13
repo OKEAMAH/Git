@@ -59,4 +59,4 @@ val state_of_head :
   'a Node_context.t ->
   'a Context.t ->
   Layer1.head ->
-  ('a Context.t * Context.tree) tzresult Lwt.t
+  ('a Context.t * Context.state) tzresult Lwt.t

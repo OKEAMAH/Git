@@ -47,9 +47,9 @@ module IStoreTree =
 
 type tree = IStore.tree
 
-type instant_state = TxTypes.state
+type instant_state = TxTypes.state option
 
-type state = {optimistic : tree; instant : TxTypes.state}
+type state = {optimistic : tree; instant : instant_state}
 
 type 'a raw_index = {path : string; repo : IStore.Repo.t}
 
@@ -146,6 +146,15 @@ struct
 
   type tree = Tree.tree
 
+  type nonrec instant_state = instant_state
+
+  type nonrec state = state
+
+  let tree_of_state {optimistic; instant} =
+    (optimistic, fun optimistic -> {optimistic; instant})
+
+  let tree_only optimistic = {optimistic; instant = None}
+
   type proof = IStoreProof.Proof.tree IStoreProof.Proof.t
 
   let hash_tree tree = Hash.of_context_hash (Tree.hash tree)
@@ -194,15 +203,25 @@ module PVMState = struct
 
   let key = ["pvm_state"]
 
-  let empty () = IStore.Tree.empty ()
+  let empty () =
+    let optimistic = IStore.Tree.empty () in
+    let instant = Some (Epoxy_tx.Tx_rollup.P.empty_state ()) in
+    {optimistic; instant}
 
-  let find ctxt = IStore.Tree.find_tree ctxt.tree key
-
-  let lookup tree path = IStore.Tree.find tree path
-
-  let set ctxt state =
+  let find ctxt =
     let open Lwt_syntax in
-    let+ tree = IStore.Tree.add_tree ctxt.tree key state in
+    let+ optimistic = IStore.Tree.find_tree ctxt.tree key in
+    Option.map
+      (fun optimistic ->
+        let instant = Stdlib.failwith "TODO" in
+        {optimistic; instant})
+      optimistic
+
+  let lookup {optimistic; _} path = IStore.Tree.find optimistic path
+
+  let set ctxt {optimistic; _} =
+    let open Lwt_syntax in
+    let+ tree = IStore.Tree.add_tree ctxt.tree key optimistic in
     {ctxt with tree}
 end
 

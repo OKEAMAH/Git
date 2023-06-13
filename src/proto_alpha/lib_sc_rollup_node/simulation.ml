@@ -37,7 +37,7 @@ type info_per_level = {
 type t = {
   ctxt : Context.ro;
   inbox_level : Raw_level.t;
-  state : Context.tree;
+  state : Context.state;
   reveal_map : string Sc_rollup_reveal_hash.Map.t option;
   nb_messages_inbox : int;
   level_position : level_position;

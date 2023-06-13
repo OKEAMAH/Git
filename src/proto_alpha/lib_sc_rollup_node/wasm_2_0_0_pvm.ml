@@ -67,28 +67,28 @@ module Make_backend (Tree : TreeS) =
 
 (** Durable part of the storage of this PVM. *)
 module type Durable_state = sig
-  type state
+  type tree
 
   (** [value_length state key] returns the length of data stored
         for the [key] in the durable storage of the PVM state [state], if any. *)
-  val value_length : state -> string -> int64 option Lwt.t
+  val value_length : tree -> string -> int64 option Lwt.t
 
   (** [lookup state key] returns the data stored
         for the [key] in the durable storage of the PVM state [state], if any. *)
-  val lookup : state -> string -> bytes option Lwt.t
+  val lookup : tree -> string -> bytes option Lwt.t
 
   (** [subtrees state key] returns subtrees
         for the [key] in the durable storage of the PVM state [state].
         Empty list in case if path doesn't exist. *)
-  val list : state -> string -> string list Lwt.t
+  val list : tree -> string -> string list Lwt.t
 end
 
 module Make_durable_state
     (T : Tezos_tree_encoding.TREE with type tree = Context.tree) :
-  Durable_state with type state = T.tree = struct
+  Durable_state with type tree = T.tree = struct
   module Tree_encoding_runner = Tezos_tree_encoding.Runner.Make (T)
 
-  type state = T.tree
+  type tree = T.tree
 
   let decode_durable tree =
     Tree_encoding_runner.decode
@@ -121,7 +121,7 @@ module Make_durable_state
 end
 
 module type S = sig
-  module Durable_state : Durable_state with type state = Context.tree
+  module Durable_state : Durable_state with type tree = Context.tree
 
   include Pvm.S
 end
@@ -153,8 +153,19 @@ module Impl : S = struct
 
   module Backend = Make_backend (Wasm_2_0_0_proof_format.Tree)
 
-  let eval_many ~reveal_builtins ~write_debug =
-    Backend.compute_step_many ~reveal_builtins ~write_debug
+  let eval_many ~reveal_builtins ~write_debug ?stop_at_snapshot ~max_steps
+      (state : state) =
+    let open Lwt_syntax in
+    let Context.{optimistic; instant} = state in
+    let+ optimistic, n =
+      Backend.compute_step_many
+        ~reveal_builtins
+        ~write_debug
+        ?stop_at_snapshot
+        ~max_steps
+        optimistic
+    in
+    (Context.{optimistic; instant}, n)
 end
 
 include Impl

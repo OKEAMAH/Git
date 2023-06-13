@@ -38,7 +38,7 @@ type ro_index = [`Read] index
 (** The type of trees stored in the context, i.e. the actual data. *)
 type tree
 
-type instant_state
+type instant_state := Epoxy_tx.Types.P.state option
 
 type state = {optimistic : tree; instant : instant_state}
 
@@ -114,6 +114,14 @@ end) : sig
        and type tree = tree
 
   type tree = Tree.tree
+
+  type instant_state = Epoxy_tx.Types.P.state option
+
+  type nonrec state = state
+
+  val tree_of_state : state -> tree * (tree -> state)
+
+  val tree_only : tree -> state
 
   (** See {!Sc_rollup_PVM_sem.proof} *)
   type proof
