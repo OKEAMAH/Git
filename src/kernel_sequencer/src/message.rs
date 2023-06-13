@@ -111,7 +111,7 @@ pub struct Bytes {
 /// will be processed at the end
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
 pub struct Sequence {
-    nonce: u32,
+    pub nonce: u32,
     pub delayed_messages_prefix: u32,
     pub delayed_messages_suffix: u32,
     #[encoding(dynamic, list)]

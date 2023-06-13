@@ -263,3 +263,152 @@ fn handle_pending_inbox<H: Runtime>(
     let msg = Message::new(level, id, payload);
     Ok(Some(msg))
 }
+
+#[cfg(test)]
+mod tests {
+    use tezos_crypto_rs::hash::SecretKeyEd25519;
+    use tezos_crypto_rs::hash::SeedEd25519;
+    use tezos_crypto_rs::hash::Signature;
+    use tezos_crypto_rs::hash::SmartRollupHash;
+    use tezos_data_encoding::enc::BinWriter;
+    use tezos_smart_rollup_encoding::public_key::PublicKey;
+    use tezos_smart_rollup_encoding::smart_rollup::SmartRollupAddress;
+    use tezos_smart_rollup_host::metadata::RollupMetadata;
+    use tezos_smart_rollup_host::runtime::Runtime;
+    use tezos_smart_rollup_mock::MockHost;
+
+    use crate::message::SequencerMsg;
+    use crate::message::Signed;
+    use crate::state::State;
+    use crate::storage::write_state;
+    use crate::{
+        message::{Bytes, Framed, Sequence},
+        sequencer_runtime::SequencerRuntime,
+    };
+
+    #[derive(BinWriter)]
+    struct Msg {
+        inner: u32,
+    }
+
+    impl Msg {
+        fn new(inner: u32) -> Self {
+            Self { inner }
+        }
+    }
+
+    fn prepare() -> (MockHost, SecretKeyEd25519) {
+        // create a mock host
+        let mut mock_host = MockHost::default();
+        // generate a secret and public key
+        let seed = SeedEd25519::from_base58_check(
+            "edsk31vznjHSSpGExDMHYASz45VZqXN4DPxvsa4hAyY8dHM28cZzp6",
+        )
+        .unwrap();
+        let (pk, sk) = seed.keypair().unwrap();
+        let pk = PublicKey::Ed25519(pk);
+        // set the mode of the kernel to Sequenced
+        write_state(&mut mock_host, State::Sequenced(pk)).unwrap();
+        (mock_host, sk)
+    }
+
+    /// Generate a signed sequence
+    fn generate_signed_sequence(
+        secret: SecretKeyEd25519,
+        destination: SmartRollupAddress,
+        nonce: u32,
+        delayed_messages_prefix: u32,
+        delayed_messages_suffix: u32,
+        messages: Vec<Bytes>,
+    ) -> Signed<Framed<SequencerMsg>> {
+        let tmp_sig = Signature::from_base58_check("edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q").unwrap();
+        let mut unsigned = Signed {
+            body: Framed {
+                destination,
+                payload: SequencerMsg::Sequence(Sequence {
+                    nonce,
+                    delayed_messages_prefix,
+                    delayed_messages_suffix,
+                    messages,
+                }),
+            },
+            signature: tmp_sig,
+        };
+
+        let hash = unsigned.hash().unwrap();
+
+        let signature = secret.sign(hash).unwrap();
+        unsigned.signature = signature;
+        unsigned
+    }
+
+    /// check if the given message is equal to the given byte representation
+    fn assert_external_eq<M: BinWriter>(message: M, payload: &[u8]) {
+        let mut bytes = Vec::default();
+        message.bin_write(&mut bytes).unwrap();
+
+        match payload {
+            [0x01, remaining @ ..] => assert_eq!(bytes, remaining),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_add_message() {
+        let (mut mock_host, _) = prepare();
+
+        mock_host.add_external(Msg::new(0x01));
+
+        let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let msg = runtime.read_input().unwrap();
+
+        assert!(msg.is_none())
+    }
+
+    #[test]
+    fn test_add_sequence() {
+        let (mut mock_host, sk) = prepare();
+        let RollupMetadata {
+            raw_rollup_address, ..
+        } = mock_host.reveal_metadata();
+
+        let address = SmartRollupHash::try_from(raw_rollup_address.to_vec()).unwrap();
+        let b58 = address.to_base58_check();
+        let destination = SmartRollupAddress::from_b58check(&b58).unwrap();
+
+        mock_host.add_external(Msg::new(0x01));
+        mock_host.add_external(Msg::new(0x02));
+        mock_host.add_external(Msg::new(0x03));
+        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 2, 0, vec![]));
+
+        let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let msg1 = runtime.read_input().unwrap().unwrap();
+        let msg2 = runtime.read_input().unwrap().unwrap();
+
+        assert_external_eq(Msg::new(0x01), msg1.as_ref());
+        assert_external_eq(Msg::new(0x02), msg2.as_ref());
+    }
+
+    #[test]
+    fn test_sequence_between_messages() {
+        let (mut mock_host, sk) = prepare();
+        let RollupMetadata {
+            raw_rollup_address, ..
+        } = mock_host.reveal_metadata();
+
+        let address = SmartRollupHash::try_from(raw_rollup_address.to_vec()).unwrap();
+        let b58 = address.to_base58_check();
+        let destination = SmartRollupAddress::from_b58check(&b58).unwrap();
+
+        mock_host.add_external(Msg::new(0x01));
+        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 1, 0, vec![]));
+        mock_host.add_external(Msg::new(0x02));
+
+        let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let msg1 = runtime.read_input().unwrap().unwrap();
+        let msg2 = runtime.read_input().unwrap();
+
+        assert_external_eq(Msg::new(0x01), msg1.as_ref());
+        assert!(msg2.is_none());
+    }
+}
