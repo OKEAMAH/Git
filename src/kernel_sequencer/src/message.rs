@@ -90,7 +90,7 @@ pub struct Framed<P> {
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
 pub struct Bytes {
     #[encoding(dynamic, list)]
-    inner: Vec<u8>,
+    pub inner: Vec<u8>,
 }
 
 /// Sequence of messages sent by the sequencer
@@ -112,10 +112,10 @@ pub struct Bytes {
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
 pub struct Sequence {
     nonce: u32,
-    delayed_messages_prefix: u32,
-    delayed_messages_suffix: u32,
+    pub delayed_messages_prefix: u32,
+    pub delayed_messages_suffix: u32,
     #[encoding(dynamic, list)]
-    messages: Vec<Bytes>,
+    pub messages: Vec<Bytes>,
 }
 
 /// Message to set the appropriate sequencer

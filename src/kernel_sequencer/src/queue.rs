@@ -224,7 +224,6 @@ impl Queue {
     /// Remove and returns the first element of the queue.
     ///
     /// If the queue is empty None is returned
-    #[allow(dead_code)]
     pub fn pop<H: Runtime, E>(&mut self, host: &mut H) -> Result<Option<E>, RuntimeError>
     where
         E: NomReader,

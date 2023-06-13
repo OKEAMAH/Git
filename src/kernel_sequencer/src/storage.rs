@@ -15,6 +15,7 @@ const SEQUENCER_PREFIX_PATH: RefPath = RefPath::assert_from(b"/__sequencer");
 const USER_PREFIX_PATH: RefPath = RefPath::assert_from(b"/u");
 pub const DELAYED_INBOX_PATH: RefPath = RefPath::assert_from(b"/delayed-inbox");
 const STATE: RefPath = RefPath::assert_from(b"/state");
+pub const PENDING_INBOX_PATH: RefPath = RefPath::assert_from(b"/pending-inbox");
 
 /// Prefix the given path by `/__sequencer`.
 ///

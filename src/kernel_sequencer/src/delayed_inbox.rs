@@ -27,6 +27,15 @@ pub struct UserMessage {
     pub(crate) payload: Vec<u8>,
 }
 
+/// Message saved in the pending inbox
+#[derive(BinWriter, NomReader)]
+pub struct PendingUserMessage {
+    level: u32,
+    id: u32,
+    #[encoding(dynamic, list)]
+    payload: Vec<u8>,
+}
+
 /// Return a message from the inbox
 ///
 /// This function drives the delayed inbox:
@@ -38,6 +47,8 @@ pub fn read_input<Host: Runtime>(
     filter_behavior: FilterBehavior,
     timeout_window: u32,
     delayed_inbox_queue: &mut Queue,
+    pending_inbox_queue: &mut Queue,
+    pending_inbox_index: &mut u32,
 ) -> Result<Option<Message>, RuntimeError> {
     let RollupMetadata {
         raw_rollup_address, ..
@@ -47,6 +58,7 @@ pub fn read_input<Host: Runtime>(
         match msg {
             None => return Ok(None), // No more messages to be processed
             Some(msg) => {
+                let level = msg.level;
                 let payload = msg.as_ref();
                 // Verify the state of the delayed inbox on SoL
                 if let [0x00, 0x00, ..] = payload {
@@ -71,7 +83,14 @@ pub fn read_input<Host: Runtime>(
 
                             match payload {
                                 SequencerMsg::Sequence(sequence) => {
-                                    handle_sequence_message(sequence)
+                                    let _ = handle_sequence_message(
+                                        host,
+                                        sequence,
+                                        delayed_inbox_queue,
+                                        pending_inbox_queue,
+                                        level,
+                                        pending_inbox_index,
+                                    );
                                 }
                                 SequencerMsg::SetSequencer(set_sequencer) => {
                                     handle_set_sequencer_message(set_sequencer)
@@ -130,9 +149,73 @@ fn extract_payload(
     Ok(payload)
 }
 
-/// Handle Sequence message
-fn handle_sequence_message(_sequence: Sequence) {
-    // process the sequence
+fn handle_sequence_message(
+    host: &mut impl Runtime,
+    sequence: Sequence,
+    delayed_inbox_queue: &mut Queue,
+    pending_inbox_queue: &mut Queue,
+    level: u32,
+    pending_inbox_index: &mut u32,
+) -> Result<(), RuntimeError> {
+    let Sequence {
+        delayed_messages_prefix,
+        delayed_messages_suffix,
+        messages,
+        ..
+    } = sequence;
+
+    // First pop elements from the delayed inbox indicated by the prefix
+    for _ in 0..delayed_messages_prefix {
+        // pop the head of the delayed inbox
+        let delayed_user_msg: Option<UserMessage> = delayed_inbox_queue.pop(host)?;
+        // break the loop if the delayed inbox is empty
+        let Some(delayed_user_msg) = delayed_user_msg else {break;};
+        // add the payload to the pending inbox
+        let UserMessage { payload, .. } = delayed_user_msg;
+        pending_inbox_queue.add(
+            host,
+            &PendingUserMessage {
+                level,
+                id: *pending_inbox_index,
+                payload,
+            },
+        )?;
+        *pending_inbox_index += 1;
+    }
+
+    // Then add messages to the pending_inbox_queue
+    for bytes in messages {
+        pending_inbox_queue.add(
+            host,
+            &PendingUserMessage {
+                level,
+                id: *pending_inbox_index,
+                payload: bytes.inner,
+            },
+        )?;
+        *pending_inbox_index += 1;
+    }
+
+    // Finally, pop elements from the delayed inbox indicated by the suffix
+    for _ in 0..delayed_messages_suffix {
+        // pop the head of the delayed inbox
+        let delayed_user_msg: Option<UserMessage> = delayed_inbox_queue.pop(host)?;
+        // break the loop if the delayed inbox is empty
+        let Some(delayed_user_msg) = delayed_user_msg else {break;};
+        // add the payload to the pending inbox
+        let UserMessage { payload, .. } = delayed_user_msg;
+        pending_inbox_queue.add(
+            host,
+            &PendingUserMessage {
+                level,
+                id: *pending_inbox_index,
+                payload,
+            },
+        )?;
+        *pending_inbox_index += 1;
+    }
+
+    Ok(())
 }
 
 fn handle_set_sequencer_message(_set_sequencer: SetSequencer) {
