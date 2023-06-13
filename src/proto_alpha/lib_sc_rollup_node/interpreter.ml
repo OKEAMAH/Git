@@ -138,6 +138,7 @@ let transition_pvm node_ctxt ctxt predecessor Layer1.{hash = _; _}
     head. *)
 let process_head (node_ctxt : _ Node_context.t) ctxt
     ~(predecessor : Layer1.header) (head : Layer1.header) (inbox, inbox_messages)
+    =
   let open Lwt_result_syntax in
   let first_inbox_level = node_ctxt.genesis_info.level |> Int32.succ in
   if head.Layer1.level >= first_inbox_level then

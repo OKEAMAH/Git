@@ -838,9 +838,7 @@ let inbox_of_head node_ctxt Layer1.{hash = block_hash; level = block_level} =
          That is, every block after the origination level. We then join
          the bandwagon and build the inbox on top of the protocol's inbox
          at the end of the origination level. *)
-      let genesis_level = node_ctxt.genesis_info.level in
-      if block_level = genesis_level then genesis_inbox node_ctxt
-      else if block_level > genesis_level then
+      if block_level >= node_ctxt.genesis_info.level then
         (* Invariant broken, the inbox for this level should exist. *)
         failwith
           "The inbox for block hash %a (level = %ld) is missing."
@@ -974,7 +972,7 @@ type proto_info = {
 
 let protocol_of_level node_ctxt level =
   let open Lwt_result_syntax in
-  assert (level >= Raw_level.to_int32 node_ctxt.genesis_info.level) ;
+  assert (level >= node_ctxt.genesis_info.level) ;
   let* protocols = Store.Protocols.read node_ctxt.store.protocols in
   let*? protocols =
     match protocols with
