@@ -60,6 +60,7 @@ SDK
 - Introduce ``PublicKey`` definition in ``tezos-smart-rollup-encoding``
 - Add ``store_read_all`` and ``store_write_all`` to read (resp. write) a full value from (to) the
   storage, leveraging the need to chunk the reading (resp. writing).
+- Implement host function ``store_create`` introduced in the ``Nairobi`` protocol.
 
 Installer client/kernel
 ----------------
