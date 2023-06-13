@@ -49,7 +49,7 @@ type tree = IStore.tree
 
 type instant_state = TxTypes.state
 
-type state = {optimistic : Context.tree; instant : TxTypes.state}
+type state = {optimistic : tree; instant : TxTypes.state}
 
 type 'a raw_index = {path : string; repo : IStore.Repo.t}
 

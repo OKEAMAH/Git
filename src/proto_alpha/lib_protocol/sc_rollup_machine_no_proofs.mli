@@ -33,7 +33,11 @@ type t = Context_binary.t
 
 type tree = Context_binary.tree
 
-val empty_tree : unit -> tree
+type instant_state = Epoxy_tx.Types.P.state
+
+type state = {optimistic : tree; instant : instant_state}
+
+val empty_state : unit -> state
 
 module type S = sig
   val parse_boot_sector : string -> string option
@@ -43,7 +47,8 @@ module type S = sig
   include
     Sc_rollup_PVM_sig.S
       with type context = t
-       and type state = tree
+       and type tree = tree
+       and type state = state
        and type proof = void
 end
 

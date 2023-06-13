@@ -367,6 +367,8 @@ let pp_output fmt {outbox_level; message_index; message} =
     message
 
 module type S = sig
+  type tree
+
   (** The state of the PVM denotes a state of the rollup.
 
       The life cycle of the PVM is as follows. It starts its execution

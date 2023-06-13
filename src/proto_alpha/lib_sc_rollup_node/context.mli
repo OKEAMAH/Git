@@ -144,12 +144,7 @@ end) : sig
 end
 
 (** State of the PVM that this rollup node deals with *)
-module PVMState : functor
-  (S : sig
-     type state
-   end)
-  -> sig
-  open S
+module PVMState : sig
   (** The value of a PVM state *)
   type value = state
 

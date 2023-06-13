@@ -111,7 +111,7 @@ end
 let genesis_state_hash_of ~boot_sector kind =
   let open Lwt_syntax in
   let (module Machine) = Kind.no_proof_machine_of kind in
-  let empty = Sc_rollup_machine_no_proofs.empty_tree () in
+  let empty = Sc_rollup_machine_no_proofs.empty_state () in
   let* tree = Machine.initial_state ~empty in
   let* initial_hash = Machine.state_hash tree in
   assert (

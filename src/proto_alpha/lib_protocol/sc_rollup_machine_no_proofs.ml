@@ -36,12 +36,27 @@ type t = Context_binary.t
 
 type tree = Context_binary.tree
 
-let empty_tree () = Context_binary.(make_empty_context () |> Tree.empty)
+type instant_state = Epoxy_tx.Types.P.state option
+
+type state = {optimistic : tree; instant : instant_state}
+
+let empty_state () =
+  {
+    optimistic = Context_binary.(make_empty_context () |> Tree.empty);
+    instant = Some (Epoxy_tx.Tx_rollup.P.empty_state ());
+  }
 
 module Context_no_proofs = struct
   module Tree = Context_binary.Tree
 
   type tree = Context_binary.tree
+
+  type nonrec state = state
+
+  let tree_of_state {optimistic; instant} =
+    (optimistic, fun optimistic -> {optimistic; instant})
+
+  let tree_only optimistic = {optimistic; instant = None}
 
   let hash_tree tree =
     Sc_rollup_repr.State_hash.context_hash_to_state_hash (Tree.hash tree)
@@ -67,7 +82,8 @@ module type S = sig
   include
     Sc_rollup_PVM_sig.S
       with type context = Context_no_proofs.Tree.t
-       and type state = Context_no_proofs.tree
+       and type tree = Context_no_proofs.tree
+       and type state = Context_no_proofs.state
        and type proof = void
 end
 
