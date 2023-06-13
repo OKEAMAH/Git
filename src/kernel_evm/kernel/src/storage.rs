@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 use hex::ToHex;
+use tezos_crypto_rs::hash::{ContractKt1Hash, HashTrait};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -24,6 +25,8 @@ use primitive_types::{H160, H256, U256};
 
 const SMART_ROLLUP_ADDRESS: RefPath =
     RefPath::assert_from(b"/metadata/smart_rollup_address");
+
+const L1_BRIDGE_ADDRESS: RefPath = RefPath::assert_from(b"/l1_bridge_address");
 
 const EVM_CURRENT_BLOCK: RefPath = RefPath::assert_from(b"/blocks/current");
 const EVM_BLOCKS: RefPath = RefPath::assert_from(b"/blocks");
@@ -618,6 +621,12 @@ pub fn read_last_info_per_level_timestamp<Host: Runtime>(
     host: &mut Host,
 ) -> Result<Timestamp, Error> {
     read_timestamp_path(host, &EVM_INFO_PER_LEVEL_TIMESTAMP.into())
+}
+
+pub fn read_l1_bridge_address<Host: Runtime>(host: &mut Host) -> Option<ContractKt1Hash> {
+    let mut buffer = [0; 20];
+    store_read_slice(host, &L1_BRIDGE_ADDRESS, &mut buffer, 20).ok()?;
+    ContractKt1Hash::try_from_bytes(&buffer).ok()
 }
 
 pub(crate) mod internal_for_tests {

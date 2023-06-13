@@ -5,9 +5,10 @@
 
 use primitive_types::U256;
 use storage::{
-    read_chain_id, read_last_info_per_level_timestamp,
+    read_chain_id, read_l1_bridge_address, read_last_info_per_level_timestamp,
     read_last_info_per_level_timestamp_stats, store_chain_id,
 };
+use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_ethereum::block::L2Block;
 use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -53,7 +54,12 @@ pub fn stage_one<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     chain_id: U256,
+    l1_bridge: Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
+    if l1_bridge.is_none() {
+        debug_msg!(host, "The L1 bridge address was not found in the durable storage, the kernel is not able handle deposits.")
+    }
+
     let queue = fetch(host, smart_rollup_address, chain_id)?;
 
     for (i, blueprint) in queue.proposals.iter().enumerate() {
@@ -109,7 +115,8 @@ fn genesis_initialisation<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
 pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     let smart_rollup_address = retrieve_smart_rollup_address(host)?;
     let chain_id = retrieve_chain_id(host)?;
-    let queue = stage_one(host, smart_rollup_address, chain_id)?;
+    let l1_bridge = read_l1_bridge_address(host);
+    let queue = stage_one(host, smart_rollup_address, chain_id, l1_bridge)?;
 
     genesis_initialisation(host)?;
     stage_two(host, queue)

@@ -42,6 +42,7 @@ hex = "0.4"
 num-traits = "0.2.8"
 evm-execution = { path = "../evm_execution" }
 rlp = "0.5.2"
+tezos_crypto_rs = { version = "0.5", default-features = false }
 
 [features]
 default = ["panic-hook"]
