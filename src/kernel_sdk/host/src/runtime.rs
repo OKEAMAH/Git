@@ -151,6 +151,14 @@ pub trait Runtime {
     #[cfg(feature = "proto-nairobi")]
     fn store_delete_value<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError>;
 
+    /// Delete value under `path` from storage.
+    #[cfg(feature = "proto-nairobi")]
+    fn store_create<T: Path>(
+        &mut self,
+        path: &T,
+        size: usize,
+    ) -> Result<(), RuntimeError>;
+
     /// Count the number of subkeys under `prefix`.
     ///
     /// See [SmartRollupCore::store_list_size].
@@ -467,6 +475,21 @@ where
     }
 
     #[cfg(feature = "proto-nairobi")]
+    fn store_create<T: Path>(
+        &mut self,
+        path: &T,
+        size: usize,
+    ) -> Result<(), RuntimeError> {
+        let res = unsafe {
+            SmartRollupCore::store_create(self, path.as_ptr(), path.size(), size)
+        };
+        match Error::wrap(res) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(RuntimeError::HostErr(e)),
+        }
+    }
+
+    #[cfg(feature = "proto-nairobi")]
     fn store_delete_value<T: Path>(&mut self, path: &T) -> Result<(), RuntimeError> {
         let res = unsafe {
             SmartRollupCore::store_delete_value(self, path.as_ptr(), path.size())
@@ -669,7 +692,8 @@ mod tests {
     use test_helpers::*;
     use tezos_smart_rollup_core::{
         smart_rollup_core::MockSmartRollupCore, MAX_FILE_CHUNK_SIZE,
-        MAX_INPUT_MESSAGE_SIZE, MAX_OUTPUT_SIZE,
+        MAX_INPUT_MESSAGE_SIZE, MAX_OUTPUT_SIZE, STORE_VALUE_ALREADY_EXISTS,
+        STORE_VALUE_SIZE_EXCEEDED,
     };
 
     const READ_SIZE: usize = 80;
@@ -1143,6 +1167,95 @@ mod tests {
         // Assert
         assert_eq!(Ok(()), result);
         assert!(matches!(result_remaining, Ok(Some(_))));
+    }
+
+    #[test]
+    #[cfg(feature = "proto-nairobi")]
+    fn store_create_ok() {
+        // Arrange
+        const PATH: RefPath<'static> = RefPath::assert_from(b"/a/non/existing/path");
+        const SIZE: usize = 10;
+        const ZERO_VALUE: [u8; SIZE] = [0_u8; SIZE];
+
+        let mut mock = MockSmartRollupCore::new();
+        mock.expect_store_create()
+            .withf(|ptr, size, _value_size| {
+                let slice = unsafe { from_raw_parts(*ptr, *size) };
+
+                PATH.as_bytes() == slice
+            })
+            .return_const(0);
+        mock.expect_store_read()
+            .return_once(|_, _, _, buffer_ptr, _| {
+                let buffer = unsafe { from_raw_parts_mut(buffer_ptr, SIZE) };
+                buffer.copy_from_slice(&ZERO_VALUE);
+                (SIZE).try_into().unwrap()
+            });
+
+        mock.expect_store_has()
+            .return_const(tezos_smart_rollup_core::VALUE_TYPE_VALUE);
+
+        // Act
+        let result = mock.store_create(&PATH, SIZE);
+        let value_in_storage = mock.store_read(&PATH, 0, SIZE);
+
+        // Assert
+        assert_eq!(Ok(()), result);
+        assert_eq!(value_in_storage, Ok(ZERO_VALUE.to_vec()));
+    }
+
+    #[test]
+    #[cfg(feature = "proto-nairobi")]
+    fn store_create_already_exists() {
+        // Arrange
+        const PATH: RefPath<'static> =
+            RefPath::assert_from("/an/existing/path".as_bytes());
+        const SIZE: usize = 10;
+
+        let mut mock = mock_path_exists(PATH.as_bytes());
+        mock.expect_store_create()
+            .withf(|ptr, size, _value_size| {
+                let slice = unsafe { from_raw_parts(*ptr, *size) };
+
+                PATH.as_bytes() == slice
+            })
+            .return_const(STORE_VALUE_ALREADY_EXISTS);
+
+        // Act
+        let result = mock.store_create(&PATH, SIZE);
+
+        // Assert
+        assert_eq!(
+            Err(RuntimeError::HostErr(Error::StoreValueAlreadyExists)),
+            result
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "proto-nairobi")]
+    fn store_create_value_too_big() {
+        // Arrange
+        const PATH: RefPath<'static> =
+            RefPath::assert_from("/a/non/existing/path".as_bytes());
+        const SIZE: usize = (1 << 31) + 100;
+
+        let mut mock = mock_path_exists(PATH.as_bytes());
+        mock.expect_store_create()
+            .withf(|ptr, size, _value_size| {
+                let slice = unsafe { from_raw_parts(*ptr, *size) };
+
+                PATH.as_bytes() == slice
+            })
+            .return_const(STORE_VALUE_SIZE_EXCEEDED);
+
+        // Act
+        let result = mock.store_create(&PATH, SIZE);
+
+        // Assert
+        assert_eq!(
+            Err(RuntimeError::HostErr(Error::StoreValueSizeExceeded)),
+            result
+        );
     }
 
     #[test]

@@ -69,7 +69,12 @@ extern "C" {
     pub fn store_delete(path: *const u8, path_len: usize) -> i32;
 
     /// Delete the value of `path` from storage.
+    #[cfg(feature = "proto-nairobi")]
     pub fn store_delete_value(path: *const u8, path_len: usize) -> i32;
+
+    // Allocates a zero-value of the given size.
+    #[cfg(feature = "proto-nairobi")]
+    pub fn store_create(path: *const u8, len: usize, size: usize) -> i32;
 
     /// Get the number of subkeys of the prefix given by `path`.
     pub fn store_list_size(path: *const u8, path_len: usize) -> i64;
@@ -233,6 +238,14 @@ pub unsafe trait SmartRollupCore {
     /// - `len` must be the length of that slice.
     #[cfg(feature = "proto-nairobi")]
     unsafe fn store_delete_value(&self, path: *const u8, len: usize) -> i32;
+
+    /// See [store_create].
+    ///
+    /// # Safety
+    /// - `path` must be a ptr to a correctly path-encoded slice of bytes.
+    /// - `len` must be the length of that slice.
+    #[cfg(feature = "proto-nairobi")]
+    unsafe fn store_create(&self, path: *const u8, len: usize, size: usize) -> i32;
 
     /// See [store_list_size].
     ///
