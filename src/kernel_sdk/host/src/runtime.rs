@@ -453,9 +453,7 @@ where
 
         // To be consistent with `store_write` that allocates the path even if
         // the written value is empty, as nothing will be written otherwise.
-        if value.is_empty() {
-            Runtime::store_write(self, path, &[0; 0], 0)?;
-        }
+        Runtime::store_create(self, path, value.len())?;
 
         for (i, chunk) in value.chunks(MAX_FILE_CHUNK_SIZE).enumerate() {
             Runtime::store_write(self, path, chunk, i * MAX_FILE_CHUNK_SIZE)?;
