@@ -153,7 +153,7 @@ end
 module Protocol_implementation :
   S
     with type context = Context.t
-     and type state = Context.tree
+     and type tree = Context.tree
      and type proof = Context.Proof.tree Context.Proof.t
 
 (** This is the state hash of reference that both the prover of the
@@ -166,6 +166,12 @@ module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
 
   type tree = Tree.tree
+
+  type state
+
+  val tree_of_state : state -> tree * (tree -> state)
+
+  val tree_only : tree -> state
 
   val hash_tree : tree -> Sc_rollup_repr.State_hash.t
 
@@ -187,5 +193,6 @@ end
 module Make (Context : P) :
   S
     with type context = Context.Tree.t
-     and type state = Context.tree
+     and type tree = Context.tree
+     and type state = Context.state
      and type proof = Context.proof

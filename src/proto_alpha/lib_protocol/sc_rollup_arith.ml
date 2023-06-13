@@ -96,6 +96,12 @@ module type P = sig
 
   type tree = Tree.tree
 
+  type state
+
+  val tree_of_state : state -> tree * (tree -> state)
+
+  val tree_only : tree -> state
+
   val hash_tree : tree -> State_hash.t
 
   type proof
@@ -162,7 +168,8 @@ end
 module Make (Context : P) :
   S
     with type context = Context.Tree.t
-     and type state = Context.tree
+     and type tree = Context.tree
+     and type state = Context.state
      and type proof = Context.proof = struct
   module Tree = Context.Tree
 
@@ -183,6 +190,8 @@ module Make (Context : P) :
   let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
 
   type tree = Tree.tree
+
+  type state = Context.state
 
   type status =
     | Halted
@@ -248,7 +257,7 @@ module Make (Context : P) :
 
   *)
   module State = struct
-    type state = tree
+    type state = Context.state
 
     module Monad : sig
       type 'a t
@@ -275,7 +284,7 @@ module Make (Context : P) :
 
       val set_value : Tree.key -> 'a Data_encoding.t -> 'a -> unit t
     end = struct
-      type 'a t = state -> (state * 'a option) Lwt.t
+      type ('s, 'a) t' = 's -> ('s * 'a option) Lwt.t
 
       let return x state = Lwt.return (state, Some x)
 
@@ -307,20 +316,20 @@ module Make (Context : P) :
         let* tree = Tree.remove tree key in
         return (tree, Some ())
 
-      let decode encoding bytes state =
+      let decode encoding bytes tree =
         let open Lwt_syntax in
         match Data_encoding.Binary.of_bytes_opt encoding bytes with
-        | None -> internal_error "Error during decoding" state
-        | Some v -> return (state, Some v)
+        | None -> internal_error "Error during decoding" tree
+        | Some v -> return (tree, Some v)
 
-      let find_value key encoding state =
+      let find_value key encoding tree =
         let open Lwt_syntax in
-        let* obytes = Tree.find state key in
+        let* obytes = Tree.find tree key in
         match obytes with
-        | None -> return (state, Some None)
+        | None -> return (tree, Some None)
         | Some bytes ->
-            let* state, value = decode encoding bytes state in
-            return (state, Some value)
+            let* tree, value = decode encoding bytes tree in
+            return (tree, Some value)
 
       let children key encoding state =
         let open Lwt_syntax in
@@ -355,6 +364,40 @@ module Make (Context : P) :
         | Some bytes ->
             let* tree = Tree.add tree key bytes in
             return (tree, Some ())
+
+      (* *** *)
+
+      type 'a t = (state, 'a) t'
+
+      let lift : (tree -> (tree * 'a option) Lwt.t) -> ('a * (tree -> state)) t
+          =
+       fun f (s : state) ->
+        let open Lwt_syntax in
+        let tree, rebuild = Context.tree_of_state s in
+        let* tree, x_opt = f tree in
+        let x = Option.map (fun x -> (x, rebuild)) x_opt in
+        return (rebuild tree, x)
+
+      let on_tree : (tree -> (tree * 'a option) Lwt.t) -> 'a t =
+       fun f ->
+        let open Syntax in
+        let* x, _ = lift f in
+        return x
+
+      let internal_error msg = on_tree @@ internal_error msg
+
+      let is_stuck = on_tree is_stuck
+
+      let remove key = on_tree @@ remove key
+
+      let find_value key encoding = on_tree @@ find_value key encoding
+
+      let children key encoding = on_tree @@ children key encoding
+
+      let get_value ~default key encoding =
+        on_tree @@ get_value ~default key encoding
+
+      let set_value key encoding value = on_tree @@ set_value key encoding value
     end
 
     open Monad
@@ -413,8 +456,10 @@ module Make (Context : P) :
       let mapped_to k v state =
         let open Lwt_syntax in
         let* state', _ = Monad.(run (set k v) state) in
-        let* t = Tree.find_tree state (key k)
-        and* t' = Tree.find_tree state' (key k) in
+        let* t = Tree.find_tree (fst @@ Context.tree_of_state state) (key k)
+        and* t' =
+          Tree.find_tree (fst @@ Context.tree_of_state state') (key k)
+        in
         Lwt.return (Option.equal Tree.equal t t')
 
       let pp =
@@ -906,9 +951,6 @@ module Make (Context : P) :
   end
 
   open State
-
-  type state = State.state
-
   open Monad
 
   let initial_state ~empty =
@@ -931,8 +973,9 @@ module Make (Context : P) :
     let* state, _ = run m state in
     return state
 
-  let state_hash state =
-    let context_hash = Tree.hash state in
+  let state_hash (state : state) =
+    let tree, _ = Context.tree_of_state state in
+    let context_hash = Tree.hash tree in
     Lwt.return @@ State_hash.context_hash_to_state_hash context_hash
 
   let pp state =
@@ -1568,17 +1611,30 @@ module Make (Context : P) :
 
   type error += Arith_proof_verification_failed
 
+  let on_tree (f : state -> (state * 'a) Lwt.t) (tree : tree) :
+      (tree * 'a) Lwt.t =
+    let open Lwt_syntax in
+    let state = Context.tree_only tree in
+    let* state, b = f state in
+    let tree, _ = Context.tree_of_state state in
+    return (tree, b)
+
   let verify_proof input_given proof =
     let open Lwt_result_syntax in
-    let*! result = Context.verify_proof proof (step_transition input_given) in
+    let*! result =
+      Context.verify_proof proof (on_tree @@ step_transition input_given)
+    in
     match result with
     | None -> tzfail Arith_proof_verification_failed
     | Some (_state, request) -> return request
 
-  let produce_proof context input_given state =
+  let produce_proof context input_given (state : state) =
     let open Lwt_result_syntax in
     let*! result =
-      Context.produce_proof context state (step_transition input_given)
+      Context.produce_proof
+        context
+        (fst @@ Context.tree_of_state state)
+        (on_tree @@ step_transition input_given)
     in
     match result with
     | Some (tree_proof, _requested) -> return tree_proof
@@ -1616,14 +1672,16 @@ module Make (Context : P) :
   let verify_output_proof p =
     let open Lwt_syntax in
     let transition = has_output p.output_proof_output in
-    let* result = Context.verify_proof p.output_proof transition in
+    let* result = Context.verify_proof p.output_proof (on_tree transition) in
     match result with None -> return false | Some _ -> return true
 
   let produce_output_proof context state output_proof_output =
     let open Lwt_result_syntax in
     let*! output_proof_state = state_hash state in
     let*! result =
-      Context.produce_proof context state @@ has_output output_proof_output
+      Context.produce_proof context (fst @@ Context.tree_of_state state)
+      @@ on_tree
+      @@ has_output output_proof_output
     in
     match result with
     | Some (output_proof, true) ->
@@ -1642,6 +1700,12 @@ module Make (Context : P) :
       let open Lwt_syntax in
       let* n = Tree.length state ["failures"] in
       add n
+
+    let insert_failure (state : state) =
+      let open Lwt_syntax in
+      let tree, rebuild = Context.tree_of_state state in
+      let* tree = insert_failure tree in
+      return (rebuild tree)
   end
 end
 
@@ -1659,6 +1723,12 @@ module Protocol_implementation = Make (struct
   end
 
   type tree = Context.tree
+
+  type state = tree
+
+  let tree_of_state state = (state, Fun.id)
+
+  let tree_only t = t
 
   let hash_tree t = State_hash.context_hash_to_state_hash (Tree.hash t)
 
