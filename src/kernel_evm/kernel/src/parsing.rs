@@ -9,8 +9,8 @@ use tezos_ethereum::{
     signatures::EthereumTransactionCommon, transaction::TransactionHash,
 };
 use tezos_smart_rollup_encoding::{
-    inbox::{InboxMessage, InfoPerLevel, InternalInboxMessage},
-    michelson::MichelsonUnit,
+    inbox::{InboxMessage, InfoPerLevel, InternalInboxMessage, Transfer},
+    michelson::{MichelsonBytes, MichelsonInt, MichelsonPair},
 };
 use tezos_smart_rollup_host::input::Message;
 
@@ -79,6 +79,9 @@ pub enum InputResult {
     /// Unparsable input, to be ignored
     Unparsable,
 }
+
+type RollupType =
+    MichelsonPair<MichelsonPair<MichelsonBytes, MichelsonInt>, MichelsonInt>;
 
 impl InputResult {
     fn parse_simple_transaction(bytes: &[u8]) -> Self {
@@ -153,6 +156,21 @@ impl InputResult {
         }
     }
 
+    fn parse_deposit(
+        transfer: Transfer<RollupType>,
+        smart_rollup_address: &[u8],
+    ) -> Self {
+        if transfer.destination.hash().0 != smart_rollup_address {
+            return InputResult::Unparsable;
+        }
+        // TODO check sender
+        let _ = transfer.payload;
+        let _evm_address_raw: MichelsonBytes = transfer.payload.0 .0;
+        let _amount: MichelsonInt = transfer.payload.0 .1;
+        let _amount_for_gas: MichelsonInt = transfer.payload.1;
+        InputResult::Unparsable
+    }
+
     pub fn parse(input: Message, smart_rollup_address: [u8; 20]) -> Self {
         let bytes = Message::as_ref(&input);
         let (input_tag, remaining) = parsable!(bytes.split_first());
@@ -160,13 +178,16 @@ impl InputResult {
             return Self::parse_simulation(remaining);
         };
 
-        match InboxMessage::<MichelsonUnit>::parse(bytes) {
+        match InboxMessage::<RollupType>::parse(bytes) {
             Ok((_remaing, message)) => match message {
                 InboxMessage::External(message) => {
                     Self::parse_external(message, &smart_rollup_address)
                 }
                 InboxMessage::Internal(InternalInboxMessage::InfoPerLevel(info)) => {
                     InputResult::Input(Input::Info(info))
+                }
+                InboxMessage::Internal(InternalInboxMessage::Transfer(transfer)) => {
+                    Self::parse_deposit(transfer, &smart_rollup_address)
                 }
                 InboxMessage::Internal(_) => InputResult::Unparsable,
             },
