@@ -412,7 +412,89 @@ let run_command =
       let*! () = display_disclaimer cctxt in
       Daemon.run ~data_dir cctxt)
 
-let commands () = [run_command] @ Config_init.commands
+module Demo_client = struct
+  let hex_payload_param ?(name = "hex payload")
+      ?(desc = "A hex encoded payload") =
+    let desc = String.concat "\n" [desc; "A hex encoded string"] in
+    Tezos_clic.param ~name ~desc (Client_config.string_parameter ())
+
+  let hex_root_hash_param ?(name = "hex payload")
+      ?(desc = "A hex encoded payload") =
+    let desc = String.concat "\n" [desc; "A hex encoded string"] in
+    Tezos_clic.param ~name ~desc (Client_config.string_parameter ())
+
+  let filename_param ?(name = "Filename parameter") ?(desc = "A filename") =
+    Tezos_clic.param ~name ~desc (Client_config.string_parameter ())
+
+  let group =
+    {
+      Tezos_clic.name = "demo-paris";
+      title = "Dac client commands to be used for the Demo in Paris";
+    }
+
+  let send_dac_payload =
+    let open Tezos_clic in
+    command
+      ~group
+      ~desc:"Send a list of strings to the DAC coordinator"
+      (args1 data_dir_arg)
+      (prefixes ["send"; "payload"; "to"; "coordinator"]
+      @@ coordinator_rpc_param
+      @@ prefixes ["with"; "content"]
+      @@ hex_payload_param @@ stop)
+      (fun _data_dir_arg
+           (coordinator_rpc_addr, coordinator_rpc_port)
+           content
+           _cctxt ->
+        let open Lwt_result_syntax in
+        let* hash =
+          Demo_client.send_payload
+            coordinator_rpc_addr
+            coordinator_rpc_port
+            content
+        in
+        return
+        @@ Format.printf "Data stored by coordinator under root_hash %s" hash)
+
+  let make_dac_payload =
+    let open Tezos_clic in
+    command
+      ~group
+      ~desc:"Create a payload to send to the coordinator"
+      (args1 data_dir_arg)
+      (prefixes ["get"; "payload"; "from"; "file"] @@ filename_param @@ stop)
+      (fun _data_dir_arg filename _cctxt ->
+        let open Lwt_result_syntax in
+        let* payload = Demo_client.payload_from_file filename in
+        return @@ Format.printf "%s" payload)
+
+  let get_dac_signature =
+    let open Tezos_clic in
+    command
+      ~group
+      ~desc:"Get a certificate from the coordinator"
+      (args1 data_dir_arg)
+      (prefixes ["get"; "certificate"; "from"; "coordinator"]
+      @@ coordinator_rpc_param
+      @@ prefixes ["for"; "root"; "hash"]
+      @@ hex_root_hash_param @@ stop)
+      (fun _data_dir_arg
+           (coordinator_rpc_addr, coordinator_rpc_port)
+           hex_root_hash
+           _cctxt ->
+        let open Lwt_result_syntax in
+        let* certificate =
+          Demo_client.get_certificate
+            coordinator_rpc_addr
+            coordinator_rpc_port
+            hex_root_hash
+        in
+        return @@ (Format.printf "%s" certificate))
+
+  let commands = [send_dac_payload; make_dac_payload; get_dac_signature]
+end
+
+let commands () = [run_command] @ Config_init.commands @ Demo_client.commands
 
 let select_commands _ _ =
   let open Lwt_result_syntax in
