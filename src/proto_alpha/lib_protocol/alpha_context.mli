@@ -3237,6 +3237,16 @@ module Sc_rollup : sig
 
       type tree = Tree.tree
 
+      type state
+
+      val tree_of_state : state -> tree * (tree -> state)
+
+      val tree_only : tree -> state
+
+      val instant_of_state : state -> Epoxy_tx.Types.P.state
+
+      val full_state : Epoxy_tx.Types.P.state * tree -> state
+
       val hash_tree : tree -> State_hash.t
 
       type proof
@@ -3257,8 +3267,13 @@ module Sc_rollup : sig
         (proof * 'a) option Lwt.t
     end
 
-    module type S = sig
-      include PVM.S
+    module Make (C : P) : sig
+      include
+        PVM.S
+          with type context = C.Tree.t
+           and type tree = C.tree
+           and type state = C.state
+           and type proof = C.proof
 
       val parse_boot_sector : string -> string option
 
@@ -3266,7 +3281,7 @@ module Sc_rollup : sig
 
       val pp : state -> (Format.formatter -> unit -> unit) Lwt.t
 
-      val get_tick : state -> Sc_rollup_tick_repr.t Lwt.t
+      val get_tick : state -> Tick.t Lwt.t
 
       type status =
         | Halted
@@ -3277,13 +3292,10 @@ module Sc_rollup : sig
 
       val get_status : state -> status Lwt.t
 
-      (* val get_outbox :
-         Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t *)
+      val get_outbox : Raw_level.t -> state -> output list Lwt.t
 
       type instruction = Epoxy_tx.Types.P.tx
     end
-
-    module Make (C : P) : S
 
     val reference_initial_state_hash : State_hash.t
 

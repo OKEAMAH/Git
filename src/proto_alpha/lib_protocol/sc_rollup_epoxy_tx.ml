@@ -40,6 +40,16 @@ module type P = sig
 
   type tree = Tree.tree
 
+  type state
+
+  val tree_of_state : state -> tree * (tree -> state)
+
+  val tree_only : tree -> state
+
+  val instant_of_state : state -> Epoxy_tx.Types.P.state
+
+  val full_state : Epoxy_tx.Types.P.state * tree -> state
+
   val hash_tree : tree -> State_hash.t
 
   type proof
@@ -77,13 +87,18 @@ module type S = sig
 
   val get_status : state -> status Lwt.t
 
-  (* val get_outbox :
-     Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t *)
+  val get_outbox :
+    Raw_level_repr.t -> state -> Sc_rollup_PVM_sig.output list Lwt.t
 
   type instruction = TxTypes.tx
 end
 
-module Make (Context : P) : S = struct
+module Make (Context : P) :
+  S
+    with type context = Context.Tree.t
+     and type tree = Context.tree
+     and type state = Context.state
+     and type proof = Context.proof = struct
   module ZkTree = Plompiler.Merkle (Plompiler.Anemoi128)
   module S = Plompiler.S
 
@@ -96,15 +111,26 @@ module Make (Context : P) : S = struct
     | Waiting_for_metadata
     | Evaluating
 
-  type tree = Context.Tree.tree
+  type tree = Context.tree
 
-  type state = {optimistic : tree; instant : TxTypes.state}
+  type state = Context.state
+
+  type state' = {optimistic : tree; instant : TxTypes.state}
+
+  let to_state : Context.state -> state' =
+   fun cs ->
+    let optimistic, _ = Context.tree_of_state cs in
+    let instant = Context.instant_of_state cs in
+    {optimistic; instant}
+
+  let of_state : state' -> Context.state =
+   fun {optimistic; instant} -> Context.full_state (instant, optimistic)
 
   type hash = State_hash.t
 
-  type proof = unit
+  type proof = Context.proof
 
-  let proof_encoding = Data_encoding.unit
+  let proof_encoding = Context.proof_encoding
 
   let proof_start_state _proof = failwith "TODO proof_start_state"
 
@@ -180,15 +206,17 @@ module Make (Context : P) : S = struct
 
       let internal_error msg (s : state) =
         let open Lwt_syntax in
+        let s = to_state s in
         let* optimistic =
           Tree.add s.optimistic internal_error_key (Bytes.of_string msg)
         in
-        return ({s with optimistic}, None)
+        return @@ (of_state {s with optimistic}, None)
 
       let is_stuck (s : state) =
         let open Lwt_syntax in
+        let s = to_state s in
         let* v = Tree.find s.optimistic internal_error_key in
-        return (s, Some (Option.map Bytes.to_string v))
+        return (of_state s, Some (Option.map Bytes.to_string v))
 
       (* let remove_o key (state : state) =
          let open Lwt_syntax in
@@ -202,11 +230,13 @@ module Make (Context : P) : S = struct
         | Some v -> return (state, Some v)
 
       let find_value_o key encoding (state : state) =
+        let state = to_state state in
         let open Lwt_syntax in
         let* obytes = Tree.find state.optimistic key in
         match obytes with
-        | None -> return (state, Some None)
+        | None -> return (of_state state, Some None)
         | Some bytes ->
+            let state = of_state state in
             let* state, value = decode encoding bytes state in
             return (state, Some value)
 
@@ -216,15 +246,16 @@ module Make (Context : P) : S = struct
 
       let children key encoding (state : state) =
         let open Lwt_syntax in
+        let state = to_state state in
         let* children = Tree.list state.optimistic key in
         let rec aux = function
-          | [] -> return (state, Some [])
+          | [] -> return (of_state state, Some [])
           | (key, tree) :: children -> (
               let* obytes = Tree.to_value tree in
               match obytes with
-              | None -> internal_error "Invalid children" state
+              | None -> internal_error "Invalid children" (of_state state)
               | Some bytes -> (
-                  let* state, v = decode encoding bytes state in
+                  let* state, v = decode encoding bytes (of_state state) in
                   match v with
                   | None -> return (state, None)
                   | Some v -> (
@@ -242,11 +273,13 @@ module Make (Context : P) : S = struct
 
       let set_value_o key encoding value (state : state) =
         let open Lwt_syntax in
+        let state = to_state state in
         Data_encoding.Binary.to_bytes_opt encoding value |> function
-        | None -> internal_error "Internal_Error during encoding" state
+        | None ->
+            internal_error "Internal_Error during encoding" (of_state state)
         | Some bytes ->
             let* optimistic = Tree.add state.optimistic key bytes in
-            return ({state with optimistic}, Some ())
+            return (of_state {state with optimistic}, Some ())
 
       (* let set_value_i pos value (state : state) =
          let open Lwt_syntax in
@@ -326,8 +359,10 @@ module Make (Context : P) : S = struct
       let mapped_to k v state =
         let open Lwt_syntax in
         let* state', _ = Monad.(run (set k v) state) in
-        let* t = Tree.find_tree state.optimistic (key k)
-        and* t' = Tree.find_tree state'.optimistic (key k) in
+        let* t = Tree.find_tree (fst @@ Context.tree_of_state state) (key k)
+        and* t' =
+          Tree.find_tree (fst @@ Context.tree_of_state state') (key k)
+        in
         Lwt.return (Option.equal Tree.equal t t')
 
       let pp =
@@ -504,6 +539,16 @@ module Make (Context : P) : S = struct
         | Some c -> Format.fprintf fmt "Some %a" Z.pp_print c
     end)
 
+    module Output = Make_dict (struct
+      type t = Sc_rollup_PVM_sig.output
+
+      let name = "output"
+
+      let encoding = Sc_rollup_PVM_sig.output_encoding
+
+      let pp = Sc_rollup_PVM_sig.pp_output
+    end)
+
     (** Store an internal message counter. This is used to distinguish
       an unparsable external message and a internal message, which we both
       treat as no-ops. *)
@@ -557,23 +602,24 @@ module Make (Context : P) : S = struct
   let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
 
   let install_boot_sector state boot_sector =
+    let state = to_state state in
     match
       Data_encoding.Binary.of_string_opt
         TxLogic.balances_data_encoding
         boot_sector
     with
-    | None -> Lwt.return state
+    | None -> Lwt.return @@ of_state state
     | Some bals ->
         let instant = TxLogic.make_state bals in
-        Lwt.return {state with instant}
+        Lwt.return @@ of_state {state with instant}
 
   let state_hash (state : state) =
+    let instant = Context.instant_of_state state in
+    let optimistic, _ = Context.tree_of_state state in
     let instant_root_bytes =
-      Epoxy_tx.Utils.scalar_to_bytes @@ TxLogic.state_scalar state.instant
+      Epoxy_tx.Utils.scalar_to_bytes @@ TxLogic.state_scalar instant
     in
-    let optimistic_hash_bytes =
-      Context_hash.to_bytes @@ Tree.hash state.optimistic
-    in
+    let optimistic_hash_bytes = Context_hash.to_bytes @@ Tree.hash optimistic in
     Lwt.return
     @@ State_hash.hash_bytes [instant_root_bytes; optimistic_hash_bytes]
 
@@ -599,6 +645,15 @@ module Make (Context : P) : S = struct
   let get_tick = result_of ~default:Sc_rollup_tick_repr.initial Current_tick.get
 
   let get_status = result_of ~default:Waiting_for_input_message @@ Status.get
+
+  let get_outbox outbox_level state =
+    let open Lwt_syntax in
+    let+ entries = result_of ~default:[] Output.entries state in
+    List.filter_map
+      (fun (_, msg) ->
+        if Raw_level_repr.(msg.PS.outbox_level = outbox_level) then Some msg
+        else None)
+      entries
 
   let is_input_state_monadic =
     let open Monad.Syntax in
@@ -715,8 +770,10 @@ module Make (Context : P) : S = struct
     (* TODO: what to do when invalid *)
     (* TODO: where do we store the rollup address? *)
     let address = TxTypes.Dummy.tezos_zkru in
-    let instant, _, _ = TxLogic.preprocess_operation state.instant tx address in
-    {state with instant}
+    let optimistic, _ = Context.tree_of_state state in
+    let instant = Context.instant_of_state state in
+    let instant, _, _ = TxLogic.preprocess_operation instant tx address in
+    Context.full_state (instant, optimistic)
 
   let lift : (state -> state) -> unit t = fun f s -> Lwt.return (f s, Some ())
 
@@ -798,6 +855,17 @@ module Protocol_implementation = Make (struct
   end
 
   type tree = Context.tree
+
+  type state = {optimistic : tree; instant : Epoxy_tx.Types.P.state option}
+
+  let instant_of_state {instant; _} = Stdlib.Option.get instant
+
+  let full_state (instant, optimistic) = {optimistic; instant = Some instant}
+
+  let tree_of_state {optimistic; instant} =
+    (optimistic, fun optimistic -> {optimistic; instant})
+
+  let tree_only optimistic = {optimistic; instant = None}
 
   let hash_tree t = State_hash.context_hash_to_state_hash (Tree.hash t)
 

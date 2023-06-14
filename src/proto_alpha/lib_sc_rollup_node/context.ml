@@ -155,6 +155,10 @@ struct
 
   let tree_only optimistic = {optimistic; instant = None}
 
+  let instant_of_state {instant; _} = Stdlib.Option.get instant
+
+  let full_state (instant, optimistic) = {optimistic; instant = Some instant}
+
   type proof = IStoreProof.Proof.tree IStoreProof.Proof.t
 
   let hash_tree tree = Hash.of_context_hash (Tree.hash tree)

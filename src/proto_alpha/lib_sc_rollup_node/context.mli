@@ -123,6 +123,10 @@ end) : sig
 
   val tree_only : tree -> state
 
+  val instant_of_state : state -> Epoxy_tx.Types.P.state
+
+  val full_state : Epoxy_tx.Types.P.state * tree -> state
+
   (** See {!Sc_rollup_PVM_sem.proof} *)
   type proof
 
