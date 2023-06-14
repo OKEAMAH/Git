@@ -130,6 +130,9 @@ let create ~comm_socket_path (config : Config_file.t) node_version events_config
         config;
         rpc_comm_socket_path = comm_socket_path;
         node_version;
+        genesis = config.blockchain_network.genesis;
+        history_mode = config.shell.history_mode;
+        data_dir = config.data_dir;
       };
   }
 

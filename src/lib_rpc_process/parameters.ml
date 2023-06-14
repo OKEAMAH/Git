@@ -27,18 +27,52 @@ type t = {
   config : Config_file.t;
   rpc_comm_socket_path : string;
   internal_events : Tezos_base.Internal_event_config.t;
+  genesis : Genesis.t;
+  history_mode : Tezos_shell_services.History_mode.t option;
+  data_dir : string;
   node_version : Tezos_version.Node_version.t;
 }
 
 let parameters_encoding =
   let open Data_encoding in
   conv
-    (fun {config; rpc_comm_socket_path; internal_events; node_version} ->
-      (config, rpc_comm_socket_path, internal_events, node_version))
-    (fun (config, rpc_comm_socket_path, internal_events, node_version) ->
-      {config; rpc_comm_socket_path; internal_events; node_version})
-    (obj4
+    (fun {
+           config;
+           rpc_comm_socket_path;
+           internal_events;
+           genesis;
+           history_mode;
+           data_dir;
+           node_version;
+         } ->
+      ( config,
+        rpc_comm_socket_path,
+        internal_events,
+        genesis,
+        history_mode,
+        data_dir,
+        node_version ))
+    (fun ( config,
+           rpc_comm_socket_path,
+           internal_events,
+           genesis,
+           history_mode,
+           data_dir,
+           node_version ) ->
+      {
+        config;
+        rpc_comm_socket_path;
+        internal_events;
+        genesis;
+        history_mode;
+        data_dir;
+        node_version;
+      })
+    (obj7
        (req "config" Config_file.encoding)
        (req "rpc_comm_socket_path" Data_encoding.string)
        (req "internal_events" Tezos_base.Internal_event_config.encoding)
+       (req "genesis" Genesis.encoding)
+       (opt "history_mode" Tezos_shell_services.History_mode.encoding)
+       (req "data_dir" Data_encoding.string)
        (req "node_version" Tezos_version.Node_version.encoding))
