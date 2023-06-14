@@ -238,6 +238,23 @@ let start_context_split =
     ~pp1:pp_int32
     ("level", Data_encoding.int32)
 
+let start_store_sync =
+  declare_0
+    ~section
+    ~level:Info
+    ~name:"start_store_sync"
+    ~msg:"starting store sync"
+    ()
+
+let end_store_sync =
+  declare_1
+    ~section
+    ~level:Info
+    ~name:"end_store_sync"
+    ~msg:"store was successfully sync in {time}"
+    ~pp1:Time.System.Span.pp_hum
+    ("time", Time.System.Span.encoding)
+
 let context_gc_is_not_allowed =
   declare_0
     ~section
