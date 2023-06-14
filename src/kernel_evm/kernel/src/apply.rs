@@ -18,7 +18,7 @@ use tezos_ethereum::transaction::TransactionHash;
 use tezos_smart_rollup_debug::Runtime;
 
 use crate::error::{Error, TransferError};
-use crate::inbox::Transaction;
+use crate::inbox::{Transaction, TransactionContent};
 
 pub trait ApplyTransaction {
     fn caller(&self) -> Result<H160, Error>;
@@ -51,11 +51,38 @@ pub trait ApplyTransaction {
     fn s(&self) -> H256;
 }
 
+fn check_nonce_of_caller<Host: Runtime>(
+    caller: H160,
+    host: &mut Host,
+    evm_account_storage: &mut EthereumAccountStorage,
+    given_nonce: U256,
+) -> bool {
+    let nonce = |caller| -> Option<U256> {
+        let caller_account_path =
+            evm_execution::account_storage::account_path(&caller).ok()?;
+        let caller_account = evm_account_storage.get(host, &caller_account_path).ok()?;
+        match caller_account {
+            Some(account) => account.nonce(host).ok(),
+            None => Some(U256::zero()),
+        }
+    };
+    match nonce(caller) {
+        None => false,
+        Some(expected_nonce) => given_nonce == expected_nonce,
+    }
+}
+
 impl ApplyTransaction for Transaction {
     fn caller(&self) -> Result<H160, Error> {
-        self.tx
-            .caller()
-            .map_err(|_| Error::Transfer(TransferError::InvalidCallerAddress))
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction
+                .caller()
+                .map_err(|_| Error::Transfer(TransferError::InvalidCallerAddress)),
+            TransactionContent::Deposit { .. } => {
+                // TODO: Est-ce que H160::zero() ou bien une adresse infiniment remplie?"
+                Ok(H160::zero())
+            }
+        }
     }
 
     fn check_nonce<Host: Runtime>(
@@ -64,60 +91,94 @@ impl ApplyTransaction for Transaction {
         host: &mut Host,
         evm_account_storage: &mut EthereumAccountStorage,
     ) -> bool {
-        let nonce = |caller| -> Option<U256> {
-            let caller_account_path =
-                evm_execution::account_storage::account_path(&caller).ok()?;
-            let caller_account =
-                evm_account_storage.get(host, &caller_account_path).ok()?;
-            match caller_account {
-                Some(account) => account.nonce(host).ok(),
-                None => Some(U256::zero()),
-            }
-        };
-        match nonce(caller) {
-            None => false,
-            Some(expected_nonce) => self.tx.nonce == expected_nonce,
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => check_nonce_of_caller(
+                caller,
+                host,
+                evm_account_storage,
+                transaction.nonce,
+            ),
+            TransactionContent::Deposit { .. } => true,
         }
     }
 
     fn chain_id(&self) -> U256 {
-        self.tx.chain_id
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.chain_id,
+            TransactionContent::Deposit { .. } => crate::CHAIN_ID.into(),
+        }
     }
 
     fn to(&self) -> Option<H160> {
-        self.tx.to
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.to,
+            TransactionContent::Deposit { receiver, .. } => Some(*receiver),
+        }
     }
 
     fn data(&self) -> Vec<u8> {
-        self.tx.data.clone()
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.data.clone(),
+            TransactionContent::Deposit { .. } => vec![],
+        }
     }
 
     fn gas_limit(&self) -> u64 {
-        self.tx.gas_limit
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.gas_limit,
+            TransactionContent::Deposit { .. } => {
+                // TODO: le gas limit est constant, peut être juste mettre None
+                21_000u64
+            }
+        }
     }
 
     fn gas_price(&self) -> U256 {
-        self.tx.gas_price
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.gas_price,
+            TransactionContent::Deposit { .. } => {
+                // TODO: what should we put?
+                U256::zero()
+            }
+        }
     }
 
     fn value(&self) -> U256 {
-        self.tx.value
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.value,
+            TransactionContent::Deposit { amount, .. } => *amount,
+        }
     }
 
     fn nonce(&self) -> U256 {
-        self.tx.nonce
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.nonce,
+            TransactionContent::Deposit { .. } => {
+                // todo: depends if we have a minter address?
+                U256::zero()
+            }
+        }
     }
 
     fn v(&self) -> U256 {
-        self.tx.v
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.v,
+            TransactionContent::Deposit { .. } => U256::zero(),
+        }
     }
 
     fn r(&self) -> H256 {
-        self.tx.r
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.r,
+            TransactionContent::Deposit { .. } => H256::zero(),
+        }
     }
 
     fn s(&self) -> H256 {
-        self.tx.s
+        match &self.content {
+            TransactionContent::Ethereum(transaction) => transaction.s,
+            TransactionContent::Deposit { .. } => H256::zero(),
+        }
     }
 }
 
