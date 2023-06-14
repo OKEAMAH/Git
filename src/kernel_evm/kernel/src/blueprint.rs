@@ -43,7 +43,7 @@ fn filter_invalid_chain_id(
 ) -> Vec<Transaction> {
     transactions
         .into_iter()
-        .filter(|transaction| U256::eq(&transaction.tx.chain_id(), &chain_id))
+        .filter(|transaction| U256::eq(&transaction.content.chain_id(), &chain_id))
         .collect()
 }
 
@@ -64,6 +64,7 @@ pub fn fetch<Host: Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::inbox::TransactionContent::Ethereum;
     use primitive_types::{H160, H256, U256};
     use tezos_ethereum::{
         signatures::EthereumTransactionCommon, transaction::TRANSACTION_HASH_SIZE,
@@ -93,14 +94,14 @@ mod tests {
 
         let valid_transaction = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
-            tx: tx.clone(),
+            content: Ethereum(tx.clone()),
         };
         let invalid_transaction = Transaction {
             tx_hash: [1; TRANSACTION_HASH_SIZE],
-            tx: EthereumTransactionCommon {
+            content: Ethereum(EthereumTransactionCommon {
                 chain_id: U256::from(1312321),
                 ..tx
-            },
+            }),
         };
 
         let filtered_transactions = filter_invalid_chain_id(

@@ -193,7 +193,7 @@ mod tests {
     use super::*;
     use crate::blueprint::Blueprint;
     use crate::genesis;
-    use crate::inbox::Transaction;
+    use crate::inbox::{Transaction, TransactionContent::Ethereum};
     use crate::storage::internal_for_tests::{
         read_transaction_receipt, read_transaction_receipt_status,
     };
@@ -341,11 +341,11 @@ mod tests {
         let transactions = vec![
             Transaction {
                 tx_hash: tx_hash_0,
-                tx: dummy_eth_transaction_zero(),
+                content: Ethereum(dummy_eth_transaction_zero()),
             },
             Transaction {
                 tx_hash: tx_hash_1,
-                tx: dummy_eth_transaction_one(),
+                content: Ethereum(dummy_eth_transaction_one()),
             },
         ];
 
@@ -384,7 +384,7 @@ mod tests {
 
         let invalid_tx = Transaction {
             tx_hash,
-            tx: dummy_eth_transaction_zero(),
+            content: Ethereum(dummy_eth_transaction_zero()),
         };
 
         let transactions: Vec<Transaction> = vec![invalid_tx];
@@ -410,7 +410,7 @@ mod tests {
 
         let valid_tx = Transaction {
             tx_hash,
-            tx: dummy_eth_transaction_zero(),
+            content: Ethereum(dummy_eth_transaction_zero()),
         };
 
         let transactions: Vec<Transaction> = vec![valid_tx];
@@ -449,7 +449,7 @@ mod tests {
         );
         let valid_tx = Transaction {
             tx_hash,
-            tx: dummy_eth_transaction_deploy(),
+            content: Ethereum(dummy_eth_transaction_deploy()),
         };
 
         let transactions: Vec<Transaction> = vec![valid_tx];
@@ -509,12 +509,12 @@ mod tests {
 
         let transaction_0 = vec![Transaction {
             tx_hash: tx_hash_0,
-            tx: dummy_eth_transaction_zero(),
+            content: Ethereum(dummy_eth_transaction_zero()),
         }];
 
         let transaction_1 = vec![Transaction {
             tx_hash: tx_hash_1,
-            tx: dummy_eth_transaction_one(),
+            content: Ethereum(dummy_eth_transaction_one()),
         }];
 
         let queue = Queue {
@@ -561,11 +561,11 @@ mod tests {
         let transactions = vec![
             Transaction {
                 tx_hash: tx_hash_0,
-                tx: dummy_eth_transaction_zero(),
+                content: Ethereum(dummy_eth_transaction_zero()),
             },
             Transaction {
                 tx_hash: tx_hash_1,
-                tx: dummy_eth_transaction_one(),
+                content: Ethereum(dummy_eth_transaction_one()),
             },
         ];
 
@@ -632,7 +632,7 @@ mod tests {
 
         let tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
-            tx: dummy_eth_transaction_zero(),
+            content: Ethereum(dummy_eth_transaction_zero()),
         };
 
         let transactions = vec![tx.clone(), tx];
