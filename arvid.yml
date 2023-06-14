@@ -1,0 +1,5 @@
+---
+
+arvid:
+  script:
+    - 'echo "I am Arvid! (GITLAB_USER_LOGIN: $GITLAB_USER_LOGIN)"'

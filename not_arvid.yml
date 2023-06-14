@@ -1,0 +1,5 @@
+---
+
+not_arvid:
+  script:
+    - 'echo "I am not Arvid! (GITLAB_USER_LOGIN: $GITLAB_USER_LOGIN)"'
