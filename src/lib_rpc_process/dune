@@ -10,12 +10,15 @@
   tezos-shell
   octez-libs.tezos-base.unix
   octez-node-config
+  tezos-protocol-updater
   octez-libs.tezos-rpc-http
   octez-libs.tezos-rpc-http-server
   octez-libs.tezos-rpc-http-client-unix
   octez-libs.tezos-rpc-http-client
   octez-libs.tezos-shell-services
+  octez-libs.tezos-stdlib-unix
   tezos-store
+  tezos-store.shared
   lwt.unix
   lwt-exit
   prometheus-app)
@@ -26,8 +29,11 @@
   -open Tezos_shell
   -open Tezos_base_unix
   -open Octez_node_config
+  -open Tezos_protocol_updater
   -open Tezos_rpc_http
   -open Tezos_rpc_http_server
   -open Tezos_rpc_http_client_unix
   -open Tezos_rpc_http_client
-  -open Tezos_store))
+  -open Tezos_stdlib_unix
+  -open Tezos_store
+  -open Tezos_store_shared))
