@@ -1100,6 +1100,43 @@ let test_preinitialized_evm_kernel =
       (sf "Expected to read %%L as dictator key, but found %%R instead") ;
   unit
 
+let test_deposit_fa12 =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "deposit"]
+    ~title:"Deposit FA1.2 token"
+  @@ fun protocol ->
+  let* {client; sc_rollup_address; bridge_address; _} =
+    setup_evm_kernel ~deposit_admin:(Some Constant.bootstrap5) protocol
+  in
+  let bridge_address =
+    match bridge_address with
+    | Some bridge -> bridge
+    | None -> Test.fail ~__LOC__ "The test needs the L1 bridge"
+  in
+
+  (* Asserts that L1 bridge targets the EVM rollup. *)
+  let* bridge_evm_storage =
+    RPC.Client.call client
+    @@ RPC.get_chain_block_context_contract_storage ~id:bridge_address ()
+  in
+  let bridge_evm_rollup =
+    match JSON.encode bridge_evm_storage =~* rex "\"(sr1.+)\"" with
+    | Some rollup -> rollup
+    | None ->
+        Test.fail ~__LOC__ "EVM rollup address not found in bridge contract"
+  in
+  Check.((sc_rollup_address = bridge_evm_rollup) string)
+    ~error_msg:
+      (sf
+         "The bridge does not target the expected EVM rollup, found %%R \
+          expected %%L") ;
+
+  (* Deposit tokens to the EVM rollup. *)
+
+  (* Check the balance in the EVM rollup. *)
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -1120,6 +1157,7 @@ let register_evm_proxy_server ~protocols =
   test_l2_deploy_simple_storage protocols ;
   test_l2_call_simple_storage protocols ;
   test_l2_deploy_erc20 protocols ;
-  test_preinitialized_evm_kernel protocols
+  test_preinitialized_evm_kernel protocols ;
+  test_deposit_fa12 protocols
 
 let register ~protocols = register_evm_proxy_server ~protocols
