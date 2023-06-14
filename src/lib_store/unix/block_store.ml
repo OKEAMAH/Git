@@ -102,6 +102,7 @@ type block_store = {
   merge_scheduler : Lwt_idle_waiter.t;
   (* Target level x Merging thread *)
   mutable merging_thread : (int32 * unit tzresult Lwt.t) option;
+  lockfile : Lwt_unix.file_descr;
 }
 
 type t = block_store
@@ -1241,6 +1242,21 @@ let instanciate_temporary_floating_store block_store =
          block_store.rw_floating_block_store <- new_rw_store ;
          return (ro_store, rw_store, new_rw_store)))
 
+let create_lockfile chain_dir =
+  let open Lwt_syntax in
+  protect (fun () ->
+      let* fd =
+        Lwt_unix.openfile
+          (Naming.block_store_lockfile chain_dir |> Naming.file_path)
+          [Unix.O_CREAT; O_RDWR; O_CLOEXEC; O_SYNC]
+          0o777
+      in
+      return_ok fd)
+
+let lock lockfile = Lwt_unix.lockf lockfile Unix.F_LOCK 0
+
+let unlock lockfile = Lwt_unix.lockf lockfile Unix.F_ULOCK 0
+
 let create_merging_thread block_store ~history_mode ~old_ro_store ~old_rw_store
     ~new_head ~new_head_lafl ~lowest_bound_to_preserve_in_floating
     ~cementing_highwatermark =
@@ -1413,7 +1429,13 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
         Lwt_idle_waiter.force_idle block_store.merge_scheduler (fun () ->
             (* Move the rw in the ro stores and create a new tmp *)
             let* old_ro_store, old_rw_store, _new_rw_store =
-              instanciate_temporary_floating_store block_store
+              Lwt.finalize
+                (fun () ->
+                  (* Lock the block store to avoid RO instances to open the
+                     state while the file descriptors are being updated. *)
+                  let*! () = lock block_store.lockfile in
+                  instanciate_temporary_floating_store block_store)
+                (fun () -> unlock block_store.lockfile)
             in
             (* Important: do not clean-up the temporary stores on
                failures as they will delete the recently arrived
@@ -1448,18 +1470,30 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
                         let* () =
                           Lwt_idle_waiter.force_idle
                             block_store.merge_scheduler
+                            (* Lock the block store to avoid RO instances to open the
+                               state while the file descriptors are being updated. *)
                             (fun () ->
-                              (* Critical section: update on-disk values *)
-                              let* () =
-                                move_all_floating_stores
-                                  block_store
-                                  ~new_ro_store
-                              in
-                              let* () = write_caboose block_store new_caboose in
-                              let* () =
-                                write_savepoint block_store new_savepoint
-                              in
-                              return_unit)
+                              Lwt.finalize
+                                (fun () ->
+                                  (* Lock the block store to avoid RO
+                                     instances to open the state while
+                                     the file descriptors are being
+                                     updated. *)
+                                  let*! () = lock block_store.lockfile in
+                                  (* Critical section: update on-disk values *)
+                                  let* () =
+                                    move_all_floating_stores
+                                      block_store
+                                      ~new_ro_store
+                                  in
+                                  let* () =
+                                    write_caboose block_store new_caboose
+                                  in
+                                  let* () =
+                                    write_savepoint block_store new_savepoint
+                                  in
+                                  return_unit)
+                                (fun () -> unlock block_store.lockfile))
                         in
                         (* Don't call the finalizer in the critical
                            section, in case it needs to access the block
@@ -1639,6 +1673,7 @@ let load ?block_cache_limit chain_dir ~genesis_block ~readonly =
   in
   let merge_scheduler = Lwt_idle_waiter.create () in
   let merge_mutex = Lwt_mutex.create () in
+  let* lockfile = create_lockfile chain_dir in
   let block_store =
     {
       chain_dir;
@@ -1656,14 +1691,103 @@ let load ?block_cache_limit chain_dir ~genesis_block ~readonly =
       merge_mutex;
       merge_scheduler;
       merging_thread = None;
+      lockfile;
     }
   in
   let* () =
     if not readonly then may_recover_merge block_store else return_unit
   in
-  let*! status = Stored_data.get (Status.get_status status_data) in
+  let*! status = Stored_data.get (Status.get_status block_store.status_data) in
   let* () = fail_unless (Status.is_idle status) Cannot_load_degraded_store in
   return block_store
+
+let sync ?last_status block_store =
+  let open Lwt_result_syntax in
+  let last_status = Option.value last_status ~default:Status.mk_idle_status in
+  let chain_dir = block_store.chain_dir in
+  let readonly = true in
+  let* stored_status =
+    Stored_data.load (Naming.block_store_status_file chain_dir)
+  in
+  let*! current_status = Stored_data.get stored_status in
+  (* Prepare resources cleaners for former resources. *)
+  let cleanups =
+    let ros = block_store.ro_floating_block_stores in
+    let rw = block_store.rw_floating_block_store in
+    fun () -> List.iter_s Floating_block_store.close (rw :: ros)
+  in
+  let no_cleanup () = Lwt.return_unit in
+  let* block_store, cleanups =
+    Lwt.finalize
+      (fun () ->
+        let*! () = lock block_store.lockfile in
+        match (last_status, current_status) with
+        | Idle x, Idle y when x = y -> return (block_store, no_cleanup)
+        | Merging x, Merging y when x = y -> return (block_store, no_cleanup)
+        | Idle _, Idle _ | Merging _, Idle _ ->
+            let*! ro_floating_block_store =
+              Floating_block_store.init chain_dir ~readonly RO
+            in
+            let ro_floating_block_stores = [ro_floating_block_store] in
+            let*! rw_floating_block_store =
+              Floating_block_store.init chain_dir ~readonly RW
+            in
+            let* savepoint =
+              Stored_data.load (Naming.savepoint_file chain_dir)
+            in
+            let* caboose = Stored_data.load (Naming.caboose_file chain_dir) in
+            let* status_data =
+              Stored_data.load (Naming.block_store_status_file chain_dir)
+            in
+            let status_data =
+              (status_data, Status.get_state block_store.status_data)
+            in
+            return
+              ( {
+                  block_store with
+                  ro_floating_block_stores;
+                  rw_floating_block_store;
+                  savepoint;
+                  caboose;
+                  status_data;
+                },
+                cleanups )
+        | Idle _, Merging _ | Merging _, Merging _ ->
+            let*! ro_floating_block_store =
+              Floating_block_store.init chain_dir ~readonly RO
+            in
+            let*! rw_floating_block_store =
+              Floating_block_store.init chain_dir ~readonly RW
+            in
+            let ro_floating_block_stores =
+              [ro_floating_block_store; rw_floating_block_store]
+            in
+            let*! rw_floating_block_store =
+              Floating_block_store.init chain_dir ~readonly RW_TMP
+            in
+            let* savepoint =
+              Stored_data.load (Naming.savepoint_file chain_dir)
+            in
+            let* caboose = Stored_data.load (Naming.caboose_file chain_dir) in
+            let* status_data =
+              Stored_data.load (Naming.block_store_status_file chain_dir)
+            in
+            let status_data =
+              (status_data, Status.get_state block_store.status_data)
+            in
+            return
+              ( {
+                  block_store with
+                  ro_floating_block_stores;
+                  rw_floating_block_store;
+                  savepoint;
+                  caboose;
+                  status_data;
+                },
+                cleanups ))
+      (fun () -> unlock block_store.lockfile)
+  in
+  return (block_store, current_status, cleanups)
 
 let create ?block_cache_limit chain_dir ~genesis_block =
   let open Lwt_result_syntax in
