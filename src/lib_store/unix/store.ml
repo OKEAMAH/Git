@@ -212,7 +212,7 @@ let create_lockfile chain_dir =
         Lwt_unix.openfile
           (Naming.lockfile chain_dir |> Naming.file_path)
           [Unix.O_CREAT; O_RDWR; O_CLOEXEC; O_SYNC]
-          0o644
+          0o777
       in
       return_ok fd)
 
@@ -2597,6 +2597,31 @@ let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
   Store_metrics.set_invalid_blocks_collector invalid_blocks_collector ;
   let*! () = Store_events.(emit end_init_store) () in
   return store
+
+let sync ?last_status (store : store) =
+  let open Lwt_result_syntax in
+  let*! () = Store_events.(emit start_store_sync) () in
+  let sync_start = Time.System.now () in
+  let main_chain_store = main_chain_store store in
+  let* new_block_store, current_status, cleanups =
+    Block_store.sync ?last_status main_chain_store.block_store
+  in
+  let store_dir = store.store_dir in
+  let chain_id = Chain_id.of_block_hash (genesis main_chain_store).block in
+  let chain_dir = Naming.chain_dir store_dir chain_id in
+  let* new_chain_state = Chain.load_chain_state chain_dir new_block_store in
+  let new_main_chain_store =
+    {
+      main_chain_store with
+      block_store = new_block_store;
+      chain_state = Shared.create new_chain_state;
+    }
+  in
+  store.main_chain_store <- Some new_main_chain_store ;
+  let sync_end = Time.System.now () in
+  let sync_time = Ptime.diff sync_end sync_start in
+  let*! () = Store_events.(emit end_store_sync) sync_time in
+  return (store, current_status, cleanups)
 
 let close_store global_store =
   let open Lwt_syntax in
