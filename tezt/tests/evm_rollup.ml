@@ -342,21 +342,8 @@ let test_evm_proxy_server_connection =
     ~tags:["evm"]
     ~title:"EVM proxy server connection"
   @@ fun protocol ->
-  let* tezos_node, tezos_client = setup_l1 protocol in
-  let* sc_rollup =
-    originate_sc_rollup
-      ~kind:"wasm_2_0_0"
-      ~parameters_ty:"string"
-      ~src:Constant.bootstrap1.alias
-      tezos_client
-  in
-  let sc_rollup_node =
-    Sc_rollup_node.create
-      ~protocol
-      Observer
-      tezos_node
-      ~base_dir:(Client.base_dir tezos_client)
-      ~default_operator:Constant.bootstrap1.alias
+  let* {sc_rollup_address = sc_rollup; sc_rollup_node; _} =
+    setup_evm_kernel ~deposit_admin:None protocol
   in
   let evm_proxy = Evm_proxy_server.create sc_rollup_node in
   (* Tries to start the EVM proxy server without a listening rollup node. *)
