@@ -31,7 +31,6 @@ module Make
     (*     end) = *) =
 struct
   module Curve = Mec.Curve.Curve25519.AffineEdwards
-  open Lang_core
 
   module P : sig
     type sk = Curve.Scalar.t
@@ -87,11 +86,6 @@ struct
     let neuterize sk =
       let _s, pk, _prefix = expand_keys sk in
       pk
-
-    let bls_scalar_to_curve_scalar s = Curve.Scalar.of_z (S.to_z s)
-
-    (* S.t and Curve.t are the same but Curve.t is abstract *)
-    let to_bls_scalar s = S.of_z (Curve.Base.to_z s)
 
     (* NOTE: H.direct returns a Bls12_381.Fr scalar *)
     (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
