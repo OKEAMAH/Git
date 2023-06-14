@@ -187,6 +187,46 @@ let setup_deposit_contracts ~admin client protocol =
   in
   let* () = Client.bake_for_and_wait client in
 
+  (* Allows to transfer the minted tokens. *)
+  let* () =
+    Client.from_fa1_2_contract_approve
+      ~burn_cap:Tez.one
+      ~contract:fa12_address
+      ~as_:admin.public_key_hash
+      ~amount:100000000
+      ~from:admin.public_key_hash
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+
+  let* () =
+    Client.from_fa1_2_contract_transfer
+      ~burn_cap:Tez.one
+      ~contract:fa12_address
+      ~amount:50
+      ~from:admin.public_key_hash
+      ~to_:Constant.bootstrap2.public_key_hash
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+
+  let* allowance =
+    Client.from_fa1_2_contract_get_allowance
+      ~contract:fa12_address
+      ~owner:admin.public_key_hash
+      ~operator:admin.public_key_hash
+      client
+  in
+  Log.info "admin.allowance: %d" allowance ;
+
+  let* balance =
+    Client.from_fa1_2_contract_get_balance
+      ~contract:fa12_address
+      ~from:admin.public_key_hash
+      client
+  in
+  Log.info "admin.balance: %d" balance ;
+
   (* Originates the bridge. *)
   let prg = Base.(project_root // "src/kernel_evm/l1_bridge/evm_bridge.tz") in
   let* bridge_address =
@@ -248,7 +288,7 @@ let setup_evm_kernel ?config
     originate_sc_rollup
       ~kind:pvm_kind
       ~boot_sector
-      ~parameters_ty:"pair string (ticket string)"
+      ~parameters_ty:"pair (pair bytes nat) nat"
       ~src:originator_key
       client
   in
@@ -1093,8 +1133,9 @@ let test_deposit_fa12 =
     ~tags:["evm"; "deposit"]
     ~title:"Deposit FA1.2 token"
   @@ fun protocol ->
-  let* {client; sc_rollup_address; bridge_address; _} =
-    setup_evm_kernel ~deposit_admin:(Some Constant.bootstrap5) protocol
+  let admin = Constant.bootstrap5 in
+  let* {client; sc_rollup_address; bridge_address; sc_rollup_node; node; _} =
+    setup_evm_kernel ~deposit_admin:(Some admin) protocol
   in
   let bridge_address =
     match bridge_address with
@@ -1120,6 +1161,17 @@ let test_deposit_fa12 =
           expected %%L") ;
 
   (* Deposit tokens to the EVM rollup. *)
+  let* () =
+    Client.transfer
+      ~entrypoint:"deposit"
+      ~arg:{|Pair (Pair 0x00 50) 1|}
+      ~amount:Tez.zero
+      ~giver:admin.public_key_hash
+      ~receiver:bridge_address
+      ~burn_cap:Tez.one
+      client
+  in
+  let* _ = next_evm_level ~sc_rollup_node ~node ~client in
 
   (* Check the balance in the EVM rollup. *)
   unit
