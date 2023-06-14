@@ -138,6 +138,8 @@ module type MOD_ARITH = functor (L : LIB) -> sig
 
   val scalars_of_mod_int : mod_int repr -> scalar list repr t
 
+  val bytes_of_mod_int : mod_int repr -> Bytes.bl repr t
+
   val constant : Z.t -> mod_int repr t
 
   val zero : mod_int repr t
@@ -560,6 +562,14 @@ functor
       >* ret ls
 
     let scalars_of_mod_int n = ret n
+
+    (* n is in a big-endian form = [n_k; ..; n_0] *)
+    let bytes_of_mod_int (n : mod_int repr) : Bytes.bl repr t =
+      let nb_bits = Z.log2 base in
+      let* sn = scalars_of_mod_int n in
+      let* bln = mapM (bits_of_scalar ~nb_bits) (of_list sn) in
+      let bln = List.map of_list bln in
+      ret @@ to_list (List.flatten bln)
 
     let constant n = mapM Num.constant @@ scalar_limbs_of_z n <$> to_list
 

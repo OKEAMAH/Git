@@ -43,9 +43,11 @@ module type AFFINE = functor (L : LIB) -> sig
 
   val unsafe_from_coordinates : nat_mod repr -> nat_mod repr -> point repr t
 
-  val get_u_coordinate : point repr -> nat_mod repr
+  val get_x_coordinate : point repr -> nat_mod repr
 
-  val get_v_coordinate : point repr -> nat_mod repr
+  val get_y_coordinate : point repr -> nat_mod repr
+
+  val bytes_of_point : ?compressed:bool -> point repr -> Bytes.bl repr t
 
   (** The identity element of the curve (0, 1). *)
   val id : point repr t
@@ -110,9 +112,17 @@ functor
     let unsafe_from_coordinates u v =
       with_label ~label:"Edwards25519.unsafe_from_coordinates" (pair u v |> ret)
 
-    let get_u_coordinate p = of_pair p |> fst
+    let get_x_coordinate p = of_pair p |> fst
 
-    let get_v_coordinate p = of_pair p |> snd
+    let get_y_coordinate p = of_pair p |> snd
+
+    let bytes_of_point ?(compressed = false) p =
+      ignore compressed ;
+      let px = get_x_coordinate p in
+      let py = get_y_coordinate p in
+      let* px_bytes = M.bytes_of_mod_int px in
+      let* py_bytes = M.bytes_of_mod_int py in
+      ret @@ Bytes.concat [|px_bytes; py_bytes|]
 
     let id =
       let* zero = M.zero in

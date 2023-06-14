@@ -24,13 +24,13 @@
 (*****************************************************************************)
 
 module Make
-    (Curve : Mec.CurveSig.AffineEdwardsT) (H : sig
-      module P : Hash_sig.P_HASH
+    (*     (Curve : Mec.CurveSig.AffineEdwardsT) (H : sig *)
+    (*       module P : Hash_sig.P_HASH *)
 
-      module V : Hash_sig.HASH
-    end) =
+    (*       module V : Hash_sig.HASH *)
+    (*     end) = *) =
 struct
-  module Curve = Curve
+  module Curve = Mec.Curve.Curve25519.AffineEdwards
   open Lang_core
 
   module P : sig
@@ -40,7 +40,7 @@ struct
 
     type signature = {r : Curve.t; s : bool list}
 
-    type msg = S.t
+    type msg = Bytes.t
 
     val neuterize : sk -> pk
 
@@ -54,7 +54,7 @@ struct
       unit ->
       bool
   end = struct
-    module H = H.P
+    module H = Hacl_star.Hacl.SHA2_512
 
     type sk = Curve.Scalar.t
 
@@ -62,26 +62,27 @@ struct
 
     type signature = {r : Curve.t; s : bool list}
 
-    type msg = S.t
+    type msg = Bytes.t
 
     (* Compute the expanded keys for the EdDSA signature *)
     let expand_keys sk =
       (* h = (h_0, h_1, .., h_{2b-1}) <- H (sk) *)
-      let h =
-        let sk = Curve.Scalar.to_z sk |> S.of_z in
-        H.direct ~input_length:1 [|sk|] |> S.to_bytes
-      in
+      let h = H.hash @@ Curve.Scalar.to_bytes sk in
       let b = Bytes.length h / 2 in
       let h_low = Bytes.sub h 0 b in
       let h_high = Bytes.sub h b b in
       (* Curve.cofactor = 2^c *)
       (* c <= n < b *)
-      (* TODO: compute s <- 2^n + \sum_i h_i * 2^i for c <= i < n *)
-      let s = Curve.Scalar.of_bytes_exn h_low in
+      (* s <- 2^n + \sum_i h_i * 2^i for c <= i < n *)
+      Bytes.set_uint8 h_low 0 (Int.logand (Bytes.get_uint8 h_low 0) 248) ;
+      Bytes.set_uint8
+        h_low
+        31
+        (Int.logor (Int.logand (Bytes.get_uint8 h_low 31) 127) 64) ;
       (* pk <- [s]G *)
+      let s = Curve.Scalar.of_bytes_exn h_low in
       let pk = Curve.mul Curve.one s in
-      let prefix = S.of_bytes_exn h_high in
-      (s, pk, prefix)
+      (s, pk, h_high)
 
     let neuterize sk =
       let _s, pk, _prefix = expand_keys sk in
@@ -96,17 +97,17 @@ struct
     (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
     let compute_h ?(compressed = false) msg pk r =
       ignore compressed ;
-      let r_u = Curve.get_u_coordinate r |> to_bls_scalar in
-      let r_v = Curve.get_v_coordinate r |> to_bls_scalar in
-      let pk_u = Curve.get_u_coordinate pk |> to_bls_scalar in
-      let pk_v = Curve.get_v_coordinate pk |> to_bls_scalar in
-      H.direct ~input_length:5 [|r_u; r_v; pk_u; pk_v; msg|]
-      |> bls_scalar_to_curve_scalar
+      let r_u = Curve.get_u_coordinate r |> Curve.Base.to_bytes in
+      let r_v = Curve.get_v_coordinate r |> Curve.Base.to_bytes in
+      let pk_u = Curve.get_u_coordinate pk |> Curve.Base.to_bytes in
+      let pk_v = Curve.get_v_coordinate pk |> Curve.Base.to_bytes in
+      H.hash (Bytes.concat Bytes.empty [r_u; r_v; pk_u; pk_v; msg])
+      |> Curve.Scalar.of_bytes_exn
 
     let sign ?(compressed = false) sk msg =
       let s, pk, prefix = expand_keys sk in
       (* r <- H (prefix || msg) *)
-      let r = H.direct [|prefix; msg|] |> bls_scalar_to_curve_scalar in
+      let r = H.hash (Bytes.cat prefix msg) |> Curve.Scalar.of_bytes_exn in
       (* R <- [r]G *)
       let sig_r = Curve.mul Curve.one r in
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
@@ -130,29 +131,28 @@ struct
   end
 
   open Lang_stdlib
-  open Gadget_edwards
 
   module V : functor (L : LIB) -> sig
     open L
-    open MakeAffine(Curve)(L)
+    open Gadget_edwards25519.MakeEdwards25519(L)
 
     (* TODO make abstract once compression is done with encodings *)
     type pk = point
 
     type signature = {r : point repr; s : bool list repr}
 
-    module Encoding : sig
-      open L.Encodings
+    (*     module Encoding : sig *)
+    (*       open L.Encodings *)
 
-      val pk_encoding : (Curve.t, pk repr, pk) encoding
+    (*       val pk_encoding : (Curve.t, pk repr, pk) encoding *)
 
-      val signature_encoding : (P.signature, signature, pk * bool list) encoding
-    end
+    (*             val signature_encoding : (P.signature, signature, pk * bool list) encoding *)
+    (*     end *)
 
     val verify :
       ?compressed:bool ->
       g:point repr ->
-      msg:scalar repr ->
+      msg:Bytes.bl repr ->
       pk:pk repr ->
       signature:signature ->
       unit ->
@@ -163,55 +163,50 @@ struct
     ->
     struct
       open L
-      include MakeAffine (Curve) (L)
-
-      open H.V (L)
+      include Gadget_edwards25519.MakeEdwards25519 (L)
+      module H = Gadget_sha2.SHA512 (L)
 
       type pk = point
 
       type signature = {r : point repr; s : bool list repr}
 
-      module Encoding = struct
-        open L.Encodings
+      (*       module Encoding = struct *)
+      (*         open L.Encodings *)
 
-        let point_encoding =
-          let curve_base_to_s c = Lang_core.S.of_z @@ Curve.Base.to_z c in
-          let curve_base_of_s c = Curve.Base.of_z @@ Lang_core.S.to_z c in
-          with_implicit_bool_check is_on_curve
-          @@ conv
-               (fun r -> of_pair r)
-               (fun (u, v) -> pair u v)
-               (fun c ->
-                 ( curve_base_to_s @@ Curve.get_u_coordinate c,
-                   curve_base_to_s @@ Curve.get_v_coordinate c ))
-               (fun (u, v) ->
-                 Curve.from_coordinates_exn
-                   ~u:(curve_base_of_s u)
-                   ~v:(curve_base_of_s v))
-               (obj2_encoding scalar_encoding scalar_encoding)
+      (*         let point_encoding = *)
+      (*           let curve_base_to_s c = Lang_core.S.of_z @@ Curve.Base.to_z c in *)
+      (*           let curve_base_of_s c = Curve.Base.of_z @@ Lang_core.S.to_z c in *)
+      (*           with_implicit_bool_check is_on_curve *)
+      (*           @@ conv *)
+      (*                (fun r -> of_pair r) *)
+      (*                (fun (u, v) -> pair u v) *)
+      (*                (fun c -> *)
+      (*                  ( curve_base_to_s @@ Curve.get_u_coordinate c, *)
+      (*                    curve_base_to_s @@ Curve.get_v_coordinate c )) *)
+      (*                (fun (u, v) -> *)
+      (*                  Curve.from_coordinates_exn *)
+      (*                    ~u:(curve_base_of_s u) *)
+      (*                    ~v:(curve_base_of_s v)) *)
+      (*                (obj2_encoding scalar_encoding scalar_encoding) *)
 
-        let pk_encoding = point_encoding
+      (*         let pk_encoding = point_encoding *)
 
-        let signature_encoding =
-          conv
-            (fun {r; s} -> (r, s))
-            (fun (r, s) -> {r; s})
-            (fun ({r; s} : P.signature) -> (r, s))
-            (fun (r, s) -> {r; s})
-            (obj2_encoding point_encoding (atomic_list_encoding bool_encoding))
-      end
+      (*                 let signature_encoding = *)
+      (*                   conv *)
+      (*                     (fun {r; s} -> (r, s)) *)
+      (*                     (fun (r, s) -> {r; s}) *)
+      (*                     (fun ({r; s} : P.signature) -> (r, s)) *)
+      (*                     (fun (r, s) -> {r; s}) *)
+      (*                     (obj2_encoding point_encoding (atomic_list_encoding bool_encoding)) *)
+      (*       end *)
 
       (* NOTE: digest returns a Bls12_381.Fr scalar *)
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-      let compute_h ?(compressed = false) msg pk r : scalar repr t =
-        ignore compressed ;
+      let compute_h ?(compressed = false) msg pk r =
         with_label ~label:"EdDSA.compute_h"
-        @@
-        let r_x = get_x_coordinate r in
-        let r_y = get_y_coordinate r in
-        let pk_x = get_x_coordinate pk in
-        let pk_y = get_y_coordinate pk in
-        digest ~input_length:5 @@ to_list [r_x; r_y; pk_x; pk_y; msg]
+        @@ let* r_bytes = bytes_of_point ~compressed r in
+           let* pk_bytes = bytes_of_point ~compressed pk in
+           H.digest (Bytes.concat [|r_bytes; pk_bytes; msg|])
 
       (* TODO: now msg is just one scalar, it will probably be a list of scalars *)
       (* assert s < Curve.Scalar.order *)
@@ -224,7 +219,6 @@ struct
         (* h <- H (compressed (R) || compressed (pk) || msg ) *)
         let* h = compute_h ~compressed msg pk r in
         (* NOTE: we do not reduce a result of compute_h modulo Curve.Scalar.order *)
-        let* h = bits_of_scalar ~nb_bits:(Z.numbits S.order) h in
         with_label ~label:"EdDSA.scalar_mul"
         (* It would be better to compute R = sg - h Pk using multiexp *)
         (* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
