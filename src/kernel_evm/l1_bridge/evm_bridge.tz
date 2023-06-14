@@ -14,8 +14,10 @@
                  DUP 7 ;
                  CAR ;
                  CDR ;
-                 CONTRACT %transfer (pair (pair (address %from) (address %to_)) (nat %value)) ;
-                 IF_NONE { PUSH string "option is None" ; FAILWITH } {} ;
+                 CONTRACT %transfer (pair (address %from) (address %to) (nat %value)) ;
+                 IF_NONE
+                   { PUSH string "Failed to find the entrypoint %transfer" ; FAILWITH }
+                   {} ;
                  DIG 7 ;
                  CDR ;
                  IF_NONE
@@ -30,8 +32,7 @@
                  DIG 2 ;
                  DIG 4 ;
                  DIG 5 ;
-                 PAIR ;
-                 PAIR ;
+                 PAIR 3 ;
                  TRANSFER_TOKENS ;
                  SWAP ;
                  PUSH mutez 0 ;

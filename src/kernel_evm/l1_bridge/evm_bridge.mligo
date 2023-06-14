@@ -18,28 +18,36 @@ type rollup_type = (bytes * nat * nat)
 // Entrypoint return type.
 type return = operation list * storage
 
+type fa12_transfer_params = [@layout:comb] {
+    [@annot:from] from_: address;
+    [@annot:to] to_: address;
+    value: nat;
+}
 
 // Deposit transfers CTEZ from the contract to the L1 bridge. Transfer
 // the triplet (evm_address * nat * nat) to the EVM rollup.
 let deposit evm_address (amount : nat) (max_amount_for_gas : nat) (store : storage) : operation list =
   // Sender
-  let from = Tezos.get_sender () in
+  let from_ = Tezos.get_sender () in
+  let _ = failwith from_ in
   // L1 bridge
   let self_address = Tezos.get_self_address () in
   // CTEZ transfer entrypoint
-  let ctez_transfer =
-    Option.unopt (Tezos.get_entrypoint_opt "%transfer" store.ctez_contract)
+  let ctez_transfer : fa12_transfer_params contract =
+    match Tezos.get_entrypoint_opt "%transfer" store.ctez_contract with
+    | Some entrypoint -> entrypoint
+    | None -> failwith "Failed to find the entrypoint %transfer"
   in
   // EVM rollup
   let evm_rollup : rollup_type contract =
     match store.rollup with
-    | Some rollup -> Option.unopt (Tezos.get_contract_opt rollup)
+    | Some rollup -> Option.unopt ((Tezos.get_contract_opt rollup) : rollup_type contract option)
     | None -> failwith "The EVM rollup was not set"
   in
   // Transfer CTEZ to L1 bridge
   let transfer_ctez =
     let value = amount + max_amount_for_gas in
-    let params = { from; to_ = self_address; value } in
+    let params = { from_; to_ = self_address; value } in
     Tezos.transaction params 0mutez ctez_transfer
   in
   // Create deposit transfer
