@@ -33,7 +33,8 @@ struct
   module Curve = Mec.Curve.Curve25519.AffineEdwards
 
   module P : sig
-    type sk = Curve.Scalar.t
+    (* TODO?: assert |sk| = 32 bytes *)
+    type sk = Bytes.t
 
     type pk = Curve.t
 
@@ -55,7 +56,7 @@ struct
   end = struct
     module H = Hacl_star.Hacl.SHA2_512
 
-    type sk = Curve.Scalar.t
+    type sk = Bytes.t
 
     type pk = Curve.t
 
@@ -66,7 +67,7 @@ struct
     (* Compute the expanded keys for the EdDSA signature *)
     let expand_keys sk =
       (* h = (h_0, h_1, .., h_{2b-1}) <- H (sk) *)
-      let h = H.hash @@ Curve.Scalar.to_bytes sk in
+      let h = H.hash @@ sk in
       let b = Bytes.length h / 2 in
       let h_low = Bytes.sub h 0 b in
       let h_high = Bytes.sub h b b in
@@ -87,15 +88,25 @@ struct
       let _s, pk, _prefix = expand_keys sk in
       pk
 
+    (* BSeq.nat_to_bytes_le 32 (pow2 255 * (x % 2) + y) *)
+    let point_compress ?(compressed = false) (p : Curve.t) : Bytes.t =
+      if compressed then
+        let px = Curve.get_u_coordinate p |> Curve.Base.to_z in
+        let px_sign = Z.(px mod of_int 2) in
+        let py = Curve.get_v_coordinate p |> Curve.Base.to_z in
+        let res = Z.(((one lsl 255) * px_sign) + py) in
+        Bytes.of_string @@ Z.to_bits res
+      else
+        let px = Curve.get_u_coordinate p |> Curve.Base.to_bytes in
+        let py = Curve.get_v_coordinate p |> Curve.Base.to_bytes in
+        Bytes.cat px py
+
     (* NOTE: H.direct returns a Bls12_381.Fr scalar *)
     (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
     let compute_h ?(compressed = false) msg pk r =
-      ignore compressed ;
-      let r_u = Curve.get_u_coordinate r |> Curve.Base.to_bytes in
-      let r_v = Curve.get_v_coordinate r |> Curve.Base.to_bytes in
-      let pk_u = Curve.get_u_coordinate pk |> Curve.Base.to_bytes in
-      let pk_v = Curve.get_v_coordinate pk |> Curve.Base.to_bytes in
-      H.hash (Bytes.concat Bytes.empty [r_u; r_v; pk_u; pk_v; msg])
+      let r = point_compress ~compressed r in
+      let pk = point_compress ~compressed pk in
+      H.hash (Bytes.concat Bytes.empty [r; pk; msg])
       |> Curve.Scalar.of_bytes_exn
 
     let sign ?(compressed = false) sk msg =
