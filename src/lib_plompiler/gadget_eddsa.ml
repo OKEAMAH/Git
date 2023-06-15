@@ -23,17 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Make
-    (*     (Curve : Mec.CurveSig.AffineEdwardsT) (H : sig *)
-    (*       module P : Hash_sig.P_HASH *)
-
-    (*       module V : Hash_sig.HASH *)
-    (*     end) = *) =
-struct
+module Make = struct
   module Curve = Mec.Curve.Curve25519.AffineEdwards
 
   module P : sig
-    (* TODO?: assert |sk| = 32 bytes *)
     type sk = Bytes.t
 
     type pk = Curve.t
@@ -60,6 +53,7 @@ struct
 
     (* Compute the expanded keys for the EdDSA signature *)
     let expand_keys sk =
+      assert (Bytes.length sk = 32) ;
       (* h = (h_0, h_1, .., h_{2b-1}) <- H (sk) *)
       let h = H.hash @@ sk in
       let b = Bytes.length h / 2 in
@@ -90,7 +84,6 @@ struct
       let res = Z.(((one lsl 255) * px_sign) + py) in
       Bytes.of_string @@ Z.to_bits res
 
-    (* NOTE: H.direct returns a Bls12_381.Fr scalar *)
     (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
     let compute_h msg pk r =
       let r = point_compress r in
@@ -135,13 +128,13 @@ struct
 
     type signature = {r : point repr; s : bool list repr}
 
-    (*     module Encoding : sig *)
-    (*       open L.Encodings *)
+    module Encoding : sig
+      open L.Encodings
 
-    (*       val pk_encoding : (Curve.t, pk repr, pk) encoding *)
+      val pk_encoding : (Curve.t, pk repr, pk) encoding
 
-    (*             val signature_encoding : (P.signature, signature, pk * bool list) encoding *)
-    (*     end *)
+      val signature_encoding : (P.signature, signature, pk * bool list) encoding
+    end
 
     val verify :
       g:point repr ->
@@ -163,37 +156,20 @@ struct
 
       type signature = {r : point repr; s : bool list repr}
 
-      (*       module Encoding = struct *)
-      (*         open L.Encodings *)
+      module Encoding = struct
+        open L.Encodings
 
-      (*         let point_encoding = *)
-      (*           let curve_base_to_s c = Lang_core.S.of_z @@ Curve.Base.to_z c in *)
-      (*           let curve_base_of_s c = Curve.Base.of_z @@ Lang_core.S.to_z c in *)
-      (*           with_implicit_bool_check is_on_curve *)
-      (*           @@ conv *)
-      (*                (fun r -> of_pair r) *)
-      (*                (fun (u, v) -> pair u v) *)
-      (*                (fun c -> *)
-      (*                  ( curve_base_to_s @@ Curve.get_u_coordinate c, *)
-      (*                    curve_base_to_s @@ Curve.get_v_coordinate c )) *)
-      (*                (fun (u, v) -> *)
-      (*                  Curve.from_coordinates_exn *)
-      (*                    ~u:(curve_base_of_s u) *)
-      (*                    ~v:(curve_base_of_s v)) *)
-      (*                (obj2_encoding scalar_encoding scalar_encoding) *)
+        let pk_encoding = point_encoding
 
-      (*         let pk_encoding = point_encoding *)
+        let signature_encoding =
+          conv
+            (fun {r; s} -> (r, s))
+            (fun (r, s) -> {r; s})
+            (fun ({r; s} : P.signature) -> (r, s))
+            (fun (r, s) -> {r; s})
+            (obj2_encoding point_encoding (atomic_list_encoding bool_encoding))
+      end
 
-      (*                 let signature_encoding = *)
-      (*                   conv *)
-      (*                     (fun {r; s} -> (r, s)) *)
-      (*                     (fun (r, s) -> {r; s}) *)
-      (*                     (fun ({r; s} : P.signature) -> (r, s)) *)
-      (*                     (fun (r, s) -> {r; s}) *)
-      (*                     (obj2_encoding point_encoding (atomic_list_encoding bool_encoding)) *)
-      (*       end *)
-
-      (* NOTE: digest returns a Bls12_381.Fr scalar *)
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
       let compute_h msg pk r =
         with_label ~label:"EdDSA.compute_h"
@@ -201,7 +177,6 @@ struct
            let* pk_bytes = bytes_of_point ~compressed:true pk in
            H.digest (Bytes.concat [|r_bytes; pk_bytes; msg|])
 
-      (* TODO: now msg is just one scalar, it will probably be a list of scalars *)
       (* assert s < Curve.Scalar.order *)
       (* reduce h modulo Curve.Scalar.order *)
       (* assert r & pk are on curve *)

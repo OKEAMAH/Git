@@ -94,9 +94,12 @@ end
 
 module type MOD_ARITH = functor (L : LIB) -> sig
   open L
+  open L.Encodings
 
   (* type of modular integers *)
   type mod_int
+
+  val mod_int_encoding : (S.t list, mod_int repr, mod_int) encoding
 
   (* label to refer to this set of parameters *)
   val label : string
@@ -526,9 +529,12 @@ functor
   ->
   struct
     open L
+    open L.Encodings
     include Params
 
     type mod_int = scalar list
+
+    let mod_int_encoding : _ encoding = atomic_list_encoding scalar_encoding
 
     let nb_limbs = Utils.min_nb_limbs ~modulus ~base
 
@@ -567,7 +573,7 @@ functor
     let bytes_of_mod_int (n : mod_int repr) : Bytes.bl repr t =
       let nb_bits = Z.log2 base in
       let* sn = scalars_of_mod_int n in
-      let* bln = mapM (bits_of_scalar ~nb_bits) (of_list sn) in
+      let* bln = mapM (bits_of_scalar ~nb_bits) (List.rev @@ of_list sn) in
       let bln = List.map of_list bln in
       ret @@ to_list (List.flatten bln)
 

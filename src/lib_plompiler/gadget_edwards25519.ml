@@ -23,15 +23,18 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(*open Lang_core*)
+open Lang_core
 open Lang_stdlib
 
 module type AFFINE = functor (L : LIB) -> sig
   open L
+  module Curve = Mec.Curve.Curve25519.AffineEdwards
 
   type nat_mod (* for a base field arithmetic *)
 
   type point = nat_mod * nat_mod
+
+  val point_encoding : (Curve.t, point repr, point) Encodings.encoding
 
   val input_point : ?kind:input_kind -> Z.t * Z.t -> point repr t
 
@@ -80,11 +83,6 @@ functor
 
     type point = nat_mod * nat_mod
 
-    let input_point ?(kind = `Private) (x, y) : point repr t =
-      let* x = M.input_mod_int ~kind x in
-      let* y = M.input_mod_int ~kind y in
-      ret (pair x y)
-
     let is_on_curve p : bool repr t =
       with_label ~label:"Edwards25519.is_on_curve"
       @@
@@ -103,6 +101,34 @@ functor
       let* rhs = M.add_constant du2v2 Z.one in
       M.equal lhs rhs
 
+    let point_encoding : (Curve.t, point repr, point) Encodings.encoding =
+      let open Encodings in
+      with_implicit_bool_check is_on_curve
+      @@ conv
+           of_pair
+           (fun (x, y) -> pair x y)
+           (fun c ->
+             let to_limbs (x : Curve.Base.t) =
+               Utils.z_to_limbs ~len:M.nb_limbs ~base:M.base
+               @@ Curve.Base.to_z x
+               |> List.map S.of_z
+             in
+             let x = Curve.get_u_coordinate c |> to_limbs in
+             let y = Curve.get_v_coordinate c |> to_limbs in
+             (x, y))
+           (fun (x, y) ->
+             let of_limbs (n : S.t list) =
+               Utils.z_of_limbs ~base:M.base @@ List.map S.to_z n
+               |> Curve.Base.of_z
+             in
+             Curve.from_coordinates_exn ~u:(of_limbs x) ~v:(of_limbs y))
+           (Encodings.obj2_encoding M.mod_int_encoding M.mod_int_encoding)
+
+    let input_point ?(kind = `Private) (x, y) : point repr t =
+      let* x = M.input_mod_int ~kind x in
+      let* y = M.input_mod_int ~kind y in
+      ret (pair x y)
+
     let from_coordinates u v =
       with_label ~label:"Edwards25519.from_coordinates"
       @@
@@ -116,13 +142,22 @@ functor
 
     let get_y_coordinate p = of_pair p |> snd
 
-    let bytes_of_point ?(compressed = false) p =
-      ignore compressed ;
-      let px = get_x_coordinate p in
-      let py = get_y_coordinate p in
-      let* px_bytes = M.bytes_of_mod_int px in
-      let* py_bytes = M.bytes_of_mod_int py in
-      ret @@ Bytes.concat [|px_bytes; py_bytes|]
+    (* BSeq.nat_to_bytes_le 32 (pow2 255 * (x % 2) + y) *)
+    let bytes_of_point ?(compressed = false) p : Bytes.bl repr t =
+      if compressed then
+        let px = get_x_coordinate p in
+        let py = get_y_coordinate p in
+        (* px_bytes is in little-endian *)
+        let* px_bytes = M.bytes_of_mod_int px in
+        let px0 = List.hd @@ of_list px_bytes in
+        let* py_bytes = M.bytes_of_mod_int py in
+        ret @@ to_list (px0 :: of_list py_bytes)
+      else
+        let px = get_x_coordinate p in
+        let py = get_y_coordinate p in
+        let* px_bytes = M.bytes_of_mod_int px in
+        let* py_bytes = M.bytes_of_mod_int py in
+        ret @@ Bytes.concat [|px_bytes; py_bytes|]
 
     let id =
       let* zero = M.zero in

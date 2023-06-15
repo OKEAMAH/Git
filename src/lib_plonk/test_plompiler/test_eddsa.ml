@@ -23,18 +23,30 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* open Plompiler *)
-
-(* open Plonk_test *)
+open Plompiler
+open Plonk_test
 module CS = Plonk.Circuit
-(* open Helpers *)
+open Helpers
+
+(* sk, pk, (pk_u || pk_v), msg, sign, (sign_r_u || sign_r_v), sign_s *)
+let test_vectors =
+  [
+    ( "\xc5\xaa\x8d\xf4\x3f\x9f\x83\x7b\xed\xb7\x44\x2f\x31\xdc\xb7\xb1\x66\xd3\x85\x35\x07\x6f\x09\x4b\x85\xce\x3a\x2e\x0b\x44\x58\xf7",
+      "\xfc\x51\xcd\x8e\x62\x18\xa1\xa3\x8d\xa4\x7e\xd0\x02\x30\xf0\x58\x08\x16\xed\x13\xba\x33\x03\xac\x5d\xeb\x91\x15\x48\x90\x80\x25",
+      "\x02\xbd\xcd\x86\x54\xff\xa9\x45\xb9\xe9\xe3\x34\x17\x6f\x23\x18\x98\x85\xcf\x8d\xb4\xd1\x65\x3f\x83\x68\x9d\xdc\xa2\x3a\x21\x61\xfc\x51\xcd\x8e\x62\x18\xa1\xa3\x8d\xa4\x7e\xd0\x02\x30\xf0\x58\x08\x16\xed\x13\xba\x33\x03\xac\x5d\xeb\x91\x15\x48\x90\x80\x25",
+      "\xaf\x82",
+      "\x62\x91\xd6\x57\xde\xec\x24\x02\x48\x27\xe6\x9c\x3a\xbe\x01\xa3\x0c\xe5\x48\xa2\x84\x74\x3a\x44\x5e\x36\x80\xd7\xdb\x5a\xc3\xac\x18\xff\x9b\x53\x8d\x16\xf2\x90\xae\x67\xf7\x60\x98\x4d\xc6\x59\x4a\x7c\x15\xe9\x71\x6e\xd2\x8d\xc0\x27\xbe\xce\xea\x1e\xc4\x0a",
+      "\x4f\x44\x5b\xba\x8b\x44\x93\x32\x01\xed\xa1\x62\x79\x8f\x8f\x09\x1a\x79\xb6\x5f\x2c\x16\xdb\xf9\x66\x6e\xf5\x9f\xd0\x0e\xa5\x39\x62\x91\xd6\x57\xde\xec\x24\x02\x48\x27\xe6\x9c\x3a\xbe\x01\xa3\x0c\xe5\x48\xa2\x84\x74\x3a\x44\x5e\x36\x80\xd7\xdb\x5a\xc3\x2c",
+      "\x18\xff\x9b\x53\x8d\x16\xf2\x90\xae\x67\xf7\x60\x98\x4d\xc6\x59\x4a\x7c\x15\xe9\x71\x6e\xd2\x8d\xc0\x27\xbe\xce\xea\x1e\xc4\x0a"
+    );
+  ]
 
 module P = struct
   module Ed25519 = Plompiler.Ed25519
   module P = Ed25519.P
   module Curve = Ed25519.Curve
 
-  let test_vanilla_ed25519 sk (pk_expected : Curve.t) msg (sign : P.signature) =
+  let test_vanilla_ed25519 sk pk_expected msg sign =
     let P.{r = sign_r_expected; s = sign_s_expected} = sign in
     let pk = P.neuterize sk in
     assert (Curve.eq pk pk_expected) ;
@@ -47,23 +59,12 @@ module P = struct
     Bytes.set msg 0 '\x00' ;
     assert (not @@ P.verify ~msg ~pk ~signature ())
 
-  (* sk, pk, (pk_u || pk_v), msg, sign, (sign_r_u || sign_r_v) sign_s *)
-  (* p = 2^255-19 + 1 bit for sign -> (sign(x) || y) *)
-  let test_vectors =
-    [
-      ( "\xc5\xaa\x8d\xf4\x3f\x9f\x83\x7b\xed\xb7\x44\x2f\x31\xdc\xb7\xb1\x66\xd3\x85\x35\x07\x6f\x09\x4b\x85\xce\x3a\x2e\x0b\x44\x58\xf7",
-        "\xfc\x51\xcd\x8e\x62\x18\xa1\xa3\x8d\xa4\x7e\xd0\x02\x30\xf0\x58\x08\x16\xed\x13\xba\x33\x03\xac\x5d\xeb\x91\x15\x48\x90\x80\x25",
-        "\x02\xbd\xcd\x86\x54\xff\xa9\x45\xb9\xe9\xe3\x34\x17\x6f\x23\x18\x98\x85\xcf\x8d\xb4\xd1\x65\x3f\x83\x68\x9d\xdc\xa2\x3a\x21\x61\xfc\x51\xcd\x8e\x62\x18\xa1\xa3\x8d\xa4\x7e\xd0\x02\x30\xf0\x58\x08\x16\xed\x13\xba\x33\x03\xac\x5d\xeb\x91\x15\x48\x90\x80\x25",
-        "\xaf\x82",
-        "\x62\x91\xd6\x57\xde\xec\x24\x02\x48\x27\xe6\x9c\x3a\xbe\x01\xa3\x0c\xe5\x48\xa2\x84\x74\x3a\x44\x5e\x36\x80\xd7\xdb\x5a\xc3\xac\x18\xff\x9b\x53\x8d\x16\xf2\x90\xae\x67\xf7\x60\x98\x4d\xc6\x59\x4a\x7c\x15\xe9\x71\x6e\xd2\x8d\xc0\x27\xbe\xce\xea\x1e\xc4\x0a",
-        "\x4f\x44\x5b\xba\x8b\x44\x93\x32\x01\xed\xa1\x62\x79\x8f\x8f\x09\x1a\x79\xb6\x5f\x2c\x16\xdb\xf9\x66\x6e\xf5\x9f\xd0\x0e\xa5\x39\x62\x91\xd6\x57\xde\xec\x24\x02\x48\x27\xe6\x9c\x3a\xbe\x01\xa3\x0c\xe5\x48\xa2\x84\x74\x3a\x44\x5e\x36\x80\xd7\xdb\x5a\xc3\x2c",
-        "\x18\xff\x9b\x53\x8d\x16\xf2\x90\xae\x67\xf7\x60\x98\x4d\xc6\x59\x4a\x7c\x15\xe9\x71\x6e\xd2\x8d\xc0\x27\xbe\xce\xea\x1e\xc4\x0a"
-      );
-    ]
-
   let test_random () =
-    let sk = Bytes.init 32 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
-    let msg = Bytes.init 64 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
+    let random_bytes len =
+      Bytes.init len (fun _i -> Char.chr @@ (Random.bits () mod 255))
+    in
+    let sk = random_bytes 32 in
+    let msg = random_bytes 64 in
     let pk = P.neuterize sk in
     let signature = P.sign sk msg in
     test_vanilla_ed25519 sk pk msg signature
@@ -90,56 +91,43 @@ module P = struct
     test_random ()
 end
 
-(* module Ed25519 (L : LIB) = struct *)
-(*   open L *)
+module Ed25519 (L : LIB) = struct
+  open L
 
-(*   open Utils (L) *)
+  open Utils (L)
 
-(*   (\* open Plompiler *\) *)
-(*   (\* module Ed25519 = Plompiler.Ed25519 (Plompiler.Anemoi128) *\) *)
-(*   (\* Ça plante visiblement sur le is on curve de l’input générateur ; je suppose qu’on a un problème de modulo *\) *)
-(*   (\* module Ed25519 = Plompiler.EdDSA_Jubjub (Plompiler.Poseidon128) *\) *)
-(*   module Ed25519 = Plompiler.EdDSA_Jubjub (Plompiler.Anemoi128) *)
-(*   module Sc = Ed25519.V (L) *)
-(*   module A = Ed25519.Curve *)
+  module Ed25519 = Plompiler.Ed25519
+  module Sc = Ed25519.V (L)
+  module A = Ed25519.Curve
 
-(*   let nb_bits = Z.numbits A.Base.order *)
+  let nb_bits = Z.numbits A.Base.order
 
-(*   let wrong_s = *)
-(*     Plompiler.Utils.bool_list_of_z ~nb_bits *)
-(*     @@ A.Scalar.to_z @@ A.Scalar.random () *)
+  let test_circuit_verify g pk msg signature_r signature_s () =
+    let msg = Bytes.input_bytes msg in
+    with_label ~label:"EdDSA.test"
+    @@ let* g = input ~kind:`Public g in
+       let* pk = input ~kind:`Public pk in
+       let* msg = input msg in
+       let* signature_r = input signature_r in
+       let* signature_s = input signature_s in
+       let signature = Sc.{r = signature_r; s = signature_s} in
+       with_label ~label:"with_bool_check"
+       @@ with_bool_check (Sc.verify ~g ~msg ~pk ~signature ())
 
-(*   let test_circuit_verify g pk msg signature () = *)
-(*     let msg = Input.scalar msg in *)
-(*     with_label ~label:"EdDSA.test" *)
-(*     @@ let* g = input ~kind:`Public g in *)
-(*        let* pk = input ~kind:`Public @@ Sc.Encoding.pk_encoding.input pk in *)
-(*        let* msg = input msg in *)
-(*        let* signature = *)
-(*          input @@ Sc.Encoding.signature_encoding.input signature *)
-(*        in *)
-(*        let signature = Sc.Encoding.signature_encoding.decode signature in *)
-
-(*        with_label ~label:"with_bool_check" *)
-(*        @@ with_bool_check (Sc.verify ~g ~msg ~pk ~signature ()) *)
-
-(*   let tests = *)
-(*     let g = Sc.Encoding.pk_encoding.input A.one in *)
-(*     let sk = A.Scalar.random () in *)
-(*     let msg = S.random () in *)
-(*     let pk = Ed25519.P.neuterize sk in *)
-(*     let signature = Ed25519.P.sign sk msg in *)
-(*     [ *)
-(*       test *)
-(*         ~valid:true *)
-(*         ~name:"Ed25519.test_circuit_verify" *)
-(*         (test_circuit_verify g pk msg signature); *)
-(*       test *)
-(*         ~valid:false *)
-(*         ~name:"Ed25519.test_circuit_verify" *)
-(*         (test_circuit_verify g pk msg {signature with s = wrong_s}); *)
-(*     ] *)
-(* end *)
+  let tests =
+    let g = A.one in
+    List.map
+      (fun (sk, _pk, _pk_u_v, msg, _sign, _sign_r_u_v, _sign_s) ->
+        let msg = Stdlib.Bytes.of_string msg in
+        let sk = Stdlib.Bytes.of_string sk in
+        let pk = Ed25519.P.neuterize sk in
+        let signature = Ed25519.P.sign sk msg in
+        test
+          ~valid:true
+          ~name:"Ed25519.test_circuit_verify"
+          (test_circuit_verify g pk msg signature.r signature.s))
+      test_vectors
+end
 
 let tests =
   [
