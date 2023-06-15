@@ -96,7 +96,7 @@ module Compare_ticket_hash_benchmark : Benchmark.S = struct
       ~conv:(fun () -> ())
       ~model:(Model.unknown_const1 ~const:(fv "compare_ticket_hash"))
 
-  let create_benchmark ~rng_state _conf =
+  let create_benchmark ~rng_state =
     let bytes = Base_samplers.bytes rng_state ~size:{min = 1; max = 64} in
     let hash =
       Ticket_hash.of_script_expr_hash @@ Script_expr_hash.hash_bytes [bytes]
@@ -106,7 +106,12 @@ module Compare_ticket_hash_benchmark : Benchmark.S = struct
     in
     let workload = () in
     let closure () = ignore (Ticket_hash.compare hash hash2) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Compare_ticket_hash_benchmark)
@@ -148,7 +153,7 @@ module Compare_key_contract_benchmark : Benchmark.S = struct
       ~conv:(fun () -> ())
       ~model:(Model.unknown_const1 ~const:(fv "compare_contract"))
 
-  let create_benchmark ~rng_state _conf =
+  let create_benchmark ~rng_state =
     let bytes = Base_samplers.bytes rng_state ~size:{min = 32; max = 64} in
     let branch = Block_hash.hash_bytes [bytes] in
     let op_hash = Operation.hash_raw {shell = {branch}; proto = bytes} in
@@ -157,7 +162,12 @@ module Compare_key_contract_benchmark : Benchmark.S = struct
     let contract2 = Contract.Internal_for_tests.originated_contract nonce in
     let workload = () in
     let closure () = ignore (Contract.compare contract contract2) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Compare_key_contract_benchmark)
@@ -218,9 +228,16 @@ module Has_tickets_type_benchmark : Benchmark.S = struct
 
   let create_benchmark ~rng_state config =
     match make_bench_helper rng_state config () with
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error trace ->
         raise (Ticket_benchmark_error {benchmark_name = name; trace})
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 
   let model =
     Model.make ~conv:(function {nodes} -> (nodes, ())) ~model:Model.affine
@@ -280,12 +297,19 @@ module Collect_tickets_benchmark : Benchmark.S = struct
 
   let create_benchmark ~rng_state config =
     match make_bench_helper rng_state config () with
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error trace ->
         raise (Ticket_benchmark_error {benchmark_name = name; trace})
 
   let model =
     Model.make ~conv:(function {nodes} -> (nodes, ())) ~model:Model.affine
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Collect_tickets_benchmark)

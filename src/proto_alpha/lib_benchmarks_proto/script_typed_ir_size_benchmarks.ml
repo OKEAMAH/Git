@@ -164,9 +164,9 @@ module Type_size_benchmark : Benchmark.S = struct
     let size = Nodes.(to_int (fst (ty_size ty))) in
     let workload = {size} in
     let closure () = ignore (ty_size ty) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
 
-  let create_benchmark ~rng_state _cfg =
+  let create_benchmark ~rng_state =
     (* The [size] here is a parameter to the random sampler and does not
        match the [size] returned by [type_size]. *)
     let size =
@@ -176,24 +176,31 @@ module Type_size_benchmark : Benchmark.S = struct
       Michelson_generation.Samplers.Random_type.m_type ~size rng_state
     in
     type_size_benchmark ex_ty
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Type_size_benchmark)
 
 (** Benchmarking {!Script_typed_ir_size.kinstr_size}. *)
 
-module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
+module Kinstr_size_benchmark : Benchmark.S = struct
   include Size_benchmarks_shared_config
 
   let name = ns "KINSTR_SIZE"
-
-  let models = [(model_name, size_based_model ~name)]
 
   let info = "Benchmarking Script_typed_ir_size.kinstr_size"
 
   let module_filename = __FILE__
 
   let generated_code_destination = None
+
+  let group = Benchmark.Group model_name
+
+  let model = size_based_model
 
   let kinstr_size_benchmark rng_state (expr : Protocol.Script_repr.expr)
       (stack : Script_repr.expr list) =
@@ -237,32 +244,45 @@ module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
             let closure () = ignore (kinstr_size kinstr) in
             return (Generator.Plain {workload; closure}) )
     |> function
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error errs -> global_error name errs
 
-  let make_bench rng_state cfg () =
-    let Michelson_mcmc_samplers.{term; bef; aft = _} =
-      Michelson_generation.make_code_sampler rng_state cfg.generator_config
-    in
-    kinstr_size_benchmark rng_state term bef
-
-  let create_benchmarks ~rng_state ~bench_num config =
-    match config.michelson_terms_file with
-    | Some file ->
-        Format.eprintf "Loading terms from %s@." file ;
-        let terms = Michelson_mcmc_samplers.load ~filename:file in
-        List.filter_map
-          (function
-            | Michelson_mcmc_samplers.Code {term; bef; aft = _} ->
-                Some (fun () -> kinstr_size_benchmark rng_state term bef)
-            | _ -> None)
-          terms
-    | None ->
-        Format.eprintf "No michelson_terms_file given, generating on-the-fly@." ;
-        List.repeat bench_num (make_bench rng_state config)
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> setup_data
+         ~data:
+           (match config.michelson_terms_file with
+           | Some file ->
+               Format.eprintf "Loading terms from %s@." file ;
+               let terms = Michelson_mcmc_samplers.load ~filename:file in
+               let terms () =
+                 List.filter_map
+                   (function
+                     | Michelson_mcmc_samplers.Code {term; bef; aft = _} ->
+                         Some (term, bef)
+                     | _ -> None)
+                   terms
+               in
+               Generator.V2.Load_data_list terms
+           | None ->
+               Format.eprintf
+                 "No michelson_terms_file given, generating on-the-fly@." ;
+               Load_data
+                 (fun () ->
+                   let Michelson_mcmc_samplers.{term; bef; aft = _} =
+                     Michelson_generation.make_code_sampler
+                       rng_state
+                       config.generator_config
+                   in
+                   (term, bef)))
+    @> benchmark ~f:(fun (term, bef) ->
+           kinstr_size_benchmark rng_state term bef)
+    @> complete
 end
 
-let () = Registration_helpers.register (module Kinstr_size_benchmark)
+let () = Registration.register (module Kinstr_size_benchmark)
 
 module Node_size_benchmark : Benchmark.S = struct
   include Script_repr_benchmarks.Script_repr_shared_config
@@ -296,11 +316,16 @@ module Node_size_benchmark : Benchmark.S = struct
     let nodes = Nodes.to_int @@ fst @@ node_size node in
     let workload = {micheline_nodes = nodes} in
     let closure () = ignore (Script_typed_ir_size.node_size node) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
 
-  let create_benchmark ~rng_state _cfg =
+  let create_benchmark ~rng_state =
     let term = Script_repr_benchmarks.Sampler.sample rng_state in
     micheline_nodes_benchmark term
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Node_size_benchmark)

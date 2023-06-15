@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Protocol
+open Benchmarks_proto
 module Size = Gas_input_size
 
 let ns = Namespace.make Registration_helpers.ns "sapling"
@@ -80,14 +81,15 @@ module Apply_diff_bench : Benchmark.S = struct
       ~conv:(fun {nb_input; nb_output; _} -> (nb_input, (nb_output, ())))
       ~model:
         (Model.bilinear_affine
-           ~name
            ~intercept:(fv "apply_diff_const")
            ~coeff1:(fv "apply_diff_inputs")
            ~coeff2:(fv "apply_diff_outputs"))
 
-  let models = [("apply_diff", model)]
+  let group = Benchmark.Group "apply_diff"
 
-  let benchmark_apply_diff seed sapling_transition () =
+  let model = model
+
+  let benchmark_apply_diff (seed, sapling_transition) =
     let sapling_forge_rng_state =
       Random.State.make
       @@ Option.fold
@@ -133,7 +135,7 @@ module Apply_diff_bench : Benchmark.S = struct
         in
         return (Generator.Plain {workload; closure}) )
     |> function
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error errs ->
         Format.eprintf
           "Runner.benchmarkable_from_instr_str:\n%a@."
@@ -141,26 +143,33 @@ module Apply_diff_bench : Benchmark.S = struct
           errs ;
         exit 1
 
-  let create_benchmarks ~rng_state ~bench_num config =
-    ignore rng_state ;
-    match config.sapling with
-    | {sapling_txs_file; seed} ->
-        let transitions =
-          Sapling_generation.load
-            ~filename:sapling_txs_file
-            Sapling_generation.Non_empty
-        in
-        let length = List.length transitions in
-        if length < bench_num then
-          Format.eprintf
-            "KSapling_verify_update: warning, only %d available transactions \
-             (requested %d)@."
-            length
-            bench_num ;
-        let transitions = List.take_n (min bench_num length) transitions in
-        List.map
-          (fun (_filename, tx) -> benchmark_apply_diff seed tx)
-          transitions
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {bench_num; config; _} = get_params in
+    describe
+    @> setup_data
+         ~data:
+           (Load_data_list
+              (fun () ->
+                let {sapling_txs_file; seed} = config.sapling in
+                let transitions =
+                  Sapling_generation.load
+                    ~filename:sapling_txs_file
+                    Sapling_generation.Non_empty
+                in
+                let length = List.length transitions in
+                if length < bench_num then
+                  Format.eprintf
+                    "KSapling_verify_update: warning, only %d available \
+                     transactions (requested %d)@."
+                    length
+                    bench_num ;
+                let transitions =
+                  List.take_n (min bench_num length) transitions
+                in
+                List.map (fun (_, tx) -> (seed, tx)) transitions))
+    @> benchmark ~f:benchmark_apply_diff
+    @> complete
 end
 
-let () = Registration_helpers.register (module Apply_diff_bench)
+let () = Registration.register (module Apply_diff_bench)

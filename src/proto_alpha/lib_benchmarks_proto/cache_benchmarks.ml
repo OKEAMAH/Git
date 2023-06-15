@@ -186,16 +186,21 @@ module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
     let closure () =
       ignore (Cache.update ctxt some_key_in_domain dummy_script 1)
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
 
   (** At the time of writing (Protocol H) the worst case execution path for
       [Cache.update] is to update a key which is already present. *)
-  let create_benchmark ~rng_state _cfg =
+  let create_benchmark ~rng_state =
     let cache_cardinal =
       Base_samplers.sample_in_interval ~range:{min = 1; max = 100_000} rng_state
     in
     let ctxt, some_key_in_domain = prepare_context rng_state cache_cardinal in
     cache_update_benchmark ctxt some_key_in_domain cache_cardinal
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Benchmarks_proto.Registration.register (module Cache_update_benchmark)

@@ -634,7 +634,7 @@ module Ty_eq : Benchmark.S = struct
             in
             return (Generator.Plain {workload; closure}) )
     |> function
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error errs -> global_error name errs
 
   let create_benchmark ~rng_state (cfg : config) =
@@ -646,6 +646,13 @@ module Ty_eq : Benchmark.S = struct
       Michelson_generation.Samplers.Random_type.m_type ~size:nodes rng_state
     in
     ty_eq_benchmark rng_state nodes ty
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Ty_eq)
@@ -761,13 +768,20 @@ module Parse_type_benchmark : Benchmark.S = struct
           let closure () = ignore (parse_ty ctxt unparsed) in
           ok (Generator.Plain {workload; closure}) )
     |> function
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error errs -> global_error name errs
 
   let model =
     Model.make
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
       ~model:Model.affine
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Parse_type_benchmark)
@@ -806,13 +820,20 @@ module Unparse_type_benchmark : Benchmark.S = struct
           let closure () = ignore (unparse_ty ctxt ty) in
           ok (Generator.Plain {workload; closure}) )
     |> function
-    | Ok closure -> closure
+    | Ok closure -> Some closure
     | Error errs -> global_error name errs
 
   let model =
     Model.make
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
       ~model:Model.affine
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Unparse_type_benchmark)

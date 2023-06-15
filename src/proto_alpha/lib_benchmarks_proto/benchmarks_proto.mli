@@ -76,11 +76,10 @@ module Benchmark : sig
     (** Cost model *)
     val model : name:Namespace.t -> workload Model.t
 
-    (** Creates a  benchmark, ready to be run.
+    (** Creates a  generator, ready to be run.
             The benchmarks are thunked to prevent evaluating the workload until
             needed. *)
-    val create_benchmark :
-      rng_state:Random.State.t -> config -> workload Generator.benchmark
+    val generator : (config, workload) Generator.V2.DSL.t
   end
 
   type t = (module S)
@@ -112,6 +111,13 @@ module Model : sig
     ?coeff:Free_variable.t ->
     Namespace.t ->
     (int * unit) model
+
+  val bilinear_affine :
+    ?intercept:Free_variable.t ->
+    ?coeff1:Free_variable.t ->
+    ?coeff2:Free_variable.t ->
+    Namespace.t ->
+    (int * (int * unit)) model
 
   val logn : ?coeff:Free_variable.t -> Namespace.t -> (int * unit) model
 

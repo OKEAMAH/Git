@@ -323,12 +323,17 @@ module Set_add : Benchmark.S = struct
 
   module Int_set = Set.Make (Int)
 
-  let create_benchmark ~rng_state _config =
+  let create_benchmark ~rng_state =
     let range : Base_samplers.range = {min = 0; max = 10_000} in
     let size = Base_samplers.sample_in_interval ~range rng_state in
     let set = Stdlib.List.init size Fun.id |> Int_set.of_list in
     let closure () = ignore (Int_set.add (size + 1) set) in
-    Generator.Plain {workload = size; closure}
+    Option.some @@ Generator.Plain {workload = size; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Set_add)
@@ -371,12 +376,17 @@ module Set_elements : Benchmark.S = struct
 
   module Int_set = Set.Make (Int)
 
-  let create_benchmark ~rng_state _config =
+  let create_benchmark ~rng_state =
     let range : Base_samplers.range = {min = 0; max = 10_000} in
     let size = Base_samplers.sample_in_interval ~range rng_state in
     let set = Stdlib.List.init size (fun x -> x) |> Int_set.of_list in
     let closure () = ignore (Int_set.elements set) in
-    Generator.Plain {workload = size; closure}
+    Option.some @@ Generator.Plain {workload = size; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Set_elements)
@@ -429,7 +439,7 @@ module Script_expr_hash_of_b58check_opt : Benchmark.S = struct
 
   (* To create realistic benchmarks, we generate a random Micheline expression,
      hash it, then benchmark the cost of validating the hash. *)
-  let create_benchmark ~rng_state _config =
+  let create_benchmark ~rng_state =
     let open Protocol in
     let term = Micheline_sampler.sample rng_state in
     let size = Micheline_sampler.micheline_size term in
@@ -441,7 +451,12 @@ module Script_expr_hash_of_b58check_opt : Benchmark.S = struct
     let hash = Script_expr_hash.hash_bytes [expr_bytes] in
     let hash_str = Script_expr_hash.to_b58check hash in
     let closure () = ignore (Script_expr_hash.of_b58check_opt hash_str) in
-    Generator.Plain {workload = size; closure}
+    Option.some @@ Generator.Plain {workload = size; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Script_expr_hash_of_b58check_opt)
@@ -479,7 +494,7 @@ struct
   (** The cost of a Blake2b hashing function is linear with the size of the input *)
   let model = Model.(make ~conv:(fun size -> (size, ())) ~model:linear)
 
-  let create_benchmark ~rng_state _config =
+  let create_benchmark ~rng_state =
     let open Micheline in
     let expr = Micheline_sampler.sample rng_state |> strip_locations in
     let b =
@@ -489,7 +504,12 @@ struct
     let size = Bytes.length b in
 
     let closure () = ignore (Script_expr_hash.hash_bytes [b]) in
-    Generator.Plain {workload = size; closure}
+    Option.some @@ Generator.Plain {workload = size; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () =
@@ -562,7 +582,7 @@ module Global_constants_storage_expand_models = struct
     (* To test Branch 2 as nearly as possible, we generate a Micheline Seq
        consisting of the same constant repeated n times. As n increases,
        the benchmark more closely approximates the true cost of Branch 2. *)
-    let create_benchmark ~rng_state _config =
+    let create_benchmark ~rng_state =
       let open Micheline in
       let node = Micheline_sampler.sample rng_state in
       let size = (Micheline_sampler.micheline_size node).nodes in
@@ -583,7 +603,14 @@ module Global_constants_storage_expand_models = struct
                context
                (strip_locations node))
       in
-      Generator.Plain {workload = size; closure}
+      Option.some @@ Generator.Plain {workload = size; closure}
+
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> create_benchmark ~rng_state)
+      @> complete
   end
 
   let () =
@@ -637,7 +664,7 @@ module Global_constants_storage_expand_models = struct
     (** We benchmark this by generating a random Micheline expression without constants
         and calling [expand] on it. This causes the function to spend all its time in
         Branch 3. *)
-    let create_benchmark ~rng_state _config =
+    let create_benchmark ~rng_state =
       let open Micheline in
       let node = Micheline_sampler.sample rng_state in
       let size = (Micheline_sampler.micheline_size node).nodes in
@@ -648,7 +675,14 @@ module Global_constants_storage_expand_models = struct
           (Lwt_main.run
           @@ Alpha_context.Global_constants_storage.expand context expr)
       in
-      Generator.Plain {workload = size; closure}
+      Option.some @@ Generator.Plain {workload = size; closure}
+
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> create_benchmark ~rng_state)
+      @> complete
   end
 
   let () =

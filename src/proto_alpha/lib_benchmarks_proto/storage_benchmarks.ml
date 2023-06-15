@@ -217,7 +217,14 @@ module List_key_values_benchmark = struct
          over the tree without loading values. *)
       Table.list_key_values ~length:0 ctxt |> Lwt_main.run |> ignore
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 module List_key_values_benchmark_intercept = struct
@@ -229,7 +236,7 @@ module List_key_values_benchmark_intercept = struct
 
   let generated_code_destination = None
 
-  let create_benchmark ~rng_state:_ _config =
+  let create_benchmark ~rng_state:_ =
     let ctxt =
       match Lwt_main.run (default_raw_context ()) with
       | Ok ctxt -> ctxt
@@ -242,7 +249,12 @@ module List_key_values_benchmark_intercept = struct
          over the tree without loading values. *)
       Table.list_key_values ~length:0 ctxt |> Lwt_main.run |> ignore
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module List_key_values_benchmark)

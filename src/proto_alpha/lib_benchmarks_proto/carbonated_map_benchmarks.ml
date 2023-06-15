@@ -124,7 +124,14 @@ module Fold_benchmark : Benchmark.S = struct
     let closure () =
       ignore @@ M.fold_e ctxt (fun ctxt _ _ _ -> ok ((), ctxt)) () map
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 (** Module type that consists of a comparable type along with a sampler
@@ -176,11 +183,18 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
         ~conv:(fun () -> ())
         ~model:(Model.unknown_const1 ~const:(compare_var CS.type_name))
 
-    let create_benchmark ~rng_state _conf =
+    let create_benchmark ~rng_state =
       let key = CS.sampler rng_state in
       let workload = () in
       let closure () = ignore (CS.compare key key) in
-      Generator.Plain {workload; closure}
+      Option.some @@ Generator.Plain {workload; closure}
+
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> create_benchmark ~rng_state)
+      @> complete
   end
 
   module Find = struct
@@ -262,7 +276,14 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
       in
       let workload = {size = M.size map} in
       let closure () = ignore @@ M.find ctxt key map in
-      Generator.Plain {workload; closure}
+      Option.some @@ Generator.Plain {workload; closure}
+
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; config; _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+      @> complete
   end
 
   module Find_intercept = struct
@@ -302,13 +323,20 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
 
     let model = Model.make ~conv:(fun () -> ()) ~model:Model.unknown_const1
 
-    let create_benchmark ~rng_state (_config : config) =
+    let create_benchmark ~rng_state =
       let ctxt = make_context ~rng_state in
       let map = M.empty in
       let key = CS.sampler rng_state in
       let workload = () in
       let closure () = ignore @@ M.find ctxt key map in
-      Generator.Plain {workload; closure}
+      Option.some @@ Generator.Plain {workload; closure}
+
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> create_benchmark ~rng_state)
+      @> complete
   end
 end
 

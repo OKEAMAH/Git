@@ -98,7 +98,7 @@ module Take_fees_benchmark = struct
       ~conv:(fun {batch_length} -> (batch_length, ()))
       ~model:Model.affine
 
-  let create_benchmark ~rng_state _conf =
+  let create_benchmark ~rng_state =
     let open Annotated_manager_operation in
     let open Alpha_context in
     let open Lwt_result_syntax in
@@ -145,7 +145,12 @@ module Take_fees_benchmark = struct
       | Ok c -> c
       | Error _ -> assert false (* TODO better error *)
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Benchmarks_proto.Registration.register (module Take_fees_benchmark)

@@ -56,8 +56,7 @@ module Benchmark = struct
 
     val model : name:Namespace.t -> workload Model.t
 
-    val create_benchmark :
-      rng_state:Random.State.t -> config -> workload Generator.benchmark
+    val generator : (config, workload) Generator.V2.DSL.t
   end
 
   type t = (module S)
@@ -87,9 +86,7 @@ module Registration = struct
             Bench.model ~name );
         ]
 
-      let create_benchmarks ~rng_state ~bench_num config =
-        List.repeat bench_num (fun () ->
-            Bench.create_benchmark ~rng_state config)
+      let create_benchmarks = Generator.V2.DSL.to_v1 generator
     end in
     Registration_helpers.register (module B)
 end
@@ -111,6 +108,13 @@ module Model = struct
     let intercept = Option.value ~default:(ns "intercept") intercept in
     let coeff = Option.value ~default:(ns "coeff") coeff in
     affine ~name ~intercept ~coeff
+
+  let bilinear_affine ?intercept ?coeff1 ?coeff2 name =
+    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
+    let intercept = Option.value ~default:(ns "intercept") intercept in
+    let coeff1 = Option.value ~default:(ns "coeff1") coeff1 in
+    let coeff2 = Option.value ~default:(ns "coeff2") coeff2 in
+    bilinear_affine ~name ~intercept ~coeff1 ~coeff2
 
   let logn ?coeff name =
     let ns s = Free_variable.of_namespace (Namespace.cons name s) in

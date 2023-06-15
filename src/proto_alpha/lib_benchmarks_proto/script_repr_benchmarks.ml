@@ -105,11 +105,16 @@ module Micheline_nodes_benchmark : Benchmark.S = struct
     let nodes = Script_repr.micheline_nodes node in
     let workload = {micheline_nodes = nodes} in
     let closure () = ignore (Script_repr.micheline_nodes node) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
 
-  let create_benchmark ~rng_state _cfg =
+  let create_benchmark ~rng_state =
     let term = Sampler.sample rng_state in
     micheline_nodes_benchmark term
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Micheline_nodes_benchmark)
@@ -133,11 +138,16 @@ module Script_repr_strip_annotations : Benchmark.S = struct
         ~conv:(fun {micheline_nodes} -> (micheline_nodes, ()))
         ~model:(linear ~coeff:(fv "nodes")))
 
-  let create_benchmark ~rng_state () =
+  let create_benchmark ~rng_state =
     let node = Sampler.sample rng_state in
     let closure () = ignore @@ Script_repr.strip_annotations node in
     let micheline_nodes = Script_repr.micheline_nodes node in
-    Generator.Plain {workload = {micheline_nodes}; closure}
+    Option.some @@ Generator.Plain {workload = {micheline_nodes}; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () = Registration.register (module Script_repr_strip_annotations)

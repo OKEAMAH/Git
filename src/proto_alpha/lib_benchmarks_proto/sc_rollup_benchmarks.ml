@@ -485,7 +485,14 @@ module Sc_rollup_verify_output_proof_benchmark = struct
     let closure () =
       ignore (Lwt_main.run @@ Full_Wasm.verify_output_proof output_proof)
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 (** This benchmark estimates the cost of verifying an output proof for the
@@ -636,7 +643,14 @@ module Sc_rollup_deserialize_output_proof_benchmark = struct
            Full_Wasm.output_proof_encoding
            encoded_proof)
     in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 (** This benchmark estimates the cost of installing a boot sector. *)
@@ -684,7 +698,7 @@ module Sc_rollup_install_boot_sector_benchmark = struct
       ~conv:(fun {boot_sector_length} -> (boot_sector_length, ()))
       ~model:Model.affine
 
-  let create_benchmark ~rng_state _conf =
+  let create_benchmark ~rng_state =
     let open Base_samplers in
     let max_boot_sector_size = 32 * 1024 in
     let boot_sector_length =
@@ -695,7 +709,12 @@ module Sc_rollup_install_boot_sector_benchmark = struct
     let state = empty_tree in
 
     let closure () = ignore (Full_Wasm.install_boot_sector state boot_sector) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe @> benchmark ~f:(fun () -> create_benchmark ~rng_state) @> complete
 end
 
 let () =

@@ -93,7 +93,14 @@ module Next : Benchmark.S = struct
     let prev_cell = create_skip_list_of_len workload in
     let prev_cell_ptr = () in
     let closure () = ignore (next ~prev_cell ~prev_cell_ptr ()) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 (** Benchmark for the [Sc_rollup_inbox_repr.hash_skip_list_cell]
@@ -178,7 +185,14 @@ module Hash_cell : Benchmark.S = struct
     let nb_backpointers = List.length (Skip_list.back_pointers cell) in
     let workload = {nb_backpointers} in
     let closure () = ignore (hash cell) in
-    Generator.Plain {workload; closure}
+    Option.some @@ Generator.Plain {workload; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () -> create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Next)
