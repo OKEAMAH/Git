@@ -29,7 +29,6 @@ type fa12_transfer_params = [@layout:comb] {
 let deposit evm_address (amount : nat) (max_amount_for_gas : nat) (store : storage) : operation list =
   // Sender
   let from_ = Tezos.get_sender () in
-  let _ = failwith from_ in
   // L1 bridge
   let self_address = Tezos.get_self_address () in
   // CTEZ transfer entrypoint
