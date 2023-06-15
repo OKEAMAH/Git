@@ -89,13 +89,380 @@ open Helpers
    function that identifies which error should happen, to avoid the
    tests succeeding for wrong reasons. *)
 
-let test_update_consensus_key =
+let test_update_consensus_key_without_manual_staking =
   Protocol.register_test
     ~__FILE__
     ~title:"update consensus key"
     ~tags:["consensus_key"]
-  @@ fun protocol ->
-  let manual_staking = Protocol.(protocol > Nairobi) in
+  @@ function
+  | protocol when Protocol.(protocol > Nairobi) ->
+      (* manual staking, cf. test_update_consensus_key_with_manual_staking *)
+      return ()
+  | protocol ->
+  let parameters =
+    (* we update paramaters for faster testing: no need to wait
+       5 cycles for the consensus key to activate. *)
+    [
+      (["blocks_per_cycle"], `Int blocks_per_cycle);
+      (["nonce_revelation_threshold"], `Int 2);
+      (["preserved_cycles"], `Int preserved_cycles);
+    ]
+  in
+  let* parameter_file =
+    Protocol.write_parameter_file ~base:(Right (protocol, None)) parameters
+  in
+  let* _, client =
+    Client.init_with_protocol ~parameter_file ~protocol `Client ()
+  in
+  let* key_a = Client.gen_and_show_keys client in
+  let* key_b = Client.gen_and_show_keys client in
+  let* key_c = Client.gen_and_show_keys client in
+  let* key_bls = Client.gen_and_show_keys ~sig_alg:"bls" client in
+  let* destination = Client.gen_and_show_keys client in
+
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1_000_000)
+      ~giver:Constant.bootstrap1.alias
+      ~receiver:key_b.alias
+      client
+  in
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1_000_000)
+      ~giver:Constant.bootstrap2.alias
+      ~receiver:key_c.alias
+      client
+  in
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1)
+      ~giver:Constant.bootstrap4.alias
+      ~receiver:destination.alias
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+
+  Log.info
+    "Invalid update: changing the consensus key of an unregistered delegate" ;
+  let* () =
+    Client.update_consensus_key
+      ~expect_failure:true
+      ~src:key_b.alias
+      ~pk:Constant.bootstrap1.alias
+      client
+  in
+  Log.info "Invalid update: changing the consensus key to its actual value" ;
+  let* () =
+    Client.update_consensus_key
+      ~expect_failure:true
+      ~src:Constant.bootstrap1.alias
+      ~pk:Constant.bootstrap1.alias
+      client
+  in
+  Log.info
+    "Invalid update: changing the consensus key to an active consensus key \
+     (bootstrap)" ;
+  let* () =
+    Client.update_consensus_key
+      ~expect_failure:true
+      ~src:Constant.bootstrap2.alias
+      ~pk:Constant.bootstrap1.alias
+      client
+  in
+  Log.info "Invalid update: changing the consensus key to a BLS key." ;
+  let* () =
+    Client.update_consensus_key
+      ~expect_failure:true
+      ~src:Constant.bootstrap1.alias
+      ~pk:key_bls.alias
+      client
+  in
+
+  Log.info "Trying a valid consensus key update." ;
+  let* () =
+    Client.update_consensus_key
+      ~src:Constant.bootstrap1.alias
+      ~pk:key_a.alias
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+
+  Log.info
+    "Invalid update: changing the consensus key to an active consensus key \
+     (set)" ;
+  let* () =
+    Client.update_consensus_key
+      ~expect_failure:true
+      ~src:Constant.bootstrap2.alias
+      ~pk:key_a.alias
+      client
+  in
+
+  Log.info "Register a delegate with a consensus key." ;
+  let* () = Client.register_key ~consensus:key_c.alias key_b.alias client in
+  let* () = Client.bake_for_and_wait client in
+
+  Log.info "Bake until the end of the next cycle with bootstrap1..." ;
+  let* () =
+    bake_n_cycles preserved_cycles ~keys:[Constant.bootstrap1.alias] client
+  in
+
+  Log.info "Bootstrap1 should not be able to bake anymore..." ;
+  let* () =
+    Client.bake_for
+      ~expect_failure:true
+      ~keys:[Constant.bootstrap1.alias]
+      client
+  in
+
+  Log.info "... while `key_a` is able to bake." ;
+  let* () = Client.bake_for_and_wait ~keys:[key_a.alias] client in
+
+  Log.info "Bake until the end of the next cycle, again." ;
+  let* () =
+    bake_n_cycles preserved_cycles ~keys:[Constant.bootstrap2.alias] client
+  in
+
+  Log.info "`key_c` is now able to bake as well." ;
+  let* () = Client.bake_for_and_wait ~keys:[key_c.alias] client in
+
+  Log.info "Switch back to the initial consensus key." ;
+  let* () =
+    Client.update_consensus_key
+      ~src:Constant.bootstrap1.alias
+      ~pk:Constant.bootstrap1.alias
+      client
+  in
+  let* () =
+    Client.update_consensus_key ~src:key_b.alias ~pk:key_b.alias client
+  in
+
+  Log.info "Bake until the end of the next cycle..." ;
+  let* () =
+    bake_n_cycles (preserved_cycles + 1) ~keys:[key_a.alias] client
+  in
+
+  Log.info "We are not able to bake with `key_a` nor `key_c` anymore..." ;
+  let* () =
+    Client.bake_for ~expect_failure:true ~keys:[key_a.alias] client
+  in
+  let* () =
+    Client.bake_for ~expect_failure:true ~keys:[key_c.alias] client
+  in
+
+  Log.info "... but are able to bake again with `bootstrap1` and `key_b`..." ;
+  let* () =
+    Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client
+  in
+  let* () = Client.bake_for_and_wait ~keys:[key_b.alias] client in
+
+  Log.info
+    "Update the consensus key of bootstrap3 and bootstrap4 to `key_a` and \
+     `key_c`, respectively..." ;
+  let* () =
+    Client.update_consensus_key
+      ~src:Constant.bootstrap3.alias
+      ~pk:key_a.alias
+      client
+  in
+  let* () =
+    Client.update_consensus_key
+      ~src:Constant.bootstrap4.alias
+      ~pk:key_c.alias
+      client
+  in
+
+  Log.info "Bake until the end of the next cycle..." ;
+  let* () =
+    bake_n_cycles
+      (preserved_cycles + 1)
+      ~keys:[Constant.bootstrap1.alias]
+      client
+  in
+
+  Log.info "Invalid drain: unregistered delegate." ;
+  let* () =
+    Client.drain_delegate
+      ~expect_failure:true
+      ~delegate:destination.alias
+      ~consensus_key:destination.alias
+      ~destination:destination.alias
+      client
+  in
+
+  Log.info "Invalid drain: bootstrap2 is has no custom consensus key." ;
+  let* () =
+    Client.drain_delegate
+      ~expect_failure:true
+      ~delegate:Constant.bootstrap2.alias
+      ~consensus_key:Constant.bootstrap2.alias
+      ~destination:destination.alias
+      client
+  in
+
+  Log.info
+    "Invalid drain: bootstrap2 is not the consensus key for bootstrap1." ;
+  let* () =
+    Client.drain_delegate
+      ~expect_failure:true
+      ~delegate:Constant.bootstrap1.alias
+      ~consensus_key:Constant.bootstrap2.alias
+      ~destination:destination.alias
+      client
+  in
+
+  Log.info "Invalid drain: cannot drain to itself." ;
+  let* () =
+    Client.drain_delegate
+      ~expect_failure:true
+      ~delegate:Constant.bootstrap4.alias
+      ~consensus_key:key_c.alias
+      ~destination:Constant.bootstrap4.alias
+      client
+  in
+
+  Log.info "Invalid drain: there is nothing drain to itself." ;
+  let* () =
+    let delegate = Constant.bootstrap4.alias in
+    let* balance = Client.get_balance_for ~account:delegate client in
+    let* () =
+      Client.transfer
+        ~fee:Tez.zero
+        ~amount:balance
+        ~giver:delegate
+        ~receiver:key_c.alias
+        client
+    in
+    let* () = Client.bake_for_and_wait client in
+    Client.drain_delegate
+      ~expect_failure:true
+      ~delegate:Constant.bootstrap4.alias
+      ~consensus_key:key_c.alias
+      ~destination:Constant.bootstrap4.alias
+      client
+  in
+
+  Log.info "Inject a valid drain..." ;
+  let* () =
+    Client.drain_delegate
+      ~delegate:Constant.bootstrap4.alias
+      ~consensus_key:key_c.alias
+      ~destination:destination.alias
+      client
+  in
+  Log.info
+    "Check that after a drain, the mempool rejects a manager operation \
+     from the same manager..." ;
+  let* () =
+    Client.transfer
+      ~expect_failure:true
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1)
+      ~giver:Constant.bootstrap4.alias
+      ~receiver:Constant.bootstrap5.alias
+      client
+  in
+  Log.info "Bake and check the effects of the valid drain..." ;
+  let* old_balance =
+    Client.get_balance_for ~account:destination.alias client
+  in
+  let* () =
+    Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client
+  in
+  let* new_balance4 =
+    Client.get_balance_for ~account:Constant.bootstrap4.alias client
+  in
+  Check.(new_balance4 = Tez.zero)
+    Tez.typ
+    ~error_msg:"Drained account should be empty but its balance is %L." ;
+  let* new_balance =
+    Client.get_balance_for ~account:destination.alias client
+  in
+  Check.(old_balance < new_balance)
+    Tez.typ
+    ~error_msg:"Destination account of the drain has not been credited." ;
+
+  Log.info
+    "Check that a drain replaces a manager operation from the same \
+     delegate..." ;
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 1)
+      ~giver:Constant.bootstrap3.alias
+      ~receiver:Constant.bootstrap5.alias
+      client
+  in
+  let* () =
+    Client.drain_delegate
+      ~delegate:Constant.bootstrap3.alias
+      ~consensus_key:key_a.alias
+      ~destination:destination.alias
+      client
+  in
+  let* () =
+    let* json =
+      RPC.get_chain_mempool_pending_operations () |> RPC.Client.call client
+    in
+    let replaced_op = JSON.(json |-> "outdated" |> geti 0) in
+    let replaced_op_kind =
+      JSON.(replaced_op |-> "contents" |> geti 0 |-> "kind" |> as_string)
+    in
+    Check.((replaced_op_kind = "transaction") string)
+      ~error_msg:
+        "Expected the replaced transaction to be in the outdated pool, but \
+         instead found %L." ;
+    let replaced_op_err =
+      JSON.(replaced_op |-> "error" |> geti 0 |-> "id" |> as_string)
+    in
+    Check.((replaced_op_err = "prevalidation.operation_replacement") string)
+      ~error_msg:
+        "The replaced transaction has an unexpected error (expected %R, \
+         got %L)." ;
+    Lwt.return_unit
+  in
+  let* old_balance =
+    Client.get_balance_for ~account:destination.alias client
+  in
+  let* old_balance5 =
+    Client.get_balance_for ~account:Constant.bootstrap5.alias client
+  in
+  let* () =
+    Client.bake_for_and_wait ~keys:[Constant.bootstrap1.alias] client
+  in
+  let* new_balance3 =
+    Client.get_balance_for ~account:Constant.bootstrap3.alias client
+  in
+  Check.(new_balance3 = Tez.zero)
+    Tez.typ
+    ~error_msg:"Drained account should be empty but its balance is %L." ;
+  let* new_balance =
+    Client.get_balance_for ~account:destination.alias client
+  in
+  Check.(old_balance < new_balance)
+    Tez.typ
+    ~error_msg:"Destination account of the drain has not been credited." ;
+  let* new_balance5 =
+    Client.get_balance_for ~account:Constant.bootstrap5.alias client
+  in
+  Check.(old_balance5 = new_balance5)
+    Tez.typ
+    ~error_msg:"Destination of the transaction has been credited." ;
+
+  unit
+
+let test_update_consensus_key_with_manual_staking =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"update consensus key with manual staking"
+    ~tags:["consensus_key"]
+  @@ function
+  | protocol when not Protocol.(protocol > Nairobi) -> return ()
+  | protocol ->
   let parameters =
     (* we update paramaters for faster testing: no need to wait
        5 cycles for the consensus key to activate. *)
@@ -204,16 +571,14 @@ let test_update_consensus_key =
   let* () = Client.bake_for_and_wait client in
 
   let* () =
-    if manual_staking then (
-      Log.info "Add stake for `key_b` so that `key_c` can bake later on." ;
-      Client.transfer
-        ~entrypoint:"stake"
-        ~burn_cap:Tez.one
-        ~amount:(Tez.of_int 500_000)
-        ~giver:key_b.alias
-        ~receiver:key_b.alias
-        client)
-    else return ()
+    Log.info "Add stake for `key_b` so that `key_c` can bake later on." ;
+    Client.transfer
+      ~entrypoint:"stake"
+      ~burn_cap:Tez.one
+      ~amount:(Tez.of_int 500_000)
+      ~giver:key_b.alias
+      ~receiver:key_b.alias
+      client
   in
 
   Log.info "Bake until the end of the next cycle with bootstrap1..." ;
@@ -230,10 +595,9 @@ let test_update_consensus_key =
   in
 
   let* () =
-    if manual_staking then (
+    (
       Log.info "`key_c` cannot bake yet." ;
       Client.bake_for ~expect_failure:true ~keys:[key_c.alias] client)
-    else return ()
   in
 
   Log.info "... while `key_a` is able to bake." ;
@@ -848,7 +1212,8 @@ let test_drain_delegate_1 ?(baker = Constant.bootstrap1.alias)
   unit
 
 let register ~protocols =
-  let () = test_update_consensus_key protocols in
+  let () = test_update_consensus_key_without_manual_staking protocols in
+  let () = test_update_consensus_key_with_manual_staking protocols in
   let () =
     register
       "Test set consensus key - baker is not delegate"
