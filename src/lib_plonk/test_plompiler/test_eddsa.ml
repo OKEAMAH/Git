@@ -102,20 +102,20 @@ module Ed25519 (L : LIB) = struct
 
   let nb_bits = Z.numbits A.Base.order
 
-  let test_circuit_verify g pk msg signature_r signature_s () =
+  let test_circuit_verify pk msg signature () =
     let msg = Bytes.input_bytes msg in
     with_label ~label:"EdDSA.test"
-    @@ let* g = input ~kind:`Public g in
-       let* pk = input ~kind:`Public pk in
+    @@ let* pk = input ~kind:`Public @@ Sc.Encoding.pk_encoding.input pk in
        let* msg = input msg in
-       let* signature_r = input signature_r in
-       let* signature_s = input signature_s in
-       let signature = Sc.{r = signature_r; s = signature_s} in
+       let* signature =
+         input @@ Sc.Encoding.signature_encoding.input signature
+       in
+       let signature = Sc.Encoding.signature_encoding.decode signature in
+
        with_label ~label:"with_bool_check"
-       @@ with_bool_check (Sc.verify ~g ~msg ~pk ~signature ())
+       @@ with_bool_check (Sc.verify ~msg ~pk ~signature ())
 
   let tests =
-    let g = A.one in
     List.map
       (fun (sk, _pk, _pk_u_v, msg, _sign, _sign_r_u_v, _sign_s) ->
         let msg = Stdlib.Bytes.of_string msg in
@@ -125,14 +125,14 @@ module Ed25519 (L : LIB) = struct
         test
           ~valid:true
           ~name:"Ed25519.test_circuit_verify"
-          (test_circuit_verify g pk msg signature.r signature.s))
+          (test_circuit_verify pk msg signature))
       test_vectors
 end
 
 let tests =
   [
     Alcotest.test_case "P" `Quick P.test;
-    (*     Alcotest.test_case "Ed25519" `Quick (to_test (module Ed25519 : Test)); *)
+    Alcotest.test_case "Ed25519" `Quick (to_test (module Ed25519 : Test));
     (*     Alcotest.test_case *)
     (*       "Ed25519 plonk" *)
     (*       `Slow *)

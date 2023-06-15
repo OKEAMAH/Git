@@ -55,6 +55,8 @@ module type AFFINE = functor (L : LIB) -> sig
   (** The identity element of the curve (0, 1). *)
   val id : point repr t
 
+  val base_point : point repr t
+
   val add : point repr -> point repr -> point repr t
 
   val cond_add : point repr -> point repr -> bool repr -> point repr t
@@ -163,6 +165,15 @@ functor
       let* zero = M.zero in
       let* one = M.one in
       unsafe_from_coordinates zero one
+
+    let base_point =
+      let* x =
+        Curve.get_u_coordinate Curve.one |> Curve.Base.to_z |> M.constant
+      in
+      let* y =
+        Curve.get_v_coordinate Curve.one |> Curve.Base.to_z |> M.constant
+      in
+      unsafe_from_coordinates x y
 
     let add p q : point repr t =
       let x1, y1 = of_pair p in

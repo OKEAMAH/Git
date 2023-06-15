@@ -137,7 +137,6 @@ module Make = struct
     end
 
     val verify :
-      g:point repr ->
       msg:Bytes.bl repr ->
       pk:pk repr ->
       signature:signature ->
@@ -180,7 +179,7 @@ module Make = struct
       (* assert s < Curve.Scalar.order *)
       (* reduce h modulo Curve.Scalar.order *)
       (* assert r & pk are on curve *)
-      let verify ~g ~msg ~pk ~signature () =
+      let verify ~msg ~pk ~signature () =
         with_label ~label:"EdDSA.verify"
         @@
         let {r; s} = signature in
@@ -190,7 +189,8 @@ module Make = struct
         with_label ~label:"EdDSA.scalar_mul"
         (* It would be better to compute R = sg - h Pk using multiexp *)
         (* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
-        @@ let* sg = scalar_mul s g in
+        @@ let* base_point in
+           let* sg = scalar_mul s base_point in
            let* hpk = scalar_mul h pk in
            let* rhpk = add r hpk in
            with_label ~label:"EdDSA.check" @@ equal sg rhpk
