@@ -72,11 +72,8 @@ module Benchmark : sig
     (** Cost model *)
     val model : name:Namespace.t -> workload Model.t
 
-    (** Creates a  benchmark, ready to be run.
-            The benchmarks are thunked to prevent evaluating the workload until
-            needed. *)
-    val create_benchmark :
-      rng_state:Random.State.t -> config -> workload Generator.benchmark
+    (** Creates a  workload generator ready to be run . *)
+    val generator : (config, workload) Generator.V2.DSL.t
   end
 
   type t = (module S)
@@ -84,6 +81,4 @@ end
 
 module Registration : sig
   val register : Benchmark.t -> unit
-
-  val register_base : (module Benchmark_base.S) -> unit
 end

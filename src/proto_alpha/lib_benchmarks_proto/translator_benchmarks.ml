@@ -528,21 +528,32 @@ let rec check_printable_ascii v i =
 let check_printable_benchmark =
   let open Tezos_shell_benchmarks.Encoding_benchmarks_helpers in
   let open Encodings in
-  linear_shared
-    ~name:"CHECK_PRINTABLE"
-    ~generator:(fun rng_state ->
-      let open Base_samplers in
-      let string =
-        readable_ascii_string rng_state ~size:{min = 1; max = 1024}
-      in
-      (string, {Shared_linear.bytes = String.length string}))
-    ~make_bench:(fun generator () ->
-      let generated, workload = generator () in
-      let closure () =
-        ignore (check_printable_ascii generated (String.length generated - 1))
-      in
-      Generator.Plain {workload; closure})
-    ()
+  let module M = struct
+    include
+      (val linear_shared
+             ~name:"CHECK_PRINTABLE"
+             ~generator:(fun rng_state ->
+               let open Base_samplers in
+               let string =
+                 readable_ascii_string rng_state ~size:{min = 1; max = 1024}
+               in
+               (string, {Shared_linear.bytes = String.length string}))
+             ~make_bench:(fun generator ->
+               let generated, workload = generator () in
+               let closure () =
+                 ignore
+                   (check_printable_ascii
+                      generated
+                      (String.length generated - 1))
+               in
+               Option.some @@ Generator.Plain {workload; closure})
+             ())
+
+    let models = [("encoding", model ~name)]
+
+    let create_benchmarks = Generator.V2.DSL.to_v1 generator
+  end in
+  (module M : Benchmark.S)
 
 let () = Registration_helpers.register check_printable_benchmark
 

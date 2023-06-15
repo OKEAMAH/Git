@@ -22,6 +22,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Benchmarks_shell
 
 let ns = Namespace.make Shell_namespace.ns "encoding"
 
@@ -67,19 +68,20 @@ end) =
 struct
   (* Generic function to cook benchmarks for fixed-size encodings *)
   let fixed_size_shared :
+      type a.
       ?check:(unit -> unit) ->
       name:string ->
-      generator:'a Base_samplers.sampler ->
+      generator:a Base_samplers.sampler ->
       make_bench:
-        ((unit -> 'a) -> unit -> unit Tezos_benchmark.Generator.benchmark) ->
+        ((unit -> a) -> unit Tezos_benchmark.Generator.benchmark option) ->
       unit ->
-      Tezos_benchmark.Benchmark.t =
+      Benchmark.t =
    fun ?(check = fun () -> ()) ~name ~generator ~make_bench () ->
     let free_variable = fv (Format.asprintf "%s_const" name) in
-    let model =
+    let model ~name =
       Model.make
         ~conv:(fun () -> ())
-        ~model:(Model.unknown_const1 ~name:(ns name) ~const:free_variable)
+        ~model:(Model.unknown_const1 ~name ~const:free_variable)
     in
     let module Bench : Benchmark.S = struct
       let name = ns name
@@ -94,12 +96,19 @@ struct
 
       include Shared_constant_time
 
-      let create_benchmarks ~rng_state ~bench_num () =
-        check () ;
-        let generator () = generator rng_state in
-        List.repeat bench_num (make_bench generator)
+      let generator =
+        let open Generator.V2.DSL in
+        let$ {rng_state; config = _; _} = get_params in
+        let generator () () = generator rng_state in
+        describe
+        @> pre_hook ~f:(fun () -> check ())
+        @> setup_data ~data:(Load_data generator)
+        @> benchmark ~f:(fun generated -> make_bench generated)
+        @> complete
 
-      let models = [("encoding", model)]
+      let group = Benchmark.Group "encoding"
+
+      let model = model
     end in
     ((module Bench) : Benchmark.t)
 
@@ -107,10 +116,10 @@ struct
   let linear_shared ?(check = fun () -> ()) ~name ~generator ~make_bench () =
     let const = fv (Format.asprintf "%s_const" name) in
     let coeff = fv (Format.asprintf "%s_coeff" name) in
-    let model =
+    let model ~name =
       Model.make
         ~conv:(fun {Shared_linear.bytes} -> (bytes, ()))
-        ~model:(Model.affine ~name:(ns name) ~intercept:const ~coeff)
+        ~model:(Model.affine ~name ~intercept:const ~coeff)
     in
     let module Bench : Benchmark.S = struct
       let name = ns name
@@ -125,12 +134,18 @@ struct
 
       include Shared_linear
 
-      let create_benchmarks ~rng_state ~bench_num () =
-        check () ;
-        let generator () = generator rng_state in
-        List.repeat bench_num (make_bench generator)
+      let generator =
+        let open Generator.V2.DSL in
+        let$ {rng_state; config = _; _} = get_params in
+        describe
+        @> pre_hook ~f:(fun () -> check ())
+        @> setup_data ~data:(Load_data (fun () () -> generator rng_state))
+        @> benchmark ~f:(fun generated -> make_bench generated)
+        @> complete
 
-      let models = [("encoding", model)]
+      let group = Benchmark.Group "encoding"
+
+      let model = model
     end in
     ((module Bench) : Benchmark.t)
 
@@ -139,10 +154,10 @@ struct
       ~generator_intercept ~make_bench_intercept =
     let const = fv (Format.asprintf "%s_const" name) in
     let coeff = fv (Format.asprintf "%s_coeff" name) in
-    let model =
+    let model ~name =
       Model.make
         ~conv:(fun {Shared_linear.bytes} -> (bytes, ()))
-        ~model:(Model.nsqrtn_const ~name:(ns name) ~intercept:const ~coeff)
+        ~model:(Model.nsqrtn_const ~name ~intercept:const ~coeff)
     in
     let module Bench : Benchmark.S = struct
       let name = ns name
@@ -157,11 +172,17 @@ struct
 
       include Shared_linear
 
-      let create_benchmarks ~rng_state ~bench_num () =
-        let generator () = generator rng_state in
-        List.repeat bench_num (make_bench generator)
+      let group = Benchmark.Group "encoding"
 
-      let models = [("encoding", model)]
+      let generator =
+        let open Generator.V2.DSL in
+        let$ {rng_state; bench_num = _; config = _} = get_params in
+        describe
+        @> setup_data ~data:(Load_data (fun () () -> generator rng_state))
+        @> benchmark ~f:(fun generated -> make_bench generated)
+        @> complete
+
+      let model = model
     end in
     let module Bench_intercept : Benchmark.S = struct
       let name = (Namespace.make ns name) "intercept"
@@ -177,11 +198,18 @@ struct
 
       include Shared_linear
 
-      let create_benchmarks ~rng_state ~bench_num () =
-        let generator () = generator_intercept rng_state in
-        List.repeat bench_num (make_bench_intercept generator)
+      let group = Benchmark.Group "encoding"
 
-      let models = [("encoding", model)]
+      let generator =
+        let open Generator.V2.DSL in
+        let$ {rng_state; bench_num = _; config = _} = get_params in
+        describe
+        @> setup_data
+             ~data:(Load_data (fun () () -> generator_intercept rng_state))
+        @> benchmark ~f:(fun generated -> make_bench_intercept generated)
+        @> complete
+
+      let model = model
     end in
     (((module Bench) : Benchmark.t), ((module Bench_intercept) : Benchmark.t))
 
@@ -198,12 +226,12 @@ struct
       ?check
       ~name
       ~generator
-      ~make_bench:(fun generator () ->
+      ~make_bench:(fun generator ->
         let generated = generator () in
         let closure () =
           ignore (Data_encoding.Binary.to_bytes_exn encoding generated)
         in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
       ()
 
   let make_encode_variable_size :
@@ -215,12 +243,12 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~encoding ~generator ->
-    linear_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    linear_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated, workload = generator () in
         let closure () =
           ignore (Data_encoding.Binary.to_bytes_exn encoding generated)
         in
-        Generator.Plain {workload; closure})
+        Option.some @@ Generator.Plain {workload; closure})
 
   let make_decode_fixed_size :
       type a.
@@ -231,13 +259,13 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~encoding ~generator ->
-    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated = generator () in
         let encoded = Data_encoding.Binary.to_bytes_exn encoding generated in
         let closure () =
           ignore (Data_encoding.Binary.of_bytes_exn encoding encoded)
         in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
 
   let make_decode_variable_size :
       type a.
@@ -248,13 +276,13 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~encoding ~generator ->
-    linear_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    linear_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated, workload = generator () in
         let encoded = Data_encoding.Binary.to_bytes_exn encoding generated in
         let closure () =
           ignore (Data_encoding.Binary.of_bytes_exn encoding encoded)
         in
-        Generator.Plain {workload; closure})
+        Option.some @@ Generator.Plain {workload; closure})
 
   (* Generic functions to cook benchmarks for b58check conversions (used for
      typechecking in readable mode in the protocol...) and byte conversions. *)
@@ -267,10 +295,10 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_string ~generator ->
-    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated = generator () in
         let closure () = ignore (to_string generated) in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
 
   (* Exactly the sample implem' as above.*)
   let make_encode_fixed_size_to_bytes :
@@ -282,10 +310,10 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_bytes ~generator ->
-    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated = generator () in
         let closure () = ignore (to_bytes generated) in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
 
   let make_encode_variable_size_to_string :
       type a.
@@ -296,10 +324,10 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_string ~generator ->
-    linear_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    linear_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated, workload = generator () in
         let closure () = ignore (to_string generated) in
-        Generator.Plain {workload; closure})
+        Option.some @@ Generator.Plain {workload; closure})
 
   let make_decode_fixed_size_from_string :
       type a.
@@ -311,11 +339,11 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_string ~from_string ~generator ->
-    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated = generator () in
         let string = to_string generated in
         let closure () = ignore (from_string string) in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
 
   let make_decode_fixed_size_from_bytes :
       type a.
@@ -327,11 +355,11 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_bytes ~from_bytes ~generator ->
-    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    fixed_size_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated = generator () in
         let bytes = to_bytes generated in
         let closure () = ignore (from_bytes bytes) in
-        Generator.Plain {workload = (); closure})
+        Option.some @@ Generator.Plain {workload = (); closure})
 
   let make_decode_variable_size_from_string :
       type a.
@@ -343,11 +371,11 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_string ~from_string ~generator ->
-    linear_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    linear_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated, workload = generator () in
         let string = to_string generated in
         let closure () = ignore (from_string string) in
-        Generator.Plain {workload; closure})
+        Option.some @@ Generator.Plain {workload; closure})
 
   let make_decode_variable_size_from_bytes :
       type a.
@@ -359,9 +387,9 @@ struct
       unit ->
       Benchmark.t =
    fun ?check ~name ~to_bytes ~from_bytes ~generator ->
-    linear_shared ?check ~name ~generator ~make_bench:(fun generator () ->
+    linear_shared ?check ~name ~generator ~make_bench:(fun generator ->
         let generated, workload = generator () in
         let string = to_bytes generated in
         let closure () = ignore (from_bytes string) in
-        Generator.Plain {workload; closure})
+        Option.some @@ Generator.Plain {workload; closure})
 end

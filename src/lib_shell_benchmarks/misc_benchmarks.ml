@@ -63,10 +63,14 @@ module Lwt_main_run_bench : Benchmark.S = struct
 
   let workload_encoding = Data_encoding.unit
 
-  let create_benchmark ~rng_state:_ () =
-    let closure () = Lwt_main.run Lwt.return_unit in
-    let workload = () in
-    Generator.Plain {workload; closure}
+  let generator =
+    let open Generator.V2.DSL in
+    return @@ describe
+    @> benchmark ~f:(fun () ->
+           let closure () = Lwt_main.run Lwt.return_unit in
+           let workload = () in
+           Option.some @@ Generator.Plain {workload; closure})
+    @> complete
 end
 
 let () = Registration.register (module Lwt_main_run_bench)

@@ -62,9 +62,12 @@ let make_bench ~name ~info ~model ~generator ~make_bench : Benchmark.t =
 
     let group = Benchmark.Group "bloomer"
 
-    let create_benchmark ~rng_state _ =
-      let generator () = generator rng_state in
-      make_bench generator
+    let generator =
+      let open Generator.V2.DSL in
+      let$ {rng_state; bench_num = _; config = _} = get_params in
+      describe
+      @> benchmark ~f:(fun () -> make_bench (Fun.const (generator rng_state)))
+      @> complete
 
     let model = model
   end in
@@ -93,7 +96,7 @@ let () =
        ~make_bench:(fun generator ->
          let bloomer, string = generator () in
          let closure () = ignore (Bloomer.mem bloomer string) in
-         Generator.Plain {workload = (); closure})
+         Some (Generator.Plain {workload = (); closure}))
 
 (* This is a feature of the peer-to-peer layer.
    The benchmark is not used to generate values for the protocol. *)
@@ -107,4 +110,4 @@ let () =
        ~make_bench:(fun generator ->
          let bloomer = generator () in
          let closure () = ignore (Bloomer.add bloomer "test") in
-         Generator.Plain {workload = (); closure})
+         Some (Generator.Plain {workload = (); closure}))

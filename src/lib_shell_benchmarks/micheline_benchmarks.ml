@@ -166,11 +166,18 @@ module Micheline_strip_locations : Benchmark.S = struct
 
   let group = Benchmark.Standalone
 
-  let create_benchmark ~rng_state () =
+  let make_benchmark ~rng_state =
     let term = sample rng_state in
     let size = micheline_size term in
     let closure () = ignore (Micheline.strip_locations term) in
-    Generator.Plain {workload = size; closure}
+    Option.some @@ Generator.Plain {workload = size; closure}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; _} = get_params in
+    describe
+    @> benchmark ~f:(Fun.const @@ make_benchmark ~rng_state)
+    @> complete
 end
 
 let () = Registration.register (module Micheline_strip_locations)

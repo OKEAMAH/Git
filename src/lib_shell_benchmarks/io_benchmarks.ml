@@ -335,6 +335,14 @@ module Context_size_dependent_read_bench : Benchmark.S = struct
     in
     Generator.With_context {workload; closure; with_context}
 
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () ->
+           Option.some @@ create_benchmark ~rng_state config)
+    @> complete
+
   let model ~name:_ = read_access
 end
 
@@ -423,6 +431,14 @@ module Context_size_dependent_write_bench : Benchmark.S = struct
       result
     in
     Generator.With_context {workload; closure; with_context}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () ->
+           Option.some @@ create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Context_size_dependent_write_bench)
@@ -686,6 +702,14 @@ module Irmin_pack_read_bench : Benchmark.S = struct
       result
     in
     Generator.With_context {workload; closure; with_context}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () ->
+           Option.some @@ create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Irmin_pack_read_bench)
@@ -875,11 +899,19 @@ module Irmin_pack_write_bench : Benchmark.S = struct
         }
     in
     Generator.With_context {workload; closure; with_context}
+
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {rng_state; config; _} = get_params in
+    describe
+    @> benchmark ~f:(fun () ->
+           Option.some @@ create_benchmark ~rng_state config)
+    @> complete
 end
 
 let () = Registration.register (module Irmin_pack_write_bench)
 
-module Read_random_key_bench : Benchmark_base.S = struct
+module Read_random_key_bench : Benchmark.S = struct
   type config = {
     existing_context : string * Context_hash.t;
     subdirectory : string list;
@@ -930,15 +962,17 @@ module Read_random_key_bench : Benchmark_base.S = struct
         in
         Sparse_vec.String.of_list keys
 
-  let read_access =
+  let read_access ~name:_ =
     Model.make
       ~conv:(function
         | Read_random_key {depth; storage_bytes} -> (depth, (storage_bytes, ())))
       ~model:read_model
 
-  let models = [("io_read", read_access)]
+  let group = Benchmark.Group "io_read"
 
-  let make_bench rng_state config keys () =
+  let model = read_access
+
+  let make_bench rng_state config keys =
     let card = Array.length keys in
     assert (card > 0) ;
     let key, value_size = keys.(Random.State.int rng_state card) in
@@ -973,19 +1007,31 @@ module Read_random_key_bench : Benchmark_base.S = struct
     in
     Generator.With_context {workload; closure; with_context}
 
-  let create_benchmarks ~rng_state ~bench_num config =
-    let base_dir, context_hash = config.existing_context in
-    let tree =
-      Io_helpers.with_context ~base_dir ~context_hash (fun context ->
-          Io_stats.load_tree context config.subdirectory)
-    in
-    let keys = Array.of_seq (Io_helpers.Key_map.to_seq tree) in
-    List.repeat bench_num (make_bench rng_state config keys)
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {config; rng_state; _} = get_params in
+    describe
+    @> setup_data
+         ~data:
+           (Load_data
+              (fun () ->
+                let base_dir, context_hash = config.existing_context in
+                let tree =
+                  Io_helpers.with_context
+                    ~base_dir
+                    ~context_hash
+                    (fun context ->
+                      Io_stats.load_tree context config.subdirectory)
+                in
+                Array.of_seq (Io_helpers.Key_map.to_seq tree)))
+    @> benchmark ~f:(fun keys ->
+           Option.some @@ make_bench rng_state config keys)
+    @> complete
 end
 
-let () = Registration.register_base (module Read_random_key_bench)
+let () = Registration.register (module Read_random_key_bench)
 
-module Write_random_keys_bench : Benchmark_base.S = struct
+module Write_random_keys_bench : Benchmark.S = struct
   open Base_samplers
 
   type config = {
@@ -1080,20 +1126,21 @@ module Write_random_keys_bench : Benchmark_base.S = struct
         in
         Sparse_vec.String.of_list keys
 
-  let write_access =
+  let write_access ~name:_ =
     Model.make
       ~conv:(function
         | Write_random_keys {keys_written; storage_bytes; _} ->
             (keys_written, (storage_bytes, ())))
       ~model:write_model
 
-  let models = [("io_write", write_access)]
+  let model = write_access
+
+  let group = Benchmark.Group "io_write"
 
   let write_storage context key bytes =
     Lwt_main.run (Context.add context key bytes)
 
-  let make_bench rng_state (cfg : config) (keys : (string list * int) Seq.t) ()
-      =
+  let make_bench rng_state (cfg : config) (keys : (string list * int) Seq.t) =
     let keys = List.of_seq keys in
     let total_keys_in_directory = List.length keys in
     let number_of_keys_written =
@@ -1161,14 +1208,26 @@ module Write_random_keys_bench : Benchmark_base.S = struct
     in
     Generator.With_context {workload; closure; with_context}
 
-  let create_benchmarks ~rng_state ~bench_num config =
-    let base_dir, context_hash = config.existing_context in
-    let tree =
-      Io_helpers.with_context ~base_dir ~context_hash (fun context ->
-          Io_stats.load_tree context config.subdirectory)
-    in
-    let keys = Io_helpers.Key_map.to_seq tree in
-    List.repeat bench_num (make_bench rng_state config keys)
+  let generator =
+    let open Generator.V2.DSL in
+    let$ {config; rng_state; _} = get_params in
+    describe
+    @> setup_data
+         ~data:
+           (Load_data
+              (fun () ->
+                let base_dir, context_hash = config.existing_context in
+                let tree =
+                  Io_helpers.with_context
+                    ~base_dir
+                    ~context_hash
+                    (fun context ->
+                      Io_stats.load_tree context config.subdirectory)
+                in
+                Io_helpers.Key_map.to_seq tree))
+    @> benchmark ~f:(fun keys ->
+           Option.some @@ make_bench rng_state config keys)
+    @> complete
 end
 
-let () = Registration.register_base (module Write_random_keys_bench)
+let () = Registration.register (module Write_random_keys_bench)

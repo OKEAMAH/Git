@@ -54,8 +54,7 @@ module Benchmark = struct
 
     val model : name:Namespace.t -> workload Model.t
 
-    val create_benchmark :
-      rng_state:Random.State.t -> config -> workload Generator.benchmark
+    val generator : (config, workload) Generator.V2.DSL.t
   end
 
   type t = (module S)
@@ -77,17 +76,7 @@ module Registration = struct
             Bench.model ~name );
         ]
 
-      let create_benchmarks ~rng_state ~bench_num config =
-        List.repeat bench_num (fun () ->
-            Bench.create_benchmark ~rng_state config)
+      let create_benchmarks = Generator.V2.DSL.to_v1 Bench.generator
     end in
     Registration.register (module B)
-
-  let register_base (module B : Benchmark_base.S) =
-    let module Bench : Benchmark_base.S = struct
-      include B
-
-      let tags = "shell" :: B.tags
-    end in
-    Registration.register (module Bench)
 end
