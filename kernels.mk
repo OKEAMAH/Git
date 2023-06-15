@@ -17,6 +17,9 @@ evm_kernel.wasm::
 	@cp src/kernel_evm/target/wasm32-unknown-unknown/release/evm_kernel.wasm $@
 	@wasm-strip $@
 
+evm_installer.hex:: evm_kernel.wasm
+	@scripts/evm_installer.sh
+
 .PHONY: kernel_sequencer
 kernel_sequencer:
 	@make -C src/kernel_sequencer build
