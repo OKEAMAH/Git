@@ -34,20 +34,21 @@ module P = struct
   module P = Ed25519.P
   module Curve = Ed25519.Curve
 
-  let test_vanilla_ed25519 sk (pk_expected : Curve.t) msg
-      (sign_expected : P.signature) =
+  let test_vanilla_ed25519 sk (pk_expected : Curve.t) msg (sign : P.signature) =
+    let P.{r = sign_r_expected; s = sign_s_expected} = sign in
     let pk = P.neuterize sk in
     assert (Curve.eq pk pk_expected) ;
 
     let signature = P.sign ~compressed:true sk msg in
-    assert (Curve.eq signature.r sign_expected.r) ;
-    assert (List.for_all2 Bool.equal signature.s sign_expected.s) ;
+    assert (Curve.eq signature.r sign_r_expected) ;
+    assert (List.for_all2 Bool.equal signature.s sign_s_expected) ;
 
     assert (P.verify ~compressed:true ~msg ~pk ~signature ()) ;
     Bytes.set msg 0 '\x00' ;
     assert (not @@ P.verify ~msg ~pk ~signature ())
 
   (* sk, pk, (pk_u || pk_v), msg, sign, (sign_r_u || sign_r_v) sign_s *)
+  (* p = 2^255-19 + 1 bit for sign -> (sign(x) || y) *)
   let test_vectors =
     [
       ( "\xc5\xaa\x8d\xf4\x3f\x9f\x83\x7b\xed\xb7\x44\x2f\x31\xdc\xb7\xb1\x66\xd3\x85\x35\x07\x6f\x09\x4b\x85\xce\x3a\x2e\x0b\x44\x58\xf7",
@@ -60,14 +61,14 @@ module P = struct
       );
     ]
 
-  let test_random =
+  let test_random () =
     let sk = Bytes.init 32 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
     let msg = Bytes.init 64 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
     let pk = P.neuterize sk in
-    let signature = P.sign sk msg in
+    let signature = P.sign ~compressed:true sk msg in
     test_vanilla_ed25519 sk pk msg signature
 
-  let tests =
+  let tests () =
     List.iter
       (fun (sk, _pk, pk_u_v, msg, _sign, sign_r_u_v, sign_s) ->
         let sk = Bytes.of_string sk in
@@ -81,13 +82,12 @@ module P = struct
           |> Plompiler.Utils.bool_list_of_z
                ~nb_bits:(Z.numbits Curve.Scalar.order)
         in
-        let sign : P.signature = {r = sign_r; s = sign_s} in
-        test_vanilla_ed25519 sk pk msg sign)
+        test_vanilla_ed25519 sk pk msg P.{r = sign_r; s = sign_s})
       test_vectors
 
-  let test () = tests
-  (* ; *)
-  (*     test_random *)
+  let test () =
+    tests () ;
+    test_random ()
 end
 
 (* module Ed25519 (L : LIB) = struct *)
