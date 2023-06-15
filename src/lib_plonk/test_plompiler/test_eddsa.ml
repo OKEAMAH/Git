@@ -34,69 +34,20 @@ module P = struct
   module P = Ed25519.P
   module Curve = Ed25519.Curve
 
-  let test_vanilla_ed25519 sk pk_expected msg sign_r_expected sign_s_expected =
-    (*     let pk = Hacl_star.Hacl.Ed25519.secret_to_public ~sk in *)
-
-    (*     (\*     Printf.printf "\n pk_computed = %s \n" (Hex.show (Hex.of_bytes pk)) ; *\) *)
-    (*     (\*     Printf.printf "\n pk_expected = %s \n" (Hex.show (Hex.of_bytes pk_expected)) ; *\) *)
-    (*     assert (Bytes.equal pk pk_expected) ; *)
-    (*     let signature = Hacl_star.Hacl.Ed25519.sign ~sk ~msg in *)
-
-    (*     (\*     Printf.printf "\n sign_computed = %s \n" (Hex.show (Hex.of_bytes signature)) ; *\) *)
-    (*     (\*     Printf.printf *\) *)
-    (*     (\*       "\n sign_expected = %s \n" *\) *)
-    (*     (\*       (Hex.show (Hex.of_bytes signature_expected)) ; *\) *)
-    (*     assert (Bytes.equal signature signature_expected) ; *)
-    (*     assert (Hacl_star.Hacl.Ed25519.verify ~pk ~msg ~signature) ; *)
+  let test_vanilla_ed25519 sk (pk_expected : Curve.t) msg
+      (sign_expected : P.signature) =
     let pk = P.neuterize sk in
-    assert (Bytes.equal (Curve.to_bytes pk) pk_expected) ;
-    assert (Curve.eq pk (Curve.of_bytes_exn pk_expected)) ;
+    assert (Curve.eq pk pk_expected) ;
 
-    (*     Printf.printf "\n pk_expected = %s \n" (Hex.show (Hex.of_bytes pk_expected)) ; *)
-    (*     Printf.printf *)
-    (*       "\n pk_computed = %s \n" *)
-    (*       (Hex.show (Hex.of_bytes (Curve.to_bytes pk))) *)
-
-    (*     assert (Curve.eq pk pk_expected) ; *)
     let signature = P.sign ~compressed:true sk msg in
-    assert (Bytes.equal (Curve.to_bytes signature.r) sign_r_expected) ;
-    assert (Curve.eq signature.r (Curve.of_bytes_exn sign_r_expected)) ;
-
-    let sign_s_expected =
-      Curve.Scalar.of_bytes_exn sign_s_expected
-      |> Curve.Scalar.to_z
-      |> Plompiler.Utils.bool_list_of_z ~nb_bits:(Z.numbits Curve.Scalar.order)
-    in
-
-    assert (List.for_all2 Bool.equal signature.s sign_s_expected) ;
+    assert (Curve.eq signature.r sign_expected.r) ;
+    assert (List.for_all2 Bool.equal signature.s sign_expected.s) ;
 
     assert (P.verify ~compressed:true ~msg ~pk ~signature ()) ;
     Bytes.set msg 0 '\x00' ;
     assert (not @@ P.verify ~msg ~pk ~signature ())
 
-  (*     Printf.printf *)
-  (*       "\n sign_computed = %s \n" *)
-  (*       (Hex.show (Hex.of_bytes (Curve.to_bytes signature.r))) ; *)
-  (*     Printf.printf *)
-  (*       "\n sign_computed = %s \n" *)
-  (*       (Hex.show (Hex.of_bytes sign_r_expected)) ; *)
-  (*     Printf.printf *)
-  (*       "\n sign_s_expected = %s \n" *)
-  (*       (Hex.show (Hex.of_bytes sign_s_expected)) ; *)
-  (*     let sign_s = *)
-  (*       Plompiler.Utils.bool_list_to_z signature.s |> Z.to_bits |> Bytes.of_string *)
-  (*     in *)
-  (*     Printf.printf "\n sign_s_computed = %s \n" (Hex.show (Hex.of_bytes sign_s)) ; *)
-  (* assert (1 = 0) *)
-
-  (*     assert (Curve.eq signature.r signature_expected.r) ; *)
-  (*     assert (List.for_all2 Bool.equal signature.s signature_expected.s) ; *)
-  (*     assert (P.verify ~msg ~pk ~signature ()) ; *)
-  (*     let msg = S.(to_bytes @@ random ()) in *)
-  (*     assert (not @@ P.verify ~msg ~pk ~signature ()) *)
-
   (* sk, pk, (pk_u || pk_v), msg, sign, (sign_r_u || sign_r_v) sign_s *)
-  (* p = 2^255-19 + 1 bit for sign -> (sign(x) || y) *)
   let test_vectors =
     [
       ( "\xc5\xaa\x8d\xf4\x3f\x9f\x83\x7b\xed\xb7\x44\x2f\x31\xdc\xb7\xb1\x66\xd3\x85\x35\x07\x6f\x09\x4b\x85\xce\x3a\x2e\x0b\x44\x58\xf7",
@@ -109,65 +60,34 @@ module P = struct
       );
     ]
 
-  (*   let test_random = *)
-  (*     let sk = Curve.Scalar.random () in *)
-  (*     let msg = S.(to_bytes @@ random ()) in *)
-  (*     let pk = P.neuterize sk in *)
-  (*     let signature = P.sign sk msg in *)
-  (*     test_vanilla_ed25519 sk pk msg signature *)
+  let test_random =
+    let sk = Bytes.init 32 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
+    let msg = Bytes.init 64 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
+    let pk = P.neuterize sk in
+    let signature = P.sign sk msg in
+    test_vanilla_ed25519 sk pk msg signature
 
   let tests =
     List.iter
       (fun (sk, _pk, pk_u_v, msg, _sign, sign_r_u_v, sign_s) ->
-        (*         let sk = Curve.Scalar.of_string @@ Z.(to_bits (of_string sk)) in *)
-        (*         (\*         let pk = *\) *)
-        (*         (\*           Curve.from_coordinates_exn *\) *)
-        (*         (\*             ~u:(Curve.Base.of_string pk_u) *\) *)
-        (*         (\*             ~v:(Curve.Base.of_string pk_v) *\) *)
-        (*         (\*         in *\) *)
-        (*         let pk = *)
-        (*           let pk_bytes = *)
-        (*             Bytes.concat *)
-        (*               Bytes.empty *)
-        (*               [ *)
-        (*                 (Bytes.of_string @@ Z.(to_bits (of_string pk_u))); *)
-        (*                 (Bytes.of_string @@ Z.(to_bits (of_string pk_v))); *)
-        (*               ] *)
-        (*           in *)
-        (*           Curve.of_bytes_exn pk_bytes *)
-        (*         in *)
-        (*         (\*         let sign_r = *\) *)
-        (*         (\*           Curve.from_coordinates_exn *\) *)
-        (*         (\*             ~u:(Curve.Base.of_string sign_r_u) *\) *)
-        (*         (\*             ~v:(Curve.Base.of_string sign_r_v) *\) *)
-        (*         (\*         in *\) *)
-        (*         let sign_r = *)
-        (*           let sign_r_bytes = *)
-        (*             Bytes.concat *)
-        (*               Bytes.empty *)
-        (*               [ *)
-        (*                 (Bytes.of_string @@ Z.(to_bits (of_string sign_r_u))); *)
-        (*                 (Bytes.of_string @@ Z.(to_bits (of_string sign_r_v))); *)
-        (*               ] *)
-        (*           in *)
-        (*           Curve.of_bytes_exn sign_r_bytes *)
-        (*         in *)
-
-        (*         let sign_s = *)
-        (*           Curve.Scalar.of_string sign_s *)
-        (*           |> Curve.Scalar.to_z *)
-        (*           |> Utils.bool_list_of_z ~nb_bits:(Z.numbits Curve.Scalar.order) *)
-        (*         in *)
-        (*         let sign : P.signature = {r = sign_r; s = sign_s} in *)
         let sk = Bytes.of_string sk in
         let msg = Bytes.of_string msg in
-        let pk = Bytes.of_string pk_u_v in
-        let sign_r = Bytes.of_string sign_r_u_v in
+        let pk = Bytes.of_string pk_u_v |> Curve.of_bytes_exn in
+        let sign_r = Bytes.of_string sign_r_u_v |> Curve.of_bytes_exn in
         let sign_s = Bytes.of_string sign_s in
-        test_vanilla_ed25519 sk pk msg sign_r sign_s)
+        let sign_s =
+          Curve.Scalar.of_bytes_exn sign_s
+          |> Curve.Scalar.to_z
+          |> Plompiler.Utils.bool_list_of_z
+               ~nb_bits:(Z.numbits Curve.Scalar.order)
+        in
+        let sign : P.signature = {r = sign_r; s = sign_s} in
+        test_vanilla_ed25519 sk pk msg sign)
       test_vectors
 
   let test () = tests
+  (* ; *)
+  (*     test_random *)
 end
 
 (* module Ed25519 (L : LIB) = struct *)
