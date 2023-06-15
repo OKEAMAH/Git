@@ -87,7 +87,7 @@ let model_with_conv :
     if name = instr then make_args args args arity_init
     else trace_error instr name
   in
-  Model.make ~conv ~model
+  Model.make_named ~conv ~model
 
 let sf = Format.asprintf
 
@@ -589,7 +589,7 @@ let pack_ir_model = function
 let amplification_loop_iteration = fv "amplification_loop_iteration"
 
 let amplification_loop_model =
-  Model.make
+  Model.make_named
     ~conv:(fun iterations -> (iterations, ()))
     ~model:
       (Model.linear

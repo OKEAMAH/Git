@@ -70,7 +70,8 @@ let cons (l : t) (a : string) : t =
   match of_string a with
   | [_] -> [a]
   | _ ->
-      Format.eprintf "Namespace.cons error: string contains %c: %s@." sep a ;
+      Format.eprintf "Namespace.cons error: string contains %c: %s\n@." sep a ;
+      Printexc.print_raw_backtrace stdout @@ Printexc.get_callstack 15 ;
       exit 1
 
 let encoding = Data_encoding.(list string)

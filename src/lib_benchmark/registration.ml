@@ -146,6 +146,19 @@ let register ((module Bench) : Benchmark.t) =
     let models =
       List.map
         (fun (s, m) ->
+          let m =
+            match m with
+            | Model.Abstract {conv; model} ->
+                let module M = struct
+                  include (val model)
+
+                  let name =
+                    if Namespace.is_empty name then Bench.name
+                    else Namespace.cons Bench.name @@ Namespace.to_filename name
+                end in
+                Model.Abstract {conv; model = (module M)}
+            | Aggregate _ -> m
+          in
           ( s,
             Model.(
               add_model m Builtin_models.timer_model

@@ -1,0 +1,664 @@
+apply/Take_fees/apply__Take_fees
+        fun size -> (free(apply/Take_fees/intercept) + (free(apply/Take_fees/coeff) * size))
+bloomer/bloomer_add/bloomer__bloomer_add
+        free(bloomer/bloomer_add_const)
+bloomer/bloomer_mem/bloomer__bloomer_mem
+        free(bloomer/bloomer_mem_const)
+builtin/TIMER_LATENCY/zero
+        0
+builtin/timer_model
+        free(builtin/Timer_latency)
+cache/CACHE_UPDATE/cache__CACHE_UPDATE
+        fun size -> (free(cache/CACHE_UPDATE/intercept) + (free(cache/CACHE_UPDATE/coeff) * (log2 (1 + size))))
+carbonated_map/compare_int/carbonated_map__compare_int
+        free(carbonated_map/compare_int)
+carbonated_map/find/carbonated_map__find
+        fun size -> ((free(carbonated_map/find/intercept) + ((log2 size) * free(carbonated_map/compare_int))) + ((log2 size) * free(carbonated_map/find/traverse_overhead)))
+carbonated_map/find_intercept/carbonated_map__find_intercept
+        free(carbonated_map/find_intercept/const)
+carbonated_map/fold/carbonated_map__fold
+        fun size -> (free(carbonated_map/fold_const) + (free(carbonated_map/fold_cost_per_item) * size))
+encoding/B58CHECK_DECODING_CHAIN_ID/encoding__B58CHECK_DECODING_CHAIN_ID
+        free(encoding/B58CHECK_DECODING_CHAIN_ID_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_bls/encoding__B58CHECK_DECODING_PUBLIC_KEY_HASH_bls
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_bls_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_ed25519/encoding__B58CHECK_DECODING_PUBLIC_KEY_HASH_ed25519
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_ed25519_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_p256/encoding__B58CHECK_DECODING_PUBLIC_KEY_HASH_p256
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_p256_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_secp256k1/encoding__B58CHECK_DECODING_PUBLIC_KEY_HASH_secp256k1
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_HASH_secp256k1_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_bls/encoding__B58CHECK_DECODING_PUBLIC_KEY_bls
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_bls_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_ed25519/encoding__B58CHECK_DECODING_PUBLIC_KEY_ed25519
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_ed25519_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_p256/encoding__B58CHECK_DECODING_PUBLIC_KEY_p256
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_p256_const)
+encoding/B58CHECK_DECODING_PUBLIC_KEY_secp256k1/encoding__B58CHECK_DECODING_PUBLIC_KEY_secp256k1
+        free(encoding/B58CHECK_DECODING_PUBLIC_KEY_secp256k1_const)
+encoding/B58CHECK_DECODING_SECRET_KEY_bls/encoding__B58CHECK_DECODING_SECRET_KEY_bls
+        free(encoding/B58CHECK_DECODING_SECRET_KEY_bls_const)
+encoding/B58CHECK_DECODING_SECRET_KEY_ed25519/encoding__B58CHECK_DECODING_SECRET_KEY_ed25519
+        free(encoding/B58CHECK_DECODING_SECRET_KEY_ed25519_const)
+encoding/B58CHECK_DECODING_SECRET_KEY_p256/encoding__B58CHECK_DECODING_SECRET_KEY_p256
+        free(encoding/B58CHECK_DECODING_SECRET_KEY_p256_const)
+encoding/B58CHECK_DECODING_SECRET_KEY_secp256k1/encoding__B58CHECK_DECODING_SECRET_KEY_secp256k1
+        free(encoding/B58CHECK_DECODING_SECRET_KEY_secp256k1_const)
+encoding/B58CHECK_DECODING_SIGNATURE_bls/encoding__B58CHECK_DECODING_SIGNATURE_bls
+        free(encoding/B58CHECK_DECODING_SIGNATURE_bls_const)
+encoding/B58CHECK_DECODING_SIGNATURE_ed25519/encoding__B58CHECK_DECODING_SIGNATURE_ed25519
+        free(encoding/B58CHECK_DECODING_SIGNATURE_ed25519_const)
+encoding/B58CHECK_DECODING_SIGNATURE_p256/encoding__B58CHECK_DECODING_SIGNATURE_p256
+        free(encoding/B58CHECK_DECODING_SIGNATURE_p256_const)
+encoding/B58CHECK_DECODING_SIGNATURE_secp256k1/encoding__B58CHECK_DECODING_SIGNATURE_secp256k1
+        free(encoding/B58CHECK_DECODING_SIGNATURE_secp256k1_const)
+encoding/B58CHECK_ENCODING_CHAIN_ID/encoding__B58CHECK_ENCODING_CHAIN_ID
+        free(encoding/B58CHECK_ENCODING_CHAIN_ID_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_bls/encoding__B58CHECK_ENCODING_PUBLIC_KEY_HASH_bls
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_bls_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_ed25519/encoding__B58CHECK_ENCODING_PUBLIC_KEY_HASH_ed25519
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_ed25519_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_p256/encoding__B58CHECK_ENCODING_PUBLIC_KEY_HASH_p256
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_p256_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_secp256k1/encoding__B58CHECK_ENCODING_PUBLIC_KEY_HASH_secp256k1
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_HASH_secp256k1_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_bls/encoding__B58CHECK_ENCODING_PUBLIC_KEY_bls
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_bls_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_ed25519/encoding__B58CHECK_ENCODING_PUBLIC_KEY_ed25519
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_ed25519_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_p256/encoding__B58CHECK_ENCODING_PUBLIC_KEY_p256
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_p256_const)
+encoding/B58CHECK_ENCODING_PUBLIC_KEY_secp256k1/encoding__B58CHECK_ENCODING_PUBLIC_KEY_secp256k1
+        free(encoding/B58CHECK_ENCODING_PUBLIC_KEY_secp256k1_const)
+encoding/B58CHECK_ENCODING_SECRET_KEY_bls/encoding__B58CHECK_ENCODING_SECRET_KEY_bls
+        free(encoding/B58CHECK_ENCODING_SECRET_KEY_bls_const)
+encoding/B58CHECK_ENCODING_SECRET_KEY_ed25519/encoding__B58CHECK_ENCODING_SECRET_KEY_ed25519
+        free(encoding/B58CHECK_ENCODING_SECRET_KEY_ed25519_const)
+encoding/B58CHECK_ENCODING_SECRET_KEY_p256/encoding__B58CHECK_ENCODING_SECRET_KEY_p256
+        free(encoding/B58CHECK_ENCODING_SECRET_KEY_p256_const)
+encoding/B58CHECK_ENCODING_SECRET_KEY_secp256k1/encoding__B58CHECK_ENCODING_SECRET_KEY_secp256k1
+        free(encoding/B58CHECK_ENCODING_SECRET_KEY_secp256k1_const)
+encoding/B58CHECK_ENCODING_SIGNATURE_bls/encoding__B58CHECK_ENCODING_SIGNATURE_bls
+        free(encoding/B58CHECK_ENCODING_SIGNATURE_bls_const)
+encoding/B58CHECK_ENCODING_SIGNATURE_ed25519/encoding__B58CHECK_ENCODING_SIGNATURE_ed25519
+        free(encoding/B58CHECK_ENCODING_SIGNATURE_ed25519_const)
+encoding/B58CHECK_ENCODING_SIGNATURE_p256/encoding__B58CHECK_ENCODING_SIGNATURE_p256
+        free(encoding/B58CHECK_ENCODING_SIGNATURE_p256_const)
+encoding/B58CHECK_ENCODING_SIGNATURE_secp256k1/encoding__B58CHECK_ENCODING_SIGNATURE_secp256k1
+        free(encoding/B58CHECK_ENCODING_SIGNATURE_secp256k1_const)
+encoding/BLS_FR_FROM_Z/encoding__BLS_FR_FROM_Z
+        free(encoding/BLS_FR_FROM_Z_const)
+encoding/BLS_FR_TO_Z/encoding__BLS_FR_TO_Z
+        free(encoding/BLS_FR_TO_Z_const)
+encoding/CHECK_PRINTABLE/encoding__CHECK_PRINTABLE
+        fun size -> (free(encoding/CHECK_PRINTABLE_const) + (free(encoding/CHECK_PRINTABLE_coeff) * size))
+encoding/DECODING_BLS_FR/encoding__DECODING_BLS_FR
+        free(encoding/DECODING_BLS_FR_const)
+encoding/DECODING_BLS_G1/encoding__DECODING_BLS_G1
+        free(encoding/DECODING_BLS_G1_const)
+encoding/DECODING_BLS_G2/encoding__DECODING_BLS_G2
+        free(encoding/DECODING_BLS_G2_const)
+encoding/DECODING_CHAIN_ID/encoding__DECODING_CHAIN_ID
+        free(encoding/DECODING_CHAIN_ID_const)
+encoding/DECODING_Chest/encoding__DECODING_Chest
+        fun size -> (free(encoding/DECODING_Chest_const) + (free(encoding/DECODING_Chest_coeff) * size))
+encoding/DECODING_Chest_key/encoding__DECODING_Chest_key
+        free(encoding/DECODING_Chest_key_const)
+encoding/DECODING_INT/encoding__DECODING_INT
+        fun size -> (free(encoding/DECODING_INT_const) + (free(encoding/DECODING_INT_coeff) * size))
+encoding/DECODING_MICHELINE/encoding__DECODING_MICHELINE
+        fun size1 -> fun size2 -> fun size3 -> (((free(encoding/DECODING_MICHELINE_micheline_traversal) * size1) + (free(encoding/DECODING_MICHELINE_micheline_int_bytes) * size2)) + (free(encoding/DECODING_MICHELINE_micheline_string_bytes) * size3))
+encoding/DECODING_MICHELINE/encoding__DECODING_MICHELINE_bytes
+        fun size -> (free(encoding/DECODING_MICHELINE_micheline_bytes) * size)
+encoding/DECODING_NAT/encoding__DECODING_NAT
+        fun size -> (free(encoding/DECODING_NAT_const) + (free(encoding/DECODING_NAT_coeff) * size))
+encoding/DECODING_PUBLIC_KEY_HASH_bls/encoding__DECODING_PUBLIC_KEY_HASH_bls
+        free(encoding/DECODING_PUBLIC_KEY_HASH_bls_const)
+encoding/DECODING_PUBLIC_KEY_HASH_ed25519/encoding__DECODING_PUBLIC_KEY_HASH_ed25519
+        free(encoding/DECODING_PUBLIC_KEY_HASH_ed25519_const)
+encoding/DECODING_PUBLIC_KEY_HASH_p256/encoding__DECODING_PUBLIC_KEY_HASH_p256
+        free(encoding/DECODING_PUBLIC_KEY_HASH_p256_const)
+encoding/DECODING_PUBLIC_KEY_HASH_secp256k1/encoding__DECODING_PUBLIC_KEY_HASH_secp256k1
+        free(encoding/DECODING_PUBLIC_KEY_HASH_secp256k1_const)
+encoding/DECODING_PUBLIC_KEY_bls/encoding__DECODING_PUBLIC_KEY_bls
+        free(encoding/DECODING_PUBLIC_KEY_bls_const)
+encoding/DECODING_PUBLIC_KEY_ed25519/encoding__DECODING_PUBLIC_KEY_ed25519
+        free(encoding/DECODING_PUBLIC_KEY_ed25519_const)
+encoding/DECODING_PUBLIC_KEY_p256/encoding__DECODING_PUBLIC_KEY_p256
+        free(encoding/DECODING_PUBLIC_KEY_p256_const)
+encoding/DECODING_PUBLIC_KEY_secp256k1/encoding__DECODING_PUBLIC_KEY_secp256k1
+        free(encoding/DECODING_PUBLIC_KEY_secp256k1_const)
+encoding/DECODING_SECRET_KEY_bls/encoding__DECODING_SECRET_KEY_bls
+        free(encoding/DECODING_SECRET_KEY_bls_const)
+encoding/DECODING_SECRET_KEY_ed25519/encoding__DECODING_SECRET_KEY_ed25519
+        free(encoding/DECODING_SECRET_KEY_ed25519_const)
+encoding/DECODING_SECRET_KEY_p256/encoding__DECODING_SECRET_KEY_p256
+        free(encoding/DECODING_SECRET_KEY_p256_const)
+encoding/DECODING_SECRET_KEY_secp256k1/encoding__DECODING_SECRET_KEY_secp256k1
+        free(encoding/DECODING_SECRET_KEY_secp256k1_const)
+encoding/DECODING_SIGNATURE_bls/encoding__DECODING_SIGNATURE_bls
+        free(encoding/DECODING_SIGNATURE_bls_const)
+encoding/DECODING_SIGNATURE_ed25519/encoding__DECODING_SIGNATURE_ed25519
+        free(encoding/DECODING_SIGNATURE_ed25519_const)
+encoding/DECODING_SIGNATURE_p256/encoding__DECODING_SIGNATURE_p256
+        free(encoding/DECODING_SIGNATURE_p256_const)
+encoding/DECODING_SIGNATURE_secp256k1/encoding__DECODING_SIGNATURE_secp256k1
+        free(encoding/DECODING_SIGNATURE_secp256k1_const)
+encoding/DECODING_STRING/encoding__DECODING_STRING
+        fun size -> (free(encoding/DECODING_STRING_const) + (free(encoding/DECODING_STRING_coeff) * size))
+encoding/DECODING_STRING_LIST_ADVERSARIAL/encoding__DECODING_STRING_LIST_ADVERSARIAL
+        fun size -> (free(encoding/DECODING_STRING_LIST_ADVERSARIAL_const) + (free(encoding/DECODING_STRING_LIST_ADVERSARIAL_coeff) * size))
+encoding/ENCODING_BLS_FR/encoding__ENCODING_BLS_FR
+        free(encoding/ENCODING_BLS_FR_const)
+encoding/ENCODING_BLS_G1/encoding__ENCODING_BLS_G1
+        free(encoding/ENCODING_BLS_G1_const)
+encoding/ENCODING_BLS_G2/encoding__ENCODING_BLS_G2
+        free(encoding/ENCODING_BLS_G2_const)
+encoding/ENCODING_CHAIN_ID/encoding__ENCODING_CHAIN_ID
+        free(encoding/ENCODING_CHAIN_ID_const)
+encoding/ENCODING_Chest/encoding__ENCODING_Chest
+        fun size -> (free(encoding/ENCODING_Chest_const) + (free(encoding/ENCODING_Chest_coeff) * size))
+encoding/ENCODING_Chest_key/encoding__ENCODING_Chest_key
+        free(encoding/ENCODING_Chest_key_const)
+encoding/ENCODING_INT/encoding__ENCODING_INT
+        fun size -> (free(encoding/ENCODING_INT_const) + (free(encoding/ENCODING_INT_coeff) * size))
+encoding/ENCODING_MICHELINE/encoding__ENCODING_MICHELINE
+        fun size1 -> fun size2 -> fun size3 -> (((free(encoding/ENCODING_MICHELINE_micheline_traversal) * size1) + (free(encoding/ENCODING_MICHELINE_micheline_int_bytes) * size2)) + (free(encoding/ENCODING_MICHELINE_micheline_string_bytes) * size3))
+encoding/ENCODING_MICHELINE/encoding__ENCODING_MICHELINE_bytes
+        fun size -> (free(encoding/ENCODING_MICHELINE_micheline_bytes) * size)
+encoding/ENCODING_NAT/encoding__ENCODING_NAT
+        fun size -> (free(encoding/ENCODING_NAT_const) + (free(encoding/ENCODING_NAT_coeff) * size))
+encoding/ENCODING_PUBLIC_KEY_HASH_bls/encoding__ENCODING_PUBLIC_KEY_HASH_bls
+        free(encoding/ENCODING_PUBLIC_KEY_HASH_bls_const)
+encoding/ENCODING_PUBLIC_KEY_HASH_ed25519/encoding__ENCODING_PUBLIC_KEY_HASH_ed25519
+        free(encoding/ENCODING_PUBLIC_KEY_HASH_ed25519_const)
+encoding/ENCODING_PUBLIC_KEY_HASH_p256/encoding__ENCODING_PUBLIC_KEY_HASH_p256
+        free(encoding/ENCODING_PUBLIC_KEY_HASH_p256_const)
+encoding/ENCODING_PUBLIC_KEY_HASH_secp256k1/encoding__ENCODING_PUBLIC_KEY_HASH_secp256k1
+        free(encoding/ENCODING_PUBLIC_KEY_HASH_secp256k1_const)
+encoding/ENCODING_PUBLIC_KEY_bls/encoding__ENCODING_PUBLIC_KEY_bls
+        free(encoding/ENCODING_PUBLIC_KEY_bls_const)
+encoding/ENCODING_PUBLIC_KEY_ed25519/encoding__ENCODING_PUBLIC_KEY_ed25519
+        free(encoding/ENCODING_PUBLIC_KEY_ed25519_const)
+encoding/ENCODING_PUBLIC_KEY_p256/encoding__ENCODING_PUBLIC_KEY_p256
+        free(encoding/ENCODING_PUBLIC_KEY_p256_const)
+encoding/ENCODING_PUBLIC_KEY_secp256k1/encoding__ENCODING_PUBLIC_KEY_secp256k1
+        free(encoding/ENCODING_PUBLIC_KEY_secp256k1_const)
+encoding/ENCODING_SECRET_KEY_bls/encoding__ENCODING_SECRET_KEY_bls
+        free(encoding/ENCODING_SECRET_KEY_bls_const)
+encoding/ENCODING_SECRET_KEY_ed25519/encoding__ENCODING_SECRET_KEY_ed25519
+        free(encoding/ENCODING_SECRET_KEY_ed25519_const)
+encoding/ENCODING_SECRET_KEY_p256/encoding__ENCODING_SECRET_KEY_p256
+        free(encoding/ENCODING_SECRET_KEY_p256_const)
+encoding/ENCODING_SECRET_KEY_secp256k1/encoding__ENCODING_SECRET_KEY_secp256k1
+        free(encoding/ENCODING_SECRET_KEY_secp256k1_const)
+encoding/ENCODING_SIGNATURE_bls/encoding__ENCODING_SIGNATURE_bls
+        free(encoding/ENCODING_SIGNATURE_bls_const)
+encoding/ENCODING_SIGNATURE_ed25519/encoding__ENCODING_SIGNATURE_ed25519
+        free(encoding/ENCODING_SIGNATURE_ed25519_const)
+encoding/ENCODING_SIGNATURE_p256/encoding__ENCODING_SIGNATURE_p256
+        free(encoding/ENCODING_SIGNATURE_p256_const)
+encoding/ENCODING_SIGNATURE_secp256k1/encoding__ENCODING_SIGNATURE_secp256k1
+        free(encoding/ENCODING_SIGNATURE_secp256k1_const)
+encoding/ENCODING_STRING/encoding__ENCODING_STRING
+        fun size -> (free(encoding/ENCODING_STRING_const) + (free(encoding/ENCODING_STRING_coeff) * size))
+encoding/ENCODING_STRING_LIST_ADVERSARIAL/encoding__ENCODING_STRING_LIST_ADVERSARIAL
+        fun size -> (free(encoding/ENCODING_STRING_LIST_ADVERSARIAL_const) + (free(encoding/ENCODING_STRING_LIST_ADVERSARIAL_coeff) * size))
+encoding/TIMESTAMP_READABLE_DECODING/encoding__TIMESTAMP_READABLE_DECODING
+        fun size -> (free(encoding/TIMESTAMP_READABLE_DECODING_const) + (free(encoding/TIMESTAMP_READABLE_DECODING_coeff) * (size * (sqrt size))))
+encoding/TIMESTAMP_READABLE_DECODING/intercept/encoding__TIMESTAMP_READABLE_DECODING
+        fun size -> (free(encoding/TIMESTAMP_READABLE_DECODING_const) + (free(encoding/TIMESTAMP_READABLE_DECODING_coeff) * (size * (sqrt size))))
+encoding/TIMESTAMP_READABLE_ENCODING/encoding__TIMESTAMP_READABLE_ENCODING
+        free(encoding/TIMESTAMP_READABLE_ENCODING_const)
+example/Blake2b_example/example__Blake2b_example
+        fun size -> (free(example/blake2b_const) + (free(example/blake2b_ns_p_byte) * size))
+global_constants_storage/Script_expr_hash_of_b58check_opt/global_constants_storage__Script_expr_hash_of_b58check_opt
+        fun size -> (free(global_constants_storage/Script_expr_hash_of_b58check_opt/intercept) + (free(global_constants_storage/Script_expr_hash_of_b58check_opt/coeff) * size))
+global_constants_storage/Set_add/global_constants_storage__Set_add
+        fun size -> (free(global_constants_storage/Set_add/coeff) * (log2 (1 + size)))
+global_constants_storage/Set_elements/global_constants_storage__Set_elements
+        fun size -> (free(global_constants_storage/Set_elements/coeff) * size)
+global_constants_storage/expand_constant_branch/global_constants_storage__expand_constant_branch
+        fun size -> (free(global_constants_storage/expand_constant_branch/coeff) * size)
+global_constants_storage/expand_no_constant_branch/global_constants_storage__expand_no_constant_branch
+        fun size -> (free(global_constants_storage/expand_no_constant_branch/intercept) + (free(global_constants_storage/expand_no_constant_branch/coeff) * (size * (log2 (1 + size)))))
+global_constants_storage/expr_to_address_in_context/global_constants_storage__expr_to_address_in_context
+        fun size -> (free(global_constants_storage/expr_to_address_in_context/coeff) * size)
+interpreter/N_IAbs_int
+        fun size -> (free(interpreter/N_IAbs_int_const) + (free(interpreter/N_IAbs_int_coeff) * size))
+interpreter/N_IAdd_bls12_381_fr
+        free(interpreter/N_IAdd_bls12_381_fr_const)
+interpreter/N_IAdd_bls12_381_g1
+        free(interpreter/N_IAdd_bls12_381_g1_const)
+interpreter/N_IAdd_bls12_381_g2
+        free(interpreter/N_IAdd_bls12_381_g2_const)
+interpreter/N_IAdd_int
+        fun size1 -> fun size2 -> (free(interpreter/N_IAdd_int_const) + (free(interpreter/N_IAdd_int_coeff) * (max size1 size2)))
+interpreter/N_IAdd_nat
+        fun size1 -> fun size2 -> (free(interpreter/N_IAdd_nat_const) + (free(interpreter/N_IAdd_nat_coeff) * (max size1 size2)))
+interpreter/N_IAdd_seconds_to_timestamp
+        fun size1 -> fun size2 -> (free(interpreter/N_IAdd_seconds_to_timestamp_const) + (free(interpreter/N_IAdd_seconds_to_timestamp_coeff) * (max size1 size2)))
+interpreter/N_IAdd_tez
+        free(interpreter/N_IAdd_tez_const)
+interpreter/N_IAdd_timestamp_to_seconds
+        fun size1 -> fun size2 -> (free(interpreter/N_IAdd_timestamp_to_seconds_const) + (free(interpreter/N_IAdd_timestamp_to_seconds_coeff) * (max size1 size2)))
+interpreter/N_IAddress
+        free(interpreter/N_IAddress_const)
+interpreter/N_IAmount
+        free(interpreter/N_IAmount_const)
+interpreter/N_IAnd
+        free(interpreter/N_IAnd_const)
+interpreter/N_IAnd_bytes
+        fun size1 -> fun size2 -> (free(interpreter/N_IAnd_bytes_const) + (free(interpreter/N_IAnd_bytes_coeff) * (min size1 size2)))
+interpreter/N_IAnd_int_nat
+        fun size1 -> fun size2 -> (free(interpreter/N_IAnd_int_nat_const) + (free(interpreter/N_IAnd_int_nat_coeff) * (min size1 size2)))
+interpreter/N_IAnd_nat
+        fun size1 -> fun size2 -> (free(interpreter/N_IAnd_nat_const) + (free(interpreter/N_IAnd_nat_coeff) * (min size1 size2)))
+interpreter/N_IApply
+        fun size -> (if (size = 0) then free(interpreter/N_IApply_lam) else free(interpreter/N_IApply_lamrec))
+interpreter/N_IBalance
+        free(interpreter/N_IBalance_const)
+interpreter/N_IBig_map_get
+        fun size1 -> fun size2 -> (free(interpreter/N_IBig_map_get_const) + (free(interpreter/N_IBig_map_get_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IBig_map_get_and_update
+        fun size1 -> fun size2 -> (free(interpreter/N_IBig_map_get_and_update_const) + (free(interpreter/N_IBig_map_get_and_update_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IBig_map_mem
+        fun size1 -> fun size2 -> (free(interpreter/N_IBig_map_mem_const) + (free(interpreter/N_IBig_map_mem_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IBig_map_update
+        fun size1 -> fun size2 -> (free(interpreter/N_IBig_map_update_const) + (free(interpreter/N_IBig_map_update_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IBlake2b
+        fun size -> (free(interpreter/N_IBlake2b_const) + (free(interpreter/N_IBlake2b_coeff) * size))
+interpreter/N_IBytes_int
+        fun size -> (free(interpreter/N_IBytes_int_const) + (free(interpreter/N_IBytes_int_coeff) * size))
+interpreter/N_IBytes_nat
+        fun size -> (free(interpreter/N_IBytes_nat_const) + (free(interpreter/N_IBytes_nat_coeff) * size))
+interpreter/N_IBytes_size
+        free(interpreter/N_IBytes_size_const)
+interpreter/N_ICar
+        free(interpreter/N_ICar_const)
+interpreter/N_ICdr
+        free(interpreter/N_ICdr_const)
+interpreter/N_IChainId
+        free(interpreter/N_IChainId_const)
+interpreter/N_ICheck_signature_bls
+        fun size -> (free(interpreter/N_ICheck_signature_bls_const) + (free(interpreter/N_ICheck_signature_bls_coeff) * size))
+interpreter/N_ICheck_signature_ed25519
+        fun size -> (free(interpreter/N_ICheck_signature_ed25519_const) + (free(interpreter/N_ICheck_signature_ed25519_coeff) * size))
+interpreter/N_ICheck_signature_p256
+        fun size -> (free(interpreter/N_ICheck_signature_p256_const) + (free(interpreter/N_ICheck_signature_p256_coeff) * size))
+interpreter/N_ICheck_signature_secp256k1
+        fun size -> (free(interpreter/N_ICheck_signature_secp256k1_const) + (free(interpreter/N_ICheck_signature_secp256k1_coeff) * size))
+interpreter/N_IComb
+        fun size -> (free(interpreter/N_IComb_const) + (free(interpreter/N_IComb_coeff) * (sat_sub size 2)))
+interpreter/N_IComb_get
+        fun size -> (free(interpreter/N_IComb_get_const) + (free(interpreter/N_IComb_get_coeff) * size))
+interpreter/N_IComb_set
+        fun size -> (free(interpreter/N_IComb_set_const) + (free(interpreter/N_IComb_set_coeff) * size))
+interpreter/N_ICompare
+        fun size1 -> fun size2 -> (free(interpreter/N_ICompare_const) + (free(interpreter/N_ICompare_coeff) * (sat_sub (min size1 size2) 1)))
+interpreter/N_IConcat_bytes
+        fun size1 -> fun size2 -> ((free(interpreter/N_IConcat_bytes_const) + (free(interpreter/N_IConcat_bytes_total_bytes) * size1)) + (free(interpreter/N_IConcat_bytes_list_length) * size2))
+interpreter/N_IConcat_bytes_pair
+        fun size1 -> fun size2 -> (free(interpreter/N_IConcat_bytes_pair_const) + (free(interpreter/N_IConcat_bytes_pair_coeff) * (size1 + size2)))
+interpreter/N_IConcat_string
+        fun size1 -> fun size2 -> ((free(interpreter/N_IConcat_string_const) + (free(interpreter/N_IConcat_string_total_bytes) * size1)) + (free(interpreter/N_IConcat_string_list_length) * size2))
+interpreter/N_IConcat_string_pair
+        fun size1 -> fun size2 -> (free(interpreter/N_IConcat_string_pair_const) + (free(interpreter/N_IConcat_string_pair_coeff) * (size1 + size2)))
+interpreter/N_ICons_list
+        free(interpreter/N_ICons_list_const)
+interpreter/N_ICons_none
+        free(interpreter/N_ICons_none_const)
+interpreter/N_ICons_pair
+        free(interpreter/N_ICons_pair_const)
+interpreter/N_ICons_some
+        free(interpreter/N_ICons_some_const)
+interpreter/N_IContract
+        free(interpreter/N_IContract_const)
+interpreter/N_ICreate_contract
+        free(interpreter/N_ICreate_contract_const)
+interpreter/N_IDiff_timestamps
+        fun size1 -> fun size2 -> (free(interpreter/N_IDiff_timestamps_const) + (free(interpreter/N_IDiff_timestamps_coeff) * (max size1 size2)))
+interpreter/N_IDig
+        fun size -> (free(interpreter/N_IDig_const) + (free(interpreter/N_IDig_coeff) * size))
+interpreter/N_IDip
+        free(interpreter/N_IDip_const)
+interpreter/N_IDipN
+        fun size -> (free(interpreter/N_IDipN_const) + (free(interpreter/N_IDipN_coeff) * size))
+interpreter/N_IDrop
+        free(interpreter/N_IDrop_const)
+interpreter/N_IDropN
+        fun size -> ((((free(interpreter/N_IDropN_coeff1) * (min 300 size)) + (free(interpreter/N_IDropN_coeff2) * (sat_sub (min 400 size) 300))) + (free(interpreter/N_IDropN_coeff3) * (sat_sub size 400))) + free(interpreter/N_IDropN_const))
+interpreter/N_IDug
+        fun size -> (free(interpreter/N_IDug_const) + (free(interpreter/N_IDug_coeff) * size))
+interpreter/N_IDup
+        free(interpreter/N_IDup_const)
+interpreter/N_IDupN
+        fun size -> let size = (sat_sub size 1) in ((((free(interpreter/N_IDupN_coeff1) * (min 300 size)) + (free(interpreter/N_IDupN_coeff2) * (sat_sub (min 400 size) 300))) + (free(interpreter/N_IDupN_coeff3) * (sat_sub size 400))) + free(interpreter/N_IDupN_const))
+interpreter/N_IEdiv_int
+        fun size1 -> fun size2 -> let q = (sat_sub size1 size2) in (((free(interpreter/N_IEdiv_int_coeff) * q) * size2) + free(interpreter/N_IEdiv_int_const))
+interpreter/N_IEdiv_nat
+        fun size1 -> fun size2 -> let q = (sat_sub size1 size2) in (((free(interpreter/N_IEdiv_nat_coeff) * q) * size2) + free(interpreter/N_IEdiv_nat_const))
+interpreter/N_IEdiv_tez
+        free(interpreter/N_IEdiv_tez_const)
+interpreter/N_IEdiv_teznat
+        free(interpreter/N_IEdiv_teznat_const)
+interpreter/N_IEmit
+        free(interpreter/N_IEmit_const)
+interpreter/N_IEmpty_big_map
+        free(interpreter/N_IEmpty_big_map_const)
+interpreter/N_IEmpty_map
+        free(interpreter/N_IEmpty_map_const)
+interpreter/N_IEmpty_set
+        free(interpreter/N_IEmpty_set_const)
+interpreter/N_IEq
+        free(interpreter/N_IEq_const)
+interpreter/N_IExec
+        free(interpreter/N_IExec_const)
+interpreter/N_IFailwith
+        free(interpreter/N_IFailwith_const)
+interpreter/N_IGe
+        free(interpreter/N_IGe_const)
+interpreter/N_IGt
+        free(interpreter/N_IGt_const)
+interpreter/N_IHalt
+        free(interpreter/N_IHalt_const)
+interpreter/N_IHash_key
+        free(interpreter/N_IHash_key_const)
+interpreter/N_IIf
+        free(interpreter/N_IIf_const)
+interpreter/N_IIf_cons
+        free(interpreter/N_IIf_cons_const)
+interpreter/N_IIf_left
+        free(interpreter/N_IIf_left_const)
+interpreter/N_IIf_none
+        free(interpreter/N_IIf_none_const)
+interpreter/N_IImplicit_account
+        free(interpreter/N_IImplicit_account_const)
+interpreter/N_IInt_bls12_381_z_fr
+        free(interpreter/N_IInt_bls12_381_z_fr_const)
+interpreter/N_IInt_bytes
+        fun size -> (free(interpreter/N_IInt_bytes_const) + (free(interpreter/N_IInt_bytes_coeff) * size))
+interpreter/N_IInt_nat
+        free(interpreter/N_IInt_nat_const)
+interpreter/N_IIs_nat
+        free(interpreter/N_IIs_nat_const)
+interpreter/N_IJoin_tickets
+        fun content_size_x -> fun content_size_y -> fun amount_size_x -> fun amount_size_y -> ((free(interpreter/N_IJoin_tickets_const) + (free(interpreter/N_IJoin_tickets_compare_coeff) * (min content_size_x content_size_y))) + (free(interpreter/N_IJoin_tickets_add_coeff) * (max amount_size_x amount_size_y)))
+interpreter/N_IKeccak
+        fun size -> (free(interpreter/N_IKeccak_const) + (free(interpreter/N_IKeccak_coeff) * size))
+interpreter/N_ILambda
+        fun size -> (if (size = 0) then free(interpreter/N_ILambda_lam) else free(interpreter/N_ILambda_lamrec))
+interpreter/N_ILe
+        free(interpreter/N_ILe_const)
+interpreter/N_ILeft
+        free(interpreter/N_ILeft_const)
+interpreter/N_ILevel
+        free(interpreter/N_ILevel_const)
+interpreter/N_IList_iter
+        free(interpreter/N_IList_iter_const)
+interpreter/N_IList_map
+        free(interpreter/N_IList_map_const)
+interpreter/N_IList_size
+        free(interpreter/N_IList_size_const)
+interpreter/N_ILoop
+        free(interpreter/N_ILoop_const)
+interpreter/N_ILoop_left
+        free(interpreter/N_ILoop_left_const)
+interpreter/N_ILsl_bytes
+        fun size1 -> fun size2 -> ((free(interpreter/N_ILsl_bytes_const) + (free(interpreter/N_ILsl_bytes_bytes) * size1)) + (free(interpreter/N_ILsl_bytes_shift) * (sat_sub size2 1)))
+interpreter/N_ILsl_nat
+        fun size -> (free(interpreter/N_ILsl_nat_const) + (free(interpreter/N_ILsl_nat_coeff) * size))
+interpreter/N_ILsr_bytes
+        fun size1 -> fun size2 -> let q = (sat_sub size1 (size2 * 0.125)) in (free(interpreter/N_ILsr_bytes_const) + (free(interpreter/N_ILsr_bytes_coeff) * q))
+interpreter/N_ILsr_nat
+        fun size -> (free(interpreter/N_ILsr_nat_const) + (free(interpreter/N_ILsr_nat_coeff) * size))
+interpreter/N_ILt
+        free(interpreter/N_ILt_const)
+interpreter/N_IMap_get
+        fun size1 -> fun size2 -> (free(interpreter/N_IMap_get_const) + (free(interpreter/N_IMap_get_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IMap_get_and_update
+        fun size1 -> fun size2 -> (free(interpreter/N_IMap_get_and_update_const) + (free(interpreter/N_IMap_get_and_update_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IMap_iter
+        fun size -> (free(interpreter/N_IMap_iter_const) + (free(interpreter/N_IMap_iter_coeff) * size))
+interpreter/N_IMap_map
+        fun size -> (free(interpreter/N_IMap_map_const) + (free(interpreter/N_IMap_map_coeff) * size))
+interpreter/N_IMap_mem
+        fun size1 -> fun size2 -> (free(interpreter/N_IMap_mem_const) + (free(interpreter/N_IMap_mem_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IMap_size
+        free(interpreter/N_IMap_size_const)
+interpreter/N_IMap_update
+        fun size1 -> fun size2 -> (free(interpreter/N_IMap_update_const) + (free(interpreter/N_IMap_update_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_IMin_block_time
+        free(interpreter/N_IMin_block_time_const)
+interpreter/N_IMul_bls12_381_fr
+        free(interpreter/N_IMul_bls12_381_fr_const)
+interpreter/N_IMul_bls12_381_fr_z
+        fun size -> (free(interpreter/N_IMul_bls12_381_fr_z_const) + (free(interpreter/N_IMul_bls12_381_fr_z_coeff) * size))
+interpreter/N_IMul_bls12_381_g1
+        free(interpreter/N_IMul_bls12_381_g1_const)
+interpreter/N_IMul_bls12_381_g2
+        free(interpreter/N_IMul_bls12_381_g2_const)
+interpreter/N_IMul_bls12_381_z_fr
+        fun size -> (free(interpreter/N_IMul_bls12_381_z_fr_const) + (free(interpreter/N_IMul_bls12_381_z_fr_coeff) * size))
+interpreter/N_IMul_int
+        fun size1 -> fun size2 -> let a = (size1 + size2) in ((free(interpreter/N_IMul_int_coeff) * (a * (log2 (1 + a)))) + free(interpreter/N_IMul_int_const))
+interpreter/N_IMul_nat
+        fun size1 -> fun size2 -> let a = (size1 + size2) in ((free(interpreter/N_IMul_nat_coeff) * (a * (log2 (1 + a)))) + free(interpreter/N_IMul_nat_const))
+interpreter/N_IMul_nattez
+        free(interpreter/N_IMul_nattez_const)
+interpreter/N_IMul_teznat
+        free(interpreter/N_IMul_teznat_const)
+interpreter/N_INat_bytes
+        fun size -> (free(interpreter/N_INat_bytes_const) + (free(interpreter/N_INat_bytes_coeff) * size))
+interpreter/N_INeg
+        fun size -> (free(interpreter/N_INeg_const) + (free(interpreter/N_INeg_coeff) * size))
+interpreter/N_INeg_bls12_381_fr
+        free(interpreter/N_INeg_bls12_381_fr_const)
+interpreter/N_INeg_bls12_381_g1
+        free(interpreter/N_INeg_bls12_381_g1_const)
+interpreter/N_INeg_bls12_381_g2
+        free(interpreter/N_INeg_bls12_381_g2_const)
+interpreter/N_INeq
+        free(interpreter/N_INeq_const)
+interpreter/N_INil
+        free(interpreter/N_INil_const)
+interpreter/N_INot
+        free(interpreter/N_INot_const)
+interpreter/N_INot_bytes
+        fun size -> (free(interpreter/N_INot_bytes_const) + (free(interpreter/N_INot_bytes_coeff) * size))
+interpreter/N_INot_int
+        fun size -> (free(interpreter/N_INot_int_const) + (free(interpreter/N_INot_int_coeff) * size))
+interpreter/N_INow
+        free(interpreter/N_INow_const)
+interpreter/N_IOpen_chest
+        fun size1 -> fun size2 -> ((free(interpreter/N_IOpen_chest_const) + (free(interpreter/N_IOpen_chest_log_time_coeff) * (sat_sub size1 1))) + (free(interpreter/N_IOpen_chest_plaintext_coeff) * size2))
+interpreter/N_IOpt_map
+        fun size -> (if (size = 0) then free(interpreter/N_IOpt_map_none) else free(interpreter/N_IOpt_map_some))
+interpreter/N_IOr
+        free(interpreter/N_IOr_const)
+interpreter/N_IOr_bytes
+        fun size1 -> fun size2 -> (free(interpreter/N_IOr_bytes_const) + (free(interpreter/N_IOr_bytes_coeff) * (max size1 size2)))
+interpreter/N_IOr_nat
+        fun size1 -> fun size2 -> (free(interpreter/N_IOr_nat_const) + (free(interpreter/N_IOr_nat_coeff) * (max size1 size2)))
+interpreter/N_IPack
+        fun size1 -> fun size2 -> fun size3 -> (((free(interpreter/N_IPack_micheline_nodes) * size1) + (free(interpreter/N_IPack_micheline_int_bytes) * size2)) + (free(interpreter/N_IPack_micheline_string_bytes) * size3))
+interpreter/N_IPairing_check_bls12_381
+        fun size -> (free(interpreter/N_IPairing_check_bls12_381_const) + (free(interpreter/N_IPairing_check_bls12_381_coeff) * size))
+interpreter/N_IPush
+        free(interpreter/N_IPush_const)
+interpreter/N_IRead_ticket
+        free(interpreter/N_IRead_ticket_const)
+interpreter/N_IRight
+        free(interpreter/N_IRight_const)
+interpreter/N_ISapling_empty_state
+        free(interpreter/N_ISapling_empty_state_const)
+interpreter/N_ISapling_verify_update
+        fun size1 -> fun size2 -> ((free(interpreter/N_ISapling_verify_update_const) + (free(interpreter/N_ISapling_verify_update_inputs) * size1)) + (free(interpreter/N_ISapling_verify_update_outputs) * size2))
+interpreter/N_ISelf
+        free(interpreter/N_ISelf_const)
+interpreter/N_ISelf_address
+        free(interpreter/N_ISelf_address_const)
+interpreter/N_ISender
+        free(interpreter/N_ISender_const)
+interpreter/N_ISet_delegate
+        free(interpreter/N_ISet_delegate_const)
+interpreter/N_ISet_iter
+        fun size -> (free(interpreter/N_ISet_iter_const) + (free(interpreter/N_ISet_iter_coeff) * size))
+interpreter/N_ISet_mem
+        fun size1 -> fun size2 -> (free(interpreter/N_ISet_mem_const) + (free(interpreter/N_ISet_mem_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_ISet_size
+        free(interpreter/N_ISet_size_const)
+interpreter/N_ISet_update
+        fun size1 -> fun size2 -> (free(interpreter/N_ISet_update_const) + (free(interpreter/N_ISet_update_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_ISha256
+        fun size -> (free(interpreter/N_ISha256_const) + (free(interpreter/N_ISha256_coeff) * size))
+interpreter/N_ISha3
+        fun size -> (free(interpreter/N_ISha3_const) + (free(interpreter/N_ISha3_coeff) * size))
+interpreter/N_ISha512
+        fun size -> (free(interpreter/N_ISha512_const) + (free(interpreter/N_ISha512_coeff) * size))
+interpreter/N_ISlice_bytes
+        fun size -> (free(interpreter/N_ISlice_bytes_const) + (free(interpreter/N_ISlice_bytes_coeff) * size))
+interpreter/N_ISlice_string
+        fun size -> (free(interpreter/N_ISlice_string_const) + (free(interpreter/N_ISlice_string_coeff) * size))
+interpreter/N_ISource
+        free(interpreter/N_ISource_const)
+interpreter/N_ISplit_ticket
+        fun size1 -> fun size2 -> (free(interpreter/N_ISplit_ticket_const) + (free(interpreter/N_ISplit_ticket_coeff) * (max size1 size2)))
+interpreter/N_IString_size
+        free(interpreter/N_IString_size_const)
+interpreter/N_ISub_int
+        fun size1 -> fun size2 -> (free(interpreter/N_ISub_int_const) + (free(interpreter/N_ISub_int_coeff) * (max size1 size2)))
+interpreter/N_ISub_tez
+        free(interpreter/N_ISub_tez_const)
+interpreter/N_ISub_tez_legacy
+        free(interpreter/N_ISub_tez_legacy_const)
+interpreter/N_ISub_timestamp_seconds
+        fun size1 -> fun size2 -> (free(interpreter/N_ISub_timestamp_seconds_const) + (free(interpreter/N_ISub_timestamp_seconds_coeff) * (max size1 size2)))
+interpreter/N_ISwap
+        free(interpreter/N_ISwap_const)
+interpreter/N_ITicket
+        free(interpreter/N_ITicket_const)
+interpreter/N_ITotal_voting_power
+        free(interpreter/N_ITotal_voting_power_const)
+interpreter/N_ITransfer_tokens
+        free(interpreter/N_ITransfer_tokens_const)
+interpreter/N_IUncomb
+        fun size -> (free(interpreter/N_IUncomb_const) + (free(interpreter/N_IUncomb_coeff) * (sat_sub size 2)))
+interpreter/N_IUnit
+        free(interpreter/N_IUnit_const)
+interpreter/N_IUnpack
+        free(interpreter/N_IUnpack_const)
+interpreter/N_IUnpair
+        free(interpreter/N_IUnpair_const)
+interpreter/N_IView
+        free(interpreter/N_IView_const)
+interpreter/N_IVoting_power
+        free(interpreter/N_IVoting_power_const)
+interpreter/N_IXor
+        free(interpreter/N_IXor_const)
+interpreter/N_IXor_bytes
+        fun size1 -> fun size2 -> (free(interpreter/N_IXor_bytes_const) + (free(interpreter/N_IXor_bytes_coeff) * (max size1 size2)))
+interpreter/N_IXor_nat
+        fun size1 -> fun size2 -> (free(interpreter/N_IXor_nat_const) + (free(interpreter/N_IXor_nat_coeff) * (max size1 size2)))
+interpreter/N_KCons
+        free(interpreter/N_KCons_const)
+interpreter/N_KIter
+        fun size -> (if (size = 0) then free(interpreter/N_KIter_empty) else free(interpreter/N_KIter_nonempty))
+interpreter/N_KList_enter_body
+        fun size_xs -> fun size_ys -> (if (size_xs = 0) then (free(interpreter/N_KList_enter_body_const) + (free(interpreter/N_KList_enter_body_coeff) * size_ys)) else free(interpreter/N_KList_enter_body_iter))
+interpreter/N_KList_exit_body
+        free(interpreter/N_KList_exit_body_const)
+interpreter/N_KLoop_in
+        free(interpreter/N_KLoop_in_const)
+interpreter/N_KLoop_in_left
+        free(interpreter/N_KLoop_in_left_const)
+interpreter/N_KMap_enter_body
+        fun size -> (if (size = 0) then free(interpreter/N_KMap_enter_body_empty) else free(interpreter/N_KMap_enter_body_nonempty))
+interpreter/N_KMap_exit_body
+        fun size1 -> fun size2 -> (free(interpreter/N_KMap_exit_body_const) + (free(interpreter/N_KMap_exit_body_coeff) * (size1 * (log2 (1 + size2)))))
+interpreter/N_KMap_head
+        free(interpreter/N_KMap_head_const)
+interpreter/N_KNil
+        free(interpreter/N_KNil_const)
+interpreter/N_KReturn
+        free(interpreter/N_KReturn_const)
+interpreter/N_KUndip
+        free(interpreter/N_KUndip_const)
+interpreter/N_KView_exit
+        free(interpreter/N_KView_exit_const)
+interpreter/amplification_loop/interpreter__amplification_loop_model
+        fun size -> (free(interpreter/amplification_loop_iteration) * size)
+io/CONTEXT_SIZE_DEPENDENT_READ/io__read_model
+        fun size1 -> fun size2 -> ((free(io/read_latency) + (free(io/depth) * size1)) + (free(io/storage_bytes) * size2))
+io/CONTEXT_SIZE_DEPENDENT_WRITE/io__read_model
+        fun size1 -> fun size2 -> ((free(io/read_latency) + (free(io/depth) * size1)) + (free(io/storage_bytes) * size2))
+io/IRMIN_PACK_READ/io__read_model
+        fun size1 -> fun size2 -> ((free(io/read_latency) + (free(io/depth) * size1)) + (free(io/storage_bytes) * size2))
+io/IRMIN_PACK_WRITE/io__write_model
+        fun size1 -> fun size2 -> ((free(io/write_latency) + (free(io/keys_written) * size1)) + (free(io/storage_bytes) * size2))
+io/READ_RANDOM_KEY/io__read_model
+        fun size1 -> fun size2 -> ((free(io/read_latency) + (free(io/depth) * size1)) + (free(io/storage_bytes) * size2))
+io/WRITE_RANDOM_KEYS/io__write_model
+        fun size1 -> fun size2 -> ((free(io/write_latency) + (free(io/keys_written) * size1)) + (free(io/storage_bytes) * size2))
+micheline/strip_locations_micheline/micheline__strip_locations_micheline
+        fun size -> (free(micheline/nodes) * size)
+misc/LWT_MAIN.RUN/misc__LWT_MAIN.RUN
+        free(misc/lwt_main_run)
+sapling/SAPLING_APPLY_DIFF/sapling__SAPLING_APPLY_DIFF
+        fun size1 -> fun size2 -> ((free(sapling/apply_diff_const) + (free(sapling/apply_diff_inputs) * size1)) + (free(sapling/apply_diff_outputs) * size2))
+sc_rollup/Sc_rollup_deserialize_output_proof_benchmark/sc_rollup__Sc_rollup_deserialize_output_proof_benchmark
+        fun size -> (free(sc_rollup/Sc_rollup_deserialize_output_proof_benchmark/intercept) + (free(sc_rollup/Sc_rollup_deserialize_output_proof_benchmark/coeff) * size))
+sc_rollup/Sc_rollup_install_boot_sector_benchmark/sc_rollup__Sc_rollup_install_boot_sector_benchmark
+        fun size -> (free(sc_rollup/Sc_rollup_install_boot_sector_benchmark/intercept) + (free(sc_rollup/Sc_rollup_install_boot_sector_benchmark/coeff) * size))
+sc_rollup/Sc_rollup_verify_output_proof_benchmark/sc_rollup__Sc_rollup_verify_output_proof_benchmark
+        fun size -> (free(sc_rollup/Sc_rollup_verify_output_proof_benchmark/intercept) + (free(sc_rollup/Sc_rollup_verify_output_proof_benchmark/coeff) * size))
+script_repr/MICHELINE_NODES/script_repr__MICHELINE_NODES
+        fun size -> (free(script_repr/MICHELINE_NODES_const) + (free(script_repr/MICHELINE_NODES_ns_per_node_coeff) * size))
+script_repr/strip_annotations/script_repr__strip_annotations
+        fun size -> (free(script_repr/nodes) * size)
+script_typed_ir_size/KINSTR_SIZE/script_typed_ir_size__KINSTR_SIZE
+        fun size -> (free(script_typed_ir_size/KINSTR_SIZE_const) + (free(script_typed_ir_size/KINSTR_SIZE_size_coeff) * size))
+script_typed_ir_size/NODE_SIZE/script_typed_ir_size__NODE_SIZE
+        fun size -> (free(script_typed_ir_size/NODE_SIZE_const) + (free(script_typed_ir_size/NODE_SIZE_ns_per_node_coeff) * size))
+script_typed_ir_size/TYPE_SIZE/script_typed_ir_size__TYPE_SIZE
+        fun size -> (free(script_typed_ir_size/TYPE_SIZE_const) + (free(script_typed_ir_size/TYPE_SIZE_size_coeff) * size))
+script_typed_ir_size/VALUE_SIZE/script_typed_ir_size__VALUE_SIZE
+        fun size -> (free(script_typed_ir_size/VALUE_SIZE_const) + (free(script_typed_ir_size/VALUE_SIZE_size_coeff) * size))
+skip_list/hash_cell/skip_list__hash_cell
+        fun size -> (free(skip_list/hash_cell/intercept) + (free(skip_list/hash_cell/coeff) * size))
+skip_list/next/skip_list__next
+        fun size -> (free(skip_list/next/coeff) * (log2 (1 + size)))
+storage/List_key_values/intercept/storage__List_key_values__intercept
+        fun size -> (free(storage/list_key_values_intercept) + (free(storage/list_key_values_step) * size))
+storage/List_key_values/storage__List_key_values
+        fun size -> (free(storage/list_key_values_intercept) + (free(storage/list_key_values_step) * size))
+tickets/COLLECT_TICKETS_STEP/tickets__COLLECT_TICKETS_STEP
+        fun size -> (free(tickets/COLLECT_TICKETS_STEP/intercept) + (free(tickets/COLLECT_TICKETS_STEP/coeff) * size))
+tickets/COMPARE_CONTRACT/tickets__COMPARE_CONTRACT
+        free(tickets/compare_contract)
+tickets/COMPARE_TICKET_HASH/tickets__COMPARE_TICKET_HASH
+        free(tickets/compare_ticket_hash)
+tickets/TYPE_HAS_TICKETS/tickets__TYPE_HAS_TICKETS
+        fun size -> (free(tickets/TYPE_HAS_TICKETS/intercept) + (free(tickets/TYPE_HAS_TICKETS/coeff) * size))
+translator/PARSE_TYPE/translator__PARSE_TYPE
+        fun size -> (free(translator/PARSE_TYPE/intercept) + (free(translator/PARSE_TYPE/coeff) * size))
+translator/TYPECHECKING_CODE/translator__Parsing_Code_gas
+        fun size -> (free(translator/Parsing_Code_gas_const) + (free(translator/Parsing_Code_gas_coeff) * size))
+translator/TYPECHECKING_CODE/translator__Parsing_Code_size
+        fun size1 -> fun size2 -> fun size3 -> (((free(translator/Parsing_Code_size_traversal) * size1) + (free(translator/Parsing_Code_size_int_bytes) * size2)) + (free(translator/Parsing_Code_size_string_bytes) * size3))
+translator/TYPECHECKING_DATA/translator__Parsing_Data_gas
+        fun size -> (free(translator/Parsing_Data_gas_const) + (free(translator/Parsing_Data_gas_coeff) * size))
+translator/TYPECHECKING_DATA/translator__Parsing_Data_size
+        fun size1 -> fun size2 -> fun size3 -> (((free(translator/Parsing_Data_size_traversal) * size1) + (free(translator/Parsing_Data_size_int_bytes) * size2)) + (free(translator/Parsing_Data_size_string_bytes) * size3))
+translator/TY_EQ/translator__TY_EQ
+        fun size -> (free(translator/TY_EQ/intercept) + (free(translator/TY_EQ/coeff) * size))
+translator/UNPARSE_TYPE/translator__UNPARSE_TYPE
+        fun size -> (free(translator/UNPARSE_TYPE/intercept) + (free(translator/UNPARSE_TYPE/coeff) * size))
+translator/UNPARSING_CODE/translator__Unparsing_Code_gas
+        fun size -> (free(translator/Unparsing_Code_gas_const) + (free(translator/Unparsing_Code_gas_coeff) * size))
+translator/UNPARSING_CODE/translator__Unparsing_Code_size
+        fun size1 -> fun size2 -> fun size3 -> (((free(translator/Unparsing_Code_size_traversal) * size1) + (free(translator/Unparsing_Code_size_int_bytes) * size2)) + (free(translator/Unparsing_Code_size_string_bytes) * size3))
+translator/UNPARSING_DATA/translator__Unparsing_Data_gas
+        fun size -> (free(translator/Unparsing_Data_gas_const) + (free(translator/Unparsing_Data_gas_coeff) * size))
+translator/UNPARSING_DATA/translator__Unparsing_Data_size
+        fun size1 -> fun size2 -> fun size3 -> (((free(translator/Unparsing_Data_size_traversal) * size1) + (free(translator/Unparsing_Data_size_int_bytes) * size2)) + (free(translator/Unparsing_Data_size_string_bytes) * size3))

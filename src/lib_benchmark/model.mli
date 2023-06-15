@@ -108,7 +108,9 @@ type 'workload t =
 
 val pp : Format.formatter -> _ t -> unit
 
-val make : conv:('a -> 'b) -> model:'b model -> 'a t
+val make : conv:('a -> 'b) -> model:(name:Namespace.t -> 'b model) -> 'a t
+
+val make_named : conv:('a -> 'b) -> model:'b model -> 'a t
 
 val make_aggregated :
   model:('a -> applied) -> sub_models:packed_model list -> 'a t

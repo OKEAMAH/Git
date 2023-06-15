@@ -46,7 +46,8 @@ module Timer_latency_bench : Benchmark.S = struct
 
   let tags = ["misc"; "builtin"]
 
-  let models = [("*", Model.(make ~conv:(fun () -> ()) ~model:Model.zero))]
+  let models =
+    [("*", Model.(make_named ~conv:(fun () -> ()) ~model:Model.zero))]
 
   let workload_to_vector () = Sparse_vec.String.of_list [("timer_latency", 1.)]
 

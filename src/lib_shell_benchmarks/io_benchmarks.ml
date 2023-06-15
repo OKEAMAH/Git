@@ -34,14 +34,12 @@ let fv s = Free_variable.of_namespace (ns s)
 
 let read_model =
   Model.bilinear_affine
-    ~name:(ns "read_model")
     ~intercept:(fv "read_latency")
     ~coeff1:(fv "depth")
     ~coeff2:(fv "storage_bytes")
 
 let write_model =
   Model.bilinear_affine
-    ~name:(ns "write_model")
     ~intercept:(fv "write_latency")
     ~coeff1:(fv "keys_written")
     ~coeff2:(fv "storage_bytes")

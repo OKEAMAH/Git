@@ -34,6 +34,6 @@ let fv s = Free_variable.of_namespace (ns s)
 let timer_variable = fv "Timer_latency"
 
 let timer_model =
-  Model.make
+  Model.make_named
     ~conv:(fun () -> ())
-    ~model:(Model.unknown_const1 ~name:(ns "timer_model") ~const:timer_variable)
+    ~model:(Model.unknown_const1 ~const:timer_variable ~name:(ns "timer_model"))

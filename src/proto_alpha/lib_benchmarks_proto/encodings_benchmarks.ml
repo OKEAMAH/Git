@@ -107,7 +107,7 @@ module Micheline_common = struct
   let tags = [Tags.encoding]
 
   let model_size name =
-    Model.make
+    Model.make_named
       ~conv:(fun {size = {Size.traversal; int_bytes; string_bytes}; _} ->
         (traversal, (int_bytes, (string_bytes, ()))))
       ~model:
@@ -118,7 +118,7 @@ module Micheline_common = struct
            ~coeff3:(fv (Format.asprintf "%s_micheline_string_bytes" name)))
 
   let model_bytes name =
-    Model.make
+    Model.make_named
       ~conv:(fun {bytes; _} -> (bytes, ()))
       ~model:
         (Model.linear

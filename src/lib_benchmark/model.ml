@@ -22,6 +22,8 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+let prefix_name optional_name constant_name =
+  Namespace.cons optional_name @@ constant_name ^ "__model"
 
 type (_, _, _) arity =
   | Zero_arity : ('elt, 'elt, unit) arity
@@ -147,7 +149,9 @@ module Instantiate (X : Costlang.S) (M : Model_impl) :
   let model elim = apply X.int arity model elim
 end
 
-let make ~conv ~model = Abstract {conv; model}
+let make ~conv ~model = Abstract {conv; model = model ~name:Namespace.empty}
+
+let make_named ~conv ~model = Abstract {conv; model}
 
 let make_aggregated ~model ~sub_models = Aggregate {model; sub_models}
 
@@ -266,7 +270,7 @@ let unknown_const1 ~name ~const =
   let module M = struct
     type arg_type = unit
 
-    let name = name
+    let name = prefix_name name "unknown_const1"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -284,7 +288,7 @@ let linear ~name ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "linear"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -302,7 +306,7 @@ let affine ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "affine"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -322,7 +326,7 @@ let affine_offset ~name ~intercept ~coeff ~offset =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "affine_offset"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -342,7 +346,7 @@ let quadratic ~name ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "quadratic"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -361,7 +365,7 @@ let nlogn ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "nlogn"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -381,7 +385,7 @@ let nsqrtn_const ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "nsqrtn_const"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -401,7 +405,7 @@ let logn ~name ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "logn"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -420,7 +424,7 @@ let linear_sum ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "linear_sum"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -441,7 +445,7 @@ let linear_max ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "linear_max"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -462,7 +466,7 @@ let linear_min ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "linear_min"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -483,7 +487,7 @@ let linear_min_offset ~name ~intercept ~coeff ~offset =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "linear_min_offset"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -505,7 +509,7 @@ let linear_mul ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "linear_mul"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -526,7 +530,7 @@ let bilinear ~name ~coeff1 ~coeff2 =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "bilinear"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -547,7 +551,7 @@ let bilinear_affine ~name ~intercept ~coeff1 ~coeff2 =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "bilinear_affine"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -570,7 +574,7 @@ let nlogm ~name ~intercept ~coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "nlogm"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -592,7 +596,7 @@ let n_plus_logm ~name ~intercept ~linear_coeff ~log_coeff =
   let module M = struct
     type arg_type = int * (int * unit)
 
-    let name = name
+    let name = prefix_name name "n_plus_logm"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -615,7 +619,7 @@ let trilinear ~name ~coeff1 ~coeff2 ~coeff3 =
   let module M = struct
     type arg_type = int * (int * (int * unit))
 
-    let name = name
+    let name = prefix_name name "trilinear"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -641,7 +645,7 @@ let breakdown ~name ~coeff1 ~coeff2 ~break =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "breakdown"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -663,7 +667,7 @@ let breakdown2 ~name ~coeff1 ~coeff2 ~coeff3 ~break1 ~break2 =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "breakdown2"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -686,7 +690,7 @@ let breakdown2_const ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2 =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "breakdown2_const"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -711,7 +715,7 @@ let breakdown2_const_offset ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "breakdown2_const_offset"
 
     module Def (X : Costlang.S) = struct
       open X

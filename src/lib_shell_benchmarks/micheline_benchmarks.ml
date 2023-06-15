@@ -158,11 +158,11 @@ module Micheline_strip_locations : Benchmark.S = struct
     Sparse_vec.String.of_list
       [("nodes", float_of_int nodes); ("bytes", float_of_int bytes)]
 
-  let model ~name =
+  let model ~name:_ =
     Model.(
       make
         ~conv:(fun {nodes; bytes = _} -> (nodes, ()))
-        ~model:(linear ~name ~coeff:(fv "nodes")))
+        ~model:(linear ~coeff:(fv "nodes")))
 
   let group = Benchmark.Standalone
 
