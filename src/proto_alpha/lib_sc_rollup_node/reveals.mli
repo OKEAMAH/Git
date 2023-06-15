@@ -54,8 +54,8 @@ type source =
   | File of string
       (** A file name whose associated file contains the whole data *)
 
-(** [get ~data_dir ~pvm_name ~hash] retrieves the data associated with
-    the reveal hash [hash] from disk. May fail with:
+(** [get ~data_dir ~pvm_name hash] retrieves the data associated with
+    the reveal [hash] from disk. May fail with:
     {ul
       {li [Wrong_hash {found; expected}] where [expected = hash], and
         [found <> hash], if the data is retrieved and hashes to the wrong
@@ -72,3 +72,36 @@ val get :
   pvm_kind:Protocol.Alpha_context.Sc_rollup.Kind.t ->
   Protocol.Sc_rollup_reveal_hash.t ->
   string tzresult Lwt.t
+
+(** [get_partial ~data_dir ~pvm_name hash] retrieves the data associated with
+    the partial reveal [hash] from disk. May fail with:
+    {ul
+     {li [Could_not_open_preimage_file filename] if the function tries to
+        retrieve the data from [filename], but it cannot read the contents
+        of the file.}
+     {li [Could_not_encode_raw_data] if the data is too large (more than
+        4kB) to be revealed.}
+   } *)
+val get_partial :
+  ?dac_client:Dac_observer_client.t ->
+  data_dir:string ->
+  pvm_kind:Protocol.Alpha_context.Sc_rollup.Kind.t ->
+  Protocol.Sc_rollup_partial_reveal_hash.u ->
+  string tzresult Lwt.t
+
+(** [get_proof ~data_dir ~pvm_name hash] retrieves the proof
+    associated with the partial reveal [hash] from disk. May fail with:
+    {ul
+     {li [Could_not_open_preimage_file filename] if the function tries to
+        retrieve the data from [filename], but it cannot read the contents
+        of the file.}
+     {li [Could_not_encode_raw_data] if the data is too large (more than
+        4kB) to be revealed.}
+     {li [Invalid_page_length] if the preimage is not a multiple of
+      [Protocol.Constants_repr.sc_rollup_message_size_limit].}
+   } *)
+val get_proof :
+  Protocol.Sc_rollup_partial_reveal_hash.u ->
+  pvm_kind:Protocol.Alpha_context.Sc_rollup.Kind.t ->
+  data_dir:string ->
+  (Protocol.Sc_rollup_partial_reveal_hash.proof, tztrace) result Lwt.t

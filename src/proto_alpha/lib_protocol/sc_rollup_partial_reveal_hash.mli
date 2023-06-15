@@ -50,6 +50,8 @@ type proof
 
 val proof_encoding : proof Data_encoding.t
 
+type tree
+
 module type M = sig
   include Merkle_list.T
 
@@ -58,6 +60,14 @@ module type M = sig
   val proof_of_path : path -> proof
 
   val path_of_proof : proof -> path
+
+  val t_of_tree : tree -> t
+
+  val tree_of_t : t -> tree
+
+  val merkle_tree : elts:elt list -> tree
+
+  val produce_proof : tree:tree -> index:int -> proof tzresult
 end
 
 (** A Merkle tree module for storing byte-indexed values. *)
@@ -77,6 +87,10 @@ val merkle_tree :
   elts:bytes list ->
   't
 
+(** Same as {!val:merkle_tree}, except it is restricted to the set of Merkle trees
+  instantiated with the hashing scheme {!val:Sc_rollup_reveal_hash.t}. *)
+val merkle_tree_reveal_hash : elts:bytes list -> u -> tree
+
 (** [merkle_root merkle_list ~tree] returns the merkle tree root from the given
     Merkle tree [merkle_list]. *)
 val merkle_root :
@@ -95,6 +109,10 @@ val produce_proof :
   index:int ->
   proof tzresult
 
+(** Same as {!val:produce_proof}, except it is restricted to the set of Merkle trees
+  instantiated with the hashing scheme {!val:Sc_rollup_reveal_hash.t}. *)
+val produce_proof_reveal_hash : tree:tree -> u -> proof tzresult
+
 (** [verify_proof merkle_tree ~proof ~index ~elt ~expected_root] returns true
     if and only if the [proof] testifies that [elt] is the [index]-th leaf of
     the merkle_tree whose root is [expected_root]. *)
@@ -107,7 +125,7 @@ val verify_proof :
   bool tzresult
 
 (** Same as {!val:verify_proof}, except it is restricted to the set of Merkle trees
-  instantiated with a hashing scheme {!val:Sc_rollup_reveal_hash.t}. *)
+  instantiated with the hashing scheme {!val:Sc_rollup_reveal_hash.t}. *)
 val verify_proof_reveal_hash :
   proof:proof ->
   index:int ->

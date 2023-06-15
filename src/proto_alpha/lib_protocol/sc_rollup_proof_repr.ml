@@ -430,6 +430,12 @@ module type PVM_with_context_and_state = sig
 
   val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
+  val reveal_partial : Sc_rollup_partial_reveal_hash.u -> string option Lwt.t
+
+  val get_proof :
+    Sc_rollup_partial_reveal_hash.u ->
+    Sc_rollup_partial_reveal_hash.proof option Lwt.t
+
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof
 
@@ -512,8 +518,15 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
             return
               ( Some (Reveal_proof (Raw_data_proof data)),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
-    | Needs_reveal (Reveal_partial_raw_data _) ->
-        proof_error "Feature not yet active."
+    | Needs_reveal (Reveal_partial_raw_data hash) -> (
+        let*! data = reveal_partial hash in
+        let*! proof = get_proof hash in
+        match (data, proof) with
+        | Some data, Some proof ->
+            return
+              ( Some (Reveal_proof (Partial_raw_data_proof {data; proof})),
+                Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) )
+        | _, _ -> proof_error "No reveal")
     | Needs_reveal Reveal_metadata ->
         return
           ( Some (Reveal_proof Metadata_proof),

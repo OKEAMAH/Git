@@ -220,7 +220,25 @@ let generate_proof (node_ctxt : _ Node_context.t) game start_state =
           ~pvm_kind:PVM.kind
           hash
       in
-      match res with Ok data -> return @@ Some data | Error _ -> return None
+      return (Result.to_option res)
+
+    let reveal_partial (root : Sc_rollup_partial_reveal_hash.u) =
+      let open Lwt_syntax in
+      let* res =
+        Reveals.get_partial
+          ?dac_client:node_ctxt.dac_client
+          ~data_dir:node_ctxt.data_dir
+          ~pvm_kind:PVM.kind
+          root
+      in
+      return (Result.to_option res)
+
+    let get_proof (root : Sc_rollup_partial_reveal_hash.u) =
+      let open Lwt_syntax in
+      let* res =
+        Reveals.get_proof ~data_dir:node_ctxt.data_dir ~pvm_kind:PVM.kind root
+      in
+      return (Result.to_option res)
 
     module Inbox_with_history = struct
       let inbox = snapshot

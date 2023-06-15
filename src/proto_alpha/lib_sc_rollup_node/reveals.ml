@@ -82,13 +82,38 @@ let () =
 
 type source = String of string | File of string
 
-let file_contents filename =
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/5902
+   SCORU: Revealing a sequence of pages of a given preimage should
+   not require reopening the same file repeatedly *)
+let file_contents filename ~index =
   let open Lwt_result_syntax in
-  Lwt.catch
-    (fun () ->
-      let*! contents = Lwt_utils_unix.read_file filename in
-      return_some contents)
-    (fun _ -> return_none)
+  match index with
+  | None ->
+      Lwt.catch
+        (fun () ->
+          let*! contents = Lwt_utils_unix.read_file filename in
+          return_some contents)
+        (fun _ -> return_none)
+  | Some index ->
+      Lwt.catch
+        (fun () ->
+          Lwt_io.with_file filename ~mode:Input (fun ch ->
+              let buff = Bytes.create Constants.sc_rollup_message_size_limit in
+              let*! () =
+                Lwt_io.set_position
+                  ch
+                  (Int64.of_int
+                     (index * Constants.sc_rollup_message_size_limit))
+              in
+              let*! (_ : int) =
+                Lwt_io.read_into
+                  ch
+                  buff
+                  0
+                  Constants.sc_rollup_message_size_limit
+              in
+              return_some (String.of_bytes buff)))
+        (fun _ -> return_none)
 
 let path data_dir pvm_name hash =
   let hash = Protocol.Sc_rollup_reveal_hash.to_hex hash in
@@ -99,14 +124,13 @@ let proto_hash_to_dac_hash ((module Plugin) : Dac_plugin.t) proto_reveal_hash =
   |> Data_encoding.Binary.to_bytes_exn Protocol.Sc_rollup_reveal_hash.encoding
   |> Data_encoding.Binary.of_bytes_exn Plugin.encoding
 
-let get ?dac_client ~data_dir ~pvm_kind hash =
+let get_aux ?dac_client hash filename ?index () =
   let open Lwt_result_syntax in
   let* contents =
-    let filename = path data_dir (Sc_rollup.Kind.to_string pvm_kind) hash in
-    let* file_contents = file_contents filename in
+    let*! file_contents = file_contents filename ~index in
     match file_contents with
-    | Some contents -> return contents
-    | None -> (
+    | Ok (Some contents) -> return contents
+    | Ok None -> (
         match dac_client with
         | None -> tzfail (Could_not_open_preimage_file filename)
         | Some dac_client ->
@@ -118,14 +142,20 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
               dac_client
               dac_plugin
               (proto_hash_to_dac_hash dac_plugin hash))
+    | Error e -> Lwt.return @@ Lwt_utils_unix.tzfail_of_io_error e
   in
-  let*? () =
-    let contents_hash =
-      Reveal_hash.hash_string ~scheme:Reveal_hash.(Any_hash Blake2B) [contents]
-    in
-    error_unless
-      (Reveal_hash.equal contents_hash hash)
-      (Wrong_hash {found = contents_hash; expected = hash})
+  let*? _ =
+    match index with
+    | Some _ -> Ok ()
+    | None ->
+        let contents_hash =
+          Reveal_hash.hash_string
+            ~scheme:(Any_hash Reveal_hash.Blake2B)
+            [contents]
+        in
+        error_unless
+          (Reveal_hash.equal contents_hash hash)
+          (Wrong_hash {found = contents_hash; expected = hash})
   in
   let* _encoded =
     (* Check that the reveal input can be encoded within the bounds enforced by
@@ -139,3 +169,70 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
     |> return
   in
   return contents
+
+let get ?dac_client ~data_dir ~pvm_kind hash =
+  let filename = path data_dir (Sc_rollup.Kind.to_string pvm_kind) hash in
+  get_aux ?dac_client hash filename ()
+
+let get_partial ?dac_client ~data_dir ~pvm_kind
+    ({root; index} : Protocol.Sc_rollup_partial_reveal_hash.u) =
+  let hash = Protocol.Sc_rollup_reveal_hash.to_hex root in
+  let pvm_name = Sc_rollup.Kind.to_string pvm_kind in
+  let filename = Filename.(concat (concat data_dir pvm_name) hash) in
+  get_aux ?dac_client root ~index filename ()
+
+let ( let*?@ ) m f =
+  let open Tezos_base.TzPervasives.Lwt_result_syntax in
+  let*? x = Environment.wrap_tzresult m in
+  f x
+
+let get_proof (reveal_hash : Protocol.Sc_rollup_partial_reveal_hash.u) ~pvm_kind
+    ~data_dir =
+  let open Lwt_result_syntax in
+  let h = Protocol.Sc_rollup_partial_reveal_hash.to_hex reveal_hash in
+  let pvm_name = Sc_rollup.Kind.to_string pvm_kind in
+  let filename = Filename.(concat (concat data_dir pvm_name) h) in
+  let* contents =
+    let*! file_contents =
+      let open Lwt_result_syntax in
+      (Lwt.catch (fun () ->
+           let*! contents = Lwt_utils_unix.read_file filename in
+           return_some contents))
+        (fun _ -> return_none)
+    in
+    match file_contents with
+    | Ok (Some contents) -> return contents
+    | Ok None -> tzfail (Could_not_open_preimage_file filename)
+    | Error e -> Lwt.return @@ Lwt_utils_unix.tzfail_of_io_error e
+  in
+  let* _encoded =
+    (* Check that the reveal input can be encoded within the bounds enforced by
+       the protocol. *)
+    trace Could_not_encode_raw_data
+    @@ protect
+    @@ fun () ->
+    Data_encoding.Binary.to_bytes_exn
+      Sc_rollup.input_encoding
+      (Reveal (Raw_data contents))
+    |> return
+  in
+  (* [String.chunk_bytes] doesn't return an error if the optional argument
+     [error_on_partial_chunk] is None. It raises an exception if the supplied
+     length is negative, which is not the case:
+     [Protocol.Constants_repr.sc_rollup_message_size_limit] is positive. *)
+  let*? elts =
+    String.chunk_bytes
+      Protocol.Constants_repr.sc_rollup_message_size_limit
+      (Bytes.of_string contents)
+  in
+  let tree =
+    Protocol.Sc_rollup_partial_reveal_hash.merkle_tree_reveal_hash
+      reveal_hash
+      ~elts:(List.map Bytes.of_string elts)
+  in
+  let*?@ proof =
+    Protocol.Sc_rollup_partial_reveal_hash.produce_proof_reveal_hash
+      reveal_hash
+      ~tree
+  in
+  return proof

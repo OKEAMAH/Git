@@ -185,6 +185,12 @@ module type PVM_with_context_and_state = sig
 
   val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
+  val reveal_partial : Sc_rollup_partial_reveal_hash.u -> string option Lwt.t
+
+  val get_proof :
+    Sc_rollup_partial_reveal_hash.u ->
+    Sc_rollup_partial_reveal_hash.proof option Lwt.t
+
   module Inbox_with_history : sig
     val inbox : Sc_rollup_inbox_repr.history_proof
 

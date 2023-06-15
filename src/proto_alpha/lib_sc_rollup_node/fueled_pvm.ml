@@ -108,6 +108,9 @@ module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
     | Some data -> return data
     | None -> Reveals.get ?dac_client ~data_dir ~pvm_kind hash
 
+  let get_partial_reveal ?dac_client ~data_dir ~pvm_kind _reveal_map hash =
+    Reveals.get_partial ?dac_client ~data_dir ~pvm_kind hash
+
   type eval_completion =
     | Aborted of {state : pvm_state; fuel : fuel; current_tick : int64}
     | Completed of {
@@ -262,8 +265,19 @@ module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
           | None -> abort state fuel current_tick
           | Some fuel ->
               go fuel (Int64.succ current_tick) failing_ticks next_state)
-      | Needs_reveal (Reveal_partial_raw_data _) ->
-          failwith "Feature not yet active."
+      | Needs_reveal (Reveal_partial_raw_data hash) -> (
+          let* data =
+            get_partial_reveal
+              ~data_dir:node_ctxt.data_dir
+              ~pvm_kind:node_ctxt.kind
+              reveal_map
+              hash
+          in
+          let*! next_state = PVM.set_input (Reveal (Raw_data data)) state in
+          match F.consume F.one_tick_consumption fuel with
+          | None -> abort state fuel current_tick
+          | Some fuel ->
+              go fuel (Int64.succ current_tick) failing_ticks next_state)
       | Needs_reveal Reveal_metadata -> (
           let*! next_state = PVM.set_input (Reveal (Metadata metadata)) state in
           match F.consume F.one_tick_consumption fuel with

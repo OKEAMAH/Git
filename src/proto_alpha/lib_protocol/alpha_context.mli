@@ -3532,6 +3532,13 @@ module Sc_rollup : sig
 
       val reveal : Sc_rollup_reveal_hash.t -> string option Lwt.t
 
+      val reveal_partial :
+        Sc_rollup_partial_reveal_hash.u -> string option Lwt.t
+
+      val get_proof :
+        Sc_rollup_partial_reveal_hash.u ->
+        Sc_rollup_partial_reveal_hash.proof option Lwt.t
+
       module Inbox_with_history : sig
         val inbox : Inbox.history_proof
 
