@@ -39,11 +39,11 @@ module P = struct
     let pk = P.neuterize sk in
     assert (Curve.eq pk pk_expected) ;
 
-    let signature = P.sign ~compressed:true sk msg in
+    let signature = P.sign sk msg in
     assert (Curve.eq signature.r sign_r_expected) ;
     assert (List.for_all2 Bool.equal signature.s sign_s_expected) ;
 
-    assert (P.verify ~compressed:true ~msg ~pk ~signature ()) ;
+    assert (P.verify ~msg ~pk ~signature ()) ;
     Bytes.set msg 0 '\x00' ;
     assert (not @@ P.verify ~msg ~pk ~signature ())
 
@@ -65,7 +65,7 @@ module P = struct
     let sk = Bytes.init 32 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
     let msg = Bytes.init 64 (fun _i -> Char.chr @@ (Random.bits () mod 255)) in
     let pk = P.neuterize sk in
-    let signature = P.sign ~compressed:true sk msg in
+    let signature = P.sign sk msg in
     test_vanilla_ed25519 sk pk msg signature
 
   let tests () =

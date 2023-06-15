@@ -44,15 +44,9 @@ struct
 
     val neuterize : sk -> pk
 
-    val sign : ?compressed:bool -> sk -> msg -> signature
+    val sign : sk -> msg -> signature
 
-    val verify :
-      ?compressed:bool ->
-      msg:msg ->
-      pk:pk ->
-      signature:signature ->
-      unit ->
-      bool
+    val verify : msg:msg -> pk:pk -> signature:signature -> unit -> bool
   end = struct
     module H = Hacl_star.Hacl.SHA2_512
 
@@ -89,34 +83,29 @@ struct
       pk
 
     (* BSeq.nat_to_bytes_le 32 (pow2 255 * (x % 2) + y) *)
-    let point_compress ?(compressed = false) (p : Curve.t) : Bytes.t =
-      if compressed then
-        let px = Curve.get_u_coordinate p |> Curve.Base.to_z in
-        let px_sign = Z.(px mod of_int 2) in
-        let py = Curve.get_v_coordinate p |> Curve.Base.to_z in
-        let res = Z.(((one lsl 255) * px_sign) + py) in
-        Bytes.of_string @@ Z.to_bits res
-      else
-        let px = Curve.get_u_coordinate p |> Curve.Base.to_bytes in
-        let py = Curve.get_v_coordinate p |> Curve.Base.to_bytes in
-        Bytes.cat px py
+    let point_compress (p : Curve.t) : Bytes.t =
+      let px = Curve.get_u_coordinate p |> Curve.Base.to_z in
+      let px_sign = Z.(px mod of_int 2) in
+      let py = Curve.get_v_coordinate p |> Curve.Base.to_z in
+      let res = Z.(((one lsl 255) * px_sign) + py) in
+      Bytes.of_string @@ Z.to_bits res
 
     (* NOTE: H.direct returns a Bls12_381.Fr scalar *)
     (* h <- H (compressed (R) || compressed (pk) || msg ) mod Curve.Scalar.order *)
-    let compute_h ?(compressed = false) msg pk r =
-      let r = point_compress ~compressed r in
-      let pk = point_compress ~compressed pk in
+    let compute_h msg pk r =
+      let r = point_compress r in
+      let pk = point_compress pk in
       H.hash (Bytes.concat Bytes.empty [r; pk; msg])
       |> Curve.Scalar.of_bytes_exn
 
-    let sign ?(compressed = false) sk msg =
+    let sign sk msg =
       let s, pk, prefix = expand_keys sk in
       (* r <- H (prefix || msg) *)
       let r = H.hash (Bytes.cat prefix msg) |> Curve.Scalar.of_bytes_exn in
       (* R <- [r]G *)
       let sig_r = Curve.mul Curve.one r in
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-      let h = compute_h ~compressed msg pk sig_r in
+      let h = compute_h msg pk sig_r in
       (* s <- (r + h * s) mod Curve.Scalar.order *)
       let sig_s =
         Curve.Scalar.(r + (h * s))
@@ -127,9 +116,9 @@ struct
 
     (* The fact that s < l is enforced by the fact that s is a Curve.Scalar.t ;
        the fact that pk & r are on curve is enforced by the fact they are Curve.t *)
-    let verify ?(compressed = false) ~msg ~pk ~signature () =
+    let verify ~msg ~pk ~signature () =
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-      let h = compute_h ~compressed msg pk signature.r in
+      let h = compute_h msg pk signature.r in
       let sig_s = Curve.Scalar.of_z @@ Utils.bool_list_to_z signature.s in
       (* [s]G =?= R + [h]pk *)
       Curve.(eq (mul Curve.one sig_s) (add signature.r (mul pk h)))
@@ -155,7 +144,6 @@ struct
     (*     end *)
 
     val verify :
-      ?compressed:bool ->
       g:point repr ->
       msg:Bytes.bl repr ->
       pk:pk repr ->
@@ -207,22 +195,22 @@ struct
 
       (* NOTE: digest returns a Bls12_381.Fr scalar *)
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-      let compute_h ?(compressed = false) msg pk r =
+      let compute_h msg pk r =
         with_label ~label:"EdDSA.compute_h"
-        @@ let* r_bytes = bytes_of_point ~compressed r in
-           let* pk_bytes = bytes_of_point ~compressed pk in
+        @@ let* r_bytes = bytes_of_point ~compressed:true r in
+           let* pk_bytes = bytes_of_point ~compressed:true pk in
            H.digest (Bytes.concat [|r_bytes; pk_bytes; msg|])
 
       (* TODO: now msg is just one scalar, it will probably be a list of scalars *)
       (* assert s < Curve.Scalar.order *)
       (* reduce h modulo Curve.Scalar.order *)
       (* assert r & pk are on curve *)
-      let verify ?(compressed = false) ~g ~msg ~pk ~signature () =
+      let verify ~g ~msg ~pk ~signature () =
         with_label ~label:"EdDSA.verify"
         @@
         let {r; s} = signature in
         (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-        let* h = compute_h ~compressed msg pk r in
+        let* h = compute_h msg pk r in
         (* NOTE: we do not reduce a result of compute_h modulo Curve.Scalar.order *)
         with_label ~label:"EdDSA.scalar_mul"
         (* It would be better to compute R = sg - h Pk using multiexp *)
