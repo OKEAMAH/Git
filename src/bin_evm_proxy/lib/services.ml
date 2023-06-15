@@ -49,9 +49,9 @@ let version dir =
 
 (* The proxy server can either take a single request or multiple requests at
    once. *)
-type 'a request = Singleton of 'a | Batch of 'a list
+type 'a batchable = Singleton of 'a | Batch of 'a list
 
-let request_encoding kind =
+let batchable_encoding kind =
   Data_encoding.(
     union
       [
@@ -72,9 +72,11 @@ let request_encoding kind =
 let dispatch_service =
   Service.post_service
     ~query:Query.empty
-    ~input:(request_encoding Input.encoding)
+      (* The service decodes a JSON and not a specific encoding. Decoding and
+         error handling is up to the service implementation. *)
+    ~input:Data_encoding.json
     ~output:
-      (request_encoding
+      (batchable_encoding
          (JSONRPC.response_encoding Output.encoding Error.data_encoding))
     Path.(root)
 
@@ -149,14 +151,18 @@ let dispatch_input
 
 let dispatch ctx dir =
   Directory.register0 dir dispatch_service (fun () input ->
+      let decode_and_dispatch json =
+        Data_encoding.Json.destruct Input.encoding json |> dispatch_input ctx
+      in
       let open Lwt_result_syntax in
       match input with
-      | Singleton input ->
-          let+ output = dispatch_input ctx input in
+      | `O _ ->
+          let+ output = decode_and_dispatch input in
           Singleton output
-      | Batch inputs ->
-          let+ outputs = List.map_es (dispatch_input ctx) inputs in
-          Batch outputs)
+      | `A inputs ->
+          let+ outputs = List.map_es decode_and_dispatch inputs in
+          Batch outputs
+      | _ -> Error_monad.failwith "Invalid request\n%!")
 
 let directory (rollup_node_config : (module Rollup_node.S) * string) =
   Directory.empty |> version |> dispatch rollup_node_config
