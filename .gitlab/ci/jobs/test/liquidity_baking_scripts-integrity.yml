@@ -14,4 +14,4 @@ oc.test-liquidity-baking-scripts:
   dependencies:
     - "oc.build_x86_64-released"
     - "oc.build_x86_64-exp-dev-extra"
-  script: ./scripts/ci/test_liquidity_baking_scripts.sh
+  script: ./.gitlab/jobs/test/test-liquidity-baking-scripts.sh
