@@ -71,4 +71,4 @@
           - .gitlab-ci.yml
         when: on_success
   script:
-    - ./scripts/ci/docker_release.sh
+    - ./gitlab/ci/jobs/build/build_docker_release_template.sh
