@@ -444,7 +444,6 @@ module P = struct
             && Bounded.check new_tez_amount_dst
             && Bounded.check new_ticket_amount_dst
           in
-          (* TODO: add check for rollup id *)
           let check_rollup_id = rollup_id = header.rollup_id in
           let check_ticket_ids =
             let check_src = is_tez || amount.id = src_leaf.ticket.id in

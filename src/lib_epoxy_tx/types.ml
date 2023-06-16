@@ -66,6 +66,37 @@ module P = struct
     tickets_root : S.t;
   }
 
+  let curve_data_encoding =
+    Data_encoding.(conv Curve.to_bytes Curve.of_bytes_exn bytes)
+
+  let account_data_encoding : account Data_encoding.t =
+    let bal_data_encoding = Bounded.data_encoding in
+    let cnt_data_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {pk; tez_balance; cnt; tickets_root} ->
+          (pk, tez_balance, cnt, tickets_root))
+        (fun (pk, tez_balance, cnt, tickets_root) ->
+          {pk; tez_balance; cnt; tickets_root})
+        (obj4
+           (req "pk" curve_data_encoding)
+           (req "tez_balance" bal_data_encoding)
+           (req "cnt" cnt_data_encoding)
+           (req "tickets_root" S.data_encoding)))
+
+  let pp_account fmt {pk; tez_balance; cnt; tickets_root} =
+    Format.fprintf
+      fmt
+      "@[<v 2>pk: %a@,tez balance: %a@,cnt: %a@,tickets root: %a@]"
+      Tezos_stdlib.TzString.pp_bytes_hex
+      (Curve.to_bytes pk)
+      Z.pp_print
+      (Bounded.v tez_balance)
+      Z.pp_print
+      (Bounded.v cnt)
+      Z.pp_print
+      (S.to_z tickets_root)
+
   type leaf = {pos : position Bounded.t; ticket : balance ticket}
 
   module IMap = Map.Make (Int)
@@ -135,9 +166,6 @@ module P = struct
     msg : unsigned_transfer_payload;
     signature : Schnorr.signature;
   }
-
-  let curve_data_encoding =
-    Data_encoding.(conv Curve.to_bytes Curve.of_bytes_exn bytes)
 
   let signature_data_encoding : Schnorr.signature Data_encoding.t =
     let open Schnorr in

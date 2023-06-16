@@ -3275,6 +3275,16 @@ module Sc_rollup : sig
            and type state = C.state
            and type proof = C.proof
 
+      type boot_sector =
+        (Epoxy_tx.Types.P.Schnorr.pk
+        * Z.t
+        * Epoxy_tx.Constants.balance Epoxy_tx.Types.P.ticket array)
+        list
+
+      val boot_sector_to_string : boot_sector -> string
+
+      val boot_sector_of_string : string -> boot_sector option
+
       val parse_boot_sector : string -> string option
 
       val pp_boot_sector : Format.formatter -> string -> unit
@@ -3285,6 +3295,7 @@ module Sc_rollup : sig
 
       type status =
         | Halted
+        | Parsing
         | Waiting_for_input_message
         | Waiting_for_reveal
         | Waiting_for_metadata

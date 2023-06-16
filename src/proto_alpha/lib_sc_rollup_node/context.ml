@@ -28,6 +28,7 @@ open Alpha_context
 open Store_sigs
 module Context_encoding = Tezos_context_encoding.Context_binary
 module TxTypes = Epoxy_tx.Types.P
+module TxLogic = Epoxy_tx.Tx_rollup.P
 
 (* We shadow [Tezos_context_encoding] to prevent accidentally using
    [Tezos_context_encoding.Context] instead of
@@ -226,7 +227,14 @@ module PVMState = struct
         {optimistic; instant})
       optimistic
 
-  let lookup {optimistic; _} path = IStore.Tree.find optimistic path
+  let lookup {optimistic; instant} path =
+    match (path, instant) with
+    | ["instant"; index], Some instant ->
+        let index = int_of_string index in
+        let acc, _, _ = TxLogic.get_account index instant.accounts in
+        Lwt.return @@
+        Data_encoding.Binary.to_bytes_opt TxTypes.account_data_encoding acc
+    | path, _ -> IStore.Tree.find optimistic path
 
   let set ctxt {optimistic; instant} =
     let open Lwt_syntax in

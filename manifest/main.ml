@@ -1559,7 +1559,7 @@ let octez_epoxy_tx =
     ~path:"src/lib_epoxy_tx"
     ~synopsis:"Circuits for transaction Epoxy rollup"
     ~internal_name:"epoxy_tx"
-    ~deps:[octez_plompiler; hex; stdint; octez_plonk; octez_mec]
+    ~deps:[octez_plompiler; hex; stdint; octez_plonk; octez_mec; octez_stdlib]
 
 let _octez_epoxy_tx_tests =
   private_exe

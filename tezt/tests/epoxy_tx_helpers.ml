@@ -176,7 +176,7 @@ let pos_of_index ?(offset = 0) index =
    Binary.of_bytes_exn Public_key.encoding (Bytes.init size (fun _ -> '\x00')) *)
 
 let make_transfer ?(unsafe = false) ~(src : (module User))
-    ~(dst : (module User)) ~amount ~fee ~rollup_id () =
+    ~(dst : (module User)) ~amount ~fee () =
   let module Src = (val src) in
   let module Dst = (val dst) in
   let module Bounded = Tx_rollup.Types.P.Bounded in
@@ -203,9 +203,9 @@ let make_transfer ?(unsafe = false) ~(src : (module User))
     }
   in
   let unsigned_op : unsigned_transfer = {header; payload = unsigned_payload} in
-  sign_op Src.l2_sk (Transfer unsigned_op)
+  Tx_rollup.P.sign_op Src.l2_sk (Transfer unsigned_op)
 
-let make_create ?(unsafe = false) ~(dst : (module User)) ~fee ~rollup_id () =
+let make_create ?(unsafe = false) ~(dst : (module User)) ~fee () =
   let module Dst = (val dst) in
   let module Bounded = Tx_rollup.Types.P.Bounded in
   let open Tx_rollup.Constants.Bound in
@@ -216,18 +216,15 @@ let make_create ?(unsafe = false) ~(dst : (module User)) ~fee ~rollup_id () =
     {
       op_code = Bounded.make ~unsafe ~bound:max_op_code Z.one;
       price = Tez.c_of_bounded Bounded.(make ~bound:max_balance (v fee));
-      l1_dst =
-        Data_encoding.Binary.to_bytes_exn Protocol.Sig.pkh_encoding Dst.l1_pkh;
-      rollup_id =
-        Data_encoding.Binary.to_bytes_exn
-          Protocol.Proto.Zk_rollup.Address.encoding
-          rollup_id;
+      l1_dst = Types.P.Dummy.tezos_pkh;
+      rollup_id = Types.P.Dummy.tezos_zkru;
     }
   in
   let unsigned_op : unsigned_create = {header; payload = unsigned_payload} in
-  TestOperator.(to_protocol_tx (sign_op Dst.l2_sk (Create unsigned_op)))
+  Tx_rollup.P.sign_op Dst.l2_sk (Create unsigned_op)
 
-let make_credit ?(unsafe = false) ~(dst : (module User)) ~amount ~rollup_id () =
+let make_credit ?(unsafe = false) ~(dst : (module User)) ~amount () : Types.P.tx
+    =
   let module Dst = (val dst) in
   let module Bounded = Tx_rollup.Types.P.Bounded in
   let open Tx_rollup.Constants.Bound in
@@ -246,18 +243,14 @@ let make_credit ?(unsafe = false) ~(dst : (module User)) ~amount ~rollup_id () =
           id = amount.id;
           amount = Bounded.(make ~unsafe ~bound:max_balance (v amount.amount));
         };
-      l1_dst =
-        Data_encoding.Binary.to_bytes_exn Protocol.Sig.pkh_encoding Dst.l1_pkh;
-      rollup_id =
-        Data_encoding.Binary.to_bytes_exn
-          Protocol.Proto.Zk_rollup.Address.encoding
-          rollup_id;
+      l1_dst = Types.P.Dummy.tezos_pkh;
+      rollup_id = Types.P.Dummy.tezos_zkru;
     }
   in
   let op : credit = {header; payload} in
-  TestOperator.(to_protocol_tx (Credit op))
+  Credit op
 
-let make_debit ?(unsafe = false) ~(src : (module User)) ~amount ~rollup_id () =
+let make_debit ?(unsafe = false) ~(src : (module User)) ~amount () =
   let module Src = (val src) in
   let module Bounded = Tx_rollup.Types.P.Bounded in
   let open Tx_rollup.Constants.Bound in
@@ -278,16 +271,12 @@ let make_debit ?(unsafe = false) ~(src : (module User)) ~amount ~rollup_id () =
           id = amount.id;
           amount = Bounded.(make ~unsafe ~bound:max_balance (v amount.amount));
         };
-      l1_dst =
-        Data_encoding.Binary.to_bytes_exn Protocol.Sig.pkh_encoding Src.l1_pkh;
-      rollup_id =
-        Data_encoding.Binary.to_bytes_exn
-          Protocol.Proto.Zk_rollup.Address.encoding
-          rollup_id;
+      l1_dst = Types.P.Dummy.tezos_pkh;
+      rollup_id = Types.P.Dummy.tezos_zkru;
     }
   in
   let unsigned_op : unsigned_debit = {header; payload = unsigned_payload} in
-  TestOperator.(to_protocol_tx (sign_op Src.l2_sk (Debit unsigned_op)))
+  Tx_rollup.P.(sign_op Src.l2_sk (Debit unsigned_op))
 
 type c_ticket = Tx_rollup.Constants.balance Tx_rollup.Types.P.ticket
 (*

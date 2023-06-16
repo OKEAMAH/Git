@@ -238,8 +238,9 @@ let () =
   let* state = get_state node_ctxt block in
   let path = String.split_on_char '/' key in
   let*! value = Context.PVMState.lookup state path in
+
   match value with
-  | None -> failwith "No such key in PVM state"
+  | None -> failwith "%s" ("No such key in PVM state: " ^ String.concat "/" path)
   | Some value ->
       Format.eprintf "Encoded %S\n@.%!" (Bytes.to_string value) ;
       return value

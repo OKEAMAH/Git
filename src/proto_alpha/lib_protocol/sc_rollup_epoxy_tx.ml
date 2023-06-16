@@ -32,7 +32,7 @@ module TxLogic = Epoxy_tx.Tx_rollup.P
 
 let reference_initial_state_hash =
   State_hash.of_b58check_exn
-    "srs13ELvfKwf6sGbPH2Sx4ayNsCHaBx4x23VVjLqFq1RfDrBAH2iQX"
+    "srs12fzxHAEDtGkFhtpfiVRQHmJeLzCQNkZXuUoKmcBXZd8GySFV51"
 
 module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
@@ -69,6 +69,14 @@ end
 module type S = sig
   include PS.S
 
+  type boot_sector =
+    (TxTypes.Schnorr.pk * Z.t * Epoxy_tx.Constants.balance TxTypes.ticket array)
+    list
+
+  val boot_sector_to_string : boot_sector -> string
+
+  val boot_sector_of_string : string -> boot_sector option
+
   val parse_boot_sector : string -> string option
 
   val pp_boot_sector : Format.formatter -> string -> unit
@@ -79,6 +87,7 @@ module type S = sig
 
   type status =
     | Halted
+    | Parsing
     | Waiting_for_input_message
     | Waiting_for_reveal
     | Waiting_for_metadata
@@ -105,6 +114,7 @@ module Make (Context : P) :
 
   type status =
     | Halted
+    | Parsing
     | Waiting_for_input_message
     | Waiting_for_reveal
     | Waiting_for_metadata
@@ -388,6 +398,7 @@ module Make (Context : P) :
         Data_encoding.string_enum
           [
             ("Halted", Halted);
+            ("Parsing", Parsing);
             ("Waiting_for_input_message", Waiting_for_input_message);
             ("Waiting_for_reveal", Waiting_for_reveal);
             ("Waiting_for_metadata", Waiting_for_metadata);
@@ -402,6 +413,7 @@ module Make (Context : P) :
         | Waiting_for_reveal -> "Waiting for reveal"
         | Waiting_for_metadata -> "Waiting for metadata"
         | Evaluating -> "Evaluating"
+        | Parsing -> "Parsing"
 
       let pp fmt status = Format.fprintf fmt "%s" (string_of_status status)
     end)
@@ -596,17 +608,68 @@ module Make (Context : P) :
     let* state, _ = run m empty in
     return state
 
+  (* Boot sector format:
+     boot_sector := [accounts]
+     accounts := account;account | ∅
+     account := SCHNORR_PK,BALANCE
+
+     where:
+      SCHNORR_PK is the hex representation of the bytes
+      corresponding to the Schnorr.pk_data_encoding
+
+      BALANCE is the string representation of Z.t
+  *)
+
+  type boot_sector =
+    (TxTypes.Schnorr.pk * Z.t * Epoxy_tx.Constants.balance TxTypes.ticket array)
+    list
+
+  let bytes_to_hex : bytes -> string =
+   fun b ->
+    let (`Hex s) = Hex.of_bytes b in
+    s
+
+  let hex_to_bytes s = Stdlib.Option.get @@ Hex.to_bytes (`Hex s)
+
+  let pk_of_string : string -> TxTypes.Schnorr.pk =
+   fun s ->
+    let bs = hex_to_bytes s in
+    Stdlib.Option.get
+    @@ Data_encoding.Binary.of_bytes_opt TxTypes.curve_data_encoding bs
+
+  let pk_to_string pk =
+    let bs = Data_encoding.Binary.to_bytes_exn TxTypes.curve_data_encoding pk in
+    bytes_to_hex bs
+
   let parse_boot_sector s = Some s
+
+  let boot_sector_of_string s =
+    try
+      let len = String.length s in
+      let no_brackets = Stdlib.String.sub s 1 (len - 2) in
+      let accounts = Stdlib.String.split_on_char ';' no_brackets in
+      let parse_account s =
+        let [pk_s; bal_s] = String.split_on_char ',' s in
+        (pk_of_string pk_s, Z.of_string bal_s, [||])
+      in
+      Some (List.map parse_account accounts)
+    with _ -> None
+    [@@warning "-8"]
 
   let pp_boot_sector fmt s = Format.fprintf fmt "%s" s
 
+  let boot_sector_to_string l =
+    "["
+    ^ Stdlib.String.concat
+        ";"
+        (List.map
+           (fun (pk, bal, _) -> pk_to_string pk ^ "," ^ Z.to_string bal)
+           l)
+    ^ "]"
+
   let install_boot_sector state boot_sector =
     let state = to_state state in
-    match
-      Data_encoding.Binary.of_string_opt
-        TxLogic.balances_data_encoding
-        boot_sector
-    with
+    match boot_sector_of_string boot_sector with
     | None -> Lwt.return @@ of_state state
     | Some bals ->
         let instant = TxLogic.make_state bals in
@@ -672,7 +735,7 @@ module Make (Context : P) :
         | None -> internal_error "Internal error: Reveal invariant broken"
         | Some reveal -> return (PS.Needs_reveal reveal))
     | Waiting_for_metadata -> return PS.(Needs_reveal Reveal_metadata)
-    | Halted | Evaluating -> return PS.No_input_required
+    | Halted | Evaluating | Parsing -> return PS.No_input_required
 
   let is_input_state =
     result_of ~default:PS.No_input_required @@ is_input_state_monadic
@@ -745,6 +808,7 @@ module Make (Context : P) :
         let* () = Current_level.set inbox_level in
         let* () = Message_counter.set (Some message_counter) in
         let* () = Next_message.set (Some payload) in
+        let* () = Status.set Parsing in
         return ()
     | None -> (
         let* () = Current_level.set inbox_level in
@@ -796,7 +860,7 @@ module Make (Context : P) :
     let address = TxTypes.Dummy.tezos_zkru in
     let optimistic, _ = Context.tree_of_state state in
     let instant = Context.instant_of_state state in
-    let instant, _, _ = TxLogic.preprocess_operation instant tx address in
+    let instant, _, _s = TxLogic.preprocess_operation instant tx address in
     Context.full_state (instant, optimistic)
 
   let lift : (state -> state) -> unit t = fun f s -> Lwt.return (f s, Some ())
@@ -811,6 +875,8 @@ module Make (Context : P) :
         let* () = Tx.set None in
         Status.set Waiting_for_input_message
 
+  let hex_to_bytes s = Stdlib.Option.get @@ Hex.to_bytes (`Hex s)
+
   let eval_step =
     let open Monad.Syntax in
     let* x = is_stuck in
@@ -820,18 +886,19 @@ module Make (Context : P) :
         let* status = Status.get in
         match status with
         | Halted -> boot
-        | Waiting_for_input_message | Waiting_for_reveal | Waiting_for_metadata
-          -> (
+        | Parsing | Waiting_for_input_message | Waiting_for_reveal
+        | Waiting_for_metadata -> (
             let* msg = Next_message.get in
             match msg with
             | None -> internal_error "An input state was not provided an input."
-            | Some bytes -> (
+            | Some str -> (
+                let bytes = hex_to_bytes str in
                 match
-                  Data_encoding.Binary.of_string_opt
+                  Data_encoding.Binary.of_bytes_opt
                     TxTypes.tx_data_encoding
                     bytes
                 with
-                | None -> internal_error "bad message"
+                | None -> internal_error "bad encoding"
                 | Some tx ->
                     let* () = Tx.set (Some tx) in
                     Status.set Evaluating))

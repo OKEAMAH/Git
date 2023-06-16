@@ -15,6 +15,7 @@ depends: [
   "stdint"
   "octez-plonk"
   "octez-mec"
+  "tezos-stdlib"
   "octez-aplonk"
 ]
 build: [

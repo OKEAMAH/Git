@@ -5128,6 +5128,10 @@ module Json : sig
       values as guided by the encoding. *)
   val destruct : ?bson_relaxation:bool -> 't encoding -> json -> 't
 
+  val from_string : string -> (json, string) result
+
+  val to_string : ?newline:bool -> ?minify:bool -> json -> string
+
   (** JSON Error *)
 
   type path = path_item list

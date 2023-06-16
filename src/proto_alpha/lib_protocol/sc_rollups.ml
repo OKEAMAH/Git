@@ -115,6 +115,8 @@ let genesis_state_hash_of ~boot_sector kind =
   let* tree = Machine.initial_state ~empty in
   let* initial_hash = Machine.state_hash tree in
 
+  (* if 1 = 1 then
+     failwith (Format.asprintf "%a\n" Sc_rollup_repr.State_hash.pp initial_hash) ; *)
   assert (
     Sc_rollup_repr.State_hash.(
       initial_hash = Kind.reference_initial_state_hash_of kind)) ;

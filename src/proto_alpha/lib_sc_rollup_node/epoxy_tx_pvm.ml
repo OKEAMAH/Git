@@ -57,6 +57,7 @@ module Impl : Pvm.S = struct
   let string_of_status status =
     match status with
     | Halted -> "Halted"
+    | Parsing -> "Parsing"
     | Waiting_for_input_message -> "Waiting for input message"
     | Waiting_for_reveal -> "Waiting for reveal"
     | Waiting_for_metadata -> "Waiting for metadata"
@@ -65,17 +66,33 @@ module Impl : Pvm.S = struct
   let eval_many ~reveal_builtins:_ ~write_debug:_ ?stop_at_snapshot ~max_steps
       initial_state =
     ignore stop_at_snapshot ;
+    let open Lwt.Syntax in
     let rec go state step =
-      let open Lwt.Syntax in
+      let* () = Event.kernel_debug ("go: " ^ Int64.to_string step) in
       let* is_input_required = is_input_state state in
-
       if is_input_required = No_input_required && step < max_steps then
         let open Lwt.Syntax in
         (* Note: This is not an efficient implementation because the state is
            decoded/encoded to/from the tree at each step but for Epoxy-tx PVM
            it doesn't matter
         *)
+        let root =
+          let open Context in
+          let instant = Stdlib.Option.get state.instant in
+          Epoxy_tx.Tx_rollup.(Merkle.root instant.accounts_tree)
+        in
+        let* () =
+          Event.kernel_debug ("old root: " ^ Bls12_381.Fr.to_string root)
+        in
         let* next_state = eval state in
+        let root =
+          let open Context in
+          let instant = Stdlib.Option.get next_state.instant in
+          Epoxy_tx.Tx_rollup.(Merkle.root instant.accounts_tree)
+        in
+        let* () =
+          Event.kernel_debug ("new root: " ^ Bls12_381.Fr.to_string root)
+        in
         go next_state (Int64.succ step)
       else Lwt.return (state, step)
     in

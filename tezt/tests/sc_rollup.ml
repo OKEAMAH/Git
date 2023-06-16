@@ -1344,27 +1344,29 @@ let test_rollup_node_boots_into_initial_state ~kind =
     ~error_msg:"Unexpected PVM status (%L = %R)" ;
   unit
 
-open Plompiler
 module HashPV = Plompiler.Anemoi128
 module SchnorrPV = Plompiler.Schnorr (HashPV)
 module Schnorr = SchnorrPV.P
 module TxLogic = Epoxy_tx.Tx_rollup.P
 module TxTypes = Epoxy_tx.Types.P
 
-let sks : Schnorr.sk array =
+let l2_sks : Schnorr.sk array =
   Array.init 8 (fun _ -> Mec.Curve.Jubjub.AffineEdwards.Scalar.random ())
 
-let pks = Array.map Schnorr.neuterize sks
+let l2_pks = Array.map Schnorr.neuterize l2_sks
 
 let epoxy_tx_boot_sector =
   let tez_balances = [1000; 100; 10] in
   let bals =
-    List.mapi (fun i bal -> (pks.(i), Z.of_int bal, [||])) tez_balances
+    List.mapi (fun i bal -> (l2_pks.(i), Z.of_int bal, [||])) tez_balances
   in
-  Data_encoding.Binary.to_string_exn TxLogic.balances_data_encoding bals
+  Tezos_protocol_alpha.Protocol.Sc_rollup_epoxy_tx.Protocol_implementation
+  .boot_sector_to_string
+    bals
 
-(* let make_transfer ~src ~dst ~amout ~cnt =
-   TxTypes.Tr *)
+let make_transfer ~src ~dst ~amount =
+  let open Epoxy_tx_helpers in
+  make_transfer ~src ~dst ~amount:(Tez.c_amount amount) ~fee:Z.zero ()
 
 let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     ~internal ~kind =
@@ -1401,12 +1403,26 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
       return (level + 1, Some contract_id)
   in
   (* Called with monotonically increasing [i] *)
+  let open Epoxy_tx_helpers.MakeUsers (struct
+    let l2_sks = l2_sks
+  end) in
   let test_message i =
     let*! prev_state_hash =
       Sc_rollup_client.state_hash ~hooks sc_rollup_client
     in
     let*! prev_ticks = Sc_rollup_client.total_ticks ~hooks sc_rollup_client in
-    let message = sf "%d %d + value" i ((i + 2) * 2) in
+    let transfer =
+      make_transfer ~src:(module User0) ~dst:(module User1) ~amount:10
+    in
+    let bytes_to_hex : bytes -> string =
+     fun b ->
+      let (`Hex s) = Hex.of_bytes b in
+      s
+    in
+    let message =
+      Data_encoding.Binary.to_bytes_exn TxTypes.tx_data_encoding transfer
+      |> bytes_to_hex
+    in
     let* () =
       match forwarder with
       | None ->
@@ -1432,6 +1448,21 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     (* specific per kind PVM checks *)
     let* () =
       match kind with
+      | "epoxy_tx" ->
+          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+          let*! acc_bytes =
+            Sc_rollup_client.state_value
+              ~hooks
+              sc_rollup_client
+              ~key:"instant/0"
+          in
+          let acc =
+            Data_encoding.Binary.of_bytes_exn
+              TxTypes.account_data_encoding
+              acc_bytes
+          in
+          Log.info "State hash: %s\n %a\n" hash TxTypes.pp_account acc ;
+          unit
       | "arith" ->
           let*! encoded_value =
             Sc_rollup_client.state_value
@@ -1476,11 +1507,9 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     Check.(ticks >= prev_ticks)
       Check.int
       ~error_msg:"Tick counter did not advance (%L >= %R)" ;
-
     unit
   in
   let* () = Lwt_list.iter_s test_message (range 1 10) in
-
   unit
 
 let test_rollup_node_run_with_kernel ~kind ~kernel_name ~internal =
@@ -5334,129 +5363,137 @@ let test_inject_identital_messages ~kind =
 
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
-  (* test_rollup_node_running ~kind protocols ;
-     test_rollup_get_genesis_info ~kind protocols ;
-     test_rollup_inbox_of_rollup_node
-       ~kind
-       ~variant:"basic"
-       basic_scenario
-       protocols ;
-     test_rpcs ~kind protocols ;
-     test_rollup_inbox_of_rollup_node
-       ~kind
-       ~variant:"stops"
-       sc_rollup_node_stops_scenario
-       protocols ;
-     test_rollup_inbox_of_rollup_node
-       ~kind
-       ~variant:"disconnects"
-       sc_rollup_node_disconnects_scenario
-       protocols ;
-     test_rollup_inbox_of_rollup_node
-       ~kind
-       ~variant:"handles_chain_reorg"
-       sc_rollup_node_handles_chain_reorg
-       protocols ;
-     test_rollup_inbox_of_rollup_node
-       ~kind
-       ~variant:"batcher"
-       ~extra_tags:["batcher"]
-       sc_rollup_node_batcher
-       protocols ;
-     test_rollup_node_boots_into_initial_state protocols ~kind ; *)
-  test_rollup_node_advances_pvm_state protocols ~kind ~internal:false ;
-  test_rollup_node_advances_pvm_state protocols ~kind ~internal:true
-(* test_commitment_scenario
-     ~variant:"commitment_is_stored"
-     commitment_stored
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"robust_to_failures"
-     commitment_stored_robust_to_failures
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~extra_tags:["modes"; "observer"]
-     ~variant:"observer_does_not_publish"
-     (mode_publish Observer false)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~extra_tags:["modes"; "maintenance"]
-     ~variant:"maintenance_publishes"
-     (mode_publish Maintenance true)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~extra_tags:["modes"; "batcher"]
-     ~variant:"batcher_does_not_publish"
-     (mode_publish Batcher false)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~extra_tags:["modes"; "operator"]
-     ~variant:"operator_publishes"
-     (mode_publish Operator true)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~commitment_period:15
-     ~challenge_window:10080
-     ~variant:"node_use_proto_param"
-     commitment_stored
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"non_final_level"
-     commitment_not_published_if_non_final
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"messages_reset"
-     (commitments_messages_reset kind)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"handles_chain_reorgs"
-     (commitments_reorgs ~kind ~switch_l1_node:false)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"handles_chain_reorgs_missing_blocks"
-     (commitments_reorgs ~kind ~switch_l1_node:true)
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~challenge_window:1
-     ~variant:"no_commitment_publish_before_lcc"
-     (* TODO: https://gitlab.com/tezos/tezos/-/issues/2976
-        change tests so that we do not need to repeat custom parameters. *)
-     commitment_before_lcc_not_published
-     protocols
-     ~kind ;
-   test_commitment_scenario
-     ~variant:"first_published_at_level_global"
-     first_published_level_is_global
-     protocols
-     ~kind ;
-   test_commitment_scenario
-   (* Reduce commitment period here in order avoid waiting for default 30 (and even 60) blocks to be baked*)
-     ~commitment_period:3
-     ~variant:"consecutive commitments"
-     test_consecutive_commitments
-     protocols
-     ~kind ;
-   test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
-   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
-      Uncomment this test as soon as the issue done.
-      test_reinject_failed_commitment protocols ~kind ; *)
-   test_late_rollup_node protocols ~kind ;
-   test_late_rollup_node_2 protocols ~kind ;
-   test_interrupt_rollup_node protocols ~kind ;
-   test_outbox_message protocols ~kind ;
-   test_messages_processed_by_commitment ~kind protocols ;
-   test_arg_boot_sector_file ~kind protocols *)
+  test_rollup_node_running ~kind protocols ;
+  test_rollup_get_genesis_info ~kind protocols ;
+  test_rollup_inbox_of_rollup_node
+    ~kind
+    ~variant:"basic"
+    basic_scenario
+    protocols ;
+  test_rpcs ~kind protocols ;
+  test_rollup_inbox_of_rollup_node
+    ~kind
+    ~variant:"stops"
+    sc_rollup_node_stops_scenario
+    protocols ;
+  test_rollup_inbox_of_rollup_node
+    ~kind
+    ~variant:"disconnects"
+    sc_rollup_node_disconnects_scenario
+    protocols ;
+  test_rollup_inbox_of_rollup_node
+    ~kind
+    ~variant:"handles_chain_reorg"
+    sc_rollup_node_handles_chain_reorg
+    protocols ;
+  test_rollup_inbox_of_rollup_node
+    ~kind
+    ~variant:"batcher"
+    ~extra_tags:["batcher"]
+    sc_rollup_node_batcher
+    protocols ;
+  test_rollup_node_boots_into_initial_state protocols ~kind ;
+  test_rollup_node_advances_pvm_state
+    protocols
+    ~kind
+    ~internal:false
+    ~boot_sector:epoxy_tx_boot_sector ;
+  test_rollup_node_advances_pvm_state
+    protocols
+    ~kind
+    ~internal:true
+    ~boot_sector:epoxy_tx_boot_sector ;
+  test_commitment_scenario
+    ~variant:"commitment_is_stored"
+    commitment_stored
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"robust_to_failures"
+    commitment_stored_robust_to_failures
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~extra_tags:["modes"; "observer"]
+    ~variant:"observer_does_not_publish"
+    (mode_publish Observer false)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~extra_tags:["modes"; "maintenance"]
+    ~variant:"maintenance_publishes"
+    (mode_publish Maintenance true)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~extra_tags:["modes"; "batcher"]
+    ~variant:"batcher_does_not_publish"
+    (mode_publish Batcher false)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~extra_tags:["modes"; "operator"]
+    ~variant:"operator_publishes"
+    (mode_publish Operator true)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~commitment_period:15
+    ~challenge_window:10080
+    ~variant:"node_use_proto_param"
+    commitment_stored
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"non_final_level"
+    commitment_not_published_if_non_final
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"messages_reset"
+    (commitments_messages_reset kind)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"handles_chain_reorgs"
+    (commitments_reorgs ~kind ~switch_l1_node:false)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"handles_chain_reorgs_missing_blocks"
+    (commitments_reorgs ~kind ~switch_l1_node:true)
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~challenge_window:1
+    ~variant:"no_commitment_publish_before_lcc"
+    (* TODO: https://gitlab.com/tezos/tezos/-/issues/2976
+       change tests so that we do not need to repeat custom parameters. *)
+    commitment_before_lcc_not_published
+    protocols
+    ~kind ;
+  test_commitment_scenario
+    ~variant:"first_published_at_level_global"
+    first_published_level_is_global
+    protocols
+    ~kind ;
+  test_commitment_scenario
+  (* Reduce commitment period here in order avoid waiting for default 30 (and even 60) blocks to be baked*)
+    ~commitment_period:3
+    ~variant:"consecutive commitments"
+    test_consecutive_commitments
+    protocols
+    ~kind ;
+  test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
+     Uncomment this test as soon as the issue done.
+     test_reinject_failed_commitment protocols ~kind ; *)
+  test_late_rollup_node protocols ~kind ;
+  test_late_rollup_node_2 protocols ~kind ;
+  test_interrupt_rollup_node protocols ~kind ;
+  test_outbox_message protocols ~kind ;
+  test_messages_processed_by_commitment ~kind protocols ;
+  test_arg_boot_sector_file ~kind protocols
 
 let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind

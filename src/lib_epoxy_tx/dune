@@ -10,4 +10,5 @@
   hex
   stdint
   octez-plonk
-  octez-mec))
+  octez-mec
+  tezos-stdlib))
