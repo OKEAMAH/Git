@@ -26,6 +26,10 @@ publish:documentation:
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci doc-publish
   # Publish jobs are uninterruptible to avoid publishing partial results.
   interruptible: false
+  artifacts:
+    paths:
+      - _build/default/_doc/_html/tezos-base
+      - odoc.log
   cache:
     key: doc-cache-$CI_COMMIT_REF_SLUG
     paths:
