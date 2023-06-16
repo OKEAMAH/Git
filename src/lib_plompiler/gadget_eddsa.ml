@@ -169,15 +169,30 @@ module Make = struct
             (obj2_encoding point_encoding (atomic_list_encoding bool_encoding))
       end
 
+      let split_exactly (list : bool list repr) size_chunk : bool repr list list
+          =
+        let nb_chunks = Bytes.length list / size_chunk in
+        assert (Bytes.length list = size_chunk * nb_chunks) ;
+        List.init nb_chunks (fun i ->
+            let array = Array.of_list (of_list list) in
+            let array = Array.sub array (i * size_chunk) size_chunk in
+            Array.to_list array)
+
+      let bytes_change_endianness (b : Bytes.bl repr) : Bytes.bl repr t =
+        assert (Bytes.length b mod 8 = 0) ;
+        let lb = split_exactly b 8 |> List.rev |> List.flatten in
+        ret @@ to_list lb
+
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
       let compute_h msg pk r =
         with_label ~label:"EdDSA.compute_h"
         @@ let* r_bytes = bytes_of_point r in
            let* pk_bytes = bytes_of_point pk in
-           let r_pk_msg = Bytes.concat [|r_bytes; pk_bytes; msg|] in
+           let* r_pk_msg =
+             bytes_change_endianness @@ Bytes.concat [|msg; pk_bytes; r_bytes|]
+           in
            let* h = H.digest r_pk_msg in
-           debug "r" r_bytes >* debug "pk" pk_bytes >* debug "msg" msg
-           >* debug "r_pk_msg" r_pk_msg >* debug "h" h >* ret h
+           bytes_change_endianness h
 
       (* assert s < Curve.Scalar.order *)
       (* reduce h modulo Curve.Scalar.order *)
@@ -190,16 +205,13 @@ module Make = struct
         (* h <- H (compressed (R) || compressed (pk) || msg ) *)
         let* h = compute_h msg pk r in
         (* NOTE: we do not reduce a result of compute_h modulo Curve.Scalar.order *)
-        debug "h" h
-        >* let* b_true = Bool.constant true in
-           ret b_true
-      (*         with_label ~label:"EdDSA.scalar_mul" *)
-      (*         (\* It would be better to compute R = sg - h Pk using multiexp *\) *)
-      (*         (\* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *\) *)
-      (*         @@ let* base_point in *)
-      (*            let* sg = scalar_mul s base_point in *)
-      (*            let* hpk = scalar_mul h pk in *)
-      (*            let* rhpk = add r hpk in *)
-      (*            with_label ~label:"EdDSA.check" @@ equal sg rhpk *)
+        with_label ~label:"EdDSA.scalar_mul"
+        (* It would be better to compute R = sg - h Pk using multiexp *)
+        (* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
+        @@ let* base_point in
+           let* sg = scalar_mul s base_point in
+           let* hpk = scalar_mul h pk in
+           let* rhpk = add r hpk in
+           with_label ~label:"EdDSA.check" @@ equal sg rhpk
     end
 end
