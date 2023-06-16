@@ -175,17 +175,23 @@ module Ed25519 (L : LIB) = struct
        with_label ~label:"with_bool_check"
        @@ with_bool_check (V.verify ~msg ~pk ~signature ())
 
+  let scalar_to_bytes (s : bytes) : bool list =
+    Curve.Scalar.of_bytes_exn s
+    |> Curve.Scalar.to_z
+    |> Plompiler.Utils.bool_list_of_z ~nb_bits:(Z.numbits Curve.Scalar.order)
+
   let tests_ed25519_verify =
     List.map
-      (fun (sk, _pk, _pk_u_v, msg, _sign, _sign_r_u_v, _sign_s) ->
+      (fun (_sk, _pk, pk_u_v, msg, _sign, sign_r_u_v, sign_s) ->
         let msg = bytes_of_hex msg in
-        let sk = bytes_of_hex sk in
-        let pk = Ed25519.P.neuterize sk in
-        let signature = Ed25519.P.sign sk msg in
+        let pk = bytes_of_hex pk_u_v |> Curve.of_bytes_exn in
+        let sign_r = bytes_of_hex sign_r_u_v |> Curve.of_bytes_exn in
+        let sign_s = bytes_of_hex sign_s |> scalar_to_bytes in
         test
           ~valid:true
           ~name:"Ed25519.test_verify_circuit"
-          (test_verify_circuit pk msg signature))
+          ~flamegraph:false
+          (test_verify_circuit pk msg {r = sign_r; s = sign_s}))
       test_vectors
 
   let tests =
