@@ -237,6 +237,15 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
+  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
+  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
+  let* () =
+    assert_almost_equal_int64
+      ~loc:__LOC__
+      ~margin_percent:10L
+      voting_power_1
+      voting_power_2
+  in
 
   (* We are now ready to activate the feature through by baking many
      more blocks voting in favor of the activation until the EMA
