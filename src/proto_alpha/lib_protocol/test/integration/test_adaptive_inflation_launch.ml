@@ -115,7 +115,7 @@ let test_launch threshold expected_vote_duration () =
     Assert.lt_int32 ~loc threshold ema
   in
   (* Initialize the state with a single delegate. *)
-  let* block, (delegate1, _delegate2) =
+  let* block, (delegate1, delegate2) =
     let default_constants = Default_parameters.constants_test in
     let adaptive_inflation =
       {
@@ -131,6 +131,12 @@ let test_launch threshold expected_vote_duration () =
     match delegate1 with Implicit pkh -> pkh | Originated _ -> assert false
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
+
+  let* balance = Context.Contract.balance (B block) delegate1 in
+  let* () =
+    let* balance_bis = Context.Contract.balance (B block) delegate2 in
+    Assert.equal_tez ~loc:__LOC__ balance balance_bis
+  in
 
   (* To test that adaptive inflation is active, we test that
      costaking, a feature only available after the activation, is
