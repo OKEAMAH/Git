@@ -9,6 +9,7 @@ echo "State after unzipping cache:"
     ls _build/default/_doc/_html/tezos-base/Tezos_base/
 
 make all
+rm -rf _build/default/_doc/
 dune build @doc > odoc.log 2>&1
 [ -f odoc.log ] && head odoc.log
 
