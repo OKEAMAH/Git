@@ -58,6 +58,10 @@ module Context_no_proofs = struct
 
   let tree_only optimistic = {optimistic; instant = None}
 
+  let instant_of_state {instant; _} = Stdlib.Option.get instant
+
+  let full_state (instant, optimistic) = {optimistic; instant = Some instant}
+
   let hash_tree tree =
     Sc_rollup_repr.State_hash.context_hash_to_state_hash (Tree.hash tree)
 
@@ -91,3 +95,5 @@ module Arith : S = Sc_rollup_arith.Make (Context_no_proofs)
 
 module Wasm : S =
   Sc_rollup_wasm.V2_0_0.Make (Wasm_2_0_0.Make) (Context_no_proofs)
+
+module Epoxy_tx : S = Sc_rollup_epoxy_tx.Make (Context_no_proofs)

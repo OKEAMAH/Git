@@ -155,7 +155,10 @@ struct
 
   let tree_only optimistic = {optimistic; instant = None}
 
-  let instant_of_state {instant; _} = Stdlib.Option.get instant
+  let instant_of_state {instant; _} =
+    match instant with
+    | Some instant -> instant
+    | None -> Stdlib.failwith "instant is none!"
 
   let full_state (instant, optimistic) = {optimistic; instant = Some instant}
 
@@ -207,6 +210,8 @@ module PVMState = struct
 
   let key = ["pvm_state"]
 
+  let instant_ref = ref @@ Epoxy_tx.Tx_rollup.P.empty_state ()
+
   let empty () =
     let optimistic = IStore.Tree.empty () in
     let instant = Some (Epoxy_tx.Tx_rollup.P.empty_state ()) in
@@ -217,14 +222,15 @@ module PVMState = struct
     let+ optimistic = IStore.Tree.find_tree ctxt.tree key in
     Option.map
       (fun optimistic ->
-        let instant = Stdlib.failwith "TODO" in
+        let instant = Some !instant_ref in
         {optimistic; instant})
       optimistic
 
   let lookup {optimistic; _} path = IStore.Tree.find optimistic path
 
-  let set ctxt {optimistic; _} =
+  let set ctxt {optimistic; instant} =
     let open Lwt_syntax in
+    instant_ref := Stdlib.Option.get instant ;
     let+ tree = IStore.Tree.add_tree ctxt.tree key optimistic in
     {ctxt with tree}
 end

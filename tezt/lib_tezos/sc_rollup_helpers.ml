@@ -98,6 +98,7 @@ let default_boot_sector_of ~kind =
   match kind with
   | "arith" -> ""
   | "wasm_2_0_0" -> Constant.wasm_echo_kernel_boot_sector
+  | "epoxy_tx" -> "[]"
   | kind -> raise (Invalid_argument kind)
 
 let make_parameter name = function

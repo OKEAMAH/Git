@@ -4347,6 +4347,19 @@ let test_outbox_message ?supports ?regression ?expected_error ?expected_l1_error
           input_message,
           if Option.is_none expected_l1_error then outbox_parameters
           else init_storage )
+    | "epoxy_tx" ->
+        let input_message _client contract_address =
+          let payload =
+            Printf.sprintf
+              "%s %s%s"
+              outbox_parameters
+              contract_address
+              (match entrypoint with Some e -> "%" ^ e | None -> "")
+          in
+          let payload = hex_encode payload in
+          return @@ wrap payload
+        in
+        (Some "[]", input_message, outbox_parameters)
     | _ ->
         (* There is no other PVM in the protocol. *)
         assert false
@@ -5470,6 +5483,7 @@ let register ~protocols =
   (* Shared tezts - will be executed for both PVMs. *)
   register ~kind:"wasm_2_0_0" ~protocols ;
   register ~kind:"arith" ~protocols ;
+  register ~kind:"epoxy_tx" ~protocols:[Protocol.Alpha] ;
   (* Both Arith and Wasm PVM tezts *)
   test_bootstrap_smart_rollup_originated protocols
 

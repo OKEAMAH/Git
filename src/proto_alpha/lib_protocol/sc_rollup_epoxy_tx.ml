@@ -30,10 +30,9 @@ module TxLogic = Epoxy_tx.Tx_rollup.P
 
 [@@@warning "-32"]
 
-(* TODO: update this *)
 let reference_initial_state_hash =
   State_hash.of_b58check_exn
-    "srs11Z9V76SGd97kGmDQXV8tEF67C48GMy77RuaHdF1kWLk6UTmMfj"
+    "srs13ELvfKwf6sGbPH2Sx4ayNsCHaBx4x23VVjLqFq1RfDrBAH2iQX"
 
 module type P = sig
   module Tree : Context.TREE with type key = string list and type value = bytes
@@ -416,7 +415,7 @@ module Make (Context : P) :
 
       let name = "tx"
 
-      let pp _fmt _v = failwith "TODO"
+      let pp fmt _v = Format.fprintf fmt "TODO"
     end)
 
     module Required_reveal = Make_var (struct
@@ -623,7 +622,9 @@ module Make (Context : P) :
     Lwt.return
     @@ State_hash.hash_bytes [instant_root_bytes; optimistic_hash_bytes]
 
-  let pp _state = failwith "TODO"
+  let pp _state =
+    let open Lwt_syntax in
+    return @@ fun fmt _ -> Format.fprintf fmt "<opaque>"
 
   let boot =
     let open Monad.Syntax in
@@ -675,6 +676,29 @@ module Make (Context : P) :
 
   let is_input_state =
     result_of ~default:PS.No_input_required @@ is_input_state_monadic
+
+  let reveal_monadic reveal_data =
+    (*
+
+         The inbox cursor is unchanged as the message comes from the
+         outer world.
+
+         We don't have to check that the data is the one we
+         expected as we decided to trust the initial witness.
+
+         It is the responsibility of the rollup node to check the validity
+         of the [reveal_data] if it does not want to publish a wrong commitment.
+
+      *)
+    let open Monad.Syntax in
+    match reveal_data with
+    | PS.Raw_data _data -> failwith "TODO"
+    | PS.Metadata metadata ->
+        let* () = Metadata.set (Some metadata) in
+        let* () = Status.set Waiting_for_input_message in
+        return ()
+    | PS.Dal_page None -> failwith "TODO"
+    | PS.Dal_page (Some _data) -> failwith "TODO"
 
   let ticked m =
     let open Monad.Syntax in
@@ -759,7 +783,7 @@ module Make (Context : P) :
   let set_input_monadic input =
     match input with
     | PS.Inbox_message m -> set_inbox_message_monadic m
-    | PS.Reveal _s -> internal_error "TODO"
+    | PS.Reveal s -> reveal_monadic s
 
   let set_input input = set_input_monadic input |> ticked |> state_of
 
@@ -858,14 +882,18 @@ module Protocol_implementation = Make (struct
 
   type state = {optimistic : tree; instant : Epoxy_tx.Types.P.state option}
 
-  let instant_of_state {instant; _} = Stdlib.Option.get instant
+  let instant_of_state {instant; _} =
+    match instant with
+    | Some instant -> instant
+    | None -> Stdlib.failwith "instant is none!"
 
   let full_state (instant, optimistic) = {optimistic; instant = Some instant}
 
   let tree_of_state {optimistic; instant} =
     (optimistic, fun optimistic -> {optimistic; instant})
 
-  let tree_only optimistic = {optimistic; instant = None}
+  let tree_only _optimistic =
+    Stdlib.failwith "tree_only shouldn't be used by epoxy_tx pvm"
 
   let hash_tree t = State_hash.context_hash_to_state_hash (Tree.hash t)
 

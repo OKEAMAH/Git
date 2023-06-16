@@ -105,7 +105,7 @@ module Kind = struct
     function
     | Example_arith -> (module Sc_rollup_machine_no_proofs.Arith)
     | Wasm_2_0_0 -> (module Sc_rollup_machine_no_proofs.Wasm)
-    | Epoxy_tx -> failwith "TODO no_proof_machine_of"
+    | Epoxy_tx -> (module Sc_rollup_machine_no_proofs.Epoxy_tx)
 end
 
 let genesis_state_hash_of ~boot_sector kind =
@@ -114,6 +114,7 @@ let genesis_state_hash_of ~boot_sector kind =
   let empty = Sc_rollup_machine_no_proofs.empty_state () in
   let* tree = Machine.initial_state ~empty in
   let* initial_hash = Machine.state_hash tree in
+
   assert (
     Sc_rollup_repr.State_hash.(
       initial_hash = Kind.reference_initial_state_hash_of kind)) ;

@@ -56,6 +56,7 @@ module Prover = struct
     Alpha_context.Sc_rollup.Wasm_2_0_0PVM.P
       with type Tree.t = Context_binary.t
        and type Tree.tree = Context_binary.tree
+       and type state = Context_binary.tree
        and type Tree.key = string list
        and type Tree.value = bytes
        and type proof = Context_binary.Proof.tree Context_binary.Proof.t =
@@ -64,6 +65,12 @@ module Prover = struct
     module Tree = Tree
 
     type tree = Tree.tree
+
+    type state = tree
+
+    let tree_of_state state = (state, Stdlib.Fun.id)
+
+    let tree_only t = t
 
     type proof = Context_binary.Proof.tree Context_binary.Proof.t
 

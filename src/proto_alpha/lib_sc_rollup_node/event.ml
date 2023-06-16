@@ -110,7 +110,7 @@ module Simple = struct
     declare_1
       ~section
       ~name:"kernel_debug"
-      ~level:Info
+      ~level:Warning
       ~msg:"{log}"
       ("log", Data_encoding.string)
       ~pp1:Format.pp_print_string

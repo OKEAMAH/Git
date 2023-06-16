@@ -55,3 +55,5 @@ end
 module Arith : S
 
 module Wasm : S
+
+module Epoxy_tx : S

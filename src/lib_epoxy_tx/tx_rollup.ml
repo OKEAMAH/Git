@@ -164,16 +164,19 @@ module P = struct
     in
     {accounts; accounts_tree; next_position}
 
-  let empty_state () =
-    let accounts = Array.init max_nb_accounts (fun i -> default_account i) in
-    let accounts_tree =
-      Merkle.generate_tree
-        ~leaves:(Array.map (fun (a, _, _) -> scalar_of_account a) accounts)
-        accounts_depth
-    in
-    let accounts = Array.mapi (fun i x -> (i, x)) accounts in
-    let accounts = IMap.of_seq @@ Array.to_seq accounts in
-    {accounts; accounts_tree; next_position = 0}
+  let empty_state' =
+    lazy
+      (let accounts = Array.init max_nb_accounts (fun i -> default_account i) in
+       let accounts_tree =
+         Merkle.generate_tree
+           ~leaves:(Array.map (fun (a, _, _) -> scalar_of_account a) accounts)
+           accounts_depth
+       in
+       let accounts = Array.mapi (fun i x -> (i, x)) accounts in
+       let accounts = IMap.of_seq @@ Array.to_seq accounts in
+       {accounts; accounts_tree; next_position = 0})
+
+  let empty_state () = Lazy.force empty_state'
 
   let balances_data_encoding :
       (Schnorr.pk * Z.t * balance ticket array) list Data_encoding.t =
