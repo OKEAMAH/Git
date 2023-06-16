@@ -25,6 +25,6 @@ publish:documentation:
     - . $HOME/.venv/bin/activate
     - eval $(opam env)
   script:
-    - ./scripts/ci/doc_publish.sh
+    - ./gitlab/ci/jobs/doc/publish:documentation.sh
   # Publish jobs are uninterruptible to avoid publishing partial results.
   interruptible: false
