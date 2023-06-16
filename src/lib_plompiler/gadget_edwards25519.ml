@@ -50,7 +50,7 @@ module type AFFINE = functor (L : LIB) -> sig
 
   val get_y_coordinate : point repr -> nat_mod repr
 
-  val bytes_of_point : ?compressed:bool -> point repr -> Bytes.bl repr t
+  val bytes_of_point : point repr -> Bytes.bl repr t
 
   (** The identity element of the curve (0, 1). *)
   val id : point repr t
@@ -145,21 +145,14 @@ functor
     let get_y_coordinate p = of_pair p |> snd
 
     (* BSeq.nat_to_bytes_le 32 (pow2 255 * (x % 2) + y) *)
-    let bytes_of_point ?(compressed = false) p : Bytes.bl repr t =
-      if compressed then
-        let px = get_x_coordinate p in
-        let py = get_y_coordinate p in
-        (* px_bytes is in little-endian *)
-        let* px_bytes = M.bytes_of_mod_int px in
-        let px0 = List.hd @@ of_list px_bytes in
-        let* py_bytes = M.bytes_of_mod_int py in
-        ret @@ to_list (px0 :: of_list py_bytes)
-      else
-        let px = get_x_coordinate p in
-        let py = get_y_coordinate p in
-        let* px_bytes = M.bytes_of_mod_int px in
-        let* py_bytes = M.bytes_of_mod_int py in
-        ret @@ Bytes.concat [|px_bytes; py_bytes|]
+    let bytes_of_point p : Bytes.bl repr t =
+      let px = get_x_coordinate p in
+      let py = get_y_coordinate p in
+      (* px_bytes is in little-endian *)
+      let* px_bytes = M.bytes_of_mod_int px in
+      let* py_bytes = M.bytes_of_mod_int py in
+      let px0 = List.hd @@ of_list px_bytes in
+      ret @@ to_list (of_list py_bytes @ [px0])
 
     let id =
       let* zero = M.zero in

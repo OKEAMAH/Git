@@ -172,8 +172,8 @@ module Make = struct
       (* h <- H (compressed (R) || compressed (pk) || msg ) *)
       let compute_h msg pk r =
         with_label ~label:"EdDSA.compute_h"
-        @@ let* r_bytes = bytes_of_point ~compressed:true r in
-           let* pk_bytes = bytes_of_point ~compressed:true pk in
+        @@ let* r_bytes = bytes_of_point r in
+           let* pk_bytes = bytes_of_point pk in
            H.digest (Bytes.concat [|r_bytes; pk_bytes; msg|])
 
       (* assert s < Curve.Scalar.order *)
