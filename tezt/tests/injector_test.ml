@@ -10,12 +10,19 @@ let test_injector : Protocol.t list -> unit =
     Node.init ~rpc_port:8732 [Synchronisation_threshold 0; Private_mode]
   in
   let* client = Client.init ~endpoint:(Node node) () in
+
   let* () = Client.activate_protocol ~protocol client in
-  let injector = Injector.create node in
+  let injector = Injector.create node client in
   let* () = Injector.run injector in
+
+  (* Operation.Manager.transfer *)
   let* () = Lwt_unix.sleep 1. in
-  let* b = RPC.call injector @@ Injector.RPC.inject (Bytes.of_string "op") in
-  assert b ;
+  let* () = Client.bake_for client in
+  let* _inj_operation_hash =
+    RPC.call injector @@ Injector.RPC.inject (Bytes.of_string "op")
+  in
+  let* () = Client.bake_for client in
+
   unit
 
 let register ~protocols = test_injector protocols

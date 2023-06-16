@@ -4456,7 +4456,8 @@ end = struct
   let make ?client ?client_commands ?client_commands_registration
       ?baking_commands_registration ?plugin ?plugin_registerer ?dal ?dac
       ?test_helpers ?parameters ?benchmarks_proto ?octez_sc_rollup_layer2
-      ?octez_sc_rollup_node ?octez_injector ?baking ~status ~name ~main ~embedded () =
+      ?octez_sc_rollup_node ?octez_injector ?baking ~status ~name ~main
+      ~embedded () =
     {
       status;
       name;

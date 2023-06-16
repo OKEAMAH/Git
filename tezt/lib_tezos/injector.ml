@@ -28,7 +28,9 @@ module Parameters = struct
     runner : Runner.t option;
     uri : Uri.t;
     mutable pending_ready : unit option Lwt.u list;
+    data_dir : string;
     node : Node.t;
+    client : Client.t;
   }
 
   type session_state = {mutable ready : bool}
@@ -65,10 +67,13 @@ let rpc_host injector = Uri.host_with_default injector.persistent_state.uri
 
 let rpc_port injector = Option.get @@ Uri.port injector.persistent_state.uri
 
-let create ?name ?color ?event_pipe ?uri ?runner node =
+let create ?name ?color ?data_dir ?event_pipe ?uri ?runner node client =
   let name = match name with None -> fresh_name () | Some name -> name in
   let uri =
     match uri with None -> Parameters.default_uri () | Some uri -> uri
+  in
+  let data_dir =
+    match data_dir with None -> Temp.dir name | Some dir -> dir
   in
   let injector =
     create
@@ -77,7 +82,7 @@ let create ?name ?color ?event_pipe ?uri ?runner node =
       ?color
       ?event_pipe
       ?runner
-      {runner; uri; pending_ready = []; node}
+      {runner; uri; pending_ready = []; data_dir; node; client}
   in
   on_event injector (handle_readiness injector) ;
   injector
@@ -95,7 +100,14 @@ let run injector =
     | None -> []
     | Some port -> ["--port"; Int.to_string port]
   in
-  let arguments = ["run"; "--address"; host] @ port_args in
+  let data_dir = injector.persistent_state.data_dir in
+  let base_dir_args =
+    ["--base-dir"; Client.base_dir injector.persistent_state.client]
+  in
+  let arguments =
+    base_dir_args @ ["run"; "--address"; host] @ port_args
+    @ ["--data-dir"; data_dir]
+  in
   let on_terminate _ =
     (* Cancel all [Ready] event listeners. *)
     trigger_ready injector None ;
@@ -121,5 +133,5 @@ module RPC = struct
     in
     let data : RPC_core.data = Data (JSON.unannotate operation) in
 
-    make ~data POST ["inject"] JSON.as_bool
+    make ~data POST ["inject"] JSON.as_string
 end

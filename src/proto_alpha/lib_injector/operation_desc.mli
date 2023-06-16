@@ -48,3 +48,5 @@ val pp : Format.formatter -> t -> unit
 
 (** [false] if the injector will accept duplicate such operations. *)
 val unique : t -> bool
+
+val make_transfer : int64 -> Signature.Public_key_hash.t -> t

@@ -19,10 +19,17 @@ end = struct
          ]
 end
 
-let inject : ([`POST], unit, unit, unit, bytes, bool) Tezos_rpc.Service.t =
+let inject :
+    ( [`POST],
+      unit,
+      unit,
+      unit,
+      bytes,
+      Injector.Inj_operation.hash )
+    Tezos_rpc.Service.t =
   Tezos_rpc.Service.post_service
     ~description:"Inject an operation"
     ~query:Tezos_rpc.Query.empty
     ~input:Data_encoding.bytes
-    ~output:Data_encoding.bool
+    ~output:Injector.Inj_operation.Hash.encoding
     Tezos_rpc.Path.(root / "inject")

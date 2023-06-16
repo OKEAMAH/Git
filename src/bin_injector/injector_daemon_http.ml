@@ -23,12 +23,26 @@ module Events = struct
       ("port", Data_encoding.int31)
 end
 
+let source =
+  (* bootstrap1 key from tezt *)
+  Signature.Public_key_hash.of_b58check_exn
+    "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx"
+
+let make_transfer () : Operation_desc.t =
+  Operation_desc.make_transfer
+    192L
+    (Signature.Public_key_hash.of_b58check_exn
+       "tz1XQjK1b3P72kMcHsoPhnAg3dvX1n8Ainty")
+
 let start ~rpc_address ~rpc_port () =
   let open Lwt_result_syntax in
   let dir = Tezos_rpc.Directory.empty in
   let dir =
     Tezos_rpc.Directory.register0 dir Injector_messages.inject (fun () _n ->
-        return_true)
+        let op = make_transfer () in
+        let*! inj_operation_hash = Injector.add_pending_operation ~source op in
+        let*! _ = Injector.inject () in
+        Lwt.return inj_operation_hash)
   in
   let rpc_address = P2p_addr.of_string_exn rpc_address in
   let mode = `TCP (`Port rpc_port) in
@@ -52,11 +66,10 @@ let start ~rpc_address ~rpc_port () =
           failwith "Port already in use."
       | exn -> fail_with_exn exn)
 
-let run ~rpc_address ~rpc_port
+let run ~rpc_address ~rpc_port ~data_dir
     (cctxt : Client_context.full) (* (configuration : Configuration.t)  *) =
   let open Lwt_result_syntax in
-  let data_dir = "" in
-  let signers = [] in
+  let signers = [(source, `Each_block, [Injector.Configuration.Transaction])] in
   let state : Injector.state =
     {cctxt; minimal_block_delay = 15L; delay_increment_per_round = 8L}
   in

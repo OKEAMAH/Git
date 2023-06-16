@@ -8,6 +8,8 @@ let default_http_port =
   | None -> "6734"
   | Some port -> port
 
+let default_data_dir = ""
+
 let group =
   {
     Tezos_clic.name = "octez-injector";
@@ -21,7 +23,7 @@ let commands : Client_context.full Tezos_clic.command list =
     command
       ~group
       ~desc:"Run the injector server"
-      (args2
+      (args3
          (default_arg
             ~doc:"listening address or host name"
             ~short:'a'
@@ -37,10 +39,17 @@ let commands : Client_context.full Tezos_clic.command list =
             ~default:default_http_port
             (parameter (fun _ x ->
                  try return (int_of_string x)
-                 with Failure _ -> failwith "Invalid port %s" x))))
+                 with Failure _ -> failwith "Invalid port %s" x)))
+         (default_arg
+            ~long:"data-dir"
+            ~short:'d'
+            ~placeholder:"path"
+            ~doc:"data directory"
+            ~default:default_data_dir
+            (parameter (fun _ x -> Lwt.return_ok x))))
       (prefixes ["run"] @@ stop)
-      (fun (rpc_address, rpc_port) cctxt ->
-        Injector_daemon_http.run ~rpc_address ~rpc_port cctxt);
+      (fun (rpc_address, rpc_port, data_dir) cctxt ->
+        Injector_daemon_http.run ~rpc_address ~rpc_port ~data_dir cctxt);
   ]
 
 let select_commands _ _ =

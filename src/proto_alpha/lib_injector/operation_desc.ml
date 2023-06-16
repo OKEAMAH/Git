@@ -95,3 +95,12 @@ let of_manager_operation : type kind. kind manager_operation -> t option =
   | _ -> None
 
 let unique = function Transaction _ -> true
+
+let make_transfer (amount : int64) (destination : Signature.Public_key_hash.t) =
+  Transaction
+    {
+      amount = Tez.of_mutez_exn amount;
+      parameters = Script.unit_parameter;
+      entrypoint = Entrypoint.default;
+      destination = Contract.Implicit destination;
+    }

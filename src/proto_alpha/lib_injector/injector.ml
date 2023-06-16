@@ -54,7 +54,7 @@ module Configuration = struct
       minimal_nanotez_per_gas_unit = Q.of_int 100;
       force_low_fee = false;
       fee_cap = {Injector_sigs.mutez = 1_000_000L};
-      burn_cap = {Injector_sigs.mutez = 0L};
+      burn_cap = {Injector_sigs.mutez = 1_000_000L};
     }
 end
 (* **************** *)
