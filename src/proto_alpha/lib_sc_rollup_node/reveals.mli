@@ -48,6 +48,14 @@
    sources of reveal data so that the rollup node can automatically
    download data in advance. *)
 
+module Events : sig
+  include module type of Internal_event.Simple
+
+  val section : string trace
+
+  val get : unit t
+end
+
 (** Source of data  *)
 type source =
   | String of string  (** A string containing the whole data *)

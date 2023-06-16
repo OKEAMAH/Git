@@ -471,3 +471,12 @@ let spawn_import_secret_key ?hooks ?(force = false)
 let import_secret_key ?hooks ?force key sc_client =
   let*? process = spawn_import_secret_key ?hooks ?force key sc_client in
   Process.check process
+
+let get_blake2b_merkle_tree_root_hash ?hooks ~string sc_client =
+  let*! out =
+    spawn_command
+      ?hooks
+      sc_client
+      ["get"; "blake2b"; "merkle"; "tree"; "root"; "hash"; string]
+  in
+  return (String.trim out)

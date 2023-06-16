@@ -89,6 +89,19 @@ let reveal_hash ~protocol ~kind data =
       (* Not used for wasm yet. *)
       assert false
 
+let partial_reveal_hash ~protocol ~kind ~merkle_root ?index () =
+  let filename = merkle_root |> hex_encode |> fun h -> "00" ^ h in
+  let hex_hash =
+    (match index with Some i -> "00" ^ hex_encode i | None -> "")
+    ^ "00" ^ hex_encode merkle_root
+  in
+
+  match (protocol, kind) with
+  | _, "arith" -> {message = "hash:" ^ hex_hash; filename}
+  | _, _ ->
+      (* Not used for wasm yet. *)
+      assert false
+
 type sc_rollup_constants = {
   origination_size : int;
   challenge_window_in_blocks : int;
@@ -2789,6 +2802,98 @@ let test_reveals_above_4k =
     Test.fail "The rollup node processed the incorrect reveal without failing"
   in
   Lwt.choose [error_promise; should_not_sync]
+
+let test_partial_reveals ~length ~description =
+  let kind = "arith" in
+  test_full_scenario
+    ~supports:(Protocol.From_protocol 18)
+    ~timeout:120
+    ~kind
+    {tags = ["partial_reveals"]; variant = None; description}
+  @@ fun protocol sc_rollup_node sc_rollup_client sc_rollup node client ->
+  let data = String.make length 'z' in
+  let strings =
+    match Tezos_stdlib.TzString.chunk_bytes 4096 (Bytes.of_string data) with
+    | Ok r -> r
+    | Error _ ->
+        Test.fail "test_partial_reveals_4k: Tezos_stdlib.TzString.chunk_bytes"
+  in
+  let* merkle_root =
+    Sc_rollup_client.get_blake2b_merkle_tree_root_hash
+      ~string:data
+      sc_rollup_client
+  in
+  let merkle_root = Hex.to_string (`Hex merkle_root) in
+  let merkle_root = String.sub merkle_root 0 32 in
+  let mk_index i =
+    let b = Bytes.create 4 in
+    Bytes.set_int32_be b 0 i ;
+    String.of_bytes b
+  in
+  let hash =
+    partial_reveal_hash
+      ~protocol
+      ~kind
+      ~merkle_root
+      ~index:(mk_index (Int32.of_int 0))
+      ()
+  in
+  let pvm_dir = Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) kind in
+  let filename = Filename.concat pvm_dir hash.filename in
+  let () = Sys.mkdir pvm_dir 0o700 in
+  let () = with_open_out filename @@ fun cout -> output_string cout data in
+  let* () =
+    Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup []
+  in
+  let failure =
+    let* () =
+      Sc_rollup_node.process sc_rollup_node |> Option.get |> Process.check
+    in
+    Test.fail "Node terminated before reveal"
+  in
+  let* _ =
+    Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.fold_left_es
+      (fun index _ ->
+        let hash =
+          partial_reveal_hash
+            ~protocol
+            ~kind
+            ~merkle_root
+            ~index:(mk_index (Int32.of_int index))
+            ()
+        in
+        let retrieved_contents =
+          Sc_rollup_node.wait_for
+            sc_rollup_node
+            "retrieved_contents.v0"
+            (fun _ -> Some ())
+        in
+        let* () = send_text_messages client [hash.message] in
+        let* () = retrieved_contents in
+        Lwt.return_ok (index + 1))
+      0
+      strings
+  in
+  let sync =
+    let* _level =
+      Sc_rollup_node.wait_for_level
+        ~timeout:10.
+        sc_rollup_node
+        (Node.get_level node)
+    in
+    unit
+  in
+  Lwt.choose [sync; failure]
+
+let test_partial_reveals_above_4k =
+  test_partial_reveals
+    ~length:((4096 * 5) + 4095)
+    ~description:"partial reveal more than 4kiB of data"
+
+let test_partial_reveals_below_4k =
+  test_partial_reveals
+    ~length:0
+    ~description:"partial reveal less than 4kiB of data"
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4147
 
@@ -5570,6 +5675,8 @@ let register ~protocols =
   test_reveals_fails_on_wrong_hash protocols ;
   test_reveals_4k protocols ;
   test_reveals_above_4k protocols ;
+  test_partial_reveals_below_4k protocols ;
+  test_partial_reveals_above_4k protocols ;
   (* Specific Wasm PVM tezts *)
   test_rollup_node_run_with_kernel
     protocols
