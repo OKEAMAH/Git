@@ -31,3 +31,4 @@ publish:documentation:
     paths:
       - _build/
       - docs/_build
+    policy: pull
