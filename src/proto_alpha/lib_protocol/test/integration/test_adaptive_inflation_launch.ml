@@ -105,7 +105,7 @@ let set_delegate_parameters ctxt delegate staking_over_baking_limit
    - the launch cycle is not reset before it is reached,
    - once the launch cycle is reached, costaking is allowed. *)
 let test_launch threshold expected_vote_duration () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let assert_ema_above_threshold ~loc
       (metadata : Protocol.Main.block_header_metadata) =
     let ema =
@@ -164,12 +164,9 @@ let test_launch threshold expected_vote_duration () =
      delegate. For simplicity we put these operations in different
      blocks. *)
   let* block =
+    let*?@ half_balance = Protocol.Alpha_context.Tez.(balance /? 2L) in
     let* operation =
-      Op.transaction
-        (B block)
-        delegate1
-        wannabe_costaker
-        (Protocol.Alpha_context.Tez.of_mutez_exn 1_000_000_000L)
+      Op.transaction (B block) delegate1 wannabe_costaker half_balance
     in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
   in
