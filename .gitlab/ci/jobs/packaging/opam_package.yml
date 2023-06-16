@@ -533,6 +533,8 @@ opam:octez-injector:
 
 # Ignoring unreleased package octez-injector-server.
 
+# Ignoring unreleased package octez-injector-server-lib.
+
 opam:octez-mec:
   extends:
     - .opam_template

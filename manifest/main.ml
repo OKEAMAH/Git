@@ -7138,11 +7138,23 @@ let _octez_snoop =
           :: [S "package" :: [S "octez-snoop"]];
         ]
 
-let _octez_injector =
+let octez_injector_server_lib =
+  public_lib
+    "octez-injector-server-lib"
+    ~path:"src/lib_injector_server"
+    ~synopsis:"Library for the injector RPC server"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_injector_lib |> open_;
+        Protocol.(octez_injector alpha |> if_some |> open_);
+      ]
+
+let _octez_injector_server =
   public_exe
     "octez-injector-server"
     ~internal_name:"injector_main"
-    ~path:"src/bin_injector"
+    ~path:"src/bin_injector_server"
     ~synopsis:"Octez injector"
     ~release_status:Experimental
     ~with_macos_security_framework:true
@@ -7151,6 +7163,7 @@ let _octez_injector =
       [
         octez_base |> open_ ~m:"TzPervasives";
         octez_injector_lib |> open_;
+        octez_injector_server_lib |> open_;
         octez_rpc_http_server |> open_;
         octez_rpc_http |> open_;
         octez_clic;

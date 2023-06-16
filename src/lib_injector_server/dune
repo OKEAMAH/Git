@@ -1,0 +1,16 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name octez_injector_server_lib)
+ (public_name octez-injector-server-lib)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  tezos-base
+  octez-injector
+  octez-injector-alpha)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Octez_injector
+  -open Octez_injector_alpha))

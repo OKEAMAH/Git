@@ -30,6 +30,7 @@
 (package (name octez-injector))
 (package (name octez-injector-alpha))
 (package (name octez-injector-server))
+(package (name octez-injector-server-lib))
 (package (name octez-mec))
 (package (name octez-node))
 (package (name octez-node-config))
