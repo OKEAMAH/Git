@@ -209,9 +209,15 @@ module Make = struct
         (* It would be better to compute R = sg - h Pk using multiexp *)
         (* [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
         @@ let* base_point in
-           let* sg = scalar_mul s base_point in
-           let* hpk = scalar_mul h pk in
-           let* rhpk = add r hpk in
-           with_label ~label:"EdDSA.check" @@ equal sg rhpk
+           let* pk_neg = negate pk in
+           let* s =
+             let* b_false = Bool.constant false in
+             let zeros = List.init (512 - Bytes.length s) (fun _i -> b_false) in
+             ret @@ to_list (of_list s @ zeros)
+           in
+           let scalars = to_list [s; h] in
+           let points = to_list [base_point; pk_neg] in
+           let* sghpk = multi_scalar_mul scalars points in
+           with_label ~label:"EdDSA.check" @@ equal r sghpk
     end
 end

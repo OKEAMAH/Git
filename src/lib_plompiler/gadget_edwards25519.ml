@@ -59,6 +59,8 @@ module type AFFINE = functor (L : LIB) -> sig
 
   val add : point repr -> point repr -> point repr t
 
+  val negate : point repr -> point repr t
+
   val cond_add : point repr -> point repr -> bool repr -> point repr t
 
   val double : point repr -> point repr t
@@ -193,6 +195,11 @@ functor
         M.div y1y2_plus_x1x2 one_minus_dx1x2y1y2
       in
       unsafe_from_coordinates x3 y3
+
+    let negate p =
+      let x, y = of_pair p in
+      let* x = M.neg x in
+      unsafe_from_coordinates x y
 
     let point_or_zero p b =
       let* id in
