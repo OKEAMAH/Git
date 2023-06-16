@@ -80,6 +80,20 @@ let () =
     (function Could_not_encode_raw_data -> Some () | _ -> None)
     (fun () -> Could_not_encode_raw_data)
 
+module Events = struct
+  include Internal_event.Simple
+
+  let section = [Protocol.name; "sc_rollup_node"; "reveals"]
+
+  let get =
+    declare_0
+      ~section
+      ~level:Info
+      ~name:"retrieved_contents"
+      ~msg:"Retrieved file contents"
+      ()
+end
+
 type source = String of string | File of string
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/5902
@@ -168,6 +182,7 @@ let get_aux ?dac_client hash filename ?index () =
       (Reveal (Raw_data contents))
     |> return
   in
+  let*! () = Events.(emit get ()) in
   return contents
 
 let get ?dac_client ~data_dir ~pvm_kind hash =

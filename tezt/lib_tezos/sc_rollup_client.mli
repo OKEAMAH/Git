@@ -282,3 +282,9 @@ val import_secret_key :
   Account.aggregate_key ->
   t ->
   unit Lwt.t
+
+(** [get_blake2b_merkle_tree_root_hash ?hookes ~string client] returns the
+    root hash of the Merkle tree instantiated with the Blake2B hash function
+    from a [string]. *)
+val get_blake2b_merkle_tree_root_hash :
+  ?hooks:Process_hooks.t -> string:string -> t -> string Lwt.t
