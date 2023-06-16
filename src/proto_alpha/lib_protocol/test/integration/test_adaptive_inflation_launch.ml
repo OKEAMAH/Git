@@ -98,6 +98,53 @@ let set_delegate_parameters ctxt delegate staking_over_baking_limit
     delegate
     Protocol.Alpha_context.Tez.zero
 
+let assert_almost_equal_int ~loc ~margin_percent i1 i2 =
+  let margin = 1 + (abs i1 * margin_percent / 100) in
+  Assert.leq_int ~loc (abs (i2 - i1)) margin
+
+let assert_almost_equal_int64 ~loc ~margin_percent i1 i2 =
+  let ( + ) = Int64.add in
+  let ( - ) = Int64.sub in
+  let ( * ) = Int64.mul in
+  let ( / ) = Int64.div in
+  let abs = Int64.abs in
+  let margin = 1L + (abs i1 * margin_percent / 100L) in
+  Assert.leq_int64 ~loc (abs (i2 - i1)) margin
+
+let get_endorsing_power delegate block =
+  let open Lwt_result_wrap_syntax in
+  let ctxt = Context.B block in
+  let* alpha_ctxt =
+    let+ i = Incremental.begin_construction block in
+    Incremental.alpha_ctxt i
+  in
+  let* current_cycle = Block.current_cycle block in
+  let levels_in_cycle cycle =
+    Protocol.Alpha_context.Level.levels_in_cycle alpha_ctxt cycle
+    |> List.map (fun l -> l.Protocol.Alpha_context.Level.level)
+  in
+  let rec levels_in_n_cycle n accu ~first_cycle =
+    if n < 0 then accu
+    else
+      levels_in_n_cycle
+        (n - 1)
+        (levels_in_cycle first_cycle @ accu)
+        ~first_cycle:(Protocol.Alpha_context.Cycle.succ first_cycle)
+  in
+  let levels =
+    levels_in_n_cycle
+      Default_parameters.constants_test.preserved_cycles
+      []
+      ~first_cycle:current_cycle
+  in
+  Context.get_endorsing_power_for_delegate ctxt ~levels delegate
+
+let assert_same_endorsing_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_endorsing_power delegate1 block in
+  let* power2 = get_endorsing_power delegate2 block in
+  assert_almost_equal_int ~loc ~margin_percent:12 power1 power2
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -129,6 +176,9 @@ let test_launch threshold expected_vote_duration () =
   in
   let delegate1_pkh =
     match delegate1 with Implicit pkh -> pkh | Originated _ -> assert false
+  in
+  let delegate2_pkh =
+    match delegate2 with Implicit pkh -> pkh | Originated _ -> assert false
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
@@ -179,6 +229,13 @@ let test_launch threshold expected_vote_duration () =
       Op.delegation (B block) wannabe_costaker (Some delegate1_pkh)
     in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+  in
+
+  (* Since adaptive inflation is not active yet, staked and delegated
+     tez are still worth the same in the computation of baking and
+     voting rights. *)
+  let* () =
+    assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
   (* We are now ready to activate the feature through by baking many
