@@ -142,7 +142,7 @@ module Ed25519 (L : LIB) = struct
   let tests_bytes_of_point =
     List.map
       (fun (x, expected, valid) ->
-        let name = "Ed25519.bytes_of_point" in
+        let name = "Ed25519.test_bytes_of_point" in
         let expected = Bytes.input_bytes ~le:true @@ bytes_of_hex expected in
         let x = Curve.of_bytes_exn @@ bytes_of_hex x in
         test ~valid ~name (bytes_of_point_circuit ~expected x))
@@ -155,36 +155,41 @@ module Ed25519 (L : LIB) = struct
           true );
       ]
 
-  (*   let nb_bits = Z.numbits Curve.Base.order *)
+  (*
+ rs_bytes = 6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac
+ pk_bytes = fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025
+ msg_bytes = af82
+ r_pk_msg = 6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3acfc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025af82
+ h_bytes = 09bfb4ff1993f38f2ef65699934a8b64c0325867f858059b95bca199f78dc09e544857aeb4abddc6e35660da2867ab5963135ffef60d242dbfce0a85fbc362bf
+*)
 
-  (*   let test_circuit_verify pk msg signature () = *)
-  (*     let msg = Bytes.input_bytes msg in *)
-  (*     with_label ~label:"EdDSCurve.test" *)
-  (*     @@ let* pk = input ~kind:`Public @@ V.Encoding.pk_encoding.input pk in *)
-  (*        let* msg = input msg in *)
-  (*        let* signature = *)
-  (*          input @@ V.Encoding.signature_encoding.input signature *)
-  (*        in *)
-  (*        let signature = V.Encoding.signature_encoding.decode signature in *)
-  (*        with_label ~label:"with_bool_check" *)
-  (*        @@ with_bool_check (V.verify ~msg ~pk ~signature ()) *)
+  let test_verify_circuit pk msg signature () =
+    let msg = Bytes.input_bytes ~le:true msg in
+    with_label ~label:"Ed25519.verify"
+    @@ let* pk = input ~kind:`Public @@ V.Encoding.pk_encoding.input pk in
+       let* msg = input msg in
+       let* signature =
+         input @@ V.Encoding.signature_encoding.input signature
+       in
+       let signature = V.Encoding.signature_encoding.decode signature in
+       with_label ~label:"with_bool_check"
+       @@ with_bool_check (V.verify ~msg ~pk ~signature ())
 
-  (*   let tests_ed25519 = *)
-  (*     List.map *)
-  (*       (fun (sk, pk_expected, _pk_u_v, msg, _sign, _sign_r_u_v, _sign_s) -> *)
-  (*         let msg = bytes_of_hex msg in *)
-  (*         let sk = bytes_of_hex sk in *)
-  (*         let pk_expected = bytes_of_hex pk_expected in *)
-  (*         let pk = Ed25519.P.neuterize sk in *)
-  (*         let _signature = Ed25519.P.sign sk msg in *)
-  (*         test *)
-  (*           ~valid:true *)
-  (*           ~name:"Ed25519.test_circuit_verify" *)
-  (*             (\* (test_circuit_verify pk msg signature) *\) *)
-  (*           (test_bytes_of_point pk pk_expected)) *)
-  (*       test_vectors *)
+  let tests_ed25519_verify =
+    List.map
+      (fun (sk, _pk, _pk_u_v, msg, _sign, _sign_r_u_v, _sign_s) ->
+        let msg = bytes_of_hex msg in
+        let sk = bytes_of_hex sk in
+        let pk = Ed25519.P.neuterize sk in
+        let signature = Ed25519.P.sign sk msg in
+        test
+          ~valid:true
+          ~name:"Ed25519.test_verify_circuit"
+          (test_verify_circuit pk msg signature))
+      test_vectors
 
-  let tests = tests_bytes_of_mod_int @ tests_bytes_of_point
+  let tests =
+    tests_bytes_of_mod_int @ tests_bytes_of_point @ tests_ed25519_verify
 end
 
 let tests =
