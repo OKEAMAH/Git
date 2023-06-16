@@ -17,4 +17,4 @@ docker:merge_manifests:
   variables:
     CI_DOCKER_HUB: "true"
   script:
-    - ./scripts/ci/docker_merge_manifests.sh
+    - ./.gitlab/ci/jobs/prepare_release/docker:merge_manifests.sh
