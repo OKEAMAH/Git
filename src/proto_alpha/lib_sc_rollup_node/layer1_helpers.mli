@@ -38,3 +38,32 @@ val fetch_tezos_block :
     asynchronously. NOTE: the number of blocks to prefetch must not be greater
     than the size of the blocks cache otherwise they will be lost. *)
 val prefetch_tezos_blocks : t -> head list -> unit
+
+val get_last_cemented_commitment :
+  Protocol_client_context.full -> Address.t -> Node_context.lcc tzresult Lwt.t
+
+val get_last_published_commitment :
+  Protocol_client_context.full ->
+  Address.t ->
+  Signature.public_key_hash ->
+  Commitment.t option tzresult Lwt.t
+
+val get_kind :
+  Protocol_client_context.full -> Address.t -> Kind.t tzresult Lwt.t
+
+val genesis_inbox :
+  Protocol_client_context.full ->
+  genesis_level:int32 ->
+  Octez_smart_rollup.Inbox.t tzresult Lwt.t
+
+val constants_of_parametric :
+  Protocol.Alpha_context.Constants.Parametric.t ->
+  Node_context.protocol_constants
+
+val retrieve_constants :
+  Protocol_client_context.full -> Node_context.protocol_constants tzresult Lwt.t
+
+val retrieve_genesis_info :
+  Protocol_client_context.full ->
+  Address.t ->
+  Node_context.genesis_info tzresult Lwt.t
