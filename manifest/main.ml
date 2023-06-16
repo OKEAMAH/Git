@@ -7463,6 +7463,7 @@ let () =
         octez_stdlib_unix;
         Protocol.(main alpha);
         octez_scoru_wasm_regressions;
+        octez_plompiler;
       ]
     in
     test

@@ -25,7 +25,7 @@
 
 let two = Z.of_int 2
 
-let accounts_depth = 2
+let accounts_depth = 3
 
 let tickets_depth = 2
 

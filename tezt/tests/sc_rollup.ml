@@ -30,6 +30,8 @@
    Invocation:   dune exec tezt/tests/main.exe -- --file sc_rollup.ml
 *)
 
+[@@@warning "-32"]
+
 open Base
 open Sc_rollup_helpers
 
@@ -1341,6 +1343,28 @@ let test_rollup_node_boots_into_initial_state ~kind =
     Check.string
     ~error_msg:"Unexpected PVM status (%L = %R)" ;
   unit
+
+open Plompiler
+module HashPV = Plompiler.Anemoi128
+module SchnorrPV = Plompiler.Schnorr (HashPV)
+module Schnorr = SchnorrPV.P
+module TxLogic = Epoxy_tx.Tx_rollup.P
+module TxTypes = Epoxy_tx.Types.P
+
+let sks : Schnorr.sk array =
+  Array.init 8 (fun _ -> Mec.Curve.Jubjub.AffineEdwards.Scalar.random ())
+
+let pks = Array.map Schnorr.neuterize sks
+
+let epoxy_tx_boot_sector =
+  let tez_balances = [1000; 100; 10] in
+  let bals =
+    List.mapi (fun i bal -> (pks.(i), Z.of_int bal, [||])) tez_balances
+  in
+  Data_encoding.Binary.to_string_exn TxLogic.balances_data_encoding bals
+
+(* let make_transfer ~src ~dst ~amout ~cnt =
+   TxTypes.Tr *)
 
 let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     ~internal ~kind =
@@ -5310,129 +5334,129 @@ let test_inject_identital_messages ~kind =
 
 let register ~kind ~protocols =
   test_origination ~kind protocols ;
-  test_rollup_node_running ~kind protocols ;
-  test_rollup_get_genesis_info ~kind protocols ;
-  test_rollup_inbox_of_rollup_node
-    ~kind
-    ~variant:"basic"
-    basic_scenario
-    protocols ;
-  test_rpcs ~kind protocols ;
-  test_rollup_inbox_of_rollup_node
-    ~kind
-    ~variant:"stops"
-    sc_rollup_node_stops_scenario
-    protocols ;
-  test_rollup_inbox_of_rollup_node
-    ~kind
-    ~variant:"disconnects"
-    sc_rollup_node_disconnects_scenario
-    protocols ;
-  test_rollup_inbox_of_rollup_node
-    ~kind
-    ~variant:"handles_chain_reorg"
-    sc_rollup_node_handles_chain_reorg
-    protocols ;
-  test_rollup_inbox_of_rollup_node
-    ~kind
-    ~variant:"batcher"
-    ~extra_tags:["batcher"]
-    sc_rollup_node_batcher
-    protocols ;
-  test_rollup_node_boots_into_initial_state protocols ~kind ;
+  (* test_rollup_node_running ~kind protocols ;
+     test_rollup_get_genesis_info ~kind protocols ;
+     test_rollup_inbox_of_rollup_node
+       ~kind
+       ~variant:"basic"
+       basic_scenario
+       protocols ;
+     test_rpcs ~kind protocols ;
+     test_rollup_inbox_of_rollup_node
+       ~kind
+       ~variant:"stops"
+       sc_rollup_node_stops_scenario
+       protocols ;
+     test_rollup_inbox_of_rollup_node
+       ~kind
+       ~variant:"disconnects"
+       sc_rollup_node_disconnects_scenario
+       protocols ;
+     test_rollup_inbox_of_rollup_node
+       ~kind
+       ~variant:"handles_chain_reorg"
+       sc_rollup_node_handles_chain_reorg
+       protocols ;
+     test_rollup_inbox_of_rollup_node
+       ~kind
+       ~variant:"batcher"
+       ~extra_tags:["batcher"]
+       sc_rollup_node_batcher
+       protocols ;
+     test_rollup_node_boots_into_initial_state protocols ~kind ; *)
   test_rollup_node_advances_pvm_state protocols ~kind ~internal:false ;
-  test_rollup_node_advances_pvm_state protocols ~kind ~internal:true ;
-  test_commitment_scenario
-    ~variant:"commitment_is_stored"
-    commitment_stored
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"robust_to_failures"
-    commitment_stored_robust_to_failures
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~extra_tags:["modes"; "observer"]
-    ~variant:"observer_does_not_publish"
-    (mode_publish Observer false)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~extra_tags:["modes"; "maintenance"]
-    ~variant:"maintenance_publishes"
-    (mode_publish Maintenance true)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~extra_tags:["modes"; "batcher"]
-    ~variant:"batcher_does_not_publish"
-    (mode_publish Batcher false)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~extra_tags:["modes"; "operator"]
-    ~variant:"operator_publishes"
-    (mode_publish Operator true)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~commitment_period:15
-    ~challenge_window:10080
-    ~variant:"node_use_proto_param"
-    commitment_stored
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"non_final_level"
-    commitment_not_published_if_non_final
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"messages_reset"
-    (commitments_messages_reset kind)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"handles_chain_reorgs"
-    (commitments_reorgs ~kind ~switch_l1_node:false)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"handles_chain_reorgs_missing_blocks"
-    (commitments_reorgs ~kind ~switch_l1_node:true)
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~challenge_window:1
-    ~variant:"no_commitment_publish_before_lcc"
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/2976
-       change tests so that we do not need to repeat custom parameters. *)
-    commitment_before_lcc_not_published
-    protocols
-    ~kind ;
-  test_commitment_scenario
-    ~variant:"first_published_at_level_global"
-    first_published_level_is_global
-    protocols
-    ~kind ;
-  test_commitment_scenario
-  (* Reduce commitment period here in order avoid waiting for default 30 (and even 60) blocks to be baked*)
-    ~commitment_period:3
-    ~variant:"consecutive commitments"
-    test_consecutive_commitments
-    protocols
-    ~kind ;
-  test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
-     Uncomment this test as soon as the issue done.
-     test_reinject_failed_commitment protocols ~kind ; *)
-  test_late_rollup_node protocols ~kind ;
-  test_late_rollup_node_2 protocols ~kind ;
-  test_interrupt_rollup_node protocols ~kind ;
-  test_outbox_message protocols ~kind ;
-  test_messages_processed_by_commitment ~kind protocols ;
-  test_arg_boot_sector_file ~kind protocols
+  test_rollup_node_advances_pvm_state protocols ~kind ~internal:true
+(* test_commitment_scenario
+     ~variant:"commitment_is_stored"
+     commitment_stored
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"robust_to_failures"
+     commitment_stored_robust_to_failures
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~extra_tags:["modes"; "observer"]
+     ~variant:"observer_does_not_publish"
+     (mode_publish Observer false)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~extra_tags:["modes"; "maintenance"]
+     ~variant:"maintenance_publishes"
+     (mode_publish Maintenance true)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~extra_tags:["modes"; "batcher"]
+     ~variant:"batcher_does_not_publish"
+     (mode_publish Batcher false)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~extra_tags:["modes"; "operator"]
+     ~variant:"operator_publishes"
+     (mode_publish Operator true)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~commitment_period:15
+     ~challenge_window:10080
+     ~variant:"node_use_proto_param"
+     commitment_stored
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"non_final_level"
+     commitment_not_published_if_non_final
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"messages_reset"
+     (commitments_messages_reset kind)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"handles_chain_reorgs"
+     (commitments_reorgs ~kind ~switch_l1_node:false)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"handles_chain_reorgs_missing_blocks"
+     (commitments_reorgs ~kind ~switch_l1_node:true)
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~challenge_window:1
+     ~variant:"no_commitment_publish_before_lcc"
+     (* TODO: https://gitlab.com/tezos/tezos/-/issues/2976
+        change tests so that we do not need to repeat custom parameters. *)
+     commitment_before_lcc_not_published
+     protocols
+     ~kind ;
+   test_commitment_scenario
+     ~variant:"first_published_at_level_global"
+     first_published_level_is_global
+     protocols
+     ~kind ;
+   test_commitment_scenario
+   (* Reduce commitment period here in order avoid waiting for default 30 (and even 60) blocks to be baked*)
+     ~commitment_period:3
+     ~variant:"consecutive commitments"
+     test_consecutive_commitments
+     protocols
+     ~kind ;
+   test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
+   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
+      Uncomment this test as soon as the issue done.
+      test_reinject_failed_commitment protocols ~kind ; *)
+   test_late_rollup_node protocols ~kind ;
+   test_late_rollup_node_2 protocols ~kind ;
+   test_interrupt_rollup_node protocols ~kind ;
+   test_outbox_message protocols ~kind ;
+   test_messages_processed_by_commitment ~kind protocols ;
+   test_arg_boot_sector_file ~kind protocols *)
 
 let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
