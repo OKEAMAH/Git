@@ -115,7 +115,7 @@ let test_launch threshold expected_vote_duration () =
     Assert.lt_int32 ~loc threshold ema
   in
   (* Initialize the state with a single delegate. *)
-  let* block, delegate =
+  let* block, (delegate1, _delegate2) =
     let default_constants = Default_parameters.constants_test in
     let adaptive_inflation =
       {
@@ -124,11 +124,11 @@ let test_launch threshold expected_vote_duration () =
       }
     in
     let consensus_threshold = 0 in
-    Context.init_with_constants1
+    Context.init_with_constants2
       {default_constants with consensus_threshold; adaptive_inflation}
   in
-  let delegate_pkh =
-    match delegate with Implicit pkh -> pkh | Originated _ -> assert false
+  let delegate1_pkh =
+    match delegate1 with Implicit pkh -> pkh | Originated _ -> assert false
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
@@ -140,7 +140,7 @@ let test_launch threshold expected_vote_duration () =
      be done before the activation. For these reasons, we set it at
      the beginning. *)
   let* block =
-    let* operation = set_delegate_parameters (B block) delegate 1 0 in
+    let* operation = set_delegate_parameters (B block) delegate1 1 0 in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
   in
 
@@ -161,7 +161,7 @@ let test_launch threshold expected_vote_duration () =
     let* operation =
       Op.transaction
         (B block)
-        delegate
+        delegate1
         wannabe_costaker
         (Protocol.Alpha_context.Tez.of_mutez_exn 1_000_000_000L)
     in
@@ -173,7 +173,7 @@ let test_launch threshold expected_vote_duration () =
   in
   let* block =
     let* operation =
-      Op.delegation (B block) wannabe_costaker (Some delegate_pkh)
+      Op.delegation (B block) wannabe_costaker (Some delegate1_pkh)
     in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
   in
