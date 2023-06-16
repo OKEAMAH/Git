@@ -30,9 +30,9 @@ publish:documentation:
     paths:
       - _build/default/_doc/_html/tezos-base
       - odoc.log
-  cache:
-    key: doc-cache-$CI_COMMIT_REF_SLUG
-    paths:
-      - _build/
-      - docs/_build
-    policy: pull
+  # cache:
+  #   key: doc-cache-$CI_COMMIT_REF_SLUG
+  #   paths:
+  #     - _build/
+  #     - docs/_build
+  #   policy: pull
