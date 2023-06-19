@@ -106,6 +106,6 @@ oc.unified_coverage:
     # On the development branches, we compute coverage.
     # TODO: https://gitlab.com/tezos/tezos/-/issues/6173
     # We propagate the exit code to temporarily allow corrupted coverage files.
-    - ./scripts/ci/report_coverage.sh || exit $?
+    - ./.gitlab/ci/jobs/coverage/unified_coverage.sh || exit $?
   allow_failure:
     exit_codes: 64
