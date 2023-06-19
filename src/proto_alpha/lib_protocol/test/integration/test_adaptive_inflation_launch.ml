@@ -99,8 +99,44 @@ let set_delegate_parameters ctxt delegate staking_over_baking_limit
     Protocol.Alpha_context.Tez.zero
 
 let assert_almost_equal_int ~loc ~margin_percent i1 i2 =
-  let margin = 1 + (abs i1 * margin_percent / 100) in
-  Assert.leq_int ~loc (abs (i2 - i1)) margin
+  let maxi = max (abs i1) (abs i2) in
+  let margin = 1 + (maxi * margin_percent / 100) in
+  let diff = abs (i2 - i1) in
+  let msg = "Integer almost equal" in
+  let pp fmt x = Format.fprintf fmt "%d" x in
+  if diff > margin then
+    failwith
+      "@[@[[%s]@] - @[%s : %a is not almost equal to %a within a %a%% \
+       margin@]@]"
+      loc
+      msg
+      pp
+      i1
+      pp
+      i2
+      pp
+      margin_percent
+  else return_unit
+
+let assert_really_lt_int ~loc ~margin_percent i1 i2 =
+  let maxi = max (abs i1) (abs i2) in
+  let margin = 1 + (maxi * margin_percent / 100) in
+  let diff = i2 - i1 in
+  let msg = "Integer much lt" in
+  let pp fmt x = Format.fprintf fmt "%d" x in
+  if diff <= margin then
+    failwith
+      "@[@[[%s]@] - @[%s : %a is not much smaller than %a within a %a%% \
+       margin@]@]"
+      loc
+      msg
+      pp
+      i1
+      pp
+      i2
+      pp
+      margin_percent
+  else return_unit
 
 let assert_almost_equal_int64 ~loc ~margin_percent i1 i2 =
   let ( + ) = Int64.add in
