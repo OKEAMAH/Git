@@ -6013,7 +6013,7 @@ let hash = Protocol.hash
         ]
         ~path:(path // "lib_dac_plugin/test")
         ~with_macos_security_framework:true
-        ~opam:(sf "tezos-dac-%s" name_dash)
+        ~opam:(sf "tezos-dac-%s-test" name_dash)
         ~deps:
           [
             octez_base |> open_ ~m:"TzPervasives"
