@@ -115,8 +115,8 @@ let run injector =
   in
   run injector {ready = false} arguments ~on_terminate ?runner
 
-let encode_bytes_to_hex_string raw =
-  "\"" ^ match Hex.of_bytes raw with `Hex s -> s ^ "\""
+(* let encode_bytes_to_hex_string raw = *)
+(*   "\"" ^ match Hex.of_bytes raw with `Hex s -> s ^ "\"" *)
 
 module RPC = struct
   let make ?data ?query_string =
@@ -127,11 +127,15 @@ module RPC = struct
       ~get_port:rpc_port
       ~get_scheme:(Fun.const "http")
 
-  let inject payload =
-    let operation =
-      JSON.parse ~origin:"Injector.inject" (encode_bytes_to_hex_string payload)
+  let inject amount destination source =
+    let transaction =
+      `O
+        [
+          ("amount", `String (Int64.to_string amount));
+          ("destination", `String destination);
+          ("source", `String source);
+        ]
     in
-    let data : RPC_core.data = Data (JSON.unannotate operation) in
-
+    let data : RPC_core.data = Data transaction in
     make ~data POST ["inject"] JSON.as_string
 end

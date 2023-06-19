@@ -1,3 +1,5 @@
+let transaction_source = Account.Bootstrap.keys.(0).public_key_hash
+
 let test_injector : Protocol.t list -> unit =
   Protocol.register_test
     ~__FILE__
@@ -15,11 +17,14 @@ let test_injector : Protocol.t list -> unit =
   let injector = Injector.create node client in
   let* () = Injector.run injector in
 
-  (* Operation.Manager.transfer *)
   let* () = Lwt_unix.sleep 1. in
   let* () = Client.bake_for client in
   let* _inj_operation_hash =
-    RPC.call injector @@ Injector.RPC.inject (Bytes.of_string "op")
+    RPC.call injector
+    @@ Injector.RPC.inject
+         193L
+         "tz1XQjK1b3P72kMcHsoPhnAg3dvX1n8Ainty"
+         transaction_source
   in
   let* () = Client.bake_for client in
 

@@ -23,23 +23,31 @@ module Events = struct
       ("port", Data_encoding.int31)
 end
 
-let source =
-  (* bootstrap1 key from tezt *)
-  Signature.Public_key_hash.of_b58check_exn
-    "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx"
-
-let make_transfer () : Operation_desc.t =
-  Operation_desc.make_transfer
-    192L
-    (Signature.Public_key_hash.of_b58check_exn
-       "tz1XQjK1b3P72kMcHsoPhnAg3dvX1n8Ainty")
+(* TODO: pass signers on startup *)
+let signers =
+  [
+    ( (* bootstrap1 key from tezt *)
+      Signature.Public_key_hash.of_b58check_exn
+        "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
+      `Each_block,
+      [Injector.Configuration.Transaction] );
+  ]
 
 let start ~rpc_address ~rpc_port () =
   let open Lwt_result_syntax in
   let dir = Tezos_rpc.Directory.empty in
   let dir =
-    Tezos_rpc.Directory.register0 dir Injector_messages.inject (fun () _n ->
-        let op = make_transfer () in
+    Tezos_rpc.Directory.register0
+      dir
+      Injector_messages.inject
+      (fun () (amount, destination, source) ->
+        let op =
+          Operation_desc.make_transfer
+            (Int64.of_string amount)
+            (Signature.Public_key_hash.of_b58check_exn destination)
+        in
+        let source = Signature.Public_key_hash.of_b58check_exn source in
+        (* TODO: handle error raised when operation can't be signed *)
         let*! inj_operation_hash = Injector.add_pending_operation ~source op in
         let*! _ = Injector.inject () in
         Lwt.return inj_operation_hash)
@@ -69,7 +77,6 @@ let start ~rpc_address ~rpc_port () =
 let run ~rpc_address ~rpc_port ~data_dir
     (cctxt : Client_context.full) (* (configuration : Configuration.t)  *) =
   let open Lwt_result_syntax in
-  let signers = [(source, `Each_block, [Injector.Configuration.Transaction])] in
   let state : Injector.state =
     {cctxt; minimal_block_delay = 15L; delay_increment_per_round = 8L}
   in
