@@ -212,8 +212,11 @@ where
 #[cfg(test)]
 mod tests {
 
+    use crate::{state::State, storage::write_state};
+
     use super::SequencerRuntime;
     use tezos_data_encoding_derive::BinWriter;
+    use tezos_smart_rollup_encoding::public_key::PublicKey;
     use tezos_smart_rollup_host::{path::RefPath, runtime::Runtime};
     use tezos_smart_rollup_mock::MockHost;
 
@@ -231,6 +234,15 @@ mod tests {
     #[test]
     fn test_add_user_message() {
         let mut mock_host = MockHost::default();
+        write_state(
+            &mut mock_host,
+            State::Sequenced(
+                PublicKey::from_b58check("edpkuDMUm7Y53wp4gxeLBXuiAhXZrLn8XB1R83ksvvesH8Lp8bmCfK")
+                    .expect("decoding should work"),
+            ),
+        )
+        .expect("updating the state should work");
+
         mock_host.add_external(UserMessage::new(1));
         mock_host.add_external(UserMessage::new(2));
         mock_host.add_external(UserMessage::new(3));

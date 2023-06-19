@@ -110,7 +110,10 @@ pub fn read_input<Host: Runtime>(
                     },
                 }
             }
-            None => return handle_pending_inbox(host, pending_inbox_queue),
+            None => {
+                let state = read_state(host)?;
+                return handle_pending_inbox(host, pending_inbox_queue, delayed_inbox_queue, state);
+            }
         }
     }
 }
@@ -256,12 +259,33 @@ fn handle_message<H: Runtime>(
 fn handle_pending_inbox<H: Runtime>(
     host: &mut H,
     pending_inbox_queue: &mut Queue,
+    delayed_inbox_queue: &mut Queue,
+    state: State,
 ) -> Result<Option<Message>, RuntimeError> {
-    let pending_message = pending_inbox_queue.pop(host)?;
-    let Some(PendingUserMessage {id, level, payload}) = pending_message else {return Ok(None)};
+    match state {
+        State::Sequenced(_) => {
+            let pending_message = pending_inbox_queue.pop(host)?;
+            let Some(PendingUserMessage {id, level, payload}) = pending_message else {return Ok(None)};
 
-    let msg = Message::new(level, id, payload);
-    Ok(Some(msg))
+            let msg = Message::new(level, id, payload);
+            Ok(Some(msg))
+        }
+        State::Fallback => {
+            // First we should remove remaining message from the pending inbox
+            match pending_inbox_queue.pop(host)? {
+                Some(PendingUserMessage { id, level, payload }) => {
+                    let msg = Message::new(level, id, payload);
+                    Ok(Some(msg))
+                }
+                None => {
+                    let delayed_message = delayed_inbox_queue.pop(host)?;
+                    let Some(UserMessage { payload, .. }) = delayed_message else {return Ok(None)};
+                    let msg = Message::new(0, 0, payload);
+                    Ok(Some(msg))
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
