@@ -339,15 +339,75 @@ let test_launch threshold expected_vote_duration () =
      planned to happen. *)
   let* () = assert_current_cycle ~loc:__LOC__ block launch_cycle in
 
-  (* Test that the wannabe costaker is now allowed to stake a few
-     mutez. *)
-  let* operation =
-    stake
-      (B block)
-      wannabe_costaker
-      (Protocol.Alpha_context.Tez.of_mutez_exn 10L)
+  (* Adaptive inflation should now be active but both delegates have staked
+     the same amount so they still have the same rights. *)
+  let* () =
+    assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
-  let* (_block : Block.t) = Block.bake ~operation block in
+  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
+  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
+  let* () =
+    assert_almost_equal_int64
+      ~loc:__LOC__
+      ~margin_percent:10L
+      voting_power_1
+      voting_power_2
+  in
+
+  (* Test that the wannabe costaker is now allowed to stake almost all
+     its balance. *)
+  let* balance = Context.Contract.balance (B block) wannabe_costaker in
+  let*?@ balance_to_stake = Protocol.Alpha_context.Tez.(balance -? one) in
+
+  let* total_frozen_stake_before_costake =
+    Context.get_total_frozen_stake (B block)
+  in
+  (* let* delegate_info_before_costake = Context.Delegate.info (B block)  *)
+  let* block =
+    let* operation = stake (B block) wannabe_costaker balance_to_stake in
+    Block.bake ~operation block
+  in
+  let* total_frozen_stake_after_costake =
+    Context.get_total_frozen_stake (B block)
+  in
+
+  let*?@ expected_total_frozen_stake =
+    Protocol.Alpha_context.Tez.(
+      total_frozen_stake_before_costake +? zero (* balance_to_stake *))
+  in
+
+  (* Still the same rights because costaking takes a few cycle to take effect. *)
+  let* () =
+    assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
+  in
+  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
+  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
+  let* () =
+    assert_almost_equal_int64
+      ~loc:__LOC__
+      ~margin_percent:10L
+      voting_power_1
+      voting_power_2
+  in
+
+  let* block = Block.bake_until_n_cycle_end 10 block in
+  let* () =
+    Assert.equal_tez
+      ~loc:__LOC__
+      total_frozen_stake_after_costake
+      expected_total_frozen_stake
+  in
+  (* Now things have changed because of the costaking. *)
+  let* () =
+    assert_less_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
+  in
+
+  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
+  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
+  let* () =
+    Assert.leq_int64 ~loc:__LOC__ (Int64.add voting_power_2 2L) voting_power_1
+  in
+
   return_unit
 
 let tests =
