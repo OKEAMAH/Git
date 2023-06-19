@@ -201,7 +201,7 @@ let test_launch threshold expected_vote_duration () =
      be done before the activation. For these reasons, we set it at
      the beginning. *)
   let* block =
-    let* operation = set_delegate_parameters (B block) delegate1 1 0 in
+    let* operation = set_delegate_parameters (B block) delegate1 1000000 0 in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
   in
 
