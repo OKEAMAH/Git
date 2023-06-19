@@ -198,14 +198,26 @@ let assert_really_lt_int ~loc ~margin_percent i1 i2 =
       margin_percent
   else return_unit
 
-let assert_almost_equal_int64 ~loc ~margin_percent i1 i2 =
-  let ( + ) = Int64.add in
-  let ( - ) = Int64.sub in
-  let ( * ) = Int64.mul in
-  let ( / ) = Int64.div in
-  let abs = Int64.abs in
-  let margin = 1L + (abs i1 * margin_percent / 100L) in
-  Assert.leq_int64 ~loc (abs (i2 - i1)) margin
+module I64 : INTEGER with type t = Int64.t = struct
+  include Int64
+  include Compare.Int64
+
+  let name = "int64"
+
+  let pp fmt x = Format.fprintf fmt "%s" (to_string x)
+
+  let ( + ) = Int64.add
+
+  let ( - ) = Int64.sub
+
+  let ( * ) = Int64.mul
+
+  let ( / ) = Int64.div
+
+  let hundred = 100L
+end
+
+module Almost_equal_int64 = Almost_equal (I64)
 
 let get_endorsing_power delegate block =
   let open Lwt_result_wrap_syntax in
@@ -396,7 +408,7 @@ let test_launch threshold expected_vote_duration () =
   let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
   let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    assert_almost_equal_int64
+    Almost_equal_int64.assert_almost_equal
       ~loc:__LOC__
       ~margin_percent:10L
       voting_power_1
@@ -478,7 +490,7 @@ let test_launch threshold expected_vote_duration () =
   let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
   let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    assert_almost_equal_int64
+    Almost_equal_int64.assert_almost_equal
       ~loc:__LOC__
       ~margin_percent:10L
       voting_power_1
@@ -514,7 +526,7 @@ let test_launch threshold expected_vote_duration () =
   let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
   let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    assert_almost_equal_int64
+    Almost_equal_int64.assert_almost_equal
       ~loc:__LOC__
       ~margin_percent:10L
       voting_power_1
