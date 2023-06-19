@@ -149,14 +149,14 @@ let get_endorser_n ctxt n =
 
 let get_endorsing_power_for_delegate ctxt ?levels pkh =
   Plugin.RPC.Validators.get rpc_ctxt ?levels ctxt >>=? fun endorsers ->
-  let rec find_slots_for_delegate = function
-    | [] -> return 0
+  let rec find_slots_for_delegate accu = function
+    | [] -> return accu
     | {Plugin.RPC.Validators.delegate; slots; _} :: t ->
         if Signature.Public_key_hash.equal delegate pkh then
-          find_slots_for_delegate t >|=? fun n -> List.length slots + n
-        else find_slots_for_delegate t
+          find_slots_for_delegate (accu + List.length slots) t
+        else find_slots_for_delegate accu t
   in
-  find_slots_for_delegate endorsers
+  find_slots_for_delegate 0 endorsers
 
 let get_voting_power = Delegate_services.voting_power rpc_ctxt
 
