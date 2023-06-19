@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
+// SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
 //
 // SPDX-License-Identifier: MIT
 
@@ -112,10 +113,14 @@ impl MockHost {
 
         let info = info_for_level(state.curr_level as i32);
 
-        Self {
+        let mut mock_host = Self {
             state: state.into(),
             info,
-        }
+        };
+
+        mock_host.bump_level();
+
+        mock_host
     }
 
     /// Append an internal message to the current inbox.
@@ -198,10 +203,7 @@ impl MockHost {
             break;
         }
 
-        let level_ran_at = self.state.borrow().curr_level;
-        self.bump_level();
-
-        level_ran_at
+        self.state.borrow().curr_level
     }
 
     /// Returns the level of the next `kernel_run`.

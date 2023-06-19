@@ -257,14 +257,70 @@ mod tests {
 
     use super::MockHost;
 
+    use crate::info_for_level;
     use crate::state::HostState;
     use tezos_smart_rollup_core::{MAX_FILE_CHUNK_SIZE, MAX_INPUT_MESSAGE_SIZE};
+    use tezos_smart_rollup_encoding::inbox::{self};
+    use tezos_smart_rollup_encoding::michelson::MichelsonUnit;
     use tezos_smart_rollup_host::input::Message;
     use tezos_smart_rollup_host::{
         metadata::RollupMetadata,
         path::RefPath,
         runtime::{Runtime, RuntimeError},
     };
+
+    #[test]
+    fn test_read_start_of_level_input() {
+        // Arrange
+        let mut mock_host = MockHost::default();
+
+        // Act
+        let result = mock_host.read_input();
+
+        // Assert
+        let expected = {
+            let start_of_level = inbox::InboxMessage::Internal(
+                inbox::InternalInboxMessage::<MichelsonUnit>::StartOfLevel,
+            );
+            let mut payload = Vec::default();
+            start_of_level
+                .serialize(&mut payload)
+                .expect("serialization should work");
+            Ok(Some(Message::new(mock_host.level(), 0, payload)))
+        };
+
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_read_info_per_level_input() {
+        // Arrange
+        let mut mock_host = MockHost::default();
+
+        // Act
+        let _ = mock_host
+            .read_input()
+            .expect("Read SoL should work")
+            .unwrap();
+        let result = mock_host.read_input();
+
+        // Assert
+        let expected = {
+            let info_per_level = info_for_level(mock_host.level() as i32);
+            let info_per_level = inbox::InboxMessage::Internal(
+                inbox::InternalInboxMessage::<MichelsonUnit>::InfoPerLevel(
+                    info_per_level,
+                ),
+            );
+            let mut payload = Vec::default();
+            info_per_level
+                .serialize(&mut payload)
+                .expect("serialization should work");
+            Ok(Some(Message::new(mock_host.level(), 1, payload)))
+        };
+
+        assert_eq!(expected, result);
+    }
 
     #[test]
     fn test_read_input_message() {
@@ -276,12 +332,14 @@ mod tests {
             .add_input(vec![5; MAX_INPUT_MESSAGE_SIZE / 2]);
 
         // Act
+        let _ = mock_host.read_input().expect("Start of Level is present");
+        let _ = mock_host.read_input().expect("Info per Level is present");
         let result = mock_host.read_input();
 
         // Assert
         let expected = Ok(Some(Message::new(
             mock_host.level(),
-            0,
+            2,
             vec![5; MAX_INPUT_MESSAGE_SIZE / 2],
         )));
 

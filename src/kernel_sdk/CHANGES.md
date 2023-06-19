@@ -15,7 +15,7 @@
 
 ### SDK
 
-- Add `Certificate::verify` to verify that a *DAC* certificate has been a signed by a number of
+- Add `Certificate::verify` to verify that a _DAC_ certificate has been a signed by a number of
   committee members greater than a given threshold.
 - Add `Certificate::reveal_to_store` to reveal up to ~10MB of DAC payload to storage in one go.
 - Implement `core::fmt::Display` for `OwnedPath` and `RefPath` to get paths as strings for tests, errors, etc.
@@ -26,6 +26,7 @@
 - Update `Runtime::store_write` to write the whole slice; previously errored on slices longer than 2KB.
 - Remove uses of `proto-nairobi` feature flag. Feature flag remains on crates, but does nothing.
 - Implements `PublicKeySignatureVerifier` for `PublicKey`.
+- Add `StartOfLevel` and `InfoPerLevel` messages at the initialization of the `MockHost`.
 
 ### Installer client/kernel
 
@@ -40,8 +41,8 @@
   - `tezos_crypto_rs`, `tezos_data_encoding` to `v0.5.0`.
   - `nom` to `7.1`.
 - Rework `dac` module in `tezos-smart-rollup-encoding`:
-  -  Keep `PreimageHash` in `dac` module.
-  -  Move all other functions/structs move to `dac::pages` submodule. Deprecate importing from them `dac` directly.
+  - Keep `PreimageHash` in `dac` module.
+  - Move all other functions/structs move to `dac::pages` submodule. Deprecate importing from them `dac` directly.
 - Introduce `dac::certificate` submodule for handling serialization and deserialization of DAC certificates.
 - Add `inbox::ExternalMessageFrame` to `tezos-smart-rollup-encoding`, to define a shared framing protocol for
   Smart Rollup external messages.
@@ -86,4 +87,4 @@ Initial release to [crates.io](https://crates.io/crates/tezos-smart-rollup-insta
 
 The installer client enables installation of kernels which are too big to fit in a `rollup origination`
 operation. Instead, the client generates an installer which immediately upgrades to desired kernel. This
-*installer kernel* may then be used to originate the rollup with.
+_installer kernel_ may then be used to originate the rollup with.
