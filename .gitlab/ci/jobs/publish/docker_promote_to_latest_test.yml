@@ -6,4 +6,4 @@ docker:promote_to_latest:
   variables:
     CI_DOCKER_HUB: "false"
   script:
-    - ./scripts/ci/docker_promote_to_latest.sh
+    - ./.gitlab/ci/jobs/publish/docker:promote_to_latest.sh
