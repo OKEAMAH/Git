@@ -60,6 +60,9 @@ val get_endorser_slot :
 (** Return the [n]th element of the list returns by [get_endorsers]. *)
 val get_endorser_n : t -> int -> (public_key_hash * Slot.t list) tzresult Lwt.t
 
+(** Counts the number of endorsing slots that the given delegate has
+    in the requested levels. If [levels] is unset or empty, the
+    current level is used instead. *)
 val get_endorsing_power_for_delegate :
   t -> ?levels:Raw_level.t list -> public_key_hash -> int tzresult Lwt.t
 

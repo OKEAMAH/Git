@@ -153,7 +153,7 @@ let get_endorsing_power_for_delegate ctxt ?levels pkh =
     | [] -> return 0
     | {Plugin.RPC.Validators.delegate; slots; _} :: t ->
         if Signature.Public_key_hash.equal delegate pkh then
-          return (List.length slots)
+          find_slots_for_delegate t >|=? fun n -> List.length slots + n
         else find_slots_for_delegate t
   in
   find_slots_for_delegate endorsers
