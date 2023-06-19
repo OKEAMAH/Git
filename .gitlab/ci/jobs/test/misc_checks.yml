@@ -24,10 +24,9 @@ oc.misc_checks:
         - etherlink/**/*
         - .gitlab-ci.yml
         - .gitlab/**/*
-  script:
+  before_script:
     - ./scripts/ci/take_ownership.sh
-    - ./scripts/ci/lint_misc_check.sh
-    - scripts/check_wasm_pvm_regressions.sh check
+  script: ./.gitlab/ci/jobs/test/misc_checks.sh
 
 # check that ksy files are still up-to-date with octez
 kaitai_checks:
