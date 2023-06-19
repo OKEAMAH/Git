@@ -43,7 +43,7 @@
 
 (rule
  (alias runtest)
- (package tezos-dac-alpha)
+ (package tezos-dac-alpha-test)
  (enabled_if (<> false %{env:RUNTEZTALIAS=true}))
  (action (run %{dep:./main.exe})))
 

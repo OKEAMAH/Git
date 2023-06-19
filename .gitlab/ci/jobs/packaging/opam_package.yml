@@ -1012,6 +1012,8 @@ opam:tezos-crypto-dal:
 
 # Ignoring unreleased package tezos-dac-017-PtNairob.
 
+# Ignoring unreleased package tezos-dac-017-PtNairob-test.
+
 opam:tezos-dac-018-Proxford:
   extends:
     - .opam_template
@@ -1019,7 +1021,11 @@ opam:tezos-dac-018-Proxford:
   variables:
     package: tezos-dac-018-Proxford
 
+# Ignoring unreleased package tezos-dac-018-Proxford-test.
+
 # Ignoring unreleased package tezos-dac-alpha.
+
+# Ignoring unreleased package tezos-dac-alpha-test.
 
 opam:tezos-dac-client-lib:
   extends:

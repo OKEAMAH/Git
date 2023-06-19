@@ -43,7 +43,7 @@
 
 (rule
  (alias runtest)
- (package tezos-dac-017-PtNairob)
+ (package tezos-dac-017-PtNairob-test)
  (enabled_if (<> false %{env:RUNTEZTALIAS=true}))
  (action (run %{dep:./main.exe})))
 

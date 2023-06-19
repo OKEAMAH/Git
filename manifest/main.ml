@@ -6012,6 +6012,9 @@ let hash = Protocol.hash
           "test_helpers";
         ]
         ~path:(path // "lib_dac_plugin/test")
+        ~synopsis:
+          "Tezos/Protocol: protocol specific tests for the Data availability \
+           Committee"
         ~with_macos_security_framework:true
         ~opam:(sf "tezos-dac-%s-test" name_dash)
         ~deps:
