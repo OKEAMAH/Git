@@ -148,9 +148,9 @@ let get_endorser_n ctxt n =
   (endorser.consensus_key, endorser.slots)
 
 let get_endorsing_power_for_delegate ctxt ?levels pkh =
-  Plugin.RPC.Validators.get rpc_ctxt ?levels ctxt >>=? fun endorsers ->
+  Plugin.RPC.Validators.get rpc_ctxt ?levels ctxt >|=? fun endorsers ->
   let rec find_slots_for_delegate accu = function
-    | [] -> return accu
+    | [] -> accu
     | {Plugin.RPC.Validators.delegate; slots; _} :: t ->
         if Signature.Public_key_hash.equal delegate pkh then
           find_slots_for_delegate (accu + List.length slots) t
