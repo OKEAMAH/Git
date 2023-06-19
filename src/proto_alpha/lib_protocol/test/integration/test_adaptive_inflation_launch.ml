@@ -296,6 +296,30 @@ let test_launch threshold expected_vote_duration () =
     Assert.error ~loc:__LOC__ i (fun _ -> true)
   in
 
+  (* Self-staking is however allowed *)
+  let* block =
+    let* total_frozen_stake_before_costake =
+      Context.get_total_frozen_stake (B block)
+    in
+    let* balance = Context.Contract.balance (B block) delegate3 in
+    let*?@ balance_to_stake = Protocol.Alpha_context.Tez.(balance -? one) in
+    let* operation = stake (B block) delegate3 balance_to_stake in
+    let* block = Block.bake ~operation block in
+    let* total_frozen_stake_after_costake =
+      Context.get_total_frozen_stake (B block)
+    in
+    let*?@ expected_total_frozen_stake =
+      Protocol.Alpha_context.Tez.(total_frozen_stake_before_costake +? zero)
+    in
+    let* () =
+      Assert.equal_tez
+        ~loc:__LOC__
+        total_frozen_stake_after_costake
+        expected_total_frozen_stake
+    in
+    return block
+  in
+
   let* launch_cycle = get_launch_cycle ~loc:__LOC__ block in
   (* Bake until the activation. *)
   let* block = Block.bake_until_cycle launch_cycle block in
