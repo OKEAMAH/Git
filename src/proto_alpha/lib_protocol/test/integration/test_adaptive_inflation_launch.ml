@@ -263,7 +263,15 @@ let test_launch threshold expected_vote_duration () =
     in
     Assert.lt_int32 ~loc threshold ema
   in
-  (* Initialize the state with a single delegate. *)
+  (* Initialize the state with three delegates:
+
+     - delegate1 has a delegator owning half of the balance and who
+     wants to become a costaker, delegate1 self-stakes the rest.
+
+     - delegate2 self-stake almost all its balance.
+
+     - delegate3 keeps 75% of its balance liquid.
+  *)
   let* block, (delegate1, delegate2, delegate3) =
     let default_constants = Default_parameters.constants_test in
     let adaptive_inflation =
@@ -287,6 +295,8 @@ let test_launch threshold expected_vote_duration () =
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
+  (* Initially, the 3 delegates have the same stake of 4 million tez:
+     3_800_000 liquid tez + 200_000 frozen tez. *)
   let* balance = Context.Contract.balance (B block) delegate1 in
   let* () =
     let* balance_bis = Context.Contract.balance (B block) delegate2 in
@@ -308,7 +318,7 @@ let test_launch threshold expected_vote_duration () =
   in
 
   (* Initialization of a delegator account which will attempt to
-     costake. *)
+     costake with delegate1. *)
   let wannabe_costaker_account = Account.new_account () in
   let wannabe_costaker =
     Protocol.Alpha_context.Contract.Implicit
@@ -321,7 +331,9 @@ let test_launch threshold expected_vote_duration () =
      delegate. For simplicity we put these operations in different
      blocks. *)
   let* block =
-    let*?@ half_balance = Protocol.Alpha_context.Tez.(balance /? 2L) in
+    let half_balance =
+      Protocol.Alpha_context.Tez.of_mutez_exn 2_000_000_000_000L
+    in
     let* operation =
       Op.transaction (B block) delegate1 wannabe_costaker half_balance
     in
@@ -336,6 +348,43 @@ let test_launch threshold expected_vote_duration () =
       Op.delegation (B block) wannabe_costaker (Some delegate1_pkh)
     in
     Block.bake ~operation block
+  in
+
+  (* Initialize the frozen parts of the delegate stakes. *)
+  let* block =
+    let* balance1 = Context.Contract.balance (B block) delegate1 in
+    let* balance2 = Context.Contract.balance (B block) delegate2 in
+    let* balance3 = Context.Contract.balance (B block) delegate3 in
+    (* Delegate1 keeps about one tez liquid to pay for fees. *)
+    let*?@ to_stake1 = Protocol.Alpha_context.Tez.(balance1 -? one) in
+    (* Delegate2 does the same. *)
+    let*?@ to_stake2 = Protocol.Alpha_context.Tez.(balance2 -? one) in
+    (* Delegate3 keeps 75% of its stake liquid. Since its total stake
+         is 4 millions, this means that 3 millions are kept liquid. *)
+    let*?@ to_stake3 =
+      Protocol.Alpha_context.Tez.(balance3 -? of_mutez_exn 3_000_000_000_000L)
+    in
+    let* operation1 = stake (B block) delegate1 to_stake1 in
+    let* operation2 = stake (B block) delegate2 to_stake2 in
+    let* operation3 = stake (B block) delegate3 to_stake3 in
+    let* block =
+      Block.bake ~operations:[operation1; operation2; operation3] block
+    in
+    (* Wait a few cycles for total_frozen_stake to update. *)
+    let* block =
+      Block.bake_until_n_cycle_end
+        (Default_parameters.constants_test.preserved_cycles + 1)
+        block
+    in
+    return block
+  in
+  let* total_frozen_stake = Context.get_total_frozen_stake (B block) in
+  let* () =
+    Almost_equal_tez.assert_almost_equal_tez
+      ~loc:__LOC__
+      total_frozen_stake
+      (Protocol.Alpha_context.Tez.of_mutez_exn
+         (Int64.of_int (1000000 * (2_000_000 + 4_000_000 + 1_000_000))))
   in
 
   (* Since adaptive inflation is not active yet, staked and delegated
@@ -406,30 +455,6 @@ let test_launch threshold expected_vote_duration () =
     let* i = Incremental.begin_construction block in
     let*! i = Incremental.add_operation i operation in
     Assert.error ~loc:__LOC__ i (fun _ -> true)
-  in
-
-  (* Self-staking is however allowed *)
-  let* block =
-    let* total_frozen_stake_before_costake =
-      Context.get_total_frozen_stake (B block)
-    in
-    let* balance = Context.Contract.balance (B block) delegate3 in
-    let*?@ balance_to_stake = Protocol.Alpha_context.Tez.(balance -? one) in
-    let* operation = stake (B block) delegate3 balance_to_stake in
-    let* block = Block.bake ~operation block in
-    let* total_frozen_stake_after_costake =
-      Context.get_total_frozen_stake (B block)
-    in
-    let*?@ expected_total_frozen_stake =
-      Protocol.Alpha_context.Tez.(total_frozen_stake_before_costake +? zero)
-    in
-    let* () =
-      Assert.equal_tez
-        ~loc:__LOC__
-        total_frozen_stake_after_costake
-        expected_total_frozen_stake
-    in
-    return block
   in
 
   let* launch_cycle = get_launch_cycle ~loc:__LOC__ block in
