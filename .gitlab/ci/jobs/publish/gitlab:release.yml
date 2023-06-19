@@ -13,4 +13,4 @@ gitlab:release:
     - oc.build:rpm:amd64
     - docker:merge_manifests
   script:
-    - ./scripts/ci/gitlab-release.sh
+    - ./.gitlab/ci/jobs/publish/gitlab:release.sh
