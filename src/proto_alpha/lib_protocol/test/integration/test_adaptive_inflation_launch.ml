@@ -244,7 +244,7 @@ let test_launch threshold expected_vote_duration () =
      the beginning. *)
   let* block =
     let* operation = set_delegate_parameters (B block) delegate1 1000000 0 in
-    Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+    Block.bake ~operation block
   in
 
   (* Initialization of a delegator account which will attempt to
@@ -265,17 +265,17 @@ let test_launch threshold expected_vote_duration () =
     let* operation =
       Op.transaction (B block) delegate1 wannabe_costaker half_balance
     in
-    Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+    Block.bake ~operation block
   in
   let* block =
     let* operation = Op.revelation (B block) wannabe_costaker_account.pk in
-    Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+    Block.bake ~operation block
   in
   let* block =
     let* operation =
       Op.delegation (B block) wannabe_costaker (Some delegate1_pkh)
     in
-    Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+    Block.bake ~operation block
   in
 
   (* Since adaptive inflation is not active yet, staked and delegated
@@ -299,6 +299,8 @@ let test_launch threshold expected_vote_duration () =
      threshold is reached. *)
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
+  let start_of_vote_level = block.header.shell.level in
+
   let* block =
     Block.bake_while_with_metadata
       ~adaptive_inflation_vote:Toggle_vote_on
@@ -313,7 +315,10 @@ let test_launch threshold expected_vote_duration () =
   in
   (* At this point we are on the last block before the end of the vote. *)
   let* () =
-    assert_level ~loc:__LOC__ block (Int32.pred expected_vote_duration)
+    assert_level
+      ~loc:__LOC__
+      block
+      (Int32.add start_of_vote_level (Int32.pred expected_vote_duration))
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
   (* We bake one more block to end the vote and set the feature to launch. *)
@@ -321,7 +326,12 @@ let test_launch threshold expected_vote_duration () =
     Block.bake_n_with_metadata ~adaptive_inflation_vote:Toggle_vote_on 1 block
   in
   let* () = assert_ema_above_threshold ~loc:__LOC__ metadata in
-  let* () = assert_level ~loc:__LOC__ block expected_vote_duration in
+  let* () =
+    assert_level
+      ~loc:__LOC__
+      block
+      (Int32.add start_of_vote_level expected_vote_duration)
+  in
   (* At this point the feature is not launched yet, it is simply
      planned to be launched. *)
   (* We check that the feature is not yet active by attempting a
