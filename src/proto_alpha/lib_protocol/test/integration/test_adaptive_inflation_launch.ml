@@ -145,6 +145,12 @@ let assert_same_endorsing_power ~loc block delegate1 delegate2 =
   let* power2 = get_endorsing_power delegate2 block in
   assert_almost_equal_int ~loc ~margin_percent:12 power1 power2
 
+let assert_less_endorsing_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_endorsing_power delegate1 block in
+  let* power2 = get_endorsing_power delegate2 block in
+  assert_really_lt_int ~loc ~margin_percent:12 power1 power2
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
