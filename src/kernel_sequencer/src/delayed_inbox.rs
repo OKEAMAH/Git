@@ -435,4 +435,21 @@ mod tests {
         assert_external_eq(Msg::new(0x01), msg1.as_ref());
         assert!(msg2.is_none());
     }
+
+    #[test]
+    fn test_fallback() {
+        let (mut mock_host, _) = prepare();
+        write_state(&mut mock_host, State::Fallback).unwrap();
+
+        mock_host.add_external(Msg::new(0x01));
+        mock_host.add_external(Msg::new(0x02));
+        mock_host.add_external(Msg::new(0x03));
+
+        let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let msg1 = runtime.read_input().unwrap().unwrap();
+        let msg2 = runtime.read_input().unwrap().unwrap();
+
+        assert_external_eq(Msg::new(0x01), msg1.as_ref());
+        assert_external_eq(Msg::new(0x02), msg2.as_ref());
+    }
 }
