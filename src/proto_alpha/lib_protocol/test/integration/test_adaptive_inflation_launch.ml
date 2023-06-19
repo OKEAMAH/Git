@@ -162,7 +162,7 @@ let test_launch threshold expected_vote_duration () =
     Assert.lt_int32 ~loc threshold ema
   in
   (* Initialize the state with a single delegate. *)
-  let* block, (delegate1, delegate2) =
+  let* block, (delegate1, delegate2, delegate3) =
     let default_constants = Default_parameters.constants_test in
     let adaptive_inflation =
       {
@@ -171,7 +171,7 @@ let test_launch threshold expected_vote_duration () =
       }
     in
     let consensus_threshold = 0 in
-    Context.init_with_constants2
+    Context.init_with_constants3
       {default_constants with consensus_threshold; adaptive_inflation}
   in
   let delegate1_pkh =
@@ -180,12 +180,17 @@ let test_launch threshold expected_vote_duration () =
   let delegate2_pkh =
     match delegate2 with Implicit pkh -> pkh | Originated _ -> assert false
   in
+  let _delegate3_pkh =
+    match delegate3 with Implicit pkh -> pkh | Originated _ -> assert false
+  in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
   let* balance = Context.Contract.balance (B block) delegate1 in
   let* () =
     let* balance_bis = Context.Contract.balance (B block) delegate2 in
-    Assert.equal_tez ~loc:__LOC__ balance balance_bis
+    let* () = Assert.equal_tez ~loc:__LOC__ balance balance_bis in
+    let* balance_ter = Context.Contract.balance (B block) delegate3 in
+    Assert.equal_tez ~loc:__LOC__ balance balance_ter
   in
 
   (* To test that adaptive inflation is active, we test that
