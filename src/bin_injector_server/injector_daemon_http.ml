@@ -33,13 +33,13 @@ let signers =
       [Injector.Configuration.Transaction] );
   ]
 
-let start ~rpc_address ~rpc_port () =
+let register_dir () =
   let open Lwt_result_syntax in
   let dir = Tezos_rpc.Directory.empty in
   let dir =
     Tezos_rpc.Directory.register0
       dir
-      Injector_messages.inject
+      Injector_messages.add_pending_operation
       (fun () (amount, destination, source) ->
         let op =
           Operation_desc.make_transfer
@@ -49,12 +49,33 @@ let start ~rpc_address ~rpc_port () =
         let source = Signature.Public_key_hash.of_b58check_exn source in
         (* TODO: handle error raised when operation can't be signed *)
         let*! inj_operation_hash = Injector.add_pending_operation ~source op in
-        let*! _ = Injector.inject () in
         Lwt.return inj_operation_hash)
   in
+  let dir =
+    Tezos_rpc.Directory.register0
+      dir
+      Injector_messages.operation_status
+      (fun {op_hash} () ->
+        let op_hash = Injector.Inj_operation.Hash.of_b58check_exn op_hash in
+        match Injector.operation_status op_hash with
+        | Some (Pending _) -> return_some "pending"
+        | Some (Injected _) -> return_some "injected"
+        | Some (Included _) -> return_some "included"
+        | _ -> return_none)
+  in
+  let dir =
+    Tezos_rpc.Directory.register0 dir Injector_messages.inject (fun () () ->
+        let*! () = Injector.inject () in
+        return_unit)
+  in
+  dir
+
+let start ~rpc_address ~rpc_port () =
+  let open Lwt_result_syntax in
   let rpc_address = P2p_addr.of_string_exn rpc_address in
   let mode = `TCP (`Port rpc_port) in
   let acl = RPC_server.Acl.allow_all in
+  let dir = register_dir () in
   let server =
     RPC_server.init_server dir ~acl ~media_types:Media_type.all_media_types
   in

@@ -127,7 +127,7 @@ module RPC = struct
       ~get_port:rpc_port
       ~get_scheme:(Fun.const "http")
 
-  let inject amount destination source =
+  let add_pending_operation amount destination source =
     let transaction =
       `O
         [
@@ -137,5 +137,12 @@ module RPC = struct
         ]
     in
     let data : RPC_core.data = Data transaction in
-    make ~data POST ["inject"] JSON.as_string
+    make ~data POST ["add_pending_operation"] JSON.as_string
+
+  let operation_status op_hash =
+    let query_string = [("op_hash", op_hash)] in
+    make ~query_string GET ["operation_status"] (fun json ->
+        json |> JSON.as_opt |> Option.map JSON.as_string)
+
+  let inject () = make GET ["inject"] (fun _ -> ())
 end

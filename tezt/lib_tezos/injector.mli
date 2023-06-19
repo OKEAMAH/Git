@@ -15,5 +15,10 @@ val create :
 val run : t -> unit Lwt.t
 
 module RPC : sig
-  val inject : int64 -> string -> string -> (t, string) RPC_core.t
+  val add_pending_operation :
+    int64 -> string -> string -> (t, string) RPC_core.t
+
+  val operation_status : string -> (t, string option) RPC_core.t
+
+  val inject : unit -> (t, unit) RPC_core.t
 end
