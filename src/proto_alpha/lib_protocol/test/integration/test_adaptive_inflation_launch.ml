@@ -98,25 +98,85 @@ let set_delegate_parameters ctxt delegate staking_over_baking_limit
     delegate
     Protocol.Alpha_context.Tez.zero
 
-let assert_almost_equal_int ~loc ~margin_percent i1 i2 =
-  let maxi = max (abs i1) (abs i2) in
-  let margin = 1 + (maxi * margin_percent / 100) in
-  let diff = abs (i2 - i1) in
-  let msg = "Integer almost equal" in
-  let pp fmt x = Format.fprintf fmt "%d" x in
-  if diff > margin then
-    failwith
-      "@[@[[%s]@] - @[%s : %a is not almost equal to %a within a %a%% \
-       margin@]@]"
-      loc
-      msg
-      pp
-      i1
-      pp
-      i2
-      pp
-      margin_percent
-  else return_unit
+module type INTEGER = sig
+  type t
+
+  val max : t -> t -> t
+
+  val ( <= ) : t -> t -> bool
+
+  val ( > ) : t -> t -> bool
+
+  val abs : t -> t
+
+  val one : t
+
+  val hundred : t
+
+  val ( + ) : t -> t -> t
+
+  val ( - ) : t -> t -> t
+
+  val ( * ) : t -> t -> t
+
+  val ( / ) : t -> t -> t
+
+  val name : string
+
+  val pp : Format.formatter -> t -> unit
+end
+
+module Almost_equal (I : INTEGER) = struct
+  let assert_almost_equal ~loc ~margin_percent i1 i2 =
+    let open I in
+    let maxi = max (abs i1) (abs i2) in
+    let margin = one + (maxi * margin_percent / hundred) in
+    let diff = abs (i2 - i1) in
+    let msg = name ^ " almost equal" in
+    if diff > margin then
+      failwith
+        "@[@[[%s]@] - @[%s : %a is not almost equal to %a within a %a%% \
+         margin@]@]"
+        loc
+        msg
+        pp
+        i1
+        pp
+        i2
+        pp
+        margin_percent
+    else return_unit
+end
+
+module Int : INTEGER with type t = int = struct
+  type t = int
+
+  let max = max
+
+  let ( <= ) = ( <= )
+
+  let ( > ) = ( > )
+
+  let abs = abs
+
+  let one = 1
+
+  let hundred = 100
+
+  let ( + ) = ( + )
+
+  let ( - ) = ( - )
+
+  let ( * ) = ( * )
+
+  let ( / ) = ( / )
+
+  let name = "int"
+
+  let pp fmt x = Format.fprintf fmt "%d" x
+end
+
+module Almost_equal_int = Almost_equal (Int)
 
 let assert_really_lt_int ~loc ~margin_percent i1 i2 =
   let maxi = max (abs i1) (abs i2) in
@@ -179,7 +239,7 @@ let assert_same_endorsing_power ~loc block delegate1 delegate2 =
   let open Lwt_result_syntax in
   let* power1 = get_endorsing_power delegate1 block in
   let* power2 = get_endorsing_power delegate2 block in
-  assert_almost_equal_int ~loc ~margin_percent:12 power1 power2
+  Almost_equal_int.assert_almost_equal ~loc ~margin_percent:12 power1 power2
 
 let assert_less_endorsing_power ~loc block delegate1 delegate2 =
   let open Lwt_result_syntax in
