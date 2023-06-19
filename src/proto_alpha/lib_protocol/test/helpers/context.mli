@@ -330,6 +330,15 @@ val init_with_constants2 :
   (Block.t * (Alpha_context.Contract.t * Alpha_context.Contract.t)) tzresult
   Lwt.t
 
+val init_with_constants3 :
+  Constants.Parametric.t ->
+  (Block.t
+  * (Alpha_context.Contract.t
+    * Alpha_context.Contract.t
+    * Alpha_context.Contract.t))
+  tzresult
+  Lwt.t
+
 (** [init_with_parameters_gen tup params] returns an initial block parametrised
     with [params] and the implicit contracts corresponding to its bootstrap
     accounts. The number of bootstrap accounts, and the structure of the

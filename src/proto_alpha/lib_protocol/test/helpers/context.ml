@@ -553,6 +553,8 @@ let init_with_constants1 = init_with_constants_gen T1
 
 let init_with_constants2 = init_with_constants_gen T2
 
+let init_with_constants3 = init_with_constants_gen T3
+
 let init_with_parameters_gen tup parameters =
   let open Lwt_result_syntax in
   let n = tup_n tup in
