@@ -182,6 +182,14 @@ let test_launch threshold expected_vote_duration () =
     in
     Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
   in
+  (* Self-staking *)
+  let* block =
+    let* balance = Context.Contract.balance (B block) delegate in
+    (* The delegate keeps about one tez liquid to pay for fees. *)
+    let*?@ to_stake = Protocol.Alpha_context.Tez.(balance -? one) in
+    let* operation = stake (B block) delegate to_stake in
+    Block.bake ~operation ~adaptive_inflation_vote:Toggle_vote_on block
+  in
 
   (* We are now ready to activate the feature through by baking many
      more blocks voting in favor of the activation until the EMA
