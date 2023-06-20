@@ -3,24 +3,52 @@ SDK_DIR=src/kernel_sdk
 EVM_DIR=src/kernel_evm
 SEQUENCER_DIR=src/kernel_sequencer
 
+define build_check
+	ifeq ($($(1)), 0)
+		@make -C $(2) build
+	else
+		@make -C $(2) build check
+	endif
+endef
+
+define build_sdk
+	$(call build_check,$(1),$(SDK_DIR))
+	@cp $(SDK_DIR)/target/$(NATIVE_TARGET)/release/smart-rollup-installer .
+endef
+
+define build_evm
+	$(call build_check,$(1),$(EVM_DIR))
+	@cp $(EVM_DIR)/target/wasm32-unknown-unknown/release/evm_kernel.wasm $@
+	@wasm-strip $@
+endef
+
+define build_sequencer
+	$(call build_check,$(1),$(SEQUENCER_DIR))
+	@cp $(SEQUENCER_DIR)/target/wasm32-unknown-unknown/release/examples/sequenced_kernel.wasm $@
+	@wasm-strip $@
+endef
+
 .PHONY: all
 all: build-dev-deps check test build
 
-
 .PHONY: kernel_sdk
 kernel_sdk:
-	@make -C src/kernel_sdk build
-	@cp src/kernel_sdk/target/$(NATIVE_TARGET)/release/smart-rollup-installer .
+	$(call build_sdk,0)
 
-evm_kernel.wasm::
-	@make -C src/kernel_evm build
-	@cp src/kernel_evm/target/wasm32-unknown-unknown/release/evm_kernel.wasm $@
-	@wasm-strip $@
+evm_kernel.wasm:
+	$(call build_evm,0)
 
 sequenced_kernel.wasm:
-	@make -C src/kernel_sequencer build
-	@cp src/kernel_sequencer/target/wasm32-unknown-unknown/release/examples/sequenced_kernel.wasm $@
-	@wasm-strip $@
+	$(call build_sequencer,0)
+
+build-check-sdk:
+	$(call build_sdk,1)
+
+build-check-evm:
+	$(call build_evm,1)
+
+build-check-sequencer:
+	$(call build_sequencer,1)
 
 .PHONY: build
 build: ${KERNELS} kernel_sdk sequenced_kernel.wasm
