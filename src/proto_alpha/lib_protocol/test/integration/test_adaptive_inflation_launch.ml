@@ -499,6 +499,17 @@ let test_launch threshold expected_vote_duration () =
       (Int32.add start_of_vote_level (Int32.pred expected_vote_duration))
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
+  (* Since adaptive inflation is not active yet, staked and delegated
+     tez are still worth the same in the computation of baking and
+     voting rights. *)
+  let* () =
+    assert_same_power3
+      ~loc:__LOC__
+      block
+      delegate1_pkh
+      delegate2_pkh
+      delegate3_pkh
+  in
   (* We bake one more block to end the vote and set the feature to launch. *)
   let* block, metadata =
     Block.bake_n_with_metadata ~adaptive_inflation_vote:Toggle_vote_on 1 block
