@@ -223,6 +223,28 @@ end
 
 module Almost_equal_int64 = Almost_equal (I64)
 
+module ITez : INTEGER with type t = Protocol.Alpha_context.Tez.t = struct
+  include Protocol.Alpha_context.Tez
+
+  let abs x = x
+
+  let name = "tez"
+
+  let lift op x y = of_mutez_exn (op (to_mutez x) (to_mutez y))
+
+  let ( + ) = lift Int64.add
+
+  let ( - ) = lift Int64.sub
+
+  let ( * ) = lift Int64.mul
+
+  let ( / ) = lift Int64.div
+
+  let hundred = of_mutez_exn 100L
+end
+
+module Almost_equal_tez = Almost_equal (ITez)
+
 let get_endorsing_power delegate block =
   let open Lwt_result_wrap_syntax in
   let ctxt = Context.B block in
@@ -396,8 +418,9 @@ let test_launch threshold expected_vote_duration () =
   in
   let* total_frozen_stake = Context.get_total_frozen_stake (B block) in
   let* () =
-    Almost_equal_tez.assert_almost_equal_tez
+    Almost_equal_tez.assert_almost_equal
       ~loc:__LOC__
+      ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 1L)
       total_frozen_stake
       (Protocol.Alpha_context.Tez.of_mutez_exn
          (Int64.of_int (1000000 * (2_000_000 + 4_000_000 + 1_000_000))))
