@@ -317,6 +317,12 @@ let assert_same_power3 ~loc block delegate1 delegate2 delegate3 =
   let* () = assert_same_power ~loc block delegate2 delegate3 in
   return_unit
 
+let assert_less_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* () = assert_less_endorsing_power ~loc block delegate1 delegate2 in
+  let* () = assert_less_voting_power ~loc block delegate1 delegate2 in
+  return_unit
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -550,14 +556,11 @@ let test_launch threshold expected_vote_duration () =
      planned to happen. *)
   let* () = assert_current_cycle ~loc:__LOC__ block launch_cycle in
 
-  (* Adaptive inflation should now be active but both delegates have staked
-     the same amount so they still have the same rights. *)
-  let* () =
-    assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
-  in
-  let* () =
-    assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
-  in
+  (* Adaptive inflation should now be active. Delegate 1 and 3 have
+     staked the same amount so they still have the same
+     rights. Delegate 2 has staked more. *)
+  let* () = assert_same_power ~loc:__LOC__ block delegate1_pkh delegate3_pkh in
+  let* () = assert_less_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh in
 
   (* Test that the wannabe costaker is now allowed to stake almost all
      its balance. *)
