@@ -352,7 +352,7 @@ let test_launch threshold expected_vote_duration () =
 
      - delegate2 self-stake almost all its balance.
 
-     - delegate3 keeps 75% of its balance liquid.
+     - delegate3 keeps 50% of its balance liquid.
   *)
   let* block, (delegate1, delegate2, delegate3) =
     Context.init_with_constants3 constants
@@ -432,10 +432,10 @@ let test_launch threshold expected_vote_duration () =
     let*?@ to_stake1 = Protocol.Alpha_context.Tez.(balance1 -? one) in
     (* Delegate2 does the same. *)
     let*?@ to_stake2 = Protocol.Alpha_context.Tez.(balance2 -? one) in
-    (* Delegate3 keeps 75% of its stake liquid. Since its total stake
-         is 4 millions, this means that 3 millions are kept liquid. *)
+    (* Delegate3 keeps 50% of its stake liquid. Since its total stake
+         is 4 millions, this means that 2 millions are kept liquid. *)
     let*?@ to_stake3 =
-      Protocol.Alpha_context.Tez.(balance3 -? of_mutez_exn 3_000_000_000_000L)
+      Protocol.Alpha_context.Tez.(balance3 -? of_mutez_exn 2_000_000_000_000L)
     in
     let* operation1 = stake (B block) delegate1 to_stake1 in
     let* operation2 = stake (B block) delegate2 to_stake2 in
@@ -451,13 +451,13 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     (* Delegate1 has staked 2 million tez (the other half of its
        initial balance was sent to its delegator. Delegate2 has staked
-       4 million tez. Delegate3 has staked 1 million tez. In total, 7
+       4 million tez. Delegate3 has staked 2 million tez. In total, 8
        million tez have been staked. *)
     Almost_equal_tez.assert_almost_equal
       ~loc:__LOC__
       ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 1L)
       total_frozen_stake
-      (Protocol.Alpha_context.Tez.of_mutez_exn 7_000_000_000_000L)
+      (Protocol.Alpha_context.Tez.of_mutez_exn 8_000_000_000_000L)
   in
 
   (* Since adaptive inflation is not active yet, staked and delegated
