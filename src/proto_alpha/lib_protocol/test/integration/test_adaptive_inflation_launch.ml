@@ -436,12 +436,15 @@ let test_launch threshold expected_vote_duration () =
   in
   let* total_frozen_stake = Context.get_total_frozen_stake (B block) in
   let* () =
+    (* Delegate1 has staked 2 million tez (the other half of its
+       initial balance was sent to its delegator. Delegate2 has staked
+       4 million tez. Delegate3 has staked 1 million tez. In total, 7
+       million tez have been staked. *)
     Almost_equal_tez.assert_almost_equal
       ~loc:__LOC__
       ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 1L)
       total_frozen_stake
-      (Protocol.Alpha_context.Tez.of_mutez_exn
-         (Int64.of_int (1000000 * (2_000_000 + 4_000_000 + 1_000_000))))
+      (Protocol.Alpha_context.Tez.of_mutez_exn 7_000_000_000_000L)
   in
 
   (* Since adaptive inflation is not active yet, staked and delegated
