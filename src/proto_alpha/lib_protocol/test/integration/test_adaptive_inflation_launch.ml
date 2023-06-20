@@ -304,6 +304,19 @@ let assert_less_voting_power ~loc block delegate1 delegate2 =
   (* Almost_equal_int64.assert_really_lt ~loc ~margin_percent:10L power1 power2 *)
   return_unit
 
+let assert_same_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* () = assert_same_endorsing_power ~loc block delegate1 delegate2 in
+  let* () = assert_same_voting_power ~loc block delegate1 delegate2 in
+  return_unit
+
+let assert_same_power3 ~loc block delegate1 delegate2 delegate3 =
+  let open Lwt_result_syntax in
+  let* () = assert_same_power ~loc block delegate1 delegate2 in
+  let* () = assert_same_power ~loc block delegate1 delegate3 in
+  let* () = assert_same_power ~loc block delegate2 delegate3 in
+  return_unit
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -350,7 +363,7 @@ let test_launch threshold expected_vote_duration () =
   let delegate2_pkh =
     match delegate2 with Implicit pkh -> pkh | Originated _ -> assert false
   in
-  let _delegate3_pkh =
+  let delegate3_pkh =
     match delegate3 with Implicit pkh -> pkh | Originated _ -> assert false
   in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
@@ -451,10 +464,12 @@ let test_launch threshold expected_vote_duration () =
      tez are still worth the same in the computation of baking and
      voting rights. *)
   let* () =
-    assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
-  in
-  let* () =
-    assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
+    assert_same_power3
+      ~loc:__LOC__
+      block
+      delegate1_pkh
+      delegate2_pkh
+      delegate3_pkh
   in
 
   (* We are now ready to activate the feature through by baking many
