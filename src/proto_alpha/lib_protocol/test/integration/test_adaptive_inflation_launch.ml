@@ -252,6 +252,9 @@ let get_endorsing_power delegate block =
     let+ i = Incremental.begin_construction block in
     Incremental.alpha_ctxt i
   in
+  let preserved_cycles =
+    Protocol.Alpha_context.Constants.preserved_cycles alpha_ctxt
+  in
   let* current_cycle = Block.current_cycle block in
   let levels_in_cycle cycle =
     Protocol.Alpha_context.Level.levels_in_cycle alpha_ctxt cycle
@@ -266,10 +269,7 @@ let get_endorsing_power delegate block =
         ~first_cycle:(Protocol.Alpha_context.Cycle.succ first_cycle)
   in
   let levels =
-    levels_in_n_cycle
-      Default_parameters.constants_test.preserved_cycles
-      []
-      ~first_cycle:current_cycle
+    levels_in_n_cycle preserved_cycles [] ~first_cycle:current_cycle
   in
   Context.get_endorsing_power_for_delegate ctxt ~levels delegate
 
@@ -320,6 +320,18 @@ let test_launch threshold expected_vote_duration () =
     in
     Assert.lt_int32 ~loc threshold ema
   in
+  let constants =
+    let default_constants = Default_parameters.constants_test in
+    let adaptive_inflation =
+      {
+        default_constants.adaptive_inflation with
+        launch_ema_threshold = threshold;
+      }
+    in
+    let consensus_threshold = 0 in
+    {default_constants with consensus_threshold; adaptive_inflation}
+  in
+  let preserved_cycles = constants.preserved_cycles in
   (* Initialize the state with three delegates:
 
      - delegate1 has a delegator owning half of the balance and who
@@ -330,16 +342,7 @@ let test_launch threshold expected_vote_duration () =
      - delegate3 keeps 75% of its balance liquid.
   *)
   let* block, (delegate1, delegate2, delegate3) =
-    let default_constants = Default_parameters.constants_test in
-    let adaptive_inflation =
-      {
-        default_constants.adaptive_inflation with
-        launch_ema_threshold = threshold;
-      }
-    in
-    let consensus_threshold = 0 in
-    Context.init_with_constants3
-      {default_constants with consensus_threshold; adaptive_inflation}
+    Context.init_with_constants3 constants
   in
   let delegate1_pkh =
     match delegate1 with Implicit pkh -> pkh | Originated _ -> assert false
@@ -428,11 +431,7 @@ let test_launch threshold expected_vote_duration () =
       Block.bake ~operations:[operation1; operation2; operation3] block
     in
     (* Wait a few cycles for total_frozen_stake to update. *)
-    let* block =
-      Block.bake_until_n_cycle_end
-        (Default_parameters.constants_test.preserved_cycles + 1)
-        block
-    in
+    let* block = Block.bake_until_n_cycle_end (preserved_cycles + 1) block in
     return block
   in
   let* total_frozen_stake = Context.get_total_frozen_stake (B block) in
@@ -561,7 +560,7 @@ let test_launch threshold expected_vote_duration () =
     assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
-  let* block = Block.bake_until_n_cycle_end 10 block in
+  let* block = Block.bake_until_n_cycle_end (preserved_cycles + 1) block in
   let* () =
     Assert.equal_tez
       ~loc:__LOC__
