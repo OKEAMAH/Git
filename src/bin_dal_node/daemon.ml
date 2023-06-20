@@ -58,16 +58,37 @@ let () =
     (function Cryptobox_initialisation_failed str -> Some str | _ -> None)
     (fun str -> Cryptobox_initialisation_failed str)
 
-let init_cryptobox unsafe_srs (proto_parameters : Dal_plugin.proto_parameters) =
+let fetch_network_chain_name cctxt =
+  let open Lwt_syntax in
+  let* r = Tezos_shell_services.Version_services.version cctxt in
+  match r with
+  | Error e -> return_error e
+  | Ok {network_version; _} -> return_ok network_version.chain_name
+
+let init_cryptobox unsafe_srs chain_name
+    (proto_parameters : Dal_plugin.proto_parameters) =
   let open Lwt_result_syntax in
   let* () =
-    let use_mock_srs_for_testing : Cryptobox.parameters option =
-      if unsafe_srs then Some proto_parameters.cryptobox_parameters else None
+    let dal_config =
+      (* First check the [unsafe_srs] then check the [Dal_config.overrides].
+         This ordering ensures that the [unsafe_srs] flag, which was explicitly set by
+         the node operator, is prioritized. *)
+      if unsafe_srs then
+        Cryptobox.Config.
+          {
+            activated = true;
+            use_mock_srs_for_testing =
+              Some proto_parameters.cryptobox_parameters;
+          }
+      else
+        match Dal_config.overrides ~chain_name with
+        | None ->
+            Cryptobox.Config.{activated = true; use_mock_srs_for_testing = None}
+        | Some dal_config -> dal_config
     in
+
     let find_srs_files () = Tezos_base.Dal_srs.find_trusted_setup_files () in
-    Cryptobox.Config.init_dal
-      ~find_srs_files
-      Cryptobox.Config.{activated = true; use_mock_srs_for_testing}
+    Cryptobox.Config.init_dal ~find_srs_files dal_config
   in
   match Cryptobox.make proto_parameters.cryptobox_parameters with
   | Ok cryptobox -> return cryptobox
@@ -160,8 +181,12 @@ module Handler = struct
           let* proto_parameters =
             Dal_plugin.get_constants `Main (`Head 0) cctxt
           in
+          let* chain_name = fetch_network_chain_name cctxt in
           let* cryptobox =
-            init_cryptobox config.Configuration.use_unsafe_srs proto_parameters
+            init_cryptobox
+              config.Configuration.use_unsafe_srs
+              chain_name
+              proto_parameters
           in
           Node_context.set_ready ctxt plugin cryptobox proto_parameters ;
           (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4441
