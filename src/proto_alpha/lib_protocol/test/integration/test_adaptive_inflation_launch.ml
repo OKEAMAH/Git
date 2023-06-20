@@ -285,6 +285,15 @@ let assert_less_endorsing_power ~loc block delegate1 delegate2 =
   let* power2 = get_endorsing_power delegate2 block in
   Almost_equal_int.assert_really_lt ~loc ~margin_percent:12 power1 power2
 
+let get_voting_power delegate block =
+  Context.get_voting_power (B block) delegate
+
+let assert_same_voting_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_voting_power delegate1 block in
+  let* power2 = get_voting_power delegate2 block in
+  Almost_equal_int64.assert_almost_equal ~loc ~margin_percent:12L power1 power2
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -432,14 +441,8 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
-  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
-  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    Almost_equal_int64.assert_almost_equal
-      ~loc:__LOC__
-      ~margin_percent:10L
-      voting_power_1
-      voting_power_2
+    assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
   (* We are now ready to activate the feature through by baking many
@@ -514,14 +517,8 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
-  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
-  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    Almost_equal_int64.assert_almost_equal
-      ~loc:__LOC__
-      ~margin_percent:10L
-      voting_power_1
-      voting_power_2
+    assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
   (* Test that the wannabe costaker is now allowed to stake almost all
@@ -550,14 +547,8 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     assert_same_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
-  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
-  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    Almost_equal_int64.assert_almost_equal
-      ~loc:__LOC__
-      ~margin_percent:10L
-      voting_power_1
-      voting_power_2
+    assert_same_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
   let* block = Block.bake_until_n_cycle_end 10 block in
