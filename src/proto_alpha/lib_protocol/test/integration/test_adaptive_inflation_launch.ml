@@ -127,11 +127,15 @@ module type INTEGER = sig
 end
 
 module Almost_equal (I : INTEGER) = struct
+  let abs_diff x y =
+    let open I in
+    if x < y then y - x else x - y
+
   let assert_almost_equal ~loc ~margin_percent i1 i2 =
     let open I in
     let maxi = max (abs i1) (abs i2) in
     let margin = one + (maxi * margin_percent / hundred) in
-    let diff = abs (i2 - i1) in
+    let diff = abs_diff i2 i1 in
     let msg = name ^ " almost equal" in
     if diff > margin then
       failwith
