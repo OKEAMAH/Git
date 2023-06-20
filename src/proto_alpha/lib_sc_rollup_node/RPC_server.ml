@@ -192,7 +192,7 @@ let simulate_messages (node_ctxt : Node_context.ro) block ~reveal_pages
   in
   let* level = Node_context.level_of_hash node_ctxt block in
   let* sim =
-    Simulation.start_simulation
+    Simulation.init_simulation_ctxt
       node_ctxt
       ~reveal_map
       Layer1.{hash = block; level}

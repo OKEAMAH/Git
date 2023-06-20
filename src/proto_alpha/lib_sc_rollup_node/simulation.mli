@@ -45,20 +45,24 @@ type t = {
   info_per_level : info_per_level;
 }
 
-(** [start_simulation node_ctxt reveal_source block] starts a new simulation {e
+(** [init_simulation_ctxt node_ctxt reveal_source block]
+    initalizes a simulation context for simulation {e
     on top} of [block], i.e. for an hypothetical new inbox (level).  *)
-val start_simulation :
+val init_simulation_ctxt :
   Node_context.ro ->
   reveal_map:string Sc_rollup_reveal_hash.Map.t option ->
   Layer1.head ->
   t tzresult Lwt.t
 
-(** [simulate_messages node_ctxt sim messages] runs a simulation of new
+(** [simulate_messages node_ctxt prepend_meta_messages sim messages] runs a simulation of new
     [messages] in the given simulation (state) [sim] and returns a new
     simulation state, the remaining fuel (when [?fuel] is provided) and the
-    number of ticks that happened. *)
+    number of ticks that happened.
+    If prepend_meta_messages is true then function will take care of
+    prepending SoL, IpL messages at Start position*)
 val simulate_messages :
   Node_context.ro ->
+  ?prepend_meta_messages:bool ->
   t ->
   Sc_rollup.Inbox_message.serialized list ->
   (t * Z.t) tzresult Lwt.t

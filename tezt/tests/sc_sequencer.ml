@@ -141,6 +141,20 @@ let wait_for_sequence_debug_message sc_node =
     Some message
   else None
 
+let pp_sequencer_msg_body ppf (seq, signature) =
+  let open Octez_smart_rollup_sequencer.Kernel_message in
+  match seq with
+  | Sequence seq ->
+      Format.fprintf
+        ppf
+        "Sequence { nonce: %ld, delayed_messages_prefix: %ld, \
+         delayed_messages_suffix: %ld, messages: [], signature: \
+         Signature(\"%s\") }"
+        seq.nonce
+        seq.delayed_messages_prefix
+        seq.delayed_messages_suffix
+        signature
+
 let test_delayed_inbox_consumed =
   Protocol.register_test
     ~__FILE__
@@ -212,27 +226,39 @@ let test_delayed_inbox_consumed =
   let* _ = next_rollup_level setup in
 
   (* Feed to the sequencer kernel S2 sequence *)
+  let open Octez_smart_rollup_sequencer.Kernel_message in
   let expected_sequences =
-    List.map (fun (delayed_inbox_prefix, delayed_inbox_suffix, signature) ->
-        Format.sprintf
-          "Received a sequence message Sequence { nonce: 0, \
-           delayed_messages_prefix: %d, delayed_messages_suffix: %d, messages: \
-           [], signature: Signature(\"%s\") } targeting our rollup"
-          delayed_inbox_prefix
-          delayed_inbox_suffix
-          signature)
+    List.map
+      (Format.asprintf
+         "Received a sequence message %a targeting our rollup"
+         pp_sequencer_msg_body)
     @@ [
-         ( 0,
-           0,
-           "sigw2xhyiypYt4YHGFQKoXNnuyeUJQ4mwAMddKB7M2YnzQee8KS57CP1mcq7n9VLZBv9AksyJhjZQoJBrLboptw58rkVZ6wS"
+         ( Sequence
+             {
+               nonce = 1l;
+               delayed_messages_prefix = 0l;
+               delayed_messages_suffix = 0l;
+               l2_messages = [];
+             },
+           "sigULSkLUnitzmA1DXXGXFi1UDRv421GtasjcXXgZDcTLcDFXGRBvr83s6yqTrXc3epKDPq34Qjjczcqw5jVMhtXLJoW2psA"
          );
-         ( 4,
-           1,
-           "sigwBnYEcc62dcEd3PCJAeTrWYqDcmR1JHSRCHbAWfRiEMgx6Zx84TSpALT9uC8nwScBVHEYSTFncLfsnVB965rduYKFBTtm"
+         ( Sequence
+             {
+               nonce = 2l;
+               delayed_messages_prefix = 4l;
+               delayed_messages_suffix = 1l;
+               l2_messages = [];
+             },
+           "sigWsYLRJVST2iwumN66jNFuiJqu9wUbiZKMa9fj4V66Jkpm1s38kFsxUb5qKcvF9G1waA8GG9qHxKsHCi9nduUbPCAwntU6"
          );
-         ( 7,
-           1,
-           "sigSrQNKa5SRJx9EWH8xBYVnpk6Z6DSkJGYAuEwyu6UCPJxpRgQ7J7TRrhbEP1WUpu1sZKrYisMy9BF82a6HUFRdJjAPGbax"
+         ( Sequence
+             {
+               nonce = 3l;
+               delayed_messages_prefix = 2l;
+               delayed_messages_suffix = 1l;
+               l2_messages = [];
+             },
+           "siggmUHffviSZZaLCTmZ3yLq5Y6vmqbr9HGMYa9fKsTT5U6JBWphjdba7uwTDeKUZRGPdr72867R9752HA5P5SbxEaB31Yzb"
          );
        ]
   in

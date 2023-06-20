@@ -52,7 +52,7 @@ let simulate_info_per_level (node_ctxt : [`Read] Node_context.t) predecessor =
   let predecessor_timestamp = block_info.header.shell.timestamp in
   return {predecessor_timestamp; predecessor}
 
-let start_simulation node_ctxt ~reveal_map (Layer1.{hash; level} as head) =
+let init_simulation_ctxt node_ctxt ~reveal_map (Layer1.{hash; level} as head) =
   let open Lwt_result_syntax in
   let*? level = Environment.wrap_tzresult @@ Raw_level.of_int32 level in
   let*? () =
@@ -118,7 +118,8 @@ let simulate_messages_no_checks (node_ctxt : Node_context.ro)
   let nb_messages_inbox = nb_messages_inbox + num_messages in
   return ({sim with ctxt; state; nb_messages_inbox}, num_ticks)
 
-let simulate_messages (node_ctxt : Node_context.ro) sim messages =
+let simulate_messages (node_ctxt : Node_context.ro)
+    ?(prepend_meta_messages = true) sim messages =
   let open Lwt_result_syntax in
   (* Build new inbox *)
   let*? () =
@@ -128,7 +129,7 @@ let simulate_messages (node_ctxt : Node_context.ro) sim messages =
   in
   let*? messages =
     let open Result_syntax in
-    if sim.level_position = Start then
+    if sim.level_position = Start && prepend_meta_messages then
       let {predecessor_timestamp; predecessor} = sim.info_per_level in
       let open Sc_rollup.Inbox_message in
       let* internals =

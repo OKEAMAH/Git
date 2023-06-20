@@ -64,7 +64,12 @@ let test_empty_suffix_n_prefix () =
     test_encoding
       ~loc:__LOC__
       empty_l2_messages_hex
-      (KM.encode_sequence_message rollup_address ~prefix:0l ~suffix:0l [])
+      (KM.encode_sequence_message
+         rollup_address
+         ~prefix:0l
+         ~suffix:0l
+         ~nonce:0l
+         [])
   in
 
   let single_empty_l2_message_hex =
@@ -78,6 +83,7 @@ let test_empty_suffix_n_prefix () =
          rollup_address
          ~prefix:0l
          ~suffix:0l
+         ~nonce:0l
          [Sc_rollup.Inbox_message.unsafe_of_string ""])
   in
 
@@ -92,6 +98,7 @@ let test_empty_suffix_n_prefix () =
          rollup_address
          ~prefix:0l
          ~suffix:0l
+         ~nonce:0l
          [Sc_rollup.Inbox_message.unsafe_of_string "hello"])
   in
 
@@ -105,6 +112,7 @@ let test_empty_suffix_n_prefix () =
        rollup_address
        ~prefix:0l
        ~suffix:0l
+       ~nonce:0l
        (List.map Sc_rollup.Inbox_message.unsafe_of_string ["hello"; "world"]))
 
 let tests =
