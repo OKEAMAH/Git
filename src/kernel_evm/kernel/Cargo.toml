@@ -41,12 +41,15 @@ path = "../../kernel_sdk/installer-config"
 [dependencies.tezos-smart-rollup-installer]
 path = "../../kernel_sdk/installer-client"
 
+[dependencies.wasm-gen]
+version = "0.1.4"
+
+[dependencies.tezos_data_encoding]
+version = "0.5"
+
 [dev-dependencies.tezos-smart-rollup-mock]
 path = "../../kernel_sdk/mock"
 features = ["proto-nairobi"]
-
-[dev-dependencies.tezos_data_encoding]
-version = "0.5"
 
 [dependencies]
 tezos_ethereum = { path = "../ethereum" }

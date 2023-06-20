@@ -12,16 +12,17 @@ use crate::CHAIN_ID;
 use libsecp256k1::Message;
 use primitive_types::{H160, U256};
 use sha3::{Digest, Keccak256};
+use tezos_data_encoding::enc::BinWriter;
 use tezos_ethereum::signatures::{caller, signature};
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
 use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_host::path::{OwnedPath, RefPath};
 use tezos_smart_rollup_host::runtime::Runtime;
-use tezos_smart_rollup_installer::installer::with_config_program;
 use tezos_smart_rollup_installer::{KERNEL_BOOT_PATH, PREPARE_KERNEL_PATH};
 use tezos_smart_rollup_installer_config::binary::owned::{
     OwnedConfigInstruction, OwnedConfigProgram,
 };
+use wasm_gen::write_custom_section;
 
 // TODO: https://gitlab.com/tezos/tezos/-/issues/5894, define the dictator key
 // via the config installer set function
@@ -81,6 +82,22 @@ pub fn check_dictator_signature(
     } else {
         Err(Error::InvalidSignatureCheck)
     }
+}
+
+const INSTALLER_KERNEL: &[u8] =
+    include_bytes!("../../../../src/kernel_sdk/installer-client/installer.wasm");
+
+pub fn with_config_program(config_programm: OwnedConfigProgram) -> Vec<u8> {
+    let mut installer = INSTALLER_KERNEL.to_vec();
+
+    let mut config_programm_encoded = vec![];
+    config_programm
+        .bin_write(&mut config_programm_encoded)
+        .unwrap();
+
+    write_custom_section(&mut installer, "config", &config_programm_encoded);
+
+    installer
 }
 
 // Path that will contain the config interpretation.

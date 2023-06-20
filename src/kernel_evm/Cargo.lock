@@ -580,6 +580,7 @@ dependencies = [
  "tezos-smart-rollup-panic-hook",
  "tezos_data_encoding",
  "tezos_ethereum",
+ "wasm-gen",
 ]
 
 [[package]]
