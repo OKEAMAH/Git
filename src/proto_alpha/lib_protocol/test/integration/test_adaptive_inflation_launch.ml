@@ -150,6 +150,26 @@ module Almost_equal (I : INTEGER) = struct
         pp
         margin_percent
     else return_unit
+
+  let assert_really_lt ~loc ~margin_percent i1 i2 =
+    let open I in
+    let maxi = max (abs i1) (abs i2) in
+    let margin = one + (maxi * margin_percent / hundred) in
+    let diff = i2 - i1 in
+    let msg = name ^ " much lt" in
+    if diff <= margin then
+      failwith
+        "@[@[[%s]@] - @[%s : %a is not much smaller than %a within a %a%% \
+         margin@]@]"
+        loc
+        msg
+        pp
+        i1
+        pp
+        i2
+        pp
+        margin_percent
+    else return_unit
 end
 
 module Int : INTEGER with type t = int = struct
@@ -181,26 +201,6 @@ module Int : INTEGER with type t = int = struct
 end
 
 module Almost_equal_int = Almost_equal (Int)
-
-let assert_really_lt_int ~loc ~margin_percent i1 i2 =
-  let maxi = max (abs i1) (abs i2) in
-  let margin = 1 + (maxi * margin_percent / 100) in
-  let diff = i2 - i1 in
-  let msg = "Integer much lt" in
-  let pp fmt x = Format.fprintf fmt "%d" x in
-  if diff <= margin then
-    failwith
-      "@[@[[%s]@] - @[%s : %a is not much smaller than %a within a %a%% \
-       margin@]@]"
-      loc
-      msg
-      pp
-      i1
-      pp
-      i2
-      pp
-      margin_percent
-  else return_unit
 
 module I64 : INTEGER with type t = Int64.t = struct
   include Int64
@@ -283,7 +283,7 @@ let assert_less_endorsing_power ~loc block delegate1 delegate2 =
   let open Lwt_result_syntax in
   let* power1 = get_endorsing_power delegate1 block in
   let* power2 = get_endorsing_power delegate2 block in
-  assert_really_lt_int ~loc ~margin_percent:12 power1 power2
+  Almost_equal_int.assert_really_lt ~loc ~margin_percent:12 power1 power2
 
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
