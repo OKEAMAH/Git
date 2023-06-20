@@ -4028,6 +4028,7 @@ let octez_node_config =
         octez_context |> open_;
         octez_store |> open_;
         octez_validation |> open_;
+        octez_crypto_dal |> open_;
       ]
 
 let octez_crawler =

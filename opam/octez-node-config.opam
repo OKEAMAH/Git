@@ -18,6 +18,7 @@ depends: [
   "tezos-context"
   "tezos-store"
   "tezos-validation"
+  "tezos-crypto-dal"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]
