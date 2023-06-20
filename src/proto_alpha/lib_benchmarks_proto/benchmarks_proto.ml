@@ -101,35 +101,31 @@ end
 
 module Model = struct
   include Model
+  open Model.Utils
 
   type 'workload t = 'workload Model.t
 
   let make ~name ~conv ~model = make ~conv ~model:(model name)
 
   let unknown_const1 ?const name =
-    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-    let const = Option.value ~default:(ns "const") const in
+    let const = Option.value ~default:(fv "") const in
     unknown_const1 ~name ~const
 
   let affine ?intercept ?coeff name =
-    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-    let intercept = Option.value ~default:(ns "intercept") intercept in
-    let coeff = Option.value ~default:(ns "coeff") coeff in
+    let intercept = Option.value ~default:(fv "") intercept in
+    let coeff = Option.value ~default:(fv "") coeff in
     affine ~name ~intercept ~coeff
 
   let logn ?coeff name =
-    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-    let coeff = Option.value ~default:(ns "coeff") coeff in
+    let coeff = Option.value ~default:(fv "") coeff in
     logn ~name ~coeff
 
   let nlogn ?intercept ?coeff name =
-    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-    let coeff = Option.value ~default:(ns "coeff") coeff in
-    let intercept = Option.value ~default:(ns "intercept") intercept in
+    let coeff = Option.value ~default:(fv "") coeff in
+    let intercept = Option.value ~default:(fv "") intercept in
     nlogn ~name ~intercept ~coeff
 
   let linear ?coeff name =
-    let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-    let coeff = Option.value ~default:(ns "coeff") coeff in
+    let coeff = Option.value ~default:(fv "") coeff in
     linear ~name ~coeff
 end

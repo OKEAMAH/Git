@@ -36,6 +36,8 @@ val of_string : string -> t
 
 val to_string : t -> string
 
+val cons : t -> string -> t
+
 val of_namespace : Namespace.t -> t
 
 val to_namespace : t -> Namespace.t

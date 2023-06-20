@@ -36,7 +36,10 @@ let update t model_name =
     | [] | ["."] | _ :: [] ->
         Format.eprintf "Error: %a %a\n" Namespace.pp model_name pp t ;
         exit 1
+    | x :: "intercept" :: xs when String.ends_with ~suffix:"__model" x ->
+        x :: xs
     | "intercept" :: xs -> xs
+    | x :: xs when String.ends_with ~suffix:"__model" x -> xs
     | xs -> xs
   in
   let name = String.concat "/" (List.rev ns) |> Namespace.of_string in

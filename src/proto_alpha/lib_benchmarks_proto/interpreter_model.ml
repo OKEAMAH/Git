@@ -92,10 +92,11 @@ let model_with_conv :
 let sf = Format.asprintf
 
 let division_cost name =
-  let const = fv (sf "%s_const" name) in
-  let size1_coeff = fv (sf "%s_size1_coeff" name) in
-  let q_coeff = fv (sf "%s_q_coeff" name) in
-  let q_size2_coeff = fv (sf "%s_q_size2_coeff" name) in
+  let open Model.Utils in
+  let const = mk_const_opt None in
+  let size1_coeff = fv "size1_coeff" in
+  let q_coeff = fv "q_coeff" in
+  let q_size2_coeff = fv "q_size2_coeff" in
   let module M = struct
     type arg_type = int * (int * unit)
 
@@ -130,8 +131,9 @@ let division_cost name =
   (module M : Model.Model_impl with type arg_type = int * (int * unit))
 
 let addlogadd name =
-  let const = fv (sf "%s_const" name) in
-  let coeff = fv (sf "%s_coeff" name) in
+  let open Model.Utils in
+  let const = mk_const_opt None in
+  let coeff = mk_coeff_opt None in
   let module M = struct
     type arg_type = int * (int * unit)
 
@@ -157,60 +159,55 @@ let name_of_instr_or_cont instr_or_cont =
   Interpreter_workload.string_of_instr_or_cont instr_or_cont
 
 module Models = struct
+  open Model.Utils
+
   let const1_model name =
     (* For constant-time instructions *)
-    Model.unknown_const1 ~name:(ns name) ~const:(fv (sf "%s_const" name))
+    Model.unknown_const1 ~name:(ns name) ~const:(fv "")
 
   let affine_model name =
     (* For instructions with cost function
        [\lambda size. const + coeff * size] *)
-    Model.affine
-      ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+    Model.affine ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
 
   let affine_offset_model name ~offset =
     (* For instructions with cost function
        [\lambda size. const + coeff * (size - offset)] *)
     Model.affine_offset
       ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+      ~intercept:(fv "")
+      ~coeff:(fv "")
       ~offset
 
   let break_model name break =
-    Model.breakdown
-      ~name:(ns name)
-      ~coeff1:(fv (sf "%s_coeff1" name))
-      ~coeff2:(fv (sf "%s_coeff2" name))
-      ~break
+    Model.breakdown ~name:(ns name) ~coeff1:(fv "") ~coeff2:(fv "") ~break
 
   let break_model_2 name break1 break2 =
     Model.breakdown2
       ~name:(ns name)
-      ~coeff1:(fv (sf "%s_coeff1" name))
-      ~coeff2:(fv (sf "%s_coeff2" name))
-      ~coeff3:(fv (sf "%s_coeff3" name))
+      ~coeff1:(fv "")
+      ~coeff2:(fv "")
+      ~coeff3:(fv "")
       ~break1
       ~break2
 
   let break_model_2_const name break1 break2 =
     Model.breakdown2_const
       ~name:(ns name)
-      ~coeff1:(fv (sf "%s_coeff1" name))
-      ~coeff2:(fv (sf "%s_coeff2" name))
-      ~coeff3:(fv (sf "%s_coeff3" name))
-      ~const:(fv (sf "%s_const" name))
+      ~coeff1:(fv "")
+      ~coeff2:(fv "")
+      ~coeff3:(fv "")
+      ~const:(fv "")
       ~break1
       ~break2
 
   let break_model_2_const_offset name break1 break2 ~offset =
     Model.breakdown2_const_offset
       ~name:(ns name)
-      ~coeff1:(fv (sf "%s_coeff1" name))
-      ~coeff2:(fv (sf "%s_coeff2" name))
-      ~coeff3:(fv (sf "%s_coeff3" name))
-      ~const:(fv (sf "%s_const" name))
+      ~coeff1:(fv "")
+      ~coeff2:(fv "")
+      ~coeff3:(fv "")
+      ~const:(fv "")
       ~break1
       ~break2
       ~offset
@@ -218,59 +215,53 @@ module Models = struct
   let nlogm_model name =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * size1 log2(size2)] *)
-    Model.nlogm
-      ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+    Model.nlogm ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
 
   let concat_model name =
     Model.bilinear_affine
       ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff1:(fv (sf "%s_total_bytes" name))
-      ~coeff2:(fv (sf "%s_list_length" name))
+      ~intercept:(fv "")
+      ~coeff1:(fv "total_bytes")
+      ~coeff2:(fv "list_length")
 
   let concat_pair_model name =
-    Model.linear_sum
-      ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+    Model.linear_sum ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
 
   let linear_max_model name =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * max(size1,size2)] *)
-    Model.linear_max
-      ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+    Model.linear_max ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
 
   let linear_min_model name =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * min(size1,size2)] *)
-    Model.linear_min
-      ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+    Model.linear_min ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
 
   let linear_min_offset_model name ~offset =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * (min(size1,size2) - offset)] *)
     Model.linear_min_offset
       ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff:(fv (sf "%s_coeff" name))
+      ~intercept:(fv "")
+      ~coeff:(fv "")
       ~offset
 
   let pack_model name =
     Model.trilinear
       ~name:(ns name)
-      ~coeff1:(fv (sf "%s_micheline_nodes" name))
-      ~coeff2:(fv (sf "%s_micheline_int_bytes" name))
-      ~coeff3:(fv (sf "%s_micheline_string_bytes" name))
+      ~coeff1:(fv "micheline_nodes")
+      ~coeff2:(fv "micheline_int_bytes")
+      ~coeff3:(fv "micheline_string_bytes")
 
   let open_chest_model name =
     let module M = struct
       type arg_type = int * (int * unit)
+
+      let const = mk_const_opt None
+
+      let coeff1 = mk_coeff ~num:1 (fv "log_time")
+
+      let coeff2 = mk_coeff ~num:2 (fv "plaintext")
 
       module Def (X : Costlang.S) = struct
         open X
@@ -282,10 +273,9 @@ module Models = struct
         let model =
           lam ~name:"size1" @@ fun size1 ->
           lam ~name:"size2" @@ fun size2 ->
-          free ~name:(fv (sf "%s_const" name))
-          + free ~name:(fv (sf "%s_log_time_coeff" name))
-            * sat_sub size1 (int 1)
-          + (free ~name:(fv (sf "%s_plaintext_coeff" name)) * size2)
+          free ~name:const
+          + (free ~name:coeff1 * sat_sub size1 (int 1))
+          + (free ~name:coeff2 * size2)
       end
 
       let name = ns name
@@ -295,13 +285,19 @@ module Models = struct
   let verify_update_model name =
     Model.bilinear_affine
       ~name:(ns name)
-      ~intercept:(fv (sf "%s_const" name))
-      ~coeff1:(fv (sf "%s_inputs" name))
-      ~coeff2:(fv (sf "%s_outputs" name))
+      ~intercept:(fv "")
+      ~coeff1:(fv "inputs")
+      ~coeff2:(fv "outputs")
 
   let list_enter_body_model name =
     let module M = struct
       type arg_type = int * (int * unit)
+
+      let const = mk_const_opt None
+
+      let coeff1 = mk_coeff_opt ~num:1 None
+
+      let coeff2 = mk_coeff ~num:2 (fv "iter")
 
       module Def (X : Costlang.S) = struct
         open X
@@ -315,9 +311,8 @@ module Models = struct
           lam ~name:"size_ys" @@ fun size_ys ->
           if_
             (eq size_xs (int 0))
-            (free ~name:(fv (sf "%s_const" name))
-            + (free ~name:(fv (sf "%s_coeff" name)) * size_ys))
-            (free ~name:(fv (sf "%s_iter" name)))
+            (free ~name:const + (free ~name:coeff1 * size_ys))
+            (free ~name:coeff2)
       end
 
       let name = ns name
@@ -362,6 +357,12 @@ module Models = struct
     let module M = struct
       type arg_type = int * (int * (int * (int * unit)))
 
+      let const = mk_const_opt None
+
+      let coeff1 = mk_coeff ~num:1 (fv "compare_coeff")
+
+      let coeff2 = mk_coeff ~num:2 (fv "add")
+
       module Def (X : Costlang.S) = struct
         open X
 
@@ -374,11 +375,9 @@ module Models = struct
           lam ~name:"content_size_y" @@ fun content_size_y ->
           lam ~name:"amount_size_x" @@ fun amount_size_x ->
           lam ~name:"amount_size_y" @@ fun amount_size_y ->
-          free ~name:(fv (sf "%s_const" name))
-          + free ~name:(fv (sf "%s_compare_coeff" name))
-            * min content_size_x content_size_y
-          + free ~name:(fv (sf "%s_add_coeff" name))
-            * max amount_size_x amount_size_y
+          free ~name:const
+          + (free ~name:coeff1 * min content_size_x content_size_y)
+          + (free ~name:coeff2 * max amount_size_x amount_size_y)
       end
 
       let name = ns name
@@ -389,9 +388,9 @@ module Models = struct
   (* Almost [Model.bilinear_affine] but the intercept is not at 0s
      but size1=0 and size2=1 *)
   let lsl_bytes_model name =
-    let intercept = fv (sf "%s_const" name) in
-    let coeff1 = fv (sf "%s_bytes" name) in
-    let coeff2 = fv (sf "%s_shift" name) in
+    let intercept = mk_const_opt None in
+    let coeff1 = mk_coeff ~num:1 (fv "bytes") in
+    let coeff2 = mk_coeff ~num:2 (fv "shift") in
     let module M = struct
       type arg_type = int * (int * unit)
 
@@ -416,8 +415,8 @@ module Models = struct
 
   (* The intercept is not at 0s but size1=0 and size2=1 *)
   let lsr_bytes_model name =
-    let const = fv (sf "%s_const" name) in
-    let coeff = fv (sf "%s_coeff" name) in
+    let const = mk_const_opt None in
+    let coeff = mk_coeff_opt None in
     let module M = struct
       type arg_type = int * (int * unit)
 
@@ -614,6 +613,19 @@ let conv (type a) (module M : Model.Model_impl with type arg_type = a)
 
     let name = Model.adjust_name bench_name M.name
 
+    (* let () =
+       match Namespace.basename bench_name with
+       | "N_IAdd_nat" ->
+           Format.printf
+             "%a: %a: %a\n"
+             Namespace.pp
+             bench_name
+             Namespace.pp
+             M.name
+             Namespace.pp
+             name
+       | _ -> () *)
+
     module Renamed = (val Costlang.rename_free_vars ~name)
 
     module Def (S : Costlang.S) = Def (Renamed (S))
@@ -646,7 +658,7 @@ let interpreter_model ?amplification sub_model =
                   Model.apply
                     (conv_model_made
                        amplification_loop_model
-                       (ns "amplification_loop_model"))
+                       (ns "amplification_loop"))
                     amplification_factor
                 in
                 let module Amplification_result = Amplification_applied (X) in

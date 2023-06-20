@@ -136,6 +136,31 @@ val get_free_variable_set_applied :
 
 val adjust_name : Namespace.t -> Namespace.t -> Namespace.t
 
+(** Utils to define model parameters *)
+module Utils : sig
+  val fv : string -> Free_variable.t
+
+  val mk_const : ?num:int -> Free_variable.t -> Free_variable.t
+
+  val mk_const_opt : ?num:int -> string option -> Free_variable.t
+
+  val mk_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+
+  val mk_coeff_opt : ?num:int -> string option -> Free_variable.t
+
+  val mk_log_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+
+  val mk_log_coeff_opt : ?num:int -> string option -> Free_variable.t
+
+  val mk_linear_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+
+  val mk_linear_coeff_opt : ?num:int -> string option -> Free_variable.t
+
+  val mk_intercept : ?num:int -> Free_variable.t -> Free_variable.t
+
+  val mk_intercept_opt : ?num:int -> string option -> Free_variable.t
+end
+
 (* -------------------------------------------------------------------------- *)
 (** Commonly used abstract models
     Except for [zero], they all require a unique name in {!Namespace.t}, and some

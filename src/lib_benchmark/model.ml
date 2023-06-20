@@ -22,6 +22,8 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+let prefix_name optional_name constant_name =
+  Namespace.cons optional_name (constant_name ^ "__model")
 
 type (_, _, _) arity =
   | Zero_arity : ('elt, 'elt, unit) arity
@@ -211,9 +213,7 @@ let adjust_name bench_name model_name =
   let name =
     String.concat "/" (List.rev ns |> List.drop_n 1) |> Namespace.of_string
   in
-  let base = Namespace.basename name in
-  if String.equal base (Namespace.basename model_name) then bench_name
-  else Namespace.cons name (Namespace.basename model_name)
+  Namespace.cons name (Namespace.basename model_name)
 
 (* No workload application.  For [Aggregate _], only extract
    the free variables of the [sub_models].
@@ -254,8 +254,48 @@ let get_free_variable_set_applied (type workload) (model : workload t)
   let module R = M (T1) in
   T0.prj @@ T1.prj R.applied
 
+module Utils = struct
+  let fv = Free_variable.For_open.fv
+
+  let make ~f ?(num = 0) ~name param =
+    let name = match num with 0 -> name | _ -> name ^ string_of_int num in
+    f param name
+
+  let id param name = Free_variable.cons param name
+
+  let option param name =
+    Option.fold
+      ~none:(fv name)
+      ~some:(fun x ->
+        let x = fv x in
+        Free_variable.cons x name)
+      param
+
+  let mk_const ?num = make ?num ~f:id ~name:"const"
+
+  let mk_const_opt ?num = make ?num ~f:option ~name:"const"
+
+  let mk_coeff ?num = make ?num ~f:id ~name:"coeff"
+
+  let mk_coeff_opt ?num = make ?num ~f:option ~name:"coeff"
+
+  let mk_log_coeff ?num = make ?num ~f:id ~name:"log_coeff"
+
+  let mk_log_coeff_opt ?num = make ?num ~f:option ~name:"log_coeff"
+
+  let mk_linear_coeff ?num = make ?num ~f:id ~name:"linear_coeff"
+
+  let mk_linear_coeff_opt ?num = make ?num ~f:option ~name:"linear_coeff"
+
+  let mk_intercept ?num = make ?num ~f:id ~name:"intercept"
+
+  let mk_intercept_opt ?num = make ?num ~f:option ~name:"intercept"
+end
+
 (* -------------------------------------------------------------------------- *)
 (* Commonly used models *)
+
+open Utils
 
 let zero =
   let module M = struct
@@ -279,7 +319,9 @@ let unknown_const1 ~name ~const =
   let module M = struct
     type arg_type = unit
 
-    let name = name
+    let const = mk_const const
+
+    let name = prefix_name name "unknown_const1"
 
     module Def (X : Costlang.S) = struct
       open X
@@ -297,7 +339,9 @@ let linear ~name ~coeff =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "linear"
+
+    let coeff = mk_coeff coeff
 
     module Def (X : Costlang.S) = struct
       open X
@@ -311,11 +355,15 @@ let linear ~name ~coeff =
   end in
   (module M : Model_impl with type arg_type = int * unit)
 
-let affine ~name ~intercept ~coeff =
+let affine ~name ~intercept ~coeff : (int * unit) model =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "affine"
+
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -335,7 +383,11 @@ let affine_offset ~name ~intercept ~coeff ~offset =
   let module M = struct
     type arg_type = int * unit
 
-    let name = name
+    let name = prefix_name name "affine_offset"
+
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -357,6 +409,8 @@ let quadratic ~name ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -375,6 +429,10 @@ let nlogn ~name ~intercept ~coeff =
     type arg_type = int * unit
 
     let name = name
+
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -396,6 +454,10 @@ let nsqrtn_const ~name ~intercept ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -416,6 +478,8 @@ let logn ~name ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -434,6 +498,10 @@ let linear_sum ~name ~intercept ~coeff =
     type arg_type = int * (int * unit)
 
     let name = name
+
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -456,6 +524,10 @@ let linear_max ~name ~intercept ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -477,6 +549,10 @@ let linear_min ~name ~intercept ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -497,6 +573,10 @@ let linear_min_offset ~name ~intercept ~coeff ~offset =
     type arg_type = int * (int * unit)
 
     let name = name
+
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -520,6 +600,10 @@ let linear_mul ~name ~intercept ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -541,6 +625,10 @@ let bilinear ~name ~coeff1 ~coeff2 =
 
     let name = name
 
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -561,6 +649,12 @@ let bilinear_affine ~name ~intercept ~coeff1 ~coeff2 =
     type arg_type = int * (int * unit)
 
     let name = name
+
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
+    let intercept = mk_intercept intercept
 
     module Def (X : Costlang.S) = struct
       open X
@@ -585,6 +679,10 @@ let nlogm ~name ~intercept ~coeff =
 
     let name = name
 
+    let coeff = mk_coeff coeff
+
+    let intercept = mk_intercept intercept
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -606,6 +704,12 @@ let n_plus_logm ~name ~intercept ~linear_coeff ~log_coeff =
     type arg_type = int * (int * unit)
 
     let name = name
+
+    let intercept = mk_intercept intercept
+
+    let log_coeff = mk_log_coeff log_coeff
+
+    let linear_coeff = mk_linear_coeff linear_coeff
 
     module Def (X : Costlang.S) = struct
       open X
@@ -629,6 +733,12 @@ let trilinear ~name ~coeff1 ~coeff2 ~coeff3 =
     type arg_type = int * (int * (int * unit))
 
     let name = name
+
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
+    let coeff3 = mk_coeff ~num:3 coeff3
 
     module Def (X : Costlang.S) = struct
       open X
@@ -656,6 +766,10 @@ let breakdown ~name ~coeff1 ~coeff2 ~break =
 
     let name = name
 
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
     module Def (X : Costlang.S) = struct
       open X
 
@@ -677,6 +791,12 @@ let breakdown2 ~name ~coeff1 ~coeff2 ~coeff3 ~break1 ~break2 =
     type arg_type = int * unit
 
     let name = name
+
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
+    let coeff3 = mk_coeff ~num:3 coeff3
 
     module Def (X : Costlang.S) = struct
       open X
@@ -700,6 +820,14 @@ let breakdown2_const ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2 =
     type arg_type = int * unit
 
     let name = name
+
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
+    let coeff3 = mk_coeff ~num:3 coeff3
+
+    let const = mk_const const
 
     module Def (X : Costlang.S) = struct
       open X
@@ -725,6 +853,14 @@ let breakdown2_const_offset ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2
     type arg_type = int * unit
 
     let name = name
+
+    let coeff1 = mk_coeff ~num:1 coeff1
+
+    let coeff2 = mk_coeff ~num:2 coeff2
+
+    let coeff3 = mk_coeff ~num:3 coeff3
+
+    let const = mk_const const
 
     module Def (X : Costlang.S) = struct
       open X

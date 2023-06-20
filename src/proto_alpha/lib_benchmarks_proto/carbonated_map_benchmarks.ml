@@ -208,11 +208,10 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
      *)
     let find_model ?intercept ?traverse_overhead name =
       let open Tezos_benchmark in
-      let ns s = Free_variable.of_namespace (Namespace.cons name s) in
-      let traverse_overhead =
-        Option.value ~default:(ns "traverse_overhead") traverse_overhead
-      in
-      let intercept = Option.value ~default:(ns "intercept") intercept in
+      let open Model.Utils in
+      let traverse_overhead = mk_coeff_opt traverse_overhead in
+      let intercept = mk_intercept_opt intercept in
+      let compare_name = compare_var CS.type_name in
       let module M = struct
         type arg_type = int * unit
 
@@ -226,9 +225,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
           let model =
             let open L in
             lam ~name:"size" @@ fun size ->
-            let compare_cost =
-              log2 size * free ~name:(compare_var CS.type_name)
-            in
+            let compare_cost = log2 size * free ~name:compare_name in
             let traversal_overhead = log2 size * free ~name:traverse_overhead in
             free ~name:intercept + compare_cost + traversal_overhead
         end

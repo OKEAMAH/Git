@@ -151,11 +151,9 @@ module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
   let model =
     let affine_logn name =
       let open Tezos_benchmark.Model in
-      let param_name param =
-        Free_variable.of_namespace (Namespace.cons name param)
-      in
-      let intercept = param_name "intercept" in
-      let coeff = param_name "coeff" in
+      let open Utils in
+      let intercept = mk_intercept_opt None in
+      let coeff = mk_coeff_opt None in
       let module M = struct
         let name = name
 

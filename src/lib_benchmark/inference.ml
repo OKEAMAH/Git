@@ -57,11 +57,7 @@ let pp_scores ppf {r2_score; rmse_score; tvalues} =
       "RMSE: " ^ Printf.sprintf "%f" rmse_score;
     ]
     @ List.map
-        (fun (v, t) ->
-          Printf.sprintf
-            "T-%s: %f"
-            (Free_variable.to_namespace v |> Namespace.basename)
-            t)
+        (fun (v, t) -> Printf.sprintf "T-%s: %f" (Free_variable.to_string v) t)
         tvalues
   in
   Format.pp_print_list

@@ -115,9 +115,9 @@ module Micheline_common = struct
       ~model:
         (Model.trilinear
            ~name:(ns name)
-           ~coeff1:(fv (Format.asprintf "%s_micheline_traversal" name))
-           ~coeff2:(fv (Format.asprintf "%s_micheline_int_bytes" name))
-           ~coeff3:(fv (Format.asprintf "%s_micheline_string_bytes" name)))
+           ~coeff1:(fv "micheline_traversal")
+           ~coeff2:(fv "micheline_int_bytes")
+           ~coeff3:(fv "micheline_string_bytes"))
 
   let model_bytes name =
     Model.make
