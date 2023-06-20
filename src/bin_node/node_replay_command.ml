@@ -409,6 +409,7 @@ let replay ~internal_events ~singleprocess ~strict
       in
       return (validator_process, store)
     else
+      let chain_name = config.blockchain_network.chain_name in
       let* validator_process =
         Block_validator_process.init
           validator_env
@@ -421,7 +422,10 @@ let replay ~internal_events ~singleprocess ~strict
                protocol_root;
                process_path = Sys.executable_name;
                sandbox_parameters = None;
-               dal_config = Tezos_crypto_dal.Cryptobox.Config.default;
+               dal_config =
+                 Option.value
+                   ~default:Tezos_crypto_dal.Cryptobox.Config.default
+                   (Dal_config.overrides ~chain_name);
                internal_events;
              })
       in
