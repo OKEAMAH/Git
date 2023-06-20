@@ -294,6 +294,12 @@ let assert_same_voting_power ~loc block delegate1 delegate2 =
   let* power2 = get_voting_power delegate2 block in
   Almost_equal_int64.assert_almost_equal ~loc ~margin_percent:12L power1 power2
 
+let assert_less_voting_power ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_voting_power delegate1 block in
+  let* power2 = get_voting_power delegate2 block in
+  Almost_equal_int64.assert_really_lt ~loc ~margin_percent:12L power1 power2
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -562,11 +568,8 @@ let test_launch threshold expected_vote_duration () =
   let* () =
     assert_less_endorsing_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
-
-  let* voting_power_1 = Context.get_voting_power (B block) delegate1_pkh in
-  let* voting_power_2 = Context.get_voting_power (B block) delegate2_pkh in
   let* () =
-    Assert.leq_int64 ~loc:__LOC__ (Int64.add voting_power_2 2L) voting_power_1
+    assert_less_voting_power ~loc:__LOC__ block delegate1_pkh delegate2_pkh
   in
 
   return_unit
