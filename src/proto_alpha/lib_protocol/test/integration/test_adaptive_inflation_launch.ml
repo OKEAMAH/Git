@@ -245,6 +245,38 @@ end
 
 module Almost_equal_tez = Almost_equal (ITez)
 
+let get_delegate_staking_balance block delegate =
+  Context.Delegate.staking_balance (B block) delegate
+
+let assert_staking_balance ~loc block delegate expected =
+  let open Lwt_result_syntax in
+  let* power = get_delegate_staking_balance block delegate in
+  Almost_equal_tez.assert_almost_equal
+    ~loc
+    ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 1L)
+    power
+    (Protocol.Alpha_context.Tez.of_mutez_exn expected)
+
+let assert_same_staking_balance ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_delegate_staking_balance block delegate1 in
+  let* power2 = get_delegate_staking_balance block delegate2 in
+  Almost_equal_tez.assert_almost_equal
+    ~loc
+    ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 1L)
+    power1
+    power2
+
+let assert_less_staking_balance ~loc block delegate1 delegate2 =
+  let open Lwt_result_syntax in
+  let* power1 = get_delegate_staking_balance block delegate1 in
+  let* power2 = get_delegate_staking_balance block delegate2 in
+  Almost_equal_tez.assert_really_lt
+    ~loc
+    ~margin_percent:(Protocol.Alpha_context.Tez.of_mutez_exn 20L)
+    power1
+    power2
+
 let get_endorsing_power delegate block =
   let open Lwt_result_wrap_syntax in
   let ctxt = Context.B block in
@@ -306,6 +338,7 @@ let assert_less_voting_power ~loc block delegate1 delegate2 =
 
 let assert_same_power ~loc block delegate1 delegate2 =
   let open Lwt_result_syntax in
+  let* () = assert_same_staking_balance ~loc block delegate1 delegate2 in
   let* () = assert_same_endorsing_power ~loc block delegate1 delegate2 in
   let* () = assert_same_voting_power ~loc block delegate1 delegate2 in
   return_unit
@@ -319,6 +352,7 @@ let assert_same_power3 ~loc block delegate1 delegate2 delegate3 =
 
 let assert_less_power ~loc block delegate1 delegate2 =
   let open Lwt_result_syntax in
+  let* () = assert_less_staking_balance ~loc block delegate1 delegate2 in
   let* () = assert_less_endorsing_power ~loc block delegate1 delegate2 in
   let* () = assert_less_voting_power ~loc block delegate1 delegate2 in
   return_unit
@@ -449,6 +483,15 @@ let test_launch threshold expected_vote_duration () =
     let* block =
       Block.bake ~operations:[operation1; operation2; operation3] block
     in
+    let* () =
+      assert_staking_balance ~loc:__LOC__ block delegate1_pkh 4_000_000_000_000L
+    in
+    let* () =
+      assert_staking_balance ~loc:__LOC__ block delegate2_pkh 4_000_000_000_000L
+    in
+    let* () =
+      assert_staking_balance ~loc:__LOC__ block delegate3_pkh 4_000_000_000_000L
+    in
     (* Wait a few cycles for total_frozen_stake to update. *)
     let* block = Block.bake_until_n_cycle_end (preserved_cycles + 1) block in
     return block
@@ -556,6 +599,15 @@ let test_launch threshold expected_vote_duration () =
      planned to happen. *)
   let* () = assert_current_cycle ~loc:__LOC__ block launch_cycle in
 
+  let* () =
+    assert_staking_balance ~loc:__LOC__ block delegate1_pkh 4_000_000_000_000L
+  in
+  let* () =
+    assert_staking_balance ~loc:__LOC__ block delegate2_pkh 4_000_000_000_000L
+  in
+  let* () =
+    assert_staking_balance ~loc:__LOC__ block delegate3_pkh 4_000_000_000_000L
+  in
   (* Adaptive inflation should now be active. Delegate 1 and 3 have
      staked the same amount so they still have the same
      rights. Delegate 2 has staked more. *)
@@ -570,7 +622,6 @@ let test_launch threshold expected_vote_duration () =
   let* total_frozen_stake_before_costake =
     Context.get_total_frozen_stake (B block)
   in
-  (* let* delegate_info_before_costake = Context.Delegate.info (B block)  *)
   let* block =
     let* operation = stake (B block) wannabe_costaker balance_to_stake in
     Block.bake ~operation block
