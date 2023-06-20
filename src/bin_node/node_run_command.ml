@@ -540,7 +540,14 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
   let*! () = init_zcash () in
   let* () =
     let find_srs_files () = Tezos_base.Dal_srs.find_trusted_setup_files () in
-    Tezos_crypto_dal.Cryptobox.Config.init_dal ~find_srs_files config.dal
+    let dal_config =
+      match
+        Dal_config.overrides ~chain_name:config.blockchain_network.chain_name
+      with
+      | None -> config.dal (* config from config file. *)
+      | Some dal_config -> dal_config
+    in
+    Tezos_crypto_dal.Cryptobox.Config.init_dal ~find_srs_files dal_config
   in
   let*! node =
     init_node
