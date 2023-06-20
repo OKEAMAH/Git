@@ -7273,6 +7273,7 @@ let _octez_dal_node =
          octez_p2p_services |> open_;
          octez_crypto |> open_;
          octez_base_p2p_identity_file |> open_;
+         octez_node_config |> open_;
          irmin_pack;
          irmin_pack_unix;
          irmin;

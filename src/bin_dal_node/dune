@@ -32,6 +32,7 @@
   tezos-p2p-services
   tezos-crypto
   tezos-base.p2p-identity-file
+  octez-node-config
   irmin-pack
   irmin-pack.unix
   irmin
@@ -64,6 +65,7 @@
   -open Tezos_p2p
   -open Tezos_p2p_services
   -open Tezos_crypto
-  -open Tezos_base_p2p_identity_file))
+  -open Tezos_base_p2p_identity_file
+  -open Octez_node_config))
 
 (rule (action (progn (write-file void_for_linking-tezos-dal-alpha.empty ""))))

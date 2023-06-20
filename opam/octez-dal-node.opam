@@ -31,6 +31,7 @@ depends: [
   "tezos-p2p"
   "tezos-p2p-services"
   "tezos-crypto"
+  "octez-node-config"
   "irmin-pack" { >= "3.6.1" & < "3.7.0" }
   "irmin" { >= "3.6.1" & < "3.7.0" }
   "tezos-dal-016-PtMumbai"
