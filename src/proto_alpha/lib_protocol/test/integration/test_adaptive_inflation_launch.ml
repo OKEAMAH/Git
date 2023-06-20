@@ -126,6 +126,7 @@ let test_launch threshold expected_vote_duration () =
     let consensus_threshold = 0 in
     {default_constants with consensus_threshold; adaptive_inflation}
   in
+  let preserved_cycles = constants.preserved_cycles in
   let* block, delegate = Context.init_with_constants1 constants in
   let delegate_pkh = Context.Contract.pkh delegate in
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
@@ -247,7 +248,24 @@ let test_launch threshold expected_vote_duration () =
   let* balance = Context.Contract.balance (B block) wannabe_costaker in
   let*?@ balance_to_stake = Protocol.Alpha_context.Tez.(balance -? one) in
   let* operation = stake (B block) wannabe_costaker balance_to_stake in
-  let* (_block : Block.t) = Block.bake ~operation block in
+  let* total_frozen_stake_before_costake =
+    Context.get_total_frozen_stake (B block)
+  in
+  let* block = Block.bake ~operation block in
+  let*?@ expected_total_frozen_stake =
+    Protocol.Alpha_context.Tez.(
+      total_frozen_stake_before_costake +? balance_to_stake)
+  in
+  let* block = Block.bake_until_n_cycle_end (preserved_cycles + 1) block in
+  let* total_frozen_stake_after_costake =
+    Context.get_total_frozen_stake (B block)
+  in
+  let* () =
+    Assert.equal_tez
+      ~loc:__LOC__
+      total_frozen_stake_after_costake
+      expected_total_frozen_stake
+  in
   return_unit
 
 let tests =
