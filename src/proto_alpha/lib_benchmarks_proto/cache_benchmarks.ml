@@ -29,8 +29,6 @@ open Benchmarks_proto
 
 let ns = Namespace.make Registration_helpers.ns "cache"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 (** {2 [Alpha_context.Cache]-related benchmarks} *)
 
 let assert_ok_lwt x =
@@ -149,13 +147,13 @@ module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
       a constant-time operation (two keys will differ after the first few characters).
       We therefore do not take into account the length of the key in the model. *)
   let model =
-    let affine_logn name =
+    let affine_logn =
       let open Tezos_benchmark.Model in
       let open Utils in
       let intercept = mk_intercept_opt None in
       let coeff = mk_coeff_opt None in
       let module M = struct
-        let name = name
+        let name = Namespace.of_string "affine_logn_model"
 
         type arg_type = int * unit
 
@@ -175,7 +173,7 @@ module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
     in
     (* Looking at the plots, it looks like this benchmark underestimates the constant term.
        In the interpreter, this would warrant a dedicated benchmark for the intercept. *)
-    Benchmarks_proto.Model.make
+    Model.make
       ~conv:(function {cache_cardinal} -> (cache_cardinal, ()))
       ~model:affine_logn
 

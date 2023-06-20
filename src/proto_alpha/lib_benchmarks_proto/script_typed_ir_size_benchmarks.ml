@@ -54,14 +54,11 @@ module Size_benchmarks_shared_config = struct
 
   let tags = [Tags.translator]
 
-  let size_based_model ~name =
-    let basename = Namespace.basename name in
-    let intercept_variable = fv (Format.asprintf "%s_const" basename) in
-    let coeff_variable = fv (Format.asprintf "%s_size_coeff" basename) in
+  let size_based_model () =
+    let coeff_variable = "size" in
     Model.make
-      ~name
       ~conv:(function {size} -> (size, ()))
-      ~model:(Model.affine ~intercept:intercept_variable ~coeff:coeff_variable)
+      ~model:(Model.affine ~coeff:coeff_variable ())
 end
 
 module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
@@ -70,7 +67,7 @@ module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
   let name = ns "VALUE_SIZE"
 
   let models =
-    let model = size_based_model ~name in
+    let model = size_based_model () in
     [(model_name, model)]
 
   let info = "Benchmarking Script_typed_ir_size.value_size"
@@ -158,7 +155,7 @@ module Type_size_benchmark : Benchmark.S = struct
 
   let group = Benchmark.Group model_name
 
-  let model = size_based_model
+  let model = size_based_model ()
 
   let type_size_benchmark (Script_typed_ir.Ex_ty ty) =
     let open Script_typed_ir_size.Internal_for_tests in
@@ -189,7 +186,7 @@ module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
 
   let name = ns "KINSTR_SIZE"
 
-  let models = [(model_name, size_based_model ~name)]
+  let models = [(model_name, size_based_model ())]
 
   let info = "Benchmarking Script_typed_ir_size.kinstr_size"
 
@@ -285,15 +282,7 @@ module Node_size_benchmark : Benchmark.S = struct
   let model =
     Model.make
       ~conv:(function {micheline_nodes} -> (micheline_nodes, ()))
-      ~model:
-        (Model.affine
-           ~intercept:
-             (fv (Format.asprintf "%s_const" (Namespace.basename name)))
-           ~coeff:
-             (fv
-                (Format.asprintf
-                   "%s_ns_per_node_coeff"
-                   (Namespace.basename name))))
+      ~model:(Model.affine ~coeff:"ns_per_node" ())
 
   let micheline_nodes_benchmark node =
     let open Cache_memory_helpers in

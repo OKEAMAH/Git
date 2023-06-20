@@ -39,8 +39,6 @@ module Size = Gas_input_size
 
 let ns = Translator_model.ns
 
-let fv = Translator_model.fv
-
 (** {2 [Script_ir_translator] benchmarks} *)
 
 module Config = struct
@@ -599,7 +597,7 @@ module Ty_eq : Benchmark.S = struct
   let model =
     Model.make
       ~conv:(function Ty_eq_workload {nodes; _} -> (nodes, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 
   let ty_eq_benchmark rng_state nodes (ty : Script_typed_ir.ex_ty) =
     Lwt_main.run
@@ -766,7 +764,7 @@ module Parse_type_benchmark : Benchmark.S = struct
   let model =
     Model.make
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 end
 
 let () = Registration.register (module Parse_type_benchmark)
@@ -811,7 +809,7 @@ module Unparse_type_benchmark : Benchmark.S = struct
   let model =
     Model.make
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 end
 
 let () = Registration.register (module Unparse_type_benchmark)

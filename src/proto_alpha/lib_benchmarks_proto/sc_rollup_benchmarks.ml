@@ -424,10 +424,9 @@ module Sc_rollup_verify_output_proof_benchmark = struct
     Sparse_vec.String.of_list [("proof_length", float_of_int proof_length)]
 
   let model =
-    let open Benchmarks_proto in
     Model.make
       ~conv:(fun {proof_length} -> (proof_length, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 
   let pvm_state = ref None
 
@@ -568,10 +567,9 @@ module Sc_rollup_deserialize_output_proof_benchmark = struct
     Sparse_vec.String.of_list [("proof_length", float_of_int proof_length)]
 
   let model =
-    let open Benchmarks_proto in
     Model.make
       ~conv:(fun {proof_length} -> (proof_length, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 
   let pvm_state = ref None
 
@@ -679,10 +677,9 @@ module Sc_rollup_install_boot_sector_benchmark = struct
       [("boot_sector_length", float_of_int boot_sector_length)]
 
   let model =
-    let open Benchmarks_proto in
     Model.make
       ~conv:(fun {boot_sector_length} -> (boot_sector_length, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 
   let create_benchmark ~rng_state _conf =
     let open Base_samplers in

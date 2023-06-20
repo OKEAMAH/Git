@@ -56,7 +56,7 @@ module Benchmark = struct
 
     val workload_to_vector : workload -> Sparse_vec.String.t
 
-    val model : name:Namespace.t -> workload Model.t
+    val model : workload Model.t
 
     val purpose : Benchmark_base.purpose
 
@@ -89,7 +89,7 @@ module Registration = struct
             | Generic -> "*"
             | Group g -> g
             | Standalone -> Namespace.(cons Bench.name "model" |> to_string)),
-            Bench.model ~name );
+            Bench.model );
         ]
 
       let create_benchmarks ~rng_state ~bench_num config =
@@ -97,35 +97,4 @@ module Registration = struct
             Bench.create_benchmark ~rng_state config)
     end in
     Registration_helpers.register (module B : Benchmark_base.S)
-end
-
-module Model = struct
-  include Model
-  open Model.Utils
-
-  type 'workload t = 'workload Model.t
-
-  let make ~name ~conv ~model = make ~conv ~model:(model name)
-
-  let unknown_const1 ?const name =
-    let const = Option.value ~default:(fv "") const in
-    unknown_const1 ~name ~const
-
-  let affine ?intercept ?coeff name =
-    let intercept = Option.value ~default:(fv "") intercept in
-    let coeff = Option.value ~default:(fv "") coeff in
-    affine ~name ~intercept ~coeff
-
-  let logn ?coeff name =
-    let coeff = Option.value ~default:(fv "") coeff in
-    logn ~name ~coeff
-
-  let nlogn ?intercept ?coeff name =
-    let coeff = Option.value ~default:(fv "") coeff in
-    let intercept = Option.value ~default:(fv "") intercept in
-    nlogn ~name ~intercept ~coeff
-
-  let linear ?coeff name =
-    let coeff = Option.value ~default:(fv "") coeff in
-    linear ~name ~coeff
 end

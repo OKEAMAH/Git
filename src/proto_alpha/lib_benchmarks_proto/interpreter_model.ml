@@ -161,97 +161,59 @@ let name_of_instr_or_cont instr_or_cont =
 module Models = struct
   open Model.Utils
 
-  let const1_model name =
+  let const1_model () =
     (* For constant-time instructions *)
-    Model.unknown_const1 ~name:(ns name) ~const:(fv "")
+    Model.unknown_const1 ()
 
-  let affine_model name =
+  let affine_model =
     (* For instructions with cost function
        [\lambda size. const + coeff * size] *)
-    Model.affine ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
+    Model.affine
 
-  let affine_offset_model name ~offset =
+  let affine_offset_model ~offset =
     (* For instructions with cost function
        [\lambda size. const + coeff * (size - offset)] *)
-    Model.affine_offset
-      ~name:(ns name)
-      ~intercept:(fv "")
-      ~coeff:(fv "")
-      ~offset
+    Model.affine_offset ~offset
 
-  let break_model name break =
-    Model.breakdown ~name:(ns name) ~coeff1:(fv "") ~coeff2:(fv "") ~break
+  let break_model break = Model.breakdown ~break
 
-  let break_model_2 name break1 break2 =
-    Model.breakdown2
-      ~name:(ns name)
-      ~coeff1:(fv "")
-      ~coeff2:(fv "")
-      ~coeff3:(fv "")
-      ~break1
-      ~break2
+  let break_model_2 break1 break2 = Model.breakdown2 ~break1 ~break2
 
-  let break_model_2_const name break1 break2 =
-    Model.breakdown2_const
-      ~name:(ns name)
-      ~coeff1:(fv "")
-      ~coeff2:(fv "")
-      ~coeff3:(fv "")
-      ~const:(fv "")
-      ~break1
-      ~break2
+  let break_model_2_const break1 break2 = Model.breakdown2_const ~break1 ~break2
 
-  let break_model_2_const_offset name break1 break2 ~offset =
-    Model.breakdown2_const_offset
-      ~name:(ns name)
-      ~coeff1:(fv "")
-      ~coeff2:(fv "")
-      ~coeff3:(fv "")
-      ~const:(fv "")
-      ~break1
-      ~break2
-      ~offset
+  let break_model_2_const_offset break1 break2 ~offset =
+    Model.breakdown2_const_offset ~break1 ~break2 ~offset
 
-  let nlogm_model name =
+  let nlogm_model =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * size1 log2(size2)] *)
-    Model.nlogm ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
+    Model.nlogm
 
-  let concat_model name =
-    Model.bilinear_affine
-      ~name:(ns name)
-      ~intercept:(fv "")
-      ~coeff1:(fv "total_bytes")
-      ~coeff2:(fv "list_length")
+  let concat_model =
+    Model.bilinear_affine ~coeff1:"total_bytes" ~coeff2:"list_length"
 
-  let concat_pair_model name =
-    Model.linear_sum ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
+  let concat_pair_model = Model.linear_sum
 
-  let linear_max_model name =
+  let linear_max_model =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * max(size1,size2)] *)
-    Model.linear_max ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
+    Model.linear_max
 
-  let linear_min_model name =
+  let linear_min_model =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * min(size1,size2)] *)
-    Model.linear_min ~name:(ns name) ~intercept:(fv "") ~coeff:(fv "")
+    Model.linear_min
 
-  let linear_min_offset_model name ~offset =
+  let linear_min_offset_model ~offset =
     (* For instructions with cost function
        [\lambda size1. \lambda size2. const + coeff * (min(size1,size2) - offset)] *)
-    Model.linear_min_offset
-      ~name:(ns name)
-      ~intercept:(fv "")
-      ~coeff:(fv "")
-      ~offset
+    Model.linear_min_offset ~offset
 
-  let pack_model name =
+  let pack_model =
     Model.trilinear
-      ~name:(ns name)
-      ~coeff1:(fv "micheline_nodes")
-      ~coeff2:(fv "micheline_int_bytes")
-      ~coeff3:(fv "micheline_string_bytes")
+      ~coeff1:"micheline_nodes"
+      ~coeff2:"micheline_int_bytes"
+      ~coeff3:"micheline_string_bytes"
 
   let open_chest_model name =
     let module M = struct
@@ -259,9 +221,9 @@ module Models = struct
 
       let const = mk_const_opt None
 
-      let coeff1 = mk_coeff ~num:1 (fv "log_time")
+      let coeff1 = mk_coeff ~num:1 "log_time"
 
-      let coeff2 = mk_coeff ~num:2 (fv "plaintext")
+      let coeff2 = mk_coeff ~num:2 "plaintext"
 
       module Def (X : Costlang.S) = struct
         open X
@@ -282,12 +244,8 @@ module Models = struct
     end in
     (module M : Model.Model_impl with type arg_type = int * (int * unit))
 
-  let verify_update_model name =
-    Model.bilinear_affine
-      ~name:(ns name)
-      ~intercept:(fv "")
-      ~coeff1:(fv "inputs")
-      ~coeff2:(fv "outputs")
+  let verify_update_model =
+    Model.bilinear_affine ~coeff1:"inputs" ~coeff2:"outputs"
 
   let list_enter_body_model name =
     let module M = struct
@@ -297,7 +255,7 @@ module Models = struct
 
       let coeff1 = mk_coeff_opt ~num:1 None
 
-      let coeff2 = mk_coeff ~num:2 (fv "iter")
+      let coeff2 = mk_coeff ~num:2 "iter"
 
       module Def (X : Costlang.S) = struct
         open X
@@ -359,9 +317,9 @@ module Models = struct
 
       let const = mk_const_opt None
 
-      let coeff1 = mk_coeff ~num:1 (fv "compare_coeff")
+      let coeff1 = mk_coeff ~num:1 "compare_coeff"
 
-      let coeff2 = mk_coeff ~num:2 (fv "add")
+      let coeff2 = mk_coeff ~num:2 "add"
 
       module Def (X : Costlang.S) = struct
         open X
@@ -389,8 +347,8 @@ module Models = struct
      but size1=0 and size2=1 *)
   let lsl_bytes_model name =
     let intercept = mk_const_opt None in
-    let coeff1 = mk_coeff ~num:1 (fv "bytes") in
-    let coeff2 = mk_coeff ~num:2 (fv "shift") in
+    let coeff1 = mk_coeff ~num:1 "bytes" in
+    let coeff2 = mk_coeff ~num:2 "shift" in
     let module M = struct
       type arg_type = int * (int * unit)
 
@@ -470,111 +428,111 @@ let ir_model instr_or_cont =
       | N_ISelf_address | N_INever | N_IUnpair | N_IVoting_power
       | N_ITotal_voting_power | N_IList_size | N_ISet_size | N_IMap_size
       | N_ISapling_empty_state ->
-          const1_model name |> m
+          const1_model () |> m
       | N_ISet_mem | N_ISet_update | N_IMap_mem | N_IMap_get | N_IMap_update
       | N_IBig_map_mem | N_IBig_map_get | N_IBig_map_update
       | N_IMap_get_and_update | N_IBig_map_get_and_update ->
-          nlogm_model name |> m
-      | N_IConcat_string -> concat_model name |> m
-      | N_IConcat_string_pair -> concat_pair_model name |> m
-      | N_ISlice_string -> affine_model name |> m
-      | N_IString_size -> const1_model name |> m
-      | N_IConcat_bytes -> concat_model name |> m
-      | N_IConcat_bytes_pair -> concat_pair_model name |> m
-      | N_ISlice_bytes -> affine_model name |> m
-      | N_IBytes_size -> const1_model name |> m
-      | N_IOr_bytes -> linear_max_model name |> m
-      | N_IAnd_bytes -> linear_min_model name |> m
-      | N_IXor_bytes -> linear_max_model name |> m
-      | N_INot_bytes -> affine_model name |> m
+          nlogm_model () |> m
+      | N_IConcat_string -> concat_model () |> m
+      | N_IConcat_string_pair -> concat_pair_model () |> m
+      | N_ISlice_string -> affine_model () |> m
+      | N_IString_size -> const1_model () |> m
+      | N_IConcat_bytes -> concat_model () |> m
+      | N_IConcat_bytes_pair -> concat_pair_model () |> m
+      | N_ISlice_bytes -> affine_model () |> m
+      | N_IBytes_size -> const1_model () |> m
+      | N_IOr_bytes -> linear_max_model () |> m
+      | N_IAnd_bytes -> linear_min_model () |> m
+      | N_IXor_bytes -> linear_max_model () |> m
+      | N_INot_bytes -> affine_model () |> m
       | N_ILsl_bytes -> lsl_bytes_model name |> m
       | N_ILsr_bytes -> lsr_bytes_model name |> m
-      | N_IBytes_nat -> affine_model name |> m
-      | N_INat_bytes -> affine_model name |> m
-      | N_IBytes_int -> affine_model name |> m
-      | N_IInt_bytes -> affine_model name |> m
+      | N_IBytes_nat -> affine_model () |> m
+      | N_INat_bytes -> affine_model () |> m
+      | N_IBytes_int -> affine_model () |> m
+      | N_IInt_bytes -> affine_model () |> m
       | N_IAdd_seconds_to_timestamp | N_IAdd_timestamp_to_seconds
       | N_ISub_timestamp_seconds | N_IDiff_timestamps ->
-          linear_max_model name |> m
+          linear_max_model () |> m
       | N_IAdd_tez | N_ISub_tez | N_ISub_tez_legacy | N_IEdiv_tez
       | N_IMul_teznat | N_IMul_nattez | N_IEdiv_teznat ->
-          const1_model name |> m
-      | N_IIs_nat -> const1_model name |> m
-      | N_INeg -> affine_model name |> m
-      | N_IAbs_int -> affine_model name |> m
-      | N_IInt_nat -> const1_model name |> m
-      | N_IAdd_int -> linear_max_model name |> m
-      | N_IAdd_nat -> linear_max_model name |> m
-      | N_ISub_int -> linear_max_model name |> m
+          const1_model () |> m
+      | N_IIs_nat -> const1_model () |> m
+      | N_INeg -> affine_model () |> m
+      | N_IAbs_int -> affine_model () |> m
+      | N_IInt_nat -> const1_model () |> m
+      | N_IAdd_int -> linear_max_model () |> m
+      | N_IAdd_nat -> linear_max_model () |> m
+      | N_ISub_int -> linear_max_model () |> m
       | N_IMul_int -> addlogadd name |> m
       | N_IMul_nat -> addlogadd name |> m
       | N_IEdiv_int -> division_cost name |> m
       | N_IEdiv_nat -> division_cost name |> m
-      | N_ILsl_nat -> affine_model name |> m
-      | N_ILsr_nat -> affine_model name |> m
-      | N_IOr_nat -> linear_max_model name |> m
-      | N_IAnd_nat -> linear_min_model name |> m
-      | N_IAnd_int_nat -> linear_min_model name |> m
-      | N_IXor_nat -> linear_max_model name |> m
-      | N_INot_int -> affine_model name |> m
-      | N_ICompare -> linear_min_offset_model name ~offset:1 |> m
-      | N_IEq | N_INeq | N_ILt | N_IGt | N_ILe | N_IGe -> const1_model name |> m
-      | N_IPack -> pack_model name |> m
+      | N_ILsl_nat -> affine_model () |> m
+      | N_ILsr_nat -> affine_model () |> m
+      | N_IOr_nat -> linear_max_model () |> m
+      | N_IAnd_nat -> linear_min_model () |> m
+      | N_IAnd_int_nat -> linear_min_model () |> m
+      | N_IXor_nat -> linear_max_model () |> m
+      | N_INot_int -> affine_model () |> m
+      | N_ICompare -> linear_min_offset_model () ~offset:1 |> m
+      | N_IEq | N_INeq | N_ILt | N_IGt | N_ILe | N_IGe -> const1_model () |> m
+      | N_IPack -> pack_model () |> m
       | N_IBlake2b | N_ISha256 | N_ISha512 | N_IKeccak | N_ISha3 ->
-          affine_model name |> m
+          affine_model () |> m
       | N_ICheck_signature_ed25519 | N_ICheck_signature_secp256k1
       | N_ICheck_signature_p256 | N_ICheck_signature_bls ->
-          affine_model name |> m
+          affine_model () |> m
       | N_IContract | N_ITransfer_tokens | N_IImplicit_account ->
-          const1_model name |> m
+          const1_model () |> m
       (* The following two instructions are expected to have an affine model. However,
          we observe 3 affine parts, on [0;300], [300;400] and [400;\inf[. *)
-      | N_IDupN -> break_model_2_const_offset name 300 400 ~offset:1 |> m
-      | N_IDropN -> break_model_2_const name 300 400 |> m
-      | N_IDig | N_IDug | N_IDipN -> affine_model name |> m
+      | N_IDupN -> break_model_2_const_offset 300 400 ~offset:1 () |> m
+      | N_IDropN -> break_model_2_const 300 400 () |> m
+      | N_IDig | N_IDug | N_IDipN -> affine_model () |> m
       | N_IAdd_bls12_381_g1 | N_IAdd_bls12_381_g2 | N_IAdd_bls12_381_fr
       | N_IMul_bls12_381_g1 | N_IMul_bls12_381_g2 | N_IMul_bls12_381_fr
       | N_INeg_bls12_381_g1 | N_INeg_bls12_381_g2 | N_INeg_bls12_381_fr
       | N_IInt_bls12_381_z_fr ->
-          const1_model name |> m
+          const1_model () |> m
       | N_IMul_bls12_381_fr_z | N_IMul_bls12_381_z_fr
       | N_IPairing_check_bls12_381 ->
-          affine_model name |> m
-      | N_IComb | N_IUncomb -> affine_offset_model name ~offset:2 |> m
-      | N_IComb_get | N_IComb_set -> affine_model name |> m
-      | N_ITicket | N_IRead_ticket -> const1_model name |> m
-      | N_ISplit_ticket -> linear_max_model name |> m
+          affine_model () |> m
+      | N_IComb | N_IUncomb -> affine_offset_model () ~offset:2 |> m
+      | N_IComb_get | N_IComb_set -> affine_model () |> m
+      | N_ITicket | N_IRead_ticket -> const1_model () |> m
+      | N_ISplit_ticket -> linear_max_model () |> m
       | N_IJoin_tickets -> join_tickets_model name |> m
-      | N_ISapling_verify_update -> verify_update_model name |> m
-      | N_IList_map -> const1_model name |> m
-      | N_IList_iter -> const1_model name |> m
-      | N_IIter -> const1_model name |> m
-      | N_IMap_map -> affine_model name |> m
-      | N_IMap_iter -> affine_model name |> m
-      | N_ISet_iter -> affine_model name |> m
-      | N_IHalt -> const1_model name |> m
+      | N_ISapling_verify_update -> verify_update_model () |> m
+      | N_IList_map -> const1_model () |> m
+      | N_IList_iter -> const1_model () |> m
+      | N_IIter -> const1_model () |> m
+      | N_IMap_map -> affine_model () |> m
+      | N_IMap_iter -> affine_model () |> m
+      | N_ISet_iter -> affine_model () |> m
+      | N_IHalt -> const1_model () |> m
       | N_IApply -> lambda_model name |> m
       | N_ILambda -> lambda_model name |> m
-      | N_ILog -> const1_model name |> m
+      | N_ILog -> const1_model () |> m
       | N_IOpen_chest -> open_chest_model name |> m
-      | N_IEmit -> const1_model name |> m
+      | N_IEmit -> const1_model () |> m
       | N_IOpt_map -> option_branch_model name |> m)
   | Cont_name cont -> (
       match cont with
-      | N_KNil -> const1_model name |> m
-      | N_KCons -> const1_model name |> m
-      | N_KReturn -> const1_model name |> m
-      | N_KView_exit -> const1_model name |> m
-      | N_KMap_head -> const1_model name |> m
-      | N_KUndip -> const1_model name |> m
-      | N_KLoop_in -> const1_model name |> m
-      | N_KLoop_in_left -> const1_model name |> m
+      | N_KNil -> const1_model () |> m
+      | N_KCons -> const1_model () |> m
+      | N_KReturn -> const1_model () |> m
+      | N_KView_exit -> const1_model () |> m
+      | N_KMap_head -> const1_model () |> m
+      | N_KUndip -> const1_model () |> m
+      | N_KLoop_in -> const1_model () |> m
+      | N_KLoop_in_left -> const1_model () |> m
       | N_KIter -> empty_branch_model name |> m
       | N_KList_enter_body -> list_enter_body_model name |> m
-      | N_KList_exit_body -> const1_model name |> m
+      | N_KList_exit_body -> const1_model () |> m
       | N_KMap_enter_body -> empty_branch_model name |> m
-      | N_KMap_exit_body -> nlogm_model name |> m
-      | N_KLog -> const1_model name |> m)
+      | N_KMap_exit_body -> nlogm_model () |> m
+      | N_KLog -> const1_model () |> m)
 
 let gas_unit_per_allocation_word = 4
 
@@ -596,15 +554,20 @@ let pack_ir_model = function
            ~y_label:"alloc"
            ~y_model:alloc)
 
-let amplification_loop_iteration = fv "amplification_loop_iteration"
+let amplification_loop_iteration = "amplification_loop_iteration"
 
 let amplification_loop_model =
-  Model.make
-    ~conv:(fun iterations -> (iterations, ()))
-    ~model:
-      (Model.linear
-         ~name:(ns "amplification_loop_model")
-         ~coeff:amplification_loop_iteration)
+  let module Mod = (val Model.linear ~coeff:amplification_loop_iteration ()) in
+  let module M = struct
+    include Mod
+
+    let name = ns "amplification_loop_model"
+
+    module Rename = (val Costlang.rename_free_vars ~name)
+
+    module Def (X : Costlang.S) = Def (Rename (X))
+  end in
+  Model.make ~conv:(fun iterations -> (iterations, ())) ~model:(module M)
 
 let conv (type a) (module M : Model.Model_impl with type arg_type = a)
     bench_name =
@@ -612,19 +575,6 @@ let conv (type a) (module M : Model.Model_impl with type arg_type = a)
     include M
 
     let name = Model.adjust_name bench_name M.name
-
-    (* let () =
-       match Namespace.basename bench_name with
-       | "N_IAdd_nat" ->
-           Format.printf
-             "%a: %a: %a\n"
-             Namespace.pp
-             bench_name
-             Namespace.pp
-             M.name
-             Namespace.pp
-             name
-       | _ -> () *)
 
     module Renamed = (val Costlang.rename_free_vars ~name)
 

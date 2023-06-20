@@ -27,14 +27,12 @@ open Benchmarks_shell
 
 let ns = Namespace.make Shell_namespace.ns "misc"
 
-let fv s = Free_variable.of_namespace (ns s)
+let lwt_variable = "lwt_main_run"
 
-let lwt_variable = fv "lwt_main_run"
-
-let lwt_model ~name =
+let lwt_model =
   Model.make
     ~conv:(fun () -> ())
-    ~model:(Model.unknown_const1 ~name ~const:lwt_variable)
+    ~model:(Model.unknown_const1 ~const:lwt_variable ())
 
 module Lwt_main_run_bench : Benchmark.S = struct
   type config = unit

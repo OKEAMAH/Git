@@ -140,23 +140,23 @@ val adjust_name : Namespace.t -> Namespace.t -> Namespace.t
 module Utils : sig
   val fv : string -> Free_variable.t
 
-  val mk_const : ?num:int -> Free_variable.t -> Free_variable.t
+  val mk_const : ?num:int -> string -> Free_variable.t
 
   val mk_const_opt : ?num:int -> string option -> Free_variable.t
 
-  val mk_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+  val mk_coeff : ?num:int -> string -> Free_variable.t
 
   val mk_coeff_opt : ?num:int -> string option -> Free_variable.t
 
-  val mk_log_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+  val mk_log_coeff : ?num:int -> string -> Free_variable.t
 
   val mk_log_coeff_opt : ?num:int -> string option -> Free_variable.t
 
-  val mk_linear_coeff : ?num:int -> Free_variable.t -> Free_variable.t
+  val mk_linear_coeff : ?num:int -> string -> Free_variable.t
 
   val mk_linear_coeff_opt : ?num:int -> string option -> Free_variable.t
 
-  val mk_intercept : ?num:int -> Free_variable.t -> Free_variable.t
+  val mk_intercept : ?num:int -> string -> Free_variable.t
 
   val mk_intercept_opt : ?num:int -> string option -> Free_variable.t
 end
@@ -177,163 +177,126 @@ val zero : unit model
 (** Model for code that executes in constant time
     [fun () -> const]
 *)
-val unknown_const1 : name:Namespace.t -> const:Free_variable.t -> unit model
+val unknown_const1 : ?const:string -> unit -> unit model
 
 (** [fun n -> coeff × n] *)
-val linear : name:Namespace.t -> coeff:Free_variable.t -> (int * unit) model
+val linear : ?coeff:string -> unit -> (int * unit) model
 
 (** [fun n -> intercept + coeff × n] *)
-val affine :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * unit) model
+val affine : ?intercept:string -> ?coeff:string -> unit -> (int * unit) model
 
 (** [fun n -> intercept + coeff × (n - offset)] *)
 val affine_offset :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  offset:int ->
-  (int * unit) model
+  ?intercept:string -> ?coeff:string -> offset:int -> unit -> (int * unit) model
 
 (** [fun n -> coeff * n²] *)
-val quadratic : name:Namespace.t -> coeff:Free_variable.t -> (int * unit) model
+val quadratic : ?coeff:string -> unit -> (int * unit) model
 
 (** [fun n -> intercept + coeff × n×log(n)] *)
-val nlogn :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * unit) model
+val nlogn : ?intercept:string -> ?coeff:string -> unit -> (int * unit) model
 
 (** [fun n -> intercept + coeff × n×sqrt(n)] *)
 val nsqrtn_const :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * unit) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * unit) model
 
 (** [fun n -> coeff * log(n)] *)
-val logn : name:Namespace.t -> coeff:Free_variable.t -> (int * unit) model
+val logn : ?coeff:string -> unit -> (int * unit) model
 
 (** [fun a b -> intercept + coeff × (a+b)] *)
 val linear_sum :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * (int * unit)) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * (int * unit)) model
 
 (** [fun a b -> intercept + coeff × max(a,b)] *)
 val linear_max :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * (int * unit)) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * (int * unit)) model
 
 (** fun a b -> intercept + coeff × min(a,b) *)
 val linear_min :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * (int * unit)) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * (int * unit)) model
 
 (** fun a b -> intercept + coeff × (min(a,b) - offset) *)
 val linear_min_offset :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
+  ?intercept:string ->
+  ?coeff:string ->
   offset:int ->
+  unit ->
   (int * (int * unit)) model
 
 (** [fun a b -> intercept + coeff × (a×b)] *)
 val linear_mul :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * (int * unit)) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * (int * unit)) model
 
-(** [fun a b -> coeff1 × a + coeff2 × b] *)
+(** [fun a b -> coeff1 × a + ?coeff2 × b] *)
 val bilinear :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  (int * (int * unit)) model
+  ?coeff1:string -> ?coeff2:string -> unit -> (int * (int * unit)) model
 
 (** [fun a b -> intercept + coeff1 × a + coeff2 × b] *)
 val bilinear_affine :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
+  ?intercept:string ->
+  ?coeff1:string ->
+  ?coeff2:string ->
+  unit ->
   (int * (int * unit)) model
 
 (** [fun n m -> intercept + coeff × n×log(m)] *)
 val nlogm :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  coeff:Free_variable.t ->
-  (int * (int * unit)) model
+  ?intercept:string -> ?coeff:string -> unit -> (int * (int * unit)) model
 
 (** [fun n m -> intercept + (linear_coeff × n) + (log_coeff × log(m))] *)
 val n_plus_logm :
-  name:Namespace.t ->
-  intercept:Free_variable.t ->
-  linear_coeff:Free_variable.t ->
-  log_coeff:Free_variable.t ->
+  ?intercept:string ->
+  ?linear_coeff:string ->
+  ?log_coeff:string ->
+  unit ->
   (int * (int * unit)) model
 
 (** [fun a b c -> coeff1 × a + coeff2 × b + coeff3 × c] *)
 val trilinear :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  coeff3:Free_variable.t ->
+  ?coeff1:string ->
+  ?coeff2:string ->
+  ?coeff3:string ->
+  unit ->
   (int * (int * (int * unit))) model
 
 (** A multi-affine model in two parts. The breakpoint [break] indicates the
     point at which the slope changes coefficient.
 *)
 val breakdown :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  break:int ->
-  (int * unit) model
+  ?coeff1:string -> ?coeff2:string -> break:int -> unit -> (int * unit) model
 
 (** A multi-affine model in three parts, with breakpoints [break1] and [break2].
     Expects [break1] <= [break2]
  *)
 val breakdown2 :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  coeff3:Free_variable.t ->
+  ?coeff1:string ->
+  ?coeff2:string ->
+  ?coeff3:string ->
   break1:int ->
   break2:int ->
+  unit ->
   (int * unit) model
 
 (** [breakdown2] with a non-zero value at 0 *)
 val breakdown2_const :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  coeff3:Free_variable.t ->
-  const:Free_variable.t ->
+  ?coeff1:string ->
+  ?coeff2:string ->
+  ?coeff3:string ->
+  ?const:string ->
   break1:int ->
   break2:int ->
+  unit ->
   (int * unit) model
 
 (** [breakdown2] with a non-zero value at 0 and offset *)
 val breakdown2_const_offset :
-  name:Namespace.t ->
-  coeff1:Free_variable.t ->
-  coeff2:Free_variable.t ->
-  coeff3:Free_variable.t ->
-  const:Free_variable.t ->
+  ?coeff1:string ->
+  ?coeff2:string ->
+  ?coeff3:string ->
+  ?const:string ->
   break1:int ->
   break2:int ->
   offset:int ->
+  unit ->
   (int * unit) model
 
 (* -------------------------------------------------------------------------- *)

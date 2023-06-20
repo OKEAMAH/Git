@@ -28,8 +28,6 @@ open Tezos_micheline
 
 let ns = Namespace.make Shell_namespace.ns "micheline"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 (* An ad-hoc sampler for Micheline values. Boltzmann sampling would do well
    here. *)
 
@@ -160,11 +158,11 @@ module Micheline_strip_locations : Benchmark.S = struct
     Sparse_vec.String.of_list
       [("nodes", float_of_int nodes); ("bytes", float_of_int bytes)]
 
-  let model ~name =
+  let model =
     Model.(
       make
         ~conv:(fun {nodes; bytes = _} -> (nodes, ()))
-        ~model:(linear ~name ~coeff:(fv "nodes")))
+        ~model:(linear ~coeff:"nodes" ()))
 
   let group = Benchmark.Standalone
 

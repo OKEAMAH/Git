@@ -29,8 +29,6 @@ open Benchmarks_proto
 
 let ns = Namespace.make Registration.ns "script_repr"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 (** {2 [Script_repr] benchmarks} *)
 
 module Script_repr_shared_config = struct
@@ -91,15 +89,7 @@ module Micheline_nodes_benchmark : Benchmark.S = struct
   let model =
     Model.make
       ~conv:(function {micheline_nodes} -> (micheline_nodes, ()))
-      ~model:
-        (Model.affine
-           ~intercept:
-             (fv (Format.asprintf "%s_const" (Namespace.basename name)))
-           ~coeff:
-             (fv
-                (Format.asprintf
-                   "%s_ns_per_node_coeff"
-                   (Namespace.basename name))))
+      ~model:(Model.affine ~coeff:"ns_per_node" ())
 
   let micheline_nodes_benchmark node =
     let nodes = Script_repr.micheline_nodes node in
@@ -131,7 +121,7 @@ module Script_repr_strip_annotations : Benchmark.S = struct
     Model.(
       make
         ~conv:(fun {micheline_nodes} -> (micheline_nodes, ()))
-        ~model:(linear ~coeff:(fv "nodes")))
+        ~model:(linear ~coeff:"nodes" ()))
 
   let create_benchmark ~rng_state () =
     let node = Sampler.sample rng_state in

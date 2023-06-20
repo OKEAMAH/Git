@@ -72,7 +72,7 @@ module Benchmark : sig
     val workload_to_vector : workload -> Sparse_vec.String.t
 
     (** Cost model *)
-    val model : name:Namespace.t -> workload Model.t
+    val model : workload Model.t
 
     (** Creates a  benchmark, ready to be run.
             The benchmarks are thunked to prevent evaluating the workload until

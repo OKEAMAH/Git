@@ -27,13 +27,11 @@
 
 let ns = Namespace.make Namespace.root "builtin"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 (* The timer variable is hidden in the interface, so that it is not used directly.
    This is to ensure that it is not used twice, since it is already added at the registration *)
-let timer_variable = fv "Timer_latency"
+let timer_variable = "Timer_latency"
 
 let timer_model =
   Model.make
     ~conv:(fun () -> ())
-    ~model:(Model.unknown_const1 ~name:(ns "timer_model") ~const:timer_variable)
+    ~model:(Model.unknown_const1 ~const:timer_variable ())

@@ -108,27 +108,24 @@ module Micheline_common = struct
 
   let tags = [Tags.encoding]
 
-  let model_size name =
+  let model_size () =
     Model.make
       ~conv:(fun {size = {Size.traversal; int_bytes; string_bytes}; _} ->
         (traversal, (int_bytes, (string_bytes, ()))))
       ~model:
         (Model.trilinear
-           ~name:(ns name)
-           ~coeff1:(fv "micheline_traversal")
-           ~coeff2:(fv "micheline_int_bytes")
-           ~coeff3:(fv "micheline_string_bytes"))
+           ~coeff1:"micheline_traversal"
+           ~coeff2:"micheline_int_bytes"
+           ~coeff3:"micheline_string_bytes"
+           ())
 
-  let model_bytes name =
+  let model_bytes () =
     Model.make
       ~conv:(fun {bytes; _} -> (bytes, ()))
-      ~model:
-        (Model.linear
-           ~name:(ns (name ^ "_bytes"))
-           ~coeff:(fv (Format.asprintf "%s_micheline_bytes" name)))
+      ~model:(Model.linear ~coeff:"micheline_bytes" ())
 
-  let models name =
-    [("micheline", model_size name); ("micheline_bytes", model_bytes name)]
+  let models () =
+    [("micheline", model_size ()); ("micheline_bytes", model_bytes ())]
 end
 
 module Encoding_micheline : Benchmark.S = struct
@@ -198,7 +195,7 @@ module Encoding_micheline : Benchmark.S = struct
           terms
     | None -> List.repeat bench_num (make_bench rng_state config)
 
-  let models = models (Namespace.basename name)
+  let models = models ()
 end
 
 let () = Registration_helpers.register (module Encoding_micheline)
@@ -274,7 +271,7 @@ module Decoding_micheline : Benchmark.S = struct
           terms
     | None -> List.repeat bench_num (make_bench rng_state config)
 
-  let models = models (Namespace.basename name)
+  let models = models ()
 end
 
 let () = Registration_helpers.register (module Decoding_micheline)

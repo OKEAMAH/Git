@@ -33,15 +33,10 @@ open Tezos_benchmark
 
 let ns = Namespace.make Namespace.root "example"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 let name = ns "Blake2b_example"
 
 let model_blake2b =
-  Model.affine
-    ~name
-    ~intercept:(fv "blake2b_const")
-    ~coeff:(fv "blake2b_ns_p_byte")
+  Model.affine ~intercept:"blake2b_const" ~coeff:"blake2b_ns_p_byte" ()
 
 module Blake2b_bench : Benchmark.S = struct
   let name = name

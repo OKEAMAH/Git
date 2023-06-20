@@ -29,8 +29,6 @@ open Benchmarks_proto
 
 let ns = Namespace.make Registration.ns "apply"
 
-let fv s = Free_variable.of_namespace (ns s)
-
 let initial_balance = 4_000_000_000_000L
 
 let make_context ~rng_state =
@@ -97,7 +95,7 @@ module Take_fees_benchmark = struct
   let model =
     Model.make
       ~conv:(fun {batch_length} -> (batch_length, ()))
-      ~model:Model.affine
+      ~model:(Model.affine ())
 
   let create_benchmark ~rng_state _conf =
     let open Annotated_manager_operation in

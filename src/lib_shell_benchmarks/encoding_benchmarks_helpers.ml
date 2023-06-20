@@ -25,8 +25,6 @@
 
 let ns = Namespace.make Shell_namespace.ns "encoding"
 
-open Model.Utils
-
 (* Helpers for encodings of fixed-size values (hence constant-time) *)
 module Shared_constant_time = struct
   type config = unit
@@ -75,11 +73,8 @@ struct
       unit ->
       Tezos_benchmark.Benchmark.t =
    fun ?(check = fun () -> ()) ~name ~generator ~make_bench () ->
-    let free_variable = fv "" in
     let model =
-      Model.make
-        ~conv:(fun () -> ())
-        ~model:(Model.unknown_const1 ~name:(ns name) ~const:free_variable)
+      Model.make ~conv:(fun () -> ()) ~model:(Model.unknown_const1 ())
     in
     let module Bench : Benchmark.S = struct
       let name = ns name
@@ -105,12 +100,10 @@ struct
 
   (* Generic function to cook benchmarks for linear-time encodings *)
   let linear_shared ?(check = fun () -> ()) ~name ~generator ~make_bench () =
-    let const = fv "" in
-    let coeff = fv "" in
     let model =
       Model.make
         ~conv:(fun {Shared_linear.bytes} -> (bytes, ()))
-        ~model:(Model.affine ~name:(ns name) ~intercept:const ~coeff)
+        ~model:(Model.affine ())
     in
     let module Bench : Benchmark.S = struct
       let name = ns name
@@ -137,12 +130,10 @@ struct
   (* Generic function to cook benchmarks for nlogn-time encodings *)
   let nsqrtn_shared_with_intercept ~name ~generator ~make_bench
       ~generator_intercept ~make_bench_intercept =
-    let const = fv "" in
-    let coeff = fv "" in
     let model =
       Model.make
         ~conv:(fun {Shared_linear.bytes} -> (bytes, ()))
-        ~model:(Model.nsqrtn_const ~name:(ns name) ~intercept:const ~coeff)
+        ~model:(Model.nsqrtn_const ())
     in
     let module Bench : Benchmark.S = struct
       let name = ns name

@@ -33,21 +33,19 @@ let purpose =
 
 let ns = Namespace.make Shell_namespace.ns "io"
 
-let fv s = Free_variable.of_namespace (ns s)
-
-let read_model =
+let read_model () =
   Model.bilinear_affine
-    ~name:(ns "read_model")
-    ~intercept:(fv "read_latency")
-    ~coeff1:(fv "depth")
-    ~coeff2:(fv "storage_bytes")
+    ~intercept:"read_latency"
+    ~coeff1:"depth"
+    ~coeff2:"storage_bytes"
+    ()
 
-let write_model =
+let write_model () =
   Model.bilinear_affine
-    ~name:(ns "write_model")
-    ~intercept:(fv "write_latency")
-    ~coeff1:(fv "keys_written")
-    ~coeff2:(fv "storage_bytes")
+    ~intercept:"write_latency"
+    ~coeff1:"keys_written"
+    ~coeff2:"storage_bytes"
+    ()
 
 module Helpers = struct
   (* Samples keys in an alphabet of [card] elements. *)
@@ -245,12 +243,12 @@ module Context_size_dependent_shared = struct
         in
         Sparse_vec.String.of_list keys
 
-  let read_access =
+  let read_access () =
     Model.make
       ~conv:(function
         | Random_context_random_access {depth; storage_bytes; _} ->
             (depth, (storage_bytes, ())))
-      ~model:read_model
+      ~model:(read_model ())
 
   let group = Benchmark.Group "io_read"
 end
@@ -338,7 +336,7 @@ module Context_size_dependent_read_bench : Benchmark.S = struct
     in
     Generator.With_context {workload; closure; with_context}
 
-  let model ~name:_ = read_access
+  let model = read_access ()
 end
 
 let () = Registration.register (module Context_size_dependent_read_bench)
@@ -364,7 +362,7 @@ module Context_size_dependent_write_bench : Benchmark.S = struct
   let write_storage context key bytes =
     Lwt_main.run (Tezos_protocol_environment.Context.add context key bytes)
 
-  let model ~name:_ = read_access
+  let model = read_access ()
 
   let create_benchmark ~rng_state cfg =
     let insertions =
@@ -602,14 +600,14 @@ module Irmin_pack_read_bench : Benchmark.S = struct
         in
         Sparse_vec.String.of_list keys
 
-  let read_access =
+  let read_access () =
     Model.make
       ~conv:(function
         | Irmin_pack_read {depth; storage_bytes; _} ->
             (depth, (storage_bytes, ())))
-      ~model:read_model
+      ~model:(read_model ())
 
-  let model ~name:_ = read_access
+  let model = read_access ()
 
   let group = Benchmark.Group "io_read"
 
@@ -782,14 +780,14 @@ module Irmin_pack_write_bench : Benchmark.S = struct
         in
         Sparse_vec.String.of_list keys
 
-  let write_access =
+  let write_access () =
     Model.make
       ~conv:(function
         | Irmin_pack_write {keys_written; storage_bytes; _} ->
             (keys_written, (storage_bytes, ())))
-      ~model:write_model
+      ~model:(write_model ())
 
-  let model ~name:_ = write_access
+  let model = write_access ()
 
   let group = Benchmark.Group "io_write"
 
@@ -937,7 +935,7 @@ module Read_random_key_bench : Benchmark_base.S = struct
     Model.make
       ~conv:(function
         | Read_random_key {depth; storage_bytes} -> (depth, (storage_bytes, ())))
-      ~model:read_model
+      ~model:(read_model ())
 
   let models = [("io_read", read_access)]
 
@@ -1088,7 +1086,7 @@ module Write_random_keys_bench : Benchmark_base.S = struct
       ~conv:(function
         | Write_random_keys {keys_written; storage_bytes; _} ->
             (keys_written, (storage_bytes, ())))
-      ~model:write_model
+      ~model:(write_model ())
 
   let models = [("io_write", write_access)]
 

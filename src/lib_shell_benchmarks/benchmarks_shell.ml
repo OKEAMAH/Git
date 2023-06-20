@@ -56,7 +56,7 @@ module Benchmark = struct
 
     val workload_to_vector : workload -> Sparse_vec.String.t
 
-    val model : name:Namespace.t -> workload Model.t
+    val model : workload Model.t
 
     val create_benchmark :
       rng_state:Random.State.t -> config -> workload Generator.benchmark
@@ -78,7 +78,7 @@ module Registration = struct
             | Generic -> "*"
             | Group g -> g
             | Standalone -> Namespace.(cons Bench.name "model" |> to_string)),
-            Bench.model ~name );
+            Bench.model );
         ]
 
       let create_benchmarks ~rng_state ~bench_num config =
