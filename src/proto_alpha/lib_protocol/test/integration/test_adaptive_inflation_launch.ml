@@ -365,7 +365,7 @@ let test_launch threshold expected_vote_duration () =
     Assert.equal_tez ~loc:__LOC__ balance balance_ter
   in
 
-  (* To test that adaptive inflation is active, we test that
+  (* To test that adaptive inflation is active, we will test that
      costaking, a feature only available after the activation, is
      allowed. But by default, delegates reject costakers, they must
      explicitely set a positive staking_over_baking_limit to allow
