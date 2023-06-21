@@ -98,6 +98,30 @@ let set_delegate_parameters ctxt delegate ~staking_over_baking_limit
     delegate
     Protocol.Alpha_context.Tez.zero
 
+(* Assert that the staking balance is close to the expected one.  Some
+   small variations come from rewards and fees so we allow up to 1%
+   of difference. *)
+let assert_total_frozen_stake ~loc block expected =
+  let open Lwt_result_wrap_syntax in
+  let open Protocol.Alpha_context.Tez in
+  let* actual = Context.get_total_frozen_stake (B block) in
+  let*?@ diff =
+    if actual > expected then actual -? expected else expected -? actual
+  in
+  let*?@ margin = expected /? 100L in
+  if diff > margin then
+    failwith
+      "@[@[[%s]@] - @[actual total_frozen_stake is %a, it differs from the \
+       expected value of %a by %a@]@]"
+      loc
+      pp
+      actual
+      pp
+      expected
+      pp
+      diff
+  else return_unit
+
 (* Test that:
    - the EMA of the adaptive inflation vote reaches the threshold after the
      expected duration,
@@ -270,14 +294,8 @@ let test_launch threshold expected_vote_duration () =
       total_frozen_stake_before_costake +? balance_to_stake)
   in
   let* block = Block.bake_until_n_cycle_end (preserved_cycles + 1) block in
-  let* total_frozen_stake_after_costake =
-    Context.get_total_frozen_stake (B block)
-  in
   let* () =
-    Assert.equal_tez
-      ~loc:__LOC__
-      total_frozen_stake_after_costake
-      expected_total_frozen_stake
+    assert_total_frozen_stake ~loc:__LOC__ block expected_total_frozen_stake
   in
   return_unit
 
