@@ -48,6 +48,10 @@ type reveal_proof =
   | Raw_data_proof of string
       (** The existence of reveal for a given hash when the
           [input_requested] is the [Needs_reveal Reveal_raw_data]. *)
+  | Partial_raw_data_proof of {
+      data : string;
+      proof : Sc_rollup_partial_reveal_hash.proof;
+    }
   | Metadata_proof
   | Dal_page_proof of {
       page_id : Dal_slot_repr.Page.t;

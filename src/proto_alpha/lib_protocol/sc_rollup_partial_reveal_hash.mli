@@ -45,10 +45,19 @@ val to_hex : u -> string
 
 val of_hex : string -> u option
 
+(** A Merkle tree proof. *)
+type proof
+
+val proof_encoding : proof Data_encoding.t
+
 module type M = sig
   include Merkle_list.T
 
   val make : index:int -> root:h -> u
+
+  val proof_of_path : path -> proof
+
+  val path_of_proof : proof -> path
 end
 
 (** A Merkle tree module for storing byte-indexed values. *)
@@ -77,3 +86,31 @@ val merkle_root :
     of the [index] of the Merkle leaf and Merkle tree [root]. *)
 val make :
   (module M with type elt = bytes and type h = 'h) -> index:int -> root:'h -> u
+
+(** [produce_proof (module MT) ~tree ~index] returns a Merkle proof for the
+    opening ([MT.root], [index]). *)
+val produce_proof :
+  (module M with type elt = bytes and type h = 'h and type t = 't) ->
+  tree:'t ->
+  index:int ->
+  proof tzresult
+
+(** [verify_proof merkle_tree ~proof ~index ~elt ~expected_root] returns true
+    if and only if the [proof] testifies that [elt] is the [index]-th leaf of
+    the merkle_tree whose root is [expected_root]. *)
+val verify_proof :
+  (module M with type elt = bytes and type h = 'h and type t = 't) ->
+  proof:proof ->
+  index:int ->
+  elt:bytes ->
+  expected_root:'h ->
+  bool tzresult
+
+(** Same as {!val:verify_proof}, except it is restricted to the set of Merkle trees
+  instantiated with a hashing scheme {!val:Sc_rollup_reveal_hash.t}. *)
+val verify_proof_reveal_hash :
+  proof:proof ->
+  index:int ->
+  elt:bytes ->
+  expected_root:Sc_rollup_reveal_hash.t ->
+  bool tzresult

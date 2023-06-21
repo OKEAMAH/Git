@@ -25,24 +25,36 @@
 
 type u = {index : int; root : Sc_rollup_reveal_hash.t}
 
+module Merkelized_bytes_Blake2B_raw =
+  Merkle_list.Make
+    (struct
+      include Bytes
+
+      let to_bytes b = b
+    end)
+    (Sc_rollup_reveal_hash.Blake2B)
+
+type proof = Merkle_Blake2B of Merkelized_bytes_Blake2B_raw.path
+
 module type M = sig
   include Merkle_list.T
 
   val make : index:int -> root:h -> u
+
+  val proof_of_path : path -> proof
+
+  val path_of_proof : proof -> path
 end
 
 module Merkelized_bytes_Blake2B :
   M with type elt = bytes and type h = Sc_rollup_reveal_hash.Blake2B.t = struct
-  include
-    Merkle_list.Make
-      (struct
-        include Bytes
-
-        let to_bytes b = b
-      end)
-      (Sc_rollup_reveal_hash.Blake2B)
+  include Merkelized_bytes_Blake2B_raw
 
   let make ~index ~root = {index; root = Sc_rollup_reveal_hash.Blake2B root}
+
+  let proof_of_path : path -> proof = fun p -> Merkle_Blake2B p
+
+  let path_of_proof = function Merkle_Blake2B p -> p
 end
 
 let to_mod :
@@ -66,6 +78,37 @@ let encoding : u Data_encoding.t =
 
 let pp ppf (hash : u) =
   Format.(fprintf ppf "(%d, %a)" hash.index Sc_rollup_reveal_hash.pp hash.root)
+
+let produce_proof (type t h)
+    (module M : M with type t = t and type elt = bytes and type h = h)
+    ~(tree : t) ~index : proof tzresult =
+  let open Result_syntax in
+  let* path = M.(compute_path tree index) in
+  return (M.proof_of_path path)
+
+let verify_proof (type t h)
+    (module M : M with type t = t and type elt = bytes and type h = h) ~proof
+    ~index ~elt ~expected_root : bool tzresult =
+  M.check_path (M.path_of_proof proof) index elt expected_root
+
+let verify_proof_reveal_hash ~proof ~index ~elt
+    ~(expected_root : Sc_rollup_reveal_hash.t) =
+  match expected_root with
+  | Blake2B root ->
+      let (module Blake) = to_mod Sc_rollup_reveal_hash.Blake2B in
+      verify_proof (module Blake) ~proof ~index ~elt ~expected_root:root
+
+let proof_encoding : proof Data_encoding.t =
+  let open Data_encoding in
+  union
+    [
+      case
+        ~title:"Merkle_Blake2B"
+        (Tag 0)
+        Merkelized_bytes_Blake2B_raw.path_encoding
+        (function Merkle_Blake2B p -> Some p)
+        (fun p -> Merkle_Blake2B p);
+    ]
 
 let to_hex hash =
   let (`Hex hash) =

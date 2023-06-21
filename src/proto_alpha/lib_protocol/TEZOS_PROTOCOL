@@ -15,11 +15,9 @@
         "Block_payload_hash",
         "Sc_rollup_reveal_hash",
         "Merkle_list",
-        "Sc_rollup_partial_reveal_hash",
         "Bitset",
         "Bounded_history_repr",
         "Context_binary_proof",
-
 
         "Michelson_v1_primitives",
         "Slot_repr",
@@ -39,6 +37,7 @@
         "Constants_parametric_repr",
         "Constants_parametric_previous_repr",
         "Constants_repr",
+        "Sc_rollup_partial_reveal_hash",
         "Fitness_repr",
         "Cycle_repr",
         "Level_repr",
