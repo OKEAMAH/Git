@@ -2,7 +2,6 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(* Copyright (c) 2020-2021 Nomadic Labs <contact@nomadic-labs.com>           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,9 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** A specialized Blake2B implementation for hashing contract identifiers. *)
+include
+  Blake2B.Make
+    (Base58)
+    (struct
+      let name = "Contract_hash"
 
-include S.HASH
+      let title = "A contract ID"
 
-(** [of_nonce nonce] is the contract address originated from [nonce]. *)
-val of_nonce : Origination_nonce.t -> t
+      let b58check_prefix = Base58.Prefix.contract_hash
+
+      let size = Some 20
+    end)
+
+let () = Base58.check_encoded_prefix b58check_encoding "KT1" 36

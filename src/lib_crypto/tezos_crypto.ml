@@ -43,6 +43,7 @@ module Hashed = struct
   module Smart_rollup_inbox_hash = Smart_rollup_inbox_hash
   module Smart_rollup_merkelized_payload_hashes_hash =
     Smart_rollup_merkelized_payload_hashes_hash
+  module Contract_hash = Contract_hash
 end
 
 module Signature = struct

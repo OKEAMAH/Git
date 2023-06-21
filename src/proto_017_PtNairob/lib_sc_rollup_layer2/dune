@@ -8,8 +8,8 @@
  (libraries
   tezos-base
   tezos-protocol-017-PtNairob
-  octez-injector
-  octez-smart-rollup)
+  octez-smart-rollup
+  octez-injector)
  (inline_tests (flags -verbose) (modes native))
  (preprocess (pps ppx_expect))
  (library_flags (:standard -linkall))
@@ -17,5 +17,5 @@
   (:standard)
   -open Tezos_base.TzPervasives
   -open Tezos_protocol_017_PtNairob
-  -open Octez_injector
-  -open Octez_smart_rollup))
+  -open Octez_smart_rollup
+  -open Octez_injector))

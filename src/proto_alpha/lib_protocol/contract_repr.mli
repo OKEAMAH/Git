@@ -23,6 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Hash : sig
+  include S.HASH
+
+  val of_nonce : Origination_nonce.t -> t
+end
+
+module Path_encoding : Path_encoding.S with type t := Hash.t
+
 (** This module defines identifiers for two basic types of contracts. It also
     specifies how to compute originated contract's hash from origination
     nonce. *)
@@ -38,9 +46,7 @@
     used to create it. The owner of the corresponding private key is the
     holder of the account. An originated contract's hash is derived from its
     origination nonce (see below). *)
-type t =
-  | Implicit of Signature.Public_key_hash.t
-  | Originated of Contract_hash.t
+type t = Implicit of Signature.Public_key_hash.t | Originated of Hash.t
 
 include Compare.S with type t := t
 
@@ -57,7 +63,9 @@ val originated_contract : Origination_nonce.t -> t
     must be the same or it will fail with an [assert]. [since] < [until] or the
     returned list is empty *)
 val originated_contracts :
-  since:Origination_nonce.t -> until:Origination_nonce.t -> Contract_hash.t list
+  since:Origination_nonce.t ->
+  until:Origination_nonce.t ->
+  Tezos_crypto.Hashed.Contract_hash.t list
 
 (** {2 Human readable notation} *)
 
@@ -83,7 +91,7 @@ val implicit_encoding : Signature.Public_key_hash.t Data_encoding.t
 
 (** [originated_encoding] is an encoding for contract hashes that is
     compatible with the [encoding] of contracts for originated accounts. *)
-val originated_encoding : Contract_hash.t Data_encoding.t
+val originated_encoding : Tezos_crypto.Hashed.Contract_hash.t Data_encoding.t
 
 (** [cases f g] exports the {!type-Data_encoding.case}s used to define
     {!encoding}.

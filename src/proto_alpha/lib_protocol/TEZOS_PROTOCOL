@@ -10,7 +10,6 @@
         "Nonce_hash",
         "Script_expr_hash",
         "Origination_nonce",
-        "Contract_hash",
         "Blinded_public_key_hash",
         "Block_payload_hash",
         "Sc_rollup_reveal_hash",

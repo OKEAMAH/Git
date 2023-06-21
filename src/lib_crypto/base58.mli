@@ -118,6 +118,8 @@ module Prefix : sig
   val bls12_381_secret_key : string
 
   val slot_header : string
+
+  val contract_hash : string
 end
 
 (** An extensible sum-type for decoded data: one case per known

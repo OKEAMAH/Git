@@ -13,8 +13,8 @@ depends: [
   "ppx_expect"
   "tezos-base"
   "tezos-protocol-alpha"
-  "octez-injector"
   "octez-smart-rollup"
+  "octez-injector"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

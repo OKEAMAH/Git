@@ -23,9 +23,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t =
-  | Implicit of Signature.Public_key_hash.t
-  | Originated of Contract_hash.t
+module Hash = struct
+  include Tezos_crypto.Hashed.Contract_hash
+
+  let of_nonce nonce =
+    let data =
+      Data_encoding.Binary.to_bytes_exn Origination_nonce.encoding nonce
+    in
+    hash_bytes [data]
+end
+
+module Path_encoding = Path_encoding.Make_hex (Tezos_crypto.Hashed.Contract_hash)
+
+type t = Implicit of Signature.Public_key_hash.t | Originated of Hash.t
 
 include Compare.Make (struct
   type nonrec t = t
@@ -34,7 +44,7 @@ include Compare.Make (struct
     match (l1, l2) with
     | Implicit pkh1, Implicit pkh2 ->
         Signature.Public_key_hash.compare pkh1 pkh2
-    | Originated h1, Originated h2 -> Contract_hash.compare h1 h2
+    | Originated h1, Originated h2 -> Hash.compare h1 h2
     | Implicit _, Originated _ -> -1
     | Originated _, Implicit _ -> 1
 end)
@@ -49,7 +59,7 @@ type error += Invalid_contract_notation of string (* `Permanent *)
 
 let to_b58check = function
   | Implicit pbk -> Signature.Public_key_hash.to_b58check pbk
-  | Originated h -> Contract_hash.to_b58check h
+  | Originated h -> Hash.to_b58check h
 
 let implicit_of_b58data : Base58.data -> Signature.public_key_hash option =
   function
@@ -59,9 +69,7 @@ let implicit_of_b58data : Base58.data -> Signature.public_key_hash option =
   | Bls.Public_key_hash.Data h -> Some (Signature.Bls h)
   | _ -> None
 
-let originated_of_b58data = function
-  | Contract_hash.Data h -> Some h
-  | _ -> None
+let originated_of_b58data = function Hash.Data h -> Some h | _ -> None
 
 let contract_of_b58data data =
   match implicit_of_b58data data with
@@ -83,11 +91,11 @@ let of_b58check = of_b58check_gen ~of_b58data:contract_of_b58data
 
 let pp ppf = function
   | Implicit pbk -> Signature.Public_key_hash.pp ppf pbk
-  | Originated h -> Contract_hash.pp ppf h
+  | Originated h -> Hash.pp ppf h
 
 let pp_short ppf = function
   | Implicit pbk -> Signature.Public_key_hash.pp_short ppf pbk
-  | Originated h -> Contract_hash.pp_short ppf h
+  | Originated h -> Hash.pp_short ppf h
 
 let implicit_case ~proj ~inj =
   let open Data_encoding in
@@ -95,12 +103,7 @@ let implicit_case ~proj ~inj =
 
 let originated_case ~proj ~inj =
   let open Data_encoding in
-  case
-    (Tag 1)
-    (Fixed.add_padding Contract_hash.encoding 1)
-    ~title:"Originated"
-    proj
-    inj
+  case (Tag 1) (Fixed.add_padding Hash.encoding 1) ~title:"Originated" proj inj
 
 let cases is_contract to_contract =
   [
@@ -159,7 +162,7 @@ let originated_encoding =
     ~title_extra:" -- originated account"
     ~can_be:"originated contract hash."
     ~cases:(fun proj inj -> [originated_case ~proj ~inj])
-    ~to_b58check:Contract_hash.to_b58check
+    ~to_b58check:Hash.to_b58check
     ~of_b58data:originated_of_b58data
 
 let () =
@@ -175,7 +178,7 @@ let () =
     (function Invalid_contract_notation loc -> Some loc | _ -> None)
     (fun loc -> Invalid_contract_notation loc)
 
-let originated_contract nonce = Originated (Contract_hash.of_nonce nonce)
+let originated_contract nonce = Originated (Hash.of_nonce nonce)
 
 let originated_contracts
     ~since:
@@ -188,7 +191,7 @@ let originated_contracts
     if Compare.Int32.(origination_index < first) then acc
     else
       let origination_nonce = {origination_nonce with origination_index} in
-      let acc = Contract_hash.of_nonce origination_nonce :: acc in
+      let acc = Hash.of_nonce origination_nonce :: acc in
       contracts acc (Int32.pred origination_index)
   in
   contracts [] (Int32.pred last)

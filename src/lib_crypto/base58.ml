@@ -386,6 +386,8 @@ module Prefix = struct
 
   let smart_rollup_address = "\006\124\117" (* sr1(36) *)
 
+  let contract_hash = "\002\090\121" (* KT1(36) *)
+
   (* 16 *)
   let cryptobox_public_key_hash = "\153\103" (* id(30) *)
 
