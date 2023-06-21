@@ -29,8 +29,18 @@
 
 let add_profile proto_parameters node_store profile =
   let open Lwt_result_syntax in
-  let*! () = Store.Legacy.add_profile proto_parameters node_store profile in
-  return_unit
+  let*! () = Store.Legacy.add_profile node_store profile in
+  match profile with
+  | Attestor pkh ->
+      List.iter
+        (fun slot_index ->
+          Join Gossipsub.{slot_index; pkh}
+          |> Gossipsub.Worker.(app_input node_store.gs_worker))
+        Utils.Infix.(0 -- (proto_parameters.Dal_plugin.number_of_slots - 1)) ;
+      return_unit
+  | Bootstrap ->
+      (* Joining topics needs to be handled dynamically since it requires to know the pkh. *)
+      return_unit
 
 let get_profiles node_store = Store.Legacy.get_profiles node_store
 
