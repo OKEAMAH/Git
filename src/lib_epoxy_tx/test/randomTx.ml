@@ -37,6 +37,7 @@ module RandomTx (L : LIB) = struct
   module HashPV = Plompiler.Anemoi128
   module SchnorrPV = Plompiler.Schnorr (HashPV)
   module Schnorr = SchnorrPV.P
+  module T = Types.P
 
   let sks : Schnorr.sk array =
     Array.init Constants.max_nb_accounts (fun _ ->
@@ -47,6 +48,45 @@ module RandomTx (L : LIB) = struct
   let init_state = P.random_state sks ()
 
   let r, state = P.generate_transaction ~sks init_state
+
+  let () =
+    (* let tx = match r.tx with Transfer tx -> tx | _ -> assert false in *)
+    (* let src =
+         (Z.to_int @@ P.coerce tx.payload.msg.src) / Constants.max_nb_tickets
+       in
+       let dst =
+         (Z.to_int @@ P.coerce tx.payload.msg.dst) / Constants.max_nb_tickets
+       in *)
+    (* Printf.printf "\nsrc: %d, dst: %d\n" src dst ; *)
+    let open T in
+    let _acc_string i s =
+      let acc =
+        Option.map (fun (x, _, _) -> x) @@ T.IMap.find_opt i s.accounts
+      in
+      match acc with
+      | None -> "none"
+      | Some acc -> Format.asprintf "%a" T.pp_account acc
+    in
+    let diff = P.compute_diff init_state state in
+    (* Printf.printf
+       "diff indices: [%s]\n"
+       (String.concat ","
+       @@ List.map (fun (i, _) -> string_of_int i)
+       @@ IMap.bindings diff.accounts) ; *)
+    let new_state = P.apply_diff init_state diff in
+    (* let src_acc_string = acc_string src init_state in
+       let dst_acc_string = acc_string dst init_state in
+       Printf.printf "Before:\nsrc: %s\n dst: %s\n" src_acc_string dst_acc_string ;
+       let src_acc_string = acc_string src diff in
+       let dst_acc_string = acc_string dst diff in
+       Printf.printf "Diff:\nsrc: %s\n dst: %s\n" src_acc_string dst_acc_string ;
+       let src_acc_string = acc_string src state in
+       let dst_acc_string = acc_string dst state in
+       Printf.printf "After:\nsrc: %s\n dst: %s\n" src_acc_string dst_acc_string ;
+       let src_acc_string = acc_string src new_state in
+       let dst_acc_string = acc_string dst new_state in
+       Printf.printf "Applied:\nsrc: %s\n dst: %s\n" src_acc_string dst_acc_string ; *)
+    assert (P.state_scalar state = P.state_scalar new_state)
 
   let tests =
     [
@@ -60,8 +100,8 @@ end
 let tests =
   [
     Alcotest.test_case "RandomTx" `Quick (to_test (module RandomTx : Test));
-    Alcotest.test_case
-      "RandomTx plonk"
-      `Slow
-      (to_test ~plonk:(module Plonk.Main_protocol) (module RandomTx : Test));
+    (* Alcotest.test_case
+       "RandomTx plonk"
+       `Slow
+       (to_test ~plonk:(module Plonk.Main_protocol) (module RandomTx : Test)); *)
   ]

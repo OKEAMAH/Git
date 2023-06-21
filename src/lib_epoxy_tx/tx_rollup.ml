@@ -339,6 +339,68 @@ module P = struct
 
   let state_scalar (state : state) = Merkle.root state.accounts_tree
 
+  let empty_diff () = empty_state ()
+
+  let rebuild_accounts_tree accounts ~default =
+    let leaves =
+      Array.init Constants.max_nb_accounts (fun i ->
+          match IMap.find_opt i accounts with
+          | None -> default i
+          | Some (acc, _, _) -> scalar_of_account acc)
+    in
+    Merkle.generate_tree ~leaves Constants.accounts_depth
+
+  let compute_diff init_state end_state =
+    let new_next_position = end_state.next_position in
+    let modified_indices =
+      let open Merkle in
+      let rec go d offset t1 t2 =
+        match (t1, t2) with
+        | Node (h1, _, _), Node (h2, _, _) when h1 = h2 -> []
+        | Node (_h1, l1, r1), Node (_h2, l2, r2) ->
+            let i1 = go (d - 1) offset l1 l2 in
+            let i2 = go (d - 1) (offset + Int.shift_left 1 (d - 1)) r1 r2 in
+            List.append i1 i2
+        | Leaf l1, Leaf l2 -> if l1 = l2 then [] else [offset]
+        | _, _ -> failwith "trees don't match"
+      in
+      go
+        Constants.accounts_depth
+        0
+        init_state.accounts_tree
+        end_state.accounts_tree
+    in
+    let new_accounts =
+      IMap.filter (fun i _ -> List.mem i modified_indices) end_state.accounts
+    in
+    let new_accounts_tree =
+      rebuild_accounts_tree new_accounts ~default:(fun _ -> S.zero)
+    in
+    {
+      next_position = new_next_position;
+      accounts_tree = new_accounts_tree;
+      accounts = new_accounts;
+    }
+
+  let apply_diff state diff =
+    let accounts =
+      IMap.merge
+        (fun _ acc1 acc2 ->
+          match (acc1, acc2) with
+          | Some x, None -> Some x
+          | None, Some x -> Some x
+          | Some _l, Some r -> Some r
+          | None, None -> None)
+        state.accounts
+        diff.accounts
+    in
+    let accounts_tree =
+      rebuild_accounts_tree accounts ~default:(fun i ->
+          let acc, _, _ = default_account i in
+          scalar_of_account acc)
+    in
+    {accounts; accounts_tree; next_position = diff.next_position}
+
   (* Check if an operation is valid in a certain state and, if possible,
      return the storage needed to make the proof.
      The only case where the storage isn't computed is for ill-formed ops,
