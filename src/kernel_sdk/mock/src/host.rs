@@ -270,56 +270,62 @@ mod tests {
     };
 
     #[test]
-    fn test_read_start_of_level_input() {
+    fn test_ensure_sol_ipl_eol_are_present() {
         // Arrange
         let mut mock_host = MockHost::default();
 
         // Act
-        let result = mock_host.read_input();
+        let kernel_entry = |host: &mut MockHost| {
+            let sol = host.read_input();
+            let ipl = host.read_input();
+            let eol = host.read_input();
 
-        // Assert
-        let expected = {
-            let start_of_level = inbox::InboxMessage::Internal(
-                inbox::InternalInboxMessage::<MichelsonUnit>::StartOfLevel,
-            );
-            let mut payload = Vec::default();
-            start_of_level
-                .serialize(&mut payload)
-                .expect("serialization should work");
-            Ok(Some(Message::new(mock_host.level(), 0, payload)))
+            let expected_sol = {
+                let start_of_level = inbox::InboxMessage::Internal(
+                    inbox::InternalInboxMessage::<MichelsonUnit>::StartOfLevel,
+                );
+                let mut payload = Vec::default();
+                start_of_level
+                    .serialize(&mut payload)
+                    .expect("serialization should work");
+                Ok(Some(Message::new(host.level(), 0, payload)))
+            };
+
+            let expected_ipl = {
+                let info_per_level = info_for_level(host.level() as i32);
+                let info_per_level =
+                    inbox::InboxMessage::Internal(inbox::InternalInboxMessage::<
+                        MichelsonUnit,
+                    >::InfoPerLevel(
+                        info_per_level
+                    ));
+                let mut payload = Vec::default();
+                info_per_level
+                    .serialize(&mut payload)
+                    .expect("serialization should work");
+                Ok(Some(Message::new(host.level(), 1, payload)))
+            };
+
+            let expected_eol = {
+                let end_of_level = inbox::InboxMessage::Internal(
+                    inbox::InternalInboxMessage::<MichelsonUnit>::EndOfLevel,
+                );
+                let mut payload = Vec::default();
+                end_of_level
+                    .serialize(&mut payload)
+                    .expect("serialization should work");
+                Ok(Some(Message::new(host.level(), 2, payload)))
+            };
+
+            // Assert
+            assert_eq!(expected_sol, sol);
+            assert_eq!(expected_ipl, ipl);
+            assert_eq!(expected_eol, eol);
         };
 
-        assert_eq!(expected, result);
-    }
-
-    #[test]
-    fn test_read_info_per_level_input() {
-        // Arrange
-        let mut mock_host = MockHost::default();
-
-        // Act
-        let _ = mock_host
-            .read_input()
-            .expect("Read SoL should work")
-            .unwrap();
-        let result = mock_host.read_input();
-
-        // Assert
-        let expected = {
-            let info_per_level = info_for_level(mock_host.level() as i32);
-            let info_per_level = inbox::InboxMessage::Internal(
-                inbox::InternalInboxMessage::<MichelsonUnit>::InfoPerLevel(
-                    info_per_level,
-                ),
-            );
-            let mut payload = Vec::default();
-            info_per_level
-                .serialize(&mut payload)
-                .expect("serialization should work");
-            Ok(Some(Message::new(mock_host.level(), 1, payload)))
-        };
-
-        assert_eq!(expected, result);
+        // The kernel is ran two times to verify the behavior of finalise_inputs and bump_level
+        mock_host.run_level(kernel_entry);
+        mock_host.run_level(kernel_entry);
     }
 
     #[test]
