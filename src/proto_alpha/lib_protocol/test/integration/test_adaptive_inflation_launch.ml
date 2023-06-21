@@ -148,12 +148,7 @@ let test_launch threshold expected_vote_duration () =
       }
     in
     let consensus_threshold = 0 in
-    {
-      default_constants with
-      consensus_threshold;
-      adaptive_inflation;
-      reward_weights = Context.zero_rewards;
-    }
+    {default_constants with consensus_threshold; adaptive_inflation}
   in
   let preserved_cycles = constants.preserved_cycles in
   let* block, delegate = Context.init_with_constants1 constants in
