@@ -100,6 +100,9 @@ module type T = sig
     block_info ->
     number_of_slots:int ->
     slot_index list tzresult
+
+  (** The hash of this plugin's protocol *)
+  val protocol_hash : Protocol_hash.t
 end
 
 val register : (module T) -> unit

@@ -126,6 +126,8 @@ module Plugin = struct
     in
     List.filter (Dal.Attestation.is_attested confirmed_slots) all_slots
     |> Dal.Slot_index.to_int_list |> return
+
+  let protocol_hash = Proto.hash
 end
 
 let () = Dal_plugin.register (module Plugin)

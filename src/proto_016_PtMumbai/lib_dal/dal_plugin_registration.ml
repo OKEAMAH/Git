@@ -121,6 +121,8 @@ module Plugin = struct
     (* DAL Will not be activated in Mumbai. *)
     return []
 
+  let protocol_hash = Proto.hash
+
   module RPC = RPC
 end
 

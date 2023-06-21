@@ -74,6 +74,8 @@ module type T = sig
     block_info ->
     number_of_slots:int ->
     slot_index list tzresult
+
+  val protocol_hash : Protocol_hash.t
 end
 
 let table : (module T) Protocol_hash.Table.t = Protocol_hash.Table.create 5
