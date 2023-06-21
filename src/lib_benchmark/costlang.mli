@@ -80,6 +80,12 @@ module type S = sig
   val if_ : bool repr -> 'a repr -> 'a repr -> 'a repr
 end
 
+(* helper to correctly rename free vars *)
+module type Rename = functor (X : S) ->
+  S with type 'a repr = 'a X.repr and type size = X.size
+
+val rename_free_vars : name:Namespace.t -> (module Rename)
+
 (* ------------------------------------------------------------------------- *)
 (* Implementations of the signature above. *)
 

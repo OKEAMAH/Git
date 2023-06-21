@@ -202,6 +202,19 @@ let get_free_variable_set (type a) (model : a model) =
   let module R = M.Def (T1) in
   T0.prj @@ T1.prj R.model
 
+let adjust_name bench_name model_name =
+  let ns =
+    match Namespace.to_list bench_name |> List.rev with
+    | "intercept" :: xs -> xs
+    | x -> x
+  in
+  let name =
+    String.concat "/" (List.rev ns |> List.drop_n 1) |> Namespace.of_string
+  in
+  let base = Namespace.basename name in
+  if String.equal base (Namespace.basename model_name) then bench_name
+  else Namespace.cons name (Namespace.basename model_name)
+
 (* No workload application.  For [Aggregate _], only extract
    the free variables of the [sub_models].
 *)

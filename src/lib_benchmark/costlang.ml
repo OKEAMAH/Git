@@ -170,6 +170,24 @@ module Pp : S with type 'a repr = string and type size = string = struct
   let if_ cond ift iff = Format.asprintf "(if %s then %s else %s)" cond ift iff
 end
 
+module Rename (Name : sig
+  val name : Namespace.t
+end)
+(X : S) : S with type 'a repr = 'a X.repr and type size = X.size = struct
+  include X
+
+  let free ~name = X.free ~name:(Free_variable.update name Name.name)
+end
+
+module type Rename = functor (X : S) ->
+  S with type 'a repr = 'a X.repr and type size = X.size
+
+let rename_free_vars ~name =
+  let module Ret = Rename (struct
+    let name = name
+  end) in
+  (module Ret : Rename)
+
 module Free_variables :
   S with type 'a repr = Free_variable.Set.t and type size = unit = struct
   open Free_variable

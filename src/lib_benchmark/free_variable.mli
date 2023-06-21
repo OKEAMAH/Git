@@ -26,6 +26,8 @@
 (* We keep the type of free variables abstract. *)
 type t
 
+val update : t -> Namespace.t -> t
+
 val compare : t -> t -> int
 
 val equal : t -> t -> bool
@@ -53,3 +55,7 @@ module Set : sig
 end
 
 module Sparse_vec : Sparse_vec.S with type basis = t
+
+module For_open : sig
+  val fv : string -> t
+end

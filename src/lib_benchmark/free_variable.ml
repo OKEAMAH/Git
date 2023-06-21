@@ -23,34 +23,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Namespace.t
+module Table = Hashtbl.Make (Namespace)
+include Namespace
 
-let compare = Namespace.compare
+let of_namespace s = Namespace.of_string (Namespace.basename s)
 
-let equal = Namespace.equal
+let to_namespace t = t
 
-let of_string = Namespace.of_string
-
-let to_string = Namespace.to_string
-
-let of_namespace x = x
-
-let to_namespace x = x
-
-let pp = Namespace.pp
-
-let pp_short = Namespace.pp_short
-
-module Table = Hashtbl.Make (struct
-  include Namespace
-
-  let hash = Stdlib.Hashtbl.hash
-end)
-
-module Map = Map.Make (Namespace)
+let update t model_name =
+  let ns =
+    match List.rev @@ Namespace.to_list model_name with
+    | [] | ["."] | _ :: [] ->
+        Format.eprintf "Error: %a %a\n" Namespace.pp model_name pp t ;
+        exit 1
+    | "intercept" :: xs -> xs
+    | xs -> xs
+  in
+  let name = String.concat "/" (List.rev ns) |> Namespace.of_string in
+  Namespace.cons
+    (Namespace.of_string @@ Namespace.basename name)
+    (Namespace.basename t)
 
 module Set = struct
-  include Set.Make (Namespace)
+  include Set
 
   let pp_sep s ppf () = Format.fprintf ppf "%s@;" s
 
@@ -61,3 +56,7 @@ module Set = struct
 end
 
 module Sparse_vec = Sparse_vec.Make (Map)
+
+module For_open = struct
+  let fv s = Namespace.of_string s
+end

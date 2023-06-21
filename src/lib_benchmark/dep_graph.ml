@@ -214,7 +214,7 @@ module Graphviz = struct
     (* Some free variables have the same name as the benchmark.
        We must suffix "fv" for distinction.
     *)
-    let fv_node fv = Namespace.cons (Free_variable.to_namespace fv) "fv" in
+    let fv_node fv = Free_variable.to_namespace fv in
     let add_vertex name shape =
       (* We cannot always use [Namespace.basename] here because of
          ".../intercept" *)

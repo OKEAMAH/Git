@@ -607,6 +607,28 @@ let amplification_loop_model =
          ~name:(ns "amplification_loop_model")
          ~coeff:amplification_loop_iteration)
 
+let conv (type a) (module M : Model.Model_impl with type arg_type = a)
+    bench_name =
+  (module struct
+    include M
+
+    let name = Model.adjust_name bench_name M.name
+
+    module Renamed = (val Costlang.rename_free_vars ~name)
+
+    module Def (S : Costlang.S) = Def (Renamed (S))
+  end : Model.Model_impl
+    with type arg_type = a)
+
+let conv_model (m : ir_model) bench_name =
+  match m with TimeModel m -> TimeModel (conv m bench_name) | x -> x
+
+let conv_model_made (m : 'a Model.t) bench_name =
+  match m with
+  | Model.Abstract {conv = c; model} ->
+      Model.Abstract {conv = c; model = conv model bench_name}
+  | _ -> m
+
 (* The following model stitches together the per-instruction models and
    adds a term corresponding to the amplification (if needed). *)
 let interpreter_model ?amplification sub_model =
@@ -621,7 +643,11 @@ let interpreter_model ?amplification sub_model =
             | None -> X.int 0
             | Some amplification_factor ->
                 let (module Amplification_applied) =
-                  Model.apply amplification_loop_model amplification_factor
+                  Model.apply
+                    (conv_model_made
+                       amplification_loop_model
+                       (ns "amplification_loop_model"))
+                    amplification_factor
                 in
                 let module Amplification_result = Amplification_applied (X) in
                 Amplification_result.applied
@@ -629,7 +655,12 @@ let interpreter_model ?amplification sub_model =
           List.fold_left
             (fun (acc : X.size X.repr) instr_trace ->
               let name = instr_trace.Interpreter_workload.name in
-              let (Model.Model model) = pack_ir_model (ir_model name) in
+              let (Model.Model model) =
+                pack_ir_model
+                  (conv_model
+                     (ir_model name)
+                     (ns @@ name_of_instr_or_cont name))
+              in
               let (module Applied_instr) =
                 Model.apply (model_with_conv name model) instr_trace
               in

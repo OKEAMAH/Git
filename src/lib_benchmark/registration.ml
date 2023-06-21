@@ -60,7 +60,8 @@ let local_model_table : local_model_benchmark_names String.Hashtbl.t =
   String.Hashtbl.create 51
 
 (* A parameter name maps to the list of abstract models that contain it *)
-let parameter_table : parameter_info Name_table.t = Name_table.create 51
+let parameter_table : parameter_info Free_variable.Table.t =
+  Free_variable.Table.create 51
 
 let clic_table : unit Tezos_clic.command list ref = ref []
 
@@ -68,17 +69,17 @@ let clic_table : unit Tezos_clic.command list ref = ref []
 (* Registration functions *)
 
 let register_parameter model_name (param : Free_variable.t) =
-  let ns = Free_variable.to_namespace param in
-  match Name_table.find_opt parameter_table ns with
-  | None -> Name_table.add parameter_table ns [model_name]
-  | Some l -> Name_table.replace parameter_table ns (model_name :: l)
+  match Free_variable.Table.find_opt parameter_table param with
+  | None -> Free_variable.Table.add parameter_table param [model_name]
+  | Some l -> Free_variable.Table.replace parameter_table param (model_name :: l)
 
 let register_param_from_model (model : Model.packed_model) =
   match model with
   | Model model ->
       let module M = (val model) in
       let fv_set = Model.get_free_variable_set model in
-      Free_variable.Set.iter (register_parameter M.name) fv_set
+      let name = M.name in
+      Free_variable.Set.iter (register_parameter name) fv_set
 
 let register_model (type a) bench_name local_model_name (model : a Model.t) :
     unit =
@@ -138,6 +139,35 @@ let register ((module Bench) : Benchmark.t) =
       Bench.name ;
     exit 1)
   else () ;
+  let conv_models bench_name m =
+    let convert (type a) ((module M) : a Model.model) =
+      let module M = struct
+        include M
+
+        let name = Model.adjust_name bench_name name
+
+        module Renamed = (val Costlang.rename_free_vars ~name)
+
+        module Def (S : Costlang.S) = Def (Renamed (S))
+      end in
+      ((module M) : a Model.model)
+    in
+    match m with
+    | Model.Abstract {conv; model} ->
+        let model = convert model in
+        Model.Abstract {conv; model}
+    | Aggregate {model; sub_models} ->
+        (* there's always only one submodel *)
+        let sub_models =
+          List.map
+            (function
+              | Model.Model x ->
+                  let model = convert x in
+                  Model.Model model)
+            sub_models
+        in
+        Aggregate {model; sub_models}
+  in
   (* We do a little benchmark edition. We add the timer latency to all models, which makes all
      models aggregated *)
   let module Bench = struct
@@ -146,10 +176,13 @@ let register ((module Bench) : Benchmark.t) =
     let models =
       List.map
         (fun (s, m) ->
-          ( s,
-            Model.(
-              add_model m Builtin_models.timer_model
-              |> precompose (fun w -> (w, ()))) ))
+          let m = conv_models Bench.name m in
+          let timer =
+            conv_models
+              (Builtin_models.ns "timer_model")
+              Builtin_models.timer_model
+          in
+          (s, Model.(add_model m timer |> precompose (fun w -> (w, ())))))
         models
   end in
   List.iter
@@ -182,10 +215,10 @@ let all_models () =
 let all_model_names () = all_models () |> List.map fst
 
 let all_parameters () =
-  Name_table.to_seq parameter_table
+  Free_variable.Table.to_seq parameter_table
   |> List.of_seq
-  |> List.sort (fun (p1, _) (p2, _) -> Namespace.compare p1 p2)
-  |> List.map (fun (a, b) -> (Free_variable.of_namespace a, b))
+  |> List.sort (fun (p1, _) (p2, _) -> Free_variable.compare p1 p2)
+  |> List.map (fun (a, b) -> (a, b))
 
 let all_local_model_names () =
   String.Hashtbl.to_seq_keys local_model_table
@@ -266,9 +299,7 @@ let find_local_model_exn name =
 
 let find_models_in_namespace = find_in_namespace model_table
 
-let find_parameter name =
-  let name = Free_variable.to_namespace name in
-  Name_table.find parameter_table name
+let find_parameter name = Free_variable.Table.find parameter_table name
 
 let find_parameter_exn name =
   match find_parameter name with
@@ -278,5 +309,11 @@ let find_parameter_exn name =
   | Some m -> m
 
 let find_parameters_in_namespace ns =
-  find_in_namespace parameter_table ns
-  |> List.map (fun (x, y) -> (Free_variable.of_namespace x, y))
+  let table =
+    Free_variable.Table.to_seq parameter_table
+    |> Seq.map (fun (k, v) -> (Free_variable.to_namespace k, v))
+    |> Name_table.of_seq
+  in
+  find_in_namespace table ns
+  |> List.map (fun (x, y) ->
+         (Free_variable.of_string @@ Namespace.to_string x, y))

@@ -134,6 +134,8 @@ val get_free_variable_set_of_t : _ t -> Free_variable.Set.t
 val get_free_variable_set_applied :
   'workload t -> 'workload -> Free_variable.Set.t
 
+val adjust_name : Namespace.t -> Namespace.t -> Namespace.t
+
 (* -------------------------------------------------------------------------- *)
 (** Commonly used abstract models
     Except for [zero], they all require a unique name in {!Namespace.t}, and some
