@@ -77,3 +77,11 @@ let message_validation_error =
     ~pp1:Gossipsub.Worker.GS.Message_id.pp
     ("message_id", Gossipsub.message_id_encoding)
     ("validation_error", Data_encoding.string)
+
+let bootstrap_profile_warning =
+  declare_0
+    ~section
+    ~name:"bootstrap_profile_warning"
+    ~msg:"Bootstrap profile set: You should consider restarting your DAL node."
+    ~level:Warning
+    ()

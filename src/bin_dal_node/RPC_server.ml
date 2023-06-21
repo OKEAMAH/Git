@@ -136,7 +136,14 @@ end
 module Profile_handlers = struct
   let patch_profile ctxt () profile =
     call_handler2 ctxt (fun store {proto_parameters; _} ->
-        Profile_manager.add_profile proto_parameters store profile)
+        let open Lwt_result_syntax in
+        let* () = Profile_manager.add_profile proto_parameters store profile in
+        (* The bootstrap profile requires to set some specific
+           parameters for gossipsub to prevent from a bandwith
+           overload since this profile will subscribe to the whole set
+           of topics. *)
+        let*! () = Event.(emit bootstrap_profile_warning) () in
+        return_unit)
 
   let get_profiles ctxt () () =
     call_handler1 ctxt (fun store ->
