@@ -203,7 +203,10 @@ impl MockHost {
             break;
         }
 
-        self.state.borrow().curr_level
+        let level_ran_at = self.state.borrow().curr_level;
+        self.bump_level();
+
+        level_ran_at
     }
 
     /// Returns the level of the next `kernel_run`.
