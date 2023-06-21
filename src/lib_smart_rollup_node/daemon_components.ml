@@ -25,16 +25,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
-
 module type Batcher_sig = sig
   (** [init config ~signer node_ctxt] initializes and starts the batcher for
     [signer]. If [config.simulation] is [true] (the default), messages added to
     the batcher are simulated in an incremental simulation context. *)
   val init :
     Configuration.batcher ->
-    signer:public_key_hash ->
+    signer:Signature.public_key_hash ->
     _ Node_context.t ->
     unit tzresult Lwt.t
 
