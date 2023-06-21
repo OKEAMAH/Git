@@ -200,44 +200,61 @@ module Handler = struct
             cryptobox;
             shards_proofs_precomputation = _;
           } ->
-          let block_level = header.shell.level in
-          let* block_info =
-            Dal_plugin.block_info
-              cctxt
-              ~block:(`Hash (block_hash, 0))
-              ~metadata:`Always
+          let block = `Hash (block_hash, 0) in
+          let* protocols =
+            Tezos_shell_services.Chain_services.Blocks.protocols cctxt ~block ()
           in
-          let* slot_headers =
-            Dal_plugin.get_published_slot_headers block_info
-          in
-          let* () =
-            Slot_manager.store_slot_headers
-              ~level_committee:(Node_context.fetch_committee ctxt)
-              cryptobox
-              proto_parameters
-              ~block_level
-              ~block_hash
-              slot_headers
-              (Node_context.get_store ctxt)
-          in
-          let*? attested_slots =
-            Dal_plugin.attested_slot_headers
-              block_hash
-              block_info
-              ~number_of_slots:proto_parameters.number_of_slots
-          in
-          let*! () =
-            Slot_manager.update_selected_slot_headers_statuses
-              ~block_level
-              ~attestation_lag:proto_parameters.attestation_lag
-              ~number_of_slots:proto_parameters.number_of_slots
-              attested_slots
-              (Node_context.get_store ctxt)
-          in
-          let*! () =
-            Event.(emit layer1_node_new_head (block_hash, block_level))
-          in
-          return_unit
+          if
+            Protocol_hash.equal
+              Dal_plugin.protocol_hash
+              protocols.current_protocol
+          then
+            let block_level = header.shell.level in
+            let* block_info =
+              Dal_plugin.block_info cctxt ~block ~metadata:`Always
+            in
+            let* slot_headers =
+              Dal_plugin.get_published_slot_headers block_info
+            in
+            let* () =
+              Slot_manager.store_slot_headers
+                ~level_committee:(Node_context.fetch_committee ctxt)
+                cryptobox
+                proto_parameters
+                ~block_level
+                ~block_hash
+                slot_headers
+                (Node_context.get_store ctxt)
+            in
+            let*? attested_slots =
+              Dal_plugin.attested_slot_headers
+                block_hash
+                block_info
+                ~number_of_slots:proto_parameters.number_of_slots
+            in
+            let*! () =
+              Slot_manager.update_selected_slot_headers_statuses
+                ~block_level
+                ~attestation_lag:proto_parameters.attestation_lag
+                ~number_of_slots:proto_parameters.number_of_slots
+                attested_slots
+                (Node_context.get_store ctxt)
+            in
+            let*! () =
+              Event.(emit layer1_node_new_head (block_hash, block_level))
+            in
+            return_unit
+          else
+            let*! () =
+              Event.(
+                emit
+                  layer1_node_new_head_other_proto
+                  ( block_hash,
+                    header.shell.level,
+                    protocols.current_protocol,
+                    Dal_plugin.protocol_hash ))
+            in
+            return_unit
     in
     let*! () = Event.(emit layer1_node_tracking_started ()) in
     (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3517

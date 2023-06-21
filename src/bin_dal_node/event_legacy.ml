@@ -95,6 +95,20 @@ let layer1_node_new_head =
     ("hash", Block_hash.encoding)
     ("level", Data_encoding.int32)
 
+let layer1_node_new_head_other_proto =
+  declare_4
+    ~section
+    ~name:"dal_node_layer_1_new_head_other_protocol"
+    ~msg:
+      "Head of layer 1's node updated to {hash} at level {level} in proto \
+       {block_proto}; block ignored: the DAL plugin is for proto \
+       {plugin_proto}"
+    ~level:Notice
+    ("hash", Block_hash.encoding)
+    ("level", Data_encoding.int32)
+    ("block_proto", Protocol_hash.encoding)
+    ("plugin_proto", Protocol_hash.encoding)
+
 let layer1_node_tracking_started =
   declare_0
     ~section
