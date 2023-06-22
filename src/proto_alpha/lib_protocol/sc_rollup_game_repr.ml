@@ -477,14 +477,19 @@ let initial inbox dal_snapshot ~start_level
   let ({alice; _} : Index.t) = Index.make refuter defender in
   let alice_to_play = Staker.equal alice refuter in
   let open Sc_rollup_tick_repr in
+  let open Sc_rollup_commitment_repr in
   let tick = of_number_of_ticks defender_commitment.number_of_ticks in
   let game_state =
     Dissecting
       {
         dissection =
           [
-            make_chunk (Some parent_commitment.compressed_state) initial;
-            make_chunk (Some defender_commitment.compressed_state) tick;
+            make_chunk
+              (Some (get_state @@ parent_commitment.compressed_state))
+              initial;
+            make_chunk
+              (Some (get_state @@ defender_commitment.compressed_state))
+              tick;
             make_chunk None (next tick);
           ];
         default_number_of_sections;

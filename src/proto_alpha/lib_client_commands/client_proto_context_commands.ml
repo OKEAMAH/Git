@@ -2883,7 +2883,12 @@ let commands_rw () =
         let open Lwt_result_syntax in
         let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
         let commitment : Alpha_context.Sc_rollup.Commitment.t =
-          {compressed_state; inbox_level; predecessor; number_of_ticks}
+          {
+            compressed_state = State compressed_state;
+            inbox_level;
+            predecessor;
+            number_of_ticks;
+          }
         in
         let* _res =
           sc_rollup_publish

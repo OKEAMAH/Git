@@ -553,7 +553,7 @@ let sc_dummy_commitment =
       predecessor = Sc_rollup.Commitment.Hash.zero;
       inbox_level = Raw_level.of_int32_exn Int32.zero;
       number_of_ticks;
-      compressed_state = Sc_rollup.State_hash.zero;
+      compressed_state = State Sc_rollup.State_hash.zero;
     }
 
 let generate_sc_rollup_cement =

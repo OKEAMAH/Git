@@ -308,8 +308,9 @@ let publish_op_and_dummy_commitment ~sender ?compressed_state ?predecessor
   let compressed_state =
     Option.map
       (fun s ->
-        Sc_rollup.State_hash.context_hash_to_state_hash
-          (Context_hash.hash_string [s]))
+        Sc_rollup.Commitment.State
+          (Sc_rollup.State_hash.context_hash_to_state_hash
+             (Context_hash.hash_string [s])))
       compressed_state
   in
   let* commitment =
@@ -1950,8 +1951,9 @@ let test_timeout () =
       dummy_commitment with
       number_of_ticks = number_of_ticks_exn 4L;
       compressed_state =
-        Sc_rollup.State_hash.context_hash_to_state_hash
-          (Context_hash.hash_string ["first"]);
+        Sc_rollup.Commitment.State
+          (Sc_rollup.State_hash.context_hash_to_state_hash
+             (Context_hash.hash_string ["first"]));
     }
   in
   let commitment2 =
@@ -1959,8 +1961,9 @@ let test_timeout () =
       dummy_commitment with
       number_of_ticks = number_of_ticks_exn 4L;
       compressed_state =
-        Sc_rollup.State_hash.context_hash_to_state_hash
-          (Context_hash.hash_string ["second"]);
+        Sc_rollup.Commitment.State
+          (Sc_rollup.State_hash.context_hash_to_state_hash
+             (Context_hash.hash_string ["second"]));
     }
   in
 
@@ -2023,7 +2026,11 @@ let test_timeout () =
       Context.Sc_rollup.commitment (B block) rollup genesis_info.commitment_hash
     in
     let first_chunk =
-      Sc_rollup.Dissection_chunk.{state_hash = Some compressed_state; tick}
+      Sc_rollup.Dissection_chunk.
+        {
+          state_hash = Some (Sc_rollup.Commitment.get_state compressed_state);
+          tick;
+        }
     in
     let* rest =
       List.init_es ~when_negative_length:[] 4 (fun i ->
@@ -2066,15 +2073,17 @@ let init_with_conflict () =
   let pkh2 = Account.pkh_of_contract_exn account2 in
   let* block, rollup = sc_originate block account1 in
   let compressed_state =
-    Sc_rollup.State_hash.context_hash_to_state_hash
-      (Context_hash.hash_string ["first"])
+    Sc_rollup.Commitment.State
+      (Sc_rollup.State_hash.context_hash_to_state_hash
+         (Context_hash.hash_string ["first"]))
   in
   let* commitment1 =
     dummy_commitment ~compressed_state ~number_of_ticks:1L (B block) rollup
   in
   let compressed_state =
-    Sc_rollup.State_hash.context_hash_to_state_hash
-      (Context_hash.hash_string ["second"])
+    Sc_rollup.Commitment.State
+      (Sc_rollup.State_hash.context_hash_to_state_hash
+         (Context_hash.hash_string ["second"]))
   in
   let* commitment2 =
     dummy_commitment ~compressed_state ~number_of_ticks:1L (B block) rollup
@@ -2351,7 +2360,7 @@ let test_refute_set_input
         predecessor = genesis_info.commitment_hash;
         inbox_level;
         number_of_ticks = number_of_ticks_exn 2L;
-        compressed_state = state_hash2;
+        compressed_state = Sc_rollup.Commitment.State state_hash2;
       }
     in
     let* block = add_publish ~rollup block account commitment in
@@ -2393,7 +2402,13 @@ let test_refute_set_input
         let two = Sc_rollup.Tick.next one in
         Dissection
           [
-            {tick = zero; state_hash = Some genesis_commitment.compressed_state};
+            {
+              tick = zero;
+              state_hash =
+                Some
+                  (Sc_rollup.Commitment.get_state
+                     genesis_commitment.compressed_state);
+            };
             {tick = one; state_hash = Some state_hash1};
             {tick = two; state_hash = Some p1_state_hash2};
           ]
@@ -2927,8 +2942,9 @@ let test_offline_staker_does_not_prevent_cementation () =
 let init_with_4_conflicts () =
   let open Lwt_result_syntax in
   let dumb_compressed_state s =
-    Sc_rollup.State_hash.context_hash_to_state_hash
-      (Context_hash.hash_string [s])
+    Sc_rollup.Commitment.State
+      (Sc_rollup.State_hash.context_hash_to_state_hash
+         (Context_hash.hash_string [s]))
   in
   let* block, players = context_init (Context.TList 4) in
   let pA, pB, pC, pD =
@@ -3167,8 +3183,9 @@ let test_conflict_point_on_a_branch () =
       {
         commitment with
         compressed_state =
-          Sc_rollup.State_hash.context_hash_to_state_hash
-            (Context_hash.hash_string ["foo"]);
+          Sc_rollup.Commitment.State
+            (Sc_rollup.State_hash.context_hash_to_state_hash
+               (Context_hash.hash_string ["foo"]));
       } )
   in
   let* block = publish_commitments block pB rollup [pB_commitment] in

@@ -61,7 +61,7 @@ module Simple = struct
       ("lcc_level", Raw_level.encoding)
       ("predecessor", Sc_rollup.Commitment.Hash.encoding)
       ("inbox_level", Raw_level.encoding)
-      ("compressed_state", Sc_rollup.State_hash.encoding)
+      ("compressed_state", Sc_rollup.Commitment.compressed_encoding)
       ("number_of_ticks", Sc_rollup.Number_of_ticks.encoding)
 
   let last_cemented_commitment_updated =
@@ -130,7 +130,7 @@ module Simple = struct
       ("commitment_hash", Sc_rollup.Commitment.Hash.encoding)
       ("predecessor", Sc_rollup.Commitment.Hash.encoding)
       ("inbox_level", Raw_level.encoding)
-      ("compressed_state", Sc_rollup.State_hash.encoding)
+      ("compressed_state", Sc_rollup.Commitment.compressed_encoding)
       ("number_of_ticks", Sc_rollup.Number_of_ticks.encoding)
 
   module Publisher = struct

@@ -132,7 +132,7 @@ let test_sc_rollup_max_commitment_storage_size () =
         predecessor = Sc_rollup_commitment_repr.Hash.zero;
         inbox_level = Raw_level_repr.of_int32_exn 21l;
         number_of_ticks;
-        compressed_state = Sc_rollup_repr.State_hash.zero;
+        compressed_state = State Sc_rollup_repr.State_hash.zero;
       }
   in
   let versioned_commitment =

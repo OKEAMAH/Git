@@ -74,7 +74,12 @@ let gen_commitment =
   and* number_of_ticks = gen_number_of_ticks in
   return
     Sc_rollup_commitment_repr.
-      {compressed_state; inbox_level; predecessor; number_of_ticks}
+      {
+        compressed_state = State compressed_state;
+        inbox_level;
+        predecessor;
+        number_of_ticks;
+      }
 
 let gen_versioned_commitment =
   let open Gen in

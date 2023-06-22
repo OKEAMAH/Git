@@ -108,7 +108,7 @@ let init_smart_rollup ~typecheck_smart_rollup ctxt
   let*! genesis_hash = Sc_rollups.genesis_state_hash_of pvm_kind ~boot_sector in
   let genesis_commitment : Sc_rollup_commitment_repr.t =
     {
-      compressed_state = genesis_hash;
+      compressed_state = State genesis_hash;
       (* Level 0: Genesis block.
          Level 1: Block on protocol genesis, that only activates protocols.
          Level 2: First block on the activated protocol.

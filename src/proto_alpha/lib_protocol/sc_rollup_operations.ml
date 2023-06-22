@@ -336,7 +336,8 @@ let validate_and_decode_output_proof ctxt ~cemented_commitment rollup
   let* () =
     let output_proof_state = PVM.state_of_output_proof output_proof in
     fail_unless
-      Sc_rollup.State_hash.(output_proof_state = compressed_state)
+      Sc_rollup.State_hash.(
+        output_proof_state = Sc_rollup.Commitment.get_state compressed_state)
       Sc_rollup_invalid_output_proof
   in
   (* Consume cost of output proof verification. *)

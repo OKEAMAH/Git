@@ -32,12 +32,44 @@ module Hash = struct
 end
 
 module V1 = struct
+  type compressed = State of State_hash.t | Diff
+
+  let get_state = function State s -> s | _ -> assert false
+
   type t = {
-    compressed_state : State_hash.t;
+    compressed_state : compressed;
     inbox_level : Raw_level_repr.t;
     predecessor : Hash.t;
     number_of_ticks : Number_of_ticks.t;
   }
+
+  let pp_compressed fmt c =
+    match c with
+    | State h -> Format.fprintf fmt "state %a@" State_hash.pp h
+    | Diff -> Format.fprintf fmt "diff"
+
+  let compressed_encoding =
+    let open Data_encoding in
+    let state_tag = 0 and state_encoding = State_hash.encoding in
+    let diff_tag = 1 and diff_encoding = unit in
+    matching
+      (function
+        | State s -> matched state_tag state_encoding s
+        | Diff -> matched diff_tag diff_encoding ())
+      [
+        case
+          ~title:"State"
+          (Tag state_tag)
+          state_encoding
+          (function State s -> Some s | _ -> None)
+          (fun s -> State s);
+        case
+          ~title:"Diff"
+          (Tag diff_tag)
+          diff_encoding
+          (function Diff -> Some () | _ -> None)
+          (fun () -> Diff);
+      ]
 
   let pp fmt {compressed_state; inbox_level; predecessor; number_of_ticks} =
     Format.fprintf
@@ -46,7 +78,7 @@ module V1 = struct
        inbox_level: %a@,\
        predecessor: %a@,\
        number_of_ticks: %Ld"
-      State_hash.pp
+      pp_compressed
       compressed_state
       Raw_level_repr.pp
       inbox_level
@@ -62,7 +94,7 @@ module V1 = struct
       (fun (compressed_state, inbox_level, predecessor, number_of_ticks) ->
         {compressed_state; inbox_level; predecessor; number_of_ticks})
       (obj4
-         (req "compressed_state" State_hash.encoding)
+         (req "compressed_state" compressed_encoding)
          (req "inbox_level" Raw_level_repr.encoding)
          (req "predecessor" Hash.encoding)
          (req "number_of_ticks" Number_of_ticks.encoding))
@@ -78,7 +110,7 @@ module V1 = struct
     let open Sc_rollup_repr in
     let number_of_ticks = Number_of_ticks.zero in
     {
-      compressed_state = genesis_state_hash;
+      compressed_state = State genesis_state_hash;
       inbox_level = origination_level;
       predecessor = Hash.zero;
       number_of_ticks;

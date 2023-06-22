@@ -128,7 +128,7 @@ let build_commitment (node_ctxt : _ Node_context.t)
         predecessor = prev_commitment;
         inbox_level;
         number_of_ticks;
-        compressed_state;
+        compressed_state = State compressed_state;
       }
 
 let genesis_commitment (node_ctxt : _ Node_context.t) ctxt =
@@ -147,7 +147,7 @@ let genesis_commitment (node_ctxt : _ Node_context.t) ctxt =
         predecessor = Hash.zero;
         inbox_level = node_ctxt.genesis_info.level;
         number_of_ticks = Sc_rollup.Number_of_ticks.zero;
-        compressed_state;
+        compressed_state = State compressed_state;
       }
   in
   (* Ensure the initial state corresponds to the one of the rollup's in the

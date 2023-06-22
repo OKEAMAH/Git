@@ -140,7 +140,7 @@ module Zero = struct
   let commitment =
     Commitment_repr.
       {
-        compressed_state = Sc_rollup_repr.State_hash.zero;
+        compressed_state = State Sc_rollup_repr.State_hash.zero;
         inbox_level = Raw_level_repr.root;
         predecessor = Hash.zero;
         number_of_ticks = number_of_ticks_exn 1L;
@@ -263,6 +263,13 @@ let assert_commitment_hash_equal ~loc x y =
 let assert_level_equal ~loc =
   Assert.equal ~loc Raw_level_repr.equal "Compare raw level" Raw_level_repr.pp
 
+let compressed_equal c1 c2 =
+  let open Sc_rollup_commitment_repr in
+  match (c1, c2) with
+  | State s1, State s2 -> Sc_rollup_repr.State_hash.equal s1 s2
+  | Diff, Diff -> true
+  | _ -> false
+
 let commitment_equal
     Commitment_repr.
       {
@@ -278,8 +285,7 @@ let commitment_equal
         predecessor = p2;
         number_of_ticks = n2;
       } =
-  Sc_rollup_repr.State_hash.equal c1 c2
-  && Raw_level_repr.equal l1 l2
+  compressed_equal c1 c2 && Raw_level_repr.equal l1 l2
   && Commitment_repr.Hash.equal p1 p2
   && Sc_rollup_repr.Number_of_ticks.equal n1 n2
 
@@ -734,6 +740,8 @@ module Stake_storage_tests = struct
     let* () = assert_commitment_metadata_exists ctxt rollup commitment staker in
     return_unit
 
+  let wrap_state s = Sc_rollup_commitment_repr.State s
+
   (** Test that publish twice to the same level is not allowed. *)
   let test_publish_twice () =
     let open Lwt_result_wrap_syntax in
@@ -761,8 +769,9 @@ module Stake_storage_tests = struct
       {
         commitment with
         compressed_state =
-          Sc_rollup_repr.State_hash.context_hash_to_state_hash
-            (Context_hash.hash_string ["honest"]);
+          wrap_state
+          @@ Sc_rollup_repr.State_hash.context_hash_to_state_hash
+               (Context_hash.hash_string ["honest"]);
       }
     in
     let* () =
@@ -1120,8 +1129,9 @@ module Stake_storage_tests = struct
     (* Create an honest and dishonest branch. *)
     let honest_commitment, honest_commitment_hash =
       let compressed_state =
-        Sc_rollup_repr.State_hash.context_hash_to_state_hash
-          (Context_hash.hash_string ["honest"])
+        wrap_state
+        @@ Sc_rollup_repr.State_hash.context_hash_to_state_hash
+             (Context_hash.hash_string ["honest"])
       in
       commitment
         ~predecessor:genesis_hash
@@ -1135,8 +1145,9 @@ module Stake_storage_tests = struct
     in
     let dishonest_commitment, dishonest_commitment_hash =
       let compressed_state =
-        Sc_rollup_repr.State_hash.context_hash_to_state_hash
-          (Context_hash.hash_string ["dishonest"])
+        wrap_state
+        @@ Sc_rollup_repr.State_hash.context_hash_to_state_hash
+             (Context_hash.hash_string ["dishonest"])
       in
       commitment
         ~predecessor:genesis_hash
@@ -1296,8 +1307,9 @@ module Stake_storage_tests = struct
       {
         commitment with
         compressed_state =
-          Sc_rollup_repr.State_hash.context_hash_to_state_hash
-            (Context_hash.hash_string ["honest"]);
+          wrap_state
+          @@ Sc_rollup_repr.State_hash.context_hash_to_state_hash
+               (Context_hash.hash_string ["honest"]);
       }
     in
     let*@ ctxt = publish_commitment ctxt rollup staker new_commitment in
@@ -1348,7 +1360,7 @@ module Stake_storage_tests = struct
               predecessor;
               inbox_level;
               number_of_ticks = number_of_ticks_exn 1232909L;
-              compressed_state = Sc_rollup_repr.State_hash.zero;
+              compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
             }
         in
         let* c, _level, ctxt =
@@ -1383,7 +1395,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _c1, level, ctxt =
@@ -1418,7 +1430,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = valid_inbox_level ctxt 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1454,7 +1466,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1485,7 +1497,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1497,7 +1509,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -1523,7 +1535,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1535,7 +1547,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -1564,7 +1576,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1576,7 +1588,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -1602,7 +1614,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1614,7 +1626,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -1638,7 +1650,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _c1, _level, ctxt =
@@ -1650,7 +1662,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 44L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -1681,7 +1693,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1693,7 +1705,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 55L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _c2, _level, ctxt =
@@ -1724,7 +1736,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1736,7 +1748,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c2, _level, ctxt =
@@ -1748,7 +1760,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 7373L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c3, _level, ctxt =
@@ -1780,7 +1792,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -1792,7 +1804,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c2, _level, ctxt =
@@ -1804,7 +1816,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 7373L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c3, _level, ctxt =
@@ -1820,7 +1832,7 @@ module Stake_storage_tests = struct
           predecessor = c2;
           inbox_level = level 3l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _c4, _level, ctxt =
@@ -1858,7 +1870,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ root_commitment_hash, _level, ctxt =
@@ -1879,7 +1891,7 @@ module Stake_storage_tests = struct
             predecessor;
             inbox_level = level i;
             number_of_ticks = number_of_ticks_exn staker_id;
-            compressed_state = Sc_rollup_repr.State_hash.zero;
+            compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
           }
       in
       let* ctxt, commitment_hash =
@@ -1947,7 +1959,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = valid_inbox_level ctxt 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _, _level, ctxt =
@@ -1988,7 +2000,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -2000,7 +2012,7 @@ module Stake_storage_tests = struct
           predecessor = c1;
           inbox_level = level 2l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _node, _level, ctxt =
@@ -2031,7 +2043,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = valid_inbox_level ctxt 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ _c1, _level, ctxt =
@@ -2100,7 +2112,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let commitment2 =
@@ -2109,7 +2121,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 7373L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ (c1, c2), _ctxt =
@@ -2152,7 +2164,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = valid_inbox_level before_ctxt 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _ctxt =
@@ -2474,7 +2486,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 1232909L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c1, _level, ctxt =
@@ -2486,7 +2498,7 @@ module Stake_storage_tests = struct
           predecessor = genesis_hash;
           inbox_level = level 1l;
           number_of_ticks = number_of_ticks_exn 44L;
-          compressed_state = Sc_rollup_repr.State_hash.zero;
+          compressed_state = wrap_state @@ Sc_rollup_repr.State_hash.zero;
         }
     in
     let*@ c2, _level, ctxt =

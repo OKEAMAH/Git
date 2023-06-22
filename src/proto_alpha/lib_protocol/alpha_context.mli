@@ -3465,8 +3465,14 @@ module Sc_rollup : sig
   module Commitment : sig
     module Hash : S.HASH with type t = Smart_rollup.Commitment_hash.t
 
+    type compressed = State of State_hash.t | Diff
+
+    val compressed_encoding : compressed Data_encoding.t
+
+    val get_state : compressed -> State_hash.t
+
     type t = {
-      compressed_state : State_hash.t;
+      compressed_state : compressed;
       inbox_level : Raw_level.t;
       predecessor : Hash.t;
       number_of_ticks : Number_of_ticks.t;

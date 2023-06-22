@@ -1252,6 +1252,7 @@ let create_commitment ~predecessor ~inbox_level ~our_states =
         Arith_test_pvm.initial_hash
     | Some (_, state) -> return state
   in
+  let compressed_state = Sc_rollup.Commitment.State compressed_state in
 
   let number_of_ticks =
     match our_states with

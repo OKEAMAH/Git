@@ -53,8 +53,14 @@ end
     conflicting parties, such that a correct executor always wins the game.
 *)
 module V1 : sig
+  type compressed = State of State_hash.t | Diff
+
+  val get_state : compressed -> State_hash.t
+
+  val compressed_encoding : compressed Data_encoding.t
+
   type t = {
-    compressed_state : State_hash.t;
+    compressed_state : compressed;
     inbox_level : Raw_level_repr.t;
     predecessor : Hash.t;
     number_of_ticks : Number_of_ticks.t;
@@ -98,4 +104,4 @@ end
 (** Versioning, see {!Sc_rollup_data_version_sig.S} for more information. *)
 include Sc_rollup_data_version_sig.S with type t = V1.t
 
-include module type of V1 with type t = V1.t
+include module type of V1 with type compressed = V1.compressed and type t = V1.t

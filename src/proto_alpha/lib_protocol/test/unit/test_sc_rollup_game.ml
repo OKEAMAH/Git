@@ -99,7 +99,7 @@ let two_stakers_in_conflict () =
         predecessor = genesis_hash;
         inbox_level = T.valid_inbox_level ctxt 1l;
         number_of_ticks = T.number_of_ticks_exn 152231L;
-        compressed_state = hash1;
+        compressed_state = State hash1;
       }
   in
   let level l = T.valid_inbox_level ctxt l in
@@ -112,7 +112,7 @@ let two_stakers_in_conflict () =
         predecessor = parent;
         inbox_level = level 2l;
         number_of_ticks = T.number_of_ticks_exn 10000L;
-        compressed_state = hash2;
+        compressed_state = State hash2;
       }
   in
   let child2 =
@@ -121,7 +121,7 @@ let two_stakers_in_conflict () =
         predecessor = parent;
         inbox_level = level 2l;
         number_of_ticks = T.number_of_ticks_exn 10000L;
-        compressed_state = hash3;
+        compressed_state = State hash3;
       }
   in
   let ctxt = T.advance_level_for_commitment ctxt child1 in
@@ -390,7 +390,7 @@ let test_first_move_with_invalid_ancestor () =
         predecessor = refuter_commitment_hash;
         inbox_level;
         number_of_ticks = T.number_of_ticks_exn 10000L;
-        compressed_state = context_hash11;
+        compressed_state = State context_hash11;
       }
   in
   let defender_commitment =
@@ -400,7 +400,7 @@ let test_first_move_with_invalid_ancestor () =
         predecessor = defender_commitment_hash;
         inbox_level;
         number_of_ticks = T.number_of_ticks_exn 10000L;
-        compressed_state = context_hash21;
+        compressed_state = State context_hash21;
       }
   in
   let ctxt = T.advance_level_for_commitment ctxt refuter_commitment in
