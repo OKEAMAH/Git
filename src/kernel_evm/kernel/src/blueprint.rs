@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::apply::ApplicableTransaction;
+use crate::apply::ReceiptMaker;
 use crate::inbox::{read_inbox, KernelUpgrade, Transaction};
 use crate::Error;
 use primitive_types::U256;

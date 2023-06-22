@@ -18,21 +18,11 @@ use tezos_ethereum::signatures::EthereumTransactionCommon;
 use tezos_ethereum::transaction::TransactionHash;
 use tezos_smart_rollup_debug::{debug_msg, Runtime};
 
-use crate::error::{Error, TransferError};
+use crate::error::Error;
+use crate::inbox::Transaction;
 
 /// This defines the needed function to apply a transaction.
-pub trait ApplicableTransaction {
-    /// Returns the transaction's caller.
-    fn caller(&self) -> Result<H160, Error>;
-
-    /// Checks if the transaction's nonce is the expected caller's nonce.
-    fn check_nonce<Host: Runtime>(
-        &self,
-        caller: H160,
-        host: &mut Host,
-        evm_account_storage: &mut EthereumAccountStorage,
-    ) -> bool;
-
+pub trait ReceiptMaker {
     fn chain_id(&self) -> U256;
 
     fn to(&self) -> Option<H160>;
@@ -54,34 +44,7 @@ pub trait ApplicableTransaction {
     fn s(&self) -> H256;
 }
 
-impl ApplicableTransaction for EthereumTransactionCommon {
-    fn caller(&self) -> Result<H160, Error> {
-        self.caller()
-            .map_err(|_| Error::Transfer(TransferError::InvalidCallerAddress))
-    }
-
-    fn check_nonce<Host: Runtime>(
-        &self,
-        caller: H160,
-        host: &mut Host,
-        evm_account_storage: &mut EthereumAccountStorage,
-    ) -> bool {
-        let nonce = |caller| -> Option<U256> {
-            let caller_account_path =
-                evm_execution::account_storage::account_path(&caller).ok()?;
-            let caller_account =
-                evm_account_storage.get(host, &caller_account_path).ok()?;
-            match caller_account {
-                Some(account) => account.nonce(host).ok(),
-                None => Some(U256::zero()),
-            }
-        };
-        match nonce(caller) {
-            None => false,
-            Some(expected_nonce) => self.nonce == expected_nonce,
-        }
-    }
-
+impl ReceiptMaker for EthereumTransactionCommon {
     fn chain_id(&self) -> U256 {
         self.chain_id
     }
@@ -165,7 +128,7 @@ fn make_receipt_info(
 
 #[inline(always)]
 fn make_object_info(
-    transaction: impl ApplicableTransaction,
+    transaction: impl ReceiptMaker,
     transaction_hash: TransactionHash,
     from: H160,
     index: u32,
@@ -187,22 +150,42 @@ fn make_object_info(
     }
 }
 
+fn check_nonce<Host: Runtime>(
+    host: &mut Host,
+    caller: H160,
+    given_nonce: U256,
+    evm_account_storage: &mut EthereumAccountStorage,
+) -> bool {
+    let nonce = |caller| -> Option<U256> {
+        let caller_account_path =
+            evm_execution::account_storage::account_path(&caller).ok()?;
+        let caller_account = evm_account_storage.get(host, &caller_account_path).ok()?;
+        match caller_account {
+            Some(account) => account.nonce(host).ok(),
+            None => Some(U256::zero()),
+        }
+    };
+    match nonce(caller) {
+        None => false,
+        Some(expected_nonce) => given_nonce == expected_nonce,
+    }
+}
+
 pub fn apply_transaction<Host: Runtime>(
     host: &mut Host,
     block_constants: &BlockConstants,
     precompiles: &PrecompileBTreeMap<Host>,
-    transaction: impl ApplicableTransaction,
-    transaction_hash: TransactionHash,
+    transaction: Transaction,
     index: u32,
     evm_account_storage: &mut EthereumAccountStorage,
 ) -> Result<Option<(TransactionReceiptInfo, TransactionObjectInfo)>, Error> {
-    let caller = match transaction.caller() {
+    let caller = match transaction.tx.caller() {
         Ok(caller) => caller,
         Err(err) => {
             debug_msg!(
                 host,
                 "{} ignored because of {:?}\n",
-                hex::encode(transaction_hash),
+                hex::encode(transaction.tx_hash),
                 err
             );
             // Transaction with undefined caller are ignored, i.e. the caller
@@ -210,14 +193,14 @@ pub fn apply_transaction<Host: Runtime>(
             return Ok(None);
         }
     };
-    if !transaction.check_nonce(caller, host, evm_account_storage) {
+    if !check_nonce(host, caller, transaction.tx.nonce(), evm_account_storage) {
         // Transactions with invalid nonces are ignored.
         return Ok(None);
     }
-    let to = transaction.to();
-    let call_data = transaction.data();
-    let gas_limit = transaction.gas_limit();
-    let value = transaction.value();
+    let to = transaction.tx.to();
+    let call_data = transaction.tx.data();
+    let gas_limit = transaction.tx.gas_limit();
+    let value = transaction.tx.value();
     let execution_outcome = match run_transaction(
         host,
         block_constants,
@@ -246,9 +229,9 @@ pub fn apply_transaction<Host: Runtime>(
     };
 
     let receipt_info =
-        make_receipt_info(transaction_hash, index, execution_outcome, caller, to);
+        make_receipt_info(transaction.tx_hash, index, execution_outcome, caller, to);
     let object_info =
-        make_object_info(transaction, transaction_hash, caller, index, gas_used);
+        make_object_info(transaction.tx, transaction.tx_hash, caller, index, gas_used);
 
     Ok(Some((receipt_info, object_info)))
 }

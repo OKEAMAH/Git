@@ -139,8 +139,7 @@ fn compute<Host: Runtime>(
             host,
             block_constants,
             precompiles,
-            transaction.tx,
-            tx_hash,
+            transaction,
             index,
             evm_account_storage,
         )? {
