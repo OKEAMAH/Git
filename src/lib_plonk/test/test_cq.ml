@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* MIT License                                                               *)
-(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,24 +23,35 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Plonk_test
+let ( !! ) = Plonk_test.Cases.( !! )
 
-let () =
-  Helpers.with_seed (fun () ->
-      Helpers.with_output_to_file (fun () ->
-          Alcotest.run
-            ~verbose:false
-            "PlonK"
-            [
-              ("Utils", Test_utils.tests);
-              ("Evaluations", Test_evaluations.tests);
-              ("Plonk_Pack", Test_pack.tests);
-              ("Polynomial Commitment", Test_polynomial_commitment.tests);
-              ("Polynomial_protocol", Test_polynomial_protocol.tests);
-              ("Permutations", Test_permutations.tests);
-              ("Plookup", Test_plookup.tests);
-              ("Range_Checks", Test_range_checks.tests);
-              ("Main_Protocol", Test_main_protocol.tests);
-              ("Circuit", Test_circuit.tests);
-              ("Cq", Test_cq.tests);
-            ]))
+let srs = fst Plonk_test.Helpers.srs
+
+let table = !![0; 2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30]
+
+let f = !![0; 2; 2; 0]
+
+let f_not_in_table = !![0; 3; 4; 6]
+
+let f_size = Array.length f
+
+let test_correctness () =
+  let prv, vrf = Plonk.Cq.setup srs f_size table in
+  let transcript = Bytes.empty in
+  let proof = Plonk.Cq.prove prv transcript f in
+  let vrf = Plonk.Cq.verify vrf transcript proof in
+  assert vrf
+
+let test_negative () =
+  let prv, vrf = Plonk.Cq.setup srs f_size table in
+  let transcript = Bytes.empty in
+  try
+    let proof = Plonk.Cq.prove prv transcript f_not_in_table in
+    let vrf = Plonk.Cq.verify vrf transcript proof in
+    assert (not vrf)
+  with Plonk.Cq.Entry_not_in_table -> ()
+
+let tests =
+  List.map
+    (fun (name, f) -> Alcotest.test_case name `Quick f)
+    [("Correctness", test_correctness); ("Negative", test_negative)]
