@@ -464,7 +464,7 @@ module Cost_of : sig
 
     val ty_eq : _ Script_typed_ir.ty -> _ Script_typed_ir.ty -> Gas.cost
 
-    val ty_eq_cycle : Gas.cost
+    val ty_eq_prim : Gas.cost
 
     val parse_type_cycle : Gas.cost
 

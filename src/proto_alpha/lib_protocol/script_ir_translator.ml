@@ -4587,7 +4587,7 @@ and parse_contract :
                or (ticket cty). *)
             let typecheck =
               let open Gas_monad.Syntax in
-              let* () = Gas_monad.consume_gas Typecheck_costs.ty_eq_cycle in
+              let* () = Gas_monad.consume_gas Typecheck_costs.ty_eq_prim in
               match arg with
               | Unit_t ->
                   return (Typed_implicit destination : arg typed_contract)
