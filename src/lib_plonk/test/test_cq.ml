@@ -38,16 +38,17 @@ let f_size = Array.length f
 let test_correctness () =
   let prv, vrf = Plonk.Cq.setup srs f_size table in
   let transcript = Bytes.empty in
-  let proof = Plonk.Cq.prove prv transcript f in
-  let vrf = Plonk.Cq.verify vrf transcript proof in
-  assert vrf
+  let proof, prv_transcript = Plonk.Cq.prove prv transcript f in
+  let vrf, vrf_transcript = Plonk.Cq.verify vrf transcript proof in
+  assert vrf ;
+  assert (Bytes.equal prv_transcript vrf_transcript)
 
 let test_negative () =
   let prv, vrf = Plonk.Cq.setup srs f_size table in
   let transcript = Bytes.empty in
   try
-    let proof = Plonk.Cq.prove prv transcript f_not_in_table in
-    let vrf = Plonk.Cq.verify vrf transcript proof in
+    let proof, _ = Plonk.Cq.prove prv transcript f_not_in_table in
+    let vrf, _ = Plonk.Cq.verify vrf transcript proof in
     assert (not vrf)
   with Plonk.Cq.Entry_not_in_table -> ()
 

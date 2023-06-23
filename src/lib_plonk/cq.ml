@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* This file implements Cq, a lookup protocol described in https://eprint.iacr.org/2022/1763.pdf *)
+
 (* here we call n the size of the table, & k the size of the wire poly to check *)
 
 open Bls
@@ -32,11 +34,13 @@ exception Entry_not_in_table
 
 type prover_public_parameters = {
   n : int;
+  domain_k : Domain.t;
+  domain_2k : Domain.t;
   srs1 : Srs_g1.t;
   table : int Scalar_map.t;
   q : G1.t array;
   cms_lagrange : G1.t array;
-  lagrange_0 : G1.t array;
+  cms_lagrange_0 : G1.t array;
 }
 
 type verifier_public_parameters = {
@@ -65,6 +69,7 @@ type proof = {
 }
 
 (* TODO reuse KZG *)
+(* TODO : remplacer Srs_g1.pippenger par G1.pippenger_of_affine *)
 let commit_single pippenger zero size srs p =
   let poly_size = Poly.degree p + 1 in
   let srs_size = size srs in
@@ -108,7 +113,15 @@ let kzg_0 p =
   assert (Poly.is_zero r) ;
   q
 
-let setup_prover (srs1, _srs2) (n, domain) (table_array, table_poly) =
+let compute_and_commit f list =
+  let m, l = List.map f list |> Array.of_list |> Array.split in
+  (* this is more efficient than using "normal" pippenger, We should also do that in the setup & kzg *)
+  (m, G1.(pippenger_with_affine_array (to_affine_array l)) m)
+
+let setup_prover (srs1, _srs2) (n, domain) k (table_array, table_poly) =
+  let domain_k = Domain.build k in
+  let domain_2k = Domain.build (2 * k) in
+
   let table =
     (* Map that binds scalar to its first index in the table ; if there is duplication in the table the first index is kept ; converting to a map allow more efficient research in the table to build m polynomial *)
     fst
@@ -127,7 +140,7 @@ let setup_prover (srs1, _srs2) (n, domain) (table_array, table_poly) =
         |> Evaluations.interpolation_fft domain)
   in
   let cms_lagrange = Array.map (commit1 srs1) lagrange in
-  let lagrange_0 = Array.map (fun p -> commit1 srs1 @@ kzg_0 p) lagrange in
+  let cms_lagrange_0 = Array.map (fun p -> commit1 srs1 @@ kzg_0 p) lagrange in
 
   let q =
     Array.init n (fun i ->
@@ -142,14 +155,13 @@ let setup_prover (srs1, _srs2) (n, domain) (table_array, table_poly) =
         commit1 srs1 q)
   in
 
-  {n; srs1; table; q; cms_lagrange; lagrange_0}
+  {n; domain_k; domain_2k; srs1; table; q; cms_lagrange; cms_lagrange_0}
 
 let setup_verifier (_srs1, srs2) n k table_poly =
   (* cm (X^n - 1) *)
   let _ = Srs_g2.get srs2 n in
   let cm_zv = G2.(add (Srs_g2.get srs2 n) (negate one)) in
 
-  (* ce calcul donne segfault *)
   let cm_table = commit2 srs2 table_poly in
 
   let srs2_0 = Srs_g2.get srs2 0 in
@@ -169,7 +181,7 @@ let setup srs f_size table_array =
   in
   let domain = Domain.build n in
   let table_poly = Evaluations.interpolation_fft2 domain table_array in
-  let prv = setup_prover srs (n, domain) (table_array, table_poly) in
+  let prv = setup_prover srs (n, domain) f_size (table_array, table_poly) in
   let vrf = setup_verifier srs n f_size table_poly in
   (prv, vrf)
 
@@ -186,29 +198,35 @@ let map_of_occurences =
 let compute_m_and_t_sparse pp f =
   (* for all scalar in f, we fetch it in the table, get the index i, and then add nb_occ × cm(i-th lagrange poly) to the accumulator *)
   (* Returning a list is ok because we just iterate on ms & it is sparse *)
-  Scalar_map.fold
-    (fun fi nb (mt_acc, cm_m) ->
-      let idx =
-        match Scalar_map.find_opt fi pp.table with
-        | None -> raise Entry_not_in_table
-        | Some idx -> idx
-      in
-      ( (idx, Scalar.of_int nb, fi) :: mt_acc,
-        G1.(add cm_m (mul pp.cms_lagrange.(idx) (Scalar.of_int nb))) ))
-    (map_of_occurences f)
-    ([], G1.zero)
+  let m_and_t_sparse =
+    Scalar_map.fold
+      (fun fi nb mt_acc ->
+        let idx =
+          match Scalar_map.find_opt fi pp.table with
+          | None -> raise Entry_not_in_table
+          | Some idx -> idx
+        in
+        (idx, Scalar.of_int nb, fi) :: mt_acc)
+      (map_of_occurences f)
+      []
+  in
+  let _, cm_m =
+    compute_and_commit
+      (fun (i, m, _) -> (m, pp.cms_lagrange.(i)))
+      m_and_t_sparse
+  in
+  (m_and_t_sparse, cm_m)
 
 let compute_a pp beta m_and_t =
-  List.fold_left
-    (fun (a_acc, cm_acc) (i, mi, ti) ->
-      let ai = Scalar.(mi / (ti + beta)) in
-      ((i, ai) :: a_acc, G1.(add cm_acc (mul pp.cms_lagrange.(i) ai))))
-    ([], G1.zero)
-    m_and_t
+  let a, cm_a =
+    compute_and_commit
+      Scalar.(fun (i, mi, ti) -> (mi / (ti + beta), pp.cms_lagrange.(i)))
+      m_and_t
+  in
+  (List.map2 (fun (i, _, _) a -> (i, a)) m_and_t (Array.to_list a), cm_a)
 
-(* Pas giga sûre de ce calcul *)
 let compute_cm_qa pp a =
-  List.fold_left (fun acc (i, ai) -> G1.(add acc (mul pp.q.(i) ai))) G1.zero a
+  snd @@ compute_and_commit (fun (i, ai) -> (ai, pp.q.(i))) a
 
 let compute_b beta k domain f =
   Evaluations.init ~degree:(k - 1) k (fun i ->
@@ -216,18 +234,16 @@ let compute_b beta k domain f =
   |> Evaluations.interpolation_fft domain
 
 let compute_cm_qb pp beta k b f =
-  let domain_2k = Domain.build (2 * k) in
-  let f = Evaluations.evaluation_fft domain_2k f in
-  let b = Evaluations.evaluation_fft domain_2k b in
+  let f = Evaluations.evaluation_fft pp.domain_2k f in
+  let b = Evaluations.evaluation_fft pp.domain_2k b in
   let qb =
     let f_beta = Evaluations.linear_c ~evaluations:[f] ~add_constant:beta () in
     let bf = Evaluations.mul_c ~evaluations:[b; f_beta] () in
     let bf_1 =
-      Poly.(Evaluations.interpolation_fft domain_2k bf - constant Scalar.one)
+      Poly.(Evaluations.interpolation_fft pp.domain_2k bf - constant Scalar.one)
     in
     let q, r = Poly.division_xn bf_1 k Scalar.(negate one) in
-    assert (Poly.is_zero r) ;
-    q
+    if Poly.is_zero r then q else raise Entry_not_in_table
   in
   (qb, commit1 pp.srs1 qb)
 
@@ -254,17 +270,15 @@ let compute_piy pp k (beta, gamma, eta) (b0, f, qb) (b0y, by, fy) =
   commit1 pp.srs1 q
 
 let compute_cm_a0 pp a =
-  List.fold_left
-    (fun acc (i, a) -> G1.(add acc (mul pp.lagrange_0.(i) a)))
-    G1.zero
-    a
+  snd @@ compute_and_commit (fun (i, a) -> (a, pp.cms_lagrange_0.(i))) a
 
 (* On suppose que f est de degré k < n *)
 let prove pp transcript f_array =
   (* TODO padder f jusqu’à la prochaine puissance de 2 ? *)
   let k = Array.length f_array in
-  let domain = Domain.build k in
-  let f = Evaluations.(interpolation_fft domain (of_array (k - 1, f_array))) in
+  let f =
+    Evaluations.(interpolation_fft pp.domain_k (of_array (k - 1, f_array)))
+  in
   let cm_f = commit1 pp.srs1 f in
   (* 1.1, 1.2 *)
   let m_and_t, cm_m = compute_m_and_t_sparse pp f_array in
@@ -277,7 +291,7 @@ let prove pp transcript f_array =
   (* 2.4 *)
   let cm_qa = compute_cm_qa pp a in
   (* 2.5 *)
-  let b = compute_b beta k domain f_array in
+  let b = compute_b beta k pp.domain_k f_array in
   (* 2.6 *)
   let b0 = kzg_0 b in
   (* 2.7 *)
@@ -303,13 +317,14 @@ let prove pp transcript f_array =
   let transcript =
     Transcript.list_expand Scalar.t [b0y; by; fy; a0] transcript
   in
-  let eta, _transcript = Fr_generation.random_fr transcript in
+  let eta, transcript = Fr_generation.random_fr transcript in
   (* 3.6.b *)
   let piy = compute_piy pp k (beta, gamma, eta) (b0, f, qb) (b0y, by, fy) in
   (* 3.7.a *)
   let cm_a0 = compute_cm_a0 pp a in
 
-  {cm_f; cm_a; cm_a0; cm_qa; cm_qb; cm_m; cm_p; cm_b0; a0; b0y; fy; piy}
+  ( {cm_f; cm_a; cm_a0; cm_qa; cm_qb; cm_m; cm_p; cm_b0; a0; b0y; fy; piy},
+    transcript )
 
 let verify pp transcript proof =
   (* 2.1 *)
@@ -354,7 +369,7 @@ let verify pp transcript proof =
       [proof.b0y; by; proof.fy; proof.a0]
       transcript
   in
-  let eta, _transcript = Fr_generation.random_fr transcript in
+  let eta, transcript = Fr_generation.random_fr transcript in
   let eta2 = Scalar.(eta * eta) in
   let v =
     let v = compute_v pp.k (beta, gamma, eta, eta2) proof.b0y by proof.fy in
@@ -384,4 +399,4 @@ let verify pp transcript proof =
         ]
   in
 
-  check_a && check_b0 && check_piy && check_a0
+  (check_a && check_b0 && check_piy && check_a0, transcript)
