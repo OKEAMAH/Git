@@ -338,11 +338,20 @@ module V2_0_0 = struct
               hash
           with
           | Some hash -> try_return_reveal (Reveal_raw_data hash)
-          | None ->
+          | None -> (
               (* We do not put the machine in a stuck condition if a kind of reveal
                  happens to not be supported. Insteadn we wait for the well known
                  preimage. *)
-              Waiting_for_reveal (Reveal_raw_data well_known_reveal_hash))
+              match
+                Data_encoding.Binary.of_string_opt
+                  Sc_rollup_partial_reveal_hash.encoding
+                  hash
+              with
+              | Some hash -> Waiting_for_reveal (Reveal_partial_raw_data hash)
+              | None ->
+                  (* In case of an invalid hash, we ask for the reveal hash of
+                     the empty string to prevent the rollup from being stuck. *)
+                  Waiting_for_reveal (Reveal_raw_data well_known_reveal_hash)))
       | Reveal_required Wasm_2_0_0.Reveal_metadata ->
           try_return_reveal Reveal_metadata
 
