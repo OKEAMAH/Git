@@ -361,7 +361,7 @@ let test_reveal_disabled ~threshold ~inbox_level () =
   in
   let raw_data = "1 1 +" in
   let raw_data_hash =
-    Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [raw_data])
+    Sc_rollup_reveal_hash.(hash_string ~scheme:(Any_hash Blake2B) [raw_data])
   in
   let source = "hash:" ^ Sc_rollup_reveal_hash.to_hex raw_data_hash in
   let input = Sc_rollup_helpers.make_external_input_repr ~inbox_level source in
@@ -415,7 +415,7 @@ let test_reveal_enabled ~threshold ~inbox_level () =
   in
   let raw_data = "1 1 +" in
   let raw_data_hash =
-    Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [raw_data])
+    Sc_rollup_reveal_hash.(hash_string ~scheme:(Any_hash Blake2B) [raw_data])
   in
   let source = "hash:" ^ Sc_rollup_reveal_hash.to_hex raw_data_hash in
   let input = Sc_rollup_helpers.make_external_input_repr ~inbox_level source in

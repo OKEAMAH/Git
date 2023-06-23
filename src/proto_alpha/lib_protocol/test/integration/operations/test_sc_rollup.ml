@@ -2656,7 +2656,8 @@ let test_refute_invalid_reveal () =
   let data = String.make Constants_repr.sc_rollup_message_size_limit 'f' in
   let invalid_data = "foo" in
   let hash =
-    Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [data] |> to_hex)
+    Sc_rollup_reveal_hash.(
+      hash_string ~scheme:(Any_hash Blake2B) [data] |> to_hex)
   in
   let p1_info _rollup _genesis_info =
     Sc_rollup.(Reveal (Raw_data data), Proof.Reveal_proof (Raw_data_proof data))

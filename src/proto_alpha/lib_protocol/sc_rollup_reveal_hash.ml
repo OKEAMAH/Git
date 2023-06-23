@@ -45,12 +45,15 @@ module Blake2B = struct
   let () = Base58.check_encoded_prefix b58check_encoding "scrrh1" 56
 end
 
-type supported_hashes = Blake2B
+type _ supported_hashes = Blake2B : Blake2B.t supported_hashes
+
+type any_supported_hashes =
+  | Any_hash : _ supported_hashes -> any_supported_hashes
 
 type t = Blake2B of Blake2B.t
 
-let zero ~(scheme : supported_hashes) =
-  match scheme with Blake2B -> Blake2B Blake2B.zero
+let zero ~(scheme : any_supported_hashes) =
+  match scheme with Any_hash Blake2B -> Blake2B Blake2B.zero
 
 let pp ppf hash = match hash with Blake2B hash -> Blake2B.pp ppf hash
 
@@ -70,9 +73,9 @@ end)
 
 (* Size of the hash is the size of the inner hash plus one byte for the
    tag used to identify the hashing scheme. *)
-let size ~(scheme : supported_hashes) =
+let size ~(scheme : any_supported_hashes) =
   let tag_size = 1 in
-  let size_without_tag = match scheme with Blake2B -> Blake2B.size in
+  let size_without_tag = match scheme with Any_hash Blake2B -> Blake2B.size in
   tag_size + size_without_tag
 
 let encoding =
@@ -88,14 +91,16 @@ let encoding =
         (fun s -> Blake2B s);
     ]
 
-let hash_string ~(scheme : supported_hashes) ?key strings =
-  match scheme with Blake2B -> Blake2B (Blake2B.hash_string ?key strings)
+let hash_string ~(scheme : any_supported_hashes) ?key strings =
+  match scheme with
+  | Any_hash Blake2B -> Blake2B (Blake2B.hash_string ?key strings)
 
-let hash_bytes ~(scheme : supported_hashes) ?key bytes =
-  match scheme with Blake2B -> Blake2B (Blake2B.hash_bytes ?key bytes)
+let hash_bytes ~(scheme : any_supported_hashes) ?key bytes =
+  match scheme with
+  | Any_hash Blake2B -> Blake2B (Blake2B.hash_bytes ?key bytes)
 
 let scheme_of_hash hash =
-  match hash with Blake2B _hash -> (Blake2B : supported_hashes)
+  match hash with Blake2B _hash -> (Any_hash Blake2B : any_supported_hashes)
 
 let to_hex hash =
   let (`Hex hash) =
@@ -130,4 +135,4 @@ let well_known_reveal_preimage = ""
       provided by the WASM kernel, that is, if the bytes value cannot
       be decoded with {!Sc_rollup_reveal_hash.encoding}. *)
 let well_known_reveal_hash =
-  hash_string ~scheme:Blake2B [well_known_reveal_preimage]
+  hash_string ~scheme:(Any_hash Blake2B) [well_known_reveal_preimage]

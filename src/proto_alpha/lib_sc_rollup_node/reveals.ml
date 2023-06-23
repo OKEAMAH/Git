@@ -121,7 +121,7 @@ let get ?dac_client ~data_dir ~pvm_kind hash =
   in
   let*? () =
     let contents_hash =
-      Reveal_hash.hash_string ~scheme:Reveal_hash.Blake2B [contents]
+      Reveal_hash.hash_string ~scheme:Reveal_hash.(Any_hash Blake2B) [contents]
     in
     error_unless
       (Reveal_hash.equal contents_hash hash)

@@ -45,6 +45,7 @@
   Block_payload_hash
   Sc_rollup_reveal_hash
   Merkle_list
+  Sc_rollup_partial_reveal_hash
   Bitset
   Bounded_history_repr
   Context_binary_proof
@@ -311,6 +312,7 @@
   block_payload_hash.ml block_payload_hash.mli
   sc_rollup_reveal_hash.ml sc_rollup_reveal_hash.mli
   merkle_list.ml merkle_list.mli
+  sc_rollup_partial_reveal_hash.ml sc_rollup_partial_reveal_hash.mli
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli
@@ -582,6 +584,7 @@
   block_payload_hash.ml block_payload_hash.mli
   sc_rollup_reveal_hash.ml sc_rollup_reveal_hash.mli
   merkle_list.ml merkle_list.mli
+  sc_rollup_partial_reveal_hash.ml sc_rollup_partial_reveal_hash.mli
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli
@@ -837,6 +840,7 @@
   block_payload_hash.ml block_payload_hash.mli
   sc_rollup_reveal_hash.ml sc_rollup_reveal_hash.mli
   merkle_list.ml merkle_list.mli
+  sc_rollup_partial_reveal_hash.ml sc_rollup_partial_reveal_hash.mli
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli

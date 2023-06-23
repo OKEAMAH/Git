@@ -89,7 +89,9 @@ let test_dac_hash_hash_bytes_with_reveal_hash () =
   let dac_hash =
     Stdlib.Result.get_ok @@ Data_encoding.Binary.to_bytes P.encoding dac_hash
   in
-  let reveal_hash = Protocol_reveal_hash.hash_bytes ~scheme:Blake2B [payload] in
+  let reveal_hash =
+    Protocol_reveal_hash.hash_bytes ~scheme:(Any_hash Blake2B) [payload]
+  in
   let reveal_hash =
     Stdlib.Result.get_ok
     @@ Data_encoding.Binary.to_bytes Protocol_reveal_hash.encoding reveal_hash
@@ -107,7 +109,7 @@ let test_dac_hash_hash_string_with_reveal_hash () =
     Stdlib.Result.get_ok @@ Data_encoding.Binary.to_bytes P.encoding dac_hash
   in
   let reveal_hash =
-    Protocol_reveal_hash.hash_string ~scheme:Blake2B [payload]
+    Protocol_reveal_hash.hash_string ~scheme:(Any_hash Blake2B) [payload]
   in
   let reveal_hash =
     Stdlib.Result.get_ok

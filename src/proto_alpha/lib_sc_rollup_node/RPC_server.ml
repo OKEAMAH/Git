@@ -181,7 +181,8 @@ let simulate_messages (node_ctxt : Node_context.ro) block ~reveal_pages
           List.fold_left
             (fun map page ->
               let hash =
-                Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [page])
+                Sc_rollup_reveal_hash.(
+                  hash_string ~scheme:(Any_hash Blake2B) [page])
               in
               Sc_rollup_reveal_hash.Map.add hash page map)
             Sc_rollup_reveal_hash.Map.empty
