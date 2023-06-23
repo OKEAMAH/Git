@@ -172,15 +172,14 @@ let test_input_message () =
         "After receiving a message, the rollup must not be waiting for input."
   | No_input_required -> return ()
 
-let go ~max_steps target_status state =
+let go ~is_reveal_enabled ~max_steps target_status state =
   let rec aux i state =
     pp state >>= fun pp ->
     Format.eprintf "%a" pp () ;
     if i > max_steps then
       failwith "Maximum number of steps reached before target status."
     else
-      get_status ~is_reveal_enabled:(fun _ _ -> true) state
-      >>= fun current_status ->
+      get_status ~is_reveal_enabled state >>= fun current_status ->
       if target_status = current_status then return state
       else eval state >>= aux (i + 1)
   in
@@ -191,7 +190,8 @@ let test_parsing_message ~valid (source, expected_code) =
   let input = Sc_rollup_helpers.make_external_input_repr source in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
-  go ~max_steps:10000 Evaluating state >>=? fun state ->
+  go ~is_reveal_enabled:(fun _ _ -> true) ~max_steps:10000 Evaluating state
+  >>=? fun state ->
   get_parsing_result state >>= fun result ->
   Assert.equal
     ~loc:__LOC__
@@ -246,13 +246,14 @@ let test_parsing_messages () =
     (test_parsing_message ~valid:false)
     syntactically_invalid_messages
 
-let test_evaluation_message ~valid
+let test_evaluation_message ~is_reveal_enabled ~valid
     (boot_sector, source, expected_stack, expected_vars) =
   boot boot_sector @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr source in
   set_input input state >>= fun state ->
   eval state >>= fun state ->
-  go ~max_steps:10000 Waiting_for_input_message state >>=? fun state ->
+  go ~is_reveal_enabled ~max_steps:10000 Waiting_for_input_message state
+  >>=? fun state ->
   if valid then
     get_stack state >>= fun stack ->
     Assert.equal
@@ -310,11 +311,16 @@ let invalid_messages =
     ["+"; "1 +"; "1 1 + +"; "1 1 + 1 1 + + +"; "a"]
 
 let test_evaluation_messages () =
-  List.iter_es (test_evaluation_message ~valid:true) valid_messages
+  List.iter_es
+    (test_evaluation_message ~valid:true ~is_reveal_enabled:(fun _ _ -> true))
+    valid_messages
   >>=? fun () ->
-  List.iter_es (test_evaluation_message ~valid:false) invalid_messages
+  List.iter_es
+    (test_evaluation_message ~valid:false ~is_reveal_enabled:(fun _ _ -> true))
+    invalid_messages
 
-let boot_then_reveal_metadata sc_rollup_address origination_level =
+let boot_then_reveal_metadata sc_rollup_address origination_level
+    ~is_reveal_enabled =
   let open Sc_rollup_PVM_sig in
   let open Lwt_result_syntax in
   boot "" @@ fun _ctxt state ->
@@ -323,39 +329,111 @@ let boot_then_reveal_metadata sc_rollup_address origination_level =
   in
   let input = Reveal (Metadata metadata) in
   let*! state = set_input input state in
-  let*! input_state =
-    is_input_state ~is_reveal_enabled:(fun _ _ -> true) state
-  in
+  let*! input_state = is_input_state ~is_reveal_enabled state in
   match input_state with
   | Initial -> return state
   | No_input_required | Needs_reveal _ | First_after _ ->
       failwith
         "After booting, the machine should be waiting for the initial input."
 
-let test_reveal () =
+let test_reveal_disabled ~threshold ~inbox_level () =
   let open Lwt_result_syntax in
-  let* state =
-    boot_then_reveal_metadata Sc_rollup_repr.Address.zero Raw_level_repr.root
+  let blake2B = Protocol.Raw_level_repr.of_int32_exn threshold in
+  let inbox_level = Protocol.Raw_level_repr.of_int32_exn inbox_level in
+  let reveal_enabled : Reveal_enabled_repr.t =
+    {
+      raw_data = {blake2B};
+      metadata = Protocol.Raw_level_repr.root;
+      dal_page = Protocol.Raw_level_repr.root;
+    }
   in
-  let* state = go ~max_steps:10_000 Waiting_for_input_message state in
+  let is_reveal_enabled =
+    Sc_rollup_PVM_sig.default_is_reveal_enabled reveal_enabled
+  in
+  let* state =
+    boot_then_reveal_metadata
+      Sc_rollup_repr.Address.zero
+      Raw_level_repr.root
+      ~is_reveal_enabled
+  in
+  let* state =
+    go ~is_reveal_enabled ~max_steps:10_000 Waiting_for_input_message state
+  in
   let raw_data = "1 1 +" in
   let raw_data_hash =
     Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [raw_data])
   in
   let source = "hash:" ^ Sc_rollup_reveal_hash.to_hex raw_data_hash in
-  let input = Sc_rollup_helpers.make_external_input_repr source in
+  let input = Sc_rollup_helpers.make_external_input_repr ~inbox_level source in
   let*! state = set_input input state in
   let* state =
     go
+      ~is_reveal_enabled
+      ~max_steps:10_000
+      (Waiting_for_reveal
+         (Reveal_raw_data Sc_rollup_reveal_hash.well_known_reveal_hash))
+      state
+  in
+  let*! state =
+    set_input
+      (Reveal (Raw_data Sc_rollup_reveal_hash.well_known_reveal_preimage))
+      state
+  in
+  let* state =
+    go ~is_reveal_enabled ~max_steps:10_000 Waiting_for_input_message state
+  in
+  get_stack state >>= function
+  | [] -> return_unit
+  | l ->
+      failwith
+        "Expected empty stack, got: %a"
+        (Format.pp_print_list Format.pp_print_int)
+        l
+
+let test_reveal_enabled ~threshold ~inbox_level () =
+  let open Lwt_result_syntax in
+  let blake2B = Protocol.Raw_level_repr.of_int32_exn threshold in
+  let inbox_level = Protocol.Raw_level_repr.of_int32_exn inbox_level in
+  let reveal_enabled : Reveal_enabled_repr.t =
+    {
+      raw_data = {blake2B};
+      metadata = Protocol.Raw_level_repr.root;
+      dal_page = Protocol.Raw_level_repr.root;
+    }
+  in
+  let is_reveal_enabled =
+    Sc_rollup_PVM_sig.default_is_reveal_enabled reveal_enabled
+  in
+  let* state =
+    boot_then_reveal_metadata
+      Sc_rollup_repr.Address.zero
+      Protocol.Raw_level_repr.root
+      ~is_reveal_enabled
+  in
+  let* state =
+    go ~is_reveal_enabled ~max_steps:10_000 Waiting_for_input_message state
+  in
+  let raw_data = "1 1 +" in
+  let raw_data_hash =
+    Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [raw_data])
+  in
+  let source = "hash:" ^ Sc_rollup_reveal_hash.to_hex raw_data_hash in
+  let input = Sc_rollup_helpers.make_external_input_repr ~inbox_level source in
+  let*! state = set_input input state in
+  let* state =
+    go
+      ~is_reveal_enabled
       ~max_steps:10_000
       (Waiting_for_reveal (Reveal_raw_data raw_data_hash))
       state
   in
   let*! state = set_input (Reveal (Raw_data raw_data)) state in
-  let* state = go ~max_steps:10_000 Waiting_for_input_message state in
+  let* state =
+    go ~is_reveal_enabled ~max_steps:10_000 Waiting_for_input_message state
+  in
   get_stack state >>= function
   | [2] -> return_unit
-  | _ -> failwith "invalid stack"
+  | _ -> failwith "invalid_stack"
 
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
@@ -365,9 +443,12 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
       ~inbox_level:(Raw_level_repr.of_int32_exn (Int32.of_int inbox_level))
       source
   in
+  let is_reveal_enabled _ _ = true in
   let*! state = set_input input state in
   let*! state = eval state in
-  let* state = go ~max_steps:10000 Waiting_for_input_message state in
+  let* state =
+    go ~is_reveal_enabled ~max_steps:10000 Waiting_for_input_message state
+  in
   let check_output output =
     let*! result = produce_output_proof ctxt state output in
     if valid then
@@ -595,7 +676,26 @@ let tests =
       `Quick
       test_initial_state_hash_arith_pvm;
     Tztest.tztest "Filter internal message" `Quick test_filter_internal_message;
-    Tztest.tztest "Reveal" `Quick test_reveal;
+    Tztest.tztest
+      "Reveal below threshold"
+      `Quick
+      (test_reveal_disabled ~threshold:10_000l ~inbox_level:1_000l);
+    Tztest.tztest
+      "Reveal at threshold (block level zero)"
+      `Quick
+      (test_reveal_enabled ~threshold:0l ~inbox_level:0l);
+    Tztest.tztest
+      "Reveal below threshold (block level zero)"
+      `Quick
+      (test_reveal_disabled ~threshold:10_000l ~inbox_level:0l);
+    Tztest.tztest
+      "Reveal at threshold"
+      `Quick
+      (test_reveal_enabled ~threshold:10_000l ~inbox_level:10_000l);
+    Tztest.tztest
+      "Reveal above threshold"
+      `Quick
+      (test_reveal_enabled ~threshold:10_000l ~inbox_level:10_001l);
   ]
 
 let () =
