@@ -34,7 +34,7 @@ let download ?runner url filename =
   Lwt.return path
 
 let rec wait_for_funded_key node client expected_amount key =
-  let* balance = Client.get_balance_for ~account:key.Account.alias client in
+22  let* balance = Client.get_balance_for ~account:key.Account.alias client in
   if balance < expected_amount then (
     Log.info
       "Key %s is underfunded (got %d, expected at least %d)"

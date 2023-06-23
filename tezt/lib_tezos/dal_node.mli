@@ -96,7 +96,12 @@ val wait : t -> Unix.process_status Lwt.t
 
     [expected_pow] allows to change the PoW difficulty. Default value is 0.
 *)
-val init_config : ?expected_pow:float -> ?peers:string list -> t -> unit Lwt.t
+val init_config :
+  ?expected_pow:float ->
+  ?peers:string list ->
+  ?profile:string ->
+  t ->
+  unit Lwt.t
 
 module Config_file : sig
   (** DAL node configuration files. *)

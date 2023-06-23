@@ -57,8 +57,15 @@ module Transport_layer = struct
     let () = P2p.activate p2p in
     List.iter_s
       (fun point ->
-        let* (_ : _ P2p.connection tzresult) = P2p.connect p2p point in
-        return_unit)
+        Format.eprintf "DEBUG: A %a@." P2p_point.Id.pp point ;
+        let* (r : _ P2p.connection tzresult) = P2p.connect p2p point in
+        match r with
+        | Ok _ ->
+            Format.eprintf "DEBUG: B %a@." P2p_point.Id.pp point ;
+            return_unit
+        | Error err ->
+            Format.eprintf "DEBUG: C %a@." Error_monad.pp_print_trace err ;
+            return_unit)
       additional_points
 end
 

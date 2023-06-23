@@ -29,7 +29,31 @@ module Term = struct
     let decoder str =
       match P2p_point.Id.of_string ~default_port str with
       | Ok x -> Ok x
-      | Error msg -> Error (`Msg msg)
+      | Error msg -> (
+          Format.eprintf "DEBUG: %s@." str ;
+          match P2p_point.Id.parse_addr_port_id str with
+          | Error _ -> Error (`Msg msg)
+          | Ok P2p_point.Id.{addr; port; _} -> (
+              let service = string_of_int (Option.value ~default:11732 port) in
+              let node = addr in
+              let addr = Unix.getaddrinfo node service [] in
+              let of_sockaddr = function
+                | Unix.ADDR_UNIX _ -> None
+                | Unix.ADDR_INET (addr, port) -> (
+                    match Ipaddr_unix.of_inet_addr addr with
+                    | V4 addr -> Some (Ipaddr.v6_of_v4 addr, port)
+                    | V6 addr -> Some (addr, port))
+              in
+              let points =
+                List.filter_map
+                  (fun Unix.{ai_addr; _} -> of_sockaddr ai_addr)
+                  addr
+              in
+              match points with
+              | [] -> Error (`Msg msg)
+              | x :: _ ->
+                  Format.eprintf "DEBUG: %a@." P2p_point.Id.pp x ;
+                  Ok x))
     in
     let printer = P2p_point.Id.pp in
     Arg.conv (decoder, printer)
