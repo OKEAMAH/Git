@@ -1,0 +1,14 @@
+carbonated_map/find_intercept/const,carbonated_map/intercept
+carbonated_map/find/traverse_overhead,carbonated_map/traversal_overhead
+translator/PARSE_TYPE/intercept,translator/PARSE_TYPE_const
+translator/PARSE_TYPE/coeff,translator/PARSE_TYPE_coeff
+translator/UNPARSE_TYPE/intercept,translator/UNPARSE_TYPE_const
+translator/UNPARSE_TYPE/coeff,translator/UNPARSE_TYPE_coeff
+translator/TY_EQ/intercept,translator/TY_EQ_const
+translator/TY_EQ/coeff,translator/TY_EQ_coeff
+tickets/COLLECT_TICKETS_STEP/intercept,tickets/COLLECT_TICKETS_STEP_const
+tickets/COLLECT_TICKETS_STEP/coeff,tickets/COLLECT_TICKETS_STEP_coeff
+tickets/TYPE_HAS_TICKETS_const,tickets/TYPE_HAS_TICKETS/intercept
+tickets/TYPE_HAS_TICKETS_coeff,tickets/TYPE_HAS_TICKETS/coeff
+interpreter/N_IOpt_map_none,interpreter/N_IOpt_map_const
+interpreter/N_ILambda_lam,interpreter/N_ILambda_const
