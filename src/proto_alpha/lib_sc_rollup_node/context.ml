@@ -232,8 +232,8 @@ module PVMState = struct
     | ["instant"; index], Some instant ->
         let index = int_of_string index in
         let acc, _, _ = TxLogic.get_account index instant.accounts in
-        Lwt.return @@
-        Data_encoding.Binary.to_bytes_opt TxTypes.account_data_encoding acc
+        Lwt.return
+        @@ Data_encoding.Binary.to_bytes_opt TxTypes.account_data_encoding acc
     | path, _ -> IStore.Tree.find optimistic path
 
   let set ctxt {optimistic; instant} =

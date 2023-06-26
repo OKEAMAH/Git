@@ -122,14 +122,17 @@ let build_commitment (node_ctxt : _ Node_context.t)
         else Ok number_of_ticks
     | None -> error_with "Invalid number of ticks for commitment"
   in
-  return
-    Sc_rollup.Commitment.
-      {
-        predecessor = prev_commitment;
-        inbox_level;
-        number_of_ticks;
-        compressed_state = State compressed_state;
-      }
+  if PVM.diff_commitments then (* let state_diff = PVM. in *)
+    assert false
+  else
+    return
+      Sc_rollup.Commitment.
+        {
+          predecessor = prev_commitment;
+          inbox_level;
+          number_of_ticks;
+          compressed_state = State compressed_state;
+        }
 
 let genesis_commitment (node_ctxt : _ Node_context.t) ctxt =
   let open Lwt_result_syntax in

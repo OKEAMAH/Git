@@ -39,6 +39,14 @@ module type S = sig
   (** Kind of the PVM. *)
   val kind : Sc_rollup.Kind.t
 
+  val diff_commitments : bool
+
+  type state_diff
+
+  val compute_diff : state -> state -> state_diff
+
+  val diff_hash : state_diff -> Sc_rollup.Diff_hash.t
+
   (** [get_tick state] gets the total tick counter for the given PVM state. *)
   val get_tick : state -> Sc_rollup.Tick.t Lwt.t
 

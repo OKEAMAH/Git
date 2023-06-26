@@ -47,8 +47,33 @@ module Epoxy_tx_proof_format =
 module Impl : Pvm.S = struct
   module PVM = Sc_rollup.Epoxy_tx.Make (Epoxy_tx_proof_format)
   include PVM
+  module TxTypes = Epoxy_tx.Types.P
+  module TxLogic = Epoxy_tx.Tx_rollup.P
 
   let kind = Sc_rollup.Kind.Example_arith
+
+  let diff_commitments = true
+
+  type state_diff = {optimistic : Context.tree; instant : TxTypes.state}
+
+  let compute_diff (old_state : state) (new_state : state) =
+    let optimistic = new_state.optimistic in
+    let instant =
+      TxLogic.compute_diff
+        (Stdlib.Option.get old_state.instant)
+        (Stdlib.Option.get new_state.instant)
+    in
+    {optimistic; instant}
+
+  let diff_hash (d : state_diff) =
+    let instant_root_bytes =
+      Epoxy_tx.Utils.scalar_to_bytes @@ TxLogic.state_scalar d.instant
+    in
+    let optimistic_hash_bytes =
+      Sc_rollup.State_hash.to_bytes
+      @@ Epoxy_tx_proof_format.hash_tree d.optimistic
+    in
+    Sc_rollup.Diff_hash.hash_bytes [instant_root_bytes; optimistic_hash_bytes]
 
   module State = Context.PVMState
 

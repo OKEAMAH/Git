@@ -133,6 +133,14 @@ module Impl : S = struct
 
   let kind = Sc_rollup.Kind.Wasm_2_0_0
 
+  let diff_commitments = false
+
+  type state_diff = unit
+
+  let compute_diff _ _ = ()
+
+  let diff_hash () = Sc_rollup.Diff_hash.zero
+
   let new_dissection = Game_helpers.Wasm.new_dissection
 
   module State = Context.PVMState

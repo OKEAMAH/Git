@@ -50,6 +50,14 @@ module Impl : Pvm.S = struct
 
   let kind = Sc_rollup.Kind.Example_arith
 
+  let diff_commitments = false
+
+  type state_diff = unit
+
+  let compute_diff _ _ = ()
+
+  let diff_hash () = Sc_rollup.Diff_hash.zero
+
   module State = Context.PVMState
 
   let new_dissection = Game_helpers.default_new_dissection
