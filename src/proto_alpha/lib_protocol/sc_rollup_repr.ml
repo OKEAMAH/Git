@@ -44,6 +44,7 @@ module Internal_for_tests = struct
 end
 
 module State_hash = Smart_rollup.State_hash
+module Diff_hash = Smart_rollup.Diff_hash
 
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/5506
    Remove type and module aliases for Smart_rollup.Address. *)

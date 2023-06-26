@@ -60,6 +60,10 @@ module State_hash : module type of struct
   include Smart_rollup.State_hash
 end
 
+module Diff_hash : module type of struct
+  include Smart_rollup.Diff_hash
+end
+
 (** Number of ticks computed by a single commitment. This represents a claim
     about the state of the PVM, which can be disputed as part of a commitment
     dispute.

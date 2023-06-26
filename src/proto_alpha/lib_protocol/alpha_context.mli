@@ -2734,6 +2734,10 @@ module Sc_rollup : sig
     include Smart_rollup.State_hash
   end
 
+  module Diff_hash : module type of struct
+    include Smart_rollup.Diff_hash
+  end
+
   (** See {!Sc_rollup_metadata_repr}. *)
   module Metadata : sig
     type t = {address : rollup; origination_level : Raw_level.t}
@@ -3465,7 +3469,7 @@ module Sc_rollup : sig
   module Commitment : sig
     module Hash : S.HASH with type t = Smart_rollup.Commitment_hash.t
 
-    type compressed = State of State_hash.t | Diff
+    type compressed = State of State_hash.t | Diff of Diff_hash.t
 
     val compressed_encoding : compressed Data_encoding.t
 

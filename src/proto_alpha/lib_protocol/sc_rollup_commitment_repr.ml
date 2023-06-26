@@ -32,7 +32,7 @@ module Hash = struct
 end
 
 module V1 = struct
-  type compressed = State of State_hash.t | Diff
+  type compressed = State of State_hash.t | Diff of Diff_hash.t
 
   let get_state = function State s -> s | _ -> assert false
 
@@ -46,16 +46,38 @@ module V1 = struct
   let pp_compressed fmt c =
     match c with
     | State h -> Format.fprintf fmt "state %a@" State_hash.pp h
-    | Diff -> Format.fprintf fmt "diff"
+    | Diff h -> Format.fprintf fmt "diff %a@" Diff_hash.pp h
 
   let compressed_encoding =
     let open Data_encoding in
     let state_tag = 0 and state_encoding = State_hash.encoding in
-    let diff_tag = 1 and diff_encoding = unit in
+    let diff_tag = 1 and diff_encoding = Diff_hash.encoding in
+    let state_size =
+      Stdlib.Option.get @@ Data_encoding.Binary.fixed_length state_encoding
+    in
+    let diff_size =
+      Stdlib.Option.get @@ Data_encoding.Binary.fixed_length diff_encoding
+    in
+    let max_size = max state_size diff_size in
+
+    let state_encoding =
+      let padding = max_size - state_size in
+      if padding > 0 then Data_encoding.Fixed.add_padding state_encoding padding
+      else state_encoding
+    in
+    let diff_encoding =
+      let padding = max_size - diff_size in
+      if padding > 0 then Data_encoding.Fixed.add_padding diff_encoding padding
+      else diff_encoding
+    in
+    let s1 = Data_encoding.Binary.fixed_length state_encoding in
+    let s2 = Data_encoding.Binary.fixed_length diff_encoding in
+    assert (0 = Option.compare Int.compare s1 s2) ;
     matching
+      ~tag_size:`Uint8
       (function
         | State s -> matched state_tag state_encoding s
-        | Diff -> matched diff_tag diff_encoding ())
+        | Diff d -> matched diff_tag diff_encoding d)
       [
         case
           ~title:"State"
@@ -67,8 +89,8 @@ module V1 = struct
           ~title:"Diff"
           (Tag diff_tag)
           diff_encoding
-          (function Diff -> Some () | _ -> None)
-          (fun () -> Diff);
+          (function Diff d -> Some d | _ -> None)
+          (fun d -> Diff d);
       ]
 
   let pp fmt {compressed_state; inbox_level; predecessor; number_of_ticks} =

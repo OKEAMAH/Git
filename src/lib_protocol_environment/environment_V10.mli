@@ -131,6 +131,8 @@ module type T = sig
         Tezos_crypto.Hashed.Smart_rollup_commitment_hash.t
        and type Smart_rollup.State_hash.t =
         Tezos_crypto.Hashed.Smart_rollup_state_hash.t
+       and type Smart_rollup.Diff_hash.t =
+        Tezos_crypto.Hashed.Smart_rollup_diff_hash.t
        and type Smart_rollup.Inbox_hash.t =
         Tezos_crypto.Hashed.Smart_rollup_inbox_hash.t
        and type Smart_rollup.Merkelized_payload_hashes_hash.t =

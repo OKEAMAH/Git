@@ -53,7 +53,7 @@ end
     conflicting parties, such that a correct executor always wins the game.
 *)
 module V1 : sig
-  type compressed = State of State_hash.t | Diff
+  type compressed = State of State_hash.t | Diff of Diff_hash.t
 
   val get_state : compressed -> State_hash.t
 

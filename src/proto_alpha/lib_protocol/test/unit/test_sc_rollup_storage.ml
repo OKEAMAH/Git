@@ -267,7 +267,7 @@ let compressed_equal c1 c2 =
   let open Sc_rollup_commitment_repr in
   match (c1, c2) with
   | State s1, State s2 -> Sc_rollup_repr.State_hash.equal s1 s2
-  | Diff, Diff -> true
+  | Diff d1, Diff d2 -> Sc_rollup_repr.Diff_hash.equal d1 d2
   | _ -> false
 
 let commitment_equal

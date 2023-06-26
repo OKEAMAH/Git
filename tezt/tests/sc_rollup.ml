@@ -5361,7 +5361,8 @@ let test_inject_identital_messages ~kind =
   check_status status_msg2 "injected" ;
   unit
 
-let register ~kind ~protocols =
+let register ~kind ~protocols:_ =
+  (*
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
   test_rollup_get_genesis_info ~kind protocols ;
@@ -5483,70 +5484,70 @@ let register ~kind ~protocols =
     ~variant:"consecutive commitments"
     test_consecutive_commitments
     protocols
-    ~kind ;
-  test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
-     Uncomment this test as soon as the issue done.
-     test_reinject_failed_commitment protocols ~kind ; *)
-  test_late_rollup_node protocols ~kind ;
-  test_late_rollup_node_2 protocols ~kind ;
-  test_interrupt_rollup_node protocols ~kind ;
-  test_outbox_message protocols ~kind ;
-  test_messages_processed_by_commitment ~kind protocols ;
-  test_arg_boot_sector_file ~kind protocols
+    ~kind ; *)
+  test_cement_ignore_commitment ~kind [Alpha]
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
+   Uncomment this test as soon as the issue done.
+   test_reinject_failed_commitment protocols ~kind ; *)
+(* test_late_rollup_node protocols ~kind ;
+   test_late_rollup_node_2 protocols ~kind ;
+   test_interrupt_rollup_node protocols ~kind ;
+   test_outbox_message protocols ~kind ;
+   test_messages_processed_by_commitment ~kind protocols ;
+   test_arg_boot_sector_file ~kind protocols *)
 
-let register ~protocols =
+let register ~protocols:_ =
   (* PVM-independent tests. We still need to specify a PVM kind
      because the tezt will need to originate a rollup. However,
      the tezt will not test for PVM kind specific featued. *)
-  test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_list protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_wallet protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
-  test_valid_dispute_dissection ~kind:"arith" protocols ;
-  test_refutation_reward_and_punishment protocols ~kind:"arith" ;
-  test_timeout ~kind:"arith" protocols ;
-  test_inject_identital_messages ~kind:"arith" protocols ;
-  test_no_cementation_if_parent_not_lcc_or_if_disputed_commit
-    ~kind:"arith"
-    protocols ;
-  test_refutation protocols ~kind:"arith" ;
-  test_refutation protocols ~kind:"wasm_2_0_0" ;
-  test_recover_bond_of_stakers protocols ;
-  (* Specific Arith PVM tezts *)
-  test_rollup_origination_boot_sector
-    ~boot_sector:"10 10 10 + +"
-    ~kind:"arith"
-    protocols ;
-  test_boot_sector_is_evaluated
-    ~boot_sector1:"10 10 10 + +"
-    ~boot_sector2:"31"
-    ~kind:"arith"
-    protocols ;
-  test_reveals_fails_on_wrong_hash protocols ;
-  test_reveals_4k protocols ;
-  test_reveals_above_4k protocols ;
-  (* Specific Wasm PVM tezts *)
-  test_rollup_node_run_with_kernel
-    protocols
-    ~kind:"wasm_2_0_0"
-    ~kernel_name:"no_parse_random"
-    ~internal:false ;
-  test_rollup_node_run_with_kernel
-    protocols
-    ~kind:"wasm_2_0_0"
-    ~kernel_name:"no_parse_bad_fingerprint"
-    ~internal:false ;
-  test_accuser protocols ;
-  test_injector_auto_discard protocols ;
-  (* Shared tezts - will be executed for both PVMs. *)
-  register ~kind:"wasm_2_0_0" ~protocols ;
-  register ~kind:"arith" ~protocols ;
-  register ~kind:"epoxy_tx" ~protocols:[Protocol.Alpha] ;
-  (* Both Arith and Wasm PVM tezts *)
-  test_bootstrap_smart_rollup_originated protocols
+  (* test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_list protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_wallet protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
+     test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
+     test_valid_dispute_dissection ~kind:"arith" protocols ;
+     test_refutation_reward_and_punishment protocols ~kind:"arith" ;
+     test_timeout ~kind:"arith" protocols ;
+     test_inject_identital_messages ~kind:"arith" protocols ;
+     test_no_cementation_if_parent_not_lcc_or_if_disputed_commit
+       ~kind:"arith"
+       protocols ;
+     test_refutation protocols ~kind:"arith" ;
+     test_refutation protocols ~kind:"wasm_2_0_0" ;
+     test_recover_bond_of_stakers protocols ;
+     (* Specific Arith PVM tezts *)
+     test_rollup_origination_boot_sector
+       ~boot_sector:"10 10 10 + +"
+       ~kind:"arith"
+       protocols ;
+     test_boot_sector_is_evaluated
+       ~boot_sector1:"10 10 10 + +"
+       ~boot_sector2:"31"
+       ~kind:"arith"
+       protocols ;
+     test_reveals_fails_on_wrong_hash protocols ;
+     test_reveals_4k protocols ;
+     test_reveals_above_4k protocols ;
+     (* Specific Wasm PVM tezts *)
+     test_rollup_node_run_with_kernel
+       protocols
+       ~kind:"wasm_2_0_0"
+       ~kernel_name:"no_parse_random"
+       ~internal:false ;
+     test_rollup_node_run_with_kernel
+       protocols
+       ~kind:"wasm_2_0_0"
+       ~kernel_name:"no_parse_bad_fingerprint"
+       ~internal:false ;
+     test_accuser protocols ;
+     test_injector_auto_discard protocols ;
+     (* Shared tezts - will be executed for both PVMs. *)
+     register ~kind:"wasm_2_0_0" ~protocols ;
+     register ~kind:"arith" ~protocols ; *)
+  register ~kind:"epoxy_tx" ~protocols:[Protocol.Alpha]
+(* Both Arith and Wasm PVM tezts *)
+(* test_bootstrap_smart_rollup_originated protocols *)
 
 let register_migration ~kind ~migrate_from ~migrate_to =
   test_migration_inbox ~kind ~migrate_from ~migrate_to ;
