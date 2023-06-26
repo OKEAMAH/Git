@@ -335,6 +335,26 @@ module Internal = struct
       Transcript.list_expand G1.t [proof.cm_f; proof.cm_m] transcript
     in
     let beta, transcript = Fr_generation.random_fr transcript in
+    (* 3.1 *)
+    let transcript =
+      Transcript.list_expand
+        G1.t
+        [proof.cm_a; proof.cm_qa; proof.cm_qb; proof.cm_b0; proof.cm_p]
+        transcript
+    in
+    let gamma, transcript = Fr_generation.random_fr transcript in
+    (* 3.4 *)
+    let b0 = Scalar.(of_int pp.n * proof.a0 / of_int pp.k) in
+    (* 3.5, 3.6.a *)
+    let by = Scalar.((proof.b0y * gamma) + b0) in
+    let transcript =
+      Transcript.list_expand
+        Scalar.t
+        [proof.b0y; by; proof.fy; proof.a0]
+        transcript
+    in
+    let eta, transcript = Fr_generation.random_fr transcript in
+
     (* 2.11 *)
     let check_a =
       Pairing.pairing_check
@@ -352,27 +372,7 @@ module Internal = struct
         G1.[(negate proof.cm_b0, pp.srs2_N_1_k_2); (proof.cm_p, pp.srs2_0)]
     in
 
-    (* 3.1 *)
-    let transcript =
-      Transcript.list_expand
-        G1.t
-        [proof.cm_a; proof.cm_qa; proof.cm_qb; proof.cm_b0; proof.cm_p]
-        transcript
-    in
-    let gamma, transcript = Fr_generation.random_fr transcript in
-
-    (* 3.4 *)
-    let b0 = Scalar.(of_int pp.n * proof.a0 / of_int pp.k) in
-
     (* 3.5, 3.6.a *)
-    let by = Scalar.((proof.b0y * gamma) + b0) in
-    let transcript =
-      Transcript.list_expand
-        Scalar.t
-        [proof.b0y; by; proof.fy; proof.a0]
-        transcript
-    in
-    let eta, transcript = Fr_generation.random_fr transcript in
     let eta2 = Scalar.(eta * eta) in
     let v =
       let v = compute_v pp.k (beta, gamma, eta, eta2) proof.b0y by proof.fy in
