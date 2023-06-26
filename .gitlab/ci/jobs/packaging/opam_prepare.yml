@@ -32,6 +32,9 @@
     expire_in: 1 week
     when: always
   variables:
+    # This ensures that GitLab CI does not clean up the caches
+    # TODO: check that this is really necessary
+    GIT_CLEAN_FLAGS: -ffdx -e _build/_dune_cache
     RUNTEZTALIAS: "true"
     DUNE_CACHE: "enabled"
     # We store caches in _build directory for two reasons: (1) the
