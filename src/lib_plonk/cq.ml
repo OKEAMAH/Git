@@ -96,7 +96,7 @@ module Internal = struct
     let q, r =
       Poly.(division_xn (p - constant (evaluate p Scalar.zero)) 1 Scalar.zero)
     in
-    assert (Poly.is_zero r) ;
+    if not (Poly.is_zero r) then failwith "Cq.kzg_0 : division error." ;
     q
 
   let compute_and_commit f list =
@@ -141,7 +141,8 @@ module Internal = struct
                 n
                 Scalar.(negate one))
           in
-          assert (Poly.is_zero r) ;
+          if not (Poly.is_zero r) then
+            failwith "Cq.setup_prover : division error." ;
           commit1 srs1 q)
     in
 
@@ -152,7 +153,14 @@ module Internal = struct
     (* cm (X^n - 1) *)
     let cm_zv =
       try G2.(add srs2.(n) (negate one))
-    with _ -> raise (Utils.SRS_too_short (Printf.sprintf "Cq.setup_verifier : SRS of size at least %d expected (size %d received)." n (Array.length srs2)))
+      with _ ->
+        raise
+          (Utils.SRS_too_short
+             (Printf.sprintf
+                "Cq.setup_verifier : SRS of size at least %d expected (size %d \
+                 received)."
+                n
+                (Array.length srs2)))
     in
 
     let cm_table = commit2 srs2 table_poly in
@@ -263,7 +271,7 @@ module Internal = struct
       Poly.(b0 + mul_by_scalar eta f + mul_by_scalar eta2 qb - constant v)
     in
     let q, r = Poly.division_xn num 1 Scalar.(negate gamma) in
-    assert (Poly.is_zero r) ;
+    if not (Poly.is_zero r) then failwith "Cq.compute_piy : division error." ;
     commit1 pp.srs1 q
 
   let compute_cm_a0 pp a =
