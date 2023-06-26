@@ -25,6 +25,24 @@
     when: always
   variables:
     RUNTEZTALIAS: "true"
+    DUNE_CACHE: "enabled"
+    # We store caches in _build directory for two reasons: (1) the
+    # _build folder is excluded from opam's rsync. (2) gitlab ci cache
+    # requires that cached files are in a sub-folder of the checkout.
+    # Ideally we would store it in /home/tezos. This would put it in
+    # the same volume as the opam switch, which would allow us to use
+    # the Dune cache's hardlink mode which is more performant.
+    XDG_CACHE_HOME: $CI_PROJECT_DIR/_build/_dune_cache
+    # GitLab Runner does not allow storing caches outside the build
+    # directory per default, so we're forced to use copy mode.
+    DUNE_CACHE_STORAGE_MODE: "copy"
+  cache:
+    # Note that we have one cache bucket per CI_JOB_NAME_SLUG, not per
+    # CI_JOB_NAME_SLUG + CI_COMMIT_REF_SLUG to enable sharing between
+    # branches.
+    key: opam-cache-$CI_JOB_NAME_SLUG
+    paths:
+      - _build/_dune_cache
 
 opam:prepare:
   extends:
