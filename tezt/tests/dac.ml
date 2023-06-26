@@ -602,7 +602,6 @@ module Full_infrastructure = struct
     let member_key = List.nth committee_members 0 in
     let member = List.nth committee_members_nodes 0 in
     let* _ = Dac_node.init_config member in
-    let* () = Dac_node.run member in
     let payload = "test_1" in
     let expected_rh =
       "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
@@ -619,6 +618,7 @@ module Full_infrastructure = struct
       wait_for_handle_new_subscription_to_hash_streamer coordinator_node
     in
     let expected_signature = bls_sign_hex_hash member_key (`Hex expected_rh) in
+    let* () = Dac_node.run member in
     let* () = member_is_subscribed in
     (* [coordinator] serializes [payload_1]. We expect it would push
        [expected_rh_1] to all attached subscribers, i.e. to [member]. *)
