@@ -239,18 +239,24 @@ defined in ``src/lib_event_logging/internal_event.mli`` for shell and
 ``src/lib_protocol_environment/sigs/v3/logging.mli`` for protocol code.
 
 It is important to choose the appropriate level for each event in the code to
-avoid flooding the node administrator with too much information.
+avoid flooding the node administrator with too much information. We are using
+rules-of-thumb to decide the appropriate level for each event. Here are the
+levels and their rules listed by the least verbose to the most:
 
-These are the rules-of-thumb that we use in the code to decide the appropriate
-level (here listed from most to least verbose) for each event:
-
-- ``Debug`` level -- the most verbose -- it is used by developers to follow
-  the flow of execution of the node at the lowest granularity.
+- ``Notice`` level (the default) is for events that the node admin
+  should be interested in, but that do not require any action. These messages are
+  intended for users: they should be clean, fit on one line if recurrent and
+  avoid being too recurrent. The ideal situation is: one line per block when the
+  node behaves as expected. Hence, by default, events of this level are shown on
+  stdout and also stored on disk.
 - ``Info`` level is about all the additional information that you might want to
-  have, but they are not important to have if your node is running OK
-  (and definitely do not require any action).
-- ``Notice`` level (the default) should be about things that the node
-  admin should be concerned, but that does not require any action.
+  have in a log, but that is not important to see when your node is running well
+  (and definitely does not require any action). This level is intended for
+  internal logs, i.e., automatically-recorded logs that could be sent by a user
+  to developers for understanding a specific situation. Hence, by default,
+  events of this level are stored on disk but not shown on stdout.
+- ``Debug`` level -- the most verbose -- is intended for developers to follow
+  the flow of execution of the node at the lowest granularity.
 
 The two following levels are used to provide information to the node
 administrator of possible problems and errors:
@@ -270,6 +276,22 @@ Note that a library is never able to decide whether a certain condition is fatal
 or not. Indeed, the application that calls into the library may not consider the
 function call as essential to the continuation of the application's main
 purpose. Consequently, ``Fatal`` should never be used within libraries.
+
+As UX is an important matter, events associated with the Octez node are tracked
+by non-regression Tezt tests so that changes to events should be discussed (or
+at least observed). After updating the regression file output thanks to the
+``--reset-regressions`` Tezt option, the output changes must be carefully reviewed
+along with the merge request. Setting the level requires a balance between
+events usability, disk space and debugging importance. When reviewing an MR
+containing changes on events, the following should be checked:
+
+- ``Notice`` events are clean to read, not too recurrent and explicit enough
+  for a user (not expert of the code). Otherwise they should not be there.
+- ``Info`` events should be important for debugging in
+  post-mortem fashion. Less important events should be set at ``Debug``.
+- ``Notice`` and ``Info`` events should not be generated too often to keep disk space
+  usage reasonable.
+
 
 
 Code formatting
