@@ -36,7 +36,7 @@ type prover_public_parameters = {
   n : int;
   domain_k : Domain.t;
   domain_2k : Domain.t;
-  srs1 : Srs_g1.t;
+  srs1 : G1.t array;
   table : int Scalar_map.t;
   q : G1.t array;
   cms_lagrange : G1.t array;
@@ -68,44 +68,6 @@ type proof = {
   piy : G1.t;
 }
 
-(* TODO reuse KZG *)
-(* TODO : remplacer Srs_g1.pippenger par G1.pippenger_of_affine *)
-let commit_single pippenger zero size srs p =
-  let poly_size = Poly.degree p + 1 in
-  let srs_size = size srs in
-  if poly_size = 0 then zero
-  else if poly_size > srs_size then
-    raise
-      (Failure
-         (Printf.sprintf
-            "Kzg.commit : Polynomial degree, %i, exceeds srs length, %i."
-            poly_size
-            srs_size))
-  else pippenger srs p
-
-let commit1 = commit_single Srs_g1.pippenger G1.zero Srs_g1.size
-
-(* J’ai segfault avec la version pipenger *)
-(* let commit2 = commit_single Srs_g2.pippenger G2.zero Srs_g2.size *)
-let commit2 srs p =
-  let poly_size = Poly.degree p + 1 in
-  let srs_size = Srs_g2.size srs in
-  if poly_size = 0 then G2.zero
-  else if poly_size > srs_size then
-    raise
-      (Failure
-         (Printf.sprintf
-            "Kzg.commit : Polynomial degree, %i, exceeds srs length, %i."
-            poly_size
-            srs_size))
-  else
-    let p = Poly.to_dense_coefficients p in
-    fst
-    @@ Array.fold_left
-         (fun (acc, i) a -> (G2.(add acc (mul (Srs_g2.get srs i) a)), i + 1))
-         (G2.zero, 0)
-         p
-
 let kzg_0 p =
   let q, r =
     Poly.(division_xn (p - constant (evaluate p Scalar.zero)) 1 Scalar.zero)
@@ -119,6 +81,8 @@ let compute_and_commit f list =
   (m, G1.(pippenger_with_affine_array (to_affine_array l)) m)
 
 let setup_prover (srs1, _srs2) (n, domain) k (table_array, table_poly) =
+  let srs1 = Srs_g1.to_array srs1 in
+
   let domain_k = Domain.build k in
   let domain_2k = Domain.build (2 * k) in
 
@@ -158,15 +122,15 @@ let setup_prover (srs1, _srs2) (n, domain) k (table_array, table_poly) =
   {n; domain_k; domain_2k; srs1; table; q; cms_lagrange; cms_lagrange_0}
 
 let setup_verifier (_srs1, srs2) n k table_poly =
+  let srs2 = Srs_g2.to_array srs2 in
   (* cm (X^n - 1) *)
-  let _ = Srs_g2.get srs2 n in
-  let cm_zv = G2.(add (Srs_g2.get srs2 n) (negate one)) in
+  let cm_zv = G2.(add srs2.(n) (negate one)) in
 
   let cm_table = commit2 srs2 table_poly in
 
-  let srs2_0 = Srs_g2.get srs2 0 in
-  let srs2_1 = Srs_g2.get srs2 1 in
-  let srs2_N_1_k_2 = Srs_g2.get srs2 (n - 1 - (k - 2)) in
+  let srs2_0 = srs2.(0) in
+  let srs2_1 = srs2.(1) in
+  let srs2_N_1_k_2 = srs2.(n - 1 - (k - 2)) in
 
   {n; k; srs2_0; srs2_1; srs2_N_1_k_2; cm_table; cm_zv}
 

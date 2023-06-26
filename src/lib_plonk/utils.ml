@@ -225,3 +225,39 @@ end = struct
     let l0_den = Scalar.(of_z n * sub x one) in
     Scalar.div_exn l0_num l0_den
 end
+
+exception SRS_too_short of string
+
+open Bls
+
+(* This function is used to raise a more helpful error message *)
+let pippenger pippenger ps ss =
+  try pippenger ?start:None ?len:None ps ss
+  with Invalid_argument s ->
+    raise (Invalid_argument ("Utils.pippenger : " ^ s))
+
+let pippenger1 g =
+  pippenger G1.pippenger_with_affine_array (G1.to_affine_array g)
+
+let pippenger2 g =
+  pippenger G2.pippenger_with_affine_array (G2.to_affine_array g)
+
+(* TODO : Preprocess SRS as affine *)
+let commit_single pippenger zero srs p =
+  let p_size = Array.length p in
+  let srs_size = Array.length srs in
+  if p_size = 0 then zero
+  else if p_size > srs_size then
+    raise
+      (SRS_too_short
+         (Printf.sprintf
+            "commit : Polynomial degree, %i, exceeds srs length, %i."
+            p_size
+            srs_size))
+  else pippenger srs p
+
+let commit1 srs p =
+  commit_single pippenger1 G1.zero srs (Poly.to_dense_coefficients p)
+
+let commit2 srs p =
+  commit_single pippenger2 G2.zero srs (Poly.to_dense_coefficients p)

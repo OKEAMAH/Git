@@ -158,19 +158,10 @@ module Kzg_impl = struct
 
     type prover_aux = unit [@@deriving repr]
 
+    (* TODO srs1 should be preprocessed as affine_array or G1.t array *)
     let commit_single srs p =
-      let srs = Public_parameters.(srs.srs1) in
-      let poly_size = Poly.degree p + 1 in
-      let srs_size = Srs_g1.size srs in
-      if poly_size = 0 then G1.zero
-      else if poly_size > srs_size then
-        raise
-          (Failure
-             (Printf.sprintf
-                "Kzg.commit : Polynomial degree, %i, exceeds srs length, %i."
-                poly_size
-                srs_size))
-      else Srs_g1.pippenger srs p
+      let srs = Public_parameters.(srs.srs1) |> Srs_g1.to_array in
+      Utils.commit1 srs p
 
     let commit ?all_keys:_ srs f_map =
       let cmt = SMap.map (commit_single srs) f_map in
@@ -193,11 +184,6 @@ module Kzg_impl = struct
   type answer = Scalar.t SMap.t SMap.t [@@deriving repr]
 
   type transcript = Bytes.t
-
-  let pippenger ?(start = 0) ?len ps ss =
-    try G1.pippenger ~start ?len ps ss
-    with Invalid_argument s ->
-      raise (Invalid_argument (Printf.sprintf "KZG.pippenger : %s" s))
 
   type proof = G1.t SMap.t [@@deriving repr]
 
@@ -268,11 +254,13 @@ module Kzg_impl = struct
 
     let ws = SMap.values w_map in
     let left =
-      pippenger
+      Utils.pippenger1
         (Array.of_list @@ (G1.one :: ws) @ cmts)
         (Array.of_list @@ (s :: w_left_exps) @ exponents)
     in
-    let right = pippenger (Array.of_list ws) (Array.of_list w_right_exps) in
+    let right =
+      Utils.pippenger1 (Array.of_list ws) (Array.of_list w_right_exps)
+    in
     Public_parameters.[(left, srs.encoding_1); (right, srs.encoding_x)]
     |> Pairing.pairing_check
 
