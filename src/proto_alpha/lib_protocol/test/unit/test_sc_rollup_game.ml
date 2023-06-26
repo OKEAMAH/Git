@@ -286,6 +286,245 @@ let test_invalid_serialized_inbox_proof () =
     res
     (( = ) Sc_rollup_proof_repr.Sc_rollup_invalid_serialized_inbox_proof)
 
+module Arith_test_pvm = struct
+  include Arith_pvm
+  open Alpha_context
+
+  let initial_state () =
+    let open Lwt_syntax in
+    let empty = Sc_rollup_helpers.make_empty_tree () in
+    let* state = initial_state ~empty in
+    let* state = install_boot_sector state "" in
+    return state
+
+  let initial_hash =
+    let open Lwt_syntax in
+    let* state = initial_state () in
+    state_hash state
+
+  let consume_fuel = Option.map pred
+
+  let continue_with_fuel ~our_states ~(tick : int) fuel state f =
+    let open Lwt_syntax in
+    match fuel with
+    | Some 0 -> return (state, fuel, tick, our_states)
+    | _ -> f tick our_states (consume_fuel fuel) state
+
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/3498
+
+     the following is almost the same code as in the rollup node, expect that it
+     creates the association list (tick, state_hash). *)
+  let eval_until_input ~fuel ~our_states start_tick state =
+    let open Lwt_syntax in
+    let rec go ~our_states fuel (tick : int) state =
+      let* input_request =
+        is_input_state ~is_reveal_enabled:(fun _ _ -> true) state
+      in
+      match fuel with
+      | Some 0 -> return (state, fuel, tick, our_states)
+      | None | Some _ -> (
+          match input_request with
+          | No_input_required ->
+              let* state = eval state in
+              let* state_hash = state_hash state in
+              let our_states = (tick, state_hash) :: our_states in
+              go ~our_states (consume_fuel fuel) (tick + 1) state
+          | Needs_reveal (Request_dal_page _pid) ->
+              (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/4160
+                 We assume that there are no confirmed Dal slots.
+                 We'll reuse the infra to provide Dal pages in the future. *)
+              let input = Sc_rollup.(Reveal (Dal_page None)) in
+              let* state = set_input input state in
+              let* state_hash = state_hash state in
+              let our_states = (tick, state_hash) :: our_states in
+              go ~our_states (consume_fuel fuel) (tick + 1) state
+          | Needs_reveal (Reveal_raw_data _ | Reveal_partial_raw_data _)
+          | Needs_reveal Reveal_metadata
+          | Initial | First_after _ ->
+              return (state, fuel, tick, our_states))
+    in
+    go ~our_states fuel start_tick state
+
+  let eval_metadata ~fuel ~our_states tick state ~metadata =
+    let open Lwt_syntax in
+    continue_with_fuel ~our_states ~tick fuel state
+    @@ fun tick our_states fuel state ->
+    let input = Sc_rollup.(Reveal (Metadata metadata)) in
+    let* state = set_input input state in
+    let* state_hash = state_hash state in
+    let our_states = (tick, state_hash) :: our_states in
+    let tick = succ tick in
+    return (state, fuel, tick, our_states)
+
+  let feed_input ~fuel ~our_states ~tick state input =
+    let open Lwt_syntax in
+    let* state, fuel, tick, our_states =
+      eval_until_input ~fuel ~our_states tick state
+    in
+    continue_with_fuel ~our_states ~tick fuel state
+    @@ fun tick our_states fuel state ->
+    let* state = set_input input state in
+    let* state_hash = state_hash state in
+    let our_states = (tick, state_hash) :: our_states in
+    let tick = tick + 1 in
+    let* state, fuel, tick, our_states =
+      eval_until_input ~fuel ~our_states tick state
+    in
+    return (state, fuel, tick, our_states)
+
+  let eval_inbox ?fuel ~inputs ~tick state =
+    let open Lwt_result_syntax in
+    List.fold_left_es
+      (fun (state, fuel, tick, our_states) input ->
+        let*! state, fuel, tick, our_states =
+          feed_input ~fuel ~our_states ~tick state input
+        in
+        return (state, fuel, tick, our_states))
+      (state, fuel, tick, [])
+      inputs
+
+  let eval_inputs ~metadata ?fuel inputs_per_levels =
+    let open Lwt_result_syntax in
+    let*! state = initial_state () in
+    let*! state_hash = state_hash state in
+    let tick = 0 in
+    let our_states = [(tick, state_hash)] in
+    let tick = succ tick in
+    (* 1. We evaluate the boot sector. *)
+    let*! state, fuel, tick, our_states =
+      eval_until_input ~fuel ~our_states tick state
+    in
+    (* 2. We evaluate the metadata. *)
+    let*! state, fuel, tick, our_states =
+      eval_metadata ~fuel ~our_states tick state ~metadata
+    in
+    (* 3. We evaluate the inbox. *)
+    let* state, _fuel, tick, our_states =
+      List.fold_left_es
+        (fun (state, fuel, tick, our_states) inputs ->
+          let* state, fuel, tick, our_states' =
+            eval_inbox ?fuel ~inputs ~tick state
+          in
+          return (state, fuel, tick, our_states @ our_states'))
+        (state, fuel, tick, our_states)
+        inputs_per_levels
+    in
+    let our_states =
+      List.sort (fun (x, _) (y, _) -> Compare.Int.compare x y) our_states
+    in
+    let our_states =
+      List.map
+        (fun (tick_int, state) -> (tick_of_int_exn tick_int, state))
+        our_states
+    in
+    let tick = tick_of_int_exn tick in
+    return (state, tick, our_states)
+end
+
+(** Test that sending a invalid serialized reveal proof to
+    {Sc_rollup_proof_repr.valid} is rejected. *)
+let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
+  let open Lwt_result_wrap_syntax in
+  let open Alpha_context in
+  let rollup = Sc_rollup.Address.zero in
+  let level = Raw_level.(succ root) in
+
+  let*? inbox =
+    Sc_rollup_helpers.Node_inbox.new_inbox ~inbox_creation_level:level ()
+  in
+  let snapshot = Sc_rollup.Inbox.take_snapshot inbox.inbox in
+  let dal_snapshot = Dal.Slots_history.genesis in
+  let dal_parameters = Default_parameters.constants_mainnet.dal in
+  let ctxt = Sc_rollup_helpers.make_empty_context () in
+  let empty = Tezos_context_memory.Context_binary.Tree.empty ctxt in
+  let*! state = Arith_pvm.initial_state ~empty in
+
+  (* No messages are added between [game.start_level] and the current level
+     so we can take the existing inbox of players. Otherwise, we should find the
+     inbox of [start_level]. *)
+  let Sc_rollup_helpers.Node_inbox.{payloads_histories; history; inbox} =
+    inbox
+  in
+
+  let get_payloads_history witness_hash =
+    Sc_rollup_helpers.Payloads_histories.find witness_hash payloads_histories
+    |> WithExceptions.Option.get ~loc:__LOC__
+    |> Lwt.return
+  in
+  (* We create an obviously invalid inbox *)
+  let is_reveal_enabled _ _ = true in
+  let metadata =
+    Sc_rollup.Metadata.{address = rollup; origination_level = level}
+  in
+
+  let history_proof = Sc_rollup.Inbox.old_levels_messages inbox in
+  (* We start a game on a commitment that starts at [Tick.initial], the fuel
+     is necessarily [start_tick]. *)
+  let module P = struct
+    include Arith_test_pvm
+
+    let initial_state ~empty:_ = Lwt.return state
+
+    let context = ctxt
+
+    let state = state
+
+    let reveal _ = assert false
+
+    let reveal_partial _ = assert false
+
+    let get_proof _ = assert false
+
+    module Inbox_with_history = struct
+      let inbox = history_proof
+
+      let get_history inbox =
+        Sc_rollup.Inbox.History.find inbox history |> Lwt.return
+
+      let get_payloads_history = get_payloads_history
+    end
+
+    (* FIXME/DAL-REFUTATION: https://gitlab.com/tezos/tezos/-/issues/3992
+       Extend refutation game to handle Dal refutation case. *)
+    module Dal_with_history = struct
+      let confirmed_slots_history = Dal.Slots_history.genesis
+
+      let get_history _hash = Lwt.return_none
+
+      let page_info = None
+
+      let dal_parameters =
+        Default_parameters.constants_test.dal.cryptobox_parameters
+
+      let dal_attestation_lag =
+        Default_parameters.constants_test.dal.attestation_lag
+    end
+  end in
+  let*@ proof =
+    Sc_rollup.Proof.produce
+      ~metadata
+      (module P)
+      Raw_level.root
+      ~is_reveal_enabled
+  in
+  let*?@ pvm_step =
+    Sc_rollup.Proof.unserialize_pvm_step ~pvm:(module Arith_pvm) proof.pvm_step
+  in
+  let*! _ =
+    wrap
+    @@ Sc_rollup.Proof.valid
+         ~pvm:(module Arith_pvm)
+         ~metadata
+         snapshot
+         Raw_level.root
+         dal_snapshot
+         dal_parameters.cryptobox_parameters
+         ~dal_attestation_lag:dal_parameters.attestation_lag
+         ~is_reveal_enabled
+         {proof with pvm_step}
+  in
+  return_unit
+
 let test_first_move_with_swapped_commitment () =
   let open Lwt_result_wrap_syntax in
   let* ( ctxt,
@@ -462,6 +701,10 @@ let tests =
       "Invalid serialized inbox proof is rejected."
       `Quick
       test_invalid_serialized_inbox_proof;
+    Tztest.tztest
+      "Invalid serialized reveal proof"
+      `Quick
+      test_invalid_serialized_reveal_proof;
     Tztest.tztest
       "start a game with invalid commitment hash (swap commitment)."
       `Quick
