@@ -65,7 +65,12 @@ pub fn read_input<Host: Runtime>(
     let input = host.read_input()?;
 
     match input {
-        Some(input) => Ok(InputResult::parse(input, smart_rollup_address, ticketer)),
+        Some(input) => Ok(InputResult::parse(
+            input,
+            smart_rollup_address,
+            ticketer,
+            host,
+        )),
         None => Ok(InputResult::NoInput),
     }
 }
@@ -118,6 +123,7 @@ fn handle_deposit<Host: Runtime>(
     host: &mut Host,
     deposit: Deposit,
 ) -> Result<Transaction, Error> {
+    debug_msg!(host, "Handling deposit\n");
     let deposit_nonce = get_and_increment_deposit_nonce(host)?;
 
     let mut buffer_amount = [0; 32];
@@ -136,6 +142,8 @@ fn handle_deposit<Host: Runtime>(
         .as_slice()
         .try_into()
         .map_err(|_| Error::InvalidConversion)?;
+
+    debug_msg!(host, "Deposit hash\n");
 
     Ok(Transaction {
         tx_hash,

@@ -12,6 +12,7 @@ use tezos_ethereum::{
     signatures::EthereumTransactionCommon, transaction::TransactionHash, wei::from_eth,
 };
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
+use tezos_smart_rollup_debug::{debug_msg, Runtime};
 use tezos_smart_rollup_encoding::{
     contract::Contract,
     inbox::{InboxMessage, InfoPerLevel, InternalInboxMessage, Transfer},
@@ -192,11 +193,13 @@ impl InputResult {
         }
     }
 
-    fn parse_deposit(
+    fn parse_deposit<Host: Runtime>(
         transfer: Transfer<RollupType>,
         smart_rollup_address: &[u8],
         ticketer: &ContractKt1Hash,
+        host: &mut Host,
     ) -> Self {
+        debug_msg!(host, "Parsing deposit\n");
         if transfer.destination.hash().0 != smart_rollup_address {
             return InputResult::Unparsable;
         }
@@ -234,13 +237,15 @@ impl InputResult {
             gas_price,
             receiver,
         };
+        debug_msg!(host, "Done parsing deposit\n");
         Self::Input(Input::DepositContent(content))
     }
 
-    pub fn parse(
+    pub fn parse<Host: Runtime>(
         input: Message,
         smart_rollup_address: [u8; 20],
         l1_bridge: &Option<ContractKt1Hash>,
+        host: &mut Host,
     ) -> Self {
         let bytes = Message::as_ref(&input);
         let (input_tag, remaining) = parsable!(bytes.split_first());
@@ -263,9 +268,13 @@ impl InputResult {
                         transfer,
                         &smart_rollup_address,
                         l1_bridge.as_ref().unwrap(),
+                        host,
                     )
                 }
-                InboxMessage::Internal(_) => InputResult::Unparsable,
+                InboxMessage::Internal(x) => {
+                    debug_msg!(host, "Internal ignored: {}\n", x);
+                    InputResult::Unparsable
+                }
             },
             Err(_) => InputResult::Unparsable,
         }
