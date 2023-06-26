@@ -427,7 +427,8 @@ module Timelock = struct
 
   let generator rng_state =
     let log_time =
-      Base_samplers.sample_in_interval ~range:{min = 0; max = 29} rng_state
+      (* Chest generation takes too long time for [log_time > 20] *)
+      Base_samplers.sample_in_interval ~range:{min = 0; max = 20} rng_state
     in
     let time = Int.shift_left 1 log_time in
     let plaintext_size =
