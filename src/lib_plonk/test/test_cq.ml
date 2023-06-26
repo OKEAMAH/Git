@@ -33,10 +33,10 @@ let f = !![0; 2; 2; 0]
 
 let f_not_in_table = !![0; 3; 2; 0]
 
-let f_size = Array.length f
+let wire_size = Array.length f
 
 let test_correctness () =
-  let prv, vrf = Plonk.Cq.setup srs f_size table in
+  let prv, vrf = Plonk.Cq.setup ~srs ~wire_size ~table in
   let transcript = Bytes.empty in
   let proof, prv_transcript = Plonk.Cq.prove prv transcript f in
   let vrf, vrf_transcript = Plonk.Cq.verify vrf transcript proof in
@@ -44,7 +44,7 @@ let test_correctness () =
   assert (Bytes.equal prv_transcript vrf_transcript)
 
 let test_not_in_table () =
-  let prv, _ = Plonk.Cq.setup srs f_size table in
+  let prv, _ = Plonk.Cq.setup ~srs ~wire_size ~table in
   let transcript = Bytes.empty in
   try
     let _ = Plonk.Cq.prove prv transcript f_not_in_table in
@@ -54,7 +54,7 @@ let test_not_in_table () =
 
 let test_wrong_proof () =
   let module Cq = Plonk.Cq.Internal in
-  let prv, vrf = Cq.setup srs f_size table in
+  let prv, vrf = Cq.setup ~srs ~wire_size ~table in
   let transcript = Bytes.empty in
   let proof_f, _ = Cq.prove prv transcript f in
   let wrong_proof =
@@ -62,8 +62,8 @@ let test_wrong_proof () =
       Plonk.Bls.(
         Evaluations.(
           interpolation_fft
-            (Domain.build f_size)
-            (of_array (f_size - 1, f_not_in_table))))
+            (Domain.build wire_size)
+            (of_array (wire_size - 1, f_not_in_table))))
     in
     Cq.{proof_f with cm_f = Plonk.Utils.commit1 prv.srs1 f}
   in

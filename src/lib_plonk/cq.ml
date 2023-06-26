@@ -41,9 +41,9 @@ module type Cq_sig = sig
   type proof
 
   val setup :
-    Srs_g1.t * Srs_g2.t ->
-    int ->
-    S.t array ->
+    srs:Srs_g1.t * Srs_g2.t ->
+    wire_size:int ->
+    table:S.t array ->
     prover_public_parameters * verifier_public_parameters
 
   val prove : prover_public_parameters -> bytes -> S.t array -> proof * bytes
@@ -171,20 +171,18 @@ module Internal = struct
 
     {n; k; srs2_0; srs2_1; srs2_N_1_k_2; cm_table; cm_zv}
 
-  let setup srs f_size table_array =
-    let len_t = Array.length table_array in
+  let setup ~srs ~wire_size ~table =
+    let len_t = Array.length table in
     let n = 1 lsl Z.(log2up (of_int len_t)) in
     (* If the table length is not a power of two we pad until n with the first element of the table *)
-    let table_array =
-      if n = Array.length table_array then table_array
-      else
-        Array.(
-          append table_array (init (n - len_t) (Fun.const table_array.(0))))
+    let table =
+      if n = Array.length table then table
+      else Array.(append table (init (n - len_t) (Fun.const table.(0))))
     in
     let domain = Domain.build n in
-    let table_poly = Evaluations.interpolation_fft2 domain table_array in
-    let prv = setup_prover srs (n, domain) f_size (table_array, table_poly) in
-    let vrf = setup_verifier srs n f_size table_poly in
+    let table_poly = Evaluations.interpolation_fft2 domain table in
+    let prv = setup_prover srs (n, domain) wire_size (table, table_poly) in
+    let vrf = setup_verifier srs n wire_size table_poly in
     (prv, vrf)
 
   let map_of_occurences =
