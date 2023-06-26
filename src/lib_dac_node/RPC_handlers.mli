@@ -52,16 +52,6 @@ end
 
 (** [V0] encapsulates handlers specific to [V0] API. *)
 module V0 : sig
-  (** [handle_post_store_preimage] is a handler for "POST v0/store_preimage". *)
-  val handle_post_store_preimage :
-    Dac_plugin.t ->
-    #Client_context.wallet ->
-    Client_keys.aggregate_sk_uri option trace ->
-    Page_store.Filesystem.t ->
-    Dac_plugin.raw_hash Data_streamer.t ->
-    bytes * Pagination_scheme.t ->
-    (Dac_plugin.raw_hash * bytes, tztrace) result Lwt.t
-
   (** [handle_get_verify_signature] is a handler for "GET v0/verify_signature". *)
   val handle_get_verify_signature :
     Dac_plugin.t ->

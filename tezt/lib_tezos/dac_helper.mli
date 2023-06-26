@@ -44,26 +44,8 @@ module Scenarios : sig
   }
 end
 
-(** [with_legacy_dac_node] creates a Legacy Dac node. DAC Committee of size
-    [committee_size] will be generated and pre-configured in the legacy node.
-*)
-val with_legacy_dac_node :
-  ?name:string ->
-  ?sc_rollup_node:Sc_rollup_node.t ->
-  ?pvm_name:string ->
-  ?wait_ready:bool ->
-  ?committee_member_address:string ->
-  threshold:int ->
-  committee_size:int ->
-  Node.t ->
-  Client.t ->
-  (Dac_node.t -> Account.aggregate_key list -> 'a Lwt.t) ->
-  'a Lwt.t
-
-(** Initializes a a Coordinator Dac node. DAC Committee of size [committee_size]
-    will be generated and pre-configured in the legacy node. An additional
-    [custom_committee_members] can be provided to configure fixed members of the
-    committee (useful for testing). *)
+(** Initializes a a Coordinator Dac node. An additional [custom_committee_members]
+    can be provided to configure fixed members of the committee (useful for testing). *)
 val with_coordinator_node :
   ?name:string ->
   ?sc_rollup_node:Sc_rollup_node.t ->
@@ -147,50 +129,6 @@ val scenario_with_layer1_node :
   __FILE__:string ->
   string ->
   (Protocol.t -> Node.t -> Client.t -> string -> unit Lwt.t) ->
-  Protocol.t list ->
-  unit
-
-(** Initalizes a scenario with L1 and legacy nodes. *)
-val scenario_with_layer1_and_legacy_dac_nodes :
-  ?tags:string list ->
-  ?commitment_period:int ->
-  ?challenge_window:int ->
-  __FILE__:string ->
-  threshold:int ->
-  committee_size:int ->
-  string ->
-  (Protocol.t ->
-  Node.t ->
-  Client.t ->
-  Dac_node.t ->
-  int ->
-  Account.aggregate_key list ->
-  unit Lwt.t) ->
-  Protocol.t list ->
-  unit
-
-(** Initalizes a scenario with L1, legacy and rollup nodes.  *)
-val scenario_with_layer1_legacy_and_rollup_nodes :
-  ?tags:string list ->
-  ?pvm_name:string ->
-  ?commitment_period:int ->
-  ?challenge_window:int ->
-  ?committee_member_address:string ->
-  ?hooks:Process_hooks.t ->
-  __FILE__:string ->
-  threshold:int ->
-  committee_size:int ->
-  string ->
-  (Protocol.t ->
-  Dac_node.t ->
-  Sc_rollup_node.t ->
-  string ->
-  Node.t ->
-  Client.t ->
-  string ->
-  int ->
-  Account.aggregate_key list ->
-  unit Lwt.t) ->
   Protocol.t list ->
   unit
 

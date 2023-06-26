@@ -46,11 +46,10 @@ let assert_lwt_failure ?__LOC__ msg lwt_under_inspection =
 
 let init_hex_root_hash ?payload coordinator_node =
   let payload = Option.value payload ~default:"hello test message" in
-  let* root_hash, _l1_op =
-    Dac_helper.Call_endpoint.V0.post_store_preimage
+  let* root_hash =
+    Dac_helper.Call_endpoint.V0.Coordinator.post_preimage
       coordinator_node
       ~payload
-      ~pagination_scheme:"Merkle_tree_V0"
   in
   let hex_root_hash = `Hex root_hash in
   return hex_root_hash
@@ -307,740 +306,6 @@ let sample_payload example_filename =
 
 let decode_hex_string_to_bytes s = Hex.to_string (`Hex s)
 
-(** This modules encapsulate tests for DAC nodes when running in legacy node.
-    It includes tests where we have two dac nodes running in
-    the legacy mode interacting with each other. As such one node normally tries
-    to mimic the coordinator and the other tries to mimic signer or observer.
-    Note that both nodes still run in the [legacy] mode, where as such there is
-    no notion of profiles. Once we have a fully working profiles, tests from this
-    module should be refactored. *)
-module Legacy = struct
-  (** [Legacy] test suite uses [v0] DAC API. *)
-  let set_coordinator dac_node coordinator =
-    let coordinator =
-      `O
-        [
-          ("rpc-host", `String (Dac_node.rpc_host coordinator));
-          ("rpc-port", `Float (float_of_int (Dac_node.rpc_port coordinator)));
-        ]
-    in
-    let mode_updated =
-      Dac_node.Config_file.read dac_node
-      |> JSON.get "mode"
-      |> JSON.put
-           ( "dac_cctxt_config",
-             JSON.annotate ~origin:"dac_node_config" coordinator )
-    in
-    Dac_node.Config_file.update dac_node (JSON.put ("mode", mode_updated))
-
-  let coordinator_serializes_payload coordinator ~payload ~expected_rh =
-    let* actual_rh, _l1_operation =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        coordinator
-        ~payload
-        ~pagination_scheme:"Merkle_tree_V0"
-    in
-    return @@ check_valid_root_hash expected_rh actual_rh
-
-  let test_dac_node_imports_committee_members =
-    Protocol.register_test
-      ~__FILE__
-      ~title:"dac node imports dac members sk_uris"
-      ~tags:["dac"; "dac_node"]
-      ~supports:Protocol.(From_protocol (Protocol.number Alpha))
-    @@ fun protocol ->
-    let* node, client = Client.init_with_protocol `Client ~protocol () in
-    let run_dac = Dac_node.run ~wait_ready:true in
-    let* committee_member =
-      Client.bls_gen_keys ~alias:"committee_member" client
-    in
-    let* committee_member_info =
-      Client.bls_show_address ~alias:committee_member client
-    in
-    let committee_member_address =
-      committee_member_info.aggregate_public_key_hash
-    in
-    let dac_node =
-      Dac_node.create_legacy
-        ~node
-        ~client
-        ~threshold:1
-        ~committee_members:[committee_member_address]
-        ()
-    in
-    let* _dir = Dac_node.init_config dac_node in
-    let ready_promise =
-      Dac_node.wait_for dac_node "committee_keys_imported.v0" (fun _ -> Some ())
-    in
-    let* () = run_dac dac_node in
-    let* () = ready_promise in
-    let* () = check_liveness_and_readiness dac_node in
-    let* () = Dac_node.terminate dac_node in
-    unit
-
-  let test_dac_node_dac_threshold_not_reached =
-    Protocol.register_test
-      ~__FILE__
-      ~title:"dac node displays warning if dac threshold is not reached"
-      ~tags:["dac"; "dac_node"]
-      ~supports:Protocol.(From_protocol (Protocol.number Alpha))
-    @@ fun protocol ->
-    let* node, client = Client.init_with_protocol `Client ~protocol () in
-    let dac_node =
-      Dac_node.create_legacy ~node ~client ~threshold:1 ~committee_members:[] ()
-    in
-    let* _dir = Dac_node.init_config dac_node in
-    let run_dac = Dac_node.run ~wait_ready:false in
-    let error_promise =
-      Dac_node.wait_for dac_node "dac_threshold_not_reached.v0" (fun _ ->
-          Some ())
-    in
-    let* () = run_dac dac_node in
-    let* () = error_promise in
-    Dac_node.terminate dac_node
-
-  let test_dac_not_ready_without_protocol =
-    Protocol.register_test
-      ~__FILE__
-      ~title:"dac Legacy startup not ready with unsupported protocol"
-      ~tags:["dac"; "dac_node"]
-    @@ fun protocol ->
-    let run_dac = Dac_node.run ~wait_ready:false in
-    let nodes_args = Node.[Synchronisation_threshold 0] in
-    let* node, client =
-      Client.init_with_protocol
-        `Client
-        ~protocol
-        ~event_sections_levels:[("prevalidator", `Debug)]
-        ~nodes_args
-        ()
-    in
-    let dac_node =
-      Dac_node.create_legacy ~node ~client ~threshold:0 ~committee_members:[] ()
-    in
-    let* _dir = Dac_node.init_config dac_node in
-    let* () = run_dac dac_node in
-    (* GET /health/live must succeed *)
-    let* () = check_alive dac_node in
-    (* GET /health/ready must fail *)
-    let* () = check_not_ready dac_node in
-    let* () = Dac_node.terminate dac_node in
-    return ()
-
-  let test_dac_node_handles_dac_store_preimage_merkle_V0 _protocol dac_node
-      sc_rollup_node _sc_rollup_address _node _client pvm_name _threshold
-      _committee_members =
-    let payload = "test" in
-    let* actual_rh, l1_operation =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        dac_node
-        ~payload
-        ~pagination_scheme:"Merkle_tree_V0"
-    in
-    (* Expected reveal hash equals to the result of
-       [Tezos_dac_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload "test"].
-    *)
-    let expected_rh =
-      "00a3703854279d2f377d689163d1ec911a840d84b56c4c6f6cafdf0610394df7c6"
-    in
-    check_valid_root_hash expected_rh actual_rh ;
-    let filename =
-      Filename.concat
-        (Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
-        actual_rh
-    in
-    let cin = open_in filename in
-    let recovered_payload = really_input_string cin (in_channel_length cin) in
-    let () = close_in cin in
-    (* Discard first five preamble bytes *)
-    let recovered_preimage =
-      String.sub recovered_payload 5 (String.length recovered_payload - 5)
-    in
-    check_preimage payload recovered_preimage ;
-    let* is_signature_valid =
-      Dac_helper.Call_endpoint.V0.get_verify_signature dac_node l1_operation
-    in
-    Check.(
-      (is_signature_valid = true)
-        bool
-        ~error_msg:"Signature of external message is not valid") ;
-    unit
-
-  let test_dac_node_handles_dac_store_preimage_hash_chain_V0 _protocol dac_node
-      sc_rollup_node _sc_rollup_address _node _client pvm_name _threshold
-      _committee_members =
-    let payload = "test" in
-    let* actual_rh, _l1_operation =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        dac_node
-        ~payload
-        ~pagination_scheme:"Hash_chain_V0"
-    in
-    (* Expected reveal hash equals to the result of
-       [Tezos_dac_alpha.Dac_pages_encoding.Hash_chain.V0.serialize_payload "test"].
-    *)
-    let expected_rh =
-      "00928b20366943e2afd11ebc0eae2e53a93bf177a4fcf35bcc64d503704e65e202"
-    in
-    check_valid_root_hash expected_rh actual_rh ;
-    let filename =
-      Filename.concat
-        (Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
-        actual_rh
-    in
-    let cin = open_in filename in
-    let recovered_payload = really_input_string cin (in_channel_length cin) in
-    let () = close_in cin in
-    let recovered_preimage =
-      String.sub recovered_payload 0 (String.length payload)
-    in
-    check_preimage payload recovered_preimage ;
-    unit
-
-  let test_dac_node_handles_dac_retrieve_preimage_merkle_V0 _protocol dac_node
-      sc_rollup_node _sc_rollup_address _node _client pvm_name _threshold
-      _committee_members =
-    let payload = "test" in
-    let* actual_rh, _l1_operation =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        dac_node
-        ~payload
-        ~pagination_scheme:"Merkle_tree_V0"
-    in
-    (* Expected reveal hash equals to the result of
-       [Tezos_dac_alpha.Dac_pages_encoding.Merkle_tree.V0.serialize_payload "test"].
-    *)
-    let expected_rh =
-      "00a3703854279d2f377d689163d1ec911a840d84b56c4c6f6cafdf0610394df7c6"
-    in
-    check_valid_root_hash expected_rh actual_rh ;
-    let filename =
-      Filename.concat
-        (Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
-        actual_rh
-    in
-    let cin = open_in filename in
-    let recovered_payload = really_input_string cin (in_channel_length cin) in
-    let () = close_in cin in
-    let recovered_preimage = Hex.of_string recovered_payload in
-    let* preimage =
-      Dac_helper.Call_endpoint.V0.get_preimage dac_node expected_rh
-    in
-    Check.(
-      (preimage = Hex.show recovered_preimage)
-        string
-        ~error_msg:
-          "Returned page does not match the expected one (Current: %L <> \
-           Expected: %R)") ;
-    unit
-
-  let test_rollup_arith_uses_reveals protocol dac_node sc_rollup_node
-      sc_rollup_address _node client _pvm_name _threshold _committee_members =
-    let* genesis_info =
-      RPC.Client.call ~hooks client
-      @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_genesis_info
-           sc_rollup_address
-    in
-    let init_level = JSON.(genesis_info |-> "level" |> as_int) in
-    let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
-    let* level =
-      Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node init_level
-    in
-    let nadd = 32 * 1024 in
-    let payload =
-      let rec aux b n =
-        if n > 0 then (
-          Buffer.add_string b "1 +" ;
-          (aux [@tailcall]) b (n - 1))
-        else (
-          Buffer.add_string b "value" ;
-          String.of_bytes (Buffer.to_bytes b))
-      in
-      let buf = Buffer.create ((nadd * 3) + 2) in
-      Buffer.add_string buf "0 " ;
-      aux buf nadd
-    in
-    let* actual_rh, _l1_operation =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        dac_node
-        ~payload
-        ~pagination_scheme:"Hash_chain_V0"
-    in
-    let expected_rh =
-      "0027782d2a7020be332cc42c4e66592ec50305f559a4011981f1d5af81428e7aa3"
-    in
-    check_valid_root_hash expected_rh actual_rh ;
-    let* () =
-      send_messages
-        client
-        ["hash:" ^ actual_rh]
-        ~alter_final_msg:(fun s -> "text:" ^ s)
-    in
-    let* () = bake_levels 2 client in
-    let* _ =
-      Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node (level + 2)
-    in
-    let sc_rollup_client = Sc_rollup_client.create ~protocol sc_rollup_node in
-    let*! encoded_value =
-      Sc_rollup_client.state_value ~hooks sc_rollup_client ~key:"vars/value"
-    in
-    let value =
-      match Data_encoding.(Binary.of_bytes int31) @@ encoded_value with
-      | Error error ->
-          failwith
-            (Format.asprintf
-               "The arithmetic PVM has an unexpected state: %a"
-               Data_encoding.Binary.pp_read_error
-               error)
-      | Ok x -> x
-    in
-    Check.(
-      (value = nadd) int ~error_msg:"Invalid value in rollup state (%L <> %R)") ;
-    unit
-
-  let test_reveals_fails_on_wrong_hash _protocol dac_node sc_rollup_node
-      sc_rollup_address _node client _pvm_name _threshold _committee_members =
-    let payload = "Some data that is not related to the hash" in
-    let _actual_rh =
-      Dac_helper.Call_endpoint.V0.post_store_preimage
-        dac_node
-        ~payload
-        ~pagination_scheme:"Hash_chain_V0"
-    in
-    let errorneous_hash =
-      "0027782d2a7020be332cc42c4e66592ec50305f559a4011981f1d5af81428ecafe"
-    in
-    let* genesis_info =
-      RPC.Client.call ~hooks client
-      @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_genesis_info
-           sc_rollup_address
-    in
-    let init_level = JSON.(genesis_info |-> "level" |> as_int) in
-    let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
-    let error_promise =
-      Sc_rollup_node.wait_for
-        sc_rollup_node
-        "sc_rollup_daemon_error.v0"
-        (fun e ->
-          let id = JSON.(e |=> 0 |-> "id" |> as_string) in
-          if id =~ rex "could_not_open_reveal_preimage_file" then Some (Ok ())
-          else Some (Error id))
-    in
-    let* _level =
-      Sc_rollup_node.wait_for_level ~timeout:120. sc_rollup_node init_level
-    in
-    let* () =
-      send_messages
-        client
-        ["hash:" ^ errorneous_hash]
-        ~alter_final_msg:(fun s -> "text:" ^ s)
-    in
-    let* ok = error_promise in
-    match ok with
-    | Ok () -> unit
-    | Error id -> Test.fail "Rollup node failed with unexpected error %s" id
-
-  (* The following tests involve multiple legacy DAC nodes running at
-     the same time and playing either the coordinator, committee member or
-     observer role. *)
-
-  let test_streaming_of_root_hashes_as_observer _protocol node client
-      coordinator threshold committee_members =
-    (* 1. Create two new dac nodes; [observer_1] and [observer_2].
-       2. Initialize their default configuration.
-       3. Update their configuration so that their dac node client context
-          points to [coordinator]. *)
-    let committee_members =
-      List.map
-        (fun (a : Account.aggregate_key) -> a.aggregate_public_key_hash)
-        committee_members
-    in
-    let observer_1 =
-      Dac_node.create_legacy ~threshold ~committee_members ~node ~client ()
-    in
-    let observer_2 =
-      Dac_node.create_legacy ~threshold ~committee_members ~node ~client ()
-    in
-    let* _ = Dac_node.init_config observer_1 in
-    let* _ = Dac_node.init_config observer_2 in
-    let () = set_coordinator observer_1 coordinator in
-    let () = set_coordinator observer_2 coordinator in
-    let payload_1 = "test_1" in
-    let expected_rh_1 =
-      "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
-    in
-    let payload_2 = "test_2" in
-    let expected_rh_2 =
-      "00f2f47f480fec0e4180930790e52a54b2dbd7676b5fa2a25dd93bf22969f22e33"
-    in
-    let push_promise_1 =
-      wait_for_root_hash_pushed_to_data_streamer coordinator expected_rh_1
-    in
-    let push_promise_2 =
-      wait_for_root_hash_pushed_to_data_streamer coordinator expected_rh_2
-    in
-    let observer_1_promise_1 =
-      wait_for_received_root_hash observer_1 expected_rh_1
-    in
-    let observer_1_promise_2 =
-      wait_for_received_root_hash observer_1 expected_rh_2
-    in
-    let observer_2_promise_1 =
-      wait_for_received_root_hash observer_2 expected_rh_1
-    in
-    let observer_2_promise_2 =
-      wait_for_received_root_hash observer_2 expected_rh_2
-    in
-
-    (* Start running [observer_1]. From now on we expect [observer_1] to
-       monitor streamed root hashes produced by [coordinator]. [coordinator]
-       produces and pushes them as a side effect of serializing dac payload. *)
-    let observer_1_is_subscribed =
-      wait_for_handle_new_subscription_to_hash_streamer coordinator
-    in
-    let* () = Dac_node.run observer_1 in
-    let* () = observer_1_is_subscribed in
-    (* [coordinator] serializes [payload_1]. We expect it would push
-       [expected_rh_1] to all attached subscribers, i.e. to [observer_1]. *)
-    let* () =
-      coordinator_serializes_payload
-        coordinator
-        ~payload:payload_1
-        ~expected_rh:expected_rh_1
-    in
-    (* Assert [coordinator] emitted event that [expected_rh_1] was pushed
-       to the data_streamer. *)
-    let* () = push_promise_1 in
-    (* Assert [observer_1] emitted event of received [expected_rh_1]. *)
-    let* () = observer_1_promise_1 in
-    (* Start running [observer_2]. We expect that from now on [observer_2]
-       will also monitor streamed root hashes from [coordinator]. *)
-    let observer_2_is_subscribed =
-      wait_for_handle_new_subscription_to_hash_streamer coordinator
-    in
-    let push_signature =
-      wait_for_signature_pushed_to_coordinator observer_1 ""
-    in
-    let* () = Dac_node.run observer_2 in
-    let* () = observer_2_is_subscribed in
-    (* [coordinator] serializes [payload_2]. We expect it would push
-       [expected_rh_2] to all attached subscribers,
-       i.e. to both [observer_1] and [observer_2] this time. *)
-    let* () =
-      coordinator_serializes_payload
-        coordinator
-        ~payload:payload_2
-        ~expected_rh:expected_rh_2
-    in
-    (* Assert [coordinator] emitted event. *)
-    let* () = push_promise_2 in
-    (* Assert both [observer_1] and [observer_2] received [expected_rh_2]. *)
-    let* () = observer_1_promise_2 in
-    let* () = observer_2_promise_2 in
-    (* Since [observer_2] was not running when [expected_rh_1] was generated
-       and streamed by [coordinator], we expect it never received it.
-       We assert this, by making sure that the promise of [observer_2] about
-       waiting for the emitted event with payload [expected_rh_1] is still not
-       resolved after the promise [observer_2_promise_2] has been resolved. *)
-    assert (
-      Lwt.is_sleeping observer_2_promise_1 && Lwt.is_sleeping push_signature) ;
-    unit
-
-  let test_streaming_of_root_hashes_as_member _protocol node client coordinator
-      threshold dac_members =
-    (* This test doesn't have any meaning if run without any committee member. *)
-    assert (List.length dac_members > 0) ;
-    let member_key : Account.aggregate_key = List.nth dac_members 0 in
-    let dac_member_pkh = member_key.aggregate_public_key_hash in
-
-    let member =
-      Dac_node.create_legacy
-        ~threshold
-        ~committee_members:[]
-        ~node
-        ~client
-        ?committee_member_address:(Some dac_member_pkh)
-        ()
-    in
-    let* _ = Dac_node.init_config member in
-    let () = set_coordinator member coordinator in
-    let payload = "test_1" in
-    let expected_rh =
-      "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
-    in
-    let push_promise =
-      wait_for_root_hash_pushed_to_data_streamer coordinator expected_rh
-    in
-    let member_promise = wait_for_received_root_hash member expected_rh in
-
-    (* Start running [member]. From now on we expect [member] to
-       monitor streamed root hashes produced by [coordinator]. [coordinator]
-       produces and pushes them as a side effect of serializing dac payload. *)
-    let member_is_subscribed =
-      wait_for_handle_new_subscription_to_hash_streamer coordinator
-    in
-    let expected_signature = bls_sign_hex_hash member_key (`Hex expected_rh) in
-    let* () = Dac_node.run member in
-    let* () = member_is_subscribed in
-    (* [coordinator] serializes [payload_1]. We expect it would push
-       [expected_rh_1] to all attached subscribers, i.e. to [member]. *)
-    let* () =
-      coordinator_serializes_payload coordinator ~payload ~expected_rh
-    in
-    (* Assert [coordinator] emitted event that [expected_rh_1] was pushed
-       to the data_streamer. *)
-    let* () = push_promise in
-    (* Assert [member] emitted event of received [expected_rh_1]. *)
-    let* () = member_promise in
-
-    (* If the signature inside the emitted event is equal to the [expected_signature]
-       test is OK *)
-    let* () =
-      wait_for_signature_pushed_to_coordinator
-        member
-        (Tezos_crypto.Aggregate_signature.to_b58check expected_signature)
-    in
-    unit
-
-  let test_observer_downloads_pages _protocol node client coordinator threshold
-      committee_members =
-    (* 1. Create one new dac nodes; [observer_1],
-       2. Initialize the default configuration,
-       3. Specify a temporary directory within the test data for the observer
-          reveal data dir,
-       4. Update the configuration of the observer so that the dac node client
-          context points to [coordinator]. *)
-    let committee_members =
-      List.map
-        (fun (dc : Account.aggregate_key) -> dc.aggregate_public_key_hash)
-        committee_members
-    in
-    let observer =
-      Dac_node.create_legacy
-        ~threshold
-        ~committee_members
-        ~name:"observer"
-        ~node
-        ~client
-        ()
-    in
-    let* _ = Dac_node.init_config observer in
-    let () = set_coordinator observer coordinator in
-    (* Payload with more than 4091 bytes to check recursive calls of the
-       committee member to the coordinator.
-       The payload of this JSON file corresponds to the hex encoded version of
-       the Inferno, Canto I, by Dante Alighieri. The original text is also used
-       in the uit tests
-       (see src/proto_alpha/lib_dac/test/test_dac_pages_encoding.ml). Because
-       the unit test and the integration test use pages of different size,
-       the final root hash obtained is different from the one in the unit
-       tests. *)
-    let payload, expected_rh = sample_payload "preimage" in
-    let push_promise =
-      wait_for_root_hash_pushed_to_data_streamer coordinator expected_rh
-    in
-    let wait_for_observer_subscribed_to_data_streamer =
-      wait_for_handle_new_subscription_to_hash_streamer coordinator
-    in
-    let fetch_root_hash_promise =
-      wait_for_received_root_hash_processed observer expected_rh
-    in
-
-    (* Test starts here *)
-
-    (* Start running [observer_1]. From now on we expect [observer_1] to monitor
-       streamed root hashes produced by [coordinator]. [coordinator] produces
-       and pushes them as a side effect of serializing dac payload. *)
-    let* () = Dac_node.run observer in
-    let* () = wait_for_observer_subscribed_to_data_streamer in
-    (* [coordinator] serializes [payload_1]. We expect it would push
-       [expected_rh_1] to all attached subscribers, i.e. to [observer_1]. *)
-    let* () =
-      coordinator_serializes_payload coordinator ~payload ~expected_rh
-    in
-    (* Assert [coordinator] emitted event that [expected_rh] was pushed
-       to the data_streamer. *)
-    let* () = push_promise in
-    (* Assert [observer] emitted event of received [expected_rh]. *)
-    let* () = fetch_root_hash_promise in
-    check_downloaded_preimage coordinator observer expected_rh
-
-  module Signature_manager = struct
-    let test_non_committee_signer_should_fail tz_client
-        (coordinator_node, hex_root_hash, _dac_committee) =
-      let* invalid_signer_key =
-        Client.bls_gen_and_show_keys ~alias:"invalid_signer" tz_client
-      in
-      let signature = bls_sign_hex_hash invalid_signer_key hex_root_hash in
-      let result =
-        Dac_helper.Call_endpoint.V0.put_dac_member_signature
-          coordinator_node
-          ~hex_root_hash
-          ~dac_member_pkh:invalid_signer_key.aggregate_public_key_hash
-          ~signature
-      in
-      assert_lwt_failure
-        ~__LOC__
-        "Expected failure with non-committee member signer."
-        result
-
-    (* Tests that trying to store a dac member signature for a different key
-       - one that was not used for creating the signature - fails. *)
-    let test_signature_verification_failure_should_fail
-        (coordinator_node, hex_root_hash, dac_committee) =
-      let member_i = Random.int (List.length dac_committee) in
-      let memberi = List.nth dac_committee member_i in
-      let memberj =
-        List.find
-          (fun (dc : Account.aggregate_key) -> memberi <> dc)
-          dac_committee
-      in
-      let signature = bls_sign_hex_hash memberi hex_root_hash in
-      let result =
-        Dac_helper.Call_endpoint.V0.put_dac_member_signature
-          coordinator_node
-          ~hex_root_hash
-          ~dac_member_pkh:memberj.aggregate_public_key_hash
-          ~signature
-      in
-      assert_lwt_failure
-        ~__LOC__
-        "Expected failure when signature verification fails but did not."
-        result
-
-    (* Tests that a valid signature over [hex_root_hash] that is submitted to
-       the [coordinator_node] is stored. 2 signatures are produced and stored
-       in the [coordinator_node]. The effects of this can be asserted
-       by checking that the witness bitset is set to 3 *)
-    let test_store_valid_signature_should_update_aggregate_signature
-        (coordinator_node, hex_root_hash, dac_committee) =
-      let members =
-        List.map
-          (fun i ->
-            let key = List.nth dac_committee i in
-            let signature = bls_sign_hex_hash key hex_root_hash in
-            (key, signature))
-          (range 0 1)
-      in
-      let* members_keys =
-        List.fold_left
-          (fun keys ((member : Account.aggregate_key), signature) ->
-            let* keys in
-            let* () =
-              Dac_helper.Call_endpoint.V0.put_dac_member_signature
-                coordinator_node
-                ~hex_root_hash
-                ~dac_member_pkh:member.aggregate_public_key_hash
-                ~signature
-            in
-            return (member :: keys))
-          (return [])
-          members
-      in
-      let* witnesses, certificate, _root_hash, _version =
-        Dac_helper.Call_endpoint.V0.get_certificate
-          coordinator_node
-          ~hex_root_hash
-      in
-      assert_witnesses ~__LOC__ 3 witnesses ;
-      assert_verify_aggregate_signature members_keys hex_root_hash certificate ;
-      unit
-
-    let test_store_same_signature_more_than_once_should_be_noop
-        (coordinator_node, _hex_root_hash, dac_committee) =
-      let* hex_root_hash =
-        init_hex_root_hash ~payload:"noop test abc 3210" coordinator_node
-      in
-
-      let member_i = 2 in
-      let member = List.nth dac_committee member_i in
-      let signature = bls_sign_hex_hash member hex_root_hash in
-      let dac_member_pkh = member.aggregate_public_key_hash in
-      let call () =
-        Dac_helper.Call_endpoint.V0.put_dac_member_signature
-          coordinator_node
-          ~hex_root_hash
-          ~dac_member_pkh
-          ~signature
-      in
-      let* () = call () in
-      let* () = call () in
-      let* witnesses, certificate, _root_hash, _version =
-        Dac_helper.Call_endpoint.V0.get_certificate
-          coordinator_node
-          ~hex_root_hash
-      in
-      assert_witnesses ~__LOC__ 4 witnesses ;
-      assert_verify_aggregate_signature [member] hex_root_hash certificate ;
-      unit
-
-    (* Tests that the Coordinator refuses to store a [signature] for
-       a [root_hash] that it doesn't know *)
-    let invalid_signature (coordinator_node, _hex_root_hash, dac_committee) =
-      let false_root_hash =
-        `Hex
-          "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
-      in
-      let member = List.nth dac_committee 0 in
-      let signature = bls_sign_hex_hash member false_root_hash in
-      let dac_member_pkh = member.aggregate_public_key_hash in
-      let result =
-        Dac_helper.Call_endpoint.V0.put_dac_member_signature
-          coordinator_node
-          ~hex_root_hash:false_root_hash
-          ~dac_member_pkh
-          ~signature
-      in
-      assert_lwt_failure
-        ~__LOC__
-        "Expected failure when unknown root_hash"
-        result
-
-    let test_handle_store_signature _protocol _tezos_node tz_client coordinator
-        _threshold dac_committee =
-      let* hex_root_hash = init_hex_root_hash coordinator in
-      let dac_env = (coordinator, hex_root_hash, dac_committee) in
-      let* () = test_non_committee_signer_should_fail tz_client dac_env in
-      let* () = test_signature_verification_failure_should_fail dac_env in
-      let* () =
-        test_store_valid_signature_should_update_aggregate_signature dac_env
-      in
-      let* () =
-        test_store_same_signature_more_than_once_should_be_noop dac_env
-      in
-      let* () = invalid_signature dac_env in
-      unit
-
-    (* Tests that it's possible to retrieve the witness and certificate after
-       storing a dac member signature. Also asserts that the certificate contains
-       the member used for signing. *)
-    let test_get_certificate _protocol _tezos_node _tz_client coordinator
-        _threshold dac_committee =
-      let i = Random.int (List.length dac_committee) in
-      let member = List.nth dac_committee i in
-      let* hex_root_hash =
-        init_hex_root_hash
-          ~payload:"test get certificate payload 123"
-          coordinator
-      in
-      let signature = bls_sign_hex_hash member hex_root_hash in
-      let* () =
-        Dac_helper.Call_endpoint.V0.put_dac_member_signature
-          coordinator
-          ~hex_root_hash
-          ~dac_member_pkh:member.aggregate_public_key_hash
-          ~signature
-      in
-      let* witnesses, certificate, _root_hash, _version =
-        Dac_helper.Call_endpoint.V0.get_certificate coordinator ~hex_root_hash
-      in
-      let expected_witnesses = Z.shift_left Z.one i in
-      assert_witnesses ~__LOC__ (Z.to_int expected_witnesses) witnesses ;
-      assert_verify_aggregate_signature [member] hex_root_hash certificate ;
-      unit
-  end
-end
-
 module Coordinator = struct
   let test_dac_not_ready_without_protocol =
     Protocol.register_test
@@ -1059,7 +324,7 @@ module Coordinator = struct
         ()
     in
     let dac_node =
-      Dac_node.create_legacy ~node ~client ~threshold:0 ~committee_members:[] ()
+      Dac_node.create_coordinator ~node ~client ~committee_members:[] ()
     in
     let* _dir = Dac_node.init_config dac_node in
     let* () = run_dac dac_node in
@@ -1088,8 +353,20 @@ module Observer = struct
         ~nodes_args
         ()
     in
+    let coordinator_node =
+      Dac_node.create_coordinator ~node ~client ~committee_members:[] ()
+    in
     let dac_node =
-      Dac_node.create_legacy ~node ~client ~threshold:0 ~committee_members:[] ()
+      Dac_node.create_observer
+        ?name:(Some "observer-0")
+        ~node
+        ~client
+        ?reveal_data_dir:(Some "observer")
+        ~coordinator_rpc_host:(Dac_node.rpc_host coordinator_node)
+        ~coordinator_rpc_port:(Dac_node.rpc_port coordinator_node)
+        ~allow_v1_api:false
+        ~committee_member_rpcs:[("localhost", 0)]
+        ()
     in
     let* _dir = Dac_node.init_config dac_node in
     let* () = run_dac dac_node in
@@ -1097,6 +374,7 @@ module Observer = struct
     let* () = check_alive dac_node in
     (* GET /health/ready must fail *)
     let* () = check_not_ready dac_node in
+    let* () = Dac_node.terminate coordinator_node in
     let* () = Dac_node.terminate dac_node in
     return ()
 end
@@ -1118,8 +396,25 @@ module Member = struct
         ~nodes_args
         ()
     in
+    let coordinator_node =
+      Dac_node.create_coordinator ~node ~client ~committee_members:[] ()
+    in
+    let* key =
+      Client.bls_gen_and_show_keys
+        ~alias:(Format.sprintf "committee-member-%d" 0)
+        client
+    in
     let dac_node =
-      Dac_node.create_legacy ~node ~client ~threshold:0 ~committee_members:[] ()
+      Dac_node.create_committee_member
+        ?name:(Some "member")
+        ~node
+        ~client
+        ?reveal_data_dir:(Some "member")
+        ~coordinator_rpc_host:(Dac_node.rpc_host coordinator_node)
+        ~coordinator_rpc_port:(Dac_node.rpc_port coordinator_node)
+        ~allow_v1_api:false
+        ~address:key.aggregate_public_key_hash
+        ()
     in
     let* _dir = Dac_node.init_config dac_node in
     let* () = run_dac dac_node in
@@ -1127,12 +422,13 @@ module Member = struct
     let* () = check_alive dac_node in
     (* GET /health/ready must fail *)
     let* () = check_not_ready dac_node in
+    let* () = Dac_node.terminate coordinator_node in
     let* () = Dac_node.terminate dac_node in
     return ()
 end
 
 (** [Full_infrastructure] is a test suite consisting only of tests with the DAC
-    nodes running in non-[Legacy] modes. *)
+    nodes running in [Coordinator], [Member] or [Observer] modes. *)
 module Full_infrastructure = struct
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/5577
      Once we introduce DAC API ("v1"),  [Full_infrastructure] test suite should
@@ -1153,6 +449,196 @@ module Full_infrastructure = struct
         expected_rh
     in
     return (`Hex actual_rh)
+
+  let test_observer_downloads_pages scenario =
+    let Scenarios.{coordinator_node; observer_nodes; _} = scenario in
+
+    (* 1. Create one new dac nodes; [observer_1],
+       2. Initialize the default configuration,
+       3. Specify a temporary directory within the test data for the observer
+          reveal data dir,
+       4. Update the configuration of the observer so that the dac node client
+          context points to [coordinator]. *)
+    let observer = List.nth observer_nodes 0 in
+    let* _ = Dac_node.init_config observer in
+    (* Payload with more than 4091 bytes to check recursive calls of the
+       committee member to the coordinator.
+       The payload of this JSON file corresponds to the hex encoded version of
+       the Inferno, Canto I, by Dante Alighieri. The original text is also used
+       in the uit tests
+       (see src/proto_alpha/lib_dac/test/test_dac_pages_encoding.ml). Because
+       the unit test and the integration test use pages of different size,
+       the final root hash obtained is different from the one in the unit
+       tests. *)
+    let payload, expected_rh = sample_payload "preimage" in
+    let push_promise =
+      wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh
+    in
+    let wait_for_observer_subscribed_to_data_streamer =
+      wait_for_handle_new_subscription_to_hash_streamer coordinator_node
+    in
+    let fetch_root_hash_promise =
+      wait_for_received_root_hash_processed observer expected_rh
+    in
+
+    (* Test starts here *)
+
+    (* Start running [observer_1]. From now on we expect [observer_1] to monitor
+       streamed root hashes produced by [coordinator]. [coordinator] produces
+       and pushes them as a side effect of serializing dac payload. *)
+    let* () = Dac_node.run observer in
+    let* () = wait_for_observer_subscribed_to_data_streamer in
+    (* [coordinator] serializes [payload_1]. We expect it would push
+       [expected_rh_1] to all attached subscribers, i.e. to [observer_1]. *)
+    let* _root_hash =
+      coordinator_serializes_payload coordinator_node ~payload ~expected_rh
+    in
+    (* Assert [coordinator] emitted event that [expected_rh] was pushed
+       to the data_streamer. *)
+    let* () = push_promise in
+    (* Assert [observer] emitted event of received [expected_rh]. *)
+    let* () = fetch_root_hash_promise in
+    check_downloaded_preimage coordinator_node observer expected_rh
+
+  let test_streaming_of_root_hashes_as_observer scenario =
+    let Scenarios.{coordinator_node; observer_nodes; _} = scenario in
+
+    (* 1. Create two new dac nodes; [observer_1] and [observer_2].
+       2. Initialize their default configuration.
+       3. Update their configuration so that their dac node client context
+          points to [coordinator]. *)
+    let observer_1 = List.nth observer_nodes 0 in
+    let observer_2 = List.nth observer_nodes 1 in
+    let* _ = Dac_node.init_config observer_1 in
+    let* _ = Dac_node.init_config observer_2 in
+    let payload_1 = "test_1" in
+    let expected_rh_1 =
+      "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
+    in
+    let payload_2 = "test_2" in
+    let expected_rh_2 =
+      "00f2f47f480fec0e4180930790e52a54b2dbd7676b5fa2a25dd93bf22969f22e33"
+    in
+    let push_promise_1 =
+      wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh_1
+    in
+    let push_promise_2 =
+      wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh_2
+    in
+    let observer_1_promise_1 =
+      wait_for_received_root_hash observer_1 expected_rh_1
+    in
+    let observer_1_promise_2 =
+      wait_for_received_root_hash observer_1 expected_rh_2
+    in
+    let observer_2_promise_1 =
+      wait_for_received_root_hash observer_2 expected_rh_1
+    in
+    let observer_2_promise_2 =
+      wait_for_received_root_hash observer_2 expected_rh_2
+    in
+
+    (* Start running [observer_1]. From now on we expect [observer_1] to
+       monitor streamed root hashes produced by [coordinator]. [coordinator]
+       produces and pushes them as a side effect of serializing dac payload. *)
+    let observer_1_is_subscribed =
+      wait_for_handle_new_subscription_to_hash_streamer coordinator_node
+    in
+    let* () = Dac_node.run observer_1 in
+    let* () = observer_1_is_subscribed in
+    (* [coordinator] serializes [payload_1]. We expect it would push
+       [expected_rh_1] to all attached subscribers, i.e. to [observer_1]. *)
+    let* _root_hash_1 =
+      coordinator_serializes_payload
+        coordinator_node
+        ~payload:payload_1
+        ~expected_rh:expected_rh_1
+    in
+    (* Assert [coordinator] emitted event that [expected_rh_1] was pushed
+       to the data_streamer. *)
+    let* () = push_promise_1 in
+    (* Assert [observer_1] emitted event of received [expected_rh_1]. *)
+    let* () = observer_1_promise_1 in
+    (* Start running [observer_2]. We expect that from now on [observer_2]
+       will also monitor streamed root hashes from [coordinator]. *)
+    let observer_2_is_subscribed =
+      wait_for_handle_new_subscription_to_hash_streamer coordinator_node
+    in
+    let push_signature =
+      wait_for_signature_pushed_to_coordinator observer_1 ""
+    in
+    let* () = Dac_node.run observer_2 in
+    let* () = observer_2_is_subscribed in
+    (* [coordinator] serializes [payload_2]. We expect it would push
+       [expected_rh_2] to all attached subscribers,
+       i.e. to both [observer_1] and [observer_2] this time. *)
+    let* _root_hash_2 =
+      coordinator_serializes_payload
+        coordinator_node
+        ~payload:payload_2
+        ~expected_rh:expected_rh_2
+    in
+    (* Assert [coordinator] emitted event. *)
+    let* () = push_promise_2 in
+    (* Assert both [observer_1] and [observer_2] received [expected_rh_2]. *)
+    let* () = observer_1_promise_2 in
+    let* () = observer_2_promise_2 in
+    (* Since [observer_2] was not running when [expected_rh_1] was generated
+       and streamed by [coordinator], we expect it never received it.
+       We assert this, by making sure that the promise of [observer_2] about
+       waiting for the emitted event with payload [expected_rh_1] is still not
+       resolved after the promise [observer_2_promise_2] has been resolved. *)
+    assert (
+      Lwt.is_sleeping observer_2_promise_1 && Lwt.is_sleeping push_signature) ;
+    unit
+
+  let test_streaming_of_root_hashes_as_member scenario =
+    let Scenarios.
+          {coordinator_node; committee_members_nodes; committee_members; _} =
+      scenario
+    in
+    (* This test doesn't have any meaning if run without any committee member. *)
+    assert (List.length committee_members > 0) ;
+    let member_key = List.nth committee_members 0 in
+    let member = List.nth committee_members_nodes 0 in
+    let* _ = Dac_node.init_config member in
+    let* () = Dac_node.run member in
+    let payload = "test_1" in
+    let expected_rh =
+      "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
+    in
+    let push_promise =
+      wait_for_root_hash_pushed_to_data_streamer coordinator_node expected_rh
+    in
+    let member_promise = wait_for_received_root_hash member expected_rh in
+
+    (* Start running [member]. From now on we expect [member] to
+       monitor streamed root hashes produced by [coordinator]. [coordinator]
+       produces and pushes them as a side effect of serializing dac payload. *)
+    let member_is_subscribed =
+      wait_for_handle_new_subscription_to_hash_streamer coordinator_node
+    in
+    let expected_signature = bls_sign_hex_hash member_key (`Hex expected_rh) in
+    let* () = member_is_subscribed in
+    (* [coordinator] serializes [payload_1]. We expect it would push
+       [expected_rh_1] to all attached subscribers, i.e. to [member]. *)
+    let* _root_hash =
+      coordinator_serializes_payload coordinator_node ~payload ~expected_rh
+    in
+    (* Assert [coordinator] emitted event that [expected_rh_1] was pushed
+       to the data_streamer. *)
+    let* () = push_promise in
+    (* Assert [member] emitted event of received [expected_rh_1]. *)
+    let* () = member_promise in
+
+    (* If the signature inside the emitted event is equal to the [expected_signature]
+       test is OK *)
+    let* () =
+      wait_for_signature_pushed_to_coordinator
+        member
+        (Tezos_crypto.Aggregate_signature.to_b58check expected_signature)
+    in
+    unit
 
   let test_coordinator_post_preimage_endpoint Scenarios.{coordinator_node; _} =
     (* 1. Send the [payload] to coordinator.
@@ -1662,6 +1148,185 @@ module Full_infrastructure = struct
     in
     check_preimage coordinator_page observer_preimage ;
     unit
+
+  module Signature_manager = struct
+    let test_non_committee_signer_should_fail tz_client
+        (coordinator_node, hex_root_hash, _dac_committee) =
+      let* invalid_signer_key =
+        Client.bls_gen_and_show_keys ~alias:"invalid_signer" tz_client
+      in
+      let signature = bls_sign_hex_hash invalid_signer_key hex_root_hash in
+      let result =
+        Dac_helper.Call_endpoint.V0.put_dac_member_signature
+          coordinator_node
+          ~hex_root_hash
+          ~dac_member_pkh:invalid_signer_key.aggregate_public_key_hash
+          ~signature
+      in
+      assert_lwt_failure
+        ~__LOC__
+        "Expected failure with non-committee member signer."
+        result
+
+    (* Tests that trying to store a dac member signature for a different key
+       - one that was not used for creating the signature - fails. *)
+    let test_signature_verification_failure_should_fail
+        (coordinator_node, hex_root_hash, dac_committee) =
+      let member_i = Random.int (List.length dac_committee) in
+      let memberi = List.nth dac_committee member_i in
+      let memberj =
+        List.find
+          (fun (dc : Account.aggregate_key) -> memberi <> dc)
+          dac_committee
+      in
+      let signature = bls_sign_hex_hash memberi hex_root_hash in
+      let result =
+        Dac_helper.Call_endpoint.V0.put_dac_member_signature
+          coordinator_node
+          ~hex_root_hash
+          ~dac_member_pkh:memberj.aggregate_public_key_hash
+          ~signature
+      in
+      assert_lwt_failure
+        ~__LOC__
+        "Expected failure when signature verification fails but did not."
+        result
+
+    (* Tests that a valid signature over [hex_root_hash] that is submitted to
+       the [coordinator_node] is stored. 2 signatures are produced and stored
+       in the [coordinator_node]. The effects of this can be asserted
+       by checking that the witness bitset is set to 3 *)
+    let test_store_valid_signature_should_update_aggregate_signature
+        (coordinator_node, hex_root_hash, dac_committee) =
+      let members =
+        List.map
+          (fun i ->
+            let key = List.nth dac_committee i in
+            let signature = bls_sign_hex_hash key hex_root_hash in
+            (key, signature))
+          (range 0 1)
+      in
+      let* members_keys =
+        List.fold_left
+          (fun keys ((member : Account.aggregate_key), signature) ->
+            let* keys in
+            let* () =
+              Dac_helper.Call_endpoint.V0.put_dac_member_signature
+                coordinator_node
+                ~hex_root_hash
+                ~dac_member_pkh:member.aggregate_public_key_hash
+                ~signature
+            in
+            return (member :: keys))
+          (return [])
+          members
+      in
+      let* witnesses, certificate, _root_hash, _version =
+        Dac_helper.Call_endpoint.V0.get_certificate
+          coordinator_node
+          ~hex_root_hash
+      in
+      assert_witnesses ~__LOC__ 3 witnesses ;
+      assert_verify_aggregate_signature members_keys hex_root_hash certificate ;
+      unit
+
+    let test_store_same_signature_more_than_once_should_be_noop
+        (coordinator_node, _hex_root_hash, dac_committee) =
+      let* hex_root_hash =
+        init_hex_root_hash ~payload:"noop test abc 3210" coordinator_node
+      in
+
+      let member_i = 2 in
+      let member = List.nth dac_committee member_i in
+      let signature = bls_sign_hex_hash member hex_root_hash in
+      let dac_member_pkh = member.aggregate_public_key_hash in
+      let call () =
+        Dac_helper.Call_endpoint.V0.put_dac_member_signature
+          coordinator_node
+          ~hex_root_hash
+          ~dac_member_pkh
+          ~signature
+      in
+      let* () = call () in
+      let* () = call () in
+      let* witnesses, certificate, _root_hash, _version =
+        Dac_helper.Call_endpoint.V0.get_certificate
+          coordinator_node
+          ~hex_root_hash
+      in
+      assert_witnesses ~__LOC__ 4 witnesses ;
+      assert_verify_aggregate_signature [member] hex_root_hash certificate ;
+      unit
+
+    (* Tests that the Coordinator refuses to store a [signature] for
+       a [root_hash] that it doesn't know *)
+    let invalid_signature (coordinator_node, _hex_root_hash, dac_committee) =
+      let false_root_hash =
+        `Hex
+          "00b29d7d1e6668fb35a9ff6d46fa321d227e9b93dae91c4649b53168e8c10c1827"
+      in
+      let member = List.nth dac_committee 0 in
+      let signature = bls_sign_hex_hash member false_root_hash in
+      let dac_member_pkh = member.aggregate_public_key_hash in
+      let result =
+        Dac_helper.Call_endpoint.V0.put_dac_member_signature
+          coordinator_node
+          ~hex_root_hash:false_root_hash
+          ~dac_member_pkh
+          ~signature
+      in
+      assert_lwt_failure
+        ~__LOC__
+        "Expected failure when unknown root_hash"
+        result
+
+    let test_handle_store_signature scenario =
+      let Scenarios.{coordinator_node; committee_members; client; _} =
+        scenario
+      in
+      let* hex_root_hash = init_hex_root_hash coordinator_node in
+      let dac_env = (coordinator_node, hex_root_hash, committee_members) in
+      let* () = test_non_committee_signer_should_fail client dac_env in
+      let* () = test_signature_verification_failure_should_fail dac_env in
+      let* () =
+        test_store_valid_signature_should_update_aggregate_signature dac_env
+      in
+      let* () =
+        test_store_same_signature_more_than_once_should_be_noop dac_env
+      in
+      let* () = invalid_signature dac_env in
+      unit
+
+    (* Tests that it's possible to retrieve the witness and certificate after
+       storing a dac member signature. Also asserts that the certificate contains
+       the member used for signing. *)
+    let test_get_certificate scenario =
+      let Scenarios.{coordinator_node; committee_members; _} = scenario in
+      let i = Random.int (List.length committee_members) in
+      let member = List.nth committee_members i in
+      let* hex_root_hash =
+        init_hex_root_hash
+          ~payload:"test get certificate payload 123"
+          coordinator_node
+      in
+      let signature = bls_sign_hex_hash member hex_root_hash in
+      let* () =
+        Dac_helper.Call_endpoint.V0.put_dac_member_signature
+          coordinator_node
+          ~hex_root_hash
+          ~dac_member_pkh:member.aggregate_public_key_hash
+          ~signature
+      in
+      let* witnesses, signature, _root_hash, _version =
+        Dac_helper.Call_endpoint.V0.get_certificate
+          coordinator_node
+          ~hex_root_hash
+      in
+      let expected_witnesses = Z.shift_left Z.one i in
+      assert_witnesses ~__LOC__ (Z.to_int expected_witnesses) witnesses ;
+      assert_verify_aggregate_signature [member] hex_root_hash signature ;
+      unit
+  end
 end
 
 let test_observer_times_out_when_page_cannot_be_fetched _protocol node client
@@ -2683,9 +2348,9 @@ module Tx_kernel_e2e = struct
 end
 
 let register_with_unsupported_protocol ~protocols =
-  Legacy.test_dac_not_ready_without_protocol protocols ;
   Coordinator.test_dac_not_ready_without_protocol protocols ;
   Observer.test_dac_not_ready_without_protocol protocols ;
+
   Member.test_dac_not_ready_without_protocol protocols
 
 (** [V1_API] is a test suite for [V1] API. *)
@@ -3009,93 +2674,45 @@ module Api_regression = struct
 end
 
 let register ~protocols =
-  (* Tests with layer1 and dac nodes *)
-  Legacy.test_dac_node_imports_committee_members protocols ;
-  Legacy.test_dac_node_dac_threshold_not_reached protocols ;
-  scenario_with_layer1_legacy_and_rollup_nodes
-    ~hooks
+  scenario_with_full_dac_infrastructure
     ~__FILE__
-    ~tags:["dac"; "dac_node"]
-    "dac_reveals_data_merkle_tree_v0"
-    Legacy.test_dac_node_handles_dac_store_preimage_merkle_V0
-    protocols
-    ~threshold:1
-    ~committee_size:1 ;
-  scenario_with_layer1_legacy_and_rollup_nodes
-    ~hooks
-    ~__FILE__
-    ~tags:["dac"; "dac_node"]
-    "dac_reveals_data_hash_chain_v0"
-    Legacy.test_dac_node_handles_dac_store_preimage_hash_chain_V0
-    protocols
-    ~threshold:1
-    ~committee_size:1 ;
-  scenario_with_layer1_legacy_and_rollup_nodes
-    ~hooks
-    ~__FILE__
-    ~tags:["dac"; "dac_node"]
-    ~threshold:0
     ~committee_size:0
-    "dac_retrieve_preimage"
-    Legacy.test_dac_node_handles_dac_retrieve_preimage_merkle_V0
+    ~observers:2
+    ~tags:["dac"; "dac_node"]
+    "dac_streaming_of_root_hashes"
+    Full_infrastructure.test_streaming_of_root_hashes_as_observer
     protocols ;
-  scenario_with_layer1_legacy_and_rollup_nodes
-    ~hooks
+  scenario_with_full_dac_infrastructure
     ~__FILE__
-    ~tags:["dac"; "dac_node"]
-    "dac_rollup_arith_uses_reveals"
-    Legacy.test_rollup_arith_uses_reveals
-    protocols
-    ~threshold:1
-    ~committee_size:1 ;
-  scenario_with_layer1_legacy_and_rollup_nodes
-    ~hooks
-    ~__FILE__
-    ~tags:["dac"; "dac_node"]
-    "dac_rollup_arith_wrong_hash"
-    Legacy.test_reveals_fails_on_wrong_hash
-    ~threshold:1
     ~committee_size:1
-    protocols ;
-  scenario_with_layer1_and_legacy_dac_nodes
-    ~__FILE__
-    ~threshold:0
-    ~committee_size:0
+    ~observers:2
     ~tags:["dac"; "dac_node"]
-    "dac_streaming_of_root_hashes_in_legacy_mode"
-    Legacy.test_streaming_of_root_hashes_as_observer
+    "dac_push_signature_as_member"
+    Full_infrastructure.test_streaming_of_root_hashes_as_member
     protocols ;
-  scenario_with_layer1_and_legacy_dac_nodes
+  scenario_with_full_dac_infrastructure
     ~__FILE__
-    ~threshold:0
-    ~committee_size:1
-    ~tags:["dac"; "dac_node"]
-    "dac_push_signature_in_legacy_mode_as_member"
-    Legacy.test_streaming_of_root_hashes_as_member
-    protocols ;
-  scenario_with_layer1_and_legacy_dac_nodes
-    ~__FILE__
-    ~threshold:0
+    ~observers:1
     ~committee_size:0
     ~tags:["dac"; "dac_node"]
     "committee member downloads pages from coordinator"
-    Legacy.test_observer_downloads_pages
+    Full_infrastructure.test_observer_downloads_pages
     protocols ;
-  scenario_with_layer1_and_legacy_dac_nodes
+  scenario_with_full_dac_infrastructure
     ~__FILE__
-    ~threshold:0
+    ~observers:0
     ~committee_size:2
     ~tags:["dac"; "dac_node"]
     "dac_get_certificate"
-    Legacy.Signature_manager.test_get_certificate
+    Full_infrastructure.Signature_manager.test_get_certificate
     protocols ;
-  scenario_with_layer1_and_legacy_dac_nodes
+  scenario_with_full_dac_infrastructure
     ~__FILE__
-    ~threshold:0
+    ~observers:0
     ~committee_size:3
     ~tags:["dac"; "dac_node"]
     "dac_store_member_signature"
-    Legacy.Signature_manager.test_handle_store_signature
+    Full_infrastructure.Signature_manager.test_handle_store_signature
     protocols ;
   scenario_with_full_dac_infrastructure
     ~__FILE__

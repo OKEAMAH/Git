@@ -158,30 +158,6 @@ let () =
       Public_key_for_committee_member_not_available
         (Aggregate_signature.Public_key_hash.of_b58check_exn hash))
 
-let bind_es (f : 'a -> 'b option tzresult Lwt.t) v_opt =
-  let open Lwt_result_syntax in
-  match v_opt with None -> return None | Some v -> f v
-
-let rev_collect_indexed_signatures cctxt dac_sk_uris bytes_to_sign =
-  let open Lwt_result_syntax in
-  List.rev_mapi_es
-    (fun index sk_uri_opt ->
-      (* TODO: https://gitlab.com/tezos/tezos/-/issues/4306
-         Implement Option.bind_es and revisit this. *)
-      bind_es
-        (fun sk_uri ->
-          let*! signature_res =
-            Tezos_client_base.Client_keys.aggregate_sign
-              cctxt
-              sk_uri
-              bytes_to_sign
-          in
-          let signature_opt = Result.to_option signature_res in
-          return
-          @@ Option.map (fun signature -> (index, signature)) signature_opt)
-        sk_uri_opt)
-    dac_sk_uris
-
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/5578
      Check that computed witness field is correct with respect to signatures.
 *)
@@ -423,51 +399,6 @@ module Coordinator = struct
       dac_plugin
       get_public_key_opt
       (Some ctx.certificate_streamers)
-      rw_node_store
-      page_store
-      committee_members
-      dac_member_signature
-end
-
-module Legacy = struct
-  let sign_root_hash ((module P) : Dac_plugin.t) cctxt dac_sk_uris root_hash =
-    let open Lwt_result_syntax in
-    let bytes_to_sign =
-      Data_encoding.Binary.to_bytes_opt P.encoding root_hash
-    in
-    let root_hash = P.to_hex root_hash in
-    match bytes_to_sign with
-    | None -> tzfail @@ Cannot_convert_root_page_hash_to_bytes root_hash
-    | Some bytes_to_sign -> (
-        let* rev_indexed_signatures =
-          rev_collect_indexed_signatures cctxt dac_sk_uris bytes_to_sign
-        in
-        let* signatures, witnesses =
-          compute_signatures_with_witnesses rev_indexed_signatures
-        in
-        match
-          Tezos_crypto.Aggregate_signature.aggregate_signature_opt signatures
-        with
-        | None -> tzfail @@ Cannot_compute_aggregate_signature root_hash
-        | Some signature -> return @@ (signature, witnesses))
-
-  let handle_put_dac_member_signature ctx dac_plugin rw_node_store page_store
-      dac_member_signature =
-    let committee_members = Node_context.Legacy.committee_members ctx in
-    let get_public_key_opt committee_member_address =
-      List.find_map
-        (fun Wallet_account.Legacy.{public_key_hash; public_key_opt; _} ->
-          if
-            Tezos_crypto.Aggregate_signature.Public_key_hash.(
-              committee_member_address <> public_key_hash)
-          then None
-          else public_key_opt)
-        ctx.committee_members
-    in
-    handle_put_dac_member_signature
-      dac_plugin
-      get_public_key_opt
-      None
       rw_node_store
       page_store
       committee_members
