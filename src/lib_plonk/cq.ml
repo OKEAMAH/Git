@@ -306,7 +306,7 @@ module Internal = struct
 
     (* 3.1 *)
     let transcript =
-      Transcript.list_expand G1.t [cm_a; cm_qa; cm_b0; cm_p] transcript
+      Transcript.list_expand G1.t [cm_a; cm_qa; cm_qb; cm_b0; cm_p] transcript
     in
     let gamma, transcript = Fr_generation.random_fr transcript in
     (* 3.2 *)
@@ -356,7 +356,7 @@ module Internal = struct
     let transcript =
       Transcript.list_expand
         G1.t
-        [proof.cm_a; proof.cm_qa; proof.cm_b0; proof.cm_p]
+        [proof.cm_a; proof.cm_qa; proof.cm_qb; proof.cm_b0; proof.cm_p]
         transcript
     in
     let gamma, transcript = Fr_generation.random_fr transcript in
