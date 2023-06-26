@@ -12,12 +12,20 @@
   # underlying tests have been fixed.
   retry: 2
   script:
+    ## Debug the cache
+    - '[ -d _build ] && ls -a _build || true'
+    - env | grep CACHE
+    ### Inspect size and contents of Dune cache
+    - '[ -d $XDG_CACHE_HOME ] && { du -hs $XDG_CACHE_HOME; find $XDG_CACHE_HOME/dune/db/ -type f | wc -l ; } || true'
+    # Prepare opam to simplify running locally
+    - "[ -d _opam-repo-for-release ] || make -C ${CI_PROJECT_DIR}/.gitlab/ci opam-prepare > /dev/null 2>&1"
     - make  -C ${CI_PROJECT_DIR}/.gitlab/ci opam-configure
   needs: [opam:prepare]
   dependencies: [opam:prepare]
   after_script:
     # Stores logs in opam_logs for artifacts and outputs an excerpt on failure.
     - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
+    - '[ -d $XDG_CACHE_HOME ] && { du -hs $XDG_CACHE_HOME ; find $XDG_CACHE_HOME/dune/db/ -type f | wc -l ; } || true'
   artifacts:
     paths:
       - opam_logs/
@@ -36,6 +44,7 @@
     # GitLab Runner does not allow storing caches outside the build
     # directory per default, so we're forced to use copy mode.
     DUNE_CACHE_STORAGE_MODE: "copy"
+    # OPAMVERBOSE: "2"
   cache:
     # Note that we have one cache bucket per CI_JOB_NAME_SLUG, not per
     # CI_JOB_NAME_SLUG + CI_COMMIT_REF_SLUG to enable sharing between
