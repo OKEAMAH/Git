@@ -1632,9 +1632,7 @@ module Make (Context : Sc_rollup_PVM_sig.Generic_pvm_context_sig) :
             "Invalid set_input: expecting a raw data reveal, got an inbox \
              message or a reveal metadata."
       | PS.Needs_reveal (Reveal_partial_raw_data _), _ ->
-          error
-            "Invalid set_input: expecting a partial raw data reveal, got an \
-             inbox message or a reveal metadata."
+          error "Invalid set_input: expecting a partial raw data reveal."
       | PS.Needs_reveal Reveal_metadata, _ ->
           error
             "Invalid set_input: expecting a metadata reveal, got an inbox \

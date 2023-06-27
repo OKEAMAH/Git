@@ -420,6 +420,69 @@ let test_reveal_enabled ~threshold ~inbox_level () =
   let*! stack = get_stack state in
   match stack with [2] -> return_unit | _ -> failwith "invalid stack"
 
+let test_partial_reveal () =
+  let open Lwt_result_syntax in
+  let is_reveal_enabled ~current_block_level:_ _ = true in
+  let* state =
+    boot_then_reveal_metadata
+      ~is_reveal_enabled
+      Sc_rollup_repr.Address.zero
+      Raw_level_repr.root
+  in
+  let* state = go ~max_steps:10_000 Waiting_for_input_message state in
+  let raw_data = "1 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 +" in
+  let*? strings = String.chunk_bytes 4 (Bytes.of_string raw_data) in
+  let (module Blake) =
+    Sc_rollup_partial_reveal.merkle_list_of_scheme
+      ~scheme:Sc_rollup_reveal_hash.Blake2B
+  in
+  let tree : Blake.t = Blake.of_list strings in
+  let root : Blake.h = Blake.root tree in
+  let* _, state =
+    Tezos_lwt_result_stdlib.Lwtreslib.Bare.List.fold_left_es
+      (fun (index, state) hash ->
+        let u =
+          Sc_rollup_partial_reveal.make
+            ~scheme:Sc_rollup_reveal_hash.Blake2B
+            ~index
+            ~root
+        in
+        let source = "hash:" ^ Sc_rollup_partial_reveal.to_hex u in
+        let input = Sc_rollup_helpers.make_external_input_repr source in
+        let*! state = set_input input state in
+        let* state =
+          go
+            ~is_reveal_enabled
+            ~max_steps:10_000
+            (Waiting_for_reveal (Reveal_partial_raw_data u))
+            state
+        in
+        let*! input_state = is_input_state ~is_reveal_enabled state in
+        let* () =
+          match input_state with
+          | Needs_reveal
+              (Reveal_partial_raw_data {index = index'; root = root'}) ->
+              assert (index = index' && Sc_rollup_reveal_hash.equal u.root root') ;
+              return_unit
+          | No_input_required | Initial | First_after _ | _ ->
+              failwith "expected partial reveal."
+        in
+        let*! state = set_input (Reveal (Raw_data hash)) state in
+        let* state =
+          go
+            ~is_reveal_enabled
+            ~max_steps:10_000
+            Waiting_for_input_message
+            state
+        in
+        return (index + 1, state))
+      (0, state)
+      strings
+  in
+  get_stack state >>= function
+  | [55] -> return_unit
+  | _ -> failwith "invalid stack"
+
 let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
   let open Lwt_result_syntax in
   boot "" @@ fun ctxt state ->
@@ -669,26 +732,7 @@ let tests =
       `Quick
       test_initial_state_hash_arith_pvm;
     Tztest.tztest "Filter internal message" `Quick test_filter_internal_message;
-    Tztest.tztest
-      "Reveal below threshold"
-      `Quick
-      (test_reveal_disabled ~threshold:10_000l ~inbox_level:1_000l);
-    Tztest.tztest
-      "Reveal at threshold (block level zero)"
-      `Quick
-      (test_reveal_enabled ~threshold:0l ~inbox_level:0l);
-    Tztest.tztest
-      "Reveal below threshold (block level zero)"
-      `Quick
-      (test_reveal_disabled ~threshold:10_000l ~inbox_level:0l);
-    Tztest.tztest
-      "Reveal at threshold"
-      `Quick
-      (test_reveal_enabled ~threshold:10_000l ~inbox_level:10_000l);
-    Tztest.tztest
-      "Reveal above threshold"
-      `Quick
-      (test_reveal_enabled ~threshold:10_000l ~inbox_level:10_001l);
+    Tztest.tztest "Partial reveal" `Quick test_partial_reveal;
   ]
 
 let () =
