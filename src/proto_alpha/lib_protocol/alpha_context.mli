@@ -910,6 +910,12 @@ module Constants : sig
 
       val generate : consensus_committee_size:int -> t
     end
+
+    val constants_mainnet : t
+
+    val constants_sandbox : t
+
+    val constants_test : t
   end
 
   val parametric : context -> Parametric.t

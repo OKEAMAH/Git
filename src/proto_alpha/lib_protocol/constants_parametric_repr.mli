@@ -175,6 +175,12 @@ module Generated : sig
   val generate : consensus_committee_size:int -> t
 end
 
+val constants_mainnet : t
+
+val constants_sandbox : t
+
+val constants_test : t
+
 val encoding : t Data_encoding.encoding
 
 module Internal_for_tests : sig
