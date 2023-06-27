@@ -403,9 +403,12 @@ mod tests {
         mock_host.add_external(Msg::new(0x01));
         mock_host.add_external(Msg::new(0x02));
         mock_host.add_external(Msg::new(0x03));
-        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 2, 0, vec![]));
+        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 5, 0, vec![]));
 
         let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let _sol = runtime.read_input().unwrap().unwrap();
+        let _eol = runtime.read_input().unwrap().unwrap();
+
         let msg1 = runtime.read_input().unwrap().unwrap();
         let msg2 = runtime.read_input().unwrap().unwrap();
 
@@ -425,10 +428,12 @@ mod tests {
         let destination = SmartRollupAddress::from_b58check(&b58).unwrap();
 
         mock_host.add_external(Msg::new(0x01));
-        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 1, 0, vec![]));
+        mock_host.add_external(generate_signed_sequence(sk, destination, 0, 4, 0, vec![]));
         mock_host.add_external(Msg::new(0x02));
 
         let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let _sol = runtime.read_input().unwrap().unwrap();
+        let _eol = runtime.read_input().unwrap().unwrap();
         let msg1 = runtime.read_input().unwrap().unwrap();
         let msg2 = runtime.read_input().unwrap();
 
@@ -446,6 +451,8 @@ mod tests {
         mock_host.add_external(Msg::new(0x03));
 
         let mut runtime = SequencerRuntime::new(mock_host, crate::FilterBehavior::AllowAll, 1);
+        let _sol = runtime.read_input().unwrap().unwrap();
+        let _eol = runtime.read_input().unwrap().unwrap();
         let msg1 = runtime.read_input().unwrap().unwrap();
         let msg2 = runtime.read_input().unwrap().unwrap();
 
