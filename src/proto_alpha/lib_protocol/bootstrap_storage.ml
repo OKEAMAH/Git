@@ -185,15 +185,10 @@ let init ctxt ~typecheck_smart_contract ~typecheck_smart_rollup
       (* Store pending ramp ups. *)
       let constants = Raw_context.constants ctxt in
       (* Start without rewards *)
-      Raw_context.patch_constants ctxt (fun c ->
-          {
-            c with
-            reward_weights =
-              {
-                c.reward_weights with
-                base_total_rewards_per_minute = Tez_repr.zero;
-              };
-          })
+      Raw_context.patch_constants
+        ctxt
+        (Constants_parametric_repr.patch_base_total_rewards_per_minute
+           Tez_repr.zero)
       >>= fun ctxt ->
       (* Store the final reward. *)
       Storage.Ramp_up.(
@@ -215,13 +210,8 @@ let cycle_end ctxt last_cycle =
   | None -> return ctxt
   | Some Storage.Ramp_up.{baking_reward_fixed_portion; _} ->
       Storage.Ramp_up.Rewards.remove_existing ctxt next_cycle >>=? fun ctxt ->
-      Raw_context.patch_constants ctxt (fun c ->
-          {
-            c with
-            reward_weights =
-              {
-                c.reward_weights with
-                base_total_rewards_per_minute = baking_reward_fixed_portion;
-              };
-          })
+      Raw_context.patch_constants
+        ctxt
+        (Constants_parametric_repr.patch_base_total_rewards_per_minute
+           baking_reward_fixed_portion)
       >|= ok

@@ -163,6 +163,8 @@ type t = {
   adaptive_inflation : adaptive_inflation;
 }
 
+val patch_base_total_rewards_per_minute : Tez_repr.t -> t -> t
+
 val encoding : t Data_encoding.encoding
 
 module Internal_for_tests : sig

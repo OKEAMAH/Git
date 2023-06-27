@@ -325,6 +325,14 @@ let reward_weights_encoding =
        (req "seed_nonce_revelation_tip_weight" int31)
        (req "vdf_revelation_tip_weight" int31))
 
+let patch_base_total_rewards_per_minute base_total_rewards_per_minute constants
+    =
+  {
+    constants with
+    reward_weights =
+      {constants.reward_weights with base_total_rewards_per_minute};
+  }
+
 let encoding =
   let open Data_encoding in
   conv
