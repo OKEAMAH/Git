@@ -905,12 +905,6 @@ module Constants : sig
         t tzresult Lwt.t
     end
 
-    module Generated : sig
-      type t = {consensus_threshold : int; reward_weights : reward_weights}
-
-      val generate : consensus_committee_size:int -> t
-    end
-
     val constants_mainnet : t
 
     val constants_sandbox : t
