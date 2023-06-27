@@ -114,7 +114,7 @@ type reward_weights = {
   vdf_revelation_tip_weight : int;
 }
 
-type t = {
+type t = private {
   preserved_cycles : int;
   blocks_per_cycle : int32;
   blocks_per_commitment : int32;
