@@ -348,51 +348,6 @@ let check_constants constants =
         positive")
   >>? fun () -> Result.return_unit
 
-module Generated = struct
-  type t = {
-    consensus_threshold : int;
-    reward_weights : Constants_parametric_repr.reward_weights;
-  }
-
-  let generate ~consensus_committee_size =
-    (* The weights are expressed in [(256 * 80)]th of the total
-       reward, because it is the smallest proportion used so far*)
-    let consensus_threshold = (consensus_committee_size * 2 / 3) + 1 in
-    let bonus_committee_size = consensus_committee_size - consensus_threshold in
-    let base_total_rewards_per_minute = Tez_repr.of_mutez_exn 85_007_812L in
-    let _reward_parts_whole = 20480 (* = 256 * 80 *) in
-    let reward_parts_half = 10240 (* = reward_parts_whole / 2 *) in
-    let reward_parts_quarter = 5120 (* = reward_parts_whole / 4 *) in
-    let reward_parts_16th = 1280 (* = reward_parts_whole / 16 *) in
-    {
-      consensus_threshold;
-      reward_weights =
-        {
-          base_total_rewards_per_minute;
-          (* 85.007812 tez/minute *)
-          baking_reward_fixed_portion_weight =
-            (* 1/4 or 1/2 *)
-            (if Compare.Int.(bonus_committee_size <= 0) then
-             (* a fortiori, consensus_committee_size < 4 *)
-             reward_parts_half
-            else reward_parts_quarter);
-          baking_reward_bonus_weight =
-            (* 1/4 or 0 *)
-            (if Compare.Int.(bonus_committee_size <= 0) then 0
-            else reward_parts_quarter);
-          endorsing_reward_weight = reward_parts_half;
-          (* 1/2 *)
-          (* All block (baking + endorsing)rewards sum to 1 ( *256*80 ) *)
-          liquidity_baking_subsidy_weight = reward_parts_16th;
-          (* 1/16 *)
-          seed_nonce_revelation_tip_weight = 1;
-          (* 1/20480 *)
-          vdf_revelation_tip_weight = 1;
-          (* 1/20480 *)
-        };
-    }
-end
-
 let cache_layout p =
   Constants_parametric_repr.
     [

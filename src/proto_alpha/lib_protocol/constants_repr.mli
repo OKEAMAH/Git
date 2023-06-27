@@ -104,17 +104,6 @@ type error += (* `Permanent *) Invalid_protocol_constants of string
 (** performs some consistency checks on the protocol parameters *)
 val check_constants : Constants_parametric_repr.t -> unit tzresult
 
-module Generated : sig
-  type t = {
-    consensus_threshold : int;
-    reward_weights : Constants_parametric_repr.reward_weights;
-  }
-
-  (* This function is meant to be used just in lib_parameters and in the
-     migration code to be sure that the parameters are consistent. *)
-  val generate : consensus_committee_size:int -> t
-end
-
 (** For each subcache, a size limit needs to be declared once. However,
     depending how the protocol will be instantiated (sandboxed mode,
     test network, ...) we may want to change this limit. For each

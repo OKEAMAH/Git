@@ -99,7 +99,7 @@ let default_dal =
 let constants_mainnet =
   let consensus_committee_size = 7000 in
   let block_time = 15 in
-  let Constants.Generated.
+  let Constants.Parametric.Generated.
         {
           consensus_threshold;
           reward_weights =
@@ -113,7 +113,7 @@ let constants_mainnet =
               vdf_revelation_tip_weight;
             };
         } =
-    Constants.Generated.generate ~consensus_committee_size
+    Constants.Parametric.Generated.generate ~consensus_committee_size
   in
   {
     Constants.Parametric.preserved_cycles = 5;
@@ -260,8 +260,8 @@ let derive_cryptobox_parameters ~redundancy_factor ~mainnet_constants_divider =
 let constants_sandbox =
   let consensus_committee_size = 256 in
   let block_time = 1 in
-  let Constants.Generated.{consensus_threshold = _; reward_weights} =
-    Constants.Generated.generate ~consensus_committee_size
+  let Constants.Parametric.Generated.{consensus_threshold = _; reward_weights} =
+    Constants.Parametric.Generated.generate ~consensus_committee_size
   in
   {
     constants_mainnet with
@@ -295,8 +295,8 @@ let constants_sandbox =
 
 let constants_test =
   let consensus_committee_size = 25 in
-  let Constants.Generated.{consensus_threshold; reward_weights} =
-    Constants.Generated.generate ~consensus_committee_size
+  let Constants.Parametric.Generated.{consensus_threshold; reward_weights} =
+    Constants.Parametric.Generated.generate ~consensus_committee_size
   in
   {
     constants_mainnet with

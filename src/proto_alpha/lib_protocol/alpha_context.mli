@@ -793,6 +793,16 @@ module Constants : sig
 
   (** Constants parameterized by context. See {!Constants_parametric_repr}. *)
   module Parametric : sig
+    type reward_weights = {
+      base_total_rewards_per_minute : Tez.t;
+      baking_reward_fixed_portion_weight : int;
+      baking_reward_bonus_weight : int;
+      endorsing_reward_weight : int;
+      liquidity_baking_subsidy_weight : int;
+      seed_nonce_revelation_tip_weight : int;
+      vdf_revelation_tip_weight : int;
+    }
+
     type dal = {
       feature_enable : bool;
       number_of_slots : int;
@@ -831,16 +841,6 @@ module Constants : sig
       staking_over_baking_limit : int;
       staking_over_delegation_edge : int;
       launch_ema_threshold : int32;
-    }
-
-    type reward_weights = {
-      base_total_rewards_per_minute : Tez.t;
-      baking_reward_fixed_portion_weight : int;
-      baking_reward_bonus_weight : int;
-      endorsing_reward_weight : int;
-      liquidity_baking_subsidy_weight : int;
-      seed_nonce_revelation_tip_weight : int;
-      vdf_revelation_tip_weight : int;
     }
 
     type t = {
@@ -904,15 +904,12 @@ module Constants : sig
         t ->
         t tzresult Lwt.t
     end
-  end
 
-  module Generated : sig
-    type t = {
-      consensus_threshold : int;
-      reward_weights : Parametric.reward_weights;
-    }
+    module Generated : sig
+      type t = {consensus_threshold : int; reward_weights : reward_weights}
 
-    val generate : consensus_committee_size:int -> t
+      val generate : consensus_committee_size:int -> t
+    end
   end
 
   val parametric : context -> Parametric.t

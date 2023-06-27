@@ -165,6 +165,20 @@ type t = {
 
 val patch_base_total_rewards_per_minute : Tez_repr.t -> t -> t
 
+module Generated : sig
+  type t = {consensus_threshold : int; reward_weights : reward_weights}
+
+  (* This function is meant to be used just in lib_parameters and in the
+     migration code to be sure that the parameters are consistent. *)
+  val generate : consensus_committee_size:int -> t
+end
+
+val constants_mainnet : t
+
+val constants_sandbox : t
+
+val constants_test : t
+
 val encoding : t Data_encoding.encoding
 
 module Internal_for_tests : sig

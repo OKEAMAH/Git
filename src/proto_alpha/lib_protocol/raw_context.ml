@@ -991,7 +991,7 @@ let prepare_first_block ~level ~timestamp ctxt =
 
       let reward_weights =
         let c_gen =
-          Constants_repr.Generated.generate
+          Constants_parametric_repr.Generated.generate
             ~consensus_committee_size:c.consensus_committee_size
         in
         c_gen.reward_weights
