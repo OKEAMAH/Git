@@ -329,32 +329,6 @@ end
 (* Hard-coded context key *)
 let protocol_param_key = ["protocol_parameters"]
 
-let check_constants_consistency constants =
-  let open Constants.Parametric in
-  let {
-    blocks_per_cycle;
-    blocks_per_commitment;
-    nonce_revelation_threshold;
-    blocks_per_stake_snapshot;
-    _;
-  } =
-    constants
-  in
-  Error_monad.unless (blocks_per_commitment <= blocks_per_cycle) (fun () ->
-      failwith
-        "Inconsistent constants : blocks_per_commitment must be less than \
-         blocks_per_cycle")
-  >>=? fun () ->
-  Error_monad.unless (nonce_revelation_threshold <= blocks_per_cycle) (fun () ->
-      failwith
-        "Inconsistent constants : nonce_revelation_threshold must be less than \
-         blocks_per_cycle")
-  >>=? fun () ->
-  Error_monad.unless (blocks_per_cycle >= blocks_per_stake_snapshot) (fun () ->
-      failwith
-        "Inconsistent constants : blocks_per_cycle must be superior than \
-         blocks_per_stake_snapshot")
-
 let prepare_main_init_params ?bootstrap_contracts commitments constants
     bootstrap_accounts =
   let open Tezos_protocol_alpha_parameters in
@@ -503,77 +477,25 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
     ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
     ?dal_enable ?zk_rollup_enable ?hard_gas_limit_per_block
     ?nonce_revelation_threshold () =
+  let open Lwt_result_wrap_syntax in
   let open Tezos_protocol_alpha_parameters in
-  let constants = Default_parameters.constants_test in
-  let min_proposal_quorum =
-    Option.value ~default:constants.min_proposal_quorum min_proposal_quorum
+  let*@ constants =
+    Constants.Parametric.Internal_for_tests.prepare_initial_constants
+      ?consensus_threshold
+      ?min_proposal_quorum
+      ?cost_per_byte
+      ?reward_weights
+      ?origination_size
+      ?blocks_per_cycle
+      ?cycles_per_voting_period
+      ?sc_rollup_enable
+      ?sc_rollup_arith_pvm_enable
+      ?dal_enable
+      ?zk_rollup_enable
+      ?hard_gas_limit_per_block
+      ?nonce_revelation_threshold
+      Default_parameters.constants_test
   in
-  let cost_per_byte =
-    Option.value ~default:constants.cost_per_byte cost_per_byte
-  in
-  let reward_weights =
-    Option.value ~default:constants.reward_weights reward_weights
-  in
-  let origination_size =
-    Option.value ~default:constants.origination_size origination_size
-  in
-  let blocks_per_cycle =
-    Option.value ~default:constants.blocks_per_cycle blocks_per_cycle
-  in
-  let cycles_per_voting_period =
-    Option.value
-      ~default:constants.cycles_per_voting_period
-      cycles_per_voting_period
-  in
-  let consensus_threshold =
-    Option.value ~default:constants.consensus_threshold consensus_threshold
-  in
-  let sc_rollup_enable =
-    Option.value ~default:constants.sc_rollup.enable sc_rollup_enable
-  in
-  let sc_rollup_arith_pvm_enable =
-    Option.value ~default:constants.sc_rollup.enable sc_rollup_arith_pvm_enable
-  in
-  let dal_enable =
-    Option.value ~default:constants.dal.feature_enable dal_enable
-  in
-  let zk_rollup_enable =
-    Option.value ~default:constants.zk_rollup.enable zk_rollup_enable
-  in
-  let hard_gas_limit_per_block =
-    Option.value
-      ~default:constants.hard_gas_limit_per_block
-      hard_gas_limit_per_block
-  in
-  let nonce_revelation_threshold =
-    Option.value
-      ~default:constants.nonce_revelation_threshold
-      nonce_revelation_threshold
-  in
-  let constants =
-    {
-      constants with
-      reward_weights;
-      origination_size;
-      blocks_per_cycle;
-      cycles_per_voting_period;
-      min_proposal_quorum;
-      cost_per_byte;
-      consensus_threshold;
-      sc_rollup =
-        {
-          constants.sc_rollup with
-          enable = sc_rollup_enable;
-          arith_pvm_enable = sc_rollup_arith_pvm_enable;
-        };
-      dal = {constants.dal with feature_enable = dal_enable};
-      zk_rollup = {constants.zk_rollup with enable = zk_rollup_enable};
-      adaptive_inflation = constants.adaptive_inflation;
-      hard_gas_limit_per_block;
-      nonce_revelation_threshold;
-    }
-  in
-  check_constants_consistency constants >>=? fun () ->
   let hash =
     Block_hash.of_b58check_exn
       "BLockGenesisGenesisGenesisGenesisGenesisCCCCCeZiLHU"

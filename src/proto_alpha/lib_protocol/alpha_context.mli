@@ -885,6 +885,25 @@ module Constants : sig
     }
 
     val encoding : t Data_encoding.t
+
+    module Internal_for_tests : sig
+      val prepare_initial_constants :
+        ?consensus_threshold:int ->
+        ?min_proposal_quorum:int32 ->
+        ?cost_per_byte:Tez.t ->
+        ?reward_weights:reward_weights ->
+        ?origination_size:int ->
+        ?blocks_per_cycle:int32 ->
+        ?cycles_per_voting_period:int32 ->
+        ?sc_rollup_enable:bool ->
+        ?sc_rollup_arith_pvm_enable:bool ->
+        ?dal_enable:bool ->
+        ?zk_rollup_enable:bool ->
+        ?hard_gas_limit_per_block:Gas.Arith.integral ->
+        ?nonce_revelation_threshold:int32 ->
+        t ->
+        t tzresult Lwt.t
+    end
   end
 
   module Generated : sig
