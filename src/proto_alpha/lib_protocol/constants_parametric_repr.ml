@@ -1006,7 +1006,9 @@ module Internal_for_tests = struct
       ?cost_per_byte ?reward_weights ?origination_size ?blocks_per_cycle
       ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
       ?dal_enable ?zk_rollup_enable ?hard_gas_limit_per_block
-      ?nonce_revelation_threshold constants =
+      ?nonce_revelation_threshold ?preserved_cycles ?initial_seed
+      ?consensus_committee_size ?minimal_block_delay ?delay_increment_per_round
+      constants =
     let open Lwt_result_syntax in
     let min_proposal_quorum =
       Option.value ~default:constants.min_proposal_quorum min_proposal_quorum
@@ -1055,9 +1057,29 @@ module Internal_for_tests = struct
         ~default:constants.nonce_revelation_threshold
         nonce_revelation_threshold
     in
+    let preserved_cycles =
+      Option.value ~default:constants.preserved_cycles preserved_cycles
+    in
+    let initial_seed =
+      Option.value ~default:constants.initial_seed initial_seed
+    in
+    let consensus_committee_size =
+      Option.value
+        ~default:constants.consensus_committee_size
+        consensus_committee_size
+    in
+    let minimal_block_delay =
+      Option.value ~default:constants.minimal_block_delay minimal_block_delay
+    in
+    let delay_increment_per_round =
+      Option.value
+        ~default:constants.delay_increment_per_round
+        delay_increment_per_round
+    in
     let constants =
       {
         constants with
+        preserved_cycles;
         reward_weights;
         origination_size;
         blocks_per_cycle;
@@ -1076,6 +1098,10 @@ module Internal_for_tests = struct
         adaptive_inflation = constants.adaptive_inflation;
         hard_gas_limit_per_block;
         nonce_revelation_threshold;
+        initial_seed;
+        consensus_committee_size;
+        minimal_block_delay;
+        delay_increment_per_round;
       }
     in
     let+ () = check_constants_consistency constants in

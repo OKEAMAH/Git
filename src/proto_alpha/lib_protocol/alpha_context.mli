@@ -901,6 +901,11 @@ module Constants : sig
         ?zk_rollup_enable:bool ->
         ?hard_gas_limit_per_block:Gas.Arith.integral ->
         ?nonce_revelation_threshold:int32 ->
+        ?preserved_cycles:int ->
+        ?initial_seed:State_hash.t option ->
+        ?consensus_committee_size:int ->
+        ?minimal_block_delay:Period.t ->
+        ?delay_increment_per_round:Period.t ->
         t ->
         t tzresult Lwt.t
     end

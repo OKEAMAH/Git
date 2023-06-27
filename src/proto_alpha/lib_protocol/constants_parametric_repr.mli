@@ -190,6 +190,11 @@ module Internal_for_tests : sig
     ?zk_rollup_enable:bool ->
     ?hard_gas_limit_per_block:Gas_limit_repr.Arith.integral ->
     ?nonce_revelation_threshold:int32 ->
+    ?preserved_cycles:int ->
+    ?initial_seed:State_hash.t option ->
+    ?consensus_committee_size:int ->
+    ?minimal_block_delay:Period_repr.t ->
+    ?delay_increment_per_round:Period_repr.t ->
     t ->
     t tzresult Lwt.t
 end

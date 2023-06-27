@@ -39,18 +39,15 @@ open Error_monad_operators
 let wrap_error_lwt x = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x
 
 let context_init_with_sc_rollup_enabled tup =
-  Context.init_with_constants_gen
-    tup
-    {
-      Context.default_test_constants with
-      consensus_threshold = 0;
-      sc_rollup =
-        {
-          Context.default_test_constants.sc_rollup with
-          enable = true;
-          arith_pvm_enable = true;
-        };
-    }
+  let open Lwt_result_wrap_syntax in
+  let*@ constants =
+    Constants.Parametric.Internal_for_tests.prepare_initial_constants
+      ~consensus_threshold:0
+      ~sc_rollup_enable:true
+      ~sc_rollup_arith_pvm_enable:true
+      Context.default_test_constants
+  in
+  Context.init_with_constants_gen tup constants
 
 let sc_originate block contract parameters_ty =
   let open Lwt_result_syntax in
@@ -96,16 +93,13 @@ let test_context () =
   return (Incremental.alpha_ctxt v)
 
 let test_context_with_nat_nat_big_map ?(sc_rollup_enable = false) () =
-  Context.init_with_constants1
-    {
-      Context.default_test_constants with
-      sc_rollup =
-        {
-          Context.default_test_constants.sc_rollup with
-          enable = sc_rollup_enable;
-        };
-    }
-  >>=? fun (b, source) ->
+  let open Lwt_result_wrap_syntax in
+  let*@ constants =
+    Constants.Parametric.Internal_for_tests.prepare_initial_constants
+      ~sc_rollup_enable
+      Context.default_test_constants
+  in
+  Context.init_with_constants1 constants >>=? fun (b, source) ->
   Op.contract_origination_hash (B b) source ~script:Op.dummy_script
   >>=? fun (operation, originated) ->
   Block.bake ~operation b >>=? fun b ->

@@ -82,12 +82,14 @@ let init_protocols store history_mode =
   let blocks_proto = List.mapi (fun i p -> (succ i, fst p)) test_protocols in
   (* 10 blocks per cycle *)
   let nb_blocks_per_cycle = 10 in
-  let constants =
-    {
-      Test_utils.default_protocol_constants with
-      blocks_per_cycle = Int32.of_int nb_blocks_per_cycle;
-      preserved_cycles = 1;
-    }
+  let* constants =
+    Lwt.map Tezos_protocol_alpha.Environment.wrap_tzresult
+    @@ Tezos_protocol_alpha.Protocol.Alpha_context.Constants.Parametric
+       .Internal_for_tests
+       .prepare_initial_constants
+         ~blocks_per_cycle:(Int32.of_int nb_blocks_per_cycle)
+         ~preserved_cycles:1
+         Test_utils.default_protocol_constants
   in
   let* () =
     List.iter_es

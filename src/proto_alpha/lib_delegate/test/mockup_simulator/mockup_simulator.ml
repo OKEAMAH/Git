@@ -1003,17 +1003,19 @@ let make_genesis_context ~delegate_selection ~initial_seed ~round0 ~round1
          ~delay_increment_per_round:
            (Period.of_seconds_exn (Int64.sub round1 round0)))
   in
-  let constants =
-    {
-      default_constants with
-      initial_seed;
-      consensus_committee_size;
-      consensus_threshold;
-      minimal_block_delay = Alpha_context.Period.of_seconds_exn (max 1L round0);
-      delay_increment_per_round =
-        Alpha_context.Period.of_seconds_exn Int64.(max 1L (sub round1 round0));
-    }
-  in
+  Lwt.map Environment.wrap_tzresult
+  @@ Alpha_context.Constants.Parametric.Internal_for_tests
+     .prepare_initial_constants
+       ~initial_seed
+       ~consensus_committee_size
+       ~consensus_threshold
+       ~minimal_block_delay:
+         (Alpha_context.Period.of_seconds_exn (max 1L round0))
+       ~delay_increment_per_round:
+         (Alpha_context.Period.of_seconds_exn
+            Int64.(max 1L (sub round1 round0)))
+       default_constants
+  >>=? fun constants ->
   let from_bootstrap_account i
       ( (account : Protocol.Alpha_context.Parameters.bootstrap_account),
         (secret : Tezos_mockup_commands.Mockup_wallet.bootstrap_secret) ) :
@@ -1073,7 +1075,12 @@ let make_genesis_context ~delegate_selection ~initial_seed ~round0 ~round1
         State_hash.pp
         seed)
   >>= fun () ->
-  let constants = {constants with initial_seed} in
+  Lwt.map Environment.wrap_tzresult
+  @@ Alpha_context.Constants.Parametric.Internal_for_tests
+     .prepare_initial_constants
+       ~initial_seed
+       constants
+  >>=? fun constants ->
   let common_parameters =
     Mockup.Protocol_parameters.{default_value with constants}
   in
