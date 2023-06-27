@@ -204,7 +204,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     command
       ~desc:"Start the eval loop"
       (args3 input_arg rollup_arg preimage_directory_arg)
-      (wasm_param @@ stop)
+      (prefixes ["debug"] @@ prefix "kernel" @@ wasm_param @@ stop)
       (fun (inputs, rollup_arg, preimage_directory) wasm_file version ->
         let version =
           Option.value
