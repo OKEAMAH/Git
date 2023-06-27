@@ -280,6 +280,14 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         let version = Tezos_version_value.Bin_version.version_string in
         Format.printf "%s\n" version ;
         exit 0
+    | Error [Tezos_clic.Help command] ->
+        Tezos_clic.usage
+          Format.std_formatter
+          ~executable_name:(Filename.basename Sys.executable_name)
+          ~global_options:
+            Tezos_clic.(args3 input_arg rollup_arg preimage_directory_arg)
+          (match command with None -> [] | Some c -> [c]) ;
+        exit 0
     | Error e ->
         Format.eprintf
           "%a\n%!"
@@ -287,8 +295,9 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
             fun ppf errs ->
               pp_cli_errors
                 ppf
-                ~executable_name:"octez-wasm-debugger"
-                ~global_options:no_options
+                ~executable_name:(Filename.basename Sys.executable_name)
+                ~global_options:
+                  Tezos_clic.(args3 input_arg rollup_arg preimage_directory_arg)
                 ~default:pp
                 errs)
           e ;
