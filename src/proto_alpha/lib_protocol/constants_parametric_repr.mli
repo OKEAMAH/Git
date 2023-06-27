@@ -163,6 +163,8 @@ type t = {
   adaptive_inflation : adaptive_inflation;
 }
 
+val init : Constants_parametric_previous_repr.t -> t
+
 val patch_base_total_rewards_per_minute : Tez_repr.t -> t -> t
 
 module Generated : sig
