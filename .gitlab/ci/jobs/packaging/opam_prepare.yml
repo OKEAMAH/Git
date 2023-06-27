@@ -12,7 +12,9 @@
   # underlying tests have been fixed.
   retry: 2
   script:
+    - sccache --show-stats
     - make  -C ${CI_PROJECT_DIR}/.gitlab/ci opam-configure
+    - sccache --show-stats
   needs: [opam:prepare]
   dependencies: [opam:prepare]
   after_script:
