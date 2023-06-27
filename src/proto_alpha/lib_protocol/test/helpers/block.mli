@@ -116,8 +116,6 @@ module Forge : sig
   val sign_header : header -> Block_header.block_header tzresult Lwt.t
 end
 
-val check_constants_consistency : Constants.Parametric.t -> unit tzresult Lwt.t
-
 (** [genesis <opts> accounts] : generates an initial block with the
     given constants [<opts>] and initializes [accounts] with their
     associated amounts.
