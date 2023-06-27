@@ -323,6 +323,7 @@ module Arith_test_pvm = struct
       match fuel with
       | Some 0 -> return (state, fuel, tick, our_states)
       | None | Some _ -> (
+          Printf.eprintf "\nin loop\n" ;
           match input_request with
           | No_input_required ->
               let* state = eval state in
@@ -341,6 +342,13 @@ module Arith_test_pvm = struct
           | Needs_reveal (Reveal_raw_data _ | Reveal_partial_raw_data _)
           | Needs_reveal Reveal_metadata
           | Initial | First_after _ ->
+              let open Lwt_syntax in
+              let* pp = pp state in
+              let _ =
+                return
+                @@ Printf.eprintf "\nHURRA %s\n" (Format.asprintf "%a" pp ())
+              in
+
               return (state, fuel, tick, our_states))
     in
     go ~our_states fuel start_tick state
@@ -421,6 +429,20 @@ module Arith_test_pvm = struct
     return (state, tick, our_states)
 end
 
+let randrange ?(min = 0) max = QCheck2.Gen.(generate1 (min -- max))
+
+let gen_strings () =
+  let open Lwt_result_wrap_syntax in
+  let number_of_leaves = randrange ~min:1 20 in
+  let size = number_of_leaves * Constants_repr.sc_rollup_message_size_limit in
+  let data = String.init size (fun _ -> QCheck2.Gen.(generate1 char)) in
+  let*?@ strings =
+    String.chunk_bytes
+      Constants_repr.sc_rollup_message_size_limit
+      (Bytes.of_string data)
+  in
+  return (strings, number_of_leaves, randrange (number_of_leaves - 1))
+
 (** Test that sending a invalid serialized reveal proof to
     {Sc_rollup_proof_repr.valid} is rejected. *)
 let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
@@ -436,6 +458,7 @@ let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
   let dal_snapshot = Dal.Slots_history.genesis in
   let dal_parameters = Default_parameters.constants_mainnet.dal in
   let ctxt = Sc_rollup_helpers.make_empty_context () in
+
   let empty = Tezos_context_memory.Context_binary.Tree.empty ctxt in
   let*! state = Arith_pvm.initial_state ~empty in
 
@@ -446,18 +469,67 @@ let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
     inbox
   in
 
+  (* *)
   let get_payloads_history witness_hash =
     Sc_rollup_helpers.Payloads_histories.find witness_hash payloads_histories
     |> WithExceptions.Option.get ~loc:__LOC__
     |> Lwt.return
   in
-  (* We create an obviously invalid inbox *)
   let is_reveal_enabled _ _ = true in
   let metadata =
     Sc_rollup.Metadata.{address = rollup; origination_level = level}
   in
 
+  (*Sc_rollup_helpers.make_internal_inbox_message*)
+  let*@ payload =
+    Lwt.return @@ Sc_rollup.Inbox_message.(serialize (External ""))
+  in
+  let*! state =
+    Arith_test_pvm.set_input
+      (Inbox_message
+         {inbox_level = inbox.level; message_counter = Z.zero; payload})
+      state
+  in
+
+  let* strings, _max, index = gen_strings () in
+  let elts = List.map Bytes.of_string strings in
+  let (module Blake) =
+    Sc_rollup_partial_reveal_hash.to_mod Sc_rollup_reveal_hash.Blake2B
+  in
+  let tree : Blake.t =
+    Sc_rollup_partial_reveal_hash.merkle_tree (module Blake) ~elts
+  in
+  let root : Blake.h =
+    Sc_rollup_partial_reveal_hash.merkle_root (module Blake) ~tree
+  in
+  let partial_reveal =
+    Sc_rollup_partial_reveal_hash.(make (module Blake) ~index ~root |> to_hex)
+  in
+
+  let input = Sc_rollup.(Reveal (Raw_data partial_reveal)) in
+  let*! state = Arith_pvm.set_input input state in
+
+  let*! pp = Arith_test_pvm.pp state in
+  Printf.eprintf "\n%s\n" (Format.asprintf "%a" pp ()) ;
+  let*! state_hash = Arith_test_pvm.state_hash state in
+  let tick = 0 in
+  let our_states = [(tick, state_hash)] in
+  let*! state, fuel, tick, our_states =
+    Arith_test_pvm.eval_until_input ~fuel:None ~our_states tick state
+  in
   let history_proof = Sc_rollup.Inbox.old_levels_messages inbox in
+
+  let*! pp = Arith_pvm.pp state in
+  Printf.eprintf "\n%s\n" (Format.asprintf "%a" pp ()) ;
+  let source = "hash:" ^ partial_reveal in
+  let input =
+    Sc_rollup_helpers.make_external_input ~inbox_level:inbox.level source
+  in
+  let*! state = Arith_test_pvm.set_input input state in
+  let*! state, _, _, _ =
+    Arith_test_pvm.eval_until_input ~fuel ~our_states tick state
+  in
+
   (* We start a game on a commitment that starts at [Tick.initial], the fuel
      is necessarily [start_tick]. *)
   let module P = struct
@@ -500,6 +572,7 @@ let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
         Default_parameters.constants_test.dal.attestation_lag
     end
   end in
+  Stdlib.Printf.eprintf "\nHEYYYY\n" ;
   let*@ proof =
     Sc_rollup.Proof.produce
       ~metadata
@@ -507,6 +580,7 @@ let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
       Raw_level.root
       ~is_reveal_enabled
   in
+  Stdlib.Printf.eprintf "\nOKAY\n" ;
   let*?@ pvm_step =
     Sc_rollup.Proof.unserialize_pvm_step ~pvm:(module Arith_pvm) proof.pvm_step
   in
@@ -523,7 +597,7 @@ let test_invalid_serialized_reveal_proof () : (unit, tztrace) result Lwt.t =
          ~is_reveal_enabled
          {proof with pvm_step}
   in
-  return_unit
+  failwith ""
 
 let test_first_move_with_swapped_commitment () =
   let open Lwt_result_wrap_syntax in

@@ -470,6 +470,9 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
   let*! (request : Sc_rollup_PVM_sig.input_request) =
     P.is_input_state ~is_reveal_enabled P.state
   in
+  Stdlib.Printf.eprintf
+    "\nIN PRODUCE request = %s\n"
+    (Format.asprintf "%a" Sc_rollup_PVM_sig.pp_input_request request) ;
   let origination_level = metadata.Sc_rollup_metadata_repr.origination_level in
   let* input_proof, input_given =
     match request with
@@ -515,18 +518,25 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
         match res with
         | None -> proof_error "No reveal"
         | Some data ->
+            Stdlib.Printf.eprintf "\nHELLO RAW DATA\n" ;
             return
               ( Some (Reveal_proof (Raw_data_proof data)),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) ))
     | Needs_reveal (Reveal_partial_raw_data hash) -> (
+        Stdlib.Printf.eprintf "\nNICE\n" ;
         let*! data = reveal_partial hash in
+        Stdlib.Printf.eprintf "\nNICE\n" ;
         let*! proof = get_proof hash in
+        Stdlib.Printf.eprintf "\nNICE\n" ;
         match (data, proof) with
         | Some data, Some proof ->
+            Stdlib.Printf.eprintf "\nHELLO\n" ;
             return
               ( Some (Reveal_proof (Partial_raw_data_proof {data; proof})),
                 Some (Sc_rollup_PVM_sig.Reveal (Raw_data data)) )
-        | _, _ -> proof_error "No reveal")
+        | _, _ ->
+            Stdlib.Printf.eprintf "\nOUPS!\n" ;
+            proof_error "No reveal")
     | Needs_reveal Reveal_metadata ->
         return
           ( Some (Reveal_proof Metadata_proof),

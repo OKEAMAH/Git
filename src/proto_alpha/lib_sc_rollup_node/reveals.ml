@@ -204,6 +204,7 @@ let ( let*?@ ) m f =
 let get_proof (reveal_hash : Protocol.Sc_rollup_partial_reveal_hash.u) ~pvm_kind
     ~data_dir =
   let open Lwt_result_syntax in
+  Stdlib.Printf.eprintf "\nHELLOWW NICE PROOF\n" ;
   let h = Protocol.Sc_rollup_partial_reveal_hash.to_hex reveal_hash in
   let pvm_name = Sc_rollup.Kind.to_string pvm_kind in
   let filename = Filename.(concat (concat data_dir pvm_name) h) in
