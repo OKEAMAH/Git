@@ -139,13 +139,14 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
           Lwt.return_ok dirpath
         else Error_monad.failwith "%s is not a valid directory" dirpath)
 
-  let wasm_param =
-    let open Lwt_result_syntax in
-    Tezos_clic.(
-      param
-        ~name:"module"
-        ~desc:"wasm or wast file"
-        (parameter (fun _ filename -> return filename)))
+  let wasm_arg =
+    let open Tezos_clic in
+    default_arg
+      ~default:"kernel.wasm"
+      ~doc:"kernel file"
+      ~long:"kernel"
+      ~placeholder:"kernel.wasm"
+      file_parameter
 
   let input_arg =
     let open Tezos_clic in
@@ -203,9 +204,9 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     let open Lwt_result_syntax in
     command
       ~desc:"Start the eval loop"
-      (args3 input_arg rollup_arg preimage_directory_arg)
-      (prefixes ["debug"] @@ prefix "kernel" @@ wasm_param @@ stop)
-      (fun (inputs, rollup_arg, preimage_directory) wasm_file version ->
+      (args4 wasm_arg input_arg rollup_arg preimage_directory_arg)
+      stop
+      (fun (wasm_file, inputs, rollup_arg, preimage_directory) version ->
         let version =
           Option.value
             ~default:
@@ -285,7 +286,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
           Format.std_formatter
           ~executable_name:(Filename.basename Sys.executable_name)
           ~global_options:
-            Tezos_clic.(args3 input_arg rollup_arg preimage_directory_arg)
+            Tezos_clic.(
+              args4 wasm_arg input_arg rollup_arg preimage_directory_arg)
           (match command with None -> [] | Some c -> [c]) ;
         exit 0
     | Error e ->
@@ -297,7 +299,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
                 ppf
                 ~executable_name:(Filename.basename Sys.executable_name)
                 ~global_options:
-                  Tezos_clic.(args3 input_arg rollup_arg preimage_directory_arg)
+                  Tezos_clic.(
+                    args4 wasm_arg input_arg rollup_arg preimage_directory_arg)
                 ~default:pp
                 errs)
           e ;
