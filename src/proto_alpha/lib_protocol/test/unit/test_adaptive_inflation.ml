@@ -50,9 +50,20 @@ let test_reward_coefficient () =
   assert (Tez.(equal (mul_exn default 4) default_times_4)) ;
   return_unit
 
+let test_size () =
+  let open Lwt_result_wrap_syntax in
+  let*?@ sp = Staking_parameters_repr.make ~staking_over_baking_limit:500000l ~baking_over_staking_edge:500000l in
+  let _bytes = Data_encoding.Binary.to_bytes_exn Staking_parameters_repr.encoding sp in
+  Printf.printf "\nSize = %d\n\n%!" Signature.Public_key_hash.size ;
+  return ()
+
 let tests =
   Tztest.
     [
+      tztest
+        "test size"
+        `Quick
+        test_size;
       tztest
         "adaptive inflation - application of coefficient to rewards"
         `Quick
