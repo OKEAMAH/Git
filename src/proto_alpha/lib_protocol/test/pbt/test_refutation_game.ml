@@ -890,7 +890,7 @@ module Arith_test_pvm = struct
               let* state_hash = state_hash state in
               let our_states = (tick, state_hash) :: our_states in
               go ~our_states (consume_fuel fuel) (tick + 1) state
-          | Needs_reveal (Reveal_raw_data _)
+          | Needs_reveal (Reveal_raw_data _ | Reveal_partial_raw_data _)
           | Needs_reveal Reveal_metadata
           | Initial | First_after _ ->
               return (state, fuel, tick, our_states))

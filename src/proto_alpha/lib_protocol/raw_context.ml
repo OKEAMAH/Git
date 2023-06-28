@@ -950,6 +950,14 @@ let prepare_first_block ~level ~timestamp ctxt =
           Constants_parametric_repr.sc_rollup_reveal_activation_level =
         {
           raw_data = {blake2B = Raw_level_repr.root};
+          (* https://gitlab.com/tezos/tezos/-/issues/5968
+             Encoding error with Raw_level
+
+             We set the activation level to [pred max_int] to deactivate
+             the feature. The [pred] is needed to not trigger an encoding
+             exception with the value [Int32.int_min] (see tezt/tests/mockup.ml). *)
+          partial_raw_data =
+            {blake2B = Raw_level_repr.of_int32_exn Int32.(pred max_int)};
           metadata = Raw_level_repr.root;
           dal_page = Raw_level_repr.root;
         }

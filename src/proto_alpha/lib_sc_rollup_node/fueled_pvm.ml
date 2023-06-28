@@ -266,6 +266,10 @@ module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
           | None -> abort state fuel current_tick
           | Some fuel ->
               go fuel (Int64.succ current_tick) failing_ticks next_state)
+      | Needs_reveal (Reveal_partial_raw_data _) ->
+          (* TODO: https://gitlab.com/tezos/tezos/-/issues/5960
+             Support partial reveals in fueled and Wasm PVM *)
+          failwith "Feature not yet active."
       | Needs_reveal Reveal_metadata -> (
           let*! next_state = PVM.set_input (Reveal (Metadata metadata)) state in
           match F.consume F.one_tick_consumption fuel with

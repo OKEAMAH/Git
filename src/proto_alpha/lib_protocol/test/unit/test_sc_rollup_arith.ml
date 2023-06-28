@@ -350,6 +350,7 @@ let test_reveal ~threshold ~inbox_level ~hash ~preimage_reveal_step
       Constants_parametric_repr.sc_rollup_reveal_activation_level =
     {
       raw_data = {blake2B};
+      partial_raw_data = {blake2B};
       metadata = Protocol.Raw_level_repr.root;
       dal_page = Protocol.Raw_level_repr.root;
     }

@@ -808,6 +808,7 @@ module Constants : sig
 
     type sc_rollup_reveal_activation_level = {
       raw_data : sc_rollup_reveal_hashing_schemes;
+      partial_raw_data : sc_rollup_reveal_hashing_schemes;
       metadata : Raw_level.t;
       dal_page : Raw_level.t;
     }
@@ -2887,6 +2888,7 @@ module Sc_rollup : sig
 
   type reveal =
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
+    | Reveal_partial_raw_data of Sc_rollup_partial_reveal.t
     | Reveal_metadata
     | Request_dal_page of Dal.Page.t
 

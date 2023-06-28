@@ -198,6 +198,7 @@ module Input_hash =
 
 type reveal =
   | Reveal_raw_data of Sc_rollup_reveal_hash.t
+  | Reveal_partial_raw_data of Sc_rollup_partial_reveal.t
   | Reveal_metadata
   | Request_dal_page of Dal_slot_repr.Page.t
 
@@ -229,7 +230,17 @@ let reveal_encoding =
       (function Request_dal_page s -> Some ((), s) | _ -> None)
       (fun ((), s) -> Request_dal_page s)
   in
-  union [case_raw_data; case_metadata; case_dal_page]
+  let case_partial_raw_data =
+    case
+      ~title:"Reveal_partial_raw_data"
+      (Tag 3)
+      (obj2
+         (kind "reveal_partial_raw_data")
+         (req "partial_reveal" Sc_rollup_partial_reveal.encoding))
+      (function Reveal_partial_raw_data s -> Some ((), s) | _ -> None)
+      (fun ((), s) -> Reveal_partial_raw_data s)
+  in
+  union [case_raw_data; case_metadata; case_dal_page; case_partial_raw_data]
 
 (** [is_reveal_enabled] is the type of a predicate that tells if a kind of
      reveal is activated at a certain block level. *)
@@ -244,6 +255,9 @@ let is_reveal_enabled_predicate
     | Reveal_raw_data h -> (
         match Sc_rollup_reveal_hash.scheme_of_hash h with
         | Any_hash Blake2B -> t.raw_data.blake2B)
+    | Reveal_partial_raw_data {root; _} -> (
+        match Sc_rollup_reveal_hash.scheme_of_hash root with
+        | Any_hash Blake2B -> t.partial_raw_data.blake2B)
     | Reveal_metadata -> t.metadata
     | Request_dal_page _ -> t.dal_page
   in
@@ -307,6 +321,7 @@ let input_request_encoding =
 
 let pp_reveal fmt = function
   | Reveal_raw_data hash -> Sc_rollup_reveal_hash.pp fmt hash
+  | Reveal_partial_raw_data hash -> Sc_rollup_partial_reveal.pp fmt hash
   | Reveal_metadata -> Format.pp_print_string fmt "Reveal metadata"
   | Request_dal_page id -> Dal_slot_repr.Page.pp fmt id
 
@@ -331,6 +346,8 @@ let reveal_equal p1 p2 =
   match (p1, p2) with
   | Reveal_raw_data h1, Reveal_raw_data h2 -> Sc_rollup_reveal_hash.equal h1 h2
   | Reveal_raw_data _, _ -> false
+  | Reveal_partial_raw_data _, Reveal_partial_raw_data _ -> true
+  | Reveal_partial_raw_data _, _ -> false
   | Reveal_metadata, Reveal_metadata -> true
   | Reveal_metadata, _ -> false
   | Request_dal_page a, Request_dal_page b -> Dal_slot_repr.Page.equal a b
