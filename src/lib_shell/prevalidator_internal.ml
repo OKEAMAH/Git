@@ -1266,7 +1266,7 @@ module Make
       let* validation_state =
         Prevalidation_t.create chain_store ~head ~timestamp
       in
-      let fetching = mempool.known_valid in
+      let fetching = Operation_hash.Set.empty in
       let classification_parameters =
         Classification.
           {
@@ -1330,7 +1330,7 @@ module Make
       let*! () =
         Seq.S.iter
           (may_fetch_operation pv.shell None)
-          (Operation_hash.Set.to_seq fetching)
+          (Operation_hash.Set.to_seq mempool.known_valid)
       in
       return pv
 
