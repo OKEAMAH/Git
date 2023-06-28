@@ -117,7 +117,7 @@ let load_real_srs prefix =
 
 let make_fake_srs () =
   let open Octez_bls12_381_polynomial.Bls12_381_polynomial in
-  (Srs.generate_insecure 1 1, Srs.generate_insecure 1 1)
+  (Srs.generate_insecure 5 5, Srs.generate_insecure 1 1)
 
 let srs =
   match Sys.getenv_opt "SRS_DIR" with

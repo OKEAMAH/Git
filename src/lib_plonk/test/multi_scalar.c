@@ -311,17 +311,17 @@ static void ptype##_prefetch(const ptype##xyzz buckets[], limb_t booth_idx, \
         vec_prefetch(&buckets[booth_idx], sizeof(buckets[booth_idx])); \
 } \
 \
-static void ptype##s_tile_pippenger(ptype *ret, \
-                                    const ptype##_affine *const points[], \
+static void ptype##s_tile_pippenger_cont(ptype *ret, \
+                                    const ptype##_affine points[], \
                                     size_t npoints, \
-                                    const byte *const scalars[], size_t nbits, \
+                                    const byte scalars[], size_t nbits, \
                                     ptype##xyzz buckets[], \
                                     size_t bit0, size_t wbits, size_t cbits) \
 { \
     limb_t wmask, wval, wnxt; \
     size_t i, z, nbytes; \
-    const byte *scalar = *scalars++; \
-    const ptype##_affine *point = *points++; \
+    const byte *scalar = scalars; \
+    const ptype##_affine *point = points++; \
 \
     nbytes = (nbits + 7)/8; /* convert |nbits| to bytes */ \
     wmask = ((limb_t)1 << (wbits+1)) - 1; \
@@ -329,7 +329,7 @@ static void ptype##s_tile_pippenger(ptype *ret, \
     bit0 -= z^1; wbits += z^1; \
     wval = (get_wval_limb(scalar, bit0, wbits) << z) & wmask; \
     wval = booth_encode(wval, cbits); \
-    scalar = *scalars ? *scalars++ : scalar+nbytes; \
+    scalar = scalar+nbytes /* ? scalars+nbytes : scalar+nbytes */; \
     wnxt = (get_wval_limb(scalar, bit0, wbits) << z) & wmask; \
     wnxt = booth_encode(wnxt, cbits); \
     npoints--;  /* account for prefetch */ \
@@ -337,22 +337,22 @@ static void ptype##s_tile_pippenger(ptype *ret, \
     ptype##_bucket(buckets, wval, cbits, point); \
     for (i = 1; i < npoints; i++) { \
         wval = wnxt; \
-        scalar = *scalars ? *scalars++ : scalar+nbytes; \
+        scalar = scalar+nbytes /* ? scalars+nbytes : scalar+nbytes */; \
         wnxt = (get_wval_limb(scalar, bit0, wbits) << z) & wmask; \
         wnxt = booth_encode(wnxt, cbits); \
         ptype##_prefetch(buckets, wnxt, cbits); \
-        point = *points ? *points++ : point+1; \
+        point = points ? points++ : point+1; \
         ptype##_bucket(buckets, wval, cbits, point); \
     } \
-    point = *points ? *points++ : point+1; \
+    point = points ? points++ : point+1; \
     ptype##_bucket(buckets, wnxt, cbits, point); \
     ptype##_integrate_buckets(ret, buckets, cbits - 1); \
 } \
 \
-static void ptype##s_mult_pippenger(ptype *ret, \
-                                    const ptype##_affine *const points[], \
+static void ptype##s_mult_pippenger_cont(ptype *ret, \
+                                    const ptype##_affine points[], \
                                     size_t npoints, \
-                                    const byte *const scalars[], size_t nbits, \
+                                    const byte scalars[], size_t nbits, \
                                     ptype##xyzz buckets[], size_t window) \
 { \
     size_t i, wbits, cbits, bit0 = nbits; \
@@ -366,15 +366,15 @@ static void ptype##s_mult_pippenger(ptype *ret, \
     wbits = nbits % window; /* yes, it may be zero */ \
     cbits = wbits + 1; \
     while (bit0 -= wbits) { \
-        ptype##s_tile_pippenger(tile, points, npoints, scalars, nbits, \
-                                      buckets, bit0, wbits, cbits); \
+        ptype##s_tile_pippenger_cont(tile, points, npoints, scalars, nbits, \
+                                     buckets, bit0, wbits, cbits);      \
         ptype##_dadd(ret, ret, tile, NULL); \
         for (i = 0; i < window; i++) \
             ptype##_double(ret, ret); \
         cbits = wbits = window; \
     } \
-    ptype##s_tile_pippenger(tile, points, npoints, scalars, nbits, \
-                                  buckets, 0, wbits, cbits); \
+    ptype##s_tile_pippenger_cont(tile, points, npoints, scalars, nbits, \
+                                 buckets, 0, wbits, cbits);             \
     ptype##_dadd(ret, ret, tile, NULL); \
 } \
 \

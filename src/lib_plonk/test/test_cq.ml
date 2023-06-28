@@ -79,7 +79,7 @@ let bench_pippenger () =
   let f_poly =
     Evaluations.interpolation_fft2 (Domain.build (Array.length f)) f
   in
-  (* let _srs = Srs_g1.to_array srs in *)
+  let _srs = Srs_g1.to_array srs in
   (* let t0 = Unix.gettimeofday () in *)
   let f_slow () =
     let _ = Srs_g1.pippenger srs f_poly in
@@ -89,13 +89,13 @@ let bench_pippenger () =
   (* Printf.printf "\n\nSRS pippe : %f s." (t1 -. t0) ; *)
   (* let t0 = Unix.gettimeofday () in *)
   let f_fast () =
-    let _srs = Srs_g1.to_array srs in
+    (* let _srs = Srs_g1.to_array srs in *)
     let _ = G1.pippenger _srs f in
     ()
   in
   (* let t1 = Unix.gettimeofday () in *)
   let f_affine () =
-    let _srs = Srs_g1.to_array srs in
+    (* let _srs = Srs_g1.to_array srs in *)
     let _ = G1.pippenger_with_affine_array (G1.to_affine_array _srs) f in
     ()
   in
@@ -104,9 +104,13 @@ let bench_pippenger () =
   (* Printf.printf "\nPippenger : %f s." (t1 -. t0) ; *)
   (* Printf.printf "\nWith affi : %f s." (t2 -. t1) ; *)
   (* Printf.printf "\n\n" ; *)
+  Gc.full_major () ;
   let _slow = Plonk_test.Helpers.repeat 5 f_slow () in
+  Gc.full_major () ;
   let _fast = Plonk_test.Helpers.repeat 5 f_fast () in
-  let _affine = Plonk_test.Helpers.repeat 5 f_affine () in
+  Gc.full_major () ;
+  let _affine = Plonk_test.Helpers.repeat 3 f_affine () in
+  Gc.full_major () ;
   ()
 
 let tests =
