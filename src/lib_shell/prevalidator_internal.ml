@@ -1211,7 +1211,27 @@ module Make
       Operation_hash.Set.iter
         pv.shell.parameters.tools.chain_tools.clear_or_cancel
         pv.shell.fetching ;
-      Lwt.return_unit
+      let current_mempool = pv.shell.mempool in
+      let fold map acc =
+        Operation_hash.Map.fold
+          (fun key _value acc -> Operation_hash.Set.add key acc)
+          map
+          acc
+      in
+      let pending =
+        fold
+          (Classification.map pv.shell.classification.branch_refused)
+          (fold
+             (Classification.map pv.shell.classification.branch_delayed)
+             Operation_hash.Set.empty)
+      in
+      let open Lwt_syntax in
+      let* res =
+        pv.shell.parameters.tools.set_mempool
+          ~head:(Store.Block.hash pv.shell.predecessor)
+          {current_mempool with pending}
+      in
+      match res with Error _ | Ok () -> return_unit
 
     let mk_tools (chain_db : Distributed_db.chain_db) : _ Tools.tools =
       let advertise_current_head ~mempool bh =
@@ -1330,7 +1350,9 @@ module Make
       let*! () =
         Seq.S.iter
           (may_fetch_operation pv.shell None)
-          (Operation_hash.Set.to_seq mempool.known_valid)
+          (Seq.append
+             (Operation_hash.Set.to_seq mempool.known_valid)
+             (Operation_hash.Set.to_seq mempool.pending))
       in
       return pv
 
