@@ -39,10 +39,8 @@ let default_dac_threshold = 0
 
 let default_dac_addresses = []
 
-let default_reveal_data_dir =
-  Filename.concat
-    (Filename.concat (Sys.getenv "HOME") ".tezos-smart-rollup-node")
-    "wasm_2_0_0"
+let default_reveal_data_dir ~data_dir =
+  Filename.concat data_dir "reveal-data-dir"
 
 module Coordinator = struct
   type t = {
@@ -333,11 +331,7 @@ let encoding : t Data_encoding.t =
           default_data_dir)
        (dft "rpc-addr" ~description:"RPC address" string default_rpc_address)
        (dft "rpc-port" ~description:"RPC port" uint16 default_rpc_port)
-       (dft
-          "reveal_data_dir"
-          ~description:"Reveal data directory"
-          string
-          default_reveal_data_dir)
+       (req "reveal_data_dir" ~description:"Reveal data directory" string)
        (req "mode" ~description:"Running mode" mode_encoding)
        (dft "allow_v1_api" ~description:"Allow V1 API boolean flag" bool false))
 

@@ -57,13 +57,11 @@ let data_dir_arg =
     ~default
     (Client_config.string_parameter ())
 
-let reveal_data_dir_arg =
-  let default = Configuration.default_reveal_data_dir in
-  Tezos_clic.default_arg
+let reveal_data_dir_arg_opt =
+  Tezos_clic.arg
     ~long:"reveal-data-dir"
     ~placeholder:"reveal-data-dir"
     ~doc:"The directory where reveal preimage pages are saved."
-    ~default
     (Client_config.string_parameter ())
 
 let tz4_address_parameter =
@@ -188,9 +186,14 @@ let experimental_disclaimer () =
      @."
 
 module Config_init = struct
-  let create_configuration ~data_dir ~reveal_data_dir ~rpc_address ~rpc_port
+  let create_configuration ~data_dir ?reveal_data_dir_opt ~rpc_address ~rpc_port
       ~allow_v1_api mode (cctxt : Client_context.full) =
     let open Lwt_result_syntax in
+    let reveal_data_dir =
+      Option.value
+        ~default:(Configuration.default_reveal_data_dir ~data_dir)
+        reveal_data_dir_opt
+    in
     let config =
       Configuration.make
         ~data_dir
@@ -218,7 +221,7 @@ module Config_init = struct
          rpc_address_arg
          rpc_port_arg
          committee_member_address_arg
-         reveal_data_dir_arg)
+         reveal_data_dir_arg_opt)
       (prefixes
          [
            "configure";
@@ -236,14 +239,14 @@ module Config_init = struct
              rpc_address,
              rpc_port,
              committee_member_address_opt,
-             reveal_data_dir )
+             reveal_data_dir_opt )
            committee_members_addresses
            threshold
            cctxt ->
         experimental_disclaimer () ;
         create_configuration
           ~data_dir
-          ~reveal_data_dir
+          ?reveal_data_dir_opt
           ~rpc_address
           ~rpc_port
           ~allow_v1_api:false
@@ -263,7 +266,7 @@ module Config_init = struct
          data_dir_arg
          rpc_address_arg
          rpc_port_arg
-         reveal_data_dir_arg
+         reveal_data_dir_arg_opt
          allow_v1_api_arg)
       (prefixes
          [
@@ -277,13 +280,13 @@ module Config_init = struct
            "members";
          ]
       @@ seq_of_param @@ tz4_public_key_param)
-      (fun (data_dir, rpc_address, rpc_port, reveal_data_dir, allow_v1_api)
+      (fun (data_dir, rpc_address, rpc_port, reveal_data_dir_opt, allow_v1_api)
            committee_members
            cctxt ->
         experimental_disclaimer () ;
         create_configuration
           ~data_dir
-          ~reveal_data_dir
+          ?reveal_data_dir_opt
           ~rpc_address
           ~rpc_port
           ~allow_v1_api
@@ -299,7 +302,7 @@ module Config_init = struct
          data_dir_arg
          rpc_address_arg
          rpc_port_arg
-         reveal_data_dir_arg
+         reveal_data_dir_arg_opt
          allow_v1_api_arg)
       (prefixes
          ["configure"; "as"; "committee"; "member"; "with"; "coordinator"]
@@ -307,14 +310,14 @@ module Config_init = struct
       @@ prefixes ["and"; "signer"]
       @@ tz4_address_param ~desc:"BLS public key hash to use as the signer."
       @@ stop)
-      (fun (data_dir, rpc_address, rpc_port, reveal_data_dir, allow_v1_api)
+      (fun (data_dir, rpc_address, rpc_port, reveal_data_dir_opt, allow_v1_api)
            (coordinator_rpc_address, coordinator_rpc_port)
            address
            cctxt ->
         experimental_disclaimer () ;
         create_configuration
           ~data_dir
-          ~reveal_data_dir
+          ?reveal_data_dir_opt
           ~rpc_address
           ~rpc_port
           ~allow_v1_api
@@ -333,7 +336,7 @@ module Config_init = struct
          data_dir_arg
          rpc_address_arg
          rpc_port_arg
-         reveal_data_dir_arg
+         reveal_data_dir_arg_opt
          (timeout
             ~doc:
               (Format.sprintf
@@ -348,7 +351,7 @@ module Config_init = struct
       (fun ( data_dir,
              rpc_address,
              rpc_port,
-             reveal_data_dir,
+             reveal_data_dir_opt,
              timeout,
              allow_v1_api )
            (coordinator_rpc_address, coordinator_rpc_port)
@@ -357,7 +360,7 @@ module Config_init = struct
         experimental_disclaimer () ;
         create_configuration
           ~data_dir
-          ~reveal_data_dir
+          ?reveal_data_dir_opt
           ~rpc_address
           ~rpc_port
           ~allow_v1_api
