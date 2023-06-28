@@ -73,7 +73,8 @@
   test_local_contexts
   test_dal_slot_proof
   test_adaptive_inflation
-  test_adaptive_inflation_ema))
+  test_adaptive_inflation_ema
+  test_datatype_size))
 
 (executable
  (name main)
