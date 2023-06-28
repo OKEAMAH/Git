@@ -6633,6 +6633,7 @@ let _octez_shell_tests =
       "test_consensus_heuristic";
       "test_node";
       "test_peer_validator";
+      "test_prevalidator";
       "test_prevalidation";
       "test_prevalidator_bounding";
       "test_prevalidator_classification";
