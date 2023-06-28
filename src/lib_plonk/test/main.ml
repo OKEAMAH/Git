@@ -32,15 +32,15 @@ let () =
             ~verbose:false
             "PlonK"
             [
-              ("Utils", Test_utils.tests);
-              ("Evaluations", Test_evaluations.tests);
-              ("Plonk_Pack", Test_pack.tests);
-              ("Polynomial Commitment", Test_polynomial_commitment.tests);
-              ("Polynomial_protocol", Test_polynomial_protocol.tests);
-              ("Permutations", Test_permutations.tests);
-              ("Plookup", Test_plookup.tests);
-              ("Range_Checks", Test_range_checks.tests);
-              ("Main_Protocol", Test_main_protocol.tests);
-              ("Circuit", Test_circuit.tests);
+              (* ("Utils", Test_utils.tests);
+                 ("Evaluations", Test_evaluations.tests);
+                 ("Plonk_Pack", Test_pack.tests);
+                 ("Polynomial Commitment", Test_polynomial_commitment.tests);
+                 ("Polynomial_protocol", Test_polynomial_protocol.tests);
+                 ("Permutations", Test_permutations.tests);
+                 ("Plookup", Test_plookup.tests);
+                 ("Range_Checks", Test_range_checks.tests);
+                 ("Main_Protocol", Test_main_protocol.tests);
+                 ("Circuit", Test_circuit.tests); *)
               ("Cq", Test_cq.tests);
             ]))

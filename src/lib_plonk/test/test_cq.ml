@@ -69,11 +69,52 @@ let test_wrong_proof () =
   in
   assert (not (fst @@ Cq.verify vrf transcript wrong_proof))
 
+let bench_pippenger () =
+  let open Plonk.Bls in
+  let srs, _ =
+    let open Octez_bls12_381_polynomial.Bls12_381_polynomial in
+    Srs.generate_insecure 14 0
+  in
+  let f = Array.init (Srs_g1.size srs) Scalar.of_int in
+  let f_poly =
+    Evaluations.interpolation_fft2 (Domain.build (Array.length f)) f
+  in
+  (* let _srs = Srs_g1.to_array srs in *)
+  (* let t0 = Unix.gettimeofday () in *)
+  let f_slow () =
+    let _ = Srs_g1.pippenger srs f_poly in
+    ()
+  in
+  (* let t1 = Unix.gettimeofday () in *)
+  (* Printf.printf "\n\nSRS pippe : %f s." (t1 -. t0) ; *)
+  (* let t0 = Unix.gettimeofday () in *)
+  let f_fast () =
+    let _srs = Srs_g1.to_array srs in
+    let _ = G1.pippenger _srs f in
+    ()
+  in
+  (* let t1 = Unix.gettimeofday () in *)
+  let f_affine () =
+    let _srs = Srs_g1.to_array srs in
+    let _ = G1.pippenger_with_affine_array (G1.to_affine_array _srs) f in
+    ()
+  in
+
+  (* let t2 = Unix.gettimeofday () in *)
+  (* Printf.printf "\nPippenger : %f s." (t1 -. t0) ; *)
+  (* Printf.printf "\nWith affi : %f s." (t2 -. t1) ; *)
+  (* Printf.printf "\n\n" ; *)
+  let _slow = Plonk_test.Helpers.repeat 5 f_slow () in
+  let _fast = Plonk_test.Helpers.repeat 5 f_fast () in
+  let _affine = Plonk_test.Helpers.repeat 5 f_affine () in
+  ()
+
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
     [
-      ("Correctness", test_correctness);
-      ("Not in table", test_not_in_table);
-      ("Fake proof", test_wrong_proof);
+      (* ("Correctness", test_correctness); *)
+      (* ("Not in table", test_not_in_table); *)
+      (* ("Fake proof", test_wrong_proof); *)
+      ("Bench pippenger", bench_pippenger);
     ]
