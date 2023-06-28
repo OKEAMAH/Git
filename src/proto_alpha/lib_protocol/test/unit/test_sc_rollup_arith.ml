@@ -380,7 +380,9 @@ let test_reveal ~threshold ~inbox_level ~hash ~preimage_reveal_step
 let test_reveal_disabled ~threshold ~inbox_level () =
   let open Lwt_result_wrap_syntax in
   let preimage = "1 1 +" in
-  let hash = Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [preimage]) in
+  let hash =
+    Sc_rollup_reveal_hash.(hash_string ~scheme:(Any_hash Blake2B) [preimage])
+  in
   let* state =
     test_reveal
       ~threshold
@@ -402,7 +404,9 @@ let test_reveal_disabled ~threshold ~inbox_level () =
 let test_reveal_enabled ~threshold ~inbox_level () =
   let open Lwt_result_wrap_syntax in
   let preimage = "1 1 +" in
-  let hash = Sc_rollup_reveal_hash.(hash_string ~scheme:Blake2B [preimage]) in
+  let hash =
+    Sc_rollup_reveal_hash.(hash_string ~scheme:(Any_hash Blake2B) [preimage])
+  in
   let* state =
     test_reveal
       ~threshold

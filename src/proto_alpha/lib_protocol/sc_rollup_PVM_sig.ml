@@ -243,7 +243,7 @@ let is_reveal_enabled_predicate
     match reveal with
     | Reveal_raw_data h -> (
         match Sc_rollup_reveal_hash.scheme_of_hash h with
-        | Blake2B -> t.raw_data.blake2B)
+        | Any_hash Blake2B -> t.raw_data.blake2B)
     | Reveal_metadata -> t.metadata
     | Request_dal_page _ -> t.dal_page
   in

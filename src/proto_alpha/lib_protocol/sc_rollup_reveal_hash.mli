@@ -25,22 +25,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** The type of a reveal hash. *)
-type t
+module Blake2B : S.HASH
 
 (** The hashing schemes supported by the reveal hash. *)
-type supported_hashes = Blake2B
+type _ supported_hashes = Blake2B : Blake2B.t supported_hashes
 
-(** A Map module for storing reveal-hash-indexed values. *)
+type any_supported_hashes =
+  | Any_hash : _ supported_hashes -> any_supported_hashes
+
+(** The type of a reveal hash. *)
+type t = Blake2B of Blake2B.t
+
 module Map : Map.S with type key = t
 
 (** [size ~scheme] returns the size of reveal hashes using the [scheme]
       specified in input. *)
-val size : scheme:supported_hashes -> int
+val size : scheme:any_supported_hashes -> int
 
 (** [zero ~scheme] returns the reveal hash corresponding to the zero hash
       for the [scheme] specified in input. *)
-val zero : scheme:supported_hashes -> t
+val zero : scheme:any_supported_hashes -> t
 
 (** Formatting function for reveal-hashes. *)
 val pp : Format.formatter -> t -> unit
@@ -66,15 +70,15 @@ val encoding : t Data_encoding.t
 
 (** [hash_string ~scheme ?key strings] hashes [strings] using the
     supported hashing [scheme] given in input. *)
-val hash_string : scheme:supported_hashes -> ?key:string -> string list -> t
+val hash_string : scheme:any_supported_hashes -> ?key:string -> string list -> t
 
 (** [hash_bytes ~scheme ?key strings] hashes [bytes] using the
     supported hashing [scheme] given in input. *)
-val hash_bytes : scheme:supported_hashes -> ?key:bytes -> bytes list -> t
+val hash_bytes : scheme:any_supported_hashes -> ?key:bytes -> bytes list -> t
 
 (** [scheme_of_hash] hash returns the supported hashing scheme
     that was used to obtain [hash]. *)
-val scheme_of_hash : t -> supported_hashes
+val scheme_of_hash : t -> any_supported_hashes
 
 val of_hex : string -> t option
 
