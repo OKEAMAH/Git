@@ -118,7 +118,7 @@ module Kzg_impl = struct
        - srs1 : [[1]₁, [x¹]₁, …, [x^(d-1)]₁] ;
        - encoding_1 : [1]₂;
        - encoding_x : [x]₂ *)
-    type prover = {srs1 : Srs_g1.t; encoding_1 : G2.t; encoding_x : G2.t}
+    type prover = {srs1 : G1.t array; encoding_1 : G2.t; encoding_x : G2.t}
     [@@deriving repr]
 
     let to_bytes len srs =
@@ -126,7 +126,7 @@ module Kzg_impl = struct
       let st = init () in
       update st (G2.to_bytes srs.encoding_1) ;
       update st (G2.to_bytes srs.encoding_x) ;
-      let srs1 = Srs_g1.to_array ~len srs.srs1 in
+      let srs1 = Array.sub srs.srs1 0 len in
       Array.iter (fun key -> update st (G1.to_bytes key)) srs1 ;
       finish st
 
@@ -141,7 +141,7 @@ module Kzg_impl = struct
 
     let setup_prover (srs_g1, srs_g2) =
       let {encoding_1; encoding_x} = setup_verifier srs_g2 in
-      {srs1 = srs_g1; encoding_1; encoding_x}
+      {srs1 = Srs_g1.to_array srs_g1; encoding_1; encoding_x}
 
     let setup _ (srs, _) =
       let prv = setup_prover srs in
@@ -161,7 +161,7 @@ module Kzg_impl = struct
     let commit_single srs p =
       let srs = Public_parameters.(srs.srs1) in
       let poly_size = Poly.degree p + 1 in
-      let srs_size = Srs_g1.size srs in
+      let srs_size = Array.length srs in
       if poly_size = 0 then G1.zero
       else if poly_size > srs_size then
         raise
@@ -170,7 +170,7 @@ module Kzg_impl = struct
                 "Kzg.commit : Polynomial degree, %i, exceeds srs length, %i."
                 poly_size
                 srs_size))
-      else Srs_g1.pippenger srs p
+      else G1.pippenger srs (Poly.to_dense_coefficients p)
 
     let commit ?all_keys:_ srs f_map =
       let cmt = SMap.map (commit_single srs) f_map in
