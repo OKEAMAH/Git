@@ -260,6 +260,19 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
     (* The call context is built as a side effect of the evaluation. *)
     let call_stack = ref (Toplevel [], []) in
 
+    let real_ticks = ref Z.zero in
+
+    let incr_ticks pvm_state =
+      let open Wasm_pvm_state.Internal_state in
+      match pvm_state.tick_state with
+      | Eval {config = {step_kont = Eval.(SK_Result _); _}; _} ->
+          real_ticks := Z.succ !real_ticks
+      | Padding -> ()
+      (* explicit pattern matching to avoid new states introducing silent bugs *)
+      | Snapshot | Decode _ | Link _ | Init _ | Eval _ | Collect | Stuck _ ->
+          real_ticks := Z.succ !real_ticks
+    in
+
     let compute_and_snapshot pvm_state =
       let* updated_stack =
         update_call_stack
@@ -273,6 +286,8 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
           call_stack := (current_node, current_call_stack))
         updated_stack ;
 
+      incr_ticks pvm_state ;
+
       let* input_request_val = Wasm_vm.get_info pvm_state in
       match (input_request_val.input_request, pvm_state.tick_state) with
       | Reveal_required _, _ when reveal_builtins <> None -> return_true
@@ -283,7 +298,7 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
       let* pvm_state =
         Wasm_utils.Tree_encoding_runner.decode Wasm_pvm.pvm_state_encoding tree
       in
-      let* info = Wasm_utils.Wasm.get_info tree in
+      let* _info = Wasm_utils.Wasm.get_info tree in
       let run () =
         let* tree, ticks =
           Wasm_utils.Wasm.Internal_for_tests.compute_step_many_until
@@ -293,14 +308,19 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
             compute_and_snapshot
             tree
         in
-        eval_until_input_requested
-          (Z.add accumulated_ticks @@ Z.of_int64 ticks)
-          tree
+        match pvm_state.Wasm_pvm_state.Internal_state.tick_state with
+        | Wasm_pvm_state.Internal_state.Snapshot ->
+            return (tree, Z.of_int64 ticks)
+        | _ ->
+            eval_until_input_requested
+              (Z.add accumulated_ticks @@ Z.of_int64 ticks)
+              tree
       in
-      match info.Wasm_pvm_state.input_request with
-      | No_input_required -> run ()
-      | Reveal_required _ when reveal_builtins <> None -> run ()
-      | Input_required | Reveal_required _ -> return (tree, accumulated_ticks)
+      (* match info.Wasm_pvm_state.input_request with *)
+      (* | No_input_required -> run () *)
+      (* | Reveal_required _ when reveal_builtins <> None -> run () *)
+      (* | Input_required | Reveal_required _ -> return (tree, accumulated_ticks) *)
+      run ()
     in
     let+ tree, ticks = eval_until_input_requested Z.zero tree in
     let call_stack =
@@ -308,6 +328,10 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
       | Toplevel l, stack -> (Toplevel (List.rev l), stack)
       | n -> n
     in
+    Format.printf
+      "===========\nExecution effectively took %a ticks.\n=============\n%!"
+      Z.pp_print
+      !real_ticks ;
     (tree, ticks, call_stack)
 end
 
