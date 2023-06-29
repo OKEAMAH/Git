@@ -29,7 +29,6 @@
 
 let () =
   Stresstest_command.register ~protocols:Protocol.all ;
-  Dal.register [Alpha] ;
   Baker_test.register ~protocols:Protocol.all ;
   (* Test.run () should be the last statement, don't register afterwards! *)
   Test.run ()

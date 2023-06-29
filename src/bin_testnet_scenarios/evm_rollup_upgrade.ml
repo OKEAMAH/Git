@@ -221,4 +221,4 @@ let register ~testnet =
     ~__FILE__
     ~title:"Upgrade an EVM rollup"
     ~tags:["upgrade"]
-    (upgrade_kernel ~testnet)
+    (upgrade_kernel ~testnet:(testnet ()))

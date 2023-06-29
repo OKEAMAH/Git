@@ -120,4 +120,4 @@ let register ~testnet =
     ~__FILE__
     ~title:"Deploy an EVM rollup"
     ~tags:["deploy"]
-    (deploy_evm_rollup ~testnet)
+    (deploy_evm_rollup ~testnet:(testnet ()))
