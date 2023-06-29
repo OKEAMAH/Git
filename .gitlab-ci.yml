@@ -35,8 +35,6 @@ workflow:
 variables:
   # /!\ CI_REGISTRY is overriden to use a private Docker registry mirror in AWS ECR
   # in GitLab namespaces `nomadic-labs` and `tezos`
-  ## This value MUST be the same as `opam_repository_tag` in `scripts/version.sh`
-  build_deps_image_version: 452214cb12f8fdd5b5a2a6f77f330fc0bfd78740
   build_deps_image_name: "${CI_REGISTRY}/tezos/opam-repository"
   GIT_STRATEGY: fetch
   GIT_DEPTH: "1"
@@ -104,8 +102,7 @@ stages:
 # §2: Gitlab CI needs at least one job definition, otherwise we're stuck with
 # this error: 'Jobs config should contain at least one visible job'
 trigger:
-  extends:
-    - .image_template__runtime_build_test_dependencies_template
+  image: alpine:3.17
   stage: trigger
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/'
@@ -115,6 +112,11 @@ trigger:
   timeout: "10m"
   script:
     - echo 'Trigger pipeline 🤠'
+    - . ./scripts/version.sh
+    - echo "build_deps_image_version=$opam_repository_tag" > opam.env
+  artifacts:
+    reports:
+      dotenv: opam.env
 
 include:
   # /!\ These rules should be be mutually exclusive and kept in sync

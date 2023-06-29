@@ -7,6 +7,7 @@ opam:release:
   # Publish jobs are uninterruptible to avoid publishing partial results.
   interruptible: false
   dependencies:
+    - trigger
     - gitlab:release
   script:
   # create opam release and push to github (also pushes latest master branch)

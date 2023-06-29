@@ -43,6 +43,7 @@ tezt:
     # See tezt/lib_tezos/tag.mli for more information.
     TESTS: "/ci_disabled /flaky"
   dependencies:
+    - "trigger"
     - "build_x86_64-released"
     - "build_x86_64-exp-dev-extra"
     - "build_kernels"
@@ -64,6 +65,7 @@ tezt:static-binaries:
     - .image_template__runtime_build_test_dependencies_template
     - .tezt_template
   dependencies:
+    - trigger
     # Fetch src/proto_*/parameters/*.json and tezt/tests/main.exe from
     # build_x86_64-exp-dev-extra
     - build_x86_64-exp-dev-extra

@@ -7,6 +7,7 @@ gitlab:release:
   # Publish jobs are uninterruptible to avoid publishing partial results.
   interruptible: false
   dependencies:
+    - trigger
     - build:static-x86_64-linux-binaries
     - build:static-arm64-linux-binaries
     - docker:merge_manifests

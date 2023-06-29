@@ -3,5 +3,6 @@ sanity_ci:
     - .default_settings_template
     - .image_template__runtime_build_test_dependencies_template
   stage: sanity
+  dependencies: [trigger]
   script:
     - make  -C ${CI_PROJECT_DIR}/.gitlab/ci sanity-ci

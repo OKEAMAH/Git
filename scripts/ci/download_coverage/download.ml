@@ -46,14 +46,13 @@ let coverage_jobs =
     Base.span (fun line -> not (line =~ rex "^\\s+script:$")) coverage_yml
   in
   let coverage_jobs =
-    List.map
-      (function
-        | line -> (
-            match line =~* rex {|- "(.*)"|} with
-            | Some job_name -> job_name
-            | None ->
-                Test.fail "Unexpected line %S in %s" line coverage_yml_path))
-      (List.tl coverage_jobs)
+    List.tl coverage_jobs
+    |> List.map (function line ->
+           (match line =~* rex {|- "(.*)"|} with
+           | Some job_name -> job_name
+           | None -> Test.fail "Unexpected line %S in %s" line coverage_yml_path))
+    (* remove trigger job with no dependencies *)
+    |> List.filter (( <> ) "trigger")
   in
   Log.debug
     "From %s, read coverage jobs: [%s]"

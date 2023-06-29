@@ -3,10 +3,10 @@
 # Some settings we want by default on all jobs that cannot be set
 # through the key `default` in `.gitlab-ci.yml`.
 .default_settings_template:
-  # `dependencies` are empty be default. Each individual job or
+  # TODO `dependencies` are empty be default. Each individual job or
   # template requiring artifacts from preceeding jobs should declare
   # their dependencies locally.
-  dependencies: []
+  dependencies: ["trigger"]
 
 # Default runner tags for jobs in the build stage
 .tags_template__build:

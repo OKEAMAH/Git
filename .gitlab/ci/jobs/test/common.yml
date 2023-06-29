@@ -35,6 +35,7 @@
     - .image_template__runtime_build_e2etest_dependencies_template
     - .template__coverage_files
   dependencies:
+    - "trigger"
     - "build_x86_64-released"
     - "build_x86_64-exp-dev-extra"
     - "tezt:fetch-records"
