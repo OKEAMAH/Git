@@ -31,35 +31,81 @@
     Subject:      Unit tests the Prevalidator APIs
 *)
 
-let register_test ~title ~additional_tags =
+let wrap_test f =
+  let open Lwt_syntax in
+  let* res = f () in
+  match res with
+  | Ok _ -> unit
+  | Error err -> Test.fail "Error: %a !" pp_print_trace err
+
+let register_test ~title ~additional_tags f =
   Test.register
     ~__FILE__
     ~title:("Shell: Prevalidator: " ^ title)
     ~tags:(["mempool"; "prevalidator"] @ additional_tags)
+  @@ fun () -> wrap_test f
 
-module Protocol_accept_all :
-  Tezos_protocol_environment.PROTOCOL
-    with type operation_data = unit
-     and type operation_receipt = unit
-     and type validation_state = unit
-     and type application_state = unit = struct
-  open Tezos_protocol_environment.Internal_for_tests
-  include Environment_protocol_T_test.Mock_all_unit
+module type Add_operation_result = sig
+  open Tezos_protocol_environment.Internal_for_tests.Environment_protocol_T_test
+       .Mock_all_unit
+       .Mempool
 
-  let begin_validation _ctxt _chain_id _mode ~predecessor:_ ~cache:_ =
-    Lwt_result_syntax.return_unit
-
-  module Mempool = struct
-    include Mempool
-
-    let init _ _ ~head_hash:_ ~head:_ ~cache:_ = Lwt_result.return ((), ())
-
-    let add_operation ?check_signature:_ ?conflict_handler:_ _vi t (_oph, _op) =
-      Lwt_result_syntax.return (t, Mempool.Added)
-  end
+  val return : t -> (t * add_result, add_error) result
 end
 
-module Protocol_reject_all :
+module Added : Add_operation_result = struct
+  let return t =
+    Ok
+      ( t,
+        Tezos_protocol_environment.Internal_for_tests
+        .Environment_protocol_T_test
+        .Mock_all_unit
+        .Mempool
+        .Added )
+end
+
+module Unchanged : Add_operation_result = struct
+  let return t =
+    Ok
+      ( t,
+        Tezos_protocol_environment.Internal_for_tests
+        .Environment_protocol_T_test
+        .Mock_all_unit
+        .Mempool
+        .Unchanged )
+end
+
+module Branch_refused : Add_operation_result = struct
+  let return _t =
+    Error
+      (Tezos_protocol_environment.Internal_for_tests.Environment_protocol_T_test
+       .Mock_all_unit
+       .Mempool
+       .Validation_error
+         [Test_prevalidation.Branch_refused_error])
+end
+
+module Branch_delayed : Add_operation_result = struct
+  let return _t =
+    Error
+      (Tezos_protocol_environment.Internal_for_tests.Environment_protocol_T_test
+       .Mock_all_unit
+       .Mempool
+       .Validation_error
+         [Test_prevalidation.Branch_delayed_error])
+end
+
+module Refused : Add_operation_result = struct
+  let return _t =
+    Error
+      (Tezos_protocol_environment.Internal_for_tests.Environment_protocol_T_test
+       .Mock_all_unit
+       .Mempool
+       .Validation_error
+         [Test_prevalidation.Refused_error])
+end
+
+module Protocol (M : Add_operation_result) :
   Tezos_protocol_environment.PROTOCOL
     with type operation_data = unit
      and type operation_receipt = unit
@@ -77,7 +123,7 @@ module Protocol_reject_all :
     let init _ _ ~head_hash:_ ~head:_ ~cache:_ = Lwt_result.return ((), ())
 
     let add_operation ?check_signature:_ ?conflict_handler:_ _vi t (_oph, _op) =
-      Lwt_result_syntax.return (t, Mempool.Unchanged)
+      Lwt_syntax.return (M.return t)
   end
 end
 
@@ -112,13 +158,28 @@ let create_chain_db () =
   in
   return (Distributed_db.activate db chain_store callback)
 
-let create_prevalidator ~(accept_operations : bool) chain_db =
+let create_prevalidator ~add_operation_result chain_db =
   let limits = Shell_limits.default_limits.prevalidator_limits in
   Prevalidator.create
     limits
-    (if accept_operations then (module MakeFilter (Protocol_accept_all))
-    else (module MakeFilter (Protocol_reject_all)))
+    (match add_operation_result with
+    | `Validated -> (module MakeFilter (Protocol (Added)))
+    | `Unchanged -> (module MakeFilter (Protocol (Unchanged)))
+    | `Refused -> (module MakeFilter (Protocol (Refused))))
     chain_db
+
+let pp_expected_injection fmt = function
+  | `Refused -> Format.fprintf fmt "refused"
+  | `Branch_delayed -> Format.fprintf fmt "branch_delayed"
+  | `Branch_refused -> Format.fprintf fmt "branch_refused"
+  | `Unchanged -> Format.fprintf fmt "unchanged"
+  | `Validated -> Format.fprintf fmt "validated"
+
+let pp_expected_in_mempool fmt = function
+  | `Known_valid ->
+      Format.fprintf fmt "be in the known_valid mempool set of operations"
+  | `Pending -> Format.fprintf fmt "be in the pending mempool set of operations"
+  | `Drop -> Format.fprintf fmt "not be in the mempool sets of operations"
 
 let check_operation_db_length chain_db expected =
   let operation_db = Distributed_db.information chain_db in
@@ -133,61 +194,89 @@ let check_operation_db_length chain_db expected =
 let create_dummy_operation () =
   let branch = Shell_test_helpers.genesis_block_hash in
   let proto = Bytes.of_string "" in
-  Operation.{shell = {branch}; proto}
+  let op = Operation.{shell = {branch}; proto} in
+  let hash = Operation.hash op in
+  (op, hash)
 
-(* Test that the prevalidator shutdown does not clear the ddb operation table *)
-let test_shutdown () =
-  let open Lwt_result_syntax in
-  let* chain_db = create_chain_db () in
-  let* prevalidator = create_prevalidator ~accept_operations:true chain_db in
-  check_operation_db_length chain_db 0 ;
-  let op = create_dummy_operation () in
-  let* () = Prevalidator.inject_operation prevalidator ~force:false op in
-  check_operation_db_length chain_db 1 ;
-  let*! () = Prevalidator.shutdown prevalidator in
-  check_operation_db_length chain_db 1 ;
-  return_unit
+let expected_operation_db_length = function
+  | `Refused -> 0
+  | `Validated | `Unchanged | `Branch_delayed | `Branch_refused -> 1
 
-(* Test that at prevalidator start up, leftover operations in the DDB are
-   handled *)
-let test_clear_leftover () =
-  let open Lwt_result_syntax in
-  let* chain_db = create_chain_db () in
-  let* prevalidator = create_prevalidator ~accept_operations:true chain_db in
-  check_operation_db_length chain_db 0 ;
-  let op = create_dummy_operation () in
-  let* () = Prevalidator.inject_operation prevalidator ~force:false op in
-  check_operation_db_length chain_db 1 ;
-  let*! () = Prevalidator.shutdown prevalidator in
-  check_operation_db_length chain_db 1 ;
+let expected_mempool_from_injection_result = function
+  | `Refused -> `Drop
+  | `Validated -> `Known_valid
+  | `Unchanged | `Branch_delayed | `Branch_refused -> `Pending
 
-  let* prevalidator = create_prevalidator ~accept_operations:false chain_db in
-  let branch = Shell_test_helpers.genesis_block_hash in
-  let* () =
-    Prevalidator.flush
-      prevalidator
-      Chain_validator_worker_state.Head_increment
-      branch
-      Block_hash.Set.empty
-      Operation_hash.Set.empty
-  in
-  check_operation_db_length chain_db 0 ;
-  return_unit
-
-let wrap_test f =
+let check_operation_mempool chain_db oph expected =
   let open Lwt_syntax in
-  let* res = f () in
-  match res with
-  | Ok _ -> unit
-  | Error err -> Test.fail "Error: %a !" pp_print_trace err
+  let chain_store = Distributed_db.chain_store chain_db in
+  let+ mempool = Store.Chain.mempool chain_store in
+  let mempool_expected = expected_mempool_from_injection_result expected in
+  let res =
+    match mempool_expected with
+    | `Known_valid -> Operation_hash.Set.mem oph mempool.known_valid
+    | `Pending -> Operation_hash.Set.mem oph mempool.pending
+    | `Drop ->
+        not
+          (Operation_hash.Set.mem oph mempool.known_valid
+          || Operation_hash.Set.mem oph mempool.pending)
+  in
+  if not res then
+    Test.fail
+      "Operation %a (injected with %a expected result) was expected to %a"
+      Operation_hash.pp
+      oph
+      pp_expected_injection
+      expected
+      pp_expected_in_mempool
+      mempool_expected
 
-(* Test that the prevalidator.shutdown does not clear the ddb . *)
+let create_scenario ~injection_result ?flush_result () =
+  let open Lwt_result_syntax in
+  let* chain_db = create_chain_db () in
+  let* prevalidator =
+    create_prevalidator ~add_operation_result:injection_result chain_db
+  in
+  (* DDB is empty at initialization *)
+  check_operation_db_length chain_db 0 ;
+  let op, oph = create_dummy_operation () in
+  let* () = Prevalidator.inject_operation prevalidator ~force:true op in
+  check_operation_db_length
+    chain_db
+    (expected_operation_db_length injection_result) ;
+  let*! () = Prevalidator.shutdown prevalidator in
+  check_operation_db_length
+    chain_db
+    (expected_operation_db_length injection_result) ;
+  let*! () = check_operation_mempool chain_db oph injection_result in
+
+  match flush_result with
+  | None -> return_unit
+  | Some flush_result ->
+      let* prevalidator =
+        create_prevalidator ~add_operation_result:flush_result chain_db
+      in
+      let branch = Shell_test_helpers.genesis_block_hash in
+      let* () =
+        Prevalidator.flush
+          prevalidator
+          Chain_validator_worker_state.Head_increment
+          branch
+          (Block_hash.Set.singleton branch)
+          Operation_hash.Set.empty
+      in
+      check_operation_db_length
+        chain_db
+        (expected_operation_db_length flush_result) ;
+      return_unit
+
 let () =
   ( register_test
-      ~title:"shutdown does not clear the ddb operation table"
-      ~additional_tags:["ddb"; "table"]
-  @@ fun () -> wrap_test test_shutdown ) ;
+      ~title:"Refused scenario"
+      ~additional_tags:["ddb"; "table"; "handle"]
+  @@ fun () -> create_scenario ~injection_result:`Refused () ) ;
   register_test
-    ~title:"leftover operations in the ddb are handle at prevalidator startup"
+    ~title:"Validated scenario"
     ~additional_tags:["ddb"; "table"; "handle"]
-  @@ fun () -> wrap_test test_clear_leftover
+  @@ fun () ->
+  create_scenario ~injection_result:`Validated ~flush_result:`Refused ()
