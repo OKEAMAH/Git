@@ -66,6 +66,9 @@ let perform_finalizable_unstake_transfers ctxt contract finalizable =
 
 let finalize_unstake_and_check ~check_unfinalizable ctxt contract =
   let open Lwt_result_syntax in
+  let*? ctxt =
+    Gas.consume ctxt Adaptive_inflation_costs.finalize_unstake_and_check_cost
+  in
   let* prepared_opt = Unstake_requests.prepare_finalize_unstake ctxt contract in
   match prepared_opt with
   | None -> return (ctxt, [])
@@ -109,6 +112,7 @@ let punish_delegate ctxt delegate level mistake ~rewarded =
 
 let stake ctxt ~sender ~delegate amount =
   let open Lwt_result_syntax in
+  let*? ctxt = Gas.consume ctxt Adaptive_inflation_costs.stake_cost in
   let check_unfinalizable
       Unstake_requests.{delegate = unstake_delegate; requests} =
     match requests with
@@ -145,6 +149,9 @@ let stake ctxt ~sender ~delegate amount =
 
 let record_request_unstake ctxt ~sender_contract ~delegate requested_amount =
   let open Lwt_result_syntax in
+  let*? ctxt =
+    Gas.consume ctxt Adaptive_inflation_costs.record_request_unstake_cost
+  in
   if Tez.(requested_amount = zero) then return (ctxt, [])
   else
     let* requested_pseudotokens =

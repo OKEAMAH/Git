@@ -360,6 +360,7 @@ let apply_transaction_to_implicit ~ctxt ~sender ~amount ~pkh ~before_operation =
 
 let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
   let open Lwt_result_syntax in
+  let*? ctxt = Gas.consume ctxt Adaptive_inflation_costs.apply_stake_cost in
   let contract = Contract.Implicit destination in
   (* Staking of zero is forbidden. *)
   let*? () = error_when Tez.(amount = zero) (Empty_transaction contract) in
@@ -413,6 +414,7 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
 let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
     ~before_operation =
   let open Lwt_result_syntax in
+  let*? ctxt = Gas.consume ctxt Adaptive_inflation_costs.apply_unstake_cost in
   let*? () =
     error_when Tez.(amount <> zero) (Invalid_nonzero_transaction_amount amount)
   in
@@ -457,6 +459,8 @@ let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
 
 let apply_finalize_unstake ~ctxt ~sender ~amount ~destination ~before_operation
     =
+  Gas.consume ctxt Adaptive_inflation_costs.apply_finalize_unstake_cost
+  >>?= fun ctxt ->
   error_when Tez.(amount <> zero) (Invalid_nonzero_transaction_amount amount)
   >>?= fun () ->
   error_unless
@@ -485,6 +489,9 @@ let apply_finalize_unstake ~ctxt ~sender ~amount ~destination ~before_operation
 let apply_set_delegate_parameters ~ctxt ~delegate ~staking_over_baking_limit
     ~baking_over_staking_edge ~before_operation =
   let open Lwt_result_syntax in
+  let*? ctxt =
+    Gas.consume ctxt Adaptive_inflation_costs.set_delegate_parameters_cost
+  in
   let staking_over_baking_limit = Z.to_int32 staking_over_baking_limit in
   let baking_over_staking_edge = Z.to_int32 baking_over_staking_edge in
   let*? t =
