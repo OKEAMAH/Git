@@ -22,3 +22,19 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+(** This module defines costs for the adaptive inflation operations. *)
+
+val finalize_unstake_and_check_cost : Gas_limit_repr.cost
+
+val stake_cost : Gas_limit_repr.cost
+
+val apply_stake_cost : Gas_limit_repr.cost
+
+val record_request_unstake_cost : Gas_limit_repr.cost
+
+val apply_unstake_cost : Gas_limit_repr.cost
+
+val apply_finalize_unstake_cost : Gas_limit_repr.cost
+
+val set_delegate_parameters_cost : Gas_limit_repr.cost

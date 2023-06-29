@@ -22,3 +22,19 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+module S = Saturation_repr
+
+let finalize_unstake_and_check_cost = S.safe_int 1_150_000
+
+let stake_cost = S.safe_int 1_700_00
+
+let apply_stake_cost = S.safe_int 900_00
+
+let record_request_unstake_cost = S.safe_int 3_350_000
+
+let apply_unstake_cost = S.safe_int 425_000
+
+let apply_finalize_unstake_cost = S.safe_int 210_000
+
+let set_delegate_parameters_cost = S.safe_int 650_000
