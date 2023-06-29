@@ -63,3 +63,6 @@ Minor Changes
 
 Internal
 --------
+
+- In the Michelson IR GADT, type witnesses have been removed from
+  prefix preservation proofs (:gl:`!9316`)
