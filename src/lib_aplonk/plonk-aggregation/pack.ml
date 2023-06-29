@@ -55,7 +55,7 @@ module type Aggregator = sig
 
   val setup :
     int ->
-    Bls12_381_polynomial.Srs.t ->
+    Bls.G1.t array * Bls.G2.t array ->
     prover_public_parameters * verifier_public_parameters
 
   val get_setup_params : prover_public_parameters -> setup_params
@@ -190,12 +190,11 @@ module Pack_impl = struct
       in
       Pairing.(miller_loop list_combined |> final_exponentiation_exn)
 
-  let setup_verifier srs_g1_t = Srs_g1.get srs_g1_t 1
+  let setup_verifier srs_g1_t = srs_g1_t.(1)
 
   let setup_prover d (srs_g1_t, srs_g2_t) =
-    let srs2_t = Srs_g2.to_array ~len:d srs_g2_t in
     let g1_t = setup_verifier srs_g1_t in
-    {length = d; srs2_t; g1_t}
+    {length = d; srs2_t = srs_g2_t; g1_t}
 
   let setup d srs_t =
     let prv = setup_prover d srs_t in

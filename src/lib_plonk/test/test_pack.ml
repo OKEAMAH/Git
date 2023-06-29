@@ -46,7 +46,8 @@ module External = struct
   let srs =
     let open Octez_bls12_381_polynomial.Bls12_381_polynomial.Srs in
     let x = Bls12_381.Fr.random () in
-    (Srs_g1.generate_insecure 2 x, Srs_g2.generate_insecure 256 x)
+    ( Srs_g1.(generate_insecure 2 x |> to_array),
+      Srs_g2.(generate_insecure 256 x |> to_array) )
 
   let test_prove_and_verify_single () =
     Random.init 31415 ;

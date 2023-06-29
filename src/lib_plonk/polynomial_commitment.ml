@@ -66,7 +66,7 @@ module type Public_parameters_sig = sig
 
   val setup :
     setup_params ->
-    Bls12_381_polynomial.Srs.t * Bls12_381_polynomial.Srs.t ->
+    (G1.t array * G2.t array) * (G1.t array * G2.t array) ->
     prover * verifier
 
   val to_bytes : int -> prover -> Bytes.t
@@ -135,13 +135,13 @@ module Kzg_impl = struct
     type setup_params = int
 
     let setup_verifier srs_g2 =
-      let encoding_1 = Srs_g2.get srs_g2 0 in
-      let encoding_x = Srs_g2.get srs_g2 1 in
+      let encoding_1 = srs_g2.(0) in
+      let encoding_x = srs_g2.(1) in
       {encoding_1; encoding_x}
 
     let setup_prover (srs_g1, srs_g2) =
       let {encoding_1; encoding_x} = setup_verifier srs_g2 in
-      {srs1 = Srs_g1.to_array srs_g1; encoding_1; encoding_x}
+      {srs1 = srs_g1; encoding_1; encoding_x}
 
     let setup _ (srs, _) =
       let prv = setup_prover srs in

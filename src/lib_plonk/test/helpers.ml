@@ -120,9 +120,14 @@ let make_fake_srs () =
   (Srs.generate_insecure 14 1, Srs.generate_insecure 1 14)
 
 let srs =
-  match Sys.getenv_opt "SRS_DIR" with
-  | None -> make_fake_srs ()
-  | Some prefix -> load_real_srs prefix
+  let open Octez_bls12_381_polynomial.Bls12_381_polynomial.Srs in
+  let (s1, s2), (t1, t2) =
+    match Sys.getenv_opt "SRS_DIR" with
+    | None -> make_fake_srs ()
+    | Some prefix -> load_real_srs prefix
+  in
+  ( (Srs_g1.to_array s1, Srs_g2.to_array s2),
+    (Srs_g1.to_array t1, Srs_g2.to_array t2) )
 
 let rec repeat n f () =
   if n > 0 then (
