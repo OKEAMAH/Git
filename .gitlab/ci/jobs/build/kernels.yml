@@ -3,7 +3,7 @@ build_kernels:
     - .tags_template__build
     - .kernels_template
   stage: build
-  needs: [trigger]
+  # needs: [trigger]
   script:
     - make -f kernels.mk build
   artifacts:
