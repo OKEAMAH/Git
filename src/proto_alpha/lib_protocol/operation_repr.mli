@@ -441,6 +441,7 @@ and _ manager_operation =
               computed by the protocol.
 
               It is deprecated starting N, and can be removed in O. *)
+      new_state : Smart_rollup.State_hash.t option;
     }
       -> Kind.sc_rollup_cement manager_operation
   | Sc_rollup_publish : {

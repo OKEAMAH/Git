@@ -57,11 +57,24 @@ module Commitments :
      and type value := Sc_rollup.Commitment.t
      and type header := unit
 
+module Diffs :
+  SIMPLE_INDEXED_FILE
+    with type key := Sc_rollup.Commitment.Hash.t
+     and type value := Sc_rollup.State_hash.t * Epoxy_tx.Types.P.state
+     and type header := unit
+
+module LPIS : SINGLETON_STORE with type value := Epoxy_tx.Types.P.state
+
+module LCIS : SINGLETON_STORE with type value := Epoxy_tx.Types.P.state
+
 type +'a store = {
   l2_blocks : 'a L2_blocks.t;
   messages : 'a Messages.t;
   inboxes : 'a Inboxes.t;
   commitments : 'a Commitments.t;
+  diffs : 'a Diffs.t;
+  lpis : 'a LPIS.t;
+  lcis : 'a LCIS.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   l2_head : 'a L2_head.t;
   last_finalized_level : 'a Last_finalized_level.t;

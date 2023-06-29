@@ -92,6 +92,7 @@ val publish_commitment :
     Clean the storage for the metadata added for this inbox level.
 *)
 val cement_commitment :
+  ?new_state:Sc_rollup_repr.State_hash.t ->
   Raw_context.t ->
   Sc_rollup_repr.t ->
   (Raw_context.t
@@ -143,7 +144,7 @@ val staker_id_uncarbonated :
   pkh:Signature.public_key_hash ->
   Sc_rollup_staker_index_repr.t tzresult Lwt.t
 
-(** [stakers_pkhs_uncarbonated ctxt ~rollup] returns the public key hashes 
+(** [stakers_pkhs_uncarbonated ctxt ~rollup] returns the public key hashes
     of stakers that are currently actively staking on [rollup] *)
 val stakers_pkhs_uncarbonated :
   Raw_context.t ->

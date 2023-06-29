@@ -75,6 +75,8 @@ val commitment_parent_is_not_lcc :
     computed and stored for the block at the given [level]. *)
 val compute_commitment : Raw_level.t -> unit Lwt.t
 
+val compute_diff : Sc_rollup.Diff_hash.t -> unit Lwt.t
+
 (** [publish_commitment hash level] emits the event that a new commitment is
     being published. *)
 val publish_commitment :

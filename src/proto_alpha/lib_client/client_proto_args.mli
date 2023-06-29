@@ -224,6 +224,8 @@ module Sc_rollup_params : sig
   val commitment_hash_parameter :
     (Sc_rollup.Commitment.Hash.t, full) Tezos_clic.parameter
 
+  val state_hash_parameter : (Sc_rollup.State_hash.t, full) Tezos_clic.parameter
+
   val unchecked_payload_parameter : (string, full) Tezos_clic.parameter
 
   val compressed_state_parameter :

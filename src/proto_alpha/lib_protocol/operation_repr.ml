@@ -365,6 +365,7 @@ and _ manager_operation =
   | Sc_rollup_cement : {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.Hash.t;
+      new_state : Smart_rollup.State_hash.t option;
     }
       -> Kind.sc_rollup_cement manager_operation
   | Sc_rollup_publish : {
@@ -891,22 +892,25 @@ module Encoding = struct
           tag = sc_rollup_operation_cement_tag;
           name = "smart_rollup_cement";
           encoding =
-            obj2
+            obj3
               (req "rollup" Sc_rollup_repr.encoding)
               (req
                  ~description:
                    "DEPRECATED: This field is not used anymore by the protocol \
                     and will be removed in a future proposal."
                  "commitment"
-                 Sc_rollup_commitment_repr.Hash.encoding);
+                 Sc_rollup_commitment_repr.Hash.encoding)
+              (req "new_state" @@ option Smart_rollup.State_hash.encoding);
           select =
             (function
             | Manager (Sc_rollup_cement _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Sc_rollup_cement {rollup; commitment} -> (rollup, commitment));
+            | Sc_rollup_cement {rollup; commitment; new_state} ->
+                (rollup, commitment, new_state));
           inj =
-            (fun (rollup, commitment) -> Sc_rollup_cement {rollup; commitment});
+            (fun (rollup, commitment, new_state) ->
+              Sc_rollup_cement {rollup; commitment; new_state});
         }
 
     let sc_rollup_publish_case =

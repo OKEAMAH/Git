@@ -99,6 +99,16 @@ module P = struct
 
   type leaf = {pos : position Bounded.t; ticket : balance ticket}
 
+  let leaf_data_encoding =
+    let pos_encoding = Bounded.data_encoding in
+    Data_encoding.(
+      conv
+        (fun {pos; ticket} -> (pos, ticket))
+        (fun (pos, ticket) -> {pos; ticket})
+        (obj2
+           (req "pos" pos_encoding)
+           (req "ticket" ticket_balance_data_encoding)))
+
   module IMap = Map.Make (Int)
 
   type state = {

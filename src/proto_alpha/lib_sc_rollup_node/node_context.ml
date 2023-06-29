@@ -709,6 +709,46 @@ let save_commitment {store; _} commitment =
   in
   hash
 
+let save_lpis {store; _} lpis = Store.LPIS.write store.lpis lpis
+
+let get_lpis {store; _} =
+  let open Lwt_result_syntax in
+  let* lpis = Store.LPIS.read store.lpis in
+  match lpis with
+  | None -> failwith "Could not retrieve LPIS"
+  | Some lpis -> return lpis
+
+let save_lcis {store; _} lcis = Store.LCIS.write store.lcis lcis
+
+let get_lcis {store; _} =
+  let open Lwt_result_syntax in
+  let* lcis = Store.LCIS.read store.lcis in
+  match lcis with
+  | None -> failwith "Could not retrieve LCIS"
+  | Some lcis -> return lcis
+
+let get_diff {store; _} commitment_hash =
+  let open Lwt_result_syntax in
+  let* diff = Store.Diffs.read store.diffs commitment_hash in
+  match diff with
+  | None ->
+      failwith
+        "Could not retrieve diff for commitment %a"
+        Sc_rollup.Commitment.Hash.pp
+        commitment_hash
+  | Some (c, ()) -> return c
+
+let find_diff {store; _} hash =
+  let open Lwt_result_syntax in
+  let+ diff = Store.Diffs.read store.diffs hash in
+  Option.map fst diff
+
+let save_diff {store; _} commitment diff =
+  let open Lwt_result_syntax in
+  let hash = Sc_rollup.Commitment.hash_uncarbonated commitment in
+  let+ () = Store.Diffs.append store.diffs ~key:hash ~value:diff in
+  hash
+
 let commitment_published_at_level {store; _} commitment =
   Store.Commitments_published_at_level.find
     store.commitments_published_at_level

@@ -27,7 +27,11 @@ open Protocol.Alpha_context
 
 type t =
   | Add_messages of {messages : string list}
-  | Cement of {rollup : Sc_rollup.t; commitment : Sc_rollup.Commitment.Hash.t}
+  | Cement of {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.Hash.t;
+      new_state : Sc_rollup.State_hash.t option;
+    }
   | Publish of {rollup : Sc_rollup.t; commitment : Sc_rollup.Commitment.t}
   | Refute of {
       rollup : Sc_rollup.t;
@@ -58,13 +62,16 @@ let encoding : t Data_encoding.t =
          case
            1
            "cement"
-           (obj2
+           (obj3
               (req "rollup" Sc_rollup.Address.encoding)
-              (req "commitment" Sc_rollup.Commitment.Hash.encoding))
+              (req "commitment" Sc_rollup.Commitment.Hash.encoding)
+              (req "new_state" @@ option Sc_rollup.State_hash.encoding))
            (function
-             | Cement {rollup; commitment} -> Some (rollup, commitment)
+             | Cement {rollup; commitment; new_state} ->
+                 Some (rollup, commitment, new_state)
              | _ -> None)
-           (fun (rollup, commitment) -> Cement {rollup; commitment});
+           (fun (rollup, commitment, new_state) ->
+             Cement {rollup; commitment; new_state});
          case
            2
            "publish"
@@ -99,18 +106,23 @@ let encoding : t Data_encoding.t =
            (fun (rollup, stakers) -> Timeout {rollup; stakers});
        ]
 
+let pp_opt pp =
+  Format.pp_print_option ~none:(fun fmtr () -> Format.fprintf fmtr "None") pp
+
 let pp ppf = function
   | Add_messages {messages} ->
       Format.fprintf
         ppf
         "publishing %d messages to smart rollups' inbox"
         (List.length messages)
-  | Cement {rollup = _; commitment} ->
+  | Cement {rollup = _; commitment; new_state} ->
       Format.fprintf
         ppf
-        "cementing commitment %a"
+        "cementing commitment %a, with state %a"
         Sc_rollup.Commitment.Hash.pp
         commitment
+        (pp_opt Sc_rollup.State_hash.pp)
+        new_state
   | Publish {rollup = _; commitment = Sc_rollup.Commitment.{inbox_level; _}} ->
       Format.fprintf
         ppf
@@ -158,8 +170,8 @@ let pp ppf = function
 
 let to_manager_operation : t -> packed_manager_operation = function
   | Add_messages {messages} -> Manager (Sc_rollup_add_messages {messages})
-  | Cement {rollup; commitment} ->
-      Manager (Sc_rollup_cement {rollup; commitment})
+  | Cement {rollup; commitment; new_state} ->
+      Manager (Sc_rollup_cement {rollup; commitment; new_state})
   | Publish {rollup; commitment} ->
       Manager (Sc_rollup_publish {rollup; commitment})
   | Refute {rollup; opponent; refutation} ->
@@ -169,7 +181,8 @@ let to_manager_operation : t -> packed_manager_operation = function
 let of_manager_operation : type kind. kind manager_operation -> t option =
   function
   | Sc_rollup_add_messages {messages} -> Some (Add_messages {messages})
-  | Sc_rollup_cement {rollup; commitment} -> Some (Cement {rollup; commitment})
+  | Sc_rollup_cement {rollup; commitment; new_state} ->
+      Some (Cement {rollup; commitment; new_state})
   | Sc_rollup_publish {rollup; commitment} ->
       Some (Publish {rollup; commitment})
   | Sc_rollup_refute {rollup; opponent; refutation} ->

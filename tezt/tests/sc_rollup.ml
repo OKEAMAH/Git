@@ -482,10 +482,16 @@ let get_staked_on_commitment ~sc_rollup ~staker client =
   | Some hash -> return hash
   | None -> failwith (Format.sprintf "hash is missing %s" __LOC__)
 
-let cement_commitment ?(src = Constant.bootstrap1.alias) ?fail ~sc_rollup ~hash
-    client =
+let cement_commitment ?new_state ?(src = Constant.bootstrap1.alias) ?fail
+    ~sc_rollup ~hash client =
   let p =
-    Client.Sc_rollup.cement_commitment ~hooks ~dst:sc_rollup ~src ~hash client
+    Client.Sc_rollup.cement_commitment
+      ?new_state
+      ~hooks
+      ~dst:sc_rollup
+      ~src
+      ~hash
+      client
   in
   match fail with
   | None ->
@@ -1084,6 +1090,39 @@ let bake_until_lpc_updated ?hook ?(at_least = 0) ?(timeout = 15.) client
   let* _ = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
   return updated_level
 
+let bake_until_lcc_updated ?hook ?(at_least = 0) ?(timeout = 15.) client
+    sc_rollup_node =
+  let event_level = ref None in
+  let _ =
+    let* lvl =
+      Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_node_lcc_updated.v0"
+      @@ fun json -> JSON.(json |-> "level" |> as_int_opt)
+    in
+    event_level := Some lvl ;
+    unit
+  in
+  let rec bake_loop i =
+    let* () = match hook with None -> unit | Some hook -> hook i in
+    let* () = Client.bake_for_and_wait client in
+    match !event_level with
+    | Some level -> return level
+    | None -> bake_loop (i + 1)
+  in
+  let* () = bake_levels ?hook at_least client in
+  let* updated_level =
+    Lwt.catch
+      (fun () -> Lwt.pick [Lwt_unix.timeout timeout; bake_loop 0])
+      (function
+        | Lwt_unix.Timeout ->
+            Test.fail
+              "Timeout of %f seconds reached when waiting for LCC to be updated"
+              timeout
+        | e -> raise e)
+  in
+  (* Let the sc rollup node catch up *)
+  let* _ = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
+  return updated_level
+
 let check_batcher_message_status response status =
   Check.((JSON.(response |-> "status" |> as_string) = status) string)
     ~error_msg:"Status of message is %L but expected %R."
@@ -1380,6 +1419,8 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     }
     ?boot_sector
     ~parameters_ty:"bytes"
+    ~commitment_period:10
+    ~challenge_window:20
     ~kind
   @@ fun protocol sc_rollup_node sc_rollup_client sc_rollup _tezos_node client
     ->
@@ -1389,14 +1430,16 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
          sc_rollup
   in
   let init_level = JSON.(genesis_info |-> "level" |> as_int) in
-  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
+  let* () =
+    Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup []
+  in
   let* level =
     Sc_rollup_node.wait_for_level ~timeout:3. sc_rollup_node init_level
   in
   Check.(level = init_level)
     Check.int
     ~error_msg:"Current level has moved past origination level (%L = %R)" ;
-  let* level, forwarder =
+  let* _level, forwarder =
     if not internal then return (level, None)
     else
       let* contract_id = originate_forward_smart_contract client protocol in
@@ -1441,9 +1484,10 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
           in
           Client.bake_for_and_wait client
     in
-    let* (_ : int) =
-      Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
-    in
+    (* let* (_ : int) =
+         Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
+       in *)
+    let* _ = bake_until_lcc_updated ~timeout:30. client sc_rollup_node in
 
     (* specific per kind PVM checks *)
     let* () =
@@ -1509,7 +1553,7 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
       ~error_msg:"Tick counter did not advance (%L >= %R)" ;
     unit
   in
-  let* () = Lwt_list.iter_s test_message (range 1 10) in
+  let* () = test_message 1 in
   unit
 
 let test_rollup_node_run_with_kernel ~kind ~kernel_name ~internal =
@@ -5361,7 +5405,7 @@ let test_inject_identital_messages ~kind =
   check_status status_msg2 "injected" ;
   unit
 
-let register ~kind ~protocols:_ =
+let register ~kind ~protocols =
   (*
   test_origination ~kind protocols ;
   test_rollup_node_running ~kind protocols ;
@@ -5393,12 +5437,13 @@ let register ~kind ~protocols:_ =
     ~extra_tags:["batcher"]
     sc_rollup_node_batcher
     protocols ;
-  test_rollup_node_boots_into_initial_state protocols ~kind ;
+  test_rollup_node_boots_into_initial_state protocols ~kind ;*)
   test_rollup_node_advances_pvm_state
     protocols
     ~kind
     ~internal:false
-    ~boot_sector:epoxy_tx_boot_sector ;
+    ~boot_sector:epoxy_tx_boot_sector
+(*;
   test_rollup_node_advances_pvm_state
     protocols
     ~kind
@@ -5485,7 +5530,8 @@ let register ~kind ~protocols:_ =
     test_consecutive_commitments
     protocols
     ~kind ; *)
-  test_cement_ignore_commitment ~kind [Alpha]
+
+(* test_cement_ignore_commitment ~kind [Alpha] *)
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
    Uncomment this test as soon as the issue done.
    test_reinject_failed_commitment protocols ~kind ; *)

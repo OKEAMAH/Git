@@ -2965,6 +2965,74 @@ let commands_rw () =
             ~source
             ~rollup
             ~commitment
+            ~new_state:None
+            ~src_pk
+            ~src_sk
+            ~fee_parameter
+            ()
+        in
+        return_unit);
+    command
+      ~group
+      ~desc:"Cement a commitment for a smart rollup."
+      (args7
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         storage_limit_arg
+         counter_arg
+         fee_parameter_args)
+      (prefixes ["cement"; "diff"; "commitment"]
+      @@ param
+           ~name:"commitment"
+           ~desc:"The hash of the commitment to be cemented for a smart rollup."
+           Sc_rollup_params.commitment_hash_parameter
+      @@ prefixes ["with"; "new"; "state"]
+      @@ param
+           ~name:"new_state"
+           ~desc:"New state to be cemented."
+           Sc_rollup_params.state_hash_parameter
+      @@ prefixes ["from"]
+      @@ Client_keys.Public_key_hash.source_param
+           ~name:"src"
+           ~desc:"Name of the source contract."
+      @@ prefixes ["for"; "smart"; "rollup"]
+      @@ Smart_rollup_alias.Address.param
+           ~desc:
+             "The address of the smart rollup of which the commitment will be \
+              cemented."
+      @@ stop)
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             storage_limit,
+             counter,
+             fee_parameter )
+           commitment
+           new_state
+           source
+           rollup
+           cctxt ->
+        let open Lwt_result_syntax in
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
+        let* _res =
+          sc_rollup_cement
+            cctxt
+            ~chain:cctxt#chain
+            ~block:cctxt#block
+            ~dry_run
+            ~verbose_signing
+            ?fee
+            ?storage_limit
+            ?counter
+            ?confirmations:cctxt#confirmations
+            ~simulation
+            ~source
+            ~rollup
+            ~commitment
+            ~new_state:(Some new_state)
             ~src_pk
             ~src_sk
             ~fee_parameter

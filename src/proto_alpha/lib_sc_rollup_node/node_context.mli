@@ -285,6 +285,26 @@ val commitment_exists :
 val save_commitment :
   rw -> Sc_rollup.Commitment.t -> Sc_rollup.Commitment.Hash.t tzresult Lwt.t
 
+val save_lpis : rw -> Epoxy_tx.Types.P.state -> unit tzresult Lwt.t
+
+val get_lpis : _ t -> Epoxy_tx.Types.P.state tzresult Lwt.t
+
+val save_lcis : rw -> Epoxy_tx.Types.P.state -> unit tzresult Lwt.t
+
+val get_lcis : _ t -> Epoxy_tx.Types.P.state tzresult Lwt.t
+
+type diff := Sc_rollup.State_hash.t * Epoxy_tx.Types.P.state
+
+val get_diff : _ t -> Sc_rollup.Commitment.Hash.t -> diff tzresult Lwt.t
+
+val find_diff : _ t -> Sc_rollup.Commitment.Hash.t -> diff option tzresult Lwt.t
+
+val save_diff :
+  rw ->
+  Sc_rollup.Commitment.t ->
+  diff ->
+  Sc_rollup.Commitment.Hash.t tzresult Lwt.t
+
 (** [commitment_published_at_level t hash] returns the levels at which the
     commitment was first published and the one at which it was included by in a
     Layer 1 block. It returns [None] if the commitment is not known by the

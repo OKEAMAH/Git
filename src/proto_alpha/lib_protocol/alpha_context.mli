@@ -3769,6 +3769,7 @@ module Sc_rollup : sig
       Lwt.t
 
     val cement_commitment :
+      ?new_state:State_hash.t ->
       context ->
       t ->
       (context * Commitment.t * Commitment.Hash.t) tzresult Lwt.t
@@ -4343,6 +4344,7 @@ and _ manager_operation =
   | Sc_rollup_cement : {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.Hash.t;
+      new_state : Smart_rollup.State_hash.t option;
     }
       -> Kind.sc_rollup_cement manager_operation
   | Sc_rollup_publish : {

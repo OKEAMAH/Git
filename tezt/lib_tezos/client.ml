@@ -2364,24 +2364,21 @@ module Sc_rollup = struct
     let parse process = Process.check process in
     {value = process; run = parse}
 
-  let cement_commitment ?hooks ?(wait = "none") ?burn_cap ~hash ~src ~dst client
-      =
+  let cement_commitment ?new_state ?hooks ?(wait = "none") ?burn_cap ~hash ~src
+      ~dst client =
+    let diff =
+      match new_state with
+      | None -> []
+      | Some new_state -> ["with"; "new"; "state"; new_state]
+    in
     let process =
       spawn_command
         ?hooks
         client
         (["--wait"; wait]
-        @ [
-            "cement";
-            "commitment";
-            hash;
-            "from";
-            src;
-            "for";
-            "smart";
-            "rollup";
-            dst;
-          ]
+        @ ["cement"; "commitment"; hash]
+        @ diff
+        @ ["from"; src; "for"; "smart"; "rollup"; dst]
         @ optional_arg "burn-cap" Tez.to_string burn_cap)
     in
     let parse process = Process.check process in

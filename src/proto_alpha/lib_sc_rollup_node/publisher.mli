@@ -62,7 +62,7 @@ val publish_single_commitment :
   unit tzresult Lwt.t
 
 (** Initialize worker for publishing and cementing commitments. *)
-val init : _ Node_context.t -> unit tzresult Lwt.t
+val init : Node_context.rw -> unit tzresult Lwt.t
 
 (** [publish_commitments node_ctxt] publishes the commitments that were not yet
     published up to the finalized head and which are after the last cemented

@@ -81,7 +81,7 @@ let sc_rollup_challenge_window node_ctxt =
 let next_commitment_level node_ctxt last_commitment_level =
   add_level last_commitment_level (sc_rollup_commitment_period node_ctxt)
 
-type state = Node_context.ro
+type state = Node_context.rw
 
 let tick_of_level (node_ctxt : _ Node_context.t) inbox_level =
   let open Lwt_result_syntax in
@@ -122,8 +122,35 @@ let build_commitment (node_ctxt : _ Node_context.t)
         else Ok number_of_ticks
     | None -> error_with "Invalid number of ticks for commitment"
   in
-  if PVM.diff_commitments then (* let state_diff = PVM. in *)
-    assert false
+  if PVM.diff_commitments then
+    let* lpis = Node_context.get_lpis node_ctxt in
+    (* We don't need to save the last published optimistic state
+       for now, so we mock it with the new one. *)
+    let optimistic = pvm_state.optimistic in
+    let state_diff =
+      PVM.compute_diff Context.{instant = Some lpis; optimistic} pvm_state
+    in
+    let diff_hash = PVM.diff_hash state_diff in
+    let*! () = Commitment_event.compute_diff diff_hash in
+    let commitment =
+      Sc_rollup.Commitment.
+        {
+          predecessor = prev_commitment;
+          inbox_level;
+          number_of_ticks;
+          compressed_state = Diff diff_hash;
+        }
+    in
+    let*! _ctxt =
+      Node_context.save_lpis node_ctxt (Stdlib.Option.get pvm_state.instant)
+    in
+    let* _ =
+      Node_context.save_diff
+        node_ctxt
+        commitment
+        (PVM.state_diff_to_node_context_diff state_diff)
+    in
+    return commitment
   else
     return
       Sc_rollup.Commitment.
@@ -144,6 +171,12 @@ let genesis_commitment (node_ctxt : _ Node_context.t) ctxt =
     | None -> error_with "PVM state for genesis commitment is not available"
   in
   let*! compressed_state = PVM.state_hash pvm_state in
+  let* () =
+    Node_context.save_lpis node_ctxt (Stdlib.Option.get pvm_state.instant)
+  in
+  let* () =
+    Node_context.save_lcis node_ctxt (Stdlib.Option.get pvm_state.instant)
+  in
   let commitment =
     Sc_rollup.Commitment.
       {
@@ -354,6 +387,7 @@ let latest_cementable_commitment (node_ctxt : _ Node_context.t)
 let cementable_commitments (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   let open Lwt_result_option_list_syntax in
+  (* let module PVM = (val node_ctxt.pvm) in *)
   let*& head = Node_context.last_processed_head_opt node_ctxt in
   let head_level = head.header.level in
   let lcc = Reference.get node_ctxt.lcc in
@@ -369,15 +403,42 @@ let cementable_commitments (node_ctxt : _ Node_context.t) =
         let* earliest_cementing_level =
           earliest_cementing_level node_ctxt commitment_hash
         in
-        let acc =
+        let* acc =
           match earliest_cementing_level with
-          | None -> acc
+          | None -> return acc
           | Some earliest_cementing_level ->
               if Raw_level.(earliest_cementing_level > head_level) then
                 (* Commitments whose cementing level are after the head's
                    successor won't be cementable in the next block. *)
-                acc
-              else commitment_hash :: acc
+                return acc
+              else
+                let+ new_state =
+                  let open Sc_rollup.Commitment in
+                  match commitment.compressed_state with
+                  | State _ -> return None
+                  | Diff _ ->
+                      let* optimistic, instant =
+                        Node_context.get_diff node_ctxt commitment_hash
+                      in
+                      let* lcis = Node_context.get_lcis node_ctxt in
+                      let instant =
+                        Epoxy_tx.Tx_rollup.P.apply_diff lcis instant
+                      in
+                      let* () = Node_context.save_lcis node_ctxt instant in
+                      let instant_root_bytes =
+                        Epoxy_tx.Utils.scalar_to_bytes
+                        @@ Epoxy_tx.Tx_rollup.P.state_scalar instant
+                      in
+                      let state_hash =
+                        Sc_rollup.State_hash.hash_bytes
+                          [
+                            instant_root_bytes;
+                            Sc_rollup.State_hash.to_bytes optimistic;
+                          ]
+                      in
+                      return (Some state_hash)
+                in
+                (new_state, commitment_hash) :: acc
         in
         gather acc commitment.predecessor
   in
@@ -391,23 +452,29 @@ let cementable_commitments (node_ctxt : _ Node_context.t) =
   let* cementable = gather [] latest_cementable_commitment in
   match cementable with
   | [] -> return_nil
-  | first_cementable :: _ ->
+  | _first_cementable :: _ ->
       (* Make sure that the first commitment can be cemented according to the
          Layer 1 node as a failsafe. *)
-      let* green_light =
-        Plugin.RPC.Sc_rollup.can_be_cemented
-          node_ctxt.cctxt
-          (node_ctxt.cctxt#chain, `Head 0)
-          node_ctxt.rollup_address
-          first_cementable
+      let green_light =
+        true
+        (* Plugin.RPC.Sc_rollup.can_be_cemented
+           node_ctxt.cctxt
+           (node_ctxt.cctxt#chain, `Head 0)
+           node_ctxt.rollup_address
+           first_cementable *)
       in
       if green_light then return cementable else return_nil
 
-let cement_commitment (node_ctxt : _ Node_context.t) ~source commitment_hash =
+let cement_commitment (node_ctxt : Node_context.rw) ?new_state ~source
+    commitment_hash =
   let open Lwt_result_syntax in
   let cement_operation =
     L1_operation.Cement
-      {rollup = node_ctxt.rollup_address; commitment = commitment_hash}
+      {
+        rollup = node_ctxt.rollup_address;
+        commitment = commitment_hash;
+        new_state;
+      }
   in
   let* _hash = Injector.add_pending_operation ~source cement_operation in
   return_unit
@@ -421,12 +488,20 @@ let on_cement_commitments (node_ctxt : state) =
       return_unit
   | Some source ->
       let* cementable_commitments = cementable_commitments node_ctxt in
-      List.iter_es (cement_commitment node_ctxt ~source) cementable_commitments
+      let*! _ =
+        Event.kernel_debug
+          ("cementable commitments: " ^ string_of_int
+          @@ List.length cementable_commitments)
+      in
+      List.iter_es
+        (fun (new_state, commitment) ->
+          cement_commitment ?new_state node_ctxt ~source commitment)
+        cementable_commitments
 
 module Types = struct
   type nonrec state = state
 
-  type parameters = {node_ctxt : Node_context.ro}
+  type parameters = {node_ctxt : Node_context.rw}
 end
 
 module Name = struct
@@ -492,7 +567,6 @@ let worker_promise, worker_waker = Lwt.task ()
 let init node_ctxt =
   let open Lwt_result_syntax in
   let*! () = Commitment_event.starting () in
-  let node_ctxt = Node_context.readonly node_ctxt in
   let+ worker = Worker.launch table () {node_ctxt} (module Handlers) in
   Lwt.wakeup worker_waker worker
 

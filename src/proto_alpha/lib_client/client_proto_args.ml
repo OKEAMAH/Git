@@ -774,6 +774,15 @@ module Sc_rollup_params = struct
           ]
           p)
 
+  let state_hash_parameter =
+    Tezos_clic.parameter (fun (cctxt : #Client_context.full) state_hash ->
+        match Sc_rollup.State_hash.of_b58check_opt state_hash with
+        | None ->
+            cctxt#error
+              "Parameter '%s' is not a valid B58-encoded rollup state hash"
+              state_hash
+        | Some hash -> return hash)
+
   let commitment_hash_parameter =
     Tezos_clic.parameter (fun (cctxt : #Client_context.full) commitment_hash ->
         match Sc_rollup.Commitment.Hash.of_b58check_opt commitment_hash with

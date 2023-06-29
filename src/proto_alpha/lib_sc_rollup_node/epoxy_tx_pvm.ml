@@ -54,10 +54,19 @@ module Impl : Pvm.S = struct
 
   let diff_commitments = true
 
-  type state_diff = {optimistic : Context.tree; instant : TxTypes.state}
+  type state_diff = {
+    optimistic : Sc_rollup.State_hash.t;
+    instant : TxTypes.state;
+  }
+
+  let state_diff_to_node_context_diff {optimistic; instant} =
+    (optimistic, instant)
+
+  let state_diff_of_node_context_diff (optimistic, instant) =
+    {optimistic; instant}
 
   let compute_diff (old_state : state) (new_state : state) =
-    let optimistic = new_state.optimistic in
+    let optimistic = Epoxy_tx_proof_format.hash_tree new_state.optimistic in
     let instant =
       TxLogic.compute_diff
         (Stdlib.Option.get old_state.instant)
@@ -69,10 +78,7 @@ module Impl : Pvm.S = struct
     let instant_root_bytes =
       Epoxy_tx.Utils.scalar_to_bytes @@ TxLogic.state_scalar d.instant
     in
-    let optimistic_hash_bytes =
-      Sc_rollup.State_hash.to_bytes
-      @@ Epoxy_tx_proof_format.hash_tree d.optimistic
-    in
+    let optimistic_hash_bytes = Sc_rollup.State_hash.to_bytes d.optimistic in
     Sc_rollup.Diff_hash.hash_bytes [instant_root_bytes; optimistic_hash_bytes]
 
   module State = Context.PVMState

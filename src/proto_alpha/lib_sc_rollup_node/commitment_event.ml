@@ -71,7 +71,7 @@ module Simple = struct
       ~msg:
         "Last cemented commitment was updated to hash {hash} at inbox level \
          {level}"
-      ~level:Debug
+      ~level:Warning
       ("hash", Sc_rollup.Commitment.Hash.encoding)
       ("level", Raw_level.encoding)
 
@@ -93,6 +93,14 @@ module Simple = struct
       ~msg:"Computing and storing new commitment for level {level}"
       ~level:Notice
       ("level", Raw_level.encoding)
+
+  let compute_diff =
+    declare_1
+      ~section
+      ~name:"sc_rollup_node_commitment_compute_diff"
+      ~msg:"Computing and storing new diff commitment {diff}"
+      ~level:Warning
+      ("diff", Sc_rollup.Diff_hash.encoding)
 
   let publish_commitment =
     declare_2
@@ -197,6 +205,8 @@ let last_published_commitment_updated head level =
   Simple.(emit last_published_commitment_updated (head, level))
 
 let compute_commitment level = Simple.(emit compute_commitment level)
+
+let compute_diff diff = Simple.(emit compute_diff diff)
 
 let publish_commitment head level =
   Simple.(emit publish_commitment (head, level))

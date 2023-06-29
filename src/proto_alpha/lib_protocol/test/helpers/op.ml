@@ -829,7 +829,7 @@ let sc_rollup_cement ?force_reveal ?counter ?fee ?gas_limit ?storage_limit ctxt
     ?storage_limit
     ~source:src
     ctxt
-    (Sc_rollup_cement {rollup; commitment})
+    (Sc_rollup_cement {rollup; commitment; new_state = None})
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt src >|=? fun account ->
   sign account.sk (Context.branch ctxt) to_sign_op

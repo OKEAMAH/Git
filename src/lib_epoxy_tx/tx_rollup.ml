@@ -39,6 +39,7 @@ module Curve = Mec.Curve.Jubjub.AffineEdwards
 module P = struct
   open Types.P
   open Constants
+
   (* These functions aimed to format integers more efficiently by compressing
      them in a scalar. *)
 
@@ -72,6 +73,15 @@ module P = struct
        hash function *)
     S.add h acc.tickets_root
 
+  let rebuild_accounts_tree accounts ~default =
+    let leaves =
+      Array.init Constants.max_nb_accounts (fun i ->
+          match IMap.find_opt i accounts with
+          | None -> default i
+          | Some (acc, _, _) -> scalar_of_account acc)
+    in
+    Merkle.generate_tree ~leaves Constants.accounts_depth
+
   let scalar_of_leaf (l : leaf) =
     let compressed = compress Bounded.[f l.pos; f l.ticket.amount] in
     Hash.direct ~input_length:2 [|l.ticket.id; S.of_z compressed|]
@@ -102,6 +112,45 @@ module P = struct
       },
       leaves,
       ticket_tree )
+
+  let state_data_encoding : state Data_encoding.t =
+    (* For now, re compute the tree itself *)
+    let open Data_encoding in
+    let imap_data_encoding inner_encoding =
+      conv
+        IMap.bindings
+        (fun l -> IMap.of_seq @@ List.to_seq l)
+        (list (tup2 int31 inner_encoding))
+    in
+    let accounts_data_encoding =
+      let inner_encoding =
+        conv
+          (fun (acc, leaves, _) -> (acc, leaves))
+          (fun (acc, leaves) ->
+            ( acc,
+              leaves,
+              Merkle.generate_tree
+                ~leaves:(Array.map scalar_of_leaf leaves)
+                tickets_depth ))
+          (tup2 account_data_encoding (array leaf_data_encoding))
+      in
+      imap_data_encoding inner_encoding
+    in
+    conv
+      (fun {accounts; accounts_tree = _; next_position} ->
+        (accounts, next_position))
+      (fun (accounts, next_position) ->
+        {
+          accounts;
+          accounts_tree =
+            rebuild_accounts_tree accounts ~default:(fun i ->
+                let acc, _, _ = default_account i in
+                scalar_of_account acc);
+          next_position;
+        })
+      (obj2
+         (req "accounts" accounts_data_encoding)
+         (req "next_postition" int31))
 
   let get_account :
       int ->
@@ -340,15 +389,6 @@ module P = struct
   let state_scalar (state : state) = Merkle.root state.accounts_tree
 
   let empty_diff () = empty_state ()
-
-  let rebuild_accounts_tree accounts ~default =
-    let leaves =
-      Array.init Constants.max_nb_accounts (fun i ->
-          match IMap.find_opt i accounts with
-          | None -> default i
-          | Some (acc, _, _) -> scalar_of_account acc)
-    in
-    Merkle.generate_tree ~leaves Constants.accounts_depth
 
   let compute_diff init_state end_state =
     let new_next_position = end_state.next_position in

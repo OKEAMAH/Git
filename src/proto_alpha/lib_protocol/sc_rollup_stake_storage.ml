@@ -674,6 +674,7 @@ let find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level =
       ~old_lcc
       new_lcc_level
   in
+  let* () = fail_when (1 = 1) Sc_rollup_no_valid_commitment_to_cement in
   match candidate_commitment with
   (* A commitment can be cemented if there is only one valid
      commitment. *)
@@ -695,6 +696,13 @@ let find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level =
         fail_when
           Raw_level_repr.(current_level < min_level)
           (Sc_rollup_commitment_too_recent {current_level; min_level})
+      in
+      let* () =
+        fail_when
+          (match candidate_commitment.Commitment.compressed_state with
+          | Diff _ -> true
+          | _ -> false)
+          Sc_rollup_no_valid_commitment_to_cement
       in
       return
         ( ctxt,
@@ -748,7 +756,7 @@ let update_saved_cemented_commitments ctxt rollup old_lcc =
           rollup
           too_old_cemented_commitment_hash
 
-let cement_commitment ctxt rollup =
+let cement_commitment ?new_state ctxt rollup =
   let open Lwt_result_syntax in
   let* old_lcc, old_lcc_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
@@ -764,9 +772,24 @@ let cement_commitment ctxt rollup =
       =
     find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level
   in
+  let new_lcc_state_commitment =
+    match new_lcc_commitment.Sc_rollup_commitment_repr.compressed_state with
+    | State _ -> new_lcc_commitment
+    | Diff _ ->
+        {
+          new_lcc_commitment with
+          compressed_state = State (Stdlib.Option.get new_state);
+        }
+  in
+  let new_lcc_state_commitment_hash =
+    Sc_rollup_commitment_repr.hash_uncarbonated new_lcc_state_commitment
+  in
   (* Update the LCC. *)
   let* ctxt, _size_diff =
-    Store.Last_cemented_commitment.update ctxt rollup new_lcc_commitment_hash
+    Store.Last_cemented_commitment.update
+      ctxt
+      rollup
+      new_lcc_state_commitment_hash
   in
   (* Clean the storage. *)
   let* ctxt =
@@ -779,7 +802,7 @@ let cement_commitment ctxt rollup =
   in
   (* Update the saved cemented commitments. *)
   let* ctxt = update_saved_cemented_commitments ctxt rollup old_lcc in
-  return (ctxt, new_lcc_commitment, new_lcc_commitment_hash)
+  return (ctxt, new_lcc_state_commitment, new_lcc_state_commitment_hash)
 
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in

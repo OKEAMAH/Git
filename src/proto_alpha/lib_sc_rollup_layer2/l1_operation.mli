@@ -28,7 +28,11 @@ open Protocol.Alpha_context
 (** L1 operations produced (and injected) by the rollup node. *)
 type t =
   | Add_messages of {messages : string list}
-  | Cement of {rollup : Sc_rollup.t; commitment : Sc_rollup.Commitment.Hash.t}
+  | Cement of {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.Hash.t;
+      new_state : Sc_rollup.State_hash.t option;
+    }
   | Publish of {rollup : Sc_rollup.t; commitment : Sc_rollup.Commitment.t}
   | Refute of {
       rollup : Sc_rollup.t;

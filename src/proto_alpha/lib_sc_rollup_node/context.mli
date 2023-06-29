@@ -38,7 +38,7 @@ type ro_index = [`Read] index
 (** The type of trees stored in the context, i.e. the actual data. *)
 type tree
 
-type instant_state := Epoxy_tx.Types.P.state option
+type instant_state = Epoxy_tx.Types.P.state option
 
 type state = {optimistic : tree; instant : instant_state}
 
@@ -115,7 +115,7 @@ end) : sig
 
   type tree = Tree.tree
 
-  type instant_state = Epoxy_tx.Types.P.state option
+  type nonrec instant_state = instant_state
 
   type nonrec state = state
 

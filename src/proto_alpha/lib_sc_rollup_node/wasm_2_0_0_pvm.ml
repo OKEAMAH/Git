@@ -137,6 +137,10 @@ module Impl : S = struct
 
   type state_diff = unit
 
+  let state_diff_to_node_context_diff () = Stdlib.failwith "diffs in wasm"
+
+  let state_diff_of_node_context_diff _ = Stdlib.failwith "diffs in wasm"
+
   let compute_diff _ _ = ()
 
   let diff_hash () = Sc_rollup.Diff_hash.zero

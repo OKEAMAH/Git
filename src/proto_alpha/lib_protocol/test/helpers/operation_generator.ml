@@ -560,7 +560,7 @@ let generate_sc_rollup_cement =
   let open QCheck2.Gen in
   let+ rollup = random_sc_rollup in
   let commitment = Sc_rollup.Commitment.hash_uncarbonated sc_dummy_commitment in
-  Sc_rollup_cement {rollup; commitment}
+  Sc_rollup_cement {rollup; commitment; new_state = None}
 
 let generate_sc_rollup_publish =
   let open QCheck2.Gen in

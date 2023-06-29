@@ -43,6 +43,12 @@ module type S = sig
 
   type state_diff
 
+  type node_context_diff := Sc_rollup.State_hash.t * Epoxy_tx.Types.P.state
+
+  val state_diff_to_node_context_diff : state_diff -> node_context_diff
+
+  val state_diff_of_node_context_diff : node_context_diff -> state_diff
+
   val compute_diff : state -> state -> state_diff
 
   val diff_hash : state_diff -> Sc_rollup.Diff_hash.t

@@ -696,6 +696,7 @@ val sc_rollup_cement :
   source:public_key_hash ->
   rollup:Alpha_context.Sc_rollup.t ->
   commitment:Alpha_context.Sc_rollup.Commitment.Hash.t ->
+  new_state:Alpha_context.Sc_rollup.State_hash.t option ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->
   fee_parameter:Injection.fee_parameter ->

@@ -145,11 +145,49 @@ module Commitments =
       include Add_empty_header
     end)
 
+module Diffs =
+  Indexed_store.Make_simple_indexed_file
+    (struct
+      let name = "diffs"
+    end)
+    (Make_hash_index_key (Sc_rollup.Commitment.Hash))
+    (struct
+      type t = Sc_rollup.State_hash.t * Epoxy_tx.Types.P.state
+
+      let encoding =
+        Data_encoding.tup2
+          Sc_rollup.State_hash.encoding
+          Epoxy_tx.Tx_rollup.P.state_data_encoding
+
+      let name = "diffs"
+
+      include Add_empty_header
+    end)
+
+module LPIS = Indexed_store.Make_singleton (struct
+  type t = Epoxy_tx.Types.P.state
+
+  let name = "lpis"
+
+  let encoding = Epoxy_tx.Tx_rollup.P.state_data_encoding
+end)
+
+module LCIS = Indexed_store.Make_singleton (struct
+  type t = Epoxy_tx.Types.P.state
+
+  let name = "lcis"
+
+  let encoding = Epoxy_tx.Tx_rollup.P.state_data_encoding
+end)
+
 type nonrec 'a store = {
   l2_blocks : 'a L2_blocks.t;
   messages : 'a Messages.t;
   inboxes : 'a Inboxes.t;
   commitments : 'a Commitments.t;
+  diffs : 'a Diffs.t;
+  lpis : 'a LPIS.t;
+  lcis : 'a LCIS.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   l2_head : 'a L2_head.t;
   last_finalized_level : 'a Last_finalized_level.t;
@@ -169,6 +207,9 @@ let readonly
        messages;
        inboxes;
        commitments;
+       diffs;
+       lpis;
+       lcis;
        commitments_published_at_level;
        l2_head;
        last_finalized_level;
@@ -181,6 +222,9 @@ let readonly
     messages = Messages.readonly messages;
     inboxes = Inboxes.readonly inboxes;
     commitments = Commitments.readonly commitments;
+    diffs = Diffs.readonly diffs;
+    lpis = LPIS.readonly lpis;
+    lcis = LCIS.readonly lcis;
     commitments_published_at_level =
       Commitments_published_at_level.readonly commitments_published_at_level;
     l2_head = L2_head.readonly l2_head;
@@ -195,6 +239,9 @@ let close
        messages;
        inboxes;
        commitments;
+       diffs;
+       lpis = _;
+       lcis = _;
        commitments_published_at_level;
        l2_head = _;
        last_finalized_level = _;
@@ -207,6 +254,7 @@ let close
   and+ () = Messages.close messages
   and+ () = Inboxes.close inboxes
   and+ () = Commitments.close commitments
+  and+ () = Diffs.close diffs
   and+ () = Commitments_published_at_level.close commitments_published_at_level
   and+ () = Levels_to_hashes.close levels_to_hashes
   and+ () = Irmin_store.close irmin_store in
@@ -223,6 +271,9 @@ let load (type a) (mode : a mode) ~l2_blocks_cache_size data_dir :
   let* commitments =
     Commitments.load mode ~path:(path "commitments") ~cache_size
   in
+  let* diffs = Diffs.load mode ~path:(path "diffs") ~cache_size in
+  let* lpis = LPIS.load mode ~path:(path "lpis") in
+  let* lcis = LCIS.load mode ~path:(path "lcis") in
   let* commitments_published_at_level =
     Commitments_published_at_level.load
       mode
@@ -241,6 +292,9 @@ let load (type a) (mode : a mode) ~l2_blocks_cache_size data_dir :
     messages;
     inboxes;
     commitments;
+    diffs;
+    lpis;
+    lcis;
     commitments_published_at_level;
     l2_head;
     last_finalized_level;
