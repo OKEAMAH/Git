@@ -13,6 +13,11 @@
 ### Installer client/kernel
 
 - Add option `--display-root-hash` to display the root hash of the kernel that will be installed.
+## Version 0.3.0
+
+### SDK
+
+- Implements `PublicKeySignatureVerifier` for `PublicKey`
 
 ## Version 0.2.0
 

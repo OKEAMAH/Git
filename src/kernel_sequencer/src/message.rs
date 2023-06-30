@@ -8,7 +8,7 @@ use nom::{
     combinator::{all_consuming, map},
     sequence::preceded,
 };
-use tezos_crypto_rs::hash::Signature;
+use tezos_crypto_rs::{blake2b, hash::Signature};
 use tezos_data_encoding::{
     enc::{self, BinResult, BinWriter},
     nom::{NomReader, NomResult},
@@ -32,7 +32,7 @@ pub struct Framed<P> {
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
 pub struct Bytes {
     #[encoding(dynamic, list)]
-    inner: Vec<u8>,
+    pub inner: Vec<u8>,
 }
 
 /// Sequence of messages sent by the sequencer
@@ -53,12 +53,38 @@ pub struct Bytes {
 /// will be processed at the end
 #[derive(NomReader, BinWriter, Clone, Debug, PartialEq, Eq)]
 pub struct Sequence {
-    nonce: u32,
-    delayed_messages_prefix: u32,
-    delayed_messages_suffix: u32,
+    pub nonce: u32,
+    pub delayed_messages_prefix: u32,
+    pub delayed_messages_suffix: u32,
     #[encoding(dynamic, list)]
-    messages: Vec<Bytes>,
-    signature: Signature,
+    pub messages: Vec<Bytes>,
+    pub signature: Signature,
+}
+
+impl Sequence {
+    // Returns the signature of the sequence
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+}
+
+impl Sequence {
+    /// Returns the hash of the framed sequence
+    pub fn hash(&self, rollup_address: SmartRollupAddress) -> Result<Vec<u8>, ()> {
+        let mut bytes = Vec::default();
+        // address of the rollup
+        rollup_address.bin_write(&mut bytes).map_err(|_| ())?;
+        // nonce of the message
+        enc::u32(&self.nonce, &mut bytes).map_err(|_| ())?;
+        // number of delayed messages indicated by the suffix
+        enc::u32(&self.delayed_messages_suffix, &mut bytes).map_err(|_| ())?;
+        // number of delayed messages indicated by the prefix
+        enc::u32(&self.delayed_messages_prefix, &mut bytes).map_err(|_| ())?;
+        // payload messages
+        enc::list(Bytes::bin_write)(&self.messages, &mut bytes).map_err(|_| ())?;
+
+        blake2b::digest_256(&bytes).map_err(|_| ())
+    }
 }
 
 /// Message to set the appropriate sequencer
