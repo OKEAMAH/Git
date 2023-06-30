@@ -12,8 +12,11 @@ use tezos_smart_rollup_host::{
 };
 
 use crate::{
-    delayed_inbox::read_input, queue::Queue, routing::FilterBehavior, storage::map_user_path,
-    storage::DELAYED_INBOX_PATH,
+    delayed_inbox::read_input,
+    queue::Queue,
+    routing::FilterBehavior,
+    storage::map_user_path,
+    storage::{DELAYED_INBOX_PATH, PENDING_INBOX_PATH},
 };
 
 pub struct SequencerRuntime<R>
@@ -27,6 +30,16 @@ where
     timeout_window: u32,
     /// The delayed inbox queue
     delayed_inbox_queue: Queue,
+    /// The pending inbox
+    /// A buffer that contains messages removed from the delayed inbox
+    /// Or messages sent by the user
+    /// This queue is empty at the end of the delayed inbox
+    pending_inbox_queue: Queue,
+    /// Index of the pending inbox
+    /// When a message is added to the pending-inbox
+    /// Its index is the following field
+    /// And then the index is incremented
+    pending_inbox_index: u32,
 }
 
 /// Runtime that handles the delayed inbox and the sequencer protocol.
@@ -39,11 +52,14 @@ where
 {
     pub fn new(host: R, input_predicate: FilterBehavior, timeout_window: u32) -> Self {
         let delayed_inbox_queue = Queue::new(&host, DELAYED_INBOX_PATH.into()).unwrap();
+        let pending_inbox_queue = Queue::new(&host, PENDING_INBOX_PATH.into()).unwrap();
         Self {
             host,
             input_predicate,
             timeout_window,
             delayed_inbox_queue,
+            pending_inbox_queue,
+            pending_inbox_index: 0,
         }
     }
 }
@@ -66,6 +82,8 @@ where
             self.input_predicate,
             self.timeout_window,
             &mut self.delayed_inbox_queue,
+            &mut self.pending_inbox_queue,
+            &mut self.pending_inbox_index,
         )
     }
 
