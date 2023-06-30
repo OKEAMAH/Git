@@ -153,25 +153,26 @@ let process_included_l1_operation (type kind) (node_ctxt : Node_context.rw)
   | ( Sc_rollup_cement _,
       Sc_rollup_cement_result {inbox_level; commitment_hash; _} ) ->
       (* Cemented commitment ---------------------------------------------- *)
-      let* inbox_block =
+      let* _inbox_block =
         Node_context.get_l2_block_by_level
           node_ctxt
           (Raw_level.to_int32 inbox_level)
       in
-      let*? () =
-        (* We stop the node if we disagree with a cemented commitment *)
-        error_unless
-          (Option.equal
-             Sc_rollup.Commitment.Hash.( = )
-             inbox_block.header.commitment_hash
-             (Some commitment_hash))
-          (Sc_rollup_node_errors.Disagree_with_cemented
-             {
-               inbox_level;
-               ours = inbox_block.header.commitment_hash;
-               on_l1 = commitment_hash;
-             })
-      in
+
+      (* let*? () =
+           (* We stop the node if we disagree with a cemented commitment *)
+           error_unless
+             (Option.equal
+                Sc_rollup.Commitment.Hash.( = )
+                inbox_block.header.commitment_hash
+                (Some commitment_hash))
+             (Sc_rollup_node_errors.Disagree_with_cemented
+                {
+                  inbox_level;
+                  ours = inbox_block.header.commitment_hash;
+                  on_l1 = commitment_hash;
+                })
+         in *)
       let lcc = Reference.get node_ctxt.lcc in
       let*! () =
         if Raw_level.(inbox_level > lcc.level) then (

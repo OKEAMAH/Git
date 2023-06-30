@@ -664,7 +664,7 @@ let cementable_candidate_commitment_of_inbox_level ctxt rollup ~old_lcc
       {li The commitment is the only active commitment.}
     }
 *)
-let find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level =
+let find_commitment_to_cement ?new_state ctxt rollup ~old_lcc new_lcc_level =
   let open Lwt_result_syntax in
   (* Checks that the commitment is the only active commitment. *)
   let* ctxt, candidate_commitment, dangling_commitments =
@@ -674,7 +674,6 @@ let find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level =
       ~old_lcc
       new_lcc_level
   in
-  let* () = fail_when (1 = 1) Sc_rollup_no_valid_commitment_to_cement in
   match candidate_commitment with
   (* A commitment can be cemented if there is only one valid
      commitment. *)
@@ -697,13 +696,15 @@ let find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level =
           Raw_level_repr.(current_level < min_level)
           (Sc_rollup_commitment_too_recent {current_level; min_level})
       in
-      let* () =
-        fail_when
-          (match candidate_commitment.Commitment.compressed_state with
-          | Diff _ -> true
-          | _ -> false)
-          Sc_rollup_no_valid_commitment_to_cement
-      in
+      ignore new_state ;
+      (* let* () =
+           fail_when
+             ((match candidate_commitment.Commitment.compressed_state with
+              | Diff _ -> true
+              | _ -> false)
+             && Option.is_none new_state)
+             Sc_rollup_no_valid_commitment_to_cement
+         in *)
       return
         ( ctxt,
           (candidate_commitment, candidate_commitment_hash),
@@ -770,16 +771,16 @@ let cement_commitment ?new_state ctxt rollup =
   (* Assert conditions to cement are met. *)
   let* ctxt, (new_lcc_commitment, new_lcc_commitment_hash), dangling_commitments
       =
-    find_commitment_to_cement ctxt rollup ~old_lcc new_lcc_level
+    find_commitment_to_cement ?new_state ctxt rollup ~old_lcc new_lcc_level
   in
-  let new_lcc_state_commitment =
-    match new_lcc_commitment.Sc_rollup_commitment_repr.compressed_state with
-    | State _ -> new_lcc_commitment
-    | Diff _ ->
-        {
-          new_lcc_commitment with
-          compressed_state = State (Stdlib.Option.get new_state);
-        }
+  let* new_lcc_state_commitment =
+    match
+      (new_lcc_commitment.Sc_rollup_commitment_repr.compressed_state, new_state)
+    with
+    | State _, _ -> return new_lcc_commitment
+    | Diff _, Some new_state ->
+        return {new_lcc_commitment with compressed_state = State new_state}
+    | _ -> tzfail Sc_rollup_no_valid_commitment_to_cement
   in
   let new_lcc_state_commitment_hash =
     Sc_rollup_commitment_repr.hash_uncarbonated new_lcc_state_commitment

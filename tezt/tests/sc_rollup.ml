@@ -1487,7 +1487,7 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     (* let* (_ : int) =
          Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
        in *)
-    let* _ = bake_until_lcc_updated ~timeout:30. client sc_rollup_node in
+    let* _ = bake_until_lcc_updated ~timeout:20. client sc_rollup_node in
 
     (* specific per kind PVM checks *)
     let* () =
