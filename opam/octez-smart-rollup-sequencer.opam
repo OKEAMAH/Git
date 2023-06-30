@@ -17,6 +17,7 @@ depends: [
   "tezos-workers"
   "octez-smart-rollup-node"
   "octez-smart-rollup"
+  "tezos-client-base"
   "tezos-rpc"
   "tezos-rpc-http"
   "tezos-rpc-http-server"

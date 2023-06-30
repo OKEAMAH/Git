@@ -72,16 +72,21 @@ impl Sequence {
     /// Returns the hash of the framed sequence
     pub fn hash(&self, rollup_address: SmartRollupAddress) -> Result<Vec<u8>, ()> {
         let mut bytes = Vec::default();
+        // from Framed
+        enc::u8(&0, &mut bytes).map_err(|_| ())?;
         // address of the rollup
         rollup_address.bin_write(&mut bytes).map_err(|_| ())?;
+
+        // Sequence tag
+        enc::u8(&0, &mut bytes).map_err(|_| ())?;
         // nonce of the message
         enc::u32(&self.nonce, &mut bytes).map_err(|_| ())?;
-        // number of delayed messages indicated by the suffix
-        enc::u32(&self.delayed_messages_suffix, &mut bytes).map_err(|_| ())?;
         // number of delayed messages indicated by the prefix
         enc::u32(&self.delayed_messages_prefix, &mut bytes).map_err(|_| ())?;
+        // number of delayed messages indicated by the suffix
+        enc::u32(&self.delayed_messages_suffix, &mut bytes).map_err(|_| ())?;
         // payload messages
-        enc::list(Bytes::bin_write)(&self.messages, &mut bytes).map_err(|_| ())?;
+        enc::dynamic(enc::list(Bytes::bin_write))(&self.messages, &mut bytes).map_err(|_| ())?;
 
         blake2b::digest_256(&bytes).map_err(|_| ())
     }

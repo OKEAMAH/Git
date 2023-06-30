@@ -29,7 +29,6 @@
    Component:    Smart Optimistic Rollups: Sequencer
    Invocation:   dune exec tezt/tests/main.exe -- --file sc_sequencer.ml
 *)
-
 open Sc_rollup_helpers
 open Tezos_protocol_alpha.Protocol
 
@@ -69,6 +68,16 @@ let setup_sequencer_kernel
   let* boot_sector =
     prepare_installer_kernel
       ~base_installee:"./"
+      ~config:
+        [
+          Installer_kernel_config.Set
+            {
+              value =
+                (* encodings of State::Sequenced(edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav) *)
+                "00004798d2cc98473d7e250c898885718afd2e4efbcb1a1595ab9730761ed830de0f";
+              to_ = "/__sequencer/state";
+            };
+        ]
       ~preimages_dir:
         (Filename.concat
            (Sc_rollup_node.data_dir sc_sequencer_node)
@@ -204,18 +213,36 @@ let test_delayed_inbox_consumed =
 
   (* Feed to the sequencer kernel S2 sequence *)
   let expected_sequences =
-    List.map (fun (delayed_inbox_prefix, delayed_inbox_suffix) ->
+    List.map (fun (delayed_inbox_prefix, delayed_inbox_suffix, signature) ->
         Format.sprintf
           "Received a sequence message Sequence { nonce: 0, \
            delayed_messages_prefix: %d, delayed_messages_suffix: %d, messages: \
-           [], signature: \
-           Signature(\"edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q\") \
-           } targeting our rollup"
+           [], signature: Signature(\"%s\") } targeting our rollup"
           delayed_inbox_prefix
-          delayed_inbox_suffix)
-    @@ [(0, 0); (4, 1); (7, 1)]
+          delayed_inbox_suffix
+          signature)
+    @@ [
+         ( 0,
+           0,
+           "sigw2xhyiypYt4YHGFQKoXNnuyeUJQ4mwAMddKB7M2YnzQee8KS57CP1mcq7n9VLZBv9AksyJhjZQoJBrLboptw58rkVZ6wS"
+         );
+         ( 4,
+           1,
+           "sigwBnYEcc62dcEd3PCJAeTrWYqDcmR1JHSRCHbAWfRiEMgx6Zx84TSpALT9uC8nwScBVHEYSTFncLfsnVB965rduYKFBTtm"
+         );
+         ( 7,
+           1,
+           "sigSrQNKa5SRJx9EWH8xBYVnpk6Z6DSkJGYAuEwyu6UCPJxpRgQ7J7TRrhbEP1WUpu1sZKrYisMy9BF82a6HUFRdJjAPGbax"
+         );
+       ]
   in
-  assert (List.rev !collected_sequences = expected_sequences) ;
+  Check.(
+    ( = )
+      expected_sequences
+      (List.rev !collected_sequences)
+      ~__LOC__
+      (list string)
+      ~error_msg:"Unexpected debug messages emitted") ;
   Lwt.return_unit
 
 let register ~protocols = test_delayed_inbox_consumed protocols
