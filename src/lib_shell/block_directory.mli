@@ -24,10 +24,18 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val build_raw_rpc_directory :
+val build_raw_validator_rpc_directory :
   (module Block_services.PROTO) ->
   (module Registered_protocol.T) ->
   (Store.chain_store * Store.Block.t) Tezos_rpc.Directory.directory
 
+(** Builds the whole RPC directory that requires an instantiated
+    validator to be called. *)
 val build_rpc_directory :
+  Store.chain_store -> Block_services.block -> 'a Tezos_rpc.Directory.t Lwt.t
+
+(** Builds the RPC directory without the RPCs that requires an
+    instantiated validator to be called. This is a subset of
+    build_rpc_directory. *)
+val build_rpc_directory_without_validator :
   Store.chain_store -> Block_services.block -> 'a Tezos_rpc.Directory.t Lwt.t

@@ -36,7 +36,12 @@ val get_checkpoint : Store.t -> Chain_services.chain -> Block_hash.t Lwt.t
 
 val rpc_directory : Validator.t -> Store.chain_store Tezos_rpc.Directory.t
 
-val rpc_directory_without_validator :
-  unit -> Store.chain_store Tezos_rpc.Directory.t
+(** Builds the whole RPC directory that requires an instantiated
+    validator to be called. *)
+val build_rpc_directory : Validator.t -> unit Tezos_rpc.Directory.t
 
-val build_validator_rpc_directory : Validator.t -> unit Tezos_rpc.Directory.t
+(** Builds the RPC directory without the RPCs that requires an
+    instantiated validator to be called. This is a subset of
+    build_rpc_directory. *)
+val build_rpc_directory_without_validator :
+  unit -> Store.chain_store Tezos_rpc.Directory.t

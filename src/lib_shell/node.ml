@@ -380,7 +380,7 @@ let build_rpc_directory ~node_version ~commit_info node =
        node.validator
        node.mainchain_validator) ;
   merge (Injection_directory.build_rpc_directory node.validator) ;
-  merge (Chain_directory.build_validator_rpc_directory node.validator) ;
+  merge (Chain_directory.build_rpc_directory node.validator) ;
   merge (P2p_directory.build_rpc_directory node.p2p) ;
   merge (Worker_directory.build_rpc_directory node.store) ;
   merge (Stat_directory.rpc_directory ()) ;
