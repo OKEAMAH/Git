@@ -40,7 +40,9 @@ test_version() {
         fi
     done
 
-    for binary in $(echo "$binaries" | grep octez-); do
+    # TODO: We disable the version check for octez-testnet-scenarios since
+    # --version is not implemented by Tezt
+    for binary in $(echo "$binaries" | grep octez- | grep -v "octez-testnet-scenarios"); do
         printf "Checking version of %s: " "$binary"
 
         cmd="docker run --entrypoint $binary $IMAGE --version"
