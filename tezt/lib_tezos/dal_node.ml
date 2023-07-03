@@ -96,7 +96,10 @@ let spawn_config_init ?(expected_pow = 26.) ?(peers = []) ?profile dal_node =
          Some "--peers";
          Some (String.concat "," peers);
        ]
-  @ match profile with None -> [] | Some profile -> ["--profile"; profile]
+  @
+  match profile with
+  | None -> []
+  | Some profile -> ["--attestor-profile"; profile]
 
 module Config_file = struct
   let filename dal_node = sf "%s/config.json" @@ data_dir dal_node

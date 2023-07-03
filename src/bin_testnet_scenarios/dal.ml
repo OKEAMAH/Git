@@ -32,10 +32,10 @@ let wait_for_sync node =
   Node.wait_for node "synchronisation_status.v0" filter
 
 module Network = struct
-  type network = Dailynet
+  type network = Dailynet | Mondaynet
 
   let name = function
-    | `Dailynet -> (
+    | Dailynet -> (
         match
           Cli.get ~default:None (fun name -> Some (Some name)) "network"
         with
@@ -43,6 +43,15 @@ module Network = struct
             let year, month, day = Ptime_clock.now () |> Ptime.to_date in
             (* Format of the day should be: yyy-mm-dd *)
             Format.sprintf "dailynet-%d-%02d-%02d" year month day
+        | Some network -> network)
+    | Mondaynet -> (
+        match
+          Cli.get ~default:None (fun name -> Some (Some name)) "network"
+        with
+        | None ->
+            let year, month, day = Ptime_clock.now () |> Ptime.to_date in
+            (* Format of the day should be: yyy-mm-dd *)
+            Format.sprintf "mondaynet-%d-%02d-%02d" year month day
         | Some network -> network)
 end
 
@@ -227,17 +236,17 @@ module Wallet = struct
         Lwt.return keys
 end
 
-let dailynet () =
+let mondaynet () =
   Test.register
     ~__FILE__
     ~title:"Produce slots on dailynet"
-    ~tags:["dal"; "dailynet"]
+    ~tags:["dal"; "mondaynet"]
   @@ fun () ->
   let load = Cli.get ~default:None (fun _ -> Some (Some ())) "load" in
   let save = Cli.get ~default:None (fun _ -> Some (Some ())) "save" in
   let node = Node.create [] in
   let tezt_data_dir = Node.data_dir node in
-  let network_name = Network.name `Dailynet in
+  let network_name = Network.name Mondaynet in
   let network = Format.sprintf "https://teztnets.xyz/%s" network_name in
   let backup = Filename.get_temp_dir_name () // network_name in
   let load () =
@@ -260,15 +269,16 @@ let dailynet () =
   let* () = wait_for_sync node in
   let client =
     Client.create
-      ~base_dir:(Wallet.default_wallet `Dailynet)
+      ~base_dir:(Wallet.default_wallet Mondaynet)
       ~endpoint:(Node node)
       ()
   in
-  let indices = range 0 20 in
+  let basis = 6 in
+  let indices = range 0 5 in
   let aliases =
     List.map (fun i -> "slot-producer-" ^ string_of_int i) indices
   in
-  let* keys = Wallet.load_wallet `Dailynet client aliases in
+  let* keys = Wallet.load_wallet Mondaynet client aliases in
   let save () =
     match save with
     | None -> return ()
@@ -277,8 +287,10 @@ let dailynet () =
         let* () = Node.terminate node in
         let* () = Process.run "cp" ["-rT"; tezt_data_dir; backup] in
         let* () = Node.run node [Network network] in
-        Node.wait_for_ready node
+        let* () = Node.wait_for_ready node in
+        wait_for_sync node
   in
+
   let* () = save () in
   let* () = Wallet.Airdrop.distribute_money client keys in
   let dal_node = Dal_node.create ~node ~client () in
@@ -325,16 +337,18 @@ let dailynet () =
            Rollup.Dal.Cryptobox.Commitment_proof.encoding
            (`String proof))
     in
+    let source = List.nth keys index in
+    let index = basis + index in
     let* _ =
       Operation.Manager.(
         inject
           [
-            make ~source:(List.nth keys index)
+            make ~source
             @@ dal_publish_slot_header ~index ~commitment:commitment_hash ~proof;
           ]
           client)
     in
-    let* () = Lwt_unix.sleep 60. in
+    let* () = Lwt_unix.sleep 30. in
     return ()
   in
   let* () =
@@ -343,4 +357,127 @@ let dailynet () =
   let* _ = Lwt_unix.sleep 1000. in
   return ()
 
-let register () = dailynet ()
+let dailynet () =
+  Test.register
+    ~__FILE__
+    ~title:"Produce slots on dailynet"
+    ~tags:["dal"; "dailynet"]
+  @@ fun () ->
+  let load = Cli.get ~default:None (fun _ -> Some (Some ())) "load" in
+  let save = Cli.get ~default:None (fun _ -> Some (Some ())) "save" in
+  let node = Node.create [] in
+  let tezt_data_dir = Node.data_dir node in
+  let network_name = Network.name Dailynet in
+  let network = Format.sprintf "https://teztnets.xyz/%s" network_name in
+  let backup = Filename.get_temp_dir_name () // network_name in
+  let load () =
+    match load with
+    | None ->
+        let* () =
+          Node.config_init
+            node
+            [Network network; Expected_pow 26; Synchronisation_threshold 2]
+        in
+        return ()
+    | Some _ ->
+        Log.info "Load data-dir in current tezt workspace" ;
+        let* () = Process.run "cp" ["-rT"; backup; tezt_data_dir] in
+        return ()
+  in
+  let* () = load () in
+  let* () = Node.run node [Network network] in
+  let* () = Node.wait_for_ready node in
+  let* () = wait_for_sync node in
+  let client =
+    Client.create
+      ~base_dir:(Wallet.default_wallet Dailynet)
+      ~endpoint:(Node node)
+      ()
+  in
+  let basis = 6 in
+  let indices = range 0 5 in
+  let aliases =
+    List.map (fun i -> "slot-producer-" ^ string_of_int i) indices
+  in
+  let* keys = Wallet.load_wallet Dailynet client aliases in
+  let save () =
+    match save with
+    | None -> return ()
+    | Some _ ->
+        Log.info "Save the current data-dir into %s@." backup ;
+        let* () = Node.terminate node in
+        let* () = Process.run "cp" ["-rT"; tezt_data_dir; backup] in
+        let* () = Node.run node [Network network] in
+        let* () = Node.wait_for_ready node in
+        wait_for_sync node
+  in
+
+  let* () = save () in
+  let* () = Wallet.Airdrop.distribute_money client keys in
+  let dal_node = Dal_node.create ~node ~client () in
+  let bootstrap_peer =
+    (* There is a parsing issue so we can't use this. *)
+    Format.sprintf "dal.%s.teztnets.xyz:11732" network_name
+  in
+  let* () =
+    Dal_node.init_config
+      ~peers:[bootstrap_peer]
+      ~profile:"tz1foXHgRzdYdaLgX6XhpZGxbBv42LZ6ubvE"
+      dal_node
+  in
+  let* () = Dal_node.run dal_node in
+  let* parameters = Rollup.Dal.Parameters.from_client client in
+  let cryptobox = parameters.cryptobox in
+  let publish_slot index =
+    let slot =
+      String.init 30 (fun _i ->
+          (* let x = (i + index) mod 26 in *)
+          let x = Random.int 26 in
+          Char.code 'a' + x |> Char.chr)
+      |> Rollup.Dal.make_slot ~slot_size:cryptobox.slot_size
+    in
+    let x = Ptime_clock.now () in
+    let* commitment = RPC.call dal_node (Rollup.Dal.RPC.post_commitment slot) in
+    let y = Ptime_clock.now () in
+    Log.info "POST: %a" Ptime.Span.pp (Ptime.diff y x) ;
+    let* () =
+      RPC.call dal_node
+      @@ Rollup.Dal.RPC.put_commitment_shards ~with_proof:true commitment
+    in
+    let commitment_hash =
+      match Rollup.Dal.Cryptobox.Commitment.of_b58check_opt commitment with
+      | None -> assert false
+      | Some hash -> hash
+    in
+    let* proof =
+      let* proof =
+        RPC.call dal_node @@ Rollup.Dal.RPC.get_commitment_proof commitment
+      in
+      return
+        (Data_encoding.Json.destruct
+           Rollup.Dal.Cryptobox.Commitment_proof.encoding
+           (`String proof))
+    in
+    let source = List.nth keys index in
+    let index = basis + index in
+    let* _ =
+      Operation.Manager.(
+        inject
+          [
+            make ~source
+            @@ dal_publish_slot_header ~index ~commitment:commitment_hash ~proof;
+          ]
+          client)
+    in
+    let* () = Lwt_unix.sleep 30. in
+    return ()
+  in
+  let* () =
+    Lwt_list.iter_p (fun i -> repeat 100 (fun () -> publish_slot i)) indices
+  in
+  let* _ = Lwt_unix.sleep 1000. in
+  return ()
+
+let register () =
+  dailynet () ;
+  mondaynet ()
