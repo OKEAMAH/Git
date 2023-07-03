@@ -239,7 +239,7 @@ end
 let mondaynet () =
   Test.register
     ~__FILE__
-    ~title:"Produce slots on dailynet"
+    ~title:"Produce slots on mondaynet"
     ~tags:["dal"; "mondaynet"]
   @@ fun () ->
   let load = Cli.get ~default:None (fun _ -> Some (Some ())) "load" in
@@ -301,7 +301,7 @@ let mondaynet () =
   let* () =
     Dal_node.init_config
       ~peers:[bootstrap_peer]
-      ~profile:"tz1foXHgRzdYdaLgX6XhpZGxbBv42LZ6ubvE"
+      ~producer_profiles:(List.map (fun x -> x + basis) indices)
       dal_node
   in
   let* () = Dal_node.run dal_node in
@@ -422,7 +422,7 @@ let dailynet () =
   let* () =
     Dal_node.init_config
       ~peers:[bootstrap_peer]
-      ~profile:"tz1foXHgRzdYdaLgX6XhpZGxbBv42LZ6ubvE"
+      ~attestor_profiles:["tz1foXHgRzdYdaLgX6XhpZGxbBv42LZ6ubvE"]
       dal_node
   in
   let* () = Dal_node.run dal_node in
