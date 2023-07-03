@@ -1,4 +1,4 @@
-KERNELS = evm_kernel.wasm
+KERNELS = evm_kernel.wasm sequenced_empty_kernel.wasm sequenced_concat_kernel.wasm
 SDK_DIR=src/kernel_sdk
 EVM_DIR=src/kernel_evm
 SEQUENCER_DIR=src/kernel_sequencer
@@ -31,13 +31,18 @@ endif
 evm_installer_dev.wasm::
 	@${MAKE} -f kernels.mk EVM_CONFIG=src/kernel_evm/config/dev.yaml evm_installer.wasm
 
-sequenced_kernel.wasm:
+sequenced_empty_kernel.wasm:
 	@make -C src/kernel_sequencer build
-	@cp src/kernel_sequencer/target/wasm32-unknown-unknown/release/examples/sequenced_kernel.wasm $@
+	@cp src/kernel_sequencer/target/wasm32-unknown-unknown/release/examples/sequenced_empty_kernel.wasm $@
+	@wasm-strip $@
+
+sequenced_concat_kernel.wasm:
+	@make -C src/kernel_sequencer build
+	@cp src/kernel_sequencer/target/wasm32-unknown-unknown/release/examples/sequenced_concat_kernel.wasm $@
 	@wasm-strip $@
 
 .PHONY: build
-build: ${KERNELS} kernel_sdk sequenced_kernel.wasm
+build: ${KERNELS} kernel_sdk
 
 .PHONY: build-dev-deps
 build-dev-deps: build-deps

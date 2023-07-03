@@ -8,7 +8,8 @@ all: build check test
 
 .PHONY: build
 build:
-	@cargo build --release --target wasm32-unknown-unknown --example sequenced_kernel
+	@cargo build --release --target wasm32-unknown-unknown --example sequenced_empty_kernel
+	@cargo build --release --target wasm32-unknown-unknown --example sequenced_concat_kernel
 
 .PHONY: check
 check:

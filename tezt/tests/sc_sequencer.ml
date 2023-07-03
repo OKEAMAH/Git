@@ -82,7 +82,7 @@ let setup_sequencer_kernel
         (Filename.concat
            (Sc_rollup_node.data_dir sc_sequencer_node)
            "wasm_2_0_0")
-      "sequenced_kernel"
+      "sequenced_empty_kernel"
   in
   let* sc_rollup_address =
     originate_sc_rollup
