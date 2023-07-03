@@ -357,6 +357,21 @@ let cost_N_IEdiv_nat size1 size2 =
   + ((v0 lsl 3) + (v0 lsl 2) + (v0 lsl 1))
   + S.safe_int 150
 
+(* model interpreter/N_IEdiv_int *)
+(* fun size1 -> fun size2 -> let q = (sat_sub size1 size2) in (((((0.00112506194615 * q) * size2) + (1.24749519697 * size1)) + (12.3146073889 * q)) + 110.178595369) *)
+let cost_N_IEdiv_int size1 size2 =
+  let open S.Syntax in
+  let size1 = S.safe_int size1 in
+  let size2 = S.safe_int size2 in
+  let q = S.sub size1 size2 in
+  let v2 = q in
+  let v1 = size1 in
+  let v0 = q in
+  (((v2 lsr 10) + (v2 lsr 13)) * size2)
+  + (v1 + (v1 lsr 3))
+  + ((v0 lsl 3) + (v0 lsl 2))
+  + S.safe_int 150
+
 (* model N_IMul_bls12_381_fr *)
 (* when benchmarking, compile bls12-381 without ADX *)
 let cost_N_IMul_bls12_381_fr = S.safe_int 45

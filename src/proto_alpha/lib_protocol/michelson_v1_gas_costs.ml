@@ -261,23 +261,6 @@ let cost_N_IDiff_timestamps = cost_linear_op_int
 (* model N_IOr_nat *)
 let cost_N_IOr_nat = cost_linear_op_int
 
-(* model for interpreter/N_IEdiv_nat and interpreter/N_IEdiv_int *)
-(* Allocates at most [size1] bytes *)
-(* fun size1 -> fun size2 -> let q = (sat_sub size1 size2) in
-   (((((0.0011458507706 * q) * size2) + (1.28630385018 * size1)) + (12.0204471175 * q)) + 137.990601159) *)
-let cost_div_int size1 size2 =
-  let open S.Syntax in
-  let v1 = S.safe_int size1 in
-  let v2 = S.safe_int size2 in
-  let q = S.sub v1 v2 in
-  (((q lsr 10) + (q lsr 13)) * v2)
-  + (v1 + (v1 lsr 2))
-  + ((q lsl 3) + (q lsl 2))
-  + S.safe_int 150
-
-(* model N_IEdiv_int *)
-let cost_N_IEdiv_int = cost_div_int
-
 (* model N_ILsl_bytes *)
 (* Allocates [size + shift / 8] bytes *)
 (* fun size1 -> fun size2 -> ((63.0681507316 + (0.667539714647 * size1)) + (0. * size2)) *)
