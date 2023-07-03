@@ -342,6 +342,21 @@ let cost_N_IMul_teznat = S.safe_int 50
 (* model N_IEdiv_teznat *)
 let cost_N_IEdiv_teznat = S.safe_int 70
 
+(* model interpreter/N_IEdiv_nat *)
+(* fun size1 -> fun size2 -> let q = (sat_sub size1 size2) in (((((0.00105705511219 * q) * size2) + (1.73715677806 * size1)) + (14.0234148575 * q)) + 113.305262036) *)
+let cost_N_IEdiv_nat size1 size2 =
+  let open S.Syntax in
+  let size1 = S.safe_int size1 in
+  let size2 = S.safe_int size2 in
+  let q = S.sub size1 size2 in
+  let v2 = q in
+  let v1 = size1 in
+  let v0 = q in
+  ((v2 lsr 10) * size2)
+  + (v1 + (v1 lsr 1) + (v1 lsr 3))
+  + ((v0 lsl 3) + (v0 lsl 2) + (v0 lsl 1))
+  + S.safe_int 150
+
 (* model N_IMul_bls12_381_fr *)
 (* when benchmarking, compile bls12-381 without ADX *)
 let cost_N_IMul_bls12_381_fr = S.safe_int 45

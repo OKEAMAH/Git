@@ -278,9 +278,6 @@ let cost_div_int size1 size2 =
 (* model N_IEdiv_int *)
 let cost_N_IEdiv_int = cost_div_int
 
-(* model N_IEdiv_nat *)
-let cost_N_IEdiv_nat = cost_div_int
-
 (* model N_ILsl_bytes *)
 (* Allocates [size + shift / 8] bytes *)
 (* fun size1 -> fun size2 -> ((63.0681507316 + (0.667539714647 * size1)) + (0. * size2)) *)
