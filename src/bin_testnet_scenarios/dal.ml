@@ -74,9 +74,7 @@ module Faucet = struct
        should wait one more block or do a useless check. *)
     let level = Node.get_level node in
     let* _ = Node.wait_for_level node (level + 1) in
-    let* balance =
-      RPC.(Client.call client (get_chain_block_context_delegate_balance pkh))
-    in
+    let* balance = Client.get_balance_for ~account:pkh client in
     if balance < target_balance then (
       Log.info
         "Delegate current balance: %f. Expect at least: %f"
@@ -145,29 +143,70 @@ module Wallet = struct
             Lwt.return_unit)
       keys
 
+  module Airdrop = struct
+    let giver_alias = "giver"
+
+    let giver_account =
+      {
+        Account.alias = giver_alias;
+        public_key_hash = "tz1PEhbjTyVvjQ2Zz8g4bYU2XPTbhvG8JMFh";
+        public_key = "edpkuwL7MVYArfQN9jyR8pZTqmFGYFWTYhhF4F8KWjr2vB18ozTqbd";
+        secret_key =
+          Account.Unencrypted
+            "edsk3AWajGUgzzGi3UrQiNWeRZR1YMRYVxfe642AFSKBTFXaoJp5hu";
+      }
+
+    let register_giver client = Client.import_secret_key client giver_account
+
+    let perform_transfers ~amount ~keys client =
+      let* counter =
+        Operation.Manager.get_next_counter ~source:giver_account client
+      in
+      let ops =
+        List.map
+          (fun dest ->
+            Operation.Manager.transfer ~dest ~amount:(Tez.to_mutez amount) ())
+          keys
+        |> Operation.Manager.make_batch ~counter ~source:giver_account
+      in
+      Operation.Manager.inject ops client
+
+    let rec wait_for_balance client pkh target_balance =
+      let node = get_node client in
+      (* Could be racy but in practice should be ok, at worst we
+         should wait one more block or do a useless check. *)
+      let level = Node.get_level node in
+      let* _ = Node.wait_for_level node (level + 1) in
+      let* balance = Client.get_balance_for ~account:pkh client in
+      if balance < target_balance then (
+        Log.info
+          "Delegate current balance: %f. Expect at least: %f"
+          (Tez.to_float balance)
+          (Tez.to_float target_balance) ;
+        wait_for_balance client pkh target_balance)
+      else Lwt.return_unit
+
+    let distribute_money ?(amount = Tez.of_int 10_000) client keys =
+      Log.info "Getting %s tez for all keys" (Tez.to_string amount) ;
+      let* (`OpHash _h) = perform_transfers ~amount ~keys client in
+      Lwt.join
+        (List.map
+           (fun key ->
+             wait_for_balance client key.Account.public_key_hash amount)
+           keys)
+  end
+
   let initialise_wallet network client aliases =
     let default_wallet = default_wallet network in
     (* Remove directory in case a wallet already exists but is not valid. *)
     let* () = Process.run "rm" ["-rf"; default_wallet] in
     let* () = Process.run "mkdir" [default_wallet] in
-    let* keys =
-      Lwt_list.map_s
-        (fun alias ->
-          let* key = Client.gen_and_show_keys ~alias client in
-          let () = Faucet.get_money network key.public_key_hash in
-          Lwt.return key)
-        aliases
-    in
-    let* () =
-      Lwt_list.iter_s
-        (fun key ->
-          Faucet.wait_for_balance
-            client
-            key.Account.public_key_hash
-            (Tez.of_int 10))
-        keys
-    in
-    Lwt.return keys
+    let* () = Airdrop.register_giver client in
+    Lwt_list.map_s
+      (fun alias ->
+        let* key = Client.gen_and_show_keys ~alias client in
+        Lwt.return key)
+      aliases
 
   let load_wallet network client aliases =
     let has_failed = ref None in
@@ -241,6 +280,7 @@ let dailynet () =
         Node.wait_for_ready node
   in
   let* () = save () in
+  let* () = Wallet.Airdrop.distribute_money client keys in
   let dal_node = Dal_node.create ~node ~client () in
   let bootstrap_peer =
     (* There is a parsing issue so we can't use this. *)
