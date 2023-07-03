@@ -48,6 +48,9 @@ Minor Changes
 
 - Rename ``endorsement`` into ``attestation`` in protocol errors (MR :gl:`!9192`)
 
+- Add ``Yea`` as a possible json encoding of ballot. To be used instead
+  of ``Yay`` but old encoding is kept for backward compatibility.
+
 Internal
 --------
 
