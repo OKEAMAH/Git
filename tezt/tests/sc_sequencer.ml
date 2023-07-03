@@ -191,13 +191,14 @@ let test_delayed_inbox_consumed =
   let* _ = next_rollup_level setup in
 
   (* At this moment delayed inbox corresponding to the previous block is empty,
-     hence, no Sequences have been batched. *)
+     hence, a Sequence with 0 delayed inbox messages and 0 user messages was batched,
+     which denoted as S0. *)
 
   (* Bake a block with level 4 *)
   let* _ = next_rollup_level setup in
 
   (* At this moment delayed inbox corresponding to the previous block have 5 messages:
-     [SoL, IpL, "\000\000\000", "\000\000\001", EoL].
+     [SoL3, IpL3, "\000\000\000", "\000\000\001", EoL3].
      Seq_batcher has batched a Sequence with
      5 delayed inbox messages and 0 L2 messages, which denoted S1.
   *)
@@ -205,11 +206,11 @@ let test_delayed_inbox_consumed =
   (* Bake a block with level 5, no injected batches here *)
   let* _ = next_rollup_level setup in
 
-  (* At this moment delayed inbox corresponding to the previous block have 8 messages:
-     [SoL3, IpL3, "\000\000\000", "\000\000\001", EoL3, SoL4, IpL4, EoL4].
-     For now no delayed inbox messages consumed, so we just expect delayed inbox messages being accumulated.
-     Seq_batcher has batched a Sequence with
-     8 delayed inbox messages and 0 L2 messages, which denoted S2.
+  (* At this moment delayed inbox corresponding to the previous block have 3 messages:
+     [SoL4, IpL4, EoL4].
+     5 delayed inbox messages have been consumed by the previous block.
+     Seq_batcher has batched a Sequence with the 3 delayed inbox messages
+     and 0 L2 messages, which denoted S2.
   *)
 
   (* Inject S1 into an upcoming block with level 6 *)
