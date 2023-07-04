@@ -39,6 +39,10 @@ val rpc_server_is_ready : P2p_point.Id.t t
 
 val node_is_ready : unit t
 
+val resolving_dal_plugin : Protocol_hash.t t
+
+val failed_to_resolve_dal_plugin : unit t
+
 val data_dir_not_found : string t
 
 val fetched_slot : (int * int) t

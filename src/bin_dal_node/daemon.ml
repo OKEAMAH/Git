@@ -37,6 +37,7 @@ let resolve_plugin
     | `No_plugin ]
     Lwt.t =
   let open Lwt_syntax in
+  let* () = Event.(emit resolving_dal_plugin) protocols.next_protocol in
   let plugin_opt =
     if Protocol_hash.equal protocols.current_protocol protocols.next_protocol
     then

@@ -67,6 +67,22 @@ let node_is_ready =
     ~level:Notice
     ()
 
+let resolving_dal_plugin =
+  declare_1
+    ~section
+    ~name:"resolving_dal_plugin"
+    ~msg:"Resolving DAL plugin for protocol {protocol_hash}."
+    ~level:Notice
+    ("protocol_hash", Protocol_hash.encoding)
+
+let failed_to_resolve_dal_plugin =
+  declare_0
+    ~section
+    ~name:"failed_to_resolve_dal_plugin"
+    ~msg:"Failed to resolve DAL plugin."
+    ~level:Warning
+    ()
+
 let data_dir_not_found =
   declare_1
     ~section
