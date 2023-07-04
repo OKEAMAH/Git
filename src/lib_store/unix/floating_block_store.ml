@@ -39,6 +39,7 @@ type t = {
   fd : Lwt_unix.file_descr;
   kind : floating_kind;
   scheduler : Lwt_idle_waiter.t;
+  readonly : bool;
 }
 
 type info = {
@@ -63,9 +64,13 @@ let mem floating_store hash =
       Lwt.return
         (Floating_block_index.mem floating_store.floating_block_index hash))
 
+let may_sync {floating_block_index; readonly; _} =
+  if readonly then Floating_block_index.sync floating_block_index
+
 let find_info floating_store hash =
   Lwt_idle_waiter.task floating_store.scheduler (fun () ->
       try
+        may_sync floating_store ;
         let {predecessors; resulting_context_hash; _} =
           Floating_block_index.find floating_store.floating_block_index hash
         in
@@ -89,6 +94,7 @@ let read_block_and_info floating_store hash =
   Lwt_idle_waiter.task floating_store.scheduler (fun () ->
       Option.catch_os (fun () ->
           let {offset; predecessors; resulting_context_hash} =
+            may_sync floating_store ;
             Floating_block_index.find floating_store.floating_block_index hash
           in
           let*? block, _ =
@@ -183,12 +189,15 @@ let iter_s_raw_fd f fd =
   loop eof_offset
 
 (* May raise [Not_found] if index does not contain the block. *)
-let iter_with_info_s_raw_fd f fd block_index =
+let iter_with_info_s_raw_fd f fd floating_store =
+  may_sync floating_store ;
   protect (fun () ->
       iter_s_raw_fd
         (fun block ->
           let {predecessors; resulting_context_hash; _} =
-            Floating_block_index.find block_index block.hash
+            Floating_block_index.find
+              floating_store.floating_block_index
+              block.hash
           in
           f (block, {predecessors; resulting_context_hash}))
         fd)
@@ -237,7 +246,7 @@ let fold_left_with_info_s f e floating_store =
             acc := new_acc ;
             return_unit)
           fd
-          floating_store.floating_block_index
+          floating_store
       in
       return !acc)
     floating_store
@@ -252,6 +261,7 @@ let retrieve_block_from_stores floating_stores block_hash =
   let open Lwt_result_syntax in
   List.find_map
     (fun floating_store ->
+      may_sync floating_store ;
       try
         Some
           ( Floating_block_index.find
@@ -490,7 +500,8 @@ let init chain_dir ~readonly kind =
       (Naming.dir_path floating_index_dir)
   in
   let scheduler = Lwt_idle_waiter.create () in
-  return {floating_block_index; fd; floating_blocks_dir; kind; scheduler}
+  return
+    {floating_block_index; fd; floating_blocks_dir; kind; scheduler; readonly}
 
 let close {floating_block_index; fd; scheduler; _} =
   let open Lwt_syntax in
