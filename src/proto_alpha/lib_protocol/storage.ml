@@ -1274,7 +1274,7 @@ end
 module Slashed_deposits = Cycle.Slashed_deposits
 
 module Stake = struct
-  module Staking_balance =
+  module Staking_balance_up_to_Nairobi =
     Make_indexed_data_snapshotable_storage
       (Make_subcontext (Registered) (Raw_context)
          (struct
