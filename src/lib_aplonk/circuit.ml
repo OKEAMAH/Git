@@ -322,9 +322,7 @@ module V (Main : Aggregation.Main_protocol.S) = struct
     let format_arith_ids arith_ids =
       let arith = Plonk.Custom_gates.arith_label in
       let n = List.length arith_ids in
-      List.mapi
-        (fun i x -> (SMap.Aggregation.add_prefix ~n ~i "" arith, x))
-        arith_ids
+      SMap.Aggregation.of_list "" arith arith_ids
 
     (* This function separates the wires in two blocks, the first stands for the Z_RC & the seconds for the pure wire evaluations *)
     let split_rc_wires nb_rc wires =
