@@ -87,12 +87,14 @@ let rec connect ~name ?(count = 0) ~delay ~protocols cctxt =
   let* res =
     Tezos_shell_services.Monitor_services.heads ?protocols cctxt cctxt#chain
   in
+  let seen_head = ref false in
   match res with
   | Ok (heads, stopper) ->
       let heads =
         Lwt_stream.map_s
           (fun ( hash,
                  (Tezos_base.Block_header.{shell = {level; _}; _} as header) ) ->
+            seen_head := true ;
             let+ () = Layer1_event.switched_new_head ~name hash level in
             (hash, header))
           heads
@@ -100,7 +102,12 @@ let rec connect ~name ?(count = 0) ~delay ~protocols cctxt =
       return (heads, stopper)
   | Error e ->
       let* () = Layer1_event.cannot_connect ~name ~count e in
-      connect ~name ~delay ~protocols ~count:(count + 1) cctxt
+      let count =
+        (* If the previous connection was successful we reset the reconnection
+           counter. *)
+        if !seen_head then 1 else count + 1
+      in
+      connect ~name ~delay ~protocols ~count cctxt
 
 let start ~name ~reconnection_delay ?protocols (cctxt : #Client_context.full) =
   let open Lwt_syntax in
