@@ -37,3 +37,9 @@ val apply_limits :
   Staking_parameters_repr.t ->
   Stake_repr.Full.t ->
   Stake_repr.t tzresult
+
+val baking_weight :
+  Raw_context.t ->
+  Staking_parameters_repr.t ->
+  Stake_repr.Full.t ->
+  int64 tzresult
