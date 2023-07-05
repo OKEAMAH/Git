@@ -986,6 +986,7 @@ module Block = struct
     Log.info "Check kind for operation rpc" ;
     check_rpc_versions
       ~check:(fun ~use_legacy_name:_ -> check_kind)
+      ~check_unknown_version
       ~get_name
       ~rpc:(fun ~version () ->
         RPC.get_chain_block_operations_validation_pass
@@ -1002,6 +1003,7 @@ module Block = struct
     let check ~use_legacy_name:_ json = check_kind JSON.(json |=> 0) in
     check_rpc_versions
       ~check
+      ~check_unknown_version
       ~get_name
       ~rpc:(fun ~version () ->
         RPC.get_chain_block_operations_validation_pass
@@ -1018,6 +1020,7 @@ module Block = struct
     in
     check_rpc_versions
       ~check
+      ~check_unknown_version
       ~get_name
       ~rpc:(fun ~version () -> RPC.get_chain_block_operations ~version ())
       ~data:()
@@ -1030,6 +1033,7 @@ module Block = struct
     in
     check_rpc_versions
       ~check
+      ~check_unknown_version
       ~get_name
       ~rpc:(fun ~version () -> RPC.get_chain_block ~version ())
       ~data:()
