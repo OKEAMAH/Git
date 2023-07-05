@@ -788,8 +788,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
         ( [`GET],
           'a,
           'b,
-          < version : version
-          ; applied : bool option
+          < applied : bool option
           ; validated : bool
           ; branch_delayed : bool
           ; branch_refused : bool
@@ -797,9 +796,26 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
           ; outdated : bool
           ; validation_passes : int list >,
           unit,
-          version
-          * ((Operation_hash.t * Next_proto.operation) * error trace option)
-            list )
+          ((Operation_hash.t * Next_proto.operation) * error trace option) list
+        )
+        Tezos_rpc.Service.t
+
+      (** Define RPC GET /chains/[chain]/mempool/monitor_operations/v1 *)
+      val monitor_operations_v1 :
+        ('a, 'b) Tezos_rpc.Path.t ->
+        ( [`GET],
+          'a,
+          'b,
+          < applied : bool option
+          ; validated : bool
+          ; branch_delayed : bool
+          ; branch_refused : bool
+          ; refused : bool
+          ; outdated : bool
+          ; validation_passes : int list >,
+          unit,
+          ((Operation_hash.t * Next_proto.operation) * error trace option) list
+        )
         Tezos_rpc.Service.t
 
       (** Define RPC GET /chains/[chain]/mempool/filter *)

@@ -1059,108 +1059,113 @@ module Make
           (fun pv t () ->
             pv.shell.parameters.tools.send_get_current_head ?peer:t#peer_id () ;
             return_unit) ;
+      let monitor_operations pv params () =
+        Lwt_mutex.with_lock pv.lock @@ fun () ->
+        let op_stream, stopper =
+          Lwt_watcher.create_stream pv.operation_stream
+        in
+        (* First call : retrieve the current set of op from the mempool *)
+        let validated_seq =
+          if
+            params#validated && Option.value ~default:true params#applied
+            (* https://gitlab.com/tezos/tezos/-/issues/5891
+               applied is deprecated and should be removed in a future
+               version of Octez *)
+          then
+            Classification.Sized_map.to_map pv.shell.classification.validated
+            |> Operation_hash.Map.to_seq
+            |> Seq.map (fun (hash, {protocol; _}) -> ((hash, protocol), None))
+          else Seq.empty
+        in
+        let process_error_map map =
+          let open Operation_hash in
+          map |> Map.to_seq
+          |> Seq.map (fun (hash, (op, error)) ->
+                 ((hash, op.protocol), Some error))
+        in
+        let refused_seq =
+          if params#refused then
+            process_error_map
+              (Classification.map pv.shell.classification.refused)
+          else Seq.empty
+        in
+        let branch_refused_seq =
+          if params#branch_refused then
+            process_error_map
+              (Classification.map pv.shell.classification.branch_refused)
+          else Seq.empty
+        in
+        let branch_delayed_seq =
+          if params#branch_delayed then
+            process_error_map
+              (Classification.map pv.shell.classification.branch_delayed)
+          else Seq.empty
+        in
+        let outdated_seq =
+          if params#outdated then
+            process_error_map
+              (Classification.map pv.shell.classification.outdated)
+          else Seq.empty
+        in
+        let filter ((_, op), _) =
+          filter_validation_passes params#validation_passes op
+        in
+        let current_mempool =
+          Seq.append outdated_seq branch_delayed_seq
+          |> Seq.append branch_refused_seq
+          |> Seq.append refused_seq |> Seq.append validated_seq
+          |> Seq.filter filter |> List.of_seq
+        in
+        let current_mempool = ref (Some current_mempool) in
+        let filter_result = function
+          | `Validated ->
+              params#validated && Option.value ~default:true params#applied
+          | `Refused _ -> params#refused
+          | `Outdated _ -> params#outdated
+          | `Branch_refused _ -> params#branch_refused
+          | `Branch_delayed _ -> params#branch_delayed
+        in
+        let rec next () =
+          let open Lwt_syntax in
+          match !current_mempool with
+          | Some mempool ->
+              current_mempool := None ;
+              Lwt.return_some mempool
+          | None -> (
+              let* o = Lwt_stream.get op_stream in
+              match o with
+              | Some (kind, op)
+                when filter_result kind
+                     && filter_validation_passes
+                          params#validation_passes
+                          op.protocol ->
+                  let errors =
+                    match kind with
+                    | `Validated -> None
+                    | `Branch_delayed errors
+                    | `Branch_refused errors
+                    | `Refused errors
+                    | `Outdated errors ->
+                        Some errors
+                  in
+                  Lwt.return_some [((op.hash, op.protocol), errors)]
+              | Some _ -> next ()
+              | None -> Lwt.return_none)
+        in
+        let shutdown () = Lwt_watcher.shutdown stopper in
+        Tezos_rpc.Answer.return_stream {next; shutdown}
+      in
       dir :=
         Tezos_rpc.Directory.gen_register
           !dir
           (Proto_services.S.Mempool.monitor_operations Tezos_rpc.Path.open_root)
-          (fun pv params () ->
-            Lwt_mutex.with_lock pv.lock @@ fun () ->
-            let op_stream, stopper =
-              Lwt_watcher.create_stream pv.operation_stream
-            in
-            (* First call : retrieve the current set of op from the mempool *)
-            let validated_seq =
-              if
-                params#validated && Option.value ~default:true params#applied
-                (* https://gitlab.com/tezos/tezos/-/issues/5891
-                   applied is deprecated and should be removed in a future
-                   version of Octez *)
-              then
-                Classification.Sized_map.to_map
-                  pv.shell.classification.validated
-                |> Operation_hash.Map.to_seq
-                |> Seq.map (fun (hash, {protocol; _}) ->
-                       ((hash, protocol), None))
-              else Seq.empty
-            in
-            let process_error_map map =
-              let open Operation_hash in
-              map |> Map.to_seq
-              |> Seq.map (fun (hash, (op, error)) ->
-                     ((hash, op.protocol), Some error))
-            in
-            let refused_seq =
-              if params#refused then
-                process_error_map
-                  (Classification.map pv.shell.classification.refused)
-              else Seq.empty
-            in
-            let branch_refused_seq =
-              if params#branch_refused then
-                process_error_map
-                  (Classification.map pv.shell.classification.branch_refused)
-              else Seq.empty
-            in
-            let branch_delayed_seq =
-              if params#branch_delayed then
-                process_error_map
-                  (Classification.map pv.shell.classification.branch_delayed)
-              else Seq.empty
-            in
-            let outdated_seq =
-              if params#outdated then
-                process_error_map
-                  (Classification.map pv.shell.classification.outdated)
-              else Seq.empty
-            in
-            let filter ((_, op), _) =
-              filter_validation_passes params#validation_passes op
-            in
-            let current_mempool =
-              Seq.append outdated_seq branch_delayed_seq
-              |> Seq.append branch_refused_seq
-              |> Seq.append refused_seq |> Seq.append validated_seq
-              |> Seq.filter filter |> List.of_seq
-            in
-            let current_mempool = ref (Some current_mempool) in
-            let filter_result = function
-              | `Validated ->
-                  params#validated && Option.value ~default:true params#applied
-              | `Refused _ -> params#refused
-              | `Outdated _ -> params#outdated
-              | `Branch_refused _ -> params#branch_refused
-              | `Branch_delayed _ -> params#branch_delayed
-            in
-            let rec next () =
-              let open Lwt_syntax in
-              match !current_mempool with
-              | Some mempool ->
-                  current_mempool := None ;
-                  Lwt.return_some (params#version, mempool)
-              | None -> (
-                  let* o = Lwt_stream.get op_stream in
-                  match o with
-                  | Some (kind, op)
-                    when filter_result kind
-                         && filter_validation_passes
-                              params#validation_passes
-                              op.protocol ->
-                      let errors =
-                        match kind with
-                        | `Validated -> None
-                        | `Branch_delayed errors
-                        | `Branch_refused errors
-                        | `Refused errors
-                        | `Outdated errors ->
-                            Some errors
-                      in
-                      Lwt.return_some
-                        (params#version, [((op.hash, op.protocol), errors)])
-                  | Some _ -> next ()
-                  | None -> Lwt.return_none)
-            in
-            let shutdown () = Lwt_watcher.shutdown stopper in
-            Tezos_rpc.Answer.return_stream {next; shutdown}) ;
+          monitor_operations ;
+      dir :=
+        Tezos_rpc.Directory.gen_register
+          !dir
+          (Proto_services.S.Mempool.monitor_operations_v1
+             Tezos_rpc.Path.open_root)
+          monitor_operations ;
       !dir)
 
   (** Module implementing the events at the {!Worker} level. Contrary
