@@ -29,3 +29,9 @@
 val staking_weight : Raw_context.t -> Stake_repr.t -> int64
 
 val compare : Raw_context.t -> Stake_repr.t -> Stake_repr.t -> int
+
+val apply_limits :
+  Raw_context.t ->
+  Staking_parameters_repr.t ->
+  Stake_repr.Full.t ->
+  Stake_repr.t tzresult
