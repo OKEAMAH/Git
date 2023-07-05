@@ -285,8 +285,8 @@ let get_chain_chain_id ?(chain = "main") () =
   make GET ["chains"; chain; "chain_id"] JSON.as_string
 
 let get_chain_block ?(chain = "main") ?(block = "head") ?version () =
-  let query_string = Query_arg.opt "version" Fun.id version in
-  make ~query_string GET ["chains"; chain; "blocks"; block] Fun.id
+  let path = ["chains"; chain; "blocks"; block] in
+  make GET (rpc_version ~default:"0" ~path version) Fun.id
 
 type block_metadata = {
   protocol : string;
@@ -426,32 +426,25 @@ let get_chain_block_header_protocol_data ?(chain = "main") ?(block = "head")
     ["chains"; chain; "blocks"; block; "header"; "protocol_data"]
     Fun.id
 
+let block_operations_path ~chain ~block version =
+  rpc_version ~default:"0" ~path:["chains"; chain; "blocks"; block] version
+  @ ["operations"]
+
 let get_chain_block_operations ?(chain = "main") ?(block = "head") ?version
     ?(force_metadata = false) () =
-  let query_string =
-    Query_arg.opt "version" Fun.id version
-    @ if force_metadata then [("force_metadata", "")] else []
-  in
-  make ~query_string GET ["chains"; chain; "blocks"; block; "operations"] Fun.id
+  let query_string = if force_metadata then [("force_metadata", "")] else [] in
+  let path = block_operations_path ~chain ~block version in
+  make ~query_string GET path Fun.id
 
 let get_chain_block_operations_validation_pass ?(chain = "main")
     ?(block = "head") ?version ?(force_metadata = false) ?operation_offset
     ~validation_pass () =
   let path =
-    [
-      "chains";
-      chain;
-      "blocks";
-      block;
-      "operations";
-      string_of_int validation_pass;
-    ]
+    block_operations_path ~chain ~block version
+    @ [string_of_int validation_pass]
     @ match operation_offset with None -> [] | Some m -> [string_of_int m]
   in
-  let query_string =
-    Query_arg.opt "version" Fun.id version
-    @ if force_metadata then [("force_metadata", "")] else []
-  in
+  let query_string = if force_metadata then [("force_metadata", "")] else [] in
   make ~query_string GET path Fun.id
 
 let get_chain_mempool_pending_operations ?(chain = "main") ?version ?validated
