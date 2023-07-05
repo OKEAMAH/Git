@@ -274,9 +274,9 @@ module Make (Hooks : Mocked_services_hooks) = struct
       Directory.empty
       (Mockup.M.Block_services.S.Mempool.pending_operations
       @@ Block_services.mempool_path Block_services.chain_path)
-      (fun ((), _chain) params () ->
+      (fun ((), _chain) _params () ->
         Hooks.pending_operations () >>= fun mempool ->
-        Tezos_rpc.Answer.return (params#version, mempool))
+        Tezos_rpc.Answer.return mempool)
 
   let monitor_operations =
     Directory.gen_register

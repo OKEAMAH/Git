@@ -1301,7 +1301,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
         let open Tezos_rpc.Query in
         query
           (fun
-            version
             applied
             validated
             refused
@@ -1311,8 +1310,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
             validation_passes
           ->
             object
-              method version = version
-
               method applied = applied
 
               method validated = validated
@@ -1327,11 +1324,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
 
               method validation_passes = validation_passes
             end)
-        |+ field
-             "version"
-             (version_arg pending_operations_supported_versions)
-             default_pending_operations_version
-             (fun t -> t#version)
         |+ opt_field
              ~descr:
                "(DEPRECATED use validated instead) Include validated operations"
@@ -1379,37 +1371,27 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
              (fun t -> t#validation_passes)
         |> seal
 
-      let pending_operations_encoding =
-        union
-          [
-            case
-              ~title:"pending_operations_encoding"
-              (Tag 2)
-              (pending_operations_encoding
-                 ~use_legacy_name:false
-                 ~use_validated:true)
-              (function
-                | Version_2, pending_operations -> Some pending_operations
-                | (Version_0 | Version_1), _ -> None)
-              (fun pending_operations -> (Version_2, pending_operations));
-            case
-              ~title:"pending_operations_encoding_with_legacy_attestation_name"
-              (Tag 1)
-              (pending_operations_encoding
-                 ~use_legacy_name:true
-                 ~use_validated:false)
-              (function
-                | Version_1, pending_operations -> Some pending_operations
-                | (Version_0 | Version_2), _ -> None)
-              (fun pending_operations -> (Version_1, pending_operations));
-          ]
-
       let pending_operations path =
+        Tezos_rpc.Service.get_service
+          ~description:
+            "(Deprecated, used `/pending_operations/v1` instead) List the \
+             prevalidated operations."
+          ~query:pending_query
+          ~output:
+            (pending_operations_encoding
+               ~use_legacy_name:true
+               ~use_validated:false)
+          Tezos_rpc.Path.(path / "pending_operations")
+
+      let pending_operations_v1 path =
         Tezos_rpc.Service.get_service
           ~description:"List the prevalidated operations."
           ~query:pending_query
-          ~output:pending_operations_encoding
-          Tezos_rpc.Path.(path / "pending_operations")
+          ~output:
+            (pending_operations_encoding
+               ~use_legacy_name:false
+               ~use_validated:true)
+          Tezos_rpc.Path.(path / "pending_operations" / "v1")
 
       let ban_operation path =
         Tezos_rpc.Service.post_service
@@ -1917,31 +1899,39 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
         ?(validated = true) ?(branch_delayed = true) ?(branch_refused = true)
         ?(refused = true) ?(outdated = true) ?(validation_passes = []) () =
       let open Lwt_result_syntax in
-      let* _version, pending_operations =
-        Tezos_rpc.Context.make_call1
-          (S.Mempool.pending_operations (mempool_path chain_path))
-          ctxt
-          chain
-          (object
-             method version = version
-
-             method applied = None
-
-             method validated = validated
-
-             method refused = refused
-
-             method outdated = outdated
-
-             method branch_refused = branch_refused
-
-             method branch_delayed = branch_delayed
-
-             method validation_passes = validation_passes
-          end)
-          ()
+      let* s =
+        match version with
+        | Version_0 ->
+            return (S.Mempool.pending_operations (mempool_path chain_path))
+        | Version_1 ->
+            return (S.Mempool.pending_operations_v1 (mempool_path chain_path))
+        | Version_2 ->
+            failwith
+              "%s"
+              (unsupported_version
+                 version
+                 S.Mempool.pending_operations_supported_versions)
       in
-      return pending_operations
+      Tezos_rpc.Context.make_call1
+        s
+        ctxt
+        chain
+        (object
+           method applied = None
+
+           method validated = validated
+
+           method refused = refused
+
+           method outdated = outdated
+
+           method branch_refused = branch_refused
+
+           method branch_delayed = branch_delayed
+
+           method validation_passes = validation_passes
+        end)
+        ()
 
     let ban_operation ctxt ?(chain = `Main) op_hash =
       let s = S.Mempool.ban_operation (mempool_path chain_path) in

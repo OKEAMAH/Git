@@ -363,7 +363,7 @@ module Make (E : MENV) = struct
       (* /chains/<chain_id>/mempool/pending_operations *)
       (E.Block_services.S.Mempool.pending_operations
       @@ Block_services.mempool_path Block_services.chain_path)
-      (fun ((), chain) params () ->
+      (fun ((), chain) _params () ->
         let*! pending_operations =
           let* () = check_chain chain in
           let* pooled_operations = Mempool.read () in
@@ -382,8 +382,7 @@ module Make (E : MENV) = struct
         in
         match pending_operations with
         | Error errs -> Tezos_rpc.Answer.fail errs
-        | Ok pending_operations ->
-            Tezos_rpc.Answer.return (params#version, pending_operations))
+        | Ok pending_operations -> Tezos_rpc.Answer.return pending_operations)
 
   let shell_header () =
     Directory.prefix

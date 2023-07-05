@@ -139,7 +139,7 @@ let empty_rpc_directory : unit Tezos_rpc.Directory.t =
   Tezos_rpc.Directory.gen_register
     Tezos_rpc.Directory.empty
     (Block_services.Empty.S.Mempool.pending_operations Tezos_rpc.Path.open_root)
-    (fun _pv params () ->
+    (fun _pv _params () ->
       let pending_operations =
         {
           Block_services.Empty.Mempool.validated = [];
@@ -150,7 +150,7 @@ let empty_rpc_directory : unit Tezos_rpc.Directory.t =
           unprocessed = Operation_hash.Map.empty;
         }
       in
-      Tezos_rpc.Answer.return (params#version, pending_operations))
+      Tezos_rpc.Answer.return pending_operations)
 
 let rpc_directory : t option Tezos_rpc.Directory.t =
   Tezos_rpc.Directory.register_dynamic_directory
