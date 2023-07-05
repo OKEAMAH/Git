@@ -27,12 +27,9 @@
 open Data_encoding
 module Proof = Tezos_context_sigs.Context.Proof_types
 
-type version = Version_0 | Version_1 | Version_2
+type version = Version_0 | Version_1
 
-let string_of_version = function
-  | Version_0 -> "0"
-  | Version_1 -> "1"
-  | Version_2 -> "2"
+let string_of_version = function Version_0 -> "0" | Version_1 -> "1"
 
 let unsupported_version_msg version supported =
   Format.asprintf
@@ -53,7 +50,6 @@ let version_of_string supported version =
     match version with
     | "0" -> Ok Version_0
     | "1" -> Ok Version_1
-    | "2" -> Ok Version_2
     | _ -> Error (unsupported_version_msg version supported)
   in
   if is_supported_version version_t supported then Ok version_t
@@ -645,15 +641,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           (Tag 1)
           new_encoding
           (function
-            | Version_1, operations -> Some operations
-            | ( ( Version_0
-                | Version_2
-                  (* The same [version] type is used for versioning all the
-                     RPC. Even though this version is not supported for this
-                     RPC we need to handle it. We rely on the supported
-                     version list to fail at parsing for this version *) ),
-                _ ) ->
-                None)
+            | Version_1, operations -> Some operations | Version_0, _ -> None)
           (fun operations -> (Version_1, operations));
         case
           ~title:
@@ -663,15 +651,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           (Tag 0)
           old_encoding
           (function
-            | Version_0, operations -> Some operations
-            | ( ( Version_1
-                | Version_2
-                  (* The same [version] type is used for versioning all the
-                     RPC. Even though this version is not supported for this
-                     RPC we need to handle it. We rely on the supported
-                     version list to fail at parsing for this version *) ),
-                _ ) ->
-                None)
+            | Version_0, operations -> Some operations | Version_1, _ -> None)
           (fun operations -> (Version_0, operations));
       ]
 
@@ -1076,7 +1056,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
                    (dynamic_size Next_proto.operation_data_and_receipt_encoding))
                 (function
                   | Version_1, preapply_operations -> Some preapply_operations
-                  | (Version_0 | Version_2), _ -> None)
+                  | Version_0, _ -> None)
                 (fun preapply_operations -> (Version_1, preapply_operations));
               case
                 ~title:
@@ -1088,7 +1068,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
                       .operation_data_and_receipt_encoding_with_legacy_attestation_name))
                 (function
                   | Version_0, preapply_operations -> Some preapply_operations
-                  | (Version_1 | Version_2), _ -> None)
+                  | Version_1, _ -> None)
                 (fun preapply_operations -> (Version_0, preapply_operations));
             ]
 
@@ -1293,9 +1273,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
                          (obj1 (req "hash" Operation_hash.encoding))
                          next_operation_encoding)))))
 
-      let default_pending_operations_version = Version_1
-
-      let pending_operations_supported_versions = [Version_1; Version_2]
+      let default_pending_operations_version = Version_0
 
       let pending_query =
         let open Tezos_rpc.Query in
@@ -1531,14 +1509,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
               (list (monitor_operations_encoding ~use_legacy_name:false))
               (function
                 | Version_1, monitor_operations -> Some monitor_operations
-                | ( ( Version_0
-                    | Version_2
-                      (* The same [version] type is used for versioning all the
-                         RPC. Even though this version is not supported for this
-                         RPC we need to handle it. We rely on the supported
-                         version list to fail at parsing for this version *) ),
-                    _ ) ->
-                    None)
+                | Version_0, _ -> None)
               (fun monitor_operations -> (Version_1, monitor_operations));
             case
               ~title:"monitor_operations_encoding_with_legacy_attestation_name"
@@ -1546,7 +1517,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
               (list (monitor_operations_encoding ~use_legacy_name:true))
               (function
                 | Version_0, monitor_operations -> Some monitor_operations
-                | (Version_1 | Version_2), _ -> None)
+                | Version_1, _ -> None)
               (fun monitor_operations -> (Version_0, monitor_operations));
           ]
 
@@ -1686,7 +1657,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       let open Lwt_result_syntax in
       let f = make_call0 S.Operations.operations ctxt in
       fun ?(chain = `Main) ?(block = `Head 0) () ->
-        let* (Version_0 | Version_1 | Version_2), operations =
+        let* (Version_0 | Version_1), operations =
           f
             chain
             block
@@ -1706,7 +1677,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       let open Lwt_result_syntax in
       let f = make_call1 S.Operations.operations_in_pass ctxt in
       fun ?(chain = `Main) ?(block = `Head 0) n ->
-        let* (Version_0 | Version_1 | Version_2), operations =
+        let* (Version_0 | Version_1), operations =
           f
             chain
             block
@@ -1727,7 +1698,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       let open Lwt_result_syntax in
       let f = make_call2 S.Operations.operation ctxt in
       fun ?(chain = `Main) ?(block = `Head 0) n m ->
-        let* (Version_0 | Version_1 | Version_2), operation =
+        let* (Version_0 | Version_1), operation =
           f
             chain
             block
@@ -1845,7 +1816,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       let operations ctxt ?(chain = `Main) ?(block = `Head 0)
           ?(version = S.default_preapply_operations_version) operations =
         let open Lwt_result_syntax in
-        let* (Version_0 | Version_1 | Version_2), preapply_operations =
+        let* (Version_0 | Version_1), preapply_operations =
           make_call0
             S.operations
             ctxt
@@ -1869,7 +1840,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
     let open Lwt_result_syntax in
     let f = make_call0 S.info ctxt in
     fun ?(chain = `Main) ?(block = `Head 0) () ->
-      let* (Version_0 | Version_1 | Version_2), infos =
+      let* (Version_0 | Version_1), infos =
         f
           chain
           block
@@ -1905,12 +1876,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
             return (S.Mempool.pending_operations (mempool_path chain_path))
         | Version_1 ->
             return (S.Mempool.pending_operations_v1 (mempool_path chain_path))
-        | Version_2 ->
-            failwith
-              "%s"
-              (unsupported_version
-                 version
-                 S.Mempool.pending_operations_supported_versions)
       in
       Tezos_rpc.Context.make_call1
         s
@@ -1977,13 +1942,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       in
       return
         ( Lwt_stream.map
-            (fun ( ( Version_0 | Version_1
-                   | Version_2
-                     (* The same [version] type is used for versioning all the
-                        RPC. Even though this version is not supported for this
-                        RPC we need to handle it. We rely on the supported
-                        version list to fail at parsing for this version *) ),
-                   operations ) -> operations)
+            (fun ((Version_0 | Version_1), operations) -> operations)
             stream,
           stopper )
 
