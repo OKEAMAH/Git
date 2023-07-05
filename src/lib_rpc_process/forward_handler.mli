@@ -23,9 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [callback server socket_path] redirect all the trafic received by the given
+(** [callback server socket_path] redirects all the traffic received by the given
     [server] to the socket determined by [socket_path] if it fails to be
     resolved locally. The forwarding happens only if the [acl] rules are
     satisfied. *)
 val callback :
   acl:RPC_server.Acl.t -> RPC_server.server -> string -> RPC_server.callback
+
+val socket_forwarding_uri : string
+
+val build_socket_redirection_ctx : string -> Cohttp_lwt_unix.Net.ctx
