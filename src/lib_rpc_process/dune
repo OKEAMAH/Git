@@ -7,11 +7,15 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   octez-libs.tezos-base
-  tezos-shell
+  octez-shell-libs.tezos-shell
   octez-libs.tezos-base.unix
   octez-node-config
   octez-libs.tezos-rpc-http
   octez-libs.tezos-rpc-http-server
+  octez-libs.tezos-rpc-http-client-unix
+  octez-libs.tezos-rpc-http-client
+  octez-shell-libs.tezos-shell-services
+  octez-shell-libs.tezos-store
   lwt.unix
   lwt-exit
   prometheus-app)
@@ -23,4 +27,7 @@
   -open Tezos_base_unix
   -open Octez_node_config
   -open Tezos_rpc_http
-  -open Tezos_rpc_http_server))
+  -open Tezos_rpc_http_server
+  -open Tezos_rpc_http_client_unix
+  -open Tezos_rpc_http_client
+  -open Tezos_store))
