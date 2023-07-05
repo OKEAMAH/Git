@@ -604,22 +604,13 @@ module Mempool = struct
         |> Uri.to_string)
     in
     let*? p = RPC.Curl.get monitor_operations_url in
-    let* s = Process.check_and_read_stdout p in
-    try
-      let _ =
-        Str.(
-          search_forward
-            (regexp
-               "Failed to parse the query string: Failed to parse argument \
-                \'version\'"))
-          s
-          0
-      in
-      unit
-    with Not_found ->
+    let* out, err = Process.check_and_read_both p in
+    if (not String.(equal empty out)) || not String.(equal empty err) then
       Test.fail
         ~__LOC__
-        {|RPC call should have return: Failed to parse the query string: Failed to parse argument \'version\' ..|}
+        "The call of monitor_operations with an invalid version should have \
+         succeed without returning anything on both output"
+    else unit
 
   let test_monitor_operations_consensus kind protocol =
     let* node, client = Client.init_with_protocol ~protocol `Client () in
