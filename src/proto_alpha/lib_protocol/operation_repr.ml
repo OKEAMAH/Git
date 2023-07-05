@@ -105,6 +105,8 @@ module Kind = struct
 
   type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
 
+  type sc_rollup_instant_update = Sc_rollup_instant_update_kind
+
   type zk_rollup_origination = Zk_rollup_origination_kind
 
   type zk_rollup_publish = Zk_rollup_publish_kind
@@ -132,6 +134,7 @@ module Kind = struct
     | Sc_rollup_execute_outbox_message_manager_kind
         : sc_rollup_execute_outbox_message manager
     | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
+    | Sc_rollup_instant_update_manager_kind : sc_rollup_instant_update manager
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
     | Zk_rollup_update_manager_kind : zk_rollup_update manager
@@ -395,6 +398,11 @@ and _ manager_operation =
       staker : Signature.public_key_hash;
     }
       -> Kind.sc_rollup_recover_bond manager_operation
+  | Sc_rollup_instant_update : {
+      sc_rollup : Sc_rollup_repr.t;
+      new_state : Sc_rollup_repr.State_hash.t;
+    }
+      -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {
       public_parameters : Plonk.public_parameters;
       circuits_info : [`Public | `Private | `Fee] Zk_rollup_account_repr.SMap.t;
@@ -434,6 +442,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Sc_rollup_execute_outbox_message _ ->
       Kind.Sc_rollup_execute_outbox_message_manager_kind
   | Sc_rollup_recover_bond _ -> Kind.Sc_rollup_recover_bond_manager_kind
+  | Sc_rollup_instant_update _ -> Kind.Sc_rollup_instant_update_manager_kind
   | Zk_rollup_origination _ -> Kind.Zk_rollup_origination_manager_kind
   | Zk_rollup_publish _ -> Kind.Zk_rollup_publish_manager_kind
   | Zk_rollup_update _ -> Kind.Zk_rollup_update_manager_kind
@@ -546,6 +555,8 @@ let sc_rollup_operation_timeout_tag = sc_rollup_operation_tag_offset + 5
 let sc_rollup_execute_outbox_message_tag = sc_rollup_operation_tag_offset + 6
 
 let sc_rollup_operation_recover_bond_tag = sc_rollup_operation_tag_offset + 7
+
+let sc_rollup_instant_update_tag = sc_rollup_operation_tag_offset + 8
 
 let dal_offset = 230
 
@@ -1017,6 +1028,27 @@ module Encoding = struct
           inj =
             (fun (sc_rollup, staker) ->
               Sc_rollup_recover_bond {sc_rollup; staker});
+        }
+
+    let sc_rollup_instant_update_case =
+      MCase
+        {
+          tag = sc_rollup_instant_update_tag;
+          name = "smart_rollup_instant_update";
+          encoding =
+            obj2
+              (req "rollup" Sc_rollup_repr.Address.encoding)
+              (req "new_state" Sc_rollup_repr.State_hash.encoding);
+          select =
+            (function
+            | Manager (Sc_rollup_instant_update _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Sc_rollup_instant_update {sc_rollup; new_state} ->
+                (sc_rollup, new_state));
+          inj =
+            (fun (sc_rollup, new_state) ->
+              Sc_rollup_instant_update {sc_rollup; new_state});
         }
   end
 
@@ -1540,6 +1572,11 @@ module Encoding = struct
       sc_rollup_operation_recover_bond_tag
       Manager_operations.sc_rollup_recover_bond_case
 
+  let sc_rollup_instant_update_case =
+    make_manager_case
+      sc_rollup_instant_update_tag
+      Manager_operations.sc_rollup_instant_update_case
+
   let zk_rollup_origination_case =
     make_manager_case
       zk_rollup_operation_create_tag
@@ -1586,6 +1623,7 @@ module Encoding = struct
       PCase sc_rollup_timeout_case;
       PCase sc_rollup_execute_outbox_message_case;
       PCase sc_rollup_recover_bond_case;
+      PCase sc_rollup_instant_update_case;
       PCase zk_rollup_origination_case;
       PCase zk_rollup_publish_case;
       PCase zk_rollup_update_case;
@@ -2050,6 +2088,8 @@ let equal_manager_operation_kind :
   | Sc_rollup_execute_outbox_message _, _ -> None
   | Sc_rollup_recover_bond _, Sc_rollup_recover_bond _ -> Some Eq
   | Sc_rollup_recover_bond _, _ -> None
+  | Sc_rollup_instant_update _, Sc_rollup_instant_update _ -> Some Eq
+  | Sc_rollup_instant_update _, _ -> None
   | Zk_rollup_origination _, Zk_rollup_origination _ -> Some Eq
   | Zk_rollup_origination _, _ -> None
   | Zk_rollup_publish _, Zk_rollup_publish _ -> Some Eq

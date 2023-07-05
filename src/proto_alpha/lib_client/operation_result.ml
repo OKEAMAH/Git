@@ -327,6 +327,14 @@ let pp_manager_operation_content (type kind) source ppf
         sc_rollup
         Signature.Public_key_hash.pp
         staker
+  | Sc_rollup_instant_update {sc_rollup; new_state} ->
+      Format.fprintf
+        ppf
+        "Smart rollup instant update:@,Address: %a@,New state: %a"
+        Sc_rollup.Address.pp
+        sc_rollup
+        Sc_rollup.State_hash.pp
+        new_state
   | Dal_publish_slot_header operation ->
       Format.fprintf
         ppf
@@ -698,6 +706,11 @@ let pp_manager_operation_contents_result ppf op_result =
     pp_balance_updates ppf balance_updates ;
     pp_consumed_gas ppf consumed_gas
   in
+  let pp_sc_rollup_instant_update_result
+      (Sc_rollup_instant_update_result {balance_updates; consumed_gas}) =
+    pp_balance_updates ppf balance_updates ;
+    pp_consumed_gas ppf consumed_gas
+  in
   let pp_zk_rollup_origination_result
       (Zk_rollup_origination_result
         {consumed_gas; originated_zk_rollup; storage_size; balance_updates}) =
@@ -742,6 +755,7 @@ let pp_manager_operation_contents_result ppf op_result =
     | Sc_rollup_execute_outbox_message_result _ ->
         "smart output message execution"
     | Sc_rollup_recover_bond_result _ -> "smart rollup bond retrieval"
+    | Sc_rollup_instant_update_result _ -> "smart rollup instant update"
     | Dal_publish_slot_header_result _ ->
         "data availability slot header publishing"
     | Zk_rollup_origination_result _ -> "epoxy originate"
@@ -774,6 +788,8 @@ let pp_manager_operation_contents_result ppf op_result =
         pp_sc_rollup_execute_outbox_message_result op
     | Sc_rollup_recover_bond_result _ as op ->
         pp_sc_rollup_recover_bond_result op
+    | Sc_rollup_instant_update_result _ as op ->
+        pp_sc_rollup_instant_update_result op
     | Dal_publish_slot_header_result _ as op ->
         pp_dal_publish_slot_header_result op
     | Zk_rollup_origination_result _ as op -> pp_zk_rollup_origination_result op

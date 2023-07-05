@@ -132,6 +132,11 @@ type _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.sc_rollup_recover_bond successful_manager_operation_result
+  | Sc_rollup_instant_update_result : {
+      balance_updates : Receipt.balance_updates;
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.sc_rollup_instant_update successful_manager_operation_result
   | Zk_rollup_origination_result : {
       balance_updates : Receipt.balance_updates;
       originated_zk_rollup : Zk_rollup.t;
@@ -831,6 +836,26 @@ module Manager_result = struct
             (balance_updates, consumed_gas))
       ~inj:(fun (balance_updates, consumed_gas) ->
         Sc_rollup_recover_bond_result {balance_updates; consumed_gas})
+
+  let sc_rollup_instant_update_case =
+    make
+      ~op_case:
+        Operation.Encoding.Manager_operations.sc_rollup_instant_update_case
+      ~encoding:
+        Data_encoding.(
+          obj2
+            (req "balance_updates" Receipt.balance_updates_encoding)
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
+      ~select:(function
+        | Successful_manager_result (Sc_rollup_instant_update_result _ as op) ->
+            Some op
+        | _ -> None)
+      ~kind:Kind.Sc_rollup_instant_update_manager_kind
+      ~proj:(function
+        | Sc_rollup_instant_update_result {balance_updates; consumed_gas} ->
+            (balance_updates, consumed_gas))
+      ~inj:(fun (balance_updates, consumed_gas) ->
+        Sc_rollup_instant_update_result {balance_updates; consumed_gas})
 end
 
 let successful_manager_operation_result_encoding :
@@ -989,6 +1014,10 @@ let equal_manager_kind :
       Kind.Sc_rollup_recover_bond_manager_kind ) ->
       Some Eq
   | Kind.Sc_rollup_recover_bond_manager_kind, _ -> None
+  | ( Kind.Sc_rollup_instant_update_manager_kind,
+      Kind.Sc_rollup_instant_update_manager_kind ) ->
+      Some Eq
+  | Kind.Sc_rollup_instant_update_manager_kind, _ -> None
   | ( Kind.Zk_rollup_origination_manager_kind,
       Kind.Zk_rollup_origination_manager_kind ) ->
       Some Eq
@@ -1646,6 +1675,18 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
+  let sc_rollup_instant_update_case =
+    make_manager_case
+      Operation.Encoding.sc_rollup_instant_update_case
+      Manager_result.sc_rollup_instant_update_case
+      (function
+        | Contents_and_result
+            ( (Manager_operation {operation = Sc_rollup_instant_update _; _} as
+              op),
+              res ) ->
+            Some (op, res)
+        | _ -> None)
+
   let zk_rollup_origination_case =
     make_manager_case
       Operation.Encoding.zk_rollup_origination_case
@@ -1709,6 +1750,7 @@ let common_cases =
     sc_rollup_timeout_case;
     sc_rollup_execute_outbox_message_case;
     sc_rollup_recover_bond_case;
+    sc_rollup_instant_update_case;
     zk_rollup_origination_case;
     zk_rollup_publish_case;
     zk_rollup_update_case;
@@ -2178,6 +2220,34 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Sc_rollup_recover_bond _; _}, _ -> None
+  | ( Manager_operation {operation = Sc_rollup_instant_update _; _},
+      Manager_operation_result
+        {operation_result = Applied (Sc_rollup_instant_update_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_instant_update _; _},
+      Manager_operation_result
+        {
+          operation_result = Backtracked (Sc_rollup_instant_update_result _, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_instant_update _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Sc_rollup_instant_update_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_instant_update _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Sc_rollup_instant_update_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | Manager_operation {operation = Sc_rollup_instant_update _; _}, _ -> None
   | ( Manager_operation {operation = Transfer_ticket _; _},
       Manager_operation_result
         {operation_result = Applied (Transfer_ticket_result _); _} ) ->

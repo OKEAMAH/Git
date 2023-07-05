@@ -1176,6 +1176,10 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
+  | Sc_rollup_instant_update {sc_rollup; new_state} ->
+      ignore sc_rollup ;
+      ignore new_state ;
+      failwith "TODO"
   | Zk_rollup_origination {public_parameters; circuits_info; init_state; nb_ops}
     ->
       Zk_rollup_apply.originate
@@ -1383,6 +1387,7 @@ let burn_manager_storage_fees :
         Sc_rollup_execute_outbox_message_result {payload with balance_updates}
       )
   | Sc_rollup_recover_bond_result _ -> return (ctxt, storage_limit, smopr)
+  | Sc_rollup_instant_update_result _ -> return (ctxt, storage_limit, smopr)
   | Zk_rollup_origination_result payload ->
       Fees.burn_zk_rollup_origination_fees
         ctxt

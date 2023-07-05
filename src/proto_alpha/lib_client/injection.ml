@@ -338,7 +338,8 @@ let estimated_gas_single (type kind)
         | Sc_rollup_refute_result {consumed_gas; _}
         | Sc_rollup_timeout_result {consumed_gas; _}
         | Sc_rollup_execute_outbox_message_result {consumed_gas; _}
-        | Sc_rollup_recover_bond_result {consumed_gas; _} ->
+        | Sc_rollup_recover_bond_result {consumed_gas; _}
+        | Sc_rollup_instant_update_result {consumed_gas; _} ->
             Ok consumed_gas
         | Zk_rollup_origination_result {consumed_gas; _} -> Ok consumed_gas
         | Zk_rollup_publish_result {consumed_gas; _} -> Ok consumed_gas
@@ -412,7 +413,7 @@ let estimated_storage_single (type kind) ~origination_size
         *)
         | Sc_rollup_cement_result _ | Sc_rollup_publish_result _
         | Sc_rollup_refute_result _ | Sc_rollup_timeout_result _
-        | Sc_rollup_recover_bond_result _ ->
+        | Sc_rollup_recover_bond_result _ | Sc_rollup_instant_update_result _ ->
             Ok Z.zero)
     | Skipped _ ->
         error_with "Cannot estimate storage of skipped operation"
@@ -485,8 +486,9 @@ let originated_contracts_single (type kind)
         | Sc_rollup_cement_result _ | Sc_rollup_publish_result _
         | Sc_rollup_refute_result _ | Sc_rollup_timeout_result _
         | Sc_rollup_execute_outbox_message_result _
-        | Sc_rollup_recover_bond_result _ | Zk_rollup_origination_result _
-        | Zk_rollup_publish_result _ | Zk_rollup_update_result _ ->
+        | Sc_rollup_recover_bond_result _ | Sc_rollup_instant_update_result _
+        | Zk_rollup_origination_result _ | Zk_rollup_publish_result _
+        | Zk_rollup_update_result _ ->
             Ok [])
     | Skipped _ ->
         error_with "Cannot know originated contracts of skipped operation"

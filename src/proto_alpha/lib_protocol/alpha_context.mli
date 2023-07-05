@@ -4154,6 +4154,8 @@ module Kind : sig
 
   type sc_rollup_recover_bond = Sc_rollup_recover_bond_kind
 
+  type sc_rollup_instant_update = Sc_rollup_instant_update_kind
+
   type zk_rollup_origination = Zk_rollup_origination_kind
 
   type zk_rollup_publish = Zk_rollup_publish_kind
@@ -4181,6 +4183,7 @@ module Kind : sig
     | Sc_rollup_execute_outbox_message_manager_kind
         : sc_rollup_execute_outbox_message manager
     | Sc_rollup_recover_bond_manager_kind : sc_rollup_recover_bond manager
+    | Sc_rollup_instant_update_manager_kind : sc_rollup_instant_update manager
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
     | Zk_rollup_update_manager_kind : zk_rollup_update manager
@@ -4374,6 +4377,11 @@ and _ manager_operation =
       staker : Signature.Public_key_hash.t;
     }
       -> Kind.sc_rollup_recover_bond manager_operation
+  | Sc_rollup_instant_update : {
+      sc_rollup : Sc_rollup_repr.t;
+      new_state : Sc_rollup_repr.State_hash.t;
+    }
+      -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {
       public_parameters : Plonk.public_parameters;
       circuits_info : [`Public | `Private | `Fee] Zk_rollup.Account.SMap.t;
@@ -4586,6 +4594,9 @@ module Operation : sig
     val sc_rollup_recover_bond_case :
       Kind.sc_rollup_recover_bond Kind.manager case
 
+    val sc_rollup_instant_update_case :
+      Kind.sc_rollup_instant_update Kind.manager case
+
     val zk_rollup_origination_case :
       Kind.zk_rollup_origination Kind.manager case
 
@@ -4643,6 +4654,8 @@ module Operation : sig
         Kind.sc_rollup_execute_outbox_message case
 
       val sc_rollup_recover_bond_case : Kind.sc_rollup_recover_bond case
+
+      val sc_rollup_instant_update_case : Kind.sc_rollup_instant_update case
 
       val zk_rollup_origination_case : Kind.zk_rollup_origination case
 

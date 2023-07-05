@@ -2104,7 +2104,7 @@ module Manager = struct
       | Sc_rollup_add_messages {messages; _} ->
           let* () = assert_sc_rollup_feature_enabled vi in
           assert_not_zero_messages messages
-      | Sc_rollup_recover_bond _ ->
+      | Sc_rollup_recover_bond _ | Sc_rollup_instant_update _ ->
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/3063
              Should we successfully precheck Sc_rollup_recover_bond and any
              (simple) Sc rollup operation, or should we add some some checks to make
