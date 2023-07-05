@@ -161,11 +161,13 @@ Node
   metric, and renamed the ``octez_mempool_pending_prechecked`` one to
   ``octez_mempool_pending_validated``. (MR :gl:`!9137`)
 
-- Added version ``1`` to RPC ``POST ../helpers/preapply/operations``. It can be
-  used by calling the RPC with the parameter ``?version=1`` (default version is
-  still ``0``). Version ``1`` allows the RPC to output ``attestation``,
+- Introduced a version ``v1`` to RPC ``POST ../helpers/preapply/operations`` and
+  ``POST ../helpers/preapply/block``. It can be used by calling ``POST
+  ../helpers/preapply/operations/v1`` and ``POST ../helpers/preapply/block/v1``.
+  This version allows the RPC to allow in both input and output ``attestation``,
   ``preattestation``, ``double_attestation_evidence`` and
-  ``double_preattestation_evidence`` kinds in the JSON result. (MR :gl:`!8891`)
+  ``double_preattestation_evidence`` kinds in the JSON result. (MRs :gl:`!8891`,
+  :gl:`!9410`)
 
 - Changed default stdout logs by adding simple coloration. The log header
   header is now bold and warning and errors are highlighted. The
