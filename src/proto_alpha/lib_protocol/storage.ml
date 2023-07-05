@@ -1276,7 +1276,7 @@ module Slashed_deposits = Cycle.Slashed_deposits
 module Stake = struct
   module Staking_balance_up_to_Nairobi =
     Make_indexed_data_snapshotable_storage
-      (Make_subcontext (Registered) (Raw_context)
+      (Make_subcontext (Ghost) (Raw_context)
          (struct
            let name = ["staking_balance"]
          end))
