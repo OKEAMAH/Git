@@ -108,7 +108,7 @@ let get_mempool ?endpoint ?hooks ?chain ?(validated = true)
     RPC.Client.call client ?hooks ?endpoint
     @@ RPC.get_chain_mempool_pending_operations
          ?chain
-         ~version:"2"
+         ~version:"1"
          ~validated
          ~branch_delayed
          ~branch_refused

@@ -46,6 +46,13 @@ let make ?data ?query_string =
     ~get_port:Node.rpc_port
     ~get_scheme:Node.rpc_scheme
 
+(* Add `/v<n>` at the end of the rpc path if the given version is not the
+   default one *)
+let rpc_version ~default ~path = function
+  | None -> path
+  | Some n when String.equal n default -> path
+  | Some n -> path @ [sf "v%s" n]
+
 module Decode = struct
   let mutez json = json |> JSON.as_int |> Tez.of_mutez_int
 end
@@ -450,8 +457,7 @@ let get_chain_block_operations_validation_pass ?(chain = "main")
 let get_chain_mempool_pending_operations ?(chain = "main") ?version ?validated
     ?branch_delayed ?branch_refused ?refused ?outdated ?validation_passes () =
   let query_string =
-    Query_arg.opt "version" Fun.id version
-    @ Query_arg.opt_bool "validated" validated
+    Query_arg.opt_bool "validated" validated
     @ Query_arg.opt_bool "refused" refused
     @ Query_arg.opt_bool "outdated" outdated
     @ Query_arg.opt_bool "branch_delayed" branch_delayed
@@ -461,11 +467,8 @@ let get_chain_mempool_pending_operations ?(chain = "main") ?version ?validated
         (fun name vp -> (name, string_of_int vp))
         validation_passes
   in
-  make
-    ~query_string
-    GET
-    ["chains"; chain; "mempool"; "pending_operations"]
-    Fun.id
+  let path = ["chains"; chain; "mempool"; "pending_operations"] in
+  make ~query_string GET (rpc_version ~default:"0" ~path version) Fun.id
 
 let get_chain_mempool_monitor_operations ?(chain = "main") ?version ?validated
     ?branch_delayed ?branch_refused ?refused ?outdated ?validation_passes () =
