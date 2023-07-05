@@ -379,6 +379,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
         #simple ->
         ?chain:chain ->
         ?block:block ->
+        ?version:version ->
         ?sort:bool ->
         ?timestamp:Time.Protocol.t ->
         protocol_data:Next_proto.block_header_data ->
@@ -739,15 +740,31 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
             Block_header.shell_header * error Preapply_result.t list )
           Tezos_rpc.Service.t
 
+        val block_v1 :
+          ( [`POST],
+            prefix,
+            prefix,
+            < sort_operations : bool ; timestamp : Time.Protocol.t option >,
+            block_param,
+            Block_header.shell_header * error Preapply_result.t list )
+          Tezos_rpc.Service.t
+
         val operations :
           ( [`POST],
             prefix,
             prefix,
-            < version : version >,
+            unit,
             Next_proto.operation list,
-            version
-            * (Next_proto.operation_data * Next_proto.operation_receipt) list
-          )
+            (Next_proto.operation_data * Next_proto.operation_receipt) list )
+          Tezos_rpc.Service.t
+
+        val operations_v1 :
+          ( [`POST],
+            prefix,
+            prefix,
+            unit,
+            Next_proto.operation list,
+            (Next_proto.operation_data * Next_proto.operation_receipt) list )
           Tezos_rpc.Service.t
       end
 

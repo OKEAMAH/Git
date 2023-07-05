@@ -645,109 +645,109 @@ let build_raw_rpc_directory (module Proto : Block_services.PROTO)
   register0 S.info info ;
   register0 S.info_v1 info ;
   (* helpers *)
-  register0 S.Helpers.Preapply.block (fun (chain_store, block) q p ->
-      let timestamp =
-        match q#timestamp with
-        | None -> Time.System.to_protocol (Time.System.now ())
-        | Some time -> time
-      in
-      let protocol_data =
-        Data_encoding.Binary.to_bytes_exn
-          Next_proto.block_header_data_encoding
-          p.protocol_data
-      in
-      let operations =
-        List.map
-          (fun operations ->
-            let operations =
-              List.map
-                (fun op ->
-                  let proto =
-                    Data_encoding.Binary.to_bytes_exn
-                      Next_proto
-                      .operation_data_encoding_with_legacy_attestation_name
-                      op.Next_proto.protocol_data
-                  in
-                  (op, {Operation.shell = op.shell; proto}))
+  let register_preapply_block (chain_store, block) q
+      (p : S.Helpers.Preapply.block_param) =
+    let timestamp =
+      match q#timestamp with
+      | None -> Time.System.to_protocol (Time.System.now ())
+      | Some time -> time
+    in
+    let protocol_data =
+      Data_encoding.Binary.to_bytes_exn
+        Next_proto.block_header_data_encoding
+        p.protocol_data
+    in
+    let operations =
+      List.map
+        (fun operations ->
+          let operations =
+            List.map
+              (fun op ->
+                let proto =
+                  Data_encoding.Binary.to_bytes_exn
+                    Next_proto
+                    .operation_data_encoding_with_legacy_attestation_name
+                    op.Next_proto.protocol_data
+                in
+                (op, {Operation.shell = op.shell; proto}))
+              operations
+          in
+          let operations =
+            if q#sort_operations then
+              List.sort
+                (fun (op, ops) (op', ops') ->
+                  let oph, oph' = (Operation.hash ops, Operation.hash ops') in
+                  Next_proto.compare_operations (oph, op) (oph', op'))
                 operations
-            in
-            let operations =
-              if q#sort_operations then
-                List.sort
-                  (fun (op, ops) (op', ops') ->
-                    let oph, oph' = (Operation.hash ops, Operation.hash ops') in
-                    Next_proto.compare_operations (oph, op) (oph', op'))
-                  operations
-              else operations
-            in
-            List.map snd operations)
-          p.operations
-      in
-      let* bv =
-        try return (Block_validator.running_worker ())
-        with _ -> failwith "Block validator is not running"
-      in
-      Block_validator.preapply
-        bv
-        chain_store
-        ~predecessor:block
-        ~timestamp
-        ~protocol_data
-        operations) ;
-  register0
-    S.Helpers.Preapply.operations
-    (fun (chain_store, block) params ops ->
-      let* ctxt = Store.Block.context chain_store block in
-      let chain_id = Store.Chain.chain_id chain_store in
-      let mode =
-        let predecessor_hash = Store.Block.hash block in
-        let timestamp = Time.System.to_protocol (Time.System.now ()) in
-        Next_proto.Partial_construction {predecessor_hash; timestamp}
-      in
-      let predecessor = Store.Block.shell_header block in
-      let* validation_state =
-        Next_proto.begin_validation ctxt chain_id mode ~predecessor ~cache:`Lazy
-      in
-      let* application_state =
-        Next_proto.begin_application
-          ctxt
-          chain_id
-          mode
-          ~predecessor
-          ~cache:`Lazy
-      in
-      let* hashed_ops =
-        List.map_es
-          (fun op ->
-            match
-              Data_encoding.Binary.to_bytes
-                Next_proto.operation_data_encoding_with_legacy_attestation_name
-                op.Next_proto.protocol_data
-            with
-            | Error _ ->
-                failwith "preapply_operations: cannot deserialize operation"
-            | Ok proto ->
-                let op_t = {Operation.shell = op.shell; proto} in
-                Lwt_result.return (Operation.hash op_t, op))
-          ops
-      in
-      let* _validation_state, _application_state, acc =
-        List.fold_left_es
-          (fun (validation_state, application_state, acc) (oph, op) ->
-            let* validation_state =
-              Next_proto.validate_operation validation_state oph op
-            in
-            let* application_state, result =
-              Next_proto.apply_operation application_state oph op
-            in
-            return
-              ( validation_state,
-                application_state,
-                (op.protocol_data, result) :: acc ))
-          (validation_state, application_state, [])
-          hashed_ops
-      in
-      return (params#version, List.rev acc)) ;
+            else operations
+          in
+          List.map snd operations)
+        p.operations
+    in
+    let* bv =
+      try return (Block_validator.running_worker ())
+      with _ -> failwith "Block validator is not running"
+    in
+    Block_validator.preapply
+      bv
+      chain_store
+      ~predecessor:block
+      ~timestamp
+      ~protocol_data
+      operations
+  in
+  register0 S.Helpers.Preapply.block register_preapply_block ;
+  register0 S.Helpers.Preapply.block_v1 register_preapply_block ;
+  let register_preapply_operations (chain_store, block) _params ops =
+    let* ctxt = Store.Block.context chain_store block in
+    let chain_id = Store.Chain.chain_id chain_store in
+    let mode =
+      let predecessor_hash = Store.Block.hash block in
+      let timestamp = Time.System.to_protocol (Time.System.now ()) in
+      Next_proto.Partial_construction {predecessor_hash; timestamp}
+    in
+    let predecessor = Store.Block.shell_header block in
+    let* validation_state =
+      Next_proto.begin_validation ctxt chain_id mode ~predecessor ~cache:`Lazy
+    in
+    let* application_state =
+      Next_proto.begin_application ctxt chain_id mode ~predecessor ~cache:`Lazy
+    in
+    let* hashed_ops =
+      List.map_es
+        (fun op ->
+          match
+            Data_encoding.Binary.to_bytes
+              Next_proto.operation_data_encoding_with_legacy_attestation_name
+              op.Next_proto.protocol_data
+          with
+          | Error _ ->
+              failwith "preapply_operations: cannot deserialize operation"
+          | Ok proto ->
+              let op_t = {Operation.shell = op.shell; proto} in
+              Lwt_result.return (Operation.hash op_t, op))
+        ops
+    in
+    let* _validation_state, _application_state, acc =
+      List.fold_left_es
+        (fun (validation_state, application_state, acc) (oph, op) ->
+          let* validation_state =
+            Next_proto.validate_operation validation_state oph op
+          in
+          let* application_state, result =
+            Next_proto.apply_operation application_state oph op
+          in
+          return
+            ( validation_state,
+              application_state,
+              (op.protocol_data, result) :: acc ))
+        (validation_state, application_state, [])
+        hashed_ops
+    in
+    return (List.rev acc)
+  in
+  register0 S.Helpers.Preapply.operations register_preapply_operations ;
+  register0 S.Helpers.Preapply.operations_v1 register_preapply_operations ;
   register1 S.Helpers.complete (fun (chain_store, block) prefix () () ->
       let* ctxt = Store.Block.context chain_store block in
       let*! l1 = Tezos_crypto.Base58.complete prefix in

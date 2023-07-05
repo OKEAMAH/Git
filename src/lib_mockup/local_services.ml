@@ -561,7 +561,7 @@ module Make (E : MENV) = struct
          Directory.empty
          (* /chains/<chain_id>/blocks/<block_id>/helpers/preapply/operations *)
          E.Block_services.S.Helpers.Preapply.operations
-         (fun ((_, chain), _block) params op_list ->
+         (fun ((_, chain), _block) _params op_list ->
            with_chain ~caller_name:"preapply operations" chain (fun () ->
                let*! outcome =
                  let* proto_state = partial_construction ~cache:`Lazy () in
@@ -585,7 +585,7 @@ module Make (E : MENV) = struct
                  return (List.rev acc)
                in
                match outcome with
-               | Ok result -> Tezos_rpc.Answer.return (params#version, result)
+               | Ok result -> Tezos_rpc.Answer.return result
                | Error errs -> Tezos_rpc.Answer.fail errs)))
 
   let hash_op (shell, proto) =

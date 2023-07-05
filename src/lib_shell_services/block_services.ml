@@ -29,40 +29,6 @@ module Proof = Tezos_context_sigs.Context.Proof_types
 
 type version = Version_0 | Version_1
 
-let string_of_version = function Version_0 -> "0" | Version_1 -> "1"
-
-let unsupported_version_msg version supported =
-  Format.asprintf
-    "Unsupported version %s (supported versions %a)"
-    version
-    (Format.pp_print_list
-       ~pp_sep:(fun fmt () -> Format.fprintf fmt ",")
-       (fun fmt version ->
-         Format.fprintf fmt "\"%s\"" (string_of_version version)))
-    supported
-
-let is_supported_version version supported =
-  List.mem ~equal:( == ) version supported
-
-let version_of_string supported version =
-  let open Result_syntax in
-  let* version_t =
-    match version with
-    | "0" -> Ok Version_0
-    | "1" -> Ok Version_1
-    | _ -> Error (unsupported_version_msg version supported)
-  in
-  if is_supported_version version_t supported then Ok version_t
-  else Error (unsupported_version_msg version supported)
-
-let version_arg supported =
-  let open Tezos_rpc.Arg in
-  make
-    ~name:"version"
-    ~destruct:(version_of_string supported)
-    ~construct:string_of_version
-    ()
-
 (* TODO: V2.Tree32 has been chosen arbitrarily ; maybe it's not the best option *)
 module Merkle_proof_encoding =
   Tezos_context_merkle_proof_encoding.Merkle_proof_encoding.V2.Tree32
@@ -935,23 +901,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       module Preapply = struct
         let path = Tezos_rpc.Path.(path / "preapply")
 
-        let preapply_operation_encoding =
-          union
-            [
-              case
-                ~title:"operation_data_encoding"
-                (Tag 0)
-                next_operation_encoding
-                Option.some
-                Fun.id;
-              case
-                ~title:"operation_data_encoding_with_legacy_attestation_name"
-                Json_only
-                next_operation_encoding_with_legacy_attestation_name
-                Option.some
-                Fun.id;
-            ]
-
         let block_result_encoding =
           obj2
             (req "shell_header" Block_header.shell_header_encoding)
@@ -964,7 +913,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           operations : Next_proto.operation list list;
         }
 
-        let block_param_encoding =
+        let block_param_encoding ~use_legacy_encoding_name =
           conv
             (fun {protocol_data; operations} -> (protocol_data, operations))
             (fun (protocol_data, operations) -> {protocol_data; operations})
@@ -979,7 +928,12 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
                         (dynamic_size Next_proto.block_header_data_encoding))))
                (req
                   "operations"
-                  (list (dynamic_size (list preapply_operation_encoding)))))
+                  (list
+                     (dynamic_size
+                        (list
+                           (if use_legacy_encoding_name then
+                            next_operation_encoding_with_legacy_attestation_name
+                           else next_operation_encoding))))))
 
         let block_query =
           let open Tezos_rpc.Query in
@@ -993,69 +947,58 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
           |+ opt_field "timestamp" Time.Protocol.rpc_arg (fun t -> t#timestamp)
           |> seal
 
+        let default_preapply_block_version = Version_0
+
         let block =
+          Tezos_rpc.Service.post_service
+            ~description:
+              "(Deprecated, used `/preapply/block/v1` instead) Simulate the \
+               validation of a block that would contain the given operations \
+               and return the resulting fitness and context hash."
+            ~query:block_query
+            ~input:(block_param_encoding ~use_legacy_encoding_name:true)
+            ~output:block_result_encoding
+            Tezos_rpc.Path.(path / "block")
+
+        let block_v1 =
           Tezos_rpc.Service.post_service
             ~description:
               "Simulate the validation of a block that would contain the given \
                operations and return the resulting fitness and context hash."
             ~query:block_query
-            ~input:block_param_encoding
+            ~input:(block_param_encoding ~use_legacy_encoding_name:false)
             ~output:block_result_encoding
-            Tezos_rpc.Path.(path / "block")
+            Tezos_rpc.Path.(path / "block" / "v1")
 
         let default_preapply_operations_version = Version_0
 
-        let preapply_supported_versions = [Version_0; Version_1]
-
-        let operations_query =
-          let open Tezos_rpc.Query in
-          query (fun version ->
-              object
-                method version = version
-              end)
-          |+ field
-               "version"
-               (version_arg preapply_supported_versions)
-               default_preapply_operations_version
-               (fun t -> t#version)
-          |> seal
-
-        let preapplied_operations_encoding =
-          union
-            [
-              case
-                ~title:"preapplied_operations_encoding"
-                (Tag 1)
-                (list
-                   (dynamic_size Next_proto.operation_data_and_receipt_encoding))
-                (function
-                  | Version_1, preapply_operations -> Some preapply_operations
-                  | Version_0, _ -> None)
-                (fun preapply_operations -> (Version_1, preapply_operations));
-              case
-                ~title:
-                  "preapplied_operations_encoding_with_legacy_attestation_name"
-                (Tag 0)
-                (list
-                   (dynamic_size
-                      Next_proto
-                      .operation_data_and_receipt_encoding_with_legacy_attestation_name))
-                (function
-                  | Version_0, preapply_operations -> Some preapply_operations
-                  | Version_1, _ -> None)
-                (fun preapply_operations -> (Version_0, preapply_operations));
-            ]
-
         let operations =
+          Tezos_rpc.Service.post_service
+            ~description:
+              "(Deprecated, used `/preapply/operations/v1` instead) Simulate \
+               the application of the operations with the context of the given \
+               block and return the result of each operation application."
+            ~query:Tezos_rpc.Query.empty
+            ~input:(list next_operation_encoding_with_legacy_attestation_name)
+            ~output:
+              (list
+                 (dynamic_size
+                    Next_proto
+                    .operation_data_and_receipt_encoding_with_legacy_attestation_name))
+            Tezos_rpc.Path.(path / "operations")
+
+        let operations_v1 =
           Tezos_rpc.Service.post_service
             ~description:
               "Simulate the application of the operations with the context of \
                the given block and return the result of each operation \
                application."
-            ~query:operations_query
-            ~input:(list preapply_operation_encoding)
-            ~output:preapplied_operations_encoding
-            Tezos_rpc.Path.(path / "operations")
+            ~query:Tezos_rpc.Query.empty
+            ~input:(list next_operation_encoding)
+            ~output:
+              (list
+                 (dynamic_size Next_proto.operation_data_and_receipt_encoding))
+            Tezos_rpc.Path.(path / "operations" / "v1")
       end
 
       let complete =
@@ -1751,14 +1694,13 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
     module Preapply = struct
       module S = S.Preapply
 
-      let block ctxt =
-        let f = make_call0 S.block ctxt in
-        fun ?(chain = `Main)
-            ?(block = `Head 0)
-            ?(sort = false)
-            ?timestamp
-            ~protocol_data
-            operations ->
+      let block ctxt ?(chain = `Main) ?(block = `Head 0)
+          ?(version = S.default_preapply_block_version) =
+        let s =
+          match version with Version_0 -> S.block | Version_1 -> S.block_v1
+        in
+        let f = make_call0 s ctxt in
+        fun ?(sort = false) ?timestamp ~protocol_data operations ->
           f
             chain
             block
@@ -1771,19 +1713,12 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
 
       let operations ctxt ?(chain = `Main) ?(block = `Head 0)
           ?(version = S.default_preapply_operations_version) operations =
-        let open Lwt_result_syntax in
-        let* (Version_0 | Version_1), preapply_operations =
-          make_call0
-            S.operations
-            ctxt
-            chain
-            block
-            (object
-               method version = version
-            end)
-            operations
+        let s =
+          match version with
+          | Version_0 -> S.operations
+          | Version_1 -> S.operations_v1
         in
-        return preapply_operations
+        make_call0 s ctxt chain block () operations
     end
 
     let complete ctxt =
