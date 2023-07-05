@@ -733,8 +733,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
     end
 
     module Mempool : sig
-      val encoding : Mempool.t Data_encoding.t
-
       (** Define RPC GET /chains/[chain]/mempool/pending_operations *)
       val pending_operations :
         ('a, 'b) Tezos_rpc.Path.t ->
