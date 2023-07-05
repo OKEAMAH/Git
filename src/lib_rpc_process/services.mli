@@ -23,13 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Type for the rpc process parameters received from the node *)
-type t = {
-  config : Config_file.t;
-  rpc_comm_socket_path : string;
-  internal_events : Tezos_base.Internal_event_config.t;
-  node_version : Tezos_version.Node_version.t;
-}
-
-(** Encoding for parameters type {!t} *)
-val parameters_encoding : t Data_encoding.t
+(** Servirce returning a configuration file. *)
+val config :
+  ( [`GET],
+    unit,
+    unit,
+    unit,
+    unit,
+    Config_file.t,
+    error trace )
+  Tezos_rpc.Service.raw

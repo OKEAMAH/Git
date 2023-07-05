@@ -24,5 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let build_rpc_directory node_version =
-  Tezos_shell.Version_directory.rpc_directory node_version
+let build_rpc_directory node_version config =
+  let dir = Tezos_shell.Version_directory.rpc_directory node_version in
+  Tezos_rpc.Directory.register0 dir Services.config (fun () () ->
+      Lwt.return_ok config)

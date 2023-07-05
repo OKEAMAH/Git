@@ -23,13 +23,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Type for the rpc process parameters received from the node *)
-type t = {
-  config : Config_file.t;
-  rpc_comm_socket_path : string;
-  internal_events : Tezos_base.Internal_event_config.t;
-  node_version : Tezos_version.Node_version.t;
-}
-
-(** Encoding for parameters type {!t} *)
-val parameters_encoding : t Data_encoding.t
+let config =
+  Tezos_rpc.Service.get_service
+    ~description:
+      "Return the runtime node configuration (this takes into account the \
+       command-line arguments and the on-disk configuration file)"
+    ~query:Tezos_rpc.Query.empty
+    ~output:Config_file.encoding
+    Tezos_rpc.Path.(root / "config")
