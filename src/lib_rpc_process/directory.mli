@@ -30,4 +30,5 @@
 val build_rpc_directory :
   Tezos_version.Node_version.t ->
   Octez_node_config.Config_file.t ->
+  Store.t option ref ->
   unit Tezos_rpc.Directory.t

@@ -23,6 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** Uri to the forwarding socket *)
+val socket_forwarding_uri : string
+
+(** [build_socket_redirection_ctx socket_path] builds a [ctx] including the
+    redirection to the given [socket_path] *)
+val build_socket_redirection_ctx : string -> Cohttp_lwt_unix.Net.ctx
+
 (** [callback server socket_path] redirect all the trafic received by the given
     [server] to the socket determined by [socket_path] *)
 val callback : RPC_server.server -> string -> RPC_server.callback

@@ -15,6 +15,10 @@ depends: [
   "octez-node-config"
   "tezos-rpc-http"
   "tezos-rpc-http-server"
+  "tezos-rpc-http-client-unix"
+  "tezos-rpc-http-client"
+  "tezos-shell-services"
+  "tezos-store"
   "lwt" { >= "5.6.0" }
   "lwt-exit"
   "prometheus-app" { >= "1.2" }

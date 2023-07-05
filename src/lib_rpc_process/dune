@@ -12,6 +12,10 @@
   octez-node-config
   tezos-rpc-http
   tezos-rpc-http-server
+  tezos-rpc-http-client-unix
+  tezos-rpc-http-client
+  tezos-shell-services
+  tezos-store
   lwt.unix
   lwt-exit
   prometheus-app)
@@ -23,4 +27,7 @@
   -open Tezos_base_unix
   -open Octez_node_config
   -open Tezos_rpc_http
-  -open Tezos_rpc_http_server))
+  -open Tezos_rpc_http_server
+  -open Tezos_rpc_http_client_unix
+  -open Tezos_rpc_http_client
+  -open Tezos_store))
