@@ -147,21 +147,22 @@ let record_request_unstake ctxt ~sender_contract ~delegate requested_amount =
   let open Lwt_result_syntax in
   if Tez.(requested_amount = zero) then return (ctxt, [])
   else
-    let* requested_pseudotokens =
-      Staking_pseudotokens.frozen_deposits_pseudotokens_for_tez_amount
-        ctxt
-        delegate
-        requested_amount
-    in
     let* available_pseudotokens =
       Staking_pseudotokens.costaking_pseudotokens_balance ctxt sender_contract
     in
-    let pseudotokens_to_unstake =
-      Staking_pseudotokens.min requested_pseudotokens available_pseudotokens
-    in
-    if Staking_pseudotokens.(pseudotokens_to_unstake = zero) then
+    if Staking_pseudotokens.(available_pseudotokens = zero) then
       return (ctxt, [])
     else
+      let* requested_pseudotokens =
+        Staking_pseudotokens.frozen_deposits_pseudotokens_for_tez_amount
+          ctxt
+          delegate
+          requested_amount
+      in
+      let pseudotokens_to_unstake =
+        Staking_pseudotokens.min requested_pseudotokens available_pseudotokens
+      in
+      assert (not Staking_pseudotokens.(pseudotokens_to_unstake = zero)) ;
       let* ctxt, tez_to_unstake =
         Staking_pseudotokens.debit_frozen_deposits_pseudotokens
           ctxt
