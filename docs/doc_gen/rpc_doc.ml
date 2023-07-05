@@ -384,7 +384,12 @@ let make_index node required_version =
      }
       : Tezos_version.Node_version.commit_info)
   in
-  let shell_dir = Node.build_rpc_directory ~version ~commit_info node in
+  let node_version =
+    let network_version = Tezos_p2p.P2p.announced_version (Node.get_p2p node) in
+    Tezos_version.Node_version.
+      {version; commit_info = Some commit_info; network_version}
+  in
+  let shell_dir = Node.build_rpc_directory ~node_version ~commit_info node in
   let protocol_dirs =
     List.map
       (fun (version, name, intro, hash) ->
