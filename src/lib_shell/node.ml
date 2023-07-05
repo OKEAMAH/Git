@@ -74,6 +74,8 @@ type t = {
   shutdown : unit -> unit Lwt.t;
 }
 
+let get_p2p n = n.p2p
+
 let peer_metadata_cfg : _ P2p_params.peer_meta_config =
   {
     peer_meta_encoding = Peer_metadata.encoding;
@@ -346,7 +348,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess ~version
 
 let shutdown node = node.shutdown ()
 
-let build_rpc_directory ~version ~commit_info node =
+let build_rpc_directory ~node_version ~commit_info node =
   let dir : unit Tezos_rpc.Directory.t ref = ref Tezos_rpc.Directory.empty in
   let merge d = dir := Tezos_rpc.Directory.merge !dir d in
   let register0 s f =
@@ -373,7 +375,7 @@ let build_rpc_directory ~version ~commit_info node =
        ~dal_config:node.dal_config
        ~mainchain_validator:node.mainchain_validator
        node.store) ;
-  merge (Version_directory.rpc_directory ~version ~commit_info node.p2p) ;
+  merge (Version_directory.rpc_directory node_version) ;
   register0 Tezos_rpc.Service.error_service (fun () () ->
       Lwt.return_ok (Data_encoding.Json.schema Error_monad.error_encoding)) ;
   !dir

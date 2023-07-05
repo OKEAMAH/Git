@@ -1,6 +1,8 @@
 (*****************************************************************************)
+(*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2018-2021 Nomadic Labs. <contact@nomadic-labs.com>          *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -22,9 +24,5 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let rpc_directory (node_version : Node_version.t) =
-  let dir = Tezos_rpc.Directory.empty in
-  Tezos_rpc.Directory.gen_register
-    dir
-    Version_services.S.version
-    (fun () () () -> Tezos_rpc.Answer.return @@ (node_version : Node_version.t))
+let build_rpc_directory node_version =
+  Tezos_shell.Version_directory.rpc_directory node_version
