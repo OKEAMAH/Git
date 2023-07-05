@@ -473,8 +473,7 @@ let get_chain_mempool_pending_operations ?(chain = "main") ?version ?validated
 let get_chain_mempool_monitor_operations ?(chain = "main") ?version ?validated
     ?branch_delayed ?branch_refused ?refused ?outdated ?validation_passes () =
   let query_string =
-    Query_arg.opt "version" Fun.id version
-    @ Query_arg.opt_bool "validated" validated
+    Query_arg.opt_bool "validated" validated
     @ Query_arg.opt_bool "refused" refused
     @ Query_arg.opt_bool "outdated" outdated
     @ Query_arg.opt_bool "branch_delayed" branch_delayed
@@ -484,11 +483,10 @@ let get_chain_mempool_monitor_operations ?(chain = "main") ?version ?validated
         (fun name vp -> (name, string_of_int vp))
         validation_passes
   in
-  make
-    ~query_string
-    GET
-    ["chains"; chain; "mempool"; "monitor_operations"]
-    Fun.id
+  let path = ["chains"; chain; "mempool"; "monitor_operations"] in
+  let default = "0" in
+  let path = rpc_version ~default ~path version in
+  make ~query_string GET path Fun.id
 
 let post_chain_mempool_request_operations ?(chain = "main") ?peer () =
   make
