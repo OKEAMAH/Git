@@ -11,6 +11,7 @@ depends: [
   "dune" { >= "3.0" }
   "ocaml" { >= "4.14" }
   "tezos-base"
+  "tezos-shell"
   "octez-node-config"
   "tezos-rpc-http"
   "tezos-rpc-http-server"

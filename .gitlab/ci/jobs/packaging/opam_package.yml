@@ -675,7 +675,7 @@ opam:octez-smart-rollup-wasm-benchmark-lib:
 opam:octez-smart-rollup-wasm-debugger:
   extends:
     - .opam_template
-    - .rules_template__trigger_exec_opam_batch_1
+    - .rules_template__trigger_exec_opam_batch_2
   variables:
     package: octez-smart-rollup-wasm-debugger
 
@@ -893,7 +893,7 @@ opam:tezos-client-013-PtJakart:
 opam:tezos-client-014-PtKathma:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_2
+    - .rules_template__trigger_all_opam_batch_3
   variables:
     package: tezos-client-014-PtKathma
 
@@ -1169,7 +1169,7 @@ opam:tezos-embedded-protocol-014-PtKathma:
 opam:tezos-embedded-protocol-015-PtLimaPt:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_3
+    - .rules_template__trigger_all_opam_batch_4
   variables:
     package: tezos-embedded-protocol-015-PtLimaPt
 
@@ -1493,7 +1493,7 @@ opam:tezos-protocol-017-PtNairob:
 opam:tezos-protocol-alpha:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_5
+    - .rules_template__trigger_all_opam_batch_6
   variables:
     package: tezos-protocol-alpha
 
@@ -1628,7 +1628,7 @@ opam:tezos-protocol-plugin-013-PtJakart-registerer:
 opam:tezos-protocol-plugin-014-PtKathma:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_4
+    - .rules_template__trigger_all_opam_batch_5
   variables:
     package: tezos-protocol-plugin-014-PtKathma
 
@@ -1718,7 +1718,7 @@ opam:tezos-proxy:
 opam:tezos-proxy-server-config:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_6
+    - .rules_template__trigger_all_opam_batch_7
   variables:
     package: tezos-proxy-server-config
 
@@ -1975,6 +1975,6 @@ opam:tezt-performance-regression:
 opam:tezt-tezos:
   extends:
     - .opam_template
-    - .rules_template__trigger_all_opam_batch_6
+    - .rules_template__trigger_all_opam_batch_7
   variables:
     package: tezt-tezos
