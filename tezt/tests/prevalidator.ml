@@ -1958,7 +1958,7 @@ module Revamped = struct
     log_step 3 "Check that the batch is correctly [validated] in the mempool." ;
     let* mempool_json =
       RPC.Client.call client
-      @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+      @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
     in
     let mempool = Mempool.of_json mempool_json in
     Mempool.check_mempool ~validated:[oph] mempool ;
@@ -2050,7 +2050,12 @@ module Revamped = struct
        the third." ;
     let* () = check_mempool ~validated:[oph1] client1 in
     let* () = check_mempool ~validated:[oph1] client2 in
-    let* () = check_mempool ~validated:[] client3 in
+    let*? p =
+      RPC.Client.spawn client3
+      @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
+    in
+    let msg = rex "Fatal error:\n  No service found at this URL" in
+    let* () = Process.check_error ~msg p in
     log_step
       5
       "Check that injecting an operation into the node with disabled mempool \
@@ -2222,7 +2227,7 @@ let forge_and_inject_operation ~branch ~fee ~gas_limit ~source ~destination
 let check_if_op_is_in_mempool client ~classification oph =
   let* ops =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"0" ()
   in
   let open JSON in
   let search_in ops c =
@@ -3632,7 +3637,7 @@ let check_mempool_ops_fees ~(applied : int list) ~(refused : int list) client =
   let client_name = Client.name client in
   let* ops =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"0" ()
   in
   let check_fees classification expected =
     let classification_ops = JSON.(ops |-> classification |> as_list) in

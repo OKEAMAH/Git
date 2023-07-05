@@ -79,13 +79,19 @@ let check_version ~version ~use_legacy_name ~check ~rpc ~get_name ~data client =
   let* t = RPC.Client.call client @@ rpc ~version data in
   return (check ~use_legacy_name t (get_name use_legacy_name))
 
-let check_unknown_version ~version ~rpc ~data client =
+let check_unknown_version_parse ~version ~rpc ~data client =
   let*? p = RPC.Client.spawn client @@ rpc ~version data in
   let msg = rex "Failed to parse argument 'version'" in
   Process.check_error ~msg p
 
-let check_rpc_versions ?(old = "0") ?(new_ = "1") ?(unknown = "2") ~check ~rpc
-    ~get_name ~data client =
+let check_unknown_version ~version ~rpc ~data client =
+  let*? p = RPC.Client.spawn client @@ rpc ~version data in
+  let msg = rex "Fatal error:\n  No service found at this URL" in
+  Process.check_error ~msg p
+
+let check_rpc_versions ?(old = "0") ?(new_ = "1") ?(unknown = "2") ~check
+    ?(check_unknown_version = check_unknown_version_parse) ~rpc ~get_name ~data
+    client =
   Log.info
     "Call the rpc with the old version and check that the operations returned \
      contain endorsement kinds" ;
@@ -489,10 +495,8 @@ module Mempool = struct
     in
     let get_name = Operation.Consensus.kind_to_string kind in
     check_rpc_versions
-      ~old:"1"
-      ~new_:"2"
-      ~unknown:"3"
       ~check
+      ~check_unknown_version
       ~rpc
       ~get_name
       ~data:()
@@ -536,10 +540,8 @@ module Mempool = struct
     in
     let get_name = Operation.Anonymous.kind_to_string double_evidence_kind in
     check_rpc_versions
-      ~old:"1"
-      ~new_:"2"
-      ~unknown:"3"
       ~check
+      ~check_unknown_version
       ~rpc
       ~get_name
       ~data:()

@@ -262,7 +262,7 @@ let get_operations client =
   in
   let* mempool =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
   in
   return JSON.(mempool |-> "validated" |> as_list |> List.map to_op)
 

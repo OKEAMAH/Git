@@ -54,7 +54,7 @@ let double_consensus_already_denounced_waiter accuser oph =
 let get_double_consensus_denounciation_hash consensus_name client =
   let* mempool =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
   in
   let ops = JSON.(mempool |-> "validated" |> as_list) in
   let op =
@@ -104,7 +104,7 @@ let double_attestation_init
   Log.info "Get mempool and recover consensus information." ;
   let* mempool =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
   in
   let op = List.hd JSON.(mempool |-> "validated" |> as_list) in
   let branch = JSON.(op |-> "branch" |> as_string) in
@@ -332,7 +332,7 @@ let operation_too_old =
   Log.info "Get mempool and recover consensus information." ;
   let* mempool =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
   in
   let op = List.hd JSON.(mempool |-> "validated" |> as_list) in
   let branch = JSON.(op |-> "branch" |> as_string) in
@@ -396,7 +396,7 @@ let operation_too_far_in_future =
   Log.info "Get mempool and recover consensus information." ;
   let* mempool =
     RPC.Client.call client
-    @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
+    @@ RPC.get_chain_mempool_pending_operations ~version:"1" ()
   in
   let op = List.hd JSON.(mempool |-> "validated" |> as_list) in
   let branch = JSON.(op |-> "branch" |> as_string) in
