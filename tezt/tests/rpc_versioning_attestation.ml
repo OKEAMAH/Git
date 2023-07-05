@@ -912,7 +912,17 @@ module Preapply = struct
       let check ~use_legacy_name:_ json =
         check_kind JSON.(json |> as_list |> List.hd)
       in
-      check_rpc_versions ~check ~rpc ~get_name ~data:consensus_json client
+      let* () =
+        check_version
+          ~version:(if use_legacy_name then "0" else "1")
+          ~use_legacy_name
+          ~check
+          ~rpc
+          ~get_name
+          ~data:consensus_json
+          client
+      in
+      check_unknown_version ~version:"2" ~rpc ~data:consensus_json client
     in
     let* () = preapply_op ~use_legacy_name:true in
     preapply_op ~use_legacy_name:false
@@ -951,7 +961,17 @@ module Preapply = struct
       let check ~use_legacy_name:_ json =
         check_kind JSON.(json |> as_list |> List.hd)
       in
-      check_rpc_versions ~check ~rpc ~get_name ~data:consensus_json client
+      let* () =
+        check_version
+          ~version:(if use_legacy_name then "0" else "1")
+          ~use_legacy_name
+          ~check
+          ~rpc
+          ~get_name
+          ~data:consensus_json
+          client
+      in
+      check_unknown_version ~version:"2" ~rpc ~data:consensus_json client
     in
     let* () = preapply_op ~use_legacy_name:true in
     preapply_op ~use_legacy_name:false
