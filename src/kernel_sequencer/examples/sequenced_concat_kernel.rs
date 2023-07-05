@@ -60,7 +60,7 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
                 concat_msg(host, format!("[SoL {}", message.level).as_bytes())
             }
             Ok((_, InboxMessage::Internal(InternalInboxMessage::InfoPerLevel(_)))) => {
-                concat_msg(host, b"IpL")
+                concat_msg(host, format!("IpL {}", message.level).as_bytes())
             }
             Ok((_, InboxMessage::Internal(InternalInboxMessage::EndOfLevel))) => {
                 concat_msg(host, format!("EoL {}]", message.level).as_bytes())

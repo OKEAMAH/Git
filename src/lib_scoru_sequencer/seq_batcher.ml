@@ -28,7 +28,7 @@ open Protocol
 open Alpha_context
 open Octez_smart_rollup_node_alpha
 open Octez_smart_rollup_node_alpha.Batcher_worker_types
-open Kernel_durable
+open Durable_state
 module Message_queue = Hash_queue.Make (L2_message.Hash) (L2_message)
 
 let worker_name = "seq_batcher"
@@ -52,6 +52,25 @@ module Batcher_events = struct
       ("delayed_inbox_tail", Data_encoding.int32)
       ("l2_messages", Data_encoding.int32)
       ("l1_operation_hash", Injector.Inj_operation.Hash.encoding)
+
+  let optimistic_simulation_advanced =
+    declare_3
+      ~section
+      ~name:"optimistic_simulation_advanced"
+      ~msg:
+        "Optimistic simulation advanced, {total_consumed} messages are \
+         expected to be fed to the user kernel so far. Next message to process \
+         has level: {last_level} and index {last_index}"
+      ~level:Notice
+      ("total_consumed", Data_encoding.int32)
+      ("last_level", Data_encoding.int32)
+      ("last_index", Data_encoding.int32)
+
+  let emit_optimistic_simulation_advanced (sim_ctxt : Optimistic_simulation.t) =
+    (emit optimistic_simulation_advanced)
+      ( Int32.of_int sim_ctxt.tot_messages_consumed,
+        Raw_level.to_int32 sim_ctxt.inbox_level,
+        Int32.of_int @@ List.length sim_ctxt.accumulated_messages )
 end
 
 type state = {
@@ -148,16 +167,6 @@ let batch_sequence state new_head =
   let* new_block_delayed_inbox_diff =
     get_delayed_inbox_diff state.node_ctxt new_head
   in
-  Format.printf
-    "DELAYED INBOX DIFF for level %ld: [head: %ld, tail: %ld], elements: %s\n\n\n"
-    new_head.level
-    new_block_delayed_inbox_diff.pointer.head
-    new_block_delayed_inbox_diff.pointer.tail
-    (String.concat ";\n"
-    @@ List.map
-         Sc_rollup.Inbox_message.unsafe_to_string
-         new_block_delayed_inbox_diff.elements) ;
-
   let* cur_sim_ctxt = get_simulation_ctxt_exn state in
   let* new_sim_ctxt =
     Optimistic_simulation.new_block
@@ -169,6 +178,7 @@ let batch_sequence state new_head =
   state.last_injected_nonce <- sequence.nonce ;
   state.new_messages <- [] ;
   state.simulation_ctxt <- Some new_sim_ctxt ;
+  let*! () = Batcher_events.emit_optimistic_simulation_advanced new_sim_ctxt in
   return_unit
 
 (* Maximum size of single L2 message.
@@ -201,7 +211,7 @@ let on_register_messages state (messages : string list) =
     |> Environment.wrap_tzresult
   in
   let* current_simulation_ctxt = get_simulation_ctxt_exn state in
-  let* new_simulation_ctxt =
+  let* new_sim_ctxt =
     Optimistic_simulation.append_messages
       state
       state.node_ctxt
@@ -210,15 +220,16 @@ let on_register_messages state (messages : string list) =
   in
   state.new_messages <-
     List.rev_append external_serialized_messages state.new_messages ;
-  state.simulation_ctxt <- Some new_simulation_ctxt ;
+  state.simulation_ctxt <- Some new_sim_ctxt ;
   let*! () = Batcher_events.(emit queue) (List.length messages) in
+  let*! () = Batcher_events.emit_optimistic_simulation_advanced new_sim_ctxt in
   return @@ List.map L2_message.hash messages
 
 let on_new_head state (head : Layer1.head) =
   let open Lwt_result_syntax in
   let genesis_level = Raw_level.to_int32 state.node_ctxt.genesis_info.level in
-  let genesis_finalization_level =
-    Int32.add genesis_level (Int32.of_int state.block_finality)
+  let first_block_finalization_level =
+    Int32.add (Int32.succ genesis_level) (Int32.of_int state.block_finality)
   in
   if head.level = Int32.succ genesis_level then (
     (* Init simulation context *)
@@ -230,15 +241,12 @@ let on_new_head state (head : Layer1.head) =
         state
         state.node_ctxt
         first_delayed_inbox_diff
-        head
     in
     state.simulation_ctxt <- Some sim_ctxt ;
+    let*! () = Batcher_events.emit_optimistic_simulation_advanced sim_ctxt in
     return_unit)
-  else if head.level > genesis_finalization_level then
-    let* () = batch_sequence state head in
-    (* let* optimistic_state = get_simulation_ctxt_exn state in
-       let optimistic_state = optimistic_state.simulation_ctxt.state in *)
-    return_unit
+  else if head.level > first_block_finalization_level then
+    batch_sequence state head
   else return_unit
 
 let init_batcher_state node_ctxt ~signer =
@@ -253,7 +261,7 @@ let init_batcher_state node_ctxt ~signer =
       (* TODO: restore all the variables below from persistent storage *)
       last_injected_nonce = 0l;
       (* TODO: Make block finality argument of init *)
-      block_finality = 1;
+      block_finality = 0;
       new_messages = [];
       simulation_ctxt = None;
     }
@@ -398,17 +406,17 @@ let get_simulation_state () =
   let open Lwt_result_syntax in
   let*? w = Lazy.force worker in
   let state = Worker.state w in
-  let+ optimistic_state = get_simulation_ctxt_exn state in
-  optimistic_state.simulation_ctxt.state
+  let+ sim_ctxt = get_simulation_ctxt_exn state in
+  sim_ctxt.state
 
 let get_simulated_state_value key =
   let open Lwt_result_syntax in
   let* sim_state = get_simulation_state () in
-  let*! result = Durable_state.lookup_user_kernel sim_state key in
+  let*! result = lookup_user_kernel sim_state key in
   return result
 
 let get_simulated_state_subkeys key =
   let open Lwt_result_syntax in
   let* sim_state = get_simulation_state () in
-  let*! result = Durable_state.list_user_kernel sim_state key in
+  let*! result = list_user_kernel sim_state key in
   return result

@@ -27,10 +27,17 @@ open Protocol
 open Alpha_context
 open Octez_smart_rollup_node_alpha
 open Kernel_durable
+module Fueled_pvm = Fueled_pvm.Free
 
 type t = {
   current_block_diff : Delayed_inbox.Pointer.t;
-  simulation_ctxt : Simulation.t;
+  inbox_level : Raw_level.t;
+  ctxt : Context.ro;
+  state : Context.tree;
+  (* nb_messages_inbox : int; *)
+  tot_messages_consumed : int;
+  accumulated_messages : Sc_rollup.Inbox_message.serialized list;
+  block_beginning : Context.tree;
 }
 
 module type Messages_encoder = sig
@@ -52,7 +59,6 @@ module type S = sig
     signer_ctxt ->
     Node_context.ro ->
     Delayed_inbox.queue_slice ->
-    Layer1.head ->
     t tzresult Lwt.t
 
   val new_block :
@@ -70,21 +76,61 @@ module type S = sig
     t tzresult Lwt.t
 end
 
-let simulate node_ctxt simulation_ctxt
-    (messages : Sc_rollup.Inbox_message.serialized list) =
+let init_empty_ctxt node_ctxt (first_block : Delayed_inbox.Pointer.t) =
   let open Lwt_result_syntax in
+  let genesis_level =
+    Raw_level.to_int32 node_ctxt.Node_context.genesis_info.level
+  in
+  let* genesis_hash = Node_context.hash_of_level node_ctxt genesis_level in
+  let genesis_head = Layer1.{hash = genesis_hash; level = genesis_level} in
+  let+ ctxt, state = Interpreter.state_of_head node_ctxt genesis_head in
+  {
+    ctxt;
+    (* It will be incremeneted in new_block_impl straight away *)
+    inbox_level = node_ctxt.Node_context.genesis_info.level;
+    state;
+    current_block_diff = first_block;
+    tot_messages_consumed = 0;
+    accumulated_messages = [];
+    block_beginning = state;
+  }
+
+let simulate (node_ctxt : Node_context.ro)
+    ({ctxt; inbox_level; accumulated_messages; block_beginning; _} as sim)
+    messages =
+  let open Lwt_result_syntax in
+  let module PVM = (val node_ctxt.pvm) in
+  let*! block_beginning_hash = PVM.state_hash block_beginning in
+  let*! tick = PVM.get_tick block_beginning in
+  let accumulated_messages = List.rev_append messages accumulated_messages in
+  let*? eol =
+    Sc_rollup.Inbox_message.serialize
+      (Sc_rollup.Inbox_message.Internal End_of_level)
+    |> Environment.wrap_tzresult
+  in
+  let eval_state =
+    Fueled_pvm.
+      {
+        state = block_beginning;
+        state_hash = block_beginning_hash;
+        tick;
+        inbox_level;
+        message_counter_offset = 0;
+        remaining_fuel = Fuel.Free.of_ticks 0L;
+        remaining_messages = List.rev (eol :: accumulated_messages);
+      }
+  in
   let node_ctxt =
     Node_context.
       {node_ctxt with kernel_debug_logger = Event.simulation_kernel_debug}
   in
-  let+ simulation_ctxt, _ticks =
-    Simulation.simulate_messages
-      node_ctxt
-      ~prepend_meta_messages:false
-      simulation_ctxt
-      messages
+  let* eval_result = Fueled_pvm.eval_messages node_ctxt eval_state in
+  (* Build new state *)
+  let Fueled_pvm.{state = {state; _}; _} =
+    Delayed_write_monad.ignore eval_result
   in
-  simulation_ctxt
+  let*! ctxt = PVM.State.set ctxt state in
+  return {sim with ctxt; state; accumulated_messages}
 
 let ensure_diff_is_valid (current_diff : Delayed_inbox.Pointer.t option)
     (new_diff : Delayed_inbox.queue_slice) =
@@ -96,48 +142,65 @@ let ensure_diff_is_valid (current_diff : Delayed_inbox.Pointer.t option)
       (Exn
          (Failure "Block diff has to include at least SoL, IpL and EoL messages"))
   in
-  match current_diff with
-  | None ->
-      fail_unless
-        Compare.Int32.(new_diff.pointer.head = 0l)
-        (Exn
-           (Failure
-              "First block's messages have to be the first in the delayed \
-               inbox queue"))
-  | Some current_diff ->
-      fail_unless
-        (Delayed_inbox.Pointer.is_adjacent current_diff new_diff.pointer)
-        (Exn
-           (Failure
-              "Two consecutive blocks' message have to be adjacent in the \
-               delayed inbox queue"))
+  let* () =
+    match current_diff with
+    | None ->
+        fail_unless
+          Compare.Int32.(new_diff.pointer.head = 0l)
+          (Exn
+             (Failure
+                "First block's messages have to be the first in the delayed \
+                 inbox queue"))
+    | Some current_diff ->
+        fail_unless
+          (Delayed_inbox.Pointer.is_adjacent current_diff new_diff.pointer)
+          (Exn
+             (Failure
+                "Two consecutive blocks' message have to be adjacent in the \
+                 delayed inbox queue"))
+  in
+  match List.split_n (List.length new_diff.elements - 1) new_diff.elements with
+  | prefix, [eol] -> return (prefix, eol)
+  | _ -> assert false
 
 module Make (Enc : Messages_encoder) = struct
-  let new_block_impl ?current_block_diff signer_ctxt node_ctxt ~sim_ctxt
-      ~new_block_diff =
+  let new_block_impl ?current_block_diff signer_ctxt node_ctxt sim_ctxt
+      new_block_diff =
     let open Lwt_result_syntax in
-    let* () = ensure_diff_is_valid current_block_diff new_block_diff in
+    let* all_but_eol, _eol =
+      ensure_diff_is_valid current_block_diff new_block_diff
+    in
     (* If we already started a first block, we have to close it up with EoL,
        which is supposed to be on the head of the queue. *)
-    let need_consume_previous_eol = Option.is_some current_block_diff in
-    (* First, supply all of the diff messages,
-       which will be added to the delayed inbox. *)
+    let is_first_block = Option.is_none current_block_diff in
+    (* First, move sim_ctxt to state where EoL of the current block is supplied.
+       To do so we just need to update block beginning state to state as it's basically needed one,
+       reset accumulated messages and update current_block_diff *)
+    let sim_ctxt =
+      {
+        sim_ctxt with
+        accumulated_messages = [];
+        block_beginning = sim_ctxt.state;
+        inbox_level = Raw_level.succ sim_ctxt.inbox_level;
+        current_block_diff = new_block_diff.pointer;
+      }
+    in
     let* populated_delayed_inbox_ctxt =
-      simulate node_ctxt sim_ctxt new_block_diff.elements
+      simulate node_ctxt sim_ctxt all_but_eol
     in
     let diff_size =
       Kernel_durable.Delayed_inbox.Pointer.size new_block_diff.pointer
     in
     let to_consume =
-      if need_consume_previous_eol then
-        (* In this case delayed inbox looks like:
-           EoL[from previous level], SoL[new level], IpL[new level], ..., EoL[new_level].
-           We need to consume first EoL and not consume last EoL,
-           what brings us to diff_size elements to consume.
-        *) diff_size
-      else
+      if is_first_block then
         (* In this case, it's our first block, hence, no EoL from previous level *)
         Int32.pred diff_size
+      else
+        (* In this case delayed inbox looks like:
+           EoL[from previous level], SoL[new level], IpL[new level], ..., .
+           We need to consume first EoL and the rest of the messages,
+           what brings us to diff_size elements to consume.
+        *) diff_size
     in
     (* TODO: fetch optimistic nonce *)
     let* consume_inbox_sequence =
@@ -155,26 +218,25 @@ module Make (Enc : Messages_encoder) = struct
     in
     return
       {
-        current_block_diff = new_block_diff.pointer;
-        simulation_ctxt = consumed_delayed_inbox_ctxt;
+        consumed_delayed_inbox_ctxt with
+        tot_messages_consumed =
+          consumed_delayed_inbox_ctxt.tot_messages_consumed
+          + Int32.to_int to_consume;
       }
 
-  let init_ctxt signer_ctxt node_ctxt first_block block_head =
+  let init_ctxt signer_ctxt node_ctxt (first_block : Delayed_inbox.queue_slice)
+      =
     let open Lwt_result_syntax in
-    (* TODO remove it *)
-    let* block_head = Node_context.get_predecessor node_ctxt block_head in
-    let* sim_ctxt =
-      Simulation.init_simulation_ctxt ~reveal_map:None node_ctxt block_head
-    in
-    new_block_impl signer_ctxt node_ctxt ~sim_ctxt ~new_block_diff:first_block
+    let* init_ctxt = init_empty_ctxt node_ctxt first_block.pointer in
+    new_block_impl signer_ctxt node_ctxt init_ctxt first_block
 
   let new_block signer_ctxt node_ctxt sim_state block_delayed_inbox_diff =
     new_block_impl
+      ~current_block_diff:sim_state.current_block_diff
       signer_ctxt
       node_ctxt
-      ~current_block_diff:sim_state.current_block_diff
-      ~sim_ctxt:sim_state.simulation_ctxt
-      ~new_block_diff:block_delayed_inbox_diff
+      sim_state
+      block_delayed_inbox_diff
 
   let append_messages signer_ctxt node_ctxt sim_state
       external_serialized_messages =
@@ -194,8 +256,13 @@ module Make (Enc : Messages_encoder) = struct
       @@ Sc_rollup.Inbox_message.(
            serialize @@ External encoded_wrapping_sequence)
     in
-    let+ new_simulation_ctxt =
-      simulate node_ctxt sim_state.simulation_ctxt [wrapping_sequence_external]
+    let+ consumed_ctxt =
+      simulate node_ctxt sim_state [wrapping_sequence_external]
     in
-    {sim_state with simulation_ctxt = new_simulation_ctxt}
+    {
+      consumed_ctxt with
+      tot_messages_consumed =
+        consumed_ctxt.tot_messages_consumed
+        + List.length external_serialized_messages;
+    }
 end

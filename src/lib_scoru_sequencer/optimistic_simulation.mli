@@ -42,7 +42,13 @@ end
 
 type t = {
   current_block_diff : Delayed_inbox.Pointer.t;
-  simulation_ctxt : Simulation.t;
+  inbox_level : Raw_level.t;
+  ctxt : Context.ro;
+  state : Context.tree;
+  (* nb_messages_inbox : int; *)
+  tot_messages_consumed : int;
+  accumulated_messages : Sc_rollup.Inbox_message.serialized list;
+  block_beginning : Context.tree;
 }
 
 module type S = sig
@@ -52,7 +58,6 @@ module type S = sig
     signer_ctxt ->
     Node_context.ro ->
     Delayed_inbox.queue_slice ->
-    Layer1.head ->
     t tzresult Lwt.t
 
   val new_block :
