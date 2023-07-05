@@ -951,10 +951,10 @@ module Make (E : MENV) = struct
     @@ Directory.register
          Directory.empty
          E.Block_services.S.Operations.operations
-         (fun (((), chain), _block) query () ->
+         (fun (((), chain), _block) _query () ->
            with_chain ~caller_name:"operations" chain (fun () ->
                (* FIXME: Better answer here *)
-               Tezos_rpc.Answer.return (query#version, [[]; []; []; []])))
+               Tezos_rpc.Answer.return [[]; []; []; []]))
 
   let monitor_operations () =
     let open Lwt_syntax in

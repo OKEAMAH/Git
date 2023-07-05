@@ -186,7 +186,8 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
     operations : operation list list;
   }
 
-  val block_info_encoding : (version * block_info) Data_encoding.t
+  val block_info_encoding :
+    use_legacy_attestation_name:bool -> block_info Data_encoding.t
 
   open Tezos_rpc.Context
 
@@ -498,11 +499,18 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
       ( [`GET],
         prefix,
         prefix,
-        < version : version
-        ; force_metadata : bool
-        ; metadata : [`Always | `Never] option >,
+        < force_metadata : bool ; metadata : [`Always | `Never] option >,
         unit,
-        version * block_info )
+        block_info )
+      Tezos_rpc.Service.t
+
+    val info_v1 :
+      ( [`GET],
+        prefix,
+        prefix,
+        < force_metadata : bool ; metadata : [`Always | `Never] option >,
+        unit,
+        block_info )
       Tezos_rpc.Service.t
 
     val header :
@@ -557,33 +565,54 @@ module Make (Proto : PROTO) (Next_proto : PROTO) : sig
         ( [`GET],
           prefix,
           prefix,
-          < version : version
-          ; force_metadata : bool
-          ; metadata : [`Always | `Never] option >,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
           unit,
-          version * operation list list )
+          operation list list )
+        Tezos_rpc.Service.t
+
+      val operations_v1 :
+        ( [`GET],
+          prefix,
+          prefix,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
+          unit,
+          operation list list )
         Tezos_rpc.Service.t
 
       val operations_in_pass :
         ( [`GET],
           prefix,
           prefix * int,
-          < version : version
-          ; force_metadata : bool
-          ; metadata : [`Always | `Never] option >,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
           unit,
-          version * operation list )
+          operation list )
+        Tezos_rpc.Service.t
+
+      val operations_in_pass_v1 :
+        ( [`GET],
+          prefix,
+          prefix * int,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
+          unit,
+          operation list )
         Tezos_rpc.Service.t
 
       val operation :
         ( [`GET],
           prefix,
           (prefix * int) * int,
-          < version : version
-          ; force_metadata : bool
-          ; metadata : [`Always | `Never] option >,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
           unit,
-          version * operation )
+          operation )
+        Tezos_rpc.Service.t
+
+      val operation_v1 :
+        ( [`GET],
+          prefix,
+          (prefix * int) * int,
+          < force_metadata : bool ; metadata : [`Always | `Never] option >,
+          unit,
+          operation )
         Tezos_rpc.Service.t
     end
 

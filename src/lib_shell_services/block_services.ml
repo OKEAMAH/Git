@@ -633,28 +633,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
     operations : operation list list;
   }
 
-  let encoding_versioning ~encoding_name ~old_encoding ~new_encoding =
-    union
-      [
-        case
-          ~title:(Format.sprintf "%s_encoding" encoding_name)
-          (Tag 1)
-          new_encoding
-          (function
-            | Version_1, operations -> Some operations | Version_0, _ -> None)
-          (fun operations -> (Version_1, operations));
-        case
-          ~title:
-            (Format.sprintf
-               "%s_encoding_with_legacy_attestation_name"
-               encoding_name)
-          (Tag 0)
-          old_encoding
-          (function
-            | Version_0, operations -> Some operations | Version_1, _ -> None)
-          (fun operations -> (Version_0, operations));
-      ]
-
   let block_info_encoding ~use_legacy_attestation_name =
     let operation_encoding =
       if use_legacy_attestation_name then
@@ -673,12 +651,6 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
          (req "header" (dynamic_size raw_block_header_encoding))
          (opt "metadata" (dynamic_size block_metadata_encoding))
          (req "operations" (list (dynamic_size (list operation_encoding)))))
-
-  let block_info_encoding =
-    encoding_versioning
-      ~encoding_name:"block_info"
-      ~old_encoding:(block_info_encoding ~use_legacy_attestation_name:true)
-      ~new_encoding:(block_info_encoding ~use_legacy_attestation_name:false)
 
   module S = struct
     let path : prefix Tezos_rpc.Path.context = Tezos_rpc.Path.open_root
@@ -768,23 +740,14 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
 
     let default_operation_version = Version_0
 
-    let operations_supported_versions = [Version_0; Version_1]
-
     let force_operation_metadata_query =
       let open Tezos_rpc.Query in
-      query (fun version force_metadata metadata ->
+      query (fun force_metadata metadata ->
           object
-            method version = version
-
             method force_metadata = force_metadata
 
             method metadata = metadata
           end)
-      |+ field
-           "version"
-           (version_arg operations_supported_versions)
-           default_operation_version
-           (fun t -> t#version)
       |+ flag
            "force_metadata"
            ~descr:
@@ -804,23 +767,28 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
       |> seal
 
     module Operations = struct
+      let path_v1 = Tezos_rpc.Path.(path / "v1" / "operations")
+
       let path = Tezos_rpc.Path.(path / "operations")
 
       let operations =
-        let output =
-          encoding_versioning
-            ~encoding_name:"operations"
-            ~old_encoding:
-              (list
-                 (dynamic_size
-                    (list operation_encoding_with_legacy_attestation_name)))
-            ~new_encoding:(list (dynamic_size (list operation_encoding)))
-        in
+        Tezos_rpc.Service.get_service
+          ~description:
+            "(Deprecated, used `/operations/v1` instead) All the operations \
+             included in the block."
+          ~query:force_operation_metadata_query
+          ~output:
+            (list
+               (dynamic_size
+                  (list operation_encoding_with_legacy_attestation_name)))
+          path
+
+      let operations_v1 =
         Tezos_rpc.Service.get_service
           ~description:"All the operations included in the block."
           ~query:force_operation_metadata_query
-          ~output
-          path
+          ~output:(list (dynamic_size (list operation_encoding)))
+          path_v1
 
       let list_arg =
         let name = "list_offset" in
@@ -845,33 +813,39 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
         Tezos_rpc.Arg.make ~name ~descr ~construct ~destruct ()
 
       let operations_in_pass =
-        let output =
-          encoding_versioning
-            ~encoding_name:"operations_in_pass"
-            ~old_encoding:(list operation_encoding_with_legacy_attestation_name)
-            ~new_encoding:(list operation_encoding)
-        in
+        Tezos_rpc.Service.get_service
+          ~description:
+            "(Deprecated, used `/operations/v1` instead) All the operations \
+             included in `n-th` validation pass of the block."
+          ~query:force_operation_metadata_query
+          ~output:(list operation_encoding_with_legacy_attestation_name)
+          Tezos_rpc.Path.(path /: list_arg)
+
+      let operations_in_pass_v1 =
         Tezos_rpc.Service.get_service
           ~description:
             "All the operations included in `n-th` validation pass of the \
              block."
           ~query:force_operation_metadata_query
-          ~output
-          Tezos_rpc.Path.(path /: list_arg)
+          ~output:(list operation_encoding)
+          Tezos_rpc.Path.(path_v1 /: list_arg)
 
       let operation =
-        let output =
-          encoding_versioning
-            ~encoding_name:"operation"
-            ~old_encoding:operation_encoding_with_legacy_attestation_name
-            ~new_encoding:operation_encoding
-        in
+        Tezos_rpc.Service.get_service
+          ~description:
+            "(Deprecated, used `/operations/v1` instead) The `m-th` operation \
+             in the `n-th` validation pass of the block."
+          ~query:force_operation_metadata_query
+          ~output:operation_encoding_with_legacy_attestation_name
+          Tezos_rpc.Path.(path /: list_arg /: offset_arg)
+
+      let operation_v1 =
         Tezos_rpc.Service.get_service
           ~description:
             "The `m-th` operation in the `n-th` validation pass of the block."
           ~query:force_operation_metadata_query
-          ~output
-          Tezos_rpc.Path.(path /: list_arg /: offset_arg)
+          ~output:operation_encoding
+          Tezos_rpc.Path.(path_v1 /: list_arg /: offset_arg)
     end
 
     module Operation_hashes = struct
@@ -1173,12 +1147,22 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
     let info =
       Tezos_rpc.Service.get_service
         ~description:
+          "(Deprecated, used `/blocks/<block>/v1` instead) All the information \
+           about a block. The associated metadata may not be present depending \
+           on the history mode and block's distance from the head."
+        ~query:force_operation_metadata_query
+        ~output:(block_info_encoding ~use_legacy_attestation_name:true)
+        path
+
+    let info_v1 =
+      Tezos_rpc.Service.get_service
+        ~description:
           "All the information about a block. The associated metadata may not \
            be present depending on the history mode and block's distance from \
            the head."
         ~query:force_operation_metadata_query
-        ~output:block_info_encoding
-        path
+        ~output:(block_info_encoding ~use_legacy_attestation_name:false)
+        Tezos_rpc.Path.(path / "v1")
 
     module Mempool = struct
       type t = {
@@ -1632,66 +1616,60 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
   module Operations = struct
     let operations ctxt ?(version = S.default_operation_version)
         ?(force_metadata = false) ?metadata =
-      let open Lwt_result_syntax in
-      let f = make_call0 S.Operations.operations ctxt in
+      let f =
+        match version with
+        | Version_0 -> make_call0 S.Operations.operations ctxt
+        | Version_1 -> make_call0 S.Operations.operations_v1 ctxt
+      in
       fun ?(chain = `Main) ?(block = `Head 0) () ->
-        let* (Version_0 | Version_1), operations =
-          f
-            chain
-            block
-            (object
-               method version = version
+        f
+          chain
+          block
+          (object
+             method force_metadata = force_metadata
 
-               method force_metadata = force_metadata
-
-               method metadata = metadata
-            end)
-            ()
-        in
-        return operations
+             method metadata = metadata
+          end)
+          ()
 
     let operations_in_pass ctxt ?(version = S.default_operation_version)
         ?(force_metadata = false) ?metadata =
-      let open Lwt_result_syntax in
-      let f = make_call1 S.Operations.operations_in_pass ctxt in
+      let f =
+        match version with
+        | Version_0 -> make_call1 S.Operations.operations_in_pass ctxt
+        | Version_1 -> make_call1 S.Operations.operations_in_pass_v1 ctxt
+      in
       fun ?(chain = `Main) ?(block = `Head 0) n ->
-        let* (Version_0 | Version_1), operations =
-          f
-            chain
-            block
-            n
-            (object
-               method version = version
+        f
+          chain
+          block
+          n
+          (object
+             method force_metadata = force_metadata
 
-               method force_metadata = force_metadata
-
-               method metadata = metadata
-            end)
-            ()
-        in
-        return operations
+             method metadata = metadata
+          end)
+          ()
 
     let operation ctxt ?(version = S.default_operation_version)
         ?(force_metadata = false) ?metadata =
-      let open Lwt_result_syntax in
-      let f = make_call2 S.Operations.operation ctxt in
+      let f =
+        match version with
+        | Version_0 -> make_call2 S.Operations.operation ctxt
+        | Version_1 -> make_call2 S.Operations.operation_v1 ctxt
+      in
       fun ?(chain = `Main) ?(block = `Head 0) n m ->
-        let* (Version_0 | Version_1), operation =
-          f
-            chain
-            block
-            n
-            m
-            (object
-               method version = version
+        f
+          chain
+          block
+          n
+          m
+          (object
+             method force_metadata = force_metadata
 
-               method force_metadata = force_metadata
-
-               method metadata = metadata
-            end)
-            ()
-        in
-        return operation
+             method metadata = metadata
+          end)
+          ()
   end
 
   module Operation_hashes = struct
@@ -1815,23 +1793,21 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
 
   let info ctxt ?(version = S.default_operation_version)
       ?(force_metadata = false) ?metadata =
-    let open Lwt_result_syntax in
-    let f = make_call0 S.info ctxt in
+    let f =
+      match version with
+      | Version_0 -> make_call0 S.info ctxt
+      | Version_1 -> make_call0 S.info_v1 ctxt
+    in
     fun ?(chain = `Main) ?(block = `Head 0) () ->
-      let* (Version_0 | Version_1), infos =
-        f
-          chain
-          block
-          (object
-             method version = version
+      f
+        chain
+        block
+        (object
+           method force_metadata = force_metadata
 
-             method force_metadata = force_metadata
-
-             method metadata = metadata
-          end)
-          ()
-      in
-      return infos
+           method metadata = metadata
+        end)
+        ()
 
   module Mempool = struct
     type t = S.Mempool.t = {
