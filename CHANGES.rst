@@ -92,13 +92,15 @@ Node
   ``preattestation``, ``double_attestation_evidence`` and
   ``double_preattestation_evidence`` kinds in the JSON result. (MR :gl:`!8840`)
 
-- Added version ``2`` to RPC ``GET ../mempool/pending_operations``. It can be
-  used by calling the RPC with the parameter ``?version=2`` (default version is
-  still ``1``). Version ``2`` allows the RPC to output ``attestation``,
-  ``preattestation``, ``double_attestation_evidence`` and
-  ``double_preattestation_evidence`` kinds in the JSON result. This version
-  also renames the ``applied`` field of the result to ``validated``
-  (MRs :gl:`!8960`, :gl:`!9143`)
+- Removed the version ``0`` of RPC ``GET ../mempool/pending_operations``. (MR
+  :gl:`!9410`)
+
+- Introduced a version ``v1`` to RPC ``GET ../mempool/pending_operations``. It
+  can be used by calling ``GET ../mempool/pending_operations/v1``. This version
+  allows the RPC to output ``attestation``, ``preattestation``,
+  ``double_attestation_evidence`` and ``double_preattestation_evidence`` kinds
+  in the JSON result. This version also renames the ``applied`` field of the
+  result to ``validated`` (MRs :gl:`!8960`, :gl:`!9143`, :gl:`!9410`)
 
 - RPCs ``/helpers/scripts/run_operation`` and
   ``/helpers/scripts/simulate_operation`` can now take JSON formatted operations
