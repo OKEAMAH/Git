@@ -188,12 +188,13 @@ Node
   no prevalidator filter is found later on for a different
   protocol. (MR :gl:`!9261`)
 
-- Added version ``1`` to RPCs ``GET ../blocks/<block>``, and ``GET
-  ../blocks/<blocks>/operations``. It can be used by calling the RPC with the
-  parameter ``?version=1`` (default version is still ``0``). Version ``1``
-  allows the RPC to output ``attestation``, ``preattestation``,
-  ``double_attestation_evidence`` and ``double_preattestation_evidence`` kinds
-  in the JSON result. (MR :gl:`!9008`)
+- Introduced a version ``v1`` to RPC ``GET ../blocks/<block>`` and ``GET
+  ../blocks/<blocks>/operations``. It can be used by calling ``GET
+  ../blocks/<block>/v1`` and ``GET ../blocks/<blocks>/v1/operations``. This
+  version allows the RPC to allow in both input and output ``attestation``,
+  ``preattestation``, ``double_attestation_evidence`` and
+  ``double_preattestation_evidence`` kinds in the JSON result. (MRs :gl:`!9008`,
+  :gl:`!9410`)
 
 Client
 ------
