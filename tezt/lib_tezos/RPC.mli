@@ -529,7 +529,12 @@ val post_chain_mempool_filter : ?chain:string -> data:data -> unit -> JSON.t t
     [block] defaults to ["head"].
 *)
 val post_chain_block_helpers_preapply_block :
-  ?chain:string -> ?block:string -> data:data -> unit -> JSON.t t
+  ?chain:string ->
+  ?block:string ->
+  ?version:string ->
+  data:data ->
+  unit ->
+  JSON.t t
 
 (** RPC: [POST /chains/<chain>/blocks/<block>/helpers/preapply/operations]
 
