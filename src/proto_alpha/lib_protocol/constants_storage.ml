@@ -200,6 +200,10 @@ let sc_rollup_reveal_activation_level c =
   let sc_rollup = Raw_context.sc_rollup c in
   sc_rollup.reveal_activation_level
 
+let sc_rollup_whitelist_enable c =
+  let sc_rollup = Raw_context.sc_rollup c in
+  sc_rollup.whitelist_enable
+
 let dal_number_of_slots c =
   let constants = Raw_context.constants c in
   constants.dal.number_of_slots

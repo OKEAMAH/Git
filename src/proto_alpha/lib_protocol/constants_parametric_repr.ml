@@ -124,6 +124,7 @@ type sc_rollup = {
   max_number_of_stored_cemented_commitments : int;
   max_number_of_parallel_games : int;
   reveal_activation_level : sc_rollup_reveal_activation_level;
+  whitelist_enable : bool;
 }
 
 type zk_rollup = {
@@ -209,7 +210,8 @@ let sc_rollup_encoding =
           c.timeout_period_in_blocks,
           c.max_number_of_stored_cemented_commitments,
           c.max_number_of_parallel_games,
-          c.reveal_activation_level ) ))
+          c.reveal_activation_level,
+          c.whitelist_enable ) ))
     (fun ( ( sc_rollup_enable,
              sc_rollup_arith_pvm_enable,
              sc_rollup_origination_size,
@@ -223,7 +225,8 @@ let sc_rollup_encoding =
              sc_rollup_timeout_period_in_blocks,
              sc_rollup_max_number_of_cemented_commitments,
              sc_rollup_max_number_of_parallel_games,
-             sc_rollup_reveal_activation_level ) ) ->
+             sc_rollup_reveal_activation_level,
+             sc_rollup_whitelist_enable ) ) ->
       {
         enable = sc_rollup_enable;
         arith_pvm_enable = sc_rollup_arith_pvm_enable;
@@ -241,6 +244,7 @@ let sc_rollup_encoding =
           sc_rollup_max_number_of_cemented_commitments;
         max_number_of_parallel_games = sc_rollup_max_number_of_parallel_games;
         reveal_activation_level = sc_rollup_reveal_activation_level;
+        whitelist_enable = sc_rollup_whitelist_enable;
       })
     (merge_objs
        (obj9
@@ -253,14 +257,15 @@ let sc_rollup_encoding =
           (req "smart_rollup_max_lookahead_in_blocks" int32)
           (req "smart_rollup_max_active_outbox_levels" int32)
           (req "smart_rollup_max_outbox_messages_per_level" int31))
-       (obj5
+       (obj6
           (req "smart_rollup_number_of_sections_in_dissection" uint8)
           (req "smart_rollup_timeout_period_in_blocks" int31)
           (req "smart_rollup_max_number_of_cemented_commitments" int31)
           (req "smart_rollup_max_number_of_parallel_games" int31)
           (req
              "smart_rollup_reveal_activation_level"
-             sc_rollup_reveal_activation_level_encoding)))
+             sc_rollup_reveal_activation_level_encoding)
+          (req "smart_rollup_whitelist_enable" bool)))
 
 let zk_rollup_encoding =
   let open Data_encoding in

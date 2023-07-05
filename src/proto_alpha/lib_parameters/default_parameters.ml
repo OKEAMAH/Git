@@ -232,6 +232,7 @@ let constants_mainnet =
             metadata = Raw_level.root;
             dal_page = Raw_level.root;
           };
+        whitelist_enable = false;
       };
     zk_rollup =
       {
