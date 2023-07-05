@@ -302,15 +302,6 @@ let before_origination (node_ctxt : _ Node_context.t) (header : Layer1.header) =
   let origination_level = Raw_level.to_int32 node_ctxt.genesis_info.level in
   header.level < origination_level
 
-let previous_context (node_ctxt : _ Node_context.t)
-    ~(predecessor : Layer1.header) =
-  let open Lwt_result_syntax in
-  if predecessor.level < Raw_level.to_int32 node_ctxt.genesis_info.level then
-    (* This is before we have interpreted the boot sector, so we start
-       with an empty context in genesis *)
-    return (Context.empty node_ctxt.context)
-  else Node_context.checkout_context node_ctxt predecessor.Layer1.hash
-
 let classify_head (node_ctxt : _ Node_context.t)
     ?(predecessor : Layer1.header option) (head : Layer1.header) =
   let open Lwt_result_syntax in
@@ -367,7 +358,6 @@ let rec process_head (daemon_components : (module Daemon_components.S))
       let* () =
         process_head daemon_components node_ctxt ~catching_up:true predecessor
       in
-      let* ctxt = previous_context node_ctxt ~predecessor in
       let* () =
         Node_context.save_level
           node_ctxt
@@ -390,12 +380,7 @@ let rec process_head (daemon_components : (module Daemon_components.S))
       (* Avoid triggering the pvm execution if this has been done before for
          this head. *)
       let* ctxt, _num_messages, num_ticks, initial_tick =
-        Interpreter.process_head
-          node_ctxt
-          ctxt
-          ~predecessor
-          head
-          (inbox, messages)
+        Interpreter.process_head node_ctxt ~predecessor head (inbox, messages)
       in
       let*! context_hash = Context.commit ctxt in
       let* commitment_hash =
@@ -604,7 +589,7 @@ let run node_ctxt configuration
   let open Lwt_result_syntax in
   let (module Components) = daemon_components in
   let* () = check_initial_state_hash node_ctxt in
-  let* rpc_server = RPC_server.start node_ctxt configuration in
+  let* rpc_server = Components.RPC_server.start node_ctxt configuration in
   let (_ : Lwt_exit.clean_up_callback_id) =
     install_finalizer daemon_components node_ctxt rpc_server
   in
@@ -698,7 +683,6 @@ module Internal_for_tests = struct
   let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
       ~predecessor head messages =
     let open Lwt_result_syntax in
-    let* ctxt = previous_context node_ctxt ~predecessor in
     let* () = Node_context.save_level node_ctxt (Layer1.head_of_header head) in
     let* inbox_hash, inbox, inbox_witness, messages =
       Inbox.Internal_for_tests.process_messages
@@ -714,7 +698,7 @@ module Internal_for_tests = struct
     in
     let inbox_hash = Sc_rollup_proto_types.Inbox_hash.to_octez inbox_hash in
     let* ctxt, _num_messages, num_ticks, initial_tick =
-      Interpreter.process_head node_ctxt ctxt ~predecessor head (inbox, messages)
+      Interpreter.process_head node_ctxt ~predecessor head (inbox, messages)
     in
     let*! context_hash = Context.commit ctxt in
     let* commitment_hash =

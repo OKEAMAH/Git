@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
+(* Copyright (c) 2022-2023 TriliTech <contact@trili.tech>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,38 +23,52 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Alpha_context
+open Protocol
+open Alpha_context
+open Octez_smart_rollup_node_alpha
+open Kernel_durable
 
-(** [process_head node_ctxt ~predecessor head (inbox, messages)] interprets the
-    [messages] associated with a [head] (where [predecessor] is the predecessor
-    of [head] in the L1 chain). This requires the [inbox] to be updated
-    beforehand. It returns [(ctxt, num_messages, num_ticks, tick)] where [ctxt]
-    is the updated layer 2 context (with the new PVM state), [num_messages] is
-    the number of [messages], [num_ticks] is the number of ticks taken by the
-    PVM for the evaluation and [tick] is the tick reached by the PVM after the
-    evaluation. *)
-val process_head :
-  Node_context.rw ->
-  predecessor:Layer1.header ->
-  Layer1.header ->
-  Sc_rollup.Inbox.t * Sc_rollup.Inbox_message.t list ->
-  (Context.rw * int * int64 * Sc_rollup.Tick.t) tzresult Lwt.t
+module type Messages_encoder = sig
+  type signer_ctxt
 
-(** [state_of_tick node_ctxt ?start_state tick level] returns [Some (state,
-    hash)] for a given [tick] if this [tick] happened before [level]. Otherwise,
-    returns [None]. If provided, the evaluation is resumed from
-    [start_state]. *)
-val state_of_tick :
-  _ Node_context.t ->
-  ?start_state:Fueled_pvm.Accounted.eval_state ->
-  Sc_rollup.Tick.t ->
-  Raw_level.t ->
-  Fueled_pvm.Accounted.eval_state option tzresult Lwt.t
+  val encode_sequence :
+    signer_ctxt ->
+    nonce:int32 ->
+    prefix:int32 ->
+    suffix:int32 ->
+    Sc_rollup.Inbox_message.serialized list ->
+    string tzresult Lwt.t
+end
 
-(** [state_of_head node_ctxt head] returns the state corresponding to the
-    block [head], or the state at rollup genesis if the block is before the
-    rollup origination. *)
-val state_of_head :
-  'a Node_context.t ->
-  Layer1.head ->
-  ('a Context.t * Context.tree) tzresult Lwt.t
+type t = {
+  current_block_diff : Delayed_inbox.Pointer.t;
+  simulation_ctxt : Simulation.t;
+}
+
+module type S = sig
+  type signer_ctxt
+
+  val init_ctxt :
+    signer_ctxt ->
+    Node_context.ro ->
+    Delayed_inbox.queue_slice ->
+    Layer1.head ->
+    t tzresult Lwt.t
+
+  val new_block :
+    signer_ctxt ->
+    Node_context.ro ->
+    t ->
+    Delayed_inbox.queue_slice ->
+    t tzresult Lwt.t
+
+  val append_messages :
+    signer_ctxt ->
+    Node_context.ro ->
+    t ->
+    Sc_rollup.Inbox_message.serialized list ->
+    t tzresult Lwt.t
+end
+
+module Make (Enc : Messages_encoder) :
+  S with type signer_ctxt := Enc.signer_ctxt

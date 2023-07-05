@@ -53,7 +53,8 @@ let next_rollup_level {node; client; sc_sequencer_node; _} =
 
 let setup_sequencer_kernel
     ?(originator_key = Constant.bootstrap1.public_key_hash)
-    ?(sequencer_key = Constant.bootstrap1.public_key_hash) protocol =
+    ?(sequencer_key = Constant.bootstrap1.public_key_hash) sequenced_kernel
+    protocol =
   let* node, client = setup_l1 protocol in
   let sc_sequencer_node =
     Sc_rollup_node.create
@@ -82,7 +83,7 @@ let setup_sequencer_kernel
         (Filename.concat
            (Sc_rollup_node.data_dir sc_sequencer_node)
            "wasm_2_0_0")
-      "sequenced_empty_kernel"
+      sequenced_kernel
   in
   let* sc_rollup_address =
     originate_sc_rollup
@@ -111,11 +112,9 @@ let setup_sequencer_kernel
       sequencer_key;
     }
   in
-  (* Wait for one level after origination level
-     let* _ = next_rollup_level setup in *)
   Lwt.return setup
 
-let craft_framed_message rollup_address msg =
+let wrap_with_framed rollup_address msg =
   (* Byte from framing protocol, then smart rollup address, then message bytes *)
   String.concat
     ""
@@ -162,18 +161,18 @@ let test_delayed_inbox_consumed =
     ~title:"Originate sequencer kernel & consume delayed inbox messages"
   @@ fun protocol ->
   let* ({client; sc_rollup_address; sc_sequencer_node; _} as setup) =
-    setup_sequencer_kernel protocol
+    setup_sequencer_kernel "sequenced_empty_kernel" protocol
   in
   let sc_rollup_address =
     Sc_rollup_repr.Address.of_b58check_exn sc_rollup_address
   in
   let* () =
     send_message ~src:Constant.bootstrap2.alias client
-    @@ craft_framed_message sc_rollup_address "\000\000\000"
+    @@ wrap_with_framed sc_rollup_address "\000\000\000"
   in
   let* () =
     send_message ~src:Constant.bootstrap3.alias client
-    @@ craft_framed_message sc_rollup_address "\000\000\001"
+    @@ wrap_with_framed sc_rollup_address "\000\000\001"
   in
 
   (* Start async collection of sequence debug messages from the kernel *)
@@ -187,15 +186,21 @@ let test_delayed_inbox_consumed =
     collect_sequences ()
   in
 
-  (* Bake block with those user messages, which has level 3, origination level is 2 *)
+  (* Bake block with those user messages, which has level 3, origination level is 2.
+
+     This block will incorporate "\000\000\000" and "\000\000\001" *)
   let* _ = next_rollup_level setup in
 
+  (* ------------------------ NEW BLOCK level = 3 ------------------------ *)
+
   (* At this moment delayed inbox corresponding to the previous block is empty,
-     hence, a Sequence with 0 delayed inbox messages and 0 user messages was batched,
+     hence, a Sequence with 0 delayed inbox messages and 0 user messages has been batched,
      which denoted as S0. *)
 
   (* Bake a block with level 4 *)
   let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 4 ------------------------ *)
 
   (* At this moment delayed inbox corresponding to the previous block have 5 messages:
      [SoL3, IpL3, "\000\000\000", "\000\000\001", EoL3].
@@ -203,8 +208,10 @@ let test_delayed_inbox_consumed =
      5 delayed inbox messages and 0 L2 messages, which denoted S1.
   *)
 
-  (* Bake a block with level 5, no injected batches here *)
+  (* Bake a block with level 5, incorporating S0 *)
   let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 5 ------------------------ *)
 
   (* At this moment delayed inbox corresponding to the previous block have 3 messages:
      [SoL4, IpL4, EoL4].
@@ -215,16 +222,20 @@ let test_delayed_inbox_consumed =
 
   (* Inject S1 into an upcoming block with level 6 *)
 
-  (* Bake a block with level 6, containing S1 *)
+  (* Bake a block with level 6, incorporating S1 *)
   let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 6 ------------------------ *)
 
   (* Feed to the sequencer kernel S1 sequence *)
 
   (* Inject S2 into an upcoming block with level 7 *)
   (* Following S3 is not going to be injected within this test, so we ingore consideration of it *)
 
-  (* Bake a block with level 7, containing S2 *)
+  (* Bake a block with level 7, incorporating S2 *)
   let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 7 ------------------------ *)
 
   (* Feed to the sequencer kernel S2 sequence *)
   let open Octez_smart_rollup_sequencer.Kernel_message in
@@ -272,4 +283,131 @@ let test_delayed_inbox_consumed =
       ~error_msg:"Unexpected debug messages emitted") ;
   Lwt.return_unit
 
-let register ~protocols = test_delayed_inbox_consumed protocols
+let rpc_inject_messages = Sc_rollup_client.inject ~hooks
+
+let rpc_get_optimistic_storage_value sc_client key =
+  Sc_rollup_client.rpc_get_rich
+    ~hooks
+    sc_client
+    ["local"; "durable"; "wasm_2_0_0"; "value"]
+    [("key", key)]
+
+let test_optimistic_state_computed_correctly =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["sequencer"]
+    ~title:
+      "Supply messages via RPC and through L1 directly, making sure optimistic \
+       durable state equals to the expected one"
+  @@ fun protocol ->
+  let* ({client; sc_rollup_address; sc_rollup_client; _} as setup) =
+    setup_sequencer_kernel "sequenced_concat_kernel" protocol
+  in
+  let sc_rollup_address =
+    Sc_rollup_repr.Address.of_b58check_exn sc_rollup_address
+  in
+  let* () =
+    send_message ~src:Constant.bootstrap2.alias client
+    @@ wrap_with_framed sc_rollup_address "L1_message1"
+  in
+  let* () =
+    send_message ~src:Constant.bootstrap3.alias client
+    @@ wrap_with_framed sc_rollup_address "L1_message2"
+  in
+
+  (* Bake block with the L1 user messages, which has level 3, origination level is 2.
+
+     This block will incorporate "L1_message1" and "L1_message2" *)
+  let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 3 ------------------------ *)
+
+  (* At this moment we just initialized simulation context *)
+
+  (* Inject messages through RPC *)
+  let*! _messages_hashes =
+    rpc_inject_messages sc_rollup_client
+    @@ List.map
+         (wrap_with_framed sc_rollup_address)
+         ["RPC_message1"; "RPC_message2"]
+  in
+
+  (* Inject more messages directly in L1 *)
+  let* () =
+    send_message ~src:Constant.bootstrap2.alias client
+    @@ wrap_with_framed sc_rollup_address "L1_message3"
+  in
+
+  (* Bake a block with level 4, that will incorporate "L1_message3" *)
+  let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 4 ------------------------ *)
+
+  (* At this moment delayed inbox corresponding to the previous block have 5 messages:
+     [SoL, IpL, "L1_message1", "L1_message2", EoL].
+     Seq_batcher has batched a Sequence with those 5 delayed inbox messages
+     and ["RPC_message1"; "RPC_message2"] which denoted S1.
+  *)
+
+  (* Inject more messages through RPC *)
+  let*! _messages_hashes =
+    rpc_inject_messages sc_rollup_client
+    @@ List.map
+         (wrap_with_framed sc_rollup_address)
+         ["RPC_message3"; "RPC_message4"]
+  in
+
+  (* Bake a block with level 5, incorporating S0 and "L1_message3" *)
+  let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 5 ------------------------ *)
+
+  (* At this moment delayed inbox corresponding to the previous block have 4 messages:
+     [SoL4, IpL4, "L1_message3", EoL4].
+     5 delayed inbox messages have been consumed by the previous block.
+     Seq_batcher has batched a Sequence with the 4 delayed inbox messages
+     and ["RPC_message3"; "RPC_message4"] user messages, which denoted S2.
+  *)
+
+  (* TODO: INSPECT STATE HERE *)
+
+  (* Inject S1 into an upcoming block with level 6 *)
+
+  (* Bake a block with level 6, containing S1 *)
+  let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 6 ------------------------ *)
+
+  (* Feed to the sequencer kernel S1 sequence *)
+
+  (* Inject S2 into an upcoming block with level 7 *)
+  (* Following S3 is not going to be injected within this test, so we ingore consideration of it *)
+
+  (* Bake a block with level 7, containing S2 *)
+  let* _ = next_rollup_level setup in
+
+  (* ------------------------ NEW BLOCK level = 7 ------------------------ *)
+  let*! concated_string =
+    rpc_get_optimistic_storage_value sc_rollup_client "/concat"
+  in
+  let concated_string_hex = `Hex (JSON.as_string concated_string) in
+  let expected_concat =
+    "SoL IpL L1_message1 L1_message2 RPC_message1 RPC_message2 EoL SoL IpL \
+     L1_message3 RPC_message3 RPC_message4 EoL"
+  in
+  (* let expected_concat = Hex.show @@ Hex.of_string expected_concat in *)
+  Format.printf "RECEIVED %s\n" (Hex.to_string concated_string_hex) ;
+  Check.(
+    ( = )
+      expected_concat
+      (Hex.to_string concated_string_hex)
+      ~__LOC__
+      string
+      ~error_msg:"Unexpected optimistic state ") ;
+  Lwt.return_unit
+
+let register ~protocols =
+  let _p = protocols in
+  ()
+(* test_delayed_inbox_consumed protocols ; *)
+(* test_optimistic_state_computed_correctly protocols *)

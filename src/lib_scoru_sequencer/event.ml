@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
+(* Copyright (c) 2022-2023 TriliTech <contact@trili.tech>                    *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,38 +23,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Alpha_context
+module Simple = struct
+  include Internal_event.Simple
 
-(** [process_head node_ctxt ~predecessor head (inbox, messages)] interprets the
-    [messages] associated with a [head] (where [predecessor] is the predecessor
-    of [head] in the L1 chain). This requires the [inbox] to be updated
-    beforehand. It returns [(ctxt, num_messages, num_ticks, tick)] where [ctxt]
-    is the updated layer 2 context (with the new PVM state), [num_messages] is
-    the number of [messages], [num_ticks] is the number of ticks taken by the
-    PVM for the evaluation and [tick] is the tick reached by the PVM after the
-    evaluation. *)
-val process_head :
-  Node_context.rw ->
-  predecessor:Layer1.header ->
-  Layer1.header ->
-  Sc_rollup.Inbox.t * Sc_rollup.Inbox_message.t list ->
-  (Context.rw * int * int64 * Sc_rollup.Tick.t) tzresult Lwt.t
+  let section = ["sequencer_node"]
 
-(** [state_of_tick node_ctxt ?start_state tick level] returns [Some (state,
-    hash)] for a given [tick] if this [tick] happened before [level]. Otherwise,
-    returns [None]. If provided, the evaluation is resumed from
-    [start_state]. *)
-val state_of_tick :
-  _ Node_context.t ->
-  ?start_state:Fueled_pvm.Accounted.eval_state ->
-  Sc_rollup.Tick.t ->
-  Raw_level.t ->
-  Fueled_pvm.Accounted.eval_state option tzresult Lwt.t
+  let simulation_kernel_debug =
+    declare_1
+      ~section
+      ~name:"simulation_kernel_debug"
+      ~level:Notice
+      ~msg:"Simulation: {log}"
+      ("log", Data_encoding.string)
+      ~pp1:Format.pp_print_string
+end
 
-(** [state_of_head node_ctxt head] returns the state corresponding to the
-    block [head], or the state at rollup genesis if the block is before the
-    rollup origination. *)
-val state_of_head :
-  'a Node_context.t ->
-  Layer1.head ->
-  ('a Context.t * Context.tree) tzresult Lwt.t
+let simulation_kernel_debug msg = Simple.(emit simulation_kernel_debug) msg

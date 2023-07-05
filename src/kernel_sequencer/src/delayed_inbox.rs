@@ -30,7 +30,7 @@ pub struct UserMessage {
 }
 
 /// Message saved in the pending inbox
-#[derive(BinWriter, NomReader)]
+#[derive(Debug, BinWriter, NomReader)]
 pub struct PendingUserMessage {
     level: u32,
     id: u32,
@@ -256,6 +256,7 @@ fn handle_pending_inbox<H: Runtime>(
     pending_inbox_queue: &mut Queue,
 ) -> Result<Option<Message>, RuntimeError> {
     let pending_message = pending_inbox_queue.pop(host)?;
+    debug_msg!(host, "PENDING INBOX ELEMENT {:?}\n", &pending_message);
     let Some(PendingUserMessage {id, level, payload}) = pending_message else {return Ok(None)};
 
     let msg = Message::new(level, id, payload);

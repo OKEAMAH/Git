@@ -39,6 +39,9 @@ module Delayed_inbox = struct
 
     let empty = {head = 0l; tail = -1l}
 
+    let is_adjacent left right =
+      Compare.Int32.(Int32.succ left.tail = right.head)
+
     let size x = Int32.(succ @@ sub x.tail x.head)
 
     let encoding =
@@ -60,16 +63,23 @@ module Delayed_inbox = struct
         (fun (timeout_level, user_message) -> {timeout_level; user_message})
       @@ obj2 (req "timeout_level" int32) (req "user_message" Variable.string)
   end
+
+  type queue_slice = {
+    pointer : Pointer.t;
+    elements : Sc_rollup.Inbox_message.serialized list;
+  }
 end
 
 module Durable_state = struct
   module Durable_state = Wasm_2_0_0_pvm.Durable_state
 
-  (* User state is supposed to be stored in the root, so no additional prefixes needed *)
-  let lookup_user_kernel ctxt_tree key = Durable_state.lookup ctxt_tree key
+  (* User state is supposed to be stored under /u *)
+  let lookup_user_kernel ctxt_tree key =
+    Durable_state.lookup ctxt_tree @@ "/u" ^ key
 
-  (* User state is supposed to be stored in the root, so no additional prefixes needed *)
-  let list_user_kernel ctxt_tree key = Durable_state.list ctxt_tree key
+  (* User state is supposed to be stored under /u *)
+  let list_user_kernel ctxt_tree key =
+    Durable_state.list ctxt_tree @@ "/u" ^ key
 
   let lookup_queue_pointer ctxt_tree =
     let open Lwt_syntax in
@@ -98,24 +108,31 @@ module Durable_state = struct
                 el_bytes)
 end
 
-let context_of node_ctxt (at : Layer1.head) =
-  let open Lwt_result_syntax in
-  let*? level = Environment.wrap_tzresult @@ Raw_level.of_int32 at.level in
-  let first_inbox_level =
-    Raw_level.succ node_ctxt.Node_context.genesis_info.level
-  in
-  if Raw_level.(level < first_inbox_level) then
-    (* This is before we have interpreted the boot sector, so we start
-       with an empty context in genesis *)
-    return (Context.empty node_ctxt.context)
-  else Node_context.checkout_context node_ctxt at.hash
-
 let get_delayed_inbox_pointer node_ctxt (at : Layer1.head) =
   let open Lwt_result_syntax in
-  let* ctxt = context_of node_ctxt at in
-  let* _ctxt, state = Interpreter.state_of_head node_ctxt ctxt at in
+  let* _ctxt, state = Interpreter.state_of_head node_ctxt at in
   let*! pointer = Durable_state.lookup_queue_pointer state in
   return pointer
+
+let get_pointer_elements state (p : Delayed_inbox.Pointer.t) =
+  let open Lwt_result_syntax in
+  let size = Int32.to_int @@ Delayed_inbox.Pointer.size p in
+  List.init_ep
+    ~when_negative_length:
+      (Exn (Failure "Unexpected negative length of delayed inbox difference"))
+    size
+    (fun i ->
+      let element_id = Int32.(add (of_int i) p.head) in
+      let*! opt_el = Durable_state.lookup_queue_element state element_id in
+      match opt_el with
+      | None ->
+          tzfail
+          @@ Exn
+               (Failure
+                  (Format.asprintf
+                     "Couldn't obtain delayed inbox element with index %ld"
+                     element_id))
+      | Some el -> return @@ Sc_rollup.Inbox_message.unsafe_of_string el)
 
 let get_previous_delayed_inbox_pointer node_ctxt (head : Layer1.head) =
   let open Lwt_result_syntax in
@@ -127,11 +144,6 @@ let get_previous_delayed_inbox_pointer node_ctxt (head : Layer1.head) =
   in
   let* previous_head = Node_context.get_predecessor node_ctxt head in
   get_delayed_inbox_pointer node_ctxt previous_head
-
-type queue_slice = {
-  pointer : Delayed_inbox.Pointer.t;
-  elements : Sc_rollup.Inbox_message.serialized list;
-}
 
 (* Returns newly added elements in the delayed inbox
    at block corresponding to the passed head. *)
@@ -147,37 +159,16 @@ let get_delayed_inbox_diff node_ctxt (head : Layer1.head) =
                Raw_level.pp
                level)))
   else if Raw_level.(level = node_ctxt.Node_context.genesis_info.level) then
-    return {pointer = Delayed_inbox.Pointer.empty; elements = []}
+    return Delayed_inbox.{pointer = Delayed_inbox.Pointer.empty; elements = []}
   else
     let* previous_head = Node_context.get_predecessor node_ctxt head in
     let* previous_pointer = get_delayed_inbox_pointer node_ctxt previous_head in
     let* current_pointer = get_delayed_inbox_pointer node_ctxt head in
     let new_block_head = Int32.succ previous_pointer.tail in
     let new_block_tail = current_pointer.tail in
-    let size = Int32.(to_int new_block_tail - to_int new_block_head + 1) in
-    let* ctxt = context_of node_ctxt head in
-    let* _ctxt, state = Interpreter.state_of_head node_ctxt ctxt head in
-    let+ elements =
-      List.init_ep
-        ~when_negative_length:
-          (Exn
-             (Failure "Unexpected negative length of delayed inbox difference"))
-        size
-        (fun i ->
-          let element_id = Int32.(add (of_int i) new_block_head) in
-          let*! opt_el = Durable_state.lookup_queue_element state element_id in
-          match opt_el with
-          | None ->
-              tzfail
-              @@ Exn
-                   (Failure
-                      (Format.asprintf
-                         "Couldn't obtain delayed inbox element with index %ld"
-                         element_id))
-          | Some el -> return @@ Sc_rollup.Inbox_message.unsafe_of_string el)
+    let* _ctxt, state = Interpreter.state_of_head node_ctxt head in
+    let pointer =
+      Delayed_inbox.Pointer.{head = new_block_head; tail = new_block_tail}
     in
-    {
-      pointer =
-        Delayed_inbox.Pointer.{head = new_block_head; tail = new_block_tail};
-      elements;
-    }
+    let+ elements = get_pointer_elements state pointer in
+    Delayed_inbox.{pointer; elements}

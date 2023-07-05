@@ -54,30 +54,35 @@ module Batcher_events = struct
       ("l1_operation_hash", Injector.Inj_operation.Hash.encoding)
 end
 
-type optimistic_ctxt = {
-  delayed_inbox_diff : Kernel_durable.Delayed_inbox.Pointer.t;
-      (** Points to a delayed inbox diff
-          that has been introduced by the last received block.
-          Has to refer to the sequence like [SoL, IpL, m1, m2, ... EoL] *)
-  user_messages : Sc_rollup.Inbox_message.serialized list;
-      (** User messages received from RPC since the last applied block *)
-  last_nonce : int32;  (** Last injected sequence nonce. *)
-  simulation_ctxt : Simulation.t;
-      (** Latest simulation context, including all [user_messages] as well *)
-}
-
 type state = {
   node_ctxt : Node_context.ro;
   signer : Signature.V0.public_key_hash * Client_keys.sk_uri;
-  (* This one is V0 because sequencer kernel doesn't support BLS signatures yet *)
-  mutable head_ctxt : optimistic_ctxt option;
+      (* This one is V0 because sequencer kernel doesn't support BLS signatures yet *)
+  block_finality : int;
+      (** Having block with level X, a block with level X - [block_finality] and less cannot reorg. *)
+  mutable last_injected_nonce : int32;
+      (** Sequence with [last_injected_nonce] nonce has been scheduled for injection. *)
+  mutable new_messages : Sc_rollup.Inbox_message.serialized list;
+      (** User messages received from RPC which will be included in the next Sequence *)
+  mutable simulation_ctxt : Optimistic_simulation.t option;
 }
 
-let get_head_ctxt_exn state =
+let encode_sequence state =
+  Kernel_message.encode_and_sign_sequence
+    (state.node_ctxt.cctxt, snd state.signer)
+    state.node_ctxt.rollup_address
+
+module Optimistic_simulation = Optimistic_simulation.Make (struct
+  type signer_ctxt = state
+
+  let encode_sequence = encode_sequence
+end)
+
+let get_simulation_ctxt_exn state =
   let open Lwt_result_syntax in
-  match state.head_ctxt with
+  match state.simulation_ctxt with
   | None ->
-      failwith "Optimistic context of sequencer hasn't been initialized yet"
+      failwith "Simulation context of sequencer hasn't been initialized yet"
   | Some opt -> return opt
 
 (** Represents sequence of messages ready to be injected. *)
@@ -95,67 +100,39 @@ let inject_sequence ~source {encoded_sequence; _} =
   let operation = L1_operation.Add_messages {messages = [encoded_sequence]} in
   Injector.add_pending_operation ~source operation
 
-(* Create Sequence message out of head optimistic context.
-   Currently it just consumes all the delayed inbox diff
-   and all the received user messages. *)
-let create_head_sequence state =
+(* Create Sequence message out of received messages and
+   finalized delayed inbox messages. *)
+let cut_sequence state =
   let open Lwt_result_syntax in
-  let* head_ctxt = get_head_ctxt_exn state in
+  let* sim_ctxt = get_simulation_ctxt_exn state in
   (* Assuming at the moment that all the registered messages fit into a single L2 message.
      This logic will be extended later. *)
-  let delayed_inbox_pointer = head_ctxt.delayed_inbox_diff in
-  let l2_messages = List.rev @@ head_ctxt.user_messages in
+  let delayed_inbox_pointer = sim_ctxt.current_block_diff in
+  let l2_messages = List.rev @@ state.new_messages in
   let delayed_inbox_size =
     Kernel_durable.Delayed_inbox.Pointer.size delayed_inbox_pointer
   in
-  let new_nonce = Int32.succ head_ctxt.last_nonce in
-  let sequence_encoded =
-    if delayed_inbox_size = 0l then
-      (* That might happen only for the genesis + 1 block level *)
-      Kernel_message.encode_sequence_message
-        state.node_ctxt.rollup_address
-        ~nonce:new_nonce
-        ~prefix:0l
-        ~suffix:0l
-        l2_messages
-    else
-      (* Normal case: there should be at least 3 messages *)
-      Kernel_message.encode_sequence_message
-        state.node_ctxt.rollup_address
-        ~nonce:new_nonce
-        ~prefix:(Int32.pred delayed_inbox_size)
-        ~suffix:1l
-        l2_messages
-  in
+  let new_nonce = Int32.succ state.last_injected_nonce in
   let+ sequence_signed =
-    Kernel_message.sign_sequence
-      state.node_ctxt.cctxt
-      (snd state.signer)
-      sequence_encoded
+    encode_sequence
+      state
+      ~nonce:new_nonce
+      ~prefix:(Int32.pred delayed_inbox_size)
+      ~suffix:1l
+      l2_messages
   in
   {
     delayed_inbox_pointer;
     l2_messages;
-    nonce = Int32.succ head_ctxt.last_nonce;
+    nonce = new_nonce;
     encoded_sequence = sequence_signed;
   }
 
-let simulate node_ctxt simulation_ctxt
-    (messages : Sc_rollup.Inbox_message.serialized list) =
+(* This one finalises current Sequence, schedule it for injection
+   and update optimistic simulation context with new head *)
+let batch_sequence state new_head =
   let open Lwt_result_syntax in
-  let+ simulation_ctxt, _ticks =
-    Simulation.simulate_messages
-      node_ctxt
-      ~prepend_meta_messages:false
-      simulation_ctxt
-      messages
-  in
-  simulation_ctxt
-
-(* This one finalises current Sequence and update optimistic context with new head *)
-let refresh_optimistic_ctxt state new_head =
-  let open Lwt_result_syntax in
-  let* sequence = create_head_sequence state in
+  let* sequence = cut_sequence state in
   let* l1_op_hash =
     inject_sequence
       ~source:(Signature.Of_V0.public_key_hash @@ fst state.signer)
@@ -168,36 +145,30 @@ let refresh_optimistic_ctxt state new_head =
         Int32.of_int @@ List.length sequence.l2_messages,
         l1_op_hash )
   in
-
-  let* new_delayed_inbox_diff =
+  let* new_block_delayed_inbox_diff =
     get_delayed_inbox_diff state.node_ctxt new_head
   in
-  (* TODO: check that delayed_inbox_diff starts with SoL, IpL and ends with EoL *)
-  let*? eol =
-    Environment.wrap_tzresult
-    @@ Sc_rollup.Inbox_message.(serialize @@ Internal End_of_level)
-  in
-  let tot_elements = List.length new_delayed_inbox_diff.elements in
-  let new_head_messages_but_eol =
-    List.take_n (tot_elements - 1) new_delayed_inbox_diff.elements
-  in
+  Format.printf
+    "DELAYED INBOX DIFF for level %ld: [head: %ld, tail: %ld], elements: %s\n\n\n"
+    new_head.level
+    new_block_delayed_inbox_diff.pointer.head
+    new_block_delayed_inbox_diff.pointer.tail
+    (String.concat ";\n"
+    @@ List.map
+         Sc_rollup.Inbox_message.unsafe_to_string
+         new_block_delayed_inbox_diff.elements) ;
 
-  let* prev_head_ctxt = get_head_ctxt_exn state in
-  let* delayed_inbox_simulation_ctxt =
-    simulate
+  let* cur_sim_ctxt = get_simulation_ctxt_exn state in
+  let* new_sim_ctxt =
+    Optimistic_simulation.new_block
+      state
       state.node_ctxt
-      prev_head_ctxt.simulation_ctxt
-      (* End of previous level, then messages from new head but EoL *)
-      (eol :: new_head_messages_but_eol)
+      cur_sim_ctxt
+      new_block_delayed_inbox_diff
   in
-  state.head_ctxt <-
-    Some
-      {
-        delayed_inbox_diff = new_delayed_inbox_diff.pointer;
-        user_messages = [];
-        last_nonce = sequence.nonce;
-        simulation_ctxt = delayed_inbox_simulation_ctxt;
-      } ;
+  state.last_injected_nonce <- sequence.nonce ;
+  state.new_messages <- [] ;
+  state.simulation_ctxt <- Some new_sim_ctxt ;
   return_unit
 
 (* Maximum size of single L2 message.
@@ -222,45 +193,52 @@ let on_register_messages state (messages : string list) =
         else Ok (L2_message.make message))
       messages
   in
-  let* head_ctxt = get_head_ctxt_exn state in
-  let*? serialized_messages =
+  let*? external_serialized_messages =
     List.map_e
       (fun m ->
         Sc_rollup.Inbox_message.(serialize @@ External (L2_message.content m)))
       messages
     |> Environment.wrap_tzresult
   in
+  let* current_simulation_ctxt = get_simulation_ctxt_exn state in
   let* new_simulation_ctxt =
-    simulate state.node_ctxt head_ctxt.simulation_ctxt serialized_messages
+    Optimistic_simulation.append_messages
+      state
+      state.node_ctxt
+      current_simulation_ctxt
+      external_serialized_messages
   in
-  state.head_ctxt <-
-    Some
-      {
-        head_ctxt with
-        simulation_ctxt = new_simulation_ctxt;
-        user_messages =
-          List.rev_append serialized_messages head_ctxt.user_messages;
-      } ;
+  state.new_messages <-
+    List.rev_append external_serialized_messages state.new_messages ;
+  state.simulation_ctxt <- Some new_simulation_ctxt ;
   let*! () = Batcher_events.(emit queue) (List.length messages) in
   return @@ List.map L2_message.hash messages
 
 let on_new_head state (head : Layer1.head) =
   let open Lwt_result_syntax in
   let genesis_level = Raw_level.to_int32 state.node_ctxt.genesis_info.level in
-  if head.level = genesis_level then (
-    let* simulation_ctxt =
-      Simulation.init_simulation_ctxt ~reveal_map:None state.node_ctxt head
+  let genesis_finalization_level =
+    Int32.add genesis_level (Int32.of_int state.block_finality)
+  in
+  if head.level = Int32.succ genesis_level then (
+    (* Init simulation context *)
+    let* first_delayed_inbox_diff =
+      get_delayed_inbox_diff state.node_ctxt head
     in
-    state.head_ctxt <-
-      Some
-        {
-          delayed_inbox_diff = Delayed_inbox.Pointer.empty;
-          user_messages = [];
-          simulation_ctxt;
-          last_nonce = 0l;
-        } ;
+    let* sim_ctxt =
+      Optimistic_simulation.init_ctxt
+        state
+        state.node_ctxt
+        first_delayed_inbox_diff
+        head
+    in
+    state.simulation_ctxt <- Some sim_ctxt ;
     return_unit)
-  else if head.level > genesis_level then refresh_optimistic_ctxt state head
+  else if head.level > genesis_finalization_level then
+    let* () = batch_sequence state head in
+    (* let* optimistic_state = get_simulation_ctxt_exn state in
+       let optimistic_state = optimistic_state.simulation_ctxt.state in *)
+    return_unit
   else return_unit
 
 let init_batcher_state node_ctxt ~signer =
@@ -272,8 +250,12 @@ let init_batcher_state node_ctxt ~signer =
     {
       node_ctxt;
       signer = (signer, sk);
-      (* TODO: restore head_context correctly from the persistent storage *)
-      head_ctxt = None;
+      (* TODO: restore all the variables below from persistent storage *)
+      last_injected_nonce = 0l;
+      (* TODO: Make block finality argument of init *)
+      block_finality = 1;
+      new_messages = [];
+      simulation_ctxt = None;
     }
 
 module Types = struct
@@ -416,7 +398,7 @@ let get_simulation_state () =
   let open Lwt_result_syntax in
   let*? w = Lazy.force worker in
   let state = Worker.state w in
-  let+ optimistic_state = get_head_ctxt_exn state in
+  let+ optimistic_state = get_simulation_ctxt_exn state in
   optimistic_state.simulation_ctxt.state
 
 let get_simulated_state_value key =

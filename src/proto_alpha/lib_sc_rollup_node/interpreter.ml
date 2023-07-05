@@ -93,8 +93,22 @@ let genesis_state block_hash node_ctxt ctxt =
   let*! ctxt = PVM.State.set ctxt genesis_state in
   return (ctxt, genesis_state)
 
-let state_of_head node_ctxt ctxt Layer1.{hash; level} =
+let context_of node_ctxt (head : Layer1.head) =
   let open Lwt_result_syntax in
+  let*? level = Environment.wrap_tzresult @@ Raw_level.of_int32 head.level in
+  let first_inbox_level =
+    Raw_level.succ node_ctxt.Node_context.genesis_info.level
+  in
+  if Raw_level.(level < first_inbox_level) then
+    (* This is before we have interpreted the boot sector, so we start
+       with an empty context in genesis *)
+    return (Context.empty node_ctxt.context)
+  else Node_context.checkout_context node_ctxt head.hash
+
+let state_of_head node_ctxt (head : Layer1.head) =
+  let open Lwt_result_syntax in
+  let Layer1.{hash; level} = head in
+  let* ctxt = context_of node_ctxt head in
   let*! state = Context.PVMState.find ctxt in
   match state with
   | None ->
@@ -108,11 +122,10 @@ let state_of_head node_ctxt ctxt Layer1.{hash; level} =
 (** [transition_pvm node_ctxt predecessor head] runs a PVM at the previous state
     from block [predecessor] by consuming as many messages as possible from
     block [head]. *)
-let transition_pvm node_ctxt ctxt predecessor Layer1.{hash = _; _}
-    inbox_messages =
+let transition_pvm node_ctxt predecessor Layer1.{hash = _; _} inbox_messages =
   let open Lwt_result_syntax in
   (* Retrieve the previous PVM state from store. *)
-  let* ctxt, predecessor_state = state_of_head node_ctxt ctxt predecessor in
+  let* ctxt, predecessor_state = state_of_head node_ctxt predecessor in
   let* eval_result =
     Fueled_pvm.Free.eval_block_inbox
       ~fuel:(Fuel.Free.of_ticks 0L)
@@ -136,11 +149,11 @@ let transition_pvm node_ctxt ctxt predecessor Layer1.{hash = _; _}
   in
   return (ctxt, num_messages, Z.to_int64 num_ticks, initial_tick)
 
-(** [process_head node_ctxt ctxt ~predecessor head] runs the PVM for the given
+(** [process_head node_ctxt ~predecessor head] runs the PVM for the given
     head. *)
-let process_head (node_ctxt : _ Node_context.t) ctxt
-    ~(predecessor : Layer1.header) (head : Layer1.header) (inbox, inbox_messages)
-    =
+let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
+    (head : Layer1.header) (inbox, inbox_messages) :
+    ('a Context.t * int * int64 * Sc_rollup.Tick.t) tzresult Lwt.t =
   let open Lwt_result_syntax in
   let first_inbox_level =
     Raw_level.to_int32 node_ctxt.genesis_info.level |> Int32.succ
@@ -152,16 +165,14 @@ let process_head (node_ctxt : _ Node_context.t) ctxt
     in
     transition_pvm
       node_ctxt
-      ctxt
       (Layer1.head_of_header predecessor)
       (Layer1.head_of_header head)
       (inbox, inbox_messages)
   else if head.Layer1.level = Raw_level.to_int32 node_ctxt.genesis_info.level
   then
-    let* ctxt, state = genesis_state head.hash node_ctxt ctxt in
-    let*! ctxt = Context.PVMState.set ctxt state in
+    let* ctxt, _state = state_of_head node_ctxt (Layer1.head_of_header head) in
     return (ctxt, 0, 0L, Sc_rollup.Tick.initial)
-  else return (ctxt, 0, 0L, Sc_rollup.Tick.initial)
+  else return (Context.empty node_ctxt.context, 0, 0L, Sc_rollup.Tick.initial)
 
 (** Returns the starting evaluation before the evaluation of the block. It
     contains the PVM state at the end of the execution of the previous block and
@@ -169,13 +180,9 @@ let process_head (node_ctxt : _ Node_context.t) ctxt
 let start_state_of_block node_ctxt (block : Sc_rollup_block.t) =
   let open Lwt_result_syntax in
   let pred_level = Int32.pred block.header.level in
-  let* ctxt =
-    Node_context.checkout_context node_ctxt block.header.predecessor
-  in
   let* _ctxt, state =
     state_of_head
       node_ctxt
-      ctxt
       Layer1.{hash = block.header.predecessor; level = pred_level}
   in
   let* inbox =

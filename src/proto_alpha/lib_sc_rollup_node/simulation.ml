@@ -60,15 +60,7 @@ let init_simulation_ctxt node_ctxt ~reveal_map (Layer1.{hash; level} as head) =
       Raw_level.(level >= node_ctxt.Node_context.genesis_info.level)
       (Exn (Failure "Cannot simulate before origination level"))
   in
-  let first_inbox_level = Raw_level.succ node_ctxt.genesis_info.level in
-  let* ctxt =
-    if Raw_level.(level < first_inbox_level) then
-      (* This is before we have interpreted the boot sector, so we start
-         with an empty context in genesis *)
-      return (Context.empty node_ctxt.context)
-    else Node_context.checkout_context node_ctxt hash
-  in
-  let* ctxt, state = Interpreter.state_of_head node_ctxt ctxt head in
+  let* ctxt, state = Interpreter.state_of_head node_ctxt head in
   let+ info_per_level = simulate_info_per_level node_ctxt hash in
   let inbox_level = Raw_level.succ level in
   {

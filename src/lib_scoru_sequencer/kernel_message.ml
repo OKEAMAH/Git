@@ -192,6 +192,18 @@ let sign_sequence cctxt signer (`Unsigned_encoded unsigned_sequence) =
     signed_raw_encoding
     {unsigned_payload = unsigned_sequence; signature}
 
+let encode_and_sign_sequence (cctx, signer) rollup_address ~nonce ~prefix
+    ~suffix serialized_msgs =
+  let encoded_sequence =
+    encode_sequence_message
+      rollup_address
+      ~nonce
+      ~prefix
+      ~suffix
+      serialized_msgs
+  in
+  sign_sequence cctx signer encoded_sequence
+
 let single_l2_message_overhead =
   let dummy_address =
     Sc_rollup.Address.of_b58check_exn "sr1EzLeJYWrvch2Mhvrk1nUVYrnjGQ8A4qdb"
