@@ -138,10 +138,28 @@ struct
 
     let rename _f cmt = cmt
 
-    let get _ _ = failwith "todo"
-    let commit_single _ _ = failwith "todo"
-    let empty  = Pack.{cmt_t = GT.zero; cmt_len = 0}
-    let add _ _ _ = failwith "todo"
+    let commit_single pp =
+      PC.Commitment.commit_single Public_parameters.(pp.pp_pc_prover)
+
+    let recombine l = List.fold_left Pack.combine (List.hd l) (List.tl l)
+
+    let recombine_prover_aux l =
+      let cm = PC.Commitment.recombine (List.map fst l) in
+      let p_a = PC.Commitment.recombine_prover_aux (List.map snd l) in
+      (cm, p_a)
+
+    let empty = Pack.empty_commitment
+
+    let empty_prover_aux = (PC.Commitment.empty, PC.Commitment.empty_prover_aux)
+
+    let of_list pp ~name l =
+      let pc_cm =
+        PC.Commitment.(of_list Public_parameters.(pp.pp_pc_prover) ~name l)
+      in
+      ( Pack.commit Public_parameters.(pp.pp_pack_prover) (Array.of_list l),
+        pc_cm )
+
+    let to_map _ = failwith "Not implemented & should not be used in verifier"
   end
 
   type proof = {
