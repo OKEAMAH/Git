@@ -37,6 +37,13 @@
          with [Some v when Staking_pseudotoken_repr.(v <> zero)];
        - and that there is no call to
          {!Storage.Contract.Frozen_deposits_pseudotokens.get}.
+
+
+   Invariant 2:
+     All delegates with non-zero frozen deposits tez have:
+       - either their costaking balance pseudotokens initialized and their
+         frozen deposits pseudotokens initialized to non-zero;
+       - or have no costakers.
 *)
 
 (** [init_delegate_pseudotokens_from_frozen_deposits_balance ctxt contract]
