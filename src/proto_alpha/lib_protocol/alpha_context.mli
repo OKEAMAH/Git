@@ -997,6 +997,8 @@ module Constants : sig
   val sc_rollup_reveal_activation_level :
     context -> Parametric.sc_rollup_reveal_activation_level
 
+  val sc_rollup_whitelist_enable : context -> bool
+
   val zk_rollup_enable : context -> bool
 
   val zk_rollup_min_pending_to_process : context -> int
@@ -4227,6 +4229,7 @@ and _ manager_operation =
       kind : Sc_rollup.Kind.t;
       boot_sector : string;
       parameters_ty : Script.lazy_expr;
+      whitelist : Signature.Public_key_hash.t list option;
     }
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {

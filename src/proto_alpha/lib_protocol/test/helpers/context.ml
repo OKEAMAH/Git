@@ -498,8 +498,8 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
     ?min_proposal_quorum ?bootstrap_contracts ?level ?cost_per_byte
     ?reward_weights ?origination_size ?blocks_per_cycle
     ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
-    ?dal_enable ?zk_rollup_enable ?hard_gas_limit_per_block
-    ?nonce_revelation_threshold () =
+    ?sc_rollup_whitelist_enable ?dal_enable ?zk_rollup_enable
+    ?hard_gas_limit_per_block ?nonce_revelation_threshold () =
   let n = tup_n tup in
   Account.generate_accounts ?rng_state n >>?= fun accounts ->
   let contracts =
@@ -525,6 +525,7 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
     ?cycles_per_voting_period
     ?sc_rollup_enable
     ?sc_rollup_arith_pvm_enable
+    ?sc_rollup_whitelist_enable
     ?dal_enable
     ?zk_rollup_enable
     ?hard_gas_limit_per_block

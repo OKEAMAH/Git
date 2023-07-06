@@ -289,6 +289,7 @@ type 'accounts init :=
   ?cycles_per_voting_period:int32 ->
   ?sc_rollup_enable:bool ->
   ?sc_rollup_arith_pvm_enable:bool ->
+  ?sc_rollup_whitelist_enable:bool ->
   ?dal_enable:bool ->
   ?zk_rollup_enable:bool ->
   ?hard_gas_limit_per_block:Gas.Arith.integral ->

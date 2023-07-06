@@ -226,8 +226,26 @@ let validate_untyped_parameters_ty ctxt parameters_ty =
      for L1 to L2 messages is not propagated to the rollup. *)
   validate_parameters_ty ctxt arg_type entrypoint
 
-let originate ctxt ~kind ~boot_sector ~parameters_ty =
+let check_whitelist ctxt whitelist =
+  let open Result_syntax in
+  match whitelist with
+  | Some whitelist ->
+      let whitelist_enabled = Constants.sc_rollup_whitelist_enable ctxt in
+      (* The whitelist must be None when the feature is deactivated. *)
+      let* () =
+        error_unless
+          whitelist_enabled
+          Sc_rollup_errors.Sc_rollup_whitelist_disabled
+      in
+      (* The origination fails with an empty list. *)
+      error_when
+        (List.is_empty whitelist)
+        Sc_rollup_errors.Sc_rollup_empty_whitelist
+  | None -> Ok ()
+
+let originate ctxt ~kind ~boot_sector ~parameters_ty ~whitelist =
   let open Lwt_result_syntax in
+  let*? () = check_whitelist ctxt whitelist in
   let*? ctxt =
     let open Result_syntax in
     let* parameters_ty, ctxt =

@@ -53,6 +53,7 @@ val originate :
   kind:Sc_rollup.Kind.t ->
   boot_sector:string ->
   parameters_ty:Script_repr.lazy_expr ->
+  whitelist:Signature.Public_key_hash.t list option ->
   (origination_result * context) tzresult Lwt.t
 
 (** [execute_outbox_message ctxt rollup ~cemented_commitment

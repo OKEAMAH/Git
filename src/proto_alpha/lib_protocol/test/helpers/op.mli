@@ -436,6 +436,7 @@ val sc_rollup_origination :
   ?fee:Tez.t ->
   ?gas_limit:gas_limit ->
   ?storage_limit:Z.t ->
+  ?whitelist:Signature.Public_key_hash.t list ->
   Context.t ->
   Contract.t ->
   Sc_rollup.Kind.t ->

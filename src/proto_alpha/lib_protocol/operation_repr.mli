@@ -414,6 +414,7 @@ and _ manager_operation =
       kind : Sc_rollups.Kind.t;
       boot_sector : string;
       parameters_ty : Script_repr.lazy_expr;
+      whitelist : Signature.Public_key_hash.t list option;
     }
       -> Kind.sc_rollup_originate manager_operation
   (* [Sc_rollup_add_messages] adds messages to the smart rollups' inbox. *)
