@@ -70,10 +70,11 @@ let test_wrong_proof () =
   assert (not (fst @@ Cq.verify vrf transcript wrong_proof))
 
 let bench_pippenger () =
+  let nb_rep = 1000 in
   let open Plonk.Bls in
   let srs, _ =
     let open Octez_bls12_381_polynomial.Bls12_381_polynomial in
-    Srs.generate_insecure 5 0
+    Srs.generate_insecure 8 0
   in
   let _srs = Srs_g1.to_array srs in
   let _srs_affine = G1.to_affine_array _srs in
@@ -88,37 +89,39 @@ let bench_pippenger () =
   in
   let f = Poly.to_dense_coefficients f_poly in
 
-  Gc.full_major () ;
+  let f_srs () =
+    let _ = Srs_g1.pippenger srs f_poly in
+    ()
+  in
+  let f_g1 () =
+    let _ = G1.pippenger _srs f in
+    ()
+  in
+  let f_g1_affine () =
+    let _ = G1.pippenger_with_affine_array _srs_affine f in
+    ()
+  in
+  let f_g1_affine_with_conv () =
+    let _ = G1.pippenger_with_affine_array (G1.to_affine_array _srs) f in
+    ()
+  in
 
-  let t0 = Unix.gettimeofday () in
-  let _ = Srs_g1.pippenger srs f_poly in
-  let t1 = Unix.gettimeofday () in
+  let srs = Plonk_test.Helpers.Time.bench ~nb_rep f_srs () in
+  let g1 = Plonk_test.Helpers.Time.bench ~nb_rep f_g1 () in
+  let affine = Plonk_test.Helpers.Time.bench ~nb_rep f_g1_affine () in
+  let affine_conv =
+    Plonk_test.Helpers.Time.bench ~nb_rep f_g1_affine_with_conv ()
+  in
 
-  Gc.full_major () ;
+  let n = float_of_int nb_rep in
 
-  let t2 = Unix.gettimeofday () in
-  let _ = G1.pippenger _srs f in
-  let t3 = Unix.gettimeofday () in
-
-  Gc.full_major () ;
-
-  let t4 = Unix.gettimeofday () in
-  let _ = G1.pippenger_with_affine_array _srs_affine f in
-  let t5 = Unix.gettimeofday () in
-
-  Gc.full_major () ;
-
-  let t6 = Unix.gettimeofday () in
-  let _ = G1.pippenger_with_affine_array (G1.to_affine_array _srs) f in
-  let t7 = Unix.gettimeofday () in
-
-  (* let _slow = Plonk_test.Helpers.repeat 1 f_slow () in
-     let _fast = Plonk_test.Helpers.repeat 1 f_fast () in
-     let _affine = Plonk_test.Helpers.repeat 1 f_affine () in *)
-  Printf.printf "\n\nSRS pippe : %f s." (t1 -. t0) ;
-  Printf.printf "\nPippenger : %f s." (t3 -. t2) ;
-  Printf.printf "\nWith affi : %f s." (t5 -. t4) ;
-  Printf.printf "\nAf w conv : %f s." (t7 -. t6) ;
+  Printf.printf "\n\nSRS pippe : %f s — mean : %f s." srs (srs /. n) ;
+  Printf.printf "\nPippenger : %f s — mean : %f s." g1 (g1 /. n) ;
+  Printf.printf "\nWith affi : %f s — mean : %f s." affine (affine /. n) ;
+  Printf.printf
+    "\nAf w conv : %f s — mean : %f s."
+    affine_conv
+    (affine_conv /. n) ;
   Printf.printf "\n\n" ;
   ()
 

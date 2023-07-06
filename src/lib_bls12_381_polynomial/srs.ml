@@ -292,7 +292,7 @@ module Srs = struct
   type t = Srs_g1.t * Srs_g2.t
 
   let generate_insecure log_g1 log_g2 =
-    let state = Random.State.make [|10 ; 1 |] in
+    let state = Random.State.make [|10; 1|] in
     let x = Bls12_381.Fr.random ~state () in
     ( Srs_g1.generate_insecure (1 lsl log_g1) x,
       Srs_g2.generate_insecure (1 lsl log_g2) x )
