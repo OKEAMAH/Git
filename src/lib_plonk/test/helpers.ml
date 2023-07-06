@@ -126,6 +126,7 @@ let srs =
 
 let rec repeat n f () =
   if n > 0 then (
+    Gc.full_major () ;
     f () ;
     repeat (n - 1) f ())
 

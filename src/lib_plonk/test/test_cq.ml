@@ -73,33 +73,53 @@ let bench_pippenger () =
   let open Plonk.Bls in
   let srs, _ =
     let open Octez_bls12_381_polynomial.Bls12_381_polynomial in
-    Srs.generate_insecure 15 0
+    Srs.generate_insecure 5 0
   in
   let _srs = Srs_g1.to_array srs in
-  (* let _srs_affine = G1.to_affine_array _srs in
-  (* let f = Array.init (Srs_g1.size srs) Scalar.of_int in *)
+  let _srs_affine = G1.to_affine_array _srs in
   let f_poly =
-    (* Evaluations.interpolation_fft2 (Domain.build (Array.length f)) f *)
-    (* Poly.of_coefficients (List.init (Srs_g1.size srs) (fun i -> (Scalar.of_string "783974309850394853839743085039485394793783974309850394853839743085039485394793", i))) *)
     Poly.of_coefficients
-      (List.init (Srs_g1.size srs) (fun i -> (Scalar.random (), i)))
+      (List.init (Srs_g1.size srs) (fun i ->
+           let rec s () =
+             let x = Scalar.random () in
+             if String.length (Scalar.to_string x) < 60 then s () else x
+           in
+           (s (), i)))
   in
   let f = Poly.to_dense_coefficients f_poly in
+
+  Gc.full_major () ;
+
   let t0 = Unix.gettimeofday () in
   let _ = Srs_g1.pippenger srs f_poly in
   let t1 = Unix.gettimeofday () in
-  Printf.printf "\n\nSRS pippe : %f s." (t1 -. t0) ;
-  let t0 = Unix.gettimeofday () in
-  let _ = G1.pippenger _srs f in
-  let t1 = Unix.gettimeofday () in
-  let _ = G1.pippenger_with_affine_array _srs_affine f in
+
+  Gc.full_major () ;
+
   let t2 = Unix.gettimeofday () in
-  Printf.printf "\nPippenger : %f s." (t1 -. t0) ;
-  Printf.printf "\nWith affi : %f s." (t2 -. t1) ;
-  Printf.printf "\n\n" ; *)
-  (* let _slow = Plonk_test.Helpers.repeat 1 f_slow () in *)
-  (* let _fast = Plonk_test.Helpers.repeat 1 f_fast () in *)
-  (* let _affine = Plonk_test.Helpers.repeat 1 f_affine () in *)
+  let _ = G1.pippenger _srs f in
+  let t3 = Unix.gettimeofday () in
+
+  Gc.full_major () ;
+
+  let t4 = Unix.gettimeofday () in
+  let _ = G1.pippenger_with_affine_array _srs_affine f in
+  let t5 = Unix.gettimeofday () in
+
+  Gc.full_major () ;
+
+  let t6 = Unix.gettimeofday () in
+  let _ = G1.pippenger_with_affine_array (G1.to_affine_array _srs) f in
+  let t7 = Unix.gettimeofday () in
+
+  (* let _slow = Plonk_test.Helpers.repeat 1 f_slow () in
+     let _fast = Plonk_test.Helpers.repeat 1 f_fast () in
+     let _affine = Plonk_test.Helpers.repeat 1 f_affine () in *)
+  Printf.printf "\n\nSRS pippe : %f s." (t1 -. t0) ;
+  Printf.printf "\nPippenger : %f s." (t3 -. t2) ;
+  Printf.printf "\nWith affi : %f s." (t5 -. t4) ;
+  Printf.printf "\nAf w conv : %f s." (t7 -. t6) ;
+  Printf.printf "\n\n" ;
   ()
 
 let tests =
