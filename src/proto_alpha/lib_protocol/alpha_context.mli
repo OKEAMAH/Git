@@ -4938,21 +4938,10 @@ module Staking_pseudotokens : sig
 
   val ( = ) : t -> t -> bool
 
-  val frozen_deposits_pseudotokens_for_tez_amount :
-    context -> public_key_hash -> Tez.t -> t tzresult Lwt.t
-
   val credit_frozen_deposits_pseudotokens_for_tez_amount :
     context -> public_key_hash -> Tez.t -> (context * t) tzresult Lwt.t
 
-  val debit_frozen_deposits_pseudotokens :
-    context -> public_key_hash -> t -> (context * Tez.t) tzresult Lwt.t
-
-  val costaking_pseudotokens_balance : context -> Contract.t -> t tzresult Lwt.t
-
   val credit_costaking_pseudotokens :
-    context -> Contract.t -> t -> context tzresult Lwt.t
-
-  val debit_costaking_pseudotokens :
     context -> Contract.t -> t -> context tzresult Lwt.t
 
   val request_unstake :
