@@ -399,8 +399,8 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_recover_bond manager_operation
   | Sc_rollup_instant_update : {
-      sc_rollup : Sc_rollup_repr.t;
-      new_state : Sc_rollup_repr.State_hash.t;
+      rollup : Sc_rollup_repr.t;
+      commitment : Sc_rollup_commitment_repr.t;
     }
       -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {
@@ -1038,17 +1038,17 @@ module Encoding = struct
           encoding =
             obj2
               (req "rollup" Sc_rollup_repr.Address.encoding)
-              (req "new_state" Sc_rollup_repr.State_hash.encoding);
+              (req "commitment" Sc_rollup_commitment_repr.encoding);
           select =
             (function
             | Manager (Sc_rollup_instant_update _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Sc_rollup_instant_update {sc_rollup; new_state} ->
-                (sc_rollup, new_state));
+            | Sc_rollup_instant_update {rollup; commitment} ->
+                (rollup, commitment));
           inj =
-            (fun (sc_rollup, new_state) ->
-              Sc_rollup_instant_update {sc_rollup; new_state});
+            (fun (rollup, commitment) ->
+              Sc_rollup_instant_update {rollup; commitment});
         }
   end
 

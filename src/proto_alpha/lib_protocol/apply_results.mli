@@ -238,6 +238,7 @@ and _ successful_manager_operation_result =
   | Sc_rollup_instant_update_result : {
       balance_updates : Receipt.balance_updates;
       consumed_gas : Gas.Arith.fp;
+      commitment_hash : Sc_rollup.Commitment.Hash.t;
     }
       -> Kind.sc_rollup_instant_update successful_manager_operation_result
   | Zk_rollup_origination_result : {

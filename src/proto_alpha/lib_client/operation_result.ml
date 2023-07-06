@@ -327,14 +327,14 @@ let pp_manager_operation_content (type kind) source ppf
         sc_rollup
         Signature.Public_key_hash.pp
         staker
-  | Sc_rollup_instant_update {sc_rollup; new_state} ->
+  | Sc_rollup_instant_update {rollup; commitment} ->
       Format.fprintf
         ppf
-        "Smart rollup instant update:@,Address: %a@,New state: %a"
+        "Smart rollup instant update:@,Address: %a@,Commitment: %a"
         Sc_rollup.Address.pp
-        sc_rollup
-        Sc_rollup.State_hash.pp
-        new_state
+        rollup
+        Sc_rollup.Commitment.pp
+        commitment
   | Dal_publish_slot_header operation ->
       Format.fprintf
         ppf
@@ -707,9 +707,15 @@ let pp_manager_operation_contents_result ppf op_result =
     pp_consumed_gas ppf consumed_gas
   in
   let pp_sc_rollup_instant_update_result
-      (Sc_rollup_instant_update_result {balance_updates; consumed_gas}) =
+      (Sc_rollup_instant_update_result
+        {balance_updates; consumed_gas; commitment_hash}) =
     pp_balance_updates ppf balance_updates ;
-    pp_consumed_gas ppf consumed_gas
+    pp_consumed_gas ppf consumed_gas ;
+    Format.fprintf
+      ppf
+      "@,Commitment hash: %a"
+      Sc_rollup.Commitment.Hash.pp
+      commitment_hash
   in
   let pp_zk_rollup_origination_result
       (Zk_rollup_origination_result

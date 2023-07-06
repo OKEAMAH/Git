@@ -101,6 +101,16 @@ val cement_commitment :
   tzresult
   Lwt.t
 
+val instant_update :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_commitment_repr.t ->
+  (Raw_context.t
+  * Sc_rollup_commitment_repr.t
+  * Sc_rollup_commitment_repr.Hash.t)
+  tzresult
+  Lwt.t
+
 (** [find_staker context rollup staker] returns the most recent commitment
     [staker] staked on, or [None] if its last staked commitment is older
     or equal than the last cemented commitment. *)

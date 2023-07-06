@@ -488,8 +488,8 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_recover_bond manager_operation
   | Sc_rollup_instant_update : {
-      sc_rollup : Sc_rollup_repr.t;
-      new_state : Sc_rollup_repr.State_hash.t;
+      rollup : Sc_rollup_repr.t;
+      commitment : Sc_rollup_commitment_repr.t;
     }
       -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {

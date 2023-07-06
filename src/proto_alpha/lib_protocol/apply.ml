@@ -1176,10 +1176,15 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_instant_update {sc_rollup; new_state} ->
-      ignore sc_rollup ;
-      ignore new_state ;
-      failwith "TODO"
+  | Sc_rollup_instant_update {rollup; commitment} ->
+      Sc_rollup.Stake_storage.instant_update ctxt rollup commitment
+      >>=? fun (ctxt, _commitment, commitment_hash) ->
+      let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
+      let result =
+        Sc_rollup_instant_update_result
+          {consumed_gas; balance_updates = []; commitment_hash}
+      in
+      return (ctxt, result, [])
   | Zk_rollup_origination {public_parameters; circuits_info; init_state; nb_ops}
     ->
       Zk_rollup_apply.originate

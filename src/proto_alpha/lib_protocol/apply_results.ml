@@ -135,6 +135,7 @@ type _ successful_manager_operation_result =
   | Sc_rollup_instant_update_result : {
       balance_updates : Receipt.balance_updates;
       consumed_gas : Gas.Arith.fp;
+      commitment_hash : Sc_rollup.Commitment.Hash.t;
     }
       -> Kind.sc_rollup_instant_update successful_manager_operation_result
   | Zk_rollup_origination_result : {
@@ -843,19 +844,22 @@ module Manager_result = struct
         Operation.Encoding.Manager_operations.sc_rollup_instant_update_case
       ~encoding:
         Data_encoding.(
-          obj2
+          obj3
             (req "balance_updates" Receipt.balance_updates_encoding)
-            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+            (req "commitment_hash" Sc_rollup.Commitment.Hash.encoding))
       ~select:(function
         | Successful_manager_result (Sc_rollup_instant_update_result _ as op) ->
             Some op
         | _ -> None)
       ~kind:Kind.Sc_rollup_instant_update_manager_kind
       ~proj:(function
-        | Sc_rollup_instant_update_result {balance_updates; consumed_gas} ->
-            (balance_updates, consumed_gas))
-      ~inj:(fun (balance_updates, consumed_gas) ->
-        Sc_rollup_instant_update_result {balance_updates; consumed_gas})
+        | Sc_rollup_instant_update_result
+            {balance_updates; consumed_gas; commitment_hash} ->
+            (balance_updates, consumed_gas, commitment_hash))
+      ~inj:(fun (balance_updates, consumed_gas, commitment_hash) ->
+        Sc_rollup_instant_update_result
+          {balance_updates; consumed_gas; commitment_hash})
 end
 
 let successful_manager_operation_result_encoding :

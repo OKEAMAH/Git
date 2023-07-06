@@ -230,7 +230,7 @@ let process_l1_operation (type kind) node_ctxt (head : Layer1.header) ~source
     | Sc_rollup_timeout {rollup; _}
     | Sc_rollup_execute_outbox_message {rollup; _}
     | Sc_rollup_recover_bond {sc_rollup = rollup; staker = _}
-    | Sc_rollup_instant_update {sc_rollup = rollup; _} ->
+    | Sc_rollup_instant_update {rollup; _} ->
         Sc_rollup.Address.(rollup = node_ctxt.Node_context.rollup_address)
     | Dal_publish_slot_header _ -> true
     | Reveal _ | Transaction _ | Origination _ | Delegation _

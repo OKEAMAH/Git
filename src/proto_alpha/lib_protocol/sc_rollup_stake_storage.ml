@@ -805,6 +805,33 @@ let cement_commitment ?new_state ctxt rollup =
   let* ctxt = update_saved_cemented_commitments ctxt rollup old_lcc in
   return (ctxt, new_lcc_state_commitment, new_lcc_state_commitment_hash)
 
+let instant_update ctxt rollup commitment =
+  let open Lwt_result_syntax in
+  let* old_lcc, old_lcc_level, ctxt =
+    Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
+  in
+  (*
+    TODO:
+    Conditions for instant update:
+      - commitment.inbox_level <= old_lcc_level + challenge_window_in_blocks
+      - commitment.inbox_level = last_instant_inbox_level + commitment_period_in_blocks
+  *)
+  let sc_rollup_commitment_period =
+    Constants_storage.sc_rollup_commitment_period_in_blocks ctxt
+  in
+  let _new_lcc_level =
+    Raw_level_repr.add old_lcc_level sc_rollup_commitment_period
+  in
+  let commitment_hash =
+    Sc_rollup_commitment_repr.hash_uncarbonated commitment
+  in
+  let* ctxt, _size_diff =
+    Store.Last_cemented_commitment.update ctxt rollup commitment_hash
+  in
+  (* Update the saved cemented commitments. *)
+  let* ctxt = update_saved_cemented_commitments ctxt rollup old_lcc in
+  return (ctxt, commitment, commitment_hash)
+
 let remove_staker ctxt rollup staker =
   let open Lwt_result_syntax in
   let staker_contract, stake = get_contract_and_stake ctxt staker in
