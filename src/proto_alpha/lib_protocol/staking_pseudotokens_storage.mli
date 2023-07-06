@@ -43,7 +43,9 @@
      All delegates with non-zero frozen deposits tez have:
        - either their costaking balance pseudotokens initialized and their
          frozen deposits pseudotokens initialized to non-zero;
-       - or have no costakers.
+       - or have no costakers, in which case their costaking balance and
+         frozen deposits pseudotokens are assumed to be equal to their frozen
+         deposits tez.
 *)
 
 (** [init_delegate_pseudotokens_from_frozen_deposits_balance ctxt contract]
