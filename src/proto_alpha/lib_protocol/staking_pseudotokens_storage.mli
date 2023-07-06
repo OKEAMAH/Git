@@ -64,7 +64,8 @@
     current costaking balance converted into tez using [delegate] frozen
     deposits tez/pseudotokens rate.
     
-    The result only makes sense if [delegate] is [contract]'s delegate. *)
+    The given [delegate] should be [contract]'s delegate. Otherwise the given
+    [Tez.t] amount will not make sense. *)
 val costaking_balance_as_tez :
   Raw_context.t ->
   contract:Contract_repr.t ->
