@@ -151,21 +151,6 @@ let initialize_total_supply_for_o ctxt =
     ctxt
     (Tez_repr.of_mutez_exn 940_000_000_000_000L)
 
-(** Initializes frozen deposits pseudotokens and costaking pseudotokens for all
-    existing delegates. *)
-let init_delegates_pseudotokens_for_o ctxt =
-  Delegate_storage.fold
-    ctxt
-    ~order:`Undefined
-    ~init:(ok ctxt)
-    ~f:(fun delegate ctxt ->
-      let open Lwt_result_syntax in
-      let*? ctxt in
-      Staking_pseudotokens_storage
-      .init_delegate_pseudotokens_from_frozen_deposits_balance
-        ctxt
-        (Contract_repr.Implicit delegate))
-
 let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
   Raw_context.prepare_first_block ~level ~timestamp ctxt
@@ -246,7 +231,6 @@ let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
       Remove_zero_amount_ticket_migration_for_o.remove_zero_ticket_entries ctxt
       >>= fun ctxt ->
       Adaptive_inflation_storage.init ctxt >>=? fun ctxt ->
-      init_delegates_pseudotokens_for_o ctxt >>=? fun ctxt ->
       (* Migration of refutation games needs to be kept for each protocol. *)
       Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
       >>=? fun ctxt -> return (ctxt, []))
