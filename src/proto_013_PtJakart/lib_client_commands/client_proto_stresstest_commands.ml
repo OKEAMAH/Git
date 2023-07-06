@@ -1298,5 +1298,4 @@ let commands =
     Smart_contracts.originate_command;
   ]
 
-let commands network () =
-  match network with Some `Mainnet -> [] | Some `Testnet | None -> commands
+let commands _network () = commands
