@@ -160,7 +160,7 @@ type signed_raw = Signed_raw.t
 
 let signed_raw_encoding = Signed_raw.encoding
 
-let encode_sequence_message rollup_address ~prefix ~suffix
+let encode_sequence_message rollup_address ~nonce ~prefix ~suffix
     (l2_messages : Sc_rollup.Inbox_message.serialized list) :
     [`Unsigned_encoded of string] =
   let unsigned_payload =
@@ -170,7 +170,7 @@ let encode_sequence_message rollup_address ~prefix ~suffix
         payload =
           Sequence
             {
-              nonce = 0l;
+              nonce;
               delayed_messages_prefix = prefix;
               delayed_messages_suffix = suffix;
               l2_messages =
@@ -192,10 +192,15 @@ let sign_sequence cctxt signer (`Unsigned_encoded unsigned_sequence) =
     signed_raw_encoding
     {unsigned_payload = unsigned_sequence; signature}
 
-let encode_and_sign_sequence (cctx, signer) rollup_address ~prefix ~suffix
-    serialized_msgs =
+let encode_and_sign_sequence (cctx, signer) rollup_address ~nonce ~prefix
+    ~suffix serialized_msgs =
   let encoded_sequence =
-    encode_sequence_message rollup_address ~prefix ~suffix serialized_msgs
+    encode_sequence_message
+      rollup_address
+      ~nonce
+      ~prefix
+      ~suffix
+      serialized_msgs
   in
   sign_sequence cctx signer encoded_sequence
 
@@ -210,6 +215,7 @@ let single_l2_message_overhead =
   let (`Unsigned_encoded encoded) =
     encode_sequence_message
       dummy_address
+      ~nonce:0l
       ~prefix:1000l
       ~suffix:1000l
       [Sc_rollup.Inbox_message.unsafe_of_string ""]
