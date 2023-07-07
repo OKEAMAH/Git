@@ -463,10 +463,10 @@ module Make (PC : Polynomial_commitment.S) = struct
           (fun _ f ((acc_global, acc), count) ->
             (* if count = nb_wires, it means we went accross every wires for
                this proof & the current wire is for a new proof *)
-            if count = nb_wires then ((List.rev acc :: acc_global, [f]), 0)
+            if count = nb_wires - 1 then ((List.rev acc :: acc_global, [f]), 0)
             else ((acc_global, f :: acc), count + 1))
           proof.fy
-          (([], []), 0)
+          (([], []), -1)
       in
       List.rev (List.rev last :: rev_formatted)
     in
