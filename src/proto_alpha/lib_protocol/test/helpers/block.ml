@@ -99,19 +99,20 @@ let () =
     (fun pkh -> No_slots_found_for pkh)
 
 let get_next_baker_by_account pkh block =
-  Plugin.RPC.Baking_rights.get rpc_ctxt ~delegates:[pkh] block
-  >>=? fun bakers ->
-  (match List.hd bakers with
-  | Some b -> return b
-  | None -> fail (No_slots_found_for pkh))
-  >>=? fun {
-             Plugin.RPC.Baking_rights.delegate = pkh;
-             consensus_key;
-             timestamp;
-             round;
-             _;
-           } ->
-  Environment.wrap_tzresult (Round.to_int round) >>?= fun round ->
+  let open Lwt_result_syntax in
+  let* bakers = Plugin.RPC.Baking_rights.get rpc_ctxt ~delegates:[pkh] block in
+  let* {
+         Plugin.RPC.Baking_rights.delegate = pkh;
+         consensus_key;
+         timestamp;
+         round;
+         _;
+       } =
+    match List.hd bakers with
+    | Some b -> return b
+    | None -> tzfail (No_slots_found_for pkh)
+  in
+  let*? round = Environment.wrap_tzresult (Round.to_int round) in
   return
     ( pkh,
       consensus_key,
@@ -119,7 +120,8 @@ let get_next_baker_by_account pkh block =
       WithExceptions.Option.to_exn ~none:(Failure __LOC__) timestamp )
 
 let get_next_baker_excluding excludes block =
-  Plugin.RPC.Baking_rights.get rpc_ctxt block >>=? fun bakers ->
+  let open Lwt_result_syntax in
+  let* bakers = Plugin.RPC.Baking_rights.get rpc_ctxt block in
   let {
     Plugin.RPC.Baking_rights.delegate = pkh;
     consensus_key;
@@ -137,7 +139,7 @@ let get_next_baker_excluding excludes block =
                 excludes))
          bakers
   in
-  Environment.wrap_tzresult (Round.to_int round) >>?= fun round ->
+  let*? round = Environment.wrap_tzresult (Round.to_int round) in
   return
     ( pkh,
       consensus_key,
@@ -264,25 +266,29 @@ module Forge = struct
   let forge_header ?(locked_round = None) ?(payload_round = None)
       ?(policy = By_round 0) ?timestamp ?(operations = [])
       ?liquidity_baking_toggle_vote ?adaptive_inflation_vote pred =
+    let open Lwt_result_syntax in
     let pred_fitness =
       match Fitness.from_raw pred.header.shell.fitness with
       | Ok pred_fitness -> pred_fitness
       | _ -> assert false
     in
     let predecessor_round = Fitness.round pred_fitness in
-    dispatch_policy policy pred
-    >>=? fun (delegate, consensus_key, round, expected_timestamp) ->
+    let* delegate, consensus_key, round, expected_timestamp =
+      dispatch_policy policy pred
+    in
     let timestamp = Option.value ~default:expected_timestamp timestamp in
     let level = Int32.succ pred.header.shell.level in
-    Raw_level.of_int32 level |> Environment.wrap_tzresult >>?= fun raw_level ->
-    Round.of_int round |> Environment.wrap_tzresult >>?= fun round ->
-    Fitness.create ~level:raw_level ~predecessor_round ~round ~locked_round
-    >|? Fitness.to_raw |> Environment.wrap_tzresult
-    >>?= fun fitness ->
-    (Plugin.RPC.current_level ~offset:1l rpc_ctxt pred >|=? function
-     | {expected_commitment = true; _} -> Some (fst (Proto_Nonce.generate ()))
-     | {expected_commitment = false; _} -> None)
-    >>=? fun seed_nonce_hash ->
+    let*? raw_level = Raw_level.of_int32 level |> Environment.wrap_tzresult in
+    let*? round = Round.of_int round |> Environment.wrap_tzresult in
+    let*? fitness =
+      Fitness.create ~level:raw_level ~predecessor_round ~round ~locked_round
+      >|? Fitness.to_raw |> Environment.wrap_tzresult
+    in
+    let* seed_nonce_hash =
+      Plugin.RPC.current_level ~offset:1l rpc_ctxt pred >|=? function
+      | {expected_commitment = true; _} -> Some (fst (Proto_Nonce.generate ()))
+      | {expected_commitment = false; _} -> None
+    in
     let hashes = List.map Operation.hash_packed operations in
     let operations_hash =
       Operation_list_list_hash.compute [Operation_list_hash.compute hashes]
@@ -309,14 +315,16 @@ module Forge = struct
         ~payload_round
         hashes
     in
-    make_contents
-      ~seed_nonce_hash
-      ?liquidity_baking_toggle_vote
-      ?adaptive_inflation_vote
-      ~payload_hash
-      ~payload_round
-      shell
-    >|=? fun contents -> {baker = delegate; consensus_key; shell; contents}
+    let+ contents =
+      make_contents
+        ~seed_nonce_hash
+        ?liquidity_baking_toggle_vote
+        ?adaptive_inflation_vote
+        ~payload_hash
+        ~payload_round
+        shell
+    in
+    {baker = delegate; consensus_key; shell; contents}
 
   (* compatibility only, needed by incremental *)
   let contents
@@ -358,16 +366,21 @@ let check_constants_consistency constants =
   } =
     constants
   in
-  Error_monad.unless (blocks_per_commitment <= blocks_per_cycle) (fun () ->
-      failwith
-        "Inconsistent constants : blocks_per_commitment must be less than \
-         blocks_per_cycle")
-  >>=? fun () ->
-  Error_monad.unless (nonce_revelation_threshold <= blocks_per_cycle) (fun () ->
-      failwith
-        "Inconsistent constants : nonce_revelation_threshold must be less than \
-         blocks_per_cycle")
-  >>=? fun () ->
+  let open Lwt_result_syntax in
+  let* () =
+    Error_monad.unless (blocks_per_commitment <= blocks_per_cycle) (fun () ->
+        failwith
+          "Inconsistent constants : blocks_per_commitment must be less than \
+           blocks_per_cycle")
+  in
+  let* () =
+    Error_monad.unless
+      (nonce_revelation_threshold <= blocks_per_cycle)
+      (fun () ->
+        failwith
+          "Inconsistent constants : nonce_revelation_threshold must be less \
+           than blocks_per_cycle")
+  in
   Error_monad.unless (blocks_per_cycle >= blocks_per_stake_snapshot) (fun () ->
       failwith
         "Inconsistent constants : blocks_per_cycle must be superior than \
@@ -416,27 +429,31 @@ let initial_alpha_context ?(commitments = []) constants
       false
       (* There should be no forged value in bootstrap contracts. *)
     in
-    Script_ir_translator.parse_script
-      ctxt
-      ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
-      ~allow_forged_in_storage
-      script
-    >>=? fun (Ex_script (Script parsed_script), ctxt) ->
-    Script_ir_translator.extract_lazy_storage_diff
-      ctxt
-      Optimized
-      parsed_script.storage_type
-      parsed_script.storage
-      ~to_duplicate:Script_ir_translator.no_lazy_storage_id
-      ~to_update:Script_ir_translator.no_lazy_storage_id
-      ~temporary:false
-    >>=? fun (storage, lazy_storage_diff, ctxt) ->
-    Script_ir_translator.unparse_data
-      ctxt
-      Optimized
-      parsed_script.storage_type
-      storage
-    >|=? fun (storage, ctxt) ->
+    let open Lwt_result_syntax in
+    let* Ex_script (Script parsed_script), ctxt =
+      Script_ir_translator.parse_script
+        ctxt
+        ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+        ~allow_forged_in_storage
+        script
+    in
+    let* storage, lazy_storage_diff, ctxt =
+      Script_ir_translator.extract_lazy_storage_diff
+        ctxt
+        Optimized
+        parsed_script.storage_type
+        parsed_script.storage
+        ~to_duplicate:Script_ir_translator.no_lazy_storage_id
+        ~to_update:Script_ir_translator.no_lazy_storage_id
+        ~temporary:false
+    in
+    let+ storage, ctxt =
+      Script_ir_translator.unparse_data
+        ctxt
+        Optimized
+        parsed_script.storage_type
+        storage
+    in
     let storage = Alpha_context.Script.lazy_expr storage in
     (({script with storage}, lazy_storage_diff), ctxt)
   in
@@ -470,25 +487,29 @@ let genesis_with_parameters parameters =
       ~fitness
       ~operations_hash:Operation_list_list_hash.zero
   in
-  Forge.make_contents
-    ~payload_hash:Block_payload_hash.zero
-    ~payload_round:Round.zero
-    ~seed_nonce_hash:None
-    shell
-  >>=? fun contents ->
+  let open Lwt_result_syntax in
+  let* contents =
+    Forge.make_contents
+      ~payload_hash:Block_payload_hash.zero
+      ~payload_round:Round.zero
+      ~seed_nonce_hash:None
+      shell
+  in
   let open Tezos_protocol_alpha_parameters in
   let json = Default_parameters.json_of_parameters parameters in
   let proto_params =
     Data_encoding.Binary.to_bytes_exn Data_encoding.json json
   in
-  Tezos_protocol_environment.Context.(
-    let empty = Tezos_protocol_environment.Memory_context.empty in
-    add empty ["version"] (Bytes.of_string "genesis") >>= fun ctxt ->
-    add ctxt protocol_param_key proto_params)
-  >>= fun ctxt ->
+  let*! ctxt =
+    Tezos_protocol_environment.Context.(
+      let empty = Tezos_protocol_environment.Memory_context.empty in
+      let*! ctxt = add empty ["version"] (Bytes.of_string "genesis") in
+      add ctxt protocol_param_key proto_params)
+  in
   let chain_id = Chain_id.of_block_hash hash in
-  Main.init chain_id ctxt shell >|= Environment.wrap_tzresult
-  >|=? fun {context; _} ->
+  let+ {context; _} =
+    Main.init chain_id ctxt shell >|= Environment.wrap_tzresult
+  in
   {
     hash;
     header = {shell; protocol_data = {contents; signature = Signature.zero}};
@@ -499,18 +520,20 @@ let genesis_with_parameters parameters =
 
 let validate_bootstrap_accounts
     (bootstrap_accounts : Parameters.bootstrap_account list) minimal_stake =
+  let open Lwt_result_syntax in
   if bootstrap_accounts = [] then
     Stdlib.failwith "Must have one account with minimal_stake to bake" ;
   (* Check there are at least minimal_stake tokens *)
   Lwt.catch
     (fun () ->
-      List.fold_left_es
-        (fun acc (Parameters.{amount; _} : Parameters.bootstrap_account) ->
-          Environment.wrap_tzresult @@ Tez.( +? ) acc amount >>?= fun acc ->
-          if acc >= minimal_stake then raise Exit else return acc)
-        Tez.zero
-        bootstrap_accounts
-      >>=? fun (_ : Tez.t) ->
+      let* (_ : Tez.t) =
+        List.fold_left_es
+          (fun acc (Parameters.{amount; _} : Parameters.bootstrap_account) ->
+            let*? acc = Environment.wrap_tzresult @@ Tez.( +? ) acc amount in
+            if acc >= minimal_stake then raise Exit else return acc)
+          Tez.zero
+          bootstrap_accounts
+      in
       failwith
         "Insufficient tokens in initial accounts: the amount should be at \
          least minimal_stake")
@@ -593,7 +616,8 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       nonce_revelation_threshold;
     }
   in
-  check_constants_consistency constants >>=? fun () ->
+  let open Lwt_result_syntax in
+  let* () = check_constants_consistency constants in
   let hash =
     Block_hash.of_b58check_exn
       "BLockGenesisGenesisGenesisGenesisGenesisCCCCCeZiLHU"
@@ -624,40 +648,45 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
     ?sc_rollup_arith_pvm_enable ?dal_enable ?zk_rollup_enable
     ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
     (bootstrap_accounts : Parameters.bootstrap_account list) =
-  prepare_initial_context_params
-    ?consensus_threshold
-    ?min_proposal_quorum
-    ?level
-    ?cost_per_byte
-    ?reward_weights
-    ?origination_size
-    ?blocks_per_cycle
-    ?cycles_per_voting_period
-    ?sc_rollup_enable
-    ?sc_rollup_arith_pvm_enable
-    ?dal_enable
-    ?zk_rollup_enable
-    ?hard_gas_limit_per_block
-    ?nonce_revelation_threshold
-    ?dal
-    ()
-  >>=? fun (constants, shell, hash) ->
-  validate_bootstrap_accounts bootstrap_accounts constants.minimal_stake
-  >>=? fun () ->
-  initial_context
-    ?commitments
-    ?bootstrap_contracts
-    (Chain_id.of_block_hash hash)
-    constants
-    shell
-    bootstrap_accounts
-  >>=? fun context ->
-  Forge.make_contents
-    ~payload_hash:Block_payload_hash.zero
-    ~payload_round:Round.zero
-    ~seed_nonce_hash:None
-    shell
-  >|=? fun contents ->
+  let open Lwt_result_syntax in
+  let* constants, shell, hash =
+    prepare_initial_context_params
+      ?consensus_threshold
+      ?min_proposal_quorum
+      ?level
+      ?cost_per_byte
+      ?reward_weights
+      ?origination_size
+      ?blocks_per_cycle
+      ?cycles_per_voting_period
+      ?sc_rollup_enable
+      ?sc_rollup_arith_pvm_enable
+      ?dal_enable
+      ?zk_rollup_enable
+      ?hard_gas_limit_per_block
+      ?nonce_revelation_threshold
+      ?dal
+      ()
+  in
+  let* () =
+    validate_bootstrap_accounts bootstrap_accounts constants.minimal_stake
+  in
+  let* context =
+    initial_context
+      ?commitments
+      ?bootstrap_contracts
+      (Chain_id.of_block_hash hash)
+      constants
+      shell
+      bootstrap_accounts
+  in
+  let+ contents =
+    Forge.make_contents
+      ~payload_hash:Block_payload_hash.zero
+      ~payload_round:Round.zero
+      ~seed_nonce_hash:None
+      shell
+  in
   {
     hash;
     header = {shell; protocol_data = {contents; signature = Signature.zero}};
@@ -668,10 +697,13 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
 
 let alpha_context ?commitments ?min_proposal_quorum
     (bootstrap_accounts : Parameters.bootstrap_account list) =
-  prepare_initial_context_params ?min_proposal_quorum ()
-  >>=? fun (constants, shell, _hash) ->
-  validate_bootstrap_accounts bootstrap_accounts constants.minimal_stake
-  >>=? fun () ->
+  let open Lwt_result_syntax in
+  let* constants, shell, _hash =
+    prepare_initial_context_params ?min_proposal_quorum ()
+  in
+  let* () =
+    validate_bootstrap_accounts bootstrap_accounts constants.minimal_stake
+  in
   initial_alpha_context ?commitments constants shell bootstrap_accounts
 
 (********* Baking *************)
@@ -683,8 +715,9 @@ let begin_validation_and_application ctxt chain_id mode ~predecessor =
   return (validation_state, application_state)
 
 let get_application_vstate (pred : t) (operations : Protocol.operation trace) =
-  Forge.forge_header pred ~operations >>=? fun header ->
-  Forge.sign_header header >>=? fun header ->
+  let open Lwt_result_syntax in
+  let* header = Forge.forge_header pred ~operations in
+  let* header = Forge.sign_header header in
   let open Environment.Error_monad in
   begin_validation_and_application
     pred.context
@@ -698,8 +731,8 @@ let get_application_vstate (pred : t) (operations : Protocol.operation trace) =
 let get_construction_vstate ?(policy = By_round 0) ?timestamp
     ?(protocol_data = None) (pred : t) =
   let open Protocol in
-  dispatch_policy policy pred
-  >>=? fun (_pkh, _ck, _round, expected_timestamp) ->
+  let open Lwt_result_syntax in
+  let* _pkh, _ck, _round, expected_timestamp = dispatch_policy policy pred in
   let timestamp = Option.value ~default:expected_timestamp timestamp in
   let mode =
     match protocol_data with
@@ -768,63 +801,73 @@ let detect_manager_failure :
 let apply_with_metadata ?(policy = By_round 0) ?(check_size = true) ~baking_mode
     ~allow_manager_failures header ?(operations = []) pred =
   let open Environment.Error_monad in
-  ( (match baking_mode with
-    | Application ->
-        begin_validation_and_application
-          pred.context
-          Chain_id.zero
-          (Application header)
-          ~predecessor:pred.header.shell
-        >|= Environment.wrap_tzresult
-    | Baking ->
-        get_construction_vstate
-          ~policy
-          ~protocol_data:(Some header.protocol_data)
-          (pred : t))
-  >>=? fun vstate ->
-    List.fold_left_es
-      (fun vstate op ->
-        (if check_size then
-         let operation_size =
-           Data_encoding.Binary.length
-             Operation.encoding_with_legacy_attestation_name
-             op
-         in
-         if operation_size > Constants_repr.max_operation_data_length then
-           raise
-             (invalid_arg
-                (Format.sprintf
-                   "The operation size is %d, it exceeds the constant maximum \
-                    size %d"
-                   operation_size
-                   Constants_repr.max_operation_data_length))) ;
-        validate_and_apply_operation vstate op >>=? fun (state, result) ->
-        if allow_manager_failures then return state
-        else
-          match result with
-          | No_operation_metadata -> return state
-          | Operation_metadata metadata ->
-              detect_manager_failure metadata >>?= fun () -> return state)
-      vstate
-      operations
-    >|= Environment.wrap_tzresult
-    >>=? fun vstate ->
-    finalize_validation_and_application vstate (Some header.shell)
-    >|= Environment.wrap_tzresult
-    >|=? fun (validation, result) -> (validation.context, result) )
-  >>=? fun (context, result) ->
+  let open Lwt_result_syntax in
+  let* context, result =
+    let* vstate =
+      match baking_mode with
+      | Application ->
+          begin_validation_and_application
+            pred.context
+            Chain_id.zero
+            (Application header)
+            ~predecessor:pred.header.shell
+          >|= Environment.wrap_tzresult
+      | Baking ->
+          get_construction_vstate
+            ~policy
+            ~protocol_data:(Some header.protocol_data)
+            (pred : t)
+    in
+    let* vstate =
+      List.fold_left_es
+        (fun vstate op ->
+          (if check_size then
+           let operation_size =
+             Data_encoding.Binary.length
+               Operation.encoding_with_legacy_attestation_name
+               op
+           in
+           if operation_size > Constants_repr.max_operation_data_length then
+             raise
+               (invalid_arg
+                  (Format.sprintf
+                     "The operation size is %d, it exceeds the constant \
+                      maximum size %d"
+                     operation_size
+                     Constants_repr.max_operation_data_length))) ;
+          let* state, result = validate_and_apply_operation vstate op in
+          if allow_manager_failures then return state
+          else
+            match result with
+            | No_operation_metadata -> return state
+            | Operation_metadata metadata ->
+                let*? () = detect_manager_failure metadata in
+                return state)
+        vstate
+        operations
+      >|= Environment.wrap_tzresult
+    in
+    let+ validation, result =
+      finalize_validation_and_application vstate (Some header.shell)
+      >|= Environment.wrap_tzresult
+    in
+    (validation.context, result)
+  in
   let hash = Block_header.hash header in
-  Alpha_services.Constants.parametric rpc_ctxt pred >|=? fun constants ->
+  let+ constants = Alpha_services.Constants.parametric rpc_ctxt pred in
   ({hash; header; operations; context; constants}, result)
 
 let apply header ?(operations = []) ?(allow_manager_failures = false) pred =
-  apply_with_metadata
-    header
-    ~operations
-    pred
-    ~baking_mode:Application
-    ~allow_manager_failures
-  >>=? fun (t, _metadata) -> return t
+  let open Lwt_result_syntax in
+  let* t, _metadata =
+    apply_with_metadata
+      header
+      ~operations
+      pred
+      ~baking_mode:Application
+      ~allow_manager_failures
+  in
+  return t
 
 let bake_with_metadata ?locked_round ?policy ?timestamp ?operation ?operations
     ?payload_round ?check_size ~baking_mode ?(allow_manager_failures = false)
@@ -836,17 +879,19 @@ let bake_with_metadata ?locked_round ?policy ?timestamp ?operation ?operations
     | None, Some ops -> Some ops
     | None, None -> None
   in
-  Forge.forge_header
-    ?payload_round
-    ?locked_round
-    ?timestamp
-    ?policy
-    ?operations
-    ?liquidity_baking_toggle_vote
-    ?adaptive_inflation_vote
-    pred
-  >>=? fun header ->
-  Forge.sign_header header >>=? fun header ->
+  let open Lwt_result_syntax in
+  let* header =
+    Forge.forge_header
+      ?payload_round
+      ?locked_round
+      ?timestamp
+      ?policy
+      ?operations
+      ?liquidity_baking_toggle_vote
+      ?adaptive_inflation_vote
+      pred
+  in
+  let* header = Forge.sign_header header in
   apply_with_metadata
     ?policy
     ?check_size
@@ -859,6 +904,7 @@ let bake_with_metadata ?locked_round ?policy ?timestamp ?operation ?operations
 let bake_n_with_metadata ?locked_round ?policy ?timestamp ?payload_round
     ?check_size ?(baking_mode = Application) ?(allow_manager_failures = false)
     ?liquidity_baking_toggle_vote ?adaptive_inflation_vote n pred =
+  let open Lwt_result_syntax in
   let get_next b =
     bake_with_metadata
       ?locked_round
@@ -872,26 +918,29 @@ let bake_n_with_metadata ?locked_round ?policy ?timestamp ?payload_round
       ?adaptive_inflation_vote
       b
   in
-  get_next pred >>=? fun b ->
+  let* b = get_next pred in
   List.fold_left_es (fun (b, _metadata) _ -> get_next b) b (2 -- n)
 
 let bake ?(baking_mode = Application) ?(allow_manager_failures = false)
     ?payload_round ?locked_round ?policy ?timestamp ?operation ?operations
     ?liquidity_baking_toggle_vote ?adaptive_inflation_vote ?check_size pred =
-  bake_with_metadata
-    ?payload_round
-    ~baking_mode
-    ~allow_manager_failures
-    ?locked_round
-    ?policy
-    ?timestamp
-    ?operation
-    ?operations
-    ?liquidity_baking_toggle_vote
-    ?adaptive_inflation_vote
-    ?check_size
-    pred
-  >>=? fun (t, (_metadata : block_header_metadata)) -> return t
+  let open Lwt_result_syntax in
+  let* t, (_metadata : block_header_metadata) =
+    bake_with_metadata
+      ?payload_round
+      ~baking_mode
+      ~allow_manager_failures
+      ?locked_round
+      ?policy
+      ?timestamp
+      ?operation
+      ?operations
+      ?liquidity_baking_toggle_vote
+      ?adaptive_inflation_vote
+      ?check_size
+      pred
+  in
+  return t
 
 (********** Cycles ****************)
 
@@ -955,89 +1004,97 @@ let bake_until_level ?(baking_mode = Application) ?policy
 
 let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
     ?liquidity_baking_toggle_vote ?adaptive_inflation_vote n b =
-  List.fold_left_es
-    (fun (b, balance_updates_rev) _ ->
-      bake_with_metadata
-        ~baking_mode
-        ?policy
-        ?liquidity_baking_toggle_vote
-        ?adaptive_inflation_vote
-        b
-      >>=? fun (b, metadata) ->
-      let balance_updates_rev =
-        List.rev_append metadata.balance_updates balance_updates_rev
-      in
-      let balance_updates_rev =
-        List.fold_left
-          (fun balance_updates_rev ->
-            let open Apply_results in
-            fun (Successful_manager_result r) ->
-              match r with
-              | Transaction_result (Transaction_to_sc_rollup_result _)
-              | Reveal_result _ | Update_consensus_key_result _
-              | Transfer_ticket_result _ | Dal_publish_slot_header_result _
-              | Sc_rollup_originate_result _ | Sc_rollup_add_messages_result _
-              | Sc_rollup_cement_result _ | Sc_rollup_publish_result _
-              | Sc_rollup_refute_result _ | Sc_rollup_timeout_result _
-              | Sc_rollup_execute_outbox_message_result _
-              | Sc_rollup_recover_bond_result _ | Zk_rollup_origination_result _
-              | Zk_rollup_publish_result _ | Zk_rollup_update_result _ ->
-                  balance_updates_rev
-              | Delegation_result {balance_updates; _}
-              | Transaction_result
-                  ( Transaction_to_contract_result {balance_updates; _}
-                  | Transaction_to_zk_rollup_result {balance_updates; _} )
-              | Origination_result {balance_updates; _}
-              | Register_global_constant_result {balance_updates; _}
-              | Increase_paid_storage_result {balance_updates; _} ->
-                  List.rev_append balance_updates balance_updates_rev)
-          balance_updates_rev
-          metadata.implicit_operations_results
-      in
-      return (b, balance_updates_rev))
-    (b, [])
-    (1 -- n)
-  >|=? fun (b, balance_updates_rev) -> (b, List.rev balance_updates_rev)
+  let open Lwt_result_syntax in
+  let+ b, balance_updates_rev =
+    List.fold_left_es
+      (fun (b, balance_updates_rev) _ ->
+        let* b, metadata =
+          bake_with_metadata
+            ~baking_mode
+            ?policy
+            ?liquidity_baking_toggle_vote
+            ?adaptive_inflation_vote
+            b
+        in
+        let balance_updates_rev =
+          List.rev_append metadata.balance_updates balance_updates_rev
+        in
+        let balance_updates_rev =
+          List.fold_left
+            (fun balance_updates_rev ->
+              let open Apply_results in
+              fun (Successful_manager_result r) ->
+                match r with
+                | Transaction_result (Transaction_to_sc_rollup_result _)
+                | Reveal_result _ | Update_consensus_key_result _
+                | Transfer_ticket_result _ | Dal_publish_slot_header_result _
+                | Sc_rollup_originate_result _ | Sc_rollup_add_messages_result _
+                | Sc_rollup_cement_result _ | Sc_rollup_publish_result _
+                | Sc_rollup_refute_result _ | Sc_rollup_timeout_result _
+                | Sc_rollup_execute_outbox_message_result _
+                | Sc_rollup_recover_bond_result _
+                | Zk_rollup_origination_result _ | Zk_rollup_publish_result _
+                | Zk_rollup_update_result _ ->
+                    balance_updates_rev
+                | Delegation_result {balance_updates; _}
+                | Transaction_result
+                    ( Transaction_to_contract_result {balance_updates; _}
+                    | Transaction_to_zk_rollup_result {balance_updates; _} )
+                | Origination_result {balance_updates; _}
+                | Register_global_constant_result {balance_updates; _}
+                | Increase_paid_storage_result {balance_updates; _} ->
+                    List.rev_append balance_updates balance_updates_rev)
+            balance_updates_rev
+            metadata.implicit_operations_results
+        in
+        return (b, balance_updates_rev))
+      (b, [])
+      (1 -- n)
+  in
+  (b, List.rev balance_updates_rev)
 
 let bake_n_with_origination_results ?(baking_mode = Application) ?policy n b =
-  List.fold_left_es
-    (fun (b, origination_results_rev) _ ->
-      bake_with_metadata ~baking_mode ?policy b >>=? fun (b, metadata) ->
-      let origination_results_rev =
-        List.fold_left
-          (fun origination_results_rev ->
-            let open Apply_results in
-            function
-            | Successful_manager_result (Reveal_result _)
-            | Successful_manager_result (Delegation_result _)
-            | Successful_manager_result (Update_consensus_key_result _)
-            | Successful_manager_result (Transaction_result _)
-            | Successful_manager_result (Register_global_constant_result _)
-            | Successful_manager_result (Increase_paid_storage_result _)
-            | Successful_manager_result (Transfer_ticket_result _)
-            | Successful_manager_result (Dal_publish_slot_header_result _)
-            | Successful_manager_result (Sc_rollup_originate_result _)
-            | Successful_manager_result (Sc_rollup_add_messages_result _)
-            | Successful_manager_result (Sc_rollup_cement_result _)
-            | Successful_manager_result (Sc_rollup_publish_result _)
-            | Successful_manager_result (Sc_rollup_refute_result _)
-            | Successful_manager_result (Sc_rollup_timeout_result _)
-            | Successful_manager_result
-                (Sc_rollup_execute_outbox_message_result _)
-            | Successful_manager_result (Sc_rollup_recover_bond_result _)
-            | Successful_manager_result (Zk_rollup_origination_result _)
-            | Successful_manager_result (Zk_rollup_publish_result _)
-            | Successful_manager_result (Zk_rollup_update_result _) ->
-                origination_results_rev
-            | Successful_manager_result (Origination_result x) ->
-                Origination_result x :: origination_results_rev)
-          origination_results_rev
-          metadata.implicit_operations_results
-      in
-      return (b, origination_results_rev))
-    (b, [])
-    (1 -- n)
-  >|=? fun (b, origination_results_rev) -> (b, List.rev origination_results_rev)
+  let open Lwt_result_syntax in
+  let+ b, origination_results_rev =
+    List.fold_left_es
+      (fun (b, origination_results_rev) _ ->
+        let* b, metadata = bake_with_metadata ~baking_mode ?policy b in
+        let origination_results_rev =
+          List.fold_left
+            (fun origination_results_rev ->
+              let open Apply_results in
+              function
+              | Successful_manager_result (Reveal_result _)
+              | Successful_manager_result (Delegation_result _)
+              | Successful_manager_result (Update_consensus_key_result _)
+              | Successful_manager_result (Transaction_result _)
+              | Successful_manager_result (Register_global_constant_result _)
+              | Successful_manager_result (Increase_paid_storage_result _)
+              | Successful_manager_result (Transfer_ticket_result _)
+              | Successful_manager_result (Dal_publish_slot_header_result _)
+              | Successful_manager_result (Sc_rollup_originate_result _)
+              | Successful_manager_result (Sc_rollup_add_messages_result _)
+              | Successful_manager_result (Sc_rollup_cement_result _)
+              | Successful_manager_result (Sc_rollup_publish_result _)
+              | Successful_manager_result (Sc_rollup_refute_result _)
+              | Successful_manager_result (Sc_rollup_timeout_result _)
+              | Successful_manager_result
+                  (Sc_rollup_execute_outbox_message_result _)
+              | Successful_manager_result (Sc_rollup_recover_bond_result _)
+              | Successful_manager_result (Zk_rollup_origination_result _)
+              | Successful_manager_result (Zk_rollup_publish_result _)
+              | Successful_manager_result (Zk_rollup_update_result _) ->
+                  origination_results_rev
+              | Successful_manager_result (Origination_result x) ->
+                  Origination_result x :: origination_results_rev)
+            origination_results_rev
+            metadata.implicit_operations_results
+        in
+        return (b, origination_results_rev))
+      (b, [])
+      (1 -- n)
+  in
+  (b, List.rev origination_results_rev)
 
 let bake_n_with_liquidity_baking_toggle_ema ?baking_mode ?policy
     ?liquidity_baking_toggle_vote ?adaptive_inflation_vote n b =

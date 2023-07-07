@@ -76,19 +76,23 @@ let begin_validation_and_application ctxt chain_id mode ~predecessor =
 
 let begin_construction ?timestamp ?seed_nonce_hash ?(mempool_mode = false)
     ?(policy = Block.By_round 0) (predecessor : Block.t) =
-  Block.get_next_baker ~policy predecessor
-  >>=? fun (delegate, _consensus_key, round, real_timestamp) ->
-  Account.find delegate >>=? fun delegate ->
-  Round.of_int round |> Environment.wrap_tzresult >>?= fun payload_round ->
+  let open Lwt_result_syntax in
+  let* delegate, _consensus_key, round, real_timestamp =
+    Block.get_next_baker ~policy predecessor
+  in
+  let* delegate = Account.find delegate in
+  let*? payload_round = Round.of_int round |> Environment.wrap_tzresult in
   let timestamp = Option.value ~default:real_timestamp timestamp in
-  (match seed_nonce_hash with
-  | Some _hash -> return seed_nonce_hash
-  | None -> (
-      Plugin.RPC.current_level ~offset:1l Block.rpc_ctxt predecessor
-      >|=? function
-      | {expected_commitment = true; _} -> Some (fst (Proto_Nonce.generate ()))
-      | {expected_commitment = false; _} -> None))
-  >>=? fun seed_nonce_hash ->
+  let* seed_nonce_hash =
+    match seed_nonce_hash with
+    | Some _hash -> return seed_nonce_hash
+    | None -> (
+        Plugin.RPC.current_level ~offset:1l Block.rpc_ctxt predecessor
+        >|=? function
+        | {expected_commitment = true; _} ->
+            Some (fst (Proto_Nonce.generate ()))
+        | {expected_commitment = false; _} -> None)
+  in
   let shell : Block_header.shell_header =
     {
       predecessor = predecessor.hash;
@@ -101,12 +105,13 @@ let begin_construction ?timestamp ?seed_nonce_hash ?(mempool_mode = false)
       operations_hash = Operation_list_list_hash.zero;
     }
   in
-  Block.Forge.contents
-    ?seed_nonce_hash
-    ~payload_hash:Block_payload_hash.zero
-    ~payload_round
-    shell
-  >>=? fun contents ->
+  let* contents =
+    Block.Forge.contents
+      ?seed_nonce_hash
+      ~payload_hash:Block_payload_hash.zero
+      ~payload_round
+      shell
+  in
   let mode =
     if mempool_mode then
       Partial_construction {predecessor_hash = predecessor.hash; timestamp}

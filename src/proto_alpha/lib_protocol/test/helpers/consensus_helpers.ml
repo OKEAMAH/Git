@@ -162,21 +162,23 @@ let delegate_of_slot ?(different_slot = false) slot b =
   | Some d -> d
 
 let test_consensus_op_for_next ~genesis ~kind ~next =
+  let open Lwt_result_syntax in
   let dorsement ~endorsed_block ~delegate =
     match kind with
     | `Preendorsement -> Op.preendorsement ~delegate endorsed_block
     | `Endorsement -> Op.endorsement ~delegate endorsed_block
   in
-  Block.bake genesis >>=? fun b1 ->
-  (match next with
-  | `Level -> Block.bake b1
-  | `Round -> Block.bake ~policy:(By_round 1) genesis)
-  >>=? fun b2 ->
-  Incremental.begin_construction ~mempool_mode:true b1 >>=? fun inc ->
-  delegate_of_first_slot (B b1) >>=? fun (delegate, slot) ->
-  dorsement ~endorsed_block:b1 ~delegate >>=? fun operation ->
-  Incremental.add_operation inc operation >>=? fun inc ->
-  delegate_of_slot ~different_slot:true slot (B b2) >>=? fun delegate ->
-  dorsement ~endorsed_block:b2 ~delegate >>=? fun operation ->
-  Incremental.add_operation inc operation >>=? fun (_ : Incremental.t) ->
+  let* b1 = Block.bake genesis in
+  let* b2 =
+    match next with
+    | `Level -> Block.bake b1
+    | `Round -> Block.bake ~policy:(By_round 1) genesis
+  in
+  let* inc = Incremental.begin_construction ~mempool_mode:true b1 in
+  let* delegate, slot = delegate_of_first_slot (B b1) in
+  let* operation = dorsement ~endorsed_block:b1 ~delegate in
+  let* inc = Incremental.add_operation inc operation in
+  let* delegate = delegate_of_slot ~different_slot:true slot (B b2) in
+  let* operation = dorsement ~endorsed_block:b2 ~delegate in
+  let* (_ : Incremental.t) = Incremental.add_operation inc operation in
   return_unit

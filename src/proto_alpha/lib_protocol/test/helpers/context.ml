@@ -148,8 +148,9 @@ let get_endorser_n ctxt n =
   (endorser.consensus_key, endorser.slots)
 
 let get_endorsing_power_for_delegate ctxt ?level pkh =
+  let open Lwt_result_syntax in
   let levels = Option.map (fun level -> [level]) level in
-  Plugin.RPC.Validators.get rpc_ctxt ?levels ctxt >>=? fun endorsers ->
+  let* endorsers = Plugin.RPC.Validators.get rpc_ctxt ?levels ctxt in
   let rec find_slots_for_delegate = function
     | [] -> return 0
     | {Plugin.RPC.Validators.delegate; slots; _} :: t ->
@@ -182,7 +183,8 @@ let get_bakers ?filter ?cycle ctxt =
   |> List.map (fun p -> p.Plugin.RPC.Baking_rights.delegate)
 
 let get_baker ctxt ~round =
-  get_bakers ~filter:(fun x -> x.round = round) ctxt >>=? fun bakers ->
+  let open Lwt_result_syntax in
+  let* bakers = get_bakers ~filter:(fun x -> x.round = round) ctxt in
   (* there is only one baker for a given round *)
   match bakers with [baker] -> return baker | _ -> assert false
 
@@ -217,15 +219,18 @@ let default_test_constants =
   Tezos_protocol_alpha_parameters.Default_parameters.constants_test
 
 let get_baking_reward_fixed_portion ctxt =
-  get_constants ctxt >>=? fun {Constants.parametric = csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = csts; _} = get_constants ctxt in
   return
     (Delegate.Rewards.For_RPC.reward_from_constants
        csts
        ~reward_kind:Baking_reward_fixed_portion)
 
 let get_bonus_reward ctxt ~endorsing_power =
-  get_constants ctxt
-  >>=? fun {Constants.parametric = {consensus_threshold; _} as csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = {consensus_threshold; _} as csts; _} =
+    get_constants ctxt
+  in
   let baking_reward_bonus_per_slot =
     Delegate.Rewards.For_RPC.reward_from_constants
       csts
@@ -235,7 +240,8 @@ let get_bonus_reward ctxt ~endorsing_power =
   return Test_tez.(baking_reward_bonus_per_slot *! Int64.of_int multiplier)
 
 let get_endorsing_reward ctxt ~expected_endorsing_power =
-  get_constants ctxt >>=? fun {Constants.parametric = csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = csts; _} = get_constants ctxt in
   let endorsing_reward_per_slot =
     Delegate.Rewards.For_RPC.reward_from_constants
       csts
@@ -246,7 +252,8 @@ let get_endorsing_reward ctxt ~expected_endorsing_power =
        Tez.(endorsing_reward_per_slot *? Int64.of_int expected_endorsing_power))
 
 let get_liquidity_baking_subsidy ctxt =
-  get_constants ctxt >>=? fun {Constants.parametric = csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = csts; _} = get_constants ctxt in
   return
     (Delegate.Rewards.For_RPC.reward_from_constants
        csts
@@ -265,14 +272,16 @@ let get_total_supply ctxt =
   Adaptive_inflation_services.total_supply rpc_ctxt ctxt
 
 let get_seed_nonce_revelation_tip ctxt =
-  get_constants ctxt >>=? fun {Constants.parametric = csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = csts; _} = get_constants ctxt in
   return
     (Delegate.Rewards.For_RPC.reward_from_constants
        csts
        ~reward_kind:Seed_nonce_revelation_tip)
 
 let get_vdf_revelation_tip ctxt =
-  get_constants ctxt >>=? fun {Constants.parametric = csts; _} ->
+  let open Lwt_result_syntax in
+  let* {Constants.parametric = csts; _} = get_constants ctxt in
   return
     (Delegate.Rewards.For_RPC.reward_from_constants
        csts
@@ -381,14 +390,17 @@ module Contract = struct
     Alpha_services.Contract.storage rpc_ctxt ctxt contract
 
   let script ctxt contract =
-    Alpha_services.Contract.script rpc_ctxt ctxt contract
-    >>=? fun {code; storage = _} ->
+    let open Lwt_result_syntax in
+    let* {code; storage = _} =
+      Alpha_services.Contract.script rpc_ctxt ctxt contract
+    in
     match Data_encoding.force_decode code with
     | Some v -> return v
     | None -> invalid_arg "Cannot force lazy script"
 
   let script_hash ctxt contract =
-    script ctxt contract >>=? fun script ->
+    let open Lwt_result_syntax in
+    let* script = script ctxt contract in
     let bytes = Data_encoding.Binary.to_bytes_exn Script.expr_encoding script in
     return @@ Script_expr_hash.hash_bytes [bytes]
 end
@@ -601,6 +613,7 @@ let init_with_parameters1 = init_with_parameters_gen T1
 let init_with_parameters2 = init_with_parameters_gen T2
 
 let default_raw_context () =
+  let open Lwt_result_syntax in
   let open Tezos_protocol_alpha_parameters in
   let initial_account = Account.new_account () in
   let bootstrap_accounts =
@@ -608,7 +621,7 @@ let default_raw_context () =
       ~balance:(Tez.of_mutez_exn 100_000_000_000L)
       initial_account
   in
-  Block.prepare_initial_context_params () >>=? fun (constants, _, _) ->
+  let* constants, _, _ = Block.prepare_initial_context_params () in
   let parameters =
     Default_parameters.parameters_of_constants
       ~bootstrap_accounts:[bootstrap_accounts]
@@ -620,21 +633,24 @@ let default_raw_context () =
     Data_encoding.Binary.to_bytes_exn Data_encoding.json json
   in
   let protocol_param_key = ["protocol_parameters"] in
-  Tezos_protocol_environment.Context.(
-    let empty = Tezos_protocol_environment.Memory_context.empty in
-    add empty ["version"] (Bytes.of_string "genesis") >>= fun ctxt ->
-    add ctxt protocol_param_key proto_params)
-  >>= fun context ->
+  let*! context =
+    Tezos_protocol_environment.Context.(
+      let empty = Tezos_protocol_environment.Memory_context.empty in
+      let*! ctxt = add empty ["version"] (Bytes.of_string "genesis") in
+      add ctxt protocol_param_key proto_params)
+  in
   let typecheck_smart_contract ctxt script_repr =
     return ((script_repr, None), ctxt)
   in
   let typecheck_smart_rollup ctxt _script_repr = Result_syntax.return ctxt in
-  Init_storage.prepare_first_block
-    Chain_id.zero
-    context
-    ~level:0l
-    ~timestamp:(Time.Protocol.of_seconds 1643125688L)
-    ~predecessor:Block_hash.zero
-    ~typecheck_smart_contract
-    ~typecheck_smart_rollup
-  >>= fun e -> Lwt.return @@ Environment.wrap_tzresult e
+  let*! e =
+    Init_storage.prepare_first_block
+      Chain_id.zero
+      context
+      ~level:0l
+      ~timestamp:(Time.Protocol.of_seconds 1643125688L)
+      ~predecessor:Block_hash.zero
+      ~typecheck_smart_contract
+      ~typecheck_smart_rollup
+  in
+  Lwt.return @@ Environment.wrap_tzresult e

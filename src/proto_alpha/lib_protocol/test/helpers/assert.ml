@@ -223,7 +223,9 @@ open Context
 (* Some asserts for account operations *)
 
 let contract_property_is property ~loc b contract expected =
-  property b contract >>=? fun balance -> equal_tez ~loc balance expected
+  let open Lwt_result_syntax in
+  let* balance = property b contract in
+  equal_tez ~loc balance expected
 
 (** [balance_is b c amount] checks that the current balance [b] of contract [c]
     is [amount].
