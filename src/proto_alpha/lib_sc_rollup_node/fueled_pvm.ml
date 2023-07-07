@@ -189,6 +189,14 @@ module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
                 (Data_encoding.Binary.to_string_exn
                    Sc_rollup.Metadata.encoding
                    metadata));
+          reveal_dal_page =
+            (fun _dal_page ->
+              (* FIXME/SCORU Is this okay to postpone this issue to another MR?
+
+                 FIXME/DAL We should explain how to get the correct
+                 DAL page. An easy way is by just contacing the DAL
+                 node. *)
+              assert false);
         }
     in
     let eval_tick fuel failing_ticks state =

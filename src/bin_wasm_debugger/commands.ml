@@ -308,6 +308,15 @@ let reveals config =
          configurable at some point. *)
       reveal_preimage = reveal_preimage_builtin config 3;
       reveal_metadata = (fun () -> Lwt.return (build_metadata config));
+      reveal_dal_page =
+        (fun _dal_page ->
+          (* FIXME/SCORU: Is this okay to request the debugger to use a DAL node?
+
+             FIXME/DAL: We should decide where pages are stored. They
+             could be stored locally or remotely. Remotely would be better at first. *)
+          Stdlib.failwith
+            "The debugger does not support the reveal of DAL pages for the \
+             moment.");
     }
 
 let write_debug =

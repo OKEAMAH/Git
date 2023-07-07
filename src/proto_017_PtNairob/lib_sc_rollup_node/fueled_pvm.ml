@@ -180,6 +180,10 @@ module Make_fueled (F : Fuel.S) : S with type fuel = F.t = struct
                 (Data_encoding.Binary.to_string_exn
                    Sc_rollup.Metadata.encoding
                    metadata));
+          reveal_dal_page =
+            (fun _dal_page ->
+              (* This can't happen since the DAL was not activated on Nairobi. *)
+              assert false);
         }
     in
     let eval_tick fuel failing_ticks state =
