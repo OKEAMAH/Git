@@ -44,3 +44,5 @@ val ( +? ) : t -> t -> t tzresult
 val ( -? ) : t -> t -> t tzresult
 
 val min : t -> t -> t
+
+val default : t

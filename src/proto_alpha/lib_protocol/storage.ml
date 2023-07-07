@@ -469,7 +469,7 @@ module Contract = struct
       (Unstake_request)
 
   module Frozen_deposits_pseudotokens =
-    Indexed_context.Make_map
+    Indexed_context.Make_map_with_default_value
       (Registered)
       (struct
         let name = ["frozen_deposits_pseudotokens"]
@@ -477,7 +477,7 @@ module Contract = struct
       (Staking_pseudotoken_repr)
 
   module Costaking_pseudotokens =
-    Indexed_context.Make_map
+    Indexed_context.Make_map_with_default_value
       (Registered)
       (struct
         let name = ["costaking_pseudotokens"]

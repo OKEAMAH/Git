@@ -30,3 +30,5 @@ include Tez_repr
 let of_int64_exn = of_mutez_exn
 
 let to_int64 = to_mutez
+
+let default = zero

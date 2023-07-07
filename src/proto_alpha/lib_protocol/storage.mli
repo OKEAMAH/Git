@@ -214,14 +214,14 @@ module Contract : sig
   (** The sum of all pseudotokens owned by costakers (the delegate included)
       corresponding to shares of the {!Frozen_deposits} current amount. *)
   module Frozen_deposits_pseudotokens :
-    Indexed_data_storage
+    Indexed_data_storage_with_default_value
       with type key = Contract_repr.t
        and type value = Staking_pseudotoken_repr.t
        and type t := Raw_context.t
 
   (** Share of the contract's delegate frozen deposits the contract owns. *)
   module Costaking_pseudotokens :
-    Indexed_data_storage
+    Indexed_data_storage_with_default_value
       with type key = Contract_repr.t
        and type value = Staking_pseudotoken_repr.t
        and type t := Raw_context.t
