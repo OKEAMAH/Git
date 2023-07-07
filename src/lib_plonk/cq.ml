@@ -43,6 +43,8 @@ open Identities
 module type Cq_sig = sig
   exception Entry_not_in_table
 
+  type transcript = bytes
+
   type prover_public_parameters
 
   type verifier_public_parameters
@@ -56,9 +58,13 @@ module type Cq_sig = sig
     prover_public_parameters * verifier_public_parameters
 
   val prove :
-    prover_public_parameters -> bytes -> S.t array SMap.t list -> proof * bytes
+    prover_public_parameters ->
+    transcript ->
+    S.t array SMap.t list ->
+    proof * transcript
 
-  val verify : verifier_public_parameters -> bytes -> proof -> bool * bytes
+  val verify :
+    verifier_public_parameters -> transcript -> proof -> bool * transcript
 end
 
 module Make (PC : Polynomial_commitment.S) = struct
@@ -67,6 +73,8 @@ module Make (PC : Polynomial_commitment.S) = struct
   module IMap = Map.Make (Int)
 
   exception Entry_not_in_table
+
+  type transcript = bytes
 
   type prover_public_parameters = {
     (* size of the table (= N in the paper) *)
