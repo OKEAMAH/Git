@@ -78,9 +78,8 @@ let get_previous_delayed_inbox_size node_ctxt (head : Layer1.head) =
       (Exn (Failure "Cannot obtain delayed inbox before origination level"))
   in
   let* previous_head = Node_context.get_predecessor node_ctxt head in
-  let first_inbox_level = Int32.succ node_ctxt.genesis_info.level in
   let* ctxt =
-    if previous_head.level < first_inbox_level then
+    if previous_head.level < node_ctxt.genesis_info.level then
       (* This is before we have interpreted the boot sector, so we start
          with an empty context in genesis *)
       return (Context.empty node_ctxt.context)

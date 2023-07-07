@@ -14,6 +14,7 @@
   octez-smart-rollup-node-lib
   octez-smart-rollup
   tezos-client-base
+  tezos_layer2_store
   tezos-rpc
   tezos-rpc-http
   tezos-rpc-http-server)
@@ -26,4 +27,5 @@
   -open Tezos_workers
   -open Octez_smart_rollup_node
   -open Octez_smart_rollup
-  -open Tezos_client_base))
+  -open Tezos_client_base
+  -open Tezos_layer2_store))

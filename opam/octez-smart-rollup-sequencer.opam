@@ -18,6 +18,7 @@ depends: [
   "octez-smart-rollup-node-lib"
   "octez-smart-rollup"
   "tezos-client-base"
+  "tezos-layer2-store"
   "tezos-rpc"
   "tezos-rpc-http"
   "tezos-rpc-http-server"
