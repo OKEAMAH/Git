@@ -211,7 +211,7 @@ let on_new_head state head =
   (* Produce batches first *)
   let* () = produce_batches state ~only_full:false in
   let* simulation_ctxt =
-    Simulation.start_simulation ~reveal_map:None state.node_ctxt head
+    Simulation.init_simulation_ctxt ~reveal_map:None state.node_ctxt head
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4224
      Replay with simulation may be too expensive *)

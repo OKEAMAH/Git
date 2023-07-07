@@ -45,9 +45,9 @@ type t = {
   info_per_level : info_per_level;
 }
 
-(** [start_simulation node_ctxt reveal_source block] starts a new simulation {e
+(** [init_simulation_ctxt node_ctxt reveal_source block] starts a new simulation {e
     on top} of [block], i.e. for an hypothetical new inbox (level).  *)
-val start_simulation :
+val init_simulation_ctxt :
   Node_context.ro ->
   reveal_map:string Sc_rollup_reveal_hash.Map.t option ->
   Layer1.head ->
