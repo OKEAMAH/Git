@@ -1,5 +1,5 @@
 {runCommand}: let
-  opam-repository-rev = builtins.readFile (
+  revision = builtins.readFile (
     runCommand
     "opam-repo-rev"
     {
@@ -11,4 +11,4 @@
     ''
   );
 in
-  fetchTarball "https://github.com/ocaml/opam-repository/archive/${opam-repository-rev}.tar.gz"
+  fetchTarball "https://github.com/ocaml/opam-repository/archive/${revision}.tar.gz"

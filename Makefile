@@ -512,3 +512,7 @@ test-kernels:
 .PHONY: clean-kernels
 clean-kernels:
 	make -f kernels.mk clean
+
+.PHONY: fmt-nix
+nix-fmt:
+	@alejandra ./

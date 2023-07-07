@@ -2,56 +2,7 @@
 # This file is provided as a courtesy and comes with no guarantees that it will
 # continue to work in the future.
 let
-  sources = import ./nix/sources.nix;
-  pkgs = sources.pkgs;
-
-  overlays = pkgs.callPackage ./nix/overlays.nix {};
-  tezos-opam-repository = pkgs.callPackage ./nix/tezos-opam-repo.nix {};
-
-  packageSet = pkgs.opamPackages.overrideScope' (pkgs.lib.composeManyExtensions [
-    # Set the opam-repository which has the package descriptions.
-    (final: prev: {
-      repository = prev.repository.override {src = tezos-opam-repository;};
-    })
-
-    # First overlay simply picks the package versions from Tezos'
-    # opam-repository.
-    overlays.pick-latest-packages
-
-    # Tweak common packages.
-    overlays.common-overlay
-
-    # Overlays for MacOS
-    (
-      if pkgs.stdenv.isDarwin
-      then overlays.darwin-overlay
-      else final: prev: {}
-    )
-
-    # Tweak the dependencies.
-    overlays.fix-rust-packages
-  ]);
-
-  packages =
-    builtins.filter
-    pkgs.lib.attrsets.isDerivation
-    (builtins.attrValues packageSet);
-
-  packageLibDirs = builtins.filter builtins.pathExists (
-    builtins.map (package: "${package}/lib/${package.pname}") packages
-  );
-
-  packageIncludeArgs = builtins.map (dir: "-I${dir}") packageLibDirs;
-
-  fakeOpamSwitchPrefix =
-    pkgs.runCommand
-    "fake-opam-switch-prefix"
-    {}
-    ''
-      mkdir -p $out/share/zcash-params
-      cp ${tezos-opam-repository}/zcash-params/sapling-output.params $out/share/zcash-params
-      cp ${tezos-opam-repository}/zcash-params/sapling-spend.params $out/share/zcash-params
-    '';
+  pkgs = import ./nix/nixpkgs.nix;
 
   mkFrameworkFlags = frameworks:
     pkgs.lib.concatStringsSep " " (
@@ -65,7 +16,7 @@ let
       frameworks
     );
 in
-  pkgs.stdenv.mkDerivation {
+  pkgs.stdenv.mkDerivation rec {
     name = "tezos";
 
     NIX_LDFLAGS = pkgs.lib.optional pkgs.stdenv.isDarwin (
@@ -81,23 +32,27 @@ in
       # Silence errors (-Werror) for unsupported flags on MacOS.
       pkgs.lib.optionals
       pkgs.stdenv.isDarwin
-      ["-Wno-unused-command-line-argument"]
-      ++
-      # Make sure headers files are in scope.
-      packageIncludeArgs;
+      ["-Wno-unused-command-line-argument"];
 
     hardeningDisable =
       pkgs.lib.optionals
       (pkgs.stdenv.isAarch64 && pkgs.stdenv.isDarwin)
       ["stackprotector"];
 
-    buildInputs = packages ++ [pkgs.makeWrapper];
+    buildInputs = [pkgs.opamPackages.octez-deps pkgs.makeWrapper];
 
     # Disable OPAM usage in Makefile.
     TEZOS_WITHOUT_OPAM = true;
 
-    # $OPAM_SWITCH_PREFIX is used to find the ZCash parameters.
-    OPAM_SWITCH_PREFIX = fakeOpamSwitchPrefix;
+    # $OPAM_SWITCH_PREFIX is used to link tezos-rust-libs headers during the build phase
+    OPAM_SWITCH_PREFIX = "${pkgs.opamPackages.tezos-rust-libs}";
+
+    # $XDG_DATA_DIRS is used to find the ZCash parameters at runtime,
+    # which is why is wrap the binaries in the post fixup phase
+    XDG_DATA_DIRS = "${pkgs.opamPackages.tezos-sapling-parameters}/share";
+
+    dontConfigure = true;
+    dontCheck = true;
 
     src = pkgs.lib.sources.cleanSourceWith {
       filter = name: type:
@@ -106,9 +61,6 @@ in
         else true;
       src = pkgs.lib.sources.cleanSource ./.;
     };
-
-    dontConfigure = true;
-    dontCheck = true;
 
     buildPhase = ''
       make experimental-release
@@ -121,11 +73,7 @@ in
 
     postFixup = ''
       for file in $(find $out/bin -type f); do
-        wrapProgram $file --set OPAM_SWITCH_PREFIX ${fakeOpamSwitchPrefix}
+        wrapProgram $file --prefix XDG_DATA_DIRS : ${XDG_DATA_DIRS}
       done
     '';
-
-    passthru = {
-      ocamlVersion = packageSet.ocaml.version;
-    };
   }
