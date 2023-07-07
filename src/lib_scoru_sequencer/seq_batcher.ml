@@ -88,15 +88,15 @@ let get_previous_delayed_inbox_size node_ctxt (head : Layer1.head) =
   in
   let* _ctxt, state = Interpreter.state_of_head node_ctxt ctxt previous_head in
   let open Kernel_durable in
-  let*! pointer_bytes = Durable_state.lookup state Delayed_inbox_pointer.path in
+  let*! pointer_bytes = Durable_state.lookup state Delayed_inbox.Pointer.path in
   match pointer_bytes with
   | None -> return 0
   | Some pointer_bytes ->
       return
       @@ Option.fold ~none:0 ~some:(fun x ->
-             Int32.(to_int @@ succ @@ sub x.Delayed_inbox_pointer.tail x.head))
+             Int32.(to_int @@ succ @@ sub x.Delayed_inbox.Pointer.tail x.head))
       @@ Data_encoding.Binary.of_bytes_opt
-           Delayed_inbox_pointer.encoding
+           Delayed_inbox.Pointer.encoding
            pointer_bytes
 
 let get_batch_sequences state head =
