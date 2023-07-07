@@ -34,15 +34,17 @@ let lift promise = Lwt.map Environment.wrap_tzresult promise
 let get_messages Node_context.{l1_ctxt; _} head =
   let open Lwt_result_syntax in
   let* block = Layer1_helpers.fetch_tezos_block l1_ctxt head in
-  let apply (type kind) accu ~source:_ (operation : kind manager_operation)
+  let apply (type kind) accu ~source (operation : kind manager_operation)
       _result =
     let open Result_syntax in
     let+ accu in
     match operation with
-    | Sc_rollup_add_messages {messages} ->
+    | Sc_rollup_add_messages {messages; authenticate} ->
         let messages =
           List.map
-            (fun message -> Sc_rollup.Inbox_message.External message)
+            (fun message ->
+              Sc_rollup.Inbox_message.External
+                (message, if authenticate then Some source else None))
             messages
         in
         List.rev_append messages accu

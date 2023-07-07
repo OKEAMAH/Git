@@ -61,7 +61,8 @@ let make_payload message =
   WithExceptions.Result.get_ok ~loc:__LOC__
   @@ Sc_rollup_inbox_message_repr.(serialize @@ External message)
 
-let make_message message = Sc_rollup_inbox_message_repr.(External message)
+let make_message message =
+  Sc_rollup_inbox_message_repr.(External (message, None))
 
 let payloads_from_messages =
   List.map (fun Sc_rollup_helpers.{input_repr = input; _} ->

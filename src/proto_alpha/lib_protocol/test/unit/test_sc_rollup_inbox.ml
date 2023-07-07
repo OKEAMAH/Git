@@ -791,7 +791,9 @@ let test_messages_are_correctly_added_in_history
     {predecessor_timestamp; predecessor; messages; _} =
   let open Lwt_result_syntax in
   let inbox = dumb_init Raw_level.root in
-  let messages = List.map (fun message -> Message.External message) messages in
+  let messages =
+    List.map (fun message -> Message.External (message, None)) messages
+  in
   let*? payloads_history, _history, _inbox, witness, messages =
     Environment.wrap_tzresult
     @@ Inbox.add_all_messages

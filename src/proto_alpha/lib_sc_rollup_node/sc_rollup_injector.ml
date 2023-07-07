@@ -33,7 +33,8 @@ module Block_cache =
 
 let injector_operation_to_manager :
     L1_operation.t -> Protocol.Alpha_context.packed_manager_operation = function
-  | Add_messages {messages} -> Manager (Sc_rollup_add_messages {messages})
+  | Add_messages {messages; authenticate} ->
+      Manager (Sc_rollup_add_messages {messages; authenticate})
   | Cement {rollup; commitment = _} ->
       let rollup = Sc_rollup_proto_types.Address.of_octez rollup in
       Manager (Sc_rollup_cement {rollup})
@@ -56,7 +57,8 @@ let injector_operation_of_manager :
     type kind.
     kind Protocol.Alpha_context.manager_operation -> L1_operation.t option =
   function
-  | Sc_rollup_add_messages {messages} -> Some (Add_messages {messages})
+  | Sc_rollup_add_messages {messages; authenticate} ->
+      Some (Add_messages {messages; authenticate})
   | Sc_rollup_cement {rollup} ->
       let rollup = Sc_rollup_proto_types.Address.to_octez rollup in
       let commitment = Octez_smart_rollup.Commitment.Hash.zero in

@@ -73,7 +73,9 @@ type internal_inbox_message =
 (** A type representing messages from Layer 1 to Layer 2. Internal ones are
     originated from Layer 1 smart-contracts and external ones are messages from
     an external manager operation. *)
-type t = Internal of internal_inbox_message | External of string
+type t =
+  | Internal of internal_inbox_message
+  | External of (string * Signature.public_key_hash option)
 
 type serialized = private string
 

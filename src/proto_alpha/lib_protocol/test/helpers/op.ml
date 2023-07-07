@@ -852,7 +852,7 @@ let sc_rollup_recover_bond ?counter ?fee ?gas_limit ?storage_limit ?force_reveal
   sign account.sk (Context.branch ctxt) to_sign_op
 
 let sc_rollup_add_messages ?force_reveal ?counter ?fee ?gas_limit ?storage_limit
-    ctxt (src : Contract.t) messages =
+    ctxt (src : Contract.t) ?(authenticate = false) messages =
   manager_operation
     ?force_reveal
     ?counter
@@ -861,7 +861,7 @@ let sc_rollup_add_messages ?force_reveal ?counter ?fee ?gas_limit ?storage_limit
     ?storage_limit
     ~source:src
     ctxt
-    (Sc_rollup_add_messages {messages})
+    (Sc_rollup_add_messages {messages; authenticate})
   >>=? fun to_sign_op ->
   Context.Contract.manager ctxt src >|=? fun account ->
   sign account.sk (Context.branch ctxt) to_sign_op

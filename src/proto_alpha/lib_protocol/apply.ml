@@ -1308,8 +1308,11 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_add_messages {messages} ->
-      Sc_rollup.Inbox.add_external_messages ctxt messages >>=? fun ctxt ->
+  | Sc_rollup_add_messages {messages; authenticate} ->
+      (if authenticate then
+       Sc_rollup.Inbox.add_authenticated_external_messages ~source ctxt messages
+      else Sc_rollup.Inbox.add_external_messages ctxt messages)
+      >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result = Sc_rollup_add_messages_result {consumed_gas} in
       return (ctxt, result, [])

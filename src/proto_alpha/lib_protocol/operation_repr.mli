@@ -418,6 +418,7 @@ and _ manager_operation =
       -> Kind.sc_rollup_originate manager_operation
   (* [Sc_rollup_add_messages] adds messages to the smart rollups' inbox. *)
   | Sc_rollup_add_messages : {
+      authenticate : bool;
       messages : string list;
     }
       -> Kind.sc_rollup_add_messages manager_operation

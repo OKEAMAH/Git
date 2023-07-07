@@ -145,7 +145,7 @@ let test_l1_input_kind () =
   in
   let* () = check_msg (Internal Start_of_level) (Internal Start_of_level) in
   let* () = check_msg (Internal End_of_level) (Internal End_of_level) in
-  let* () = check_msg (External "payload") External in
+  let* () = check_msg (External ("payload", None)) External in
 
   return_unit
 

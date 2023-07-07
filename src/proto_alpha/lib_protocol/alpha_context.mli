@@ -2805,7 +2805,9 @@ module Sc_rollup : sig
 
     val protocol_migration_internal_message : internal_inbox_message
 
-    type t = Internal of internal_inbox_message | External of string
+    type t =
+      | Internal of internal_inbox_message
+      | External of (string * Signature.public_key_hash option)
 
     type serialized = private string
 
@@ -3084,6 +3086,9 @@ module Sc_rollup : sig
     end
 
     val add_external_messages : context -> string list -> context tzresult Lwt.t
+
+    val add_authenticated_external_messages :
+      source:public_key_hash -> context -> string list -> context tzresult Lwt.t
 
     val add_deposit :
       context ->
@@ -4252,6 +4257,7 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
+      authenticate : bool;
       messages : string list;
     }
       -> Kind.sc_rollup_add_messages manager_operation

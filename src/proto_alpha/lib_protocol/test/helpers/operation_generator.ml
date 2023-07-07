@@ -533,7 +533,7 @@ let generate_sc_rollup_originate =
 
 let generate_sc_rollup_add_messages =
   let open QCheck2.Gen in
-  return (Sc_rollup_add_messages {messages = []})
+  return (Sc_rollup_add_messages {messages = []; authenticate = false})
 
 let sc_dummy_commitment =
   let number_of_ticks =

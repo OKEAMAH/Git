@@ -34,6 +34,14 @@ val get_inbox :
 val add_external_messages :
   Raw_context.t -> string list -> Raw_context.t tzresult Lwt.t
 
+(** [add_authenticated_external_messages ~source context messages] is {!add_external_messages}
+    but authenticate messages, i.e. prefixed with the source. *)
+val add_authenticated_external_messages :
+  source:Signature.public_key_hash ->
+  Raw_context.t ->
+  string list ->
+  Raw_context.t tzresult Lwt.t
+
 (** [add_deposit ~payload ~sender ~source ~destination ctxt] adds the
     internal deposit message of [payload], [sender], and [source] to
     the smart-contract rollups' inbox.

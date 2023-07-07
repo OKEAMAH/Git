@@ -1183,7 +1183,7 @@ module Make (Context : Sc_rollup_PVM_sig.Generic_pvm_context_sig) :
     let* payload =
       match deserialized with
       | Error _ -> return None
-      | Ok (External payload) -> return (Some payload)
+      | Ok (External (payload, _)) -> return (Some payload)
       | Ok (Internal (Transfer {payload; destination; _})) -> (
           let* () = incr_internal_message_counter in
           let* (metadata : Sc_rollup_metadata_repr.t option) = Metadata.get in

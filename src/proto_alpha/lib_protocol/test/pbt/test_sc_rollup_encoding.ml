@@ -103,7 +103,8 @@ let gen_inbox level =
     in
     let* input_messages =
       List.map_e
-        (fun msg -> Sc_rollup_inbox_message_repr.(serialize (External msg)))
+        (fun msg ->
+          Sc_rollup_inbox_message_repr.(serialize (External (msg, None))))
         payloads
     in
     let* witness =
@@ -225,7 +226,7 @@ let gen_inbox_message =
   let open Sc_rollup_inbox_message_repr in
   let gen_external =
     let+ s = small_string ~gen:printable in
-    External s
+    External (s, None)
   in
   let gen_sol = return (Internal Start_of_level) in
   let gen_eol = return (Internal End_of_level) in

@@ -636,6 +636,7 @@ val sc_rollup_add_messages :
   ?storage_limit:Z.t ->
   ?counter:Manager_counter.t ->
   source:public_key_hash ->
+  authenticate:bool ->
   messages:string list ->
   src_pk:public_key ->
   src_sk:Client_keys.sk_uri ->

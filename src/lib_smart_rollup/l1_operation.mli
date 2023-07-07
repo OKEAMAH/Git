@@ -25,7 +25,7 @@
 
 (** L1 operations produced (and injected) by the rollup node. *)
 type t =
-  | Add_messages of {messages : string list}
+  | Add_messages of {messages : string list; authenticate : bool}
   | Cement of {rollup : Address.t; commitment : Commitment.Hash.t}
   | Publish of {rollup : Address.t; commitment : Commitment.t}
   | Refute of {

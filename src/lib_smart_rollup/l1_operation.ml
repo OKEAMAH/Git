@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 type t =
-  | Add_messages of {messages : string list}
+  | Add_messages of {messages : string list; authenticate : bool}
   | Cement of {rollup : Address.t; commitment : Commitment.Hash.t}
   | Publish of {rollup : Address.t; commitment : Commitment.t}
   | Refute of {
@@ -50,9 +50,13 @@ let encoding : t Data_encoding.t =
          case
            0
            "add_messages"
-           (obj1 (req "message" (list (string' Hex))))
-           (function Add_messages {messages} -> Some messages | _ -> None)
-           (fun messages -> Add_messages {messages});
+           (obj2 (req "message" (list (string' Hex))) (req "authenticate" bool))
+           (function
+             | Add_messages {messages; authenticate} ->
+                 Some (messages, authenticate)
+             | _ -> None)
+           (fun (messages, authenticate) ->
+             Add_messages {messages; authenticate});
          case
            1
            "cement"
@@ -98,11 +102,12 @@ let encoding : t Data_encoding.t =
        ]
 
 let pp ppf = function
-  | Add_messages {messages} ->
+  | Add_messages {messages; authenticate} ->
       Format.fprintf
         ppf
-        "publishing %d messages to smart rollups' inbox"
+        "publishing %d%s messages to smart rollups' inbox"
         (List.length messages)
+        (if authenticate then " authenticated" else "")
   | Cement {rollup = _; commitment} when Commitment.Hash.(commitment = zero) ->
       (* We use zero as a default value for protocol alpha which does
          not need the commitment to be specified. *)

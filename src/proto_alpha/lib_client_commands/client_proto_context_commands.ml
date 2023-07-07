@@ -839,6 +839,9 @@ let force_switch =
        switch requires --gas-limit, --storage-limit, and --fee."
     ()
 
+let authenticate_switch =
+  Tezos_clic.switch ~long:"authenticate" ~doc:"Authenticate the messages" ()
+
 let transfer_command amount (source : Contract.t) destination
     (cctxt : #Client_context.printer)
     ( fee,
@@ -2643,7 +2646,7 @@ let commands_rw () =
     command
       ~group
       ~desc:"Send one or more messages to a smart rollup."
-      (args8
+      (args9
          fee_arg
          dry_run_switch
          verbose_signing_switch
@@ -2651,7 +2654,8 @@ let commands_rw () =
          fee_parameter_args
          gas_limit_arg
          storage_limit_arg
-         counter_arg)
+         counter_arg
+         authenticate_switch)
       (prefixes ["send"; "smart"; "rollup"; "message"]
       @@ param
            ~name:"messages"
@@ -2673,7 +2677,8 @@ let commands_rw () =
              fee_parameter,
              gas_limit,
              storage_limit,
-             counter )
+             counter,
+             authenticate )
            messages
            source
            cctxt ->
@@ -2718,6 +2723,7 @@ let commands_rw () =
             ~simulation
             ~source
             ~messages
+            ~authenticate
             ~src_pk
             ~src_sk
             ~fee_parameter

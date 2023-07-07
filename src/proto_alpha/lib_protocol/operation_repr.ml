@@ -347,6 +347,7 @@ and _ manager_operation =
     }
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
+      authenticate : bool;
       messages : string list;
     }
       -> Kind.sc_rollup_add_messages manager_operation
@@ -852,12 +853,18 @@ module Encoding = struct
         {
           tag = sc_rollup_operation_add_message_tag;
           name = "smart_rollup_add_messages";
-          encoding = obj1 (req "message" (list (string Hex)));
+          encoding =
+            obj2 (req "message" (list (string Hex))) (req "authenticate" bool);
           select =
             (function
             | Manager (Sc_rollup_add_messages _ as op) -> Some op | _ -> None);
-          proj = (function Sc_rollup_add_messages {messages} -> messages);
-          inj = (fun messages -> Sc_rollup_add_messages {messages});
+          proj =
+            (function
+            | Sc_rollup_add_messages {messages; authenticate} ->
+                (messages, authenticate));
+          inj =
+            (fun (messages, authenticate) ->
+              Sc_rollup_add_messages {messages; authenticate});
         }
 
     let sc_rollup_cement_case =

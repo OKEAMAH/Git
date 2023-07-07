@@ -182,7 +182,7 @@ let test_encode_decode_internal_inbox_message_eol () =
 let test_encode_decode_external_inbox_message () =
   let open Lwt_result_wrap_syntax in
   let assert_prefix message =
-    let inbox_message = Sc_rollup.Inbox_message.External message in
+    let inbox_message = Sc_rollup.Inbox_message.External (message, None) in
     let*? real_encoding =
       Environment.wrap_tzresult
       @@ Sc_rollup.Inbox_message.serialize inbox_message
@@ -207,13 +207,13 @@ let test_encode_decode_external_inbox_message () =
   let* () = assert_prefix "0123456789" in
   let* () = assert_prefix (String.init 256 (Fun.const 'A')) in
   let assert_encoding_success message =
-    let inbox_message = Sc_rollup.Inbox_message.External message in
+    let inbox_message = Sc_rollup.Inbox_message.External (message, None) in
     let*! res = check_encode_decode_inbox_message inbox_message in
     assert (Result.is_ok res) ;
     return_unit
   in
   let assert_encoding_failure message =
-    let inbox_message = Sc_rollup.Inbox_message.External message in
+    let inbox_message = Sc_rollup.Inbox_message.External (message, None) in
     let*! res = check_encode_decode_inbox_message inbox_message in
     assert_encoding_failure ~loc:__LOC__ res
   in

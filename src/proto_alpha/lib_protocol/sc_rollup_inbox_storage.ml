@@ -79,7 +79,24 @@ let serialize_external_messages ctxt external_messages =
           ctxt
           (Sc_rollup_costs.cost_serialize_external_inbox_message ~bytes_len)
       in
-      let* serialized_message = serialize @@ External message in
+      let* serialized_message = serialize @@ External (message, None) in
+      return (ctxt, serialized_message))
+    ctxt
+    external_messages
+
+let serialize_authenticated_external_messages ~source ctxt external_messages =
+  let open Sc_rollup_inbox_message_repr in
+  List.fold_left_map_e
+    (fun ctxt message ->
+      let open Result_syntax in
+      (* Pay gas for serializing an external message. *)
+      let* ctxt =
+        let bytes_len = String.length message in
+        Raw_context.consume_gas
+          ctxt
+          (Sc_rollup_costs.cost_serialize_external_inbox_message ~bytes_len)
+      in
+      let* serialized_message = serialize @@ External (message, Some source) in
       return (ctxt, serialized_message))
     ctxt
     external_messages
@@ -100,6 +117,13 @@ let serialize_internal_message ctxt internal_message =
 let add_external_messages ctxt external_messages =
   let open Lwt_result_syntax in
   let*? ctxt, messages = serialize_external_messages ctxt external_messages in
+  add_messages ctxt messages
+
+let add_authenticated_external_messages ~source ctxt external_messages =
+  let open Lwt_result_syntax in
+  let*? ctxt, messages =
+    serialize_authenticated_external_messages ~source ctxt external_messages
+  in
   add_messages ctxt messages
 
 let add_internal_message ctxt internal_message =

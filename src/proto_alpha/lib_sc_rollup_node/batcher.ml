@@ -65,7 +65,7 @@ let message_size s =
 let inject_batch state (l2_messages : L2_message.t list) =
   let open Lwt_result_syntax in
   let messages = List.map L2_message.content l2_messages in
-  let operation = L1_operation.Add_messages {messages} in
+  let operation = L1_operation.Add_messages {messages; authenticate = false} in
   let+ l1_hash =
     Injector.add_pending_operation ~source:state.signer operation
   in
@@ -158,7 +158,7 @@ let simulate node_ctxt simulation_ctxt (messages : L2_message.t list) =
          (fun m ->
            let open Result_syntax in
            let open Sc_rollup.Inbox_message in
-           let+ msg = serialize @@ External (L2_message.content m) in
+           let+ msg = serialize @@ External (L2_message.content m, None) in
            unsafe_to_string msg)
          messages
   in
@@ -254,7 +254,9 @@ let protocol_max_batch_size =
                    gas_limit =
                      Gas.Arith.integral_of_int_exn ((max_int - 1) / 1000);
                    storage_limit = Z.of_int max_int;
-                   operation = Sc_rollup_add_messages {messages = [""]};
+                   operation =
+                     Sc_rollup_add_messages
+                       {messages = [""]; authenticate = false};
                  });
         };
     }

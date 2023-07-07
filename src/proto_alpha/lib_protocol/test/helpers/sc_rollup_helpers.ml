@@ -137,7 +137,7 @@ let message_serialize msg =
     ~loc:__LOC__
     Sc_rollup.Inbox_message.(serialize msg)
 
-let make_external_inbox_message str = message_serialize (External str)
+let make_external_inbox_message str = message_serialize (External (str, None))
 
 let make_internal_inbox_message internal_msg =
   message_serialize (Internal internal_msg)
@@ -341,7 +341,8 @@ let message_serialize_repr msg =
     ~loc:__LOC__
     Sc_rollup_inbox_message_repr.(serialize msg)
 
-let make_external_inbox_message_repr str = message_serialize_repr (External str)
+let make_external_inbox_message_repr str =
+  message_serialize_repr (External (str, None))
 
 let make_internal_inbox_message_repr internal_msg =
   message_serialize_repr (Internal internal_msg)
@@ -586,7 +587,7 @@ module Node_inbox = struct
         :: rst ->
           let messages =
             List.map
-              (fun message -> Sc_rollup.Inbox_message.External message)
+              (fun message -> Sc_rollup.Inbox_message.External (message, None))
               messages
           in
           let* payloads_history, history, inbox, witness, _messages =
@@ -689,7 +690,8 @@ module Protocol_inbox = struct
         :: rst ->
           let payloads =
             List.map
-              (fun message -> Sc_rollup.Inbox_message.(External message))
+              (fun message ->
+                Sc_rollup.Inbox_message.(External (message, None)))
               messages
           in
           let* _, _, inbox, _, _ =

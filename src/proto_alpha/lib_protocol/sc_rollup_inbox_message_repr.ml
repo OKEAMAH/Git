@@ -122,7 +122,9 @@ let internal_inbox_message_encoding =
         (fun ((), proto) -> Protocol_migration proto);
     ]
 
-type t = Internal of internal_inbox_message | External of string
+type t =
+  | Internal of internal_inbox_message
+  | External of (string * Signature.public_key_hash option)
 
 let encoding =
   let open Data_encoding in
@@ -135,15 +137,26 @@ let encoding =
            ~title:"Internal"
            internal_inbox_message_encoding
            (function
-             | Internal internal_message -> Some internal_message
-             | External _ -> None)
+             | Internal internal_message -> Some internal_message | _ -> None)
            (fun internal_message -> Internal internal_message);
          case
            (Tag 1)
            ~title:"External"
-           Variable.(string Hex)
-           (function External msg -> Some msg | Internal _ -> None)
-           (fun msg -> External msg);
+           (tup2
+              (option Signature.Public_key_hash.encoding)
+              Variable.(string Hex))
+           (function External (msg, None) -> Some (None, msg) | _ -> None)
+           (fun (source, msg) -> External (msg, source));
+         case
+           (Tag 2)
+           ~title:"Authenticated_external"
+           (tup2
+              (option Signature.Public_key_hash.encoding)
+              Variable.(string Hex))
+           (function
+             | External (msg, Some source) -> Some (Some source, msg)
+             | _ -> None)
+           (fun (source, msg) -> External (msg, source));
        ])
 
 type serialized = string

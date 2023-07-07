@@ -175,7 +175,7 @@ let gen_inbox =
     in
     let* input_messages =
       List.map_e
-        (fun msg -> Sc_rollup.Inbox_message.(serialize (External msg)))
+        (fun msg -> Sc_rollup.Inbox_message.(serialize (External (msg, None))))
         payloads
     in
     let* witness =
