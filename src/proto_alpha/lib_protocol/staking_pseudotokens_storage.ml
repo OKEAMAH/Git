@@ -291,3 +291,7 @@ let request_unstake ctxt ~contract ~delegate requested_amount =
           if Contract_repr.(contract = delegate_contract) then
             return (ctxt, Tez_repr.min frozen_deposits_tez requested_amount)
           else return (ctxt, Tez_repr.zero)
+
+let delegate_own_frozen_deposits_as_tez ctxt delegate =
+  let contract = Contract_repr.Implicit delegate in
+  costaking_balance_as_tez ctxt ~contract ~delegate

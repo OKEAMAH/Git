@@ -104,3 +104,13 @@ val request_unstake :
   delegate:Signature.Public_key_hash.t ->
   Tez_repr.t ->
   (Raw_context.t * Tez_repr.t) tzresult Lwt.t
+
+(** [delegate_own_frozen_deposits_as_tez ctxt delegate] returns the
+    part of the [delegate]'s frozen deposits which is owned by the
+    delegate itself, as opposed to its costakers. It is converted into
+    tez using its frozen deposits tez/pseudotokens rate.
+
+    The given [delegate] should be a registered delegate. Otherwise
+    the given [Tez.t] amount will not make sense. *)
+val delegate_own_frozen_deposits_as_tez :
+  Raw_context.t -> Signature.Public_key_hash.t -> Tez_repr.t tzresult Lwt.t
