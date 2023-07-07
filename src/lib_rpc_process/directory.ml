@@ -5,7 +5,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let build_rpc_directory node_version config _store =
+let build_rpc_directory node_version config store =
   let static_dir = Tezos_shell.Version_directory.rpc_directory node_version in
   let static_dir =
     Tezos_shell.Config_directory.build_rpc_directory_for_rpc_process
@@ -16,5 +16,24 @@ let build_rpc_directory node_version config _store =
       ~dal_config:config.blockchain_network.dal_config
       static_dir
   in
-  Tezos_rpc.Directory.register0 static_dir Node_services.S.config (fun () () ->
-      Lwt.return_ok config)
+  let static_dir =
+    Tezos_rpc.Directory.register0
+      static_dir
+      Node_services.S.config
+      (fun () () -> Lwt.return_ok config)
+  in
+  Tezos_rpc.Directory.register_dynamic_directory
+    static_dir
+    (Tezos_rpc.Path.subst1 Tezos_shell_services.Chain_services.path)
+    (fun ((), chain) ->
+      let dir = Tezos_shell.Chain_directory.rpc_directory_generic () in
+      let dir =
+        Tezos_rpc.Directory.map
+          (fun ((), _chain) ->
+            match !store with
+            | None -> Lwt.fail Not_found
+            | Some store ->
+                Tezos_shell.Chain_directory.get_chain_store_exn store chain)
+          dir
+      in
+      Lwt.return dir)

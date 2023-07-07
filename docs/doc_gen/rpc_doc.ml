@@ -392,7 +392,7 @@ let make_index ?introduction_path ~required_version ~hash () =
         | Some proto -> proto
       in
       Tezos_rpc.Directory.map (fun () -> assert false)
-      @@ Block_directory.build_raw_rpc_directory_with_validator
+      @@ Block_directory.build_raw_rpc_directory_node_specific
            (module Proto)
            (module Proto)
     in
