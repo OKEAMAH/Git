@@ -409,7 +409,7 @@ let make_index node required_version =
           intro,
           [".."; "<block_id>"],
           Tezos_rpc.Directory.map (fun () -> assert false)
-          @@ Block_directory.build_raw_rpc_directory
+          @@ Block_directory.build_raw_rpc_directory_node_specific
                (module Proto)
                (module Proto) ))
       protocols
