@@ -30,7 +30,7 @@ pub struct UserMessage {
 }
 
 /// Message saved in the pending inbox
-#[derive(BinWriter, NomReader)]
+#[derive(Debug, BinWriter, NomReader)]
 pub struct PendingUserMessage {
     level: u32,
     id: u32,

@@ -11,4 +11,5 @@ pub mod sequencer_runtime;
 mod state;
 mod storage;
 
+pub use message::Framed;
 pub use routing::FilterBehavior;

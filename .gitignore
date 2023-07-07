@@ -96,6 +96,7 @@ target
 
 evm_kernel.wasm
 evm_installer.wasm
-sequenced_kernel.wasm
+sequenced_empty_kernel.wasm
+sequenced_concat_kernel.wasm
 smart-rollup-installer
 _evm_installer_preimages/

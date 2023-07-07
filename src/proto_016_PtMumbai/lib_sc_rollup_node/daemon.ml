@@ -592,7 +592,7 @@ let run node_ctxt configuration
   let open Lwt_result_syntax in
   let (module Components) = daemon_components in
   let* () = check_initial_state_hash node_ctxt in
-  let* rpc_server = RPC_server.start node_ctxt configuration in
+  let* rpc_server = Components.RPC_server.start node_ctxt configuration in
   let (_ : Lwt_exit.clean_up_callback_id) =
     install_finalizer daemon_components node_ctxt rpc_server
   in
