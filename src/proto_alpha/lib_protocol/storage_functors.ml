@@ -1077,6 +1077,24 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     end
   end
 
+  module Make_map_with_default_value
+      (R : REGISTER)
+      (N : NAME)
+      (V : DEFAULT_VALUE) :
+    Indexed_data_storage_with_default_value
+      with type t = t
+       and type key = key
+       and type value = V.t = struct
+    include Make_map (R) (N) (V)
+
+    let get c k =
+      let open Lwt_result_syntax in
+      let+ opt = find c k in
+      Option.value ~default:V.default opt
+
+    let update c k v = if V.(v = default) then remove c k else add c k v
+  end
+
   module Make_carbonated_map (R : REGISTER) (N : NAME) (V : VALUE) :
     Non_iterable_indexed_carbonated_data_storage
       with type t = t

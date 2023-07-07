@@ -331,6 +331,44 @@ module type Indexed_data_storage_with_local_context = sig
   end
 end
 
+module type Indexed_data_storage_with_default_value = sig
+  type t
+
+  type context = t
+
+  type key
+
+  type value
+
+  val get : context -> key -> value tzresult Lwt.t
+
+  val update : context -> key -> value -> Raw_context.t Lwt.t
+
+  val remove : context -> key -> Raw_context.t Lwt.t
+
+  val clear : context -> Raw_context.t Lwt.t
+
+  val keys : context -> key list Lwt.t
+
+  val bindings : context -> (key * value) list Lwt.t
+
+  val fold :
+    context ->
+    order:[`Sorted | `Undefined] ->
+    init:'a ->
+    f:(key -> value -> 'a -> 'a Lwt.t) ->
+    'a Lwt.t
+
+  val fold_keys :
+    context ->
+    order:[`Sorted | `Undefined] ->
+    init:'a ->
+    f:(key -> 'a -> 'a Lwt.t) ->
+    'a Lwt.t
+
+  val is_empty : context -> bool Lwt.t
+end
+
 module type Indexed_data_snapshotable_storage = sig
   type snapshot
 
@@ -442,6 +480,14 @@ module type VALUE = sig
   val encoding : t Data_encoding.t
 end
 
+module type DEFAULT_VALUE = sig
+  include VALUE
+
+  val ( = ) : t -> t -> bool
+
+  val default : t
+end
+
 module type REGISTER = sig
   val ghost : bool
 end
@@ -489,6 +535,15 @@ module type Indexed_raw_context = sig
        and type key = key
        and type value = V.t
        and type local_context = local_context
+
+  module Make_map_with_default_value
+      (_ : REGISTER)
+      (_ : NAME)
+      (V : DEFAULT_VALUE) :
+    Indexed_data_storage_with_default_value
+      with type t = t
+       and type key = key
+       and type value = V.t
 
   module Make_carbonated_map (_ : REGISTER) (_ : NAME) (V : VALUE) :
     Non_iterable_indexed_carbonated_data_storage
