@@ -23,17 +23,50 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Protocol
+open Alpha_context
+
 let sequencer_prefix = "/__sequencer"
 
-let delayed_inbox_prefix = String.concat "/" [sequencer_prefix; "delayed-inbox"]
+module Delayed_inbox = struct
+  let path = String.concat "/" [sequencer_prefix; "delayed-inbox"]
 
-module Delayed_inbox_pointer = struct
-  let path = String.concat "/" [delayed_inbox_prefix; "pointer"]
+  module Pointer = struct
+    let path = String.concat "/" [path; "pointer"]
 
-  type t = {head : int32; tail : int32}
+    type t = {head : int32; tail : int32}
 
-  let encoding =
-    let open Data_encoding in
-    conv (fun {head; tail} -> (head, tail)) (fun (head, tail) -> {head; tail})
-    @@ obj2 (req "head" int32) (req "tail" int32)
+    let empty = {head = 0l; tail = -1l}
+
+    let is_adjacent left right =
+      Compare.Int32.(Int32.succ left.tail = right.head)
+
+    let size x = Int32.(succ @@ sub x.tail x.head)
+
+    let encoding =
+      let open Data_encoding in
+      conv (fun {head; tail} -> (head, tail)) (fun (head, tail) -> {head; tail})
+      @@ obj2 (req "head" int32) (req "tail" int32)
+
+    let pp ppf p = Format.fprintf ppf "{head: %ld; tail: %ld}" p.head p.tail
+  end
+
+  module Element = struct
+    let path element_id =
+      String.concat "/" [path; "elements"; Int32.to_string element_id]
+
+    type t = {timeout_level : int32; user_message : string}
+
+    let encoding =
+      let open Data_encoding in
+      conv
+        (fun {timeout_level; user_message} -> (timeout_level, user_message))
+        (fun (timeout_level, user_message) -> {timeout_level; user_message})
+      @@ obj2 (req "timeout_level" int32) (req "user_message" Variable.string)
+  end
+
+  type queue_slice = {
+    pointer : Pointer.t;
+    elements : Sc_rollup.Inbox_message.serialized list;
+  }
 end
