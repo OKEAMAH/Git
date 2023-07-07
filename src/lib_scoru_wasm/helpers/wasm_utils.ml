@@ -143,6 +143,10 @@ module Make (Ctx : Tezos_tree_encoding.Encodings_util.S) :
           (fun () ->
             Stdlib.failwith
               "reveal_metadata is not available out of the box in tests");
+        reveal_dal_page =
+          (fun _page_index ->
+            Stdlib.failwith
+              "reveal_dal is not available out of the box in tests");
       }
 
   let eval_until_stuck ?(reveal_builtins = reveal_builtins) ?write_debug

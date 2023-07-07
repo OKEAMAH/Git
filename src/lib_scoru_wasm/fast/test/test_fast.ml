@@ -57,6 +57,9 @@ let apply_fast ?write_debug ?(fast_should_run = true)
               match metadata with
               | Some reveal -> Lwt.return reveal
               | None -> Stdlib.failwith "reveal_preimage is not available");
+          reveal_dal_page =
+            (fun _dal_page ->
+              Stdlib.failwith "reveal_dal_page is not available");
         }
   in
   let+ tree, ticks =
@@ -800,6 +803,9 @@ let test_compute_step_many_pauses_at_snapshot_when_flag_set ~version () =
           (fun _ -> Stdlib.failwith "reveal_preimage is not available");
         reveal_metadata =
           (fun () -> Stdlib.failwith "reveal_metadata is not available");
+        reveal_dal_page =
+          (fun _page_index ->
+            Stdlib.failwith "reveal_dal_page is not available");
       }
   in
   let*! initial_tree =
@@ -871,6 +877,9 @@ let test_check_nb_ticks ~version () =
           (fun _ -> Stdlib.failwith "reveal_preimage is not available");
         reveal_metadata =
           (fun () -> Stdlib.failwith "reveal_metadata is not available");
+        reveal_dal_page =
+          (fun _page_index ->
+            Stdlib.failwith "reveal_dal_page is not available");
       }
   in
   let*! initial_tree =

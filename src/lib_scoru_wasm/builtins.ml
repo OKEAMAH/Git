@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,9 +24,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* We can assume that bounds are checked by the protocol. All the
+   integers are non-negatives. *)
+type dal_page_index = {level : int32; slot_index : int; page : int}
+
 type reveals = {
   reveal_preimage : string -> string Lwt.t;
   reveal_metadata : unit -> string Lwt.t;
+  reveal_dal_page : dal_page_index -> string Lwt.t;
 }
 
 type write_debug = Noop | Printer of (string -> unit Lwt.t)

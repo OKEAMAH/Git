@@ -258,6 +258,9 @@ let apply_fast ?(images = Preimage_map.empty) tree =
             | Some preimage -> Lwt.return preimage);
         reveal_metadata =
           (fun () -> Stdlib.failwith "reveal_preimage is not available");
+        reveal_dal_page =
+          (fun _page_index ->
+            Stdlib.failwith "reveal_dal_page is not available");
       }
   in
   let+ tree =

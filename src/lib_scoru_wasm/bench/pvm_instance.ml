@@ -59,6 +59,9 @@ module Placeholder_builtins = struct
 
   let reveal_metadata () =
     Stdlib.failwith "reveal_metadata is not available out of the box in tests"
+
+  let reveal_dal_page _page_index =
+    Stdlib.failwith "reveal_dal_page is not available out of the box in tests"
 end
 
 let builtins =
@@ -66,4 +69,5 @@ let builtins =
     {
       reveal_preimage = Placeholder_builtins.reveal_preimage;
       reveal_metadata = Placeholder_builtins.reveal_metadata;
+      reveal_dal_page = Placeholder_builtins.reveal_dal_page;
     }
