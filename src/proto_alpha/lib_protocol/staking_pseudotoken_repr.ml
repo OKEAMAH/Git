@@ -27,6 +27,6 @@
 
 include Tez_repr
 
-let of_int64_exn = of_mutez_exn
+let of_int64 x = one_mutez *? x
 
 let to_int64 = to_mutez

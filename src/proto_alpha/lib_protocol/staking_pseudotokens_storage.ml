@@ -28,7 +28,7 @@ let pseudotokens_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
   if Tez_repr.(frozen_deposits_tez = zero) then (
     (* When there are no frozen deposits, starts with 1 pseudotoken = 1 mutez. *)
     assert (Staking_pseudotoken_repr.(frozen_deposits_pseudotokens = zero)) ;
-    Staking_pseudotoken_repr.of_int64_exn (Tez_repr.to_mutez tez_amount))
+    Staking_pseudotoken_repr.of_int64 (Tez_repr.to_mutez tez_amount))
   else
     let frozen_deposits_tez_z =
       Z.of_int64 (Tez_repr.to_mutez frozen_deposits_tez)
@@ -43,7 +43,7 @@ let pseudotokens_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
         (Z.mul tez_amount_z frozen_deposits_pseudotokens_z)
         frozen_deposits_tez_z
     in
-    Staking_pseudotoken_repr.of_int64_exn (Z.to_int64 res_z)
+    Staking_pseudotoken_repr.of_int64 (Z.to_int64 res_z)
 
 let tez_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
     ~pseudotoken_amount =
@@ -84,8 +84,8 @@ let update_frozen_deposits_pseudotokens ~f ctxt delegate =
       when Staking_pseudotoken_repr.(frozen_deposits_pseudotokens <> zero) ->
         return (ctxt, frozen_deposits_pseudotokens)
     | _ ->
-        let init_frozen_deposits_pseudotokens =
-          Staking_pseudotoken_repr.of_int64_exn
+        let*? init_frozen_deposits_pseudotokens =
+          Staking_pseudotoken_repr.of_int64
             (Tez_repr.to_mutez frozen_deposits_tez)
         in
         let*! ctxt =
@@ -123,7 +123,7 @@ let credit_frozen_deposits_pseudotokens_for_tez_amount ctxt delegate tez_amount
   else
     let f ~frozen_deposits_pseudotokens ~frozen_deposits_tez =
       let open Result_syntax in
-      let pseudotokens_to_add =
+      let* pseudotokens_to_add =
         pseudotokens_of
           ~frozen_deposits_pseudotokens
           ~frozen_deposits_tez
@@ -258,7 +258,7 @@ let request_unstake ctxt ~contract ~delegate requested_amount =
           if Staking_pseudotoken_repr.(available_pseudotokens = zero) then
             return (ctxt, Tez_repr.zero)
           else
-            let requested_pseudotokens =
+            let*? requested_pseudotokens =
               pseudotokens_of
                 ~frozen_deposits_pseudotokens
                 ~frozen_deposits_tez

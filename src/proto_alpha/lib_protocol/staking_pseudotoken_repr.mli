@@ -31,7 +31,7 @@ val encoding : t Data_encoding.t
 
 val zero : t
 
-val of_int64_exn : int64 -> t
+val of_int64 : int64 -> t tzresult
 
 val to_int64 : t -> int64
 
