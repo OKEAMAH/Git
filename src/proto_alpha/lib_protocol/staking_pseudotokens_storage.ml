@@ -295,3 +295,7 @@ let request_unstake ctxt ~contract ~delegate requested_amount =
 let delegate_own_frozen_deposits_as_tez ctxt delegate =
   let contract = Contract_repr.Implicit delegate in
   costaking_balance_as_tez ctxt ~contract ~delegate
+
+module For_RPC = struct
+  let costaking_balance_as_tez = costaking_balance_as_tez
+end
