@@ -557,6 +557,15 @@ let refine_stake ctxt rollup commitment ~staker_index ~lcc ~lcc_inbox_level =
 
 let publish_commitment ctxt rollup staker commitment =
   let open Lwt_result_syntax in
+  let* ctxt, staker_in_whitelist =
+    Storage.Sc_rollup.Whitelist.mem (ctxt, rollup) staker
+  in
+  let* () =
+    fail_when
+      ((not staker_in_whitelist)
+      && Constants_storage.sc_rollup_whitelist_enable ctxt)
+      Sc_rollup_staker_not_in_whitelist
+  in
   let* lcc, lcc_inbox_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
