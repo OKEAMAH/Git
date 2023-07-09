@@ -134,7 +134,7 @@ module Parameters = struct
     let security = 128 in
     let state_size = 2 in
     let l = state_size / 2 in
-    let nb_rounds = compute_number_of_rounds state_size l in
+    let nb_rounds = compute_number_of_rounds state_size security in
     let round_constants = generate_constants nb_rounds l in
     {
       security;
@@ -148,7 +148,7 @@ module Parameters = struct
     let security = 128 in
     let state_size = 4 in
     let l = state_size / 2 in
-    let nb_rounds = compute_number_of_rounds state_size l in
+    let nb_rounds = compute_number_of_rounds state_size security in
     let round_constants = generate_constants nb_rounds l in
     {
       security;
@@ -162,7 +162,7 @@ module Parameters = struct
     let security = 128 in
     let state_size = 6 in
     let l = state_size / 2 in
-    let nb_rounds = compute_number_of_rounds state_size l in
+    let nb_rounds = compute_number_of_rounds state_size security in
     let round_constants = generate_constants nb_rounds l in
     {
       security;
@@ -178,7 +178,7 @@ module Parameters = struct
     let security = 128 in
     let state_size = 8 in
     let l = state_size / 2 in
-    let nb_rounds = compute_number_of_rounds state_size l in
+    let nb_rounds = compute_number_of_rounds state_size security in
     let round_constants = generate_constants nb_rounds l in
     {
       security;
