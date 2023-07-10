@@ -316,7 +316,11 @@ module V2_0_0 = struct
                  blocked. Any commitment will be invalid. *)
               Waiting_for_reveal (Reveal_raw_data well_known_reveal_hash))
       | Reveal_required Wasm_2_0_0.Reveal_metadata ->
-          Waiting_for_reveal Reveal_metadata
+         Waiting_for_reveal Reveal_metadata
+      | Reveal_required Wasm_2_0_0.Reveal_dal _page ->
+         let page = assert false in
+         (* TODO: Should we forbid this or just add the compatibility layer here? *)
+         Waiting_for_reveal (Request_dal_page page)
 
     let get_last_message_read : _ Monad.t =
       let open Monad.Syntax in
