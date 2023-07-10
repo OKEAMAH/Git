@@ -75,6 +75,11 @@ let () =
     (function Cryptobox_initialisation_failed str -> Some str | _ -> None)
     (fun str -> Cryptobox_initialisation_failed str)
 
+let share_size_ref = ref None
+
+let share_size () =
+  match !share_size_ref with None -> assert false | Some size -> size
+
 let fetch_dal_config cctxt =
   let open Lwt_syntax in
   let* r = Config_services.dal_config cctxt in
@@ -183,6 +188,8 @@ module Handler = struct
           let (module Dal_plugin : Dal_plugin.T) = plugin in
           let* proto_parameters = Dal_plugin.get_constants `Main block cctxt in
           let* cryptobox = init_cryptobox dal_config proto_parameters in
+          share_size_ref :=
+            Some (Cryptobox.Internal_for_tests.encoded_share_size cryptobox) ;
           let* () =
             let+ pctxt =
               List.fold_left_es
@@ -486,7 +493,7 @@ let run ~data_dir configuration_override =
     let* p2p_config = p2p_config config in
     Gossipsub.Transport_layer.create p2p_config p2p_limits ~network_name
   in
-  let* store = Store.init config in
+  let* store = Store.init share_size config in
   let cctxt = Rpc_context.make endpoint in
   let*! metrics_server = Metrics.launch config.metrics_addr in
   let ctxt =

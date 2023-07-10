@@ -292,6 +292,9 @@ let mondaynet () =
   in
 
   let* () = save () in
+  let level = Node.get_level node in
+  let* () = Wallet.reveal client [Wallet.Airdrop.giver_account] in
+  let* _ = Node.wait_for_level node (level + 1) in
   let* () = Wallet.Airdrop.distribute_money client keys in
   let dal_node = Dal_node.create ~node ~client () in
   let bootstrap_peer =
@@ -413,6 +416,9 @@ let dailynet () =
   in
 
   let* () = save () in
+  let level = Node.get_level node in
+  let* () = Wallet.reveal client [Wallet.Airdrop.giver_account] in
+  let* _ = Node.wait_for_level node (level + 1) in
   let* () = Wallet.Airdrop.distribute_money client keys in
   let dal_node = Dal_node.create ~node ~client () in
   let bootstrap_peer =

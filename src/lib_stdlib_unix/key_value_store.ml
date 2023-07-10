@@ -112,6 +112,12 @@ end = struct
 
   let initialize_virtual_directory path value_size =
     let open Lwt_syntax in
+    Format.eprintf "Initializing virtual directory at %s@." path ;
+    let* () =
+      if Filename.dirname path <> "." then
+        Lwt_utils_unix.create_dir (Filename.dirname path)
+      else return_unit
+    in
     let* fd = Lwt_unix.openfile path [O_RDWR; O_CREAT; O_EXCL] 0o660 in
     let total_size = bitset_size + (max_number_of_files * value_size) in
     let* () = Lwt_unix.ftruncate fd total_size in
@@ -126,6 +132,7 @@ end = struct
 
   let load_virtual_directory path =
     let open Lwt_syntax in
+    Format.eprintf "Opening virtual directory at %s@." path ;
     let* fd = Lwt_unix.openfile path [O_RDWR] 0o660 in
     (* TODO: Should we check that the file is at least as big as the bitset?  *)
     let bitset =
@@ -300,9 +307,13 @@ end = struct
           ()
       in
       let bytes = Data_encoding.Binary.to_bytes_exn spec.encoding data in
-      Lwt_bytes.blit_from_bytes bytes 0 mmap 0 (Bytes.length bytes) ;
-      set_file_exists handle index ;
-      return_unit
+      if Bytes.length bytes <> spec.value_size then
+        failwith
+          "Key_value_store.write: encoded value does not respect specified size"
+      else (
+        Lwt_bytes.blit_from_bytes bytes 0 mmap 0 (Bytes.length bytes) ;
+        set_file_exists handle index ;
+        return_unit)
     in
     if not (file_exists handle index) then (
       assert (not (File_table.mem cached index)) ;
@@ -347,10 +358,8 @@ type ('dir, 'file, 'value) t =
     }
       -> ('dir, 'file, 'value) t
 
-let directory encoding path eq index_of =
-  match Data_encoding.Binary.fixed_length encoding with
-  | None -> invalid_arg "directory: encoding must have a fixed length"
-  | Some value_size -> {path; eq; encoding; index_of; value_size}
+let directory value_size encoding path eq index_of =
+  {path; eq; encoding; index_of; value_size}
 
 (* FIXME https://gitlab.com/tezos/tezos/-/issues/4643
 

@@ -394,6 +394,7 @@ let run_scenario
   let virtual_directory dir =
     let filepath = Filename.concat dir_path dir in
     Key_value_store.directory
+      value_size
       (Data_encoding.Fixed.bytes value_size)
       filepath
       ( = )

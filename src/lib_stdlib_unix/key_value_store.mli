@@ -49,15 +49,17 @@ type ('dir, 'file, 'value) t
     as well as the name of the underlying physical file. *)
 type ('file, 'value) directory_spec
 
-(** [directory value_encoding path eq index_of] describes a virtual directory.
-    - [path] is the path of the physical file in which the directory is to be stored.
+(** [directory value_size value_encoding path eq index_of] describes a virtual directory.
+    - [value_size] is the size of encoded values. This invariant is checked dynamically.
     - [value_encoding] is an encoding for the content of virtual files.
+    - [path] is the path of the physical file in which the directory is to be stored.
     - [eq] is an equality function on the contents of virtual files.
     - [index_of] gives the index of a given file in the directory.
 
    @raise Invalid_argument if [value_encoding] does not have a fixed length.
  *)
 val directory :
+  int ->
   'value Data_encoding.t ->
   string ->
   ('value -> 'value -> bool) ->

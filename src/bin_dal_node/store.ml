@@ -83,13 +83,18 @@ module Shards = struct
     |> Seq.map (fun shard_index -> (commitment, shard_index))
     |> read_values shards_store
 
-  let init node_store_dir shard_store_dir =
+  let init value_size_fun node_store_dir shard_store_dir =
     let ( // ) = Filename.concat in
     let dir_path = node_store_dir // shard_store_dir in
     init ~lru_size:Constants.shards_store_lru_size (fun commitment ->
         let commitment_string = Cryptobox.Commitment.to_b58check commitment in
         let filepath = dir_path // commitment_string in
-        directory Cryptobox.share_encoding filepath Stdlib.( = ) Fun.id)
+        directory
+          (value_size_fun ())
+          Cryptobox.share_encoding
+          filepath
+          Stdlib.( = )
+          Fun.id)
 end
 
 module Shard_proofs_cache =
@@ -118,13 +123,13 @@ let open_shards_stream {shards_watcher; _} =
 
 (** [init gs_worker config] inits the store on the filesystem using the
     given [config] and [gs_worker]. *)
-let init config =
+let init share_size_fun config =
   let open Lwt_result_syntax in
   let base_dir = Configuration_file.store_path config in
   let shards_watcher = Lwt_watcher.create_input () in
   let*! repo = Repo.v (Irmin_pack.config base_dir) in
   let*! store = main repo in
-  let shard_store = Shards.init base_dir shard_store_dir in
+  let shard_store = Shards.init share_size_fun base_dir shard_store_dir in
   let*! () = Event.(emit store_is_ready ()) in
   return
     {
