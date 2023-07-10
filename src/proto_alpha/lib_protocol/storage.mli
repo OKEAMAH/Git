@@ -971,6 +971,11 @@ module Sc_rollup : sig
       with type t = Raw_context.t * Sc_rollup_repr.t
        and type key = int32
        and type value = Raw_level_repr.t * Bitset.t
+
+  module Whitelist :
+    Carbonated_data_set_storage
+      with type t := Raw_context.t * Sc_rollup_repr.t
+       and type elt = Signature.Public_key_hash.t
 end
 
 module Dal : sig

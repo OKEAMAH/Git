@@ -1287,7 +1287,7 @@ let apply_manager_operation :
         ~kind
         ~boot_sector
         ~parameters_ty
-        ~whitelist
+        ?whitelist
       >>=? fun ({address; size; genesis_commitment_hash}, ctxt) ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result =

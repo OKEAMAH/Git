@@ -49,11 +49,11 @@ type origination_result = {
     running in a given [kind] initialized with a [boot_sector] and to accept
     smart contract calls of type [parameters_ty]. *)
 val originate :
+  ?whitelist:Signature.Public_key_hash.t list ->
   context ->
   kind:Sc_rollup.Kind.t ->
   boot_sector:string ->
   parameters_ty:Script_repr.lazy_expr ->
-  whitelist:Signature.Public_key_hash.t list option ->
   (origination_result * context) tzresult Lwt.t
 
 (** [execute_outbox_message ctxt rollup ~cemented_commitment

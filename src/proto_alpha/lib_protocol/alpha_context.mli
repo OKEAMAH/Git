@@ -3411,6 +3411,7 @@ module Sc_rollup : sig
   end
 
   val originate :
+    ?whitelist:public_key_hash list ->
     context ->
     kind:Kind.t ->
     parameters_ty:Script.lazy_expr ->

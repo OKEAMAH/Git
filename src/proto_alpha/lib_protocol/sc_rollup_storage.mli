@@ -32,6 +32,7 @@
 
    Also returns the number of allocated bytes.  *)
 val originate :
+  ?whitelist:Signature.Public_key_hash.t list ->
   Raw_context.t ->
   kind:Sc_rollups.Kind.t ->
   parameters_ty:Script_repr.lazy_expr ->
@@ -51,6 +52,7 @@ val originate :
     smart rollups only.
 *)
 val raw_originate :
+  ?whitelist:Signature.Public_key_hash.t list ->
   Raw_context.t ->
   kind:Sc_rollups.Kind.t ->
   parameters_ty:Script_repr.lazy_expr ->

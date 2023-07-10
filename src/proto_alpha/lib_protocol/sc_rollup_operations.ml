@@ -243,7 +243,7 @@ let check_whitelist ctxt whitelist =
         Sc_rollup_errors.Sc_rollup_empty_whitelist
   | None -> Ok ()
 
-let originate ctxt ~kind ~boot_sector ~parameters_ty ~whitelist =
+let originate ?whitelist ctxt ~kind ~boot_sector ~parameters_ty =
   let open Lwt_result_syntax in
   let*? () = check_whitelist ctxt whitelist in
   let*? ctxt =
@@ -282,7 +282,7 @@ let originate ctxt ~kind ~boot_sector ~parameters_ty ~whitelist =
       ~origination_level:(Level.current ctxt).level
   in
   let+ address, size, genesis_commitment_hash, ctxt =
-    Sc_rollup.originate ctxt ~kind ~parameters_ty ~genesis_commitment
+    Sc_rollup.originate ctxt ~kind ~parameters_ty ~genesis_commitment ?whitelist
   in
   ({address; size; genesis_commitment_hash}, ctxt)
 
