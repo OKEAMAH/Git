@@ -16,12 +16,14 @@ use evm_execution::account_storage::{init_account_storage, EthereumAccountStorag
 use evm_execution::precompiles;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use primitive_types::U256;
+use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_host::runtime::Runtime;
 
 use tezos_ethereum::block::BlockConstants;
 
 fn compute<Host: Runtime>(
     host: &mut Host,
+    ticketer: &Option<ContractKt1Hash>,
     block_in_progress: &mut BlockInProgress,
     block_constants: &BlockConstants,
     precompiles: &PrecompileBTreeMap<Host>,
@@ -42,6 +44,7 @@ fn compute<Host: Runtime>(
         // ignored, i.e. invalid signature or nonce.
         if let Some((receipt_info, object_info)) = apply_transaction(
             host,
+            ticketer,
             block_constants,
             precompiles,
             transaction,
@@ -59,7 +62,11 @@ fn compute<Host: Runtime>(
     Ok(())
 }
 
-pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error> {
+pub fn produce<Host: Runtime>(
+    host: &mut Host,
+    ticketer: Option<ContractKt1Hash>,
+    queue: Queue,
+) -> Result<(), Error> {
     let (mut current_constants, mut current_block_number) =
         match storage::read_current_block(host) {
             Ok(block) => (block.constants(), block.number + 1),
@@ -90,6 +97,7 @@ pub fn produce<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error
         )?;
         compute(
             host,
+            &ticketer,
             &mut block_in_progress,
             &current_constants,
             &precompiles,
@@ -284,7 +292,7 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(host, queue).expect("The block production failed.")
+        produce(host, None, queue).expect("The block production failed.")
     }
 
     fn assert_current_block_reading_validity(host: &mut MockHost) {
@@ -314,7 +322,7 @@ mod tests {
             kernel_upgrade: None,
         };
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let status = read_transaction_receipt_status(&mut host, &tx_hash)
             .expect("Should have found receipt");
@@ -348,7 +356,7 @@ mod tests {
             U256::from(5000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let status = read_transaction_receipt_status(&mut host, &tx_hash)
             .expect("Should have found receipt");
@@ -386,7 +394,7 @@ mod tests {
             U256::from(5000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let receipt = read_transaction_receipt(&mut host, &tx_hash)
             .expect("should have found receipt");
@@ -456,7 +464,7 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let dest_address =
             H160::from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea").unwrap();
@@ -500,7 +508,7 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
         let receipt0 = read_transaction_receipt(&mut host, &tx_hash_0)
             .expect("should have found receipt");
         let receipt1 = read_transaction_receipt(&mut host, &tx_hash_1)
@@ -556,7 +564,7 @@ mod tests {
             U256::from(10000000000000000000u64),
         );
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let dest_address =
             H160::from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea").unwrap();
@@ -588,7 +596,7 @@ mod tests {
 
         let indexed_accounts = length(&host, &accounts_index).unwrap();
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let indexed_accounts_after_produce = length(&host, &accounts_index).unwrap();
 
@@ -621,7 +629,7 @@ mod tests {
             kernel_upgrade: None,
         };
 
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let indexed_accounts = length(&host, &accounts_index).unwrap();
 
@@ -630,7 +638,7 @@ mod tests {
             kernel_upgrade: None,
         };
 
-        produce(&mut host, next_queue).expect("The block production failed.");
+        produce(&mut host, None, next_queue).expect("The block production failed.");
 
         let indexed_accounts_after_second_produce =
             length(&host, &accounts_index).unwrap();
@@ -674,7 +682,7 @@ mod tests {
             &sender,
             U256::from(10000000000000000000u64),
         );
-        produce(&mut host, queue).expect("The block production failed.");
+        produce(&mut host, None, queue).expect("The block production failed.");
 
         let new_number_of_blocks_indexed = length(&host, &blocks_index).unwrap();
         let new_number_of_transactions_indexed =
@@ -728,6 +736,7 @@ mod tests {
 
         compute::<MockHost>(
             host,
+            &None,
             &mut block_in_progress,
             &block_constants,
             &precompiles,
@@ -815,6 +824,7 @@ mod tests {
         // act
         compute::<MockHost>(
             &mut host,
+            &None,
             &mut block_in_progress,
             &block_constants,
             &precompiles,

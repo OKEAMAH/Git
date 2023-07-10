@@ -165,14 +165,14 @@ fn handle_deposit<Host: Runtime>(
 pub fn read_inbox<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-    ticketer: Option<ContractKt1Hash>,
+    ticketer: &Option<ContractKt1Hash>,
 ) -> Result<InboxContent, Error> {
     let mut res = InboxContent {
         kernel_upgrade: None,
         transactions: vec![],
     };
     loop {
-        match read_input(host, smart_rollup_address, &ticketer)? {
+        match read_input(host, smart_rollup_address, ticketer)? {
             InputResult::NoInput => {
                 return Ok(res);
             }
@@ -322,7 +322,7 @@ mod tests {
         )));
 
         let inbox_content =
-            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, None).unwrap();
+            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, &None).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
@@ -347,7 +347,7 @@ mod tests {
         }
 
         let inbox_content =
-            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, None).unwrap();
+            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, &None).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
@@ -390,7 +390,7 @@ mod tests {
         )));
 
         let inbox_content =
-            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, None).unwrap();
+            read_inbox(&mut host, ZERO_SMART_ROLLUP_ADDRESS, &None).unwrap();
         let expected_upgrade = Some(kernel_upgrade);
         assert_eq!(inbox_content.kernel_upgrade, expected_upgrade);
     }

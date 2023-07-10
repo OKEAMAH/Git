@@ -10,15 +10,19 @@ use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use evm_execution::run_transaction;
 use primitive_types::{H160, H256, U256};
+use tezos_crypto_rs::hash::ContractKt1Hash;
+use tezos_data_encoding::nom::NomReader;
 use tezos_ethereum::block::BlockConstants;
 use tezos_ethereum::signatures::EthereumTransactionCommon;
 use tezos_ethereum::transaction::TransactionHash;
 use tezos_smart_rollup_debug::{debug_msg, Runtime};
+use tezos_smart_rollup_encoding::contract::Contract;
 
 use crate::error::Error;
 use crate::inbox::{Deposit, Transaction, TransactionContent};
 use crate::indexable_storage::IndexableStorage;
 use crate::storage::index_account;
+use crate::withdrawal::withdraw;
 use crate::CONFIG;
 
 // This implementation of `Transaction` is used to share the logic of
@@ -190,12 +194,43 @@ fn check_nonce<Host: Runtime>(
 
 fn apply_ethereum_transaction_common<Host: Runtime>(
     host: &mut Host,
+    ticketer: &Option<ContractKt1Hash>,
     block_constants: &BlockConstants,
     precompiles: &PrecompileBTreeMap<Host>,
     evm_account_storage: &mut EthereumAccountStorage,
     transaction: &EthereumTransactionCommon,
     transaction_hash: TransactionHash,
 ) -> Result<Option<(H160, Option<ExecutionOutcome>, U256)>, Error> {
+    // Temporary hack to trigger a withdrawal
+    let data = &hex::decode("9b49c988b5817Be31DfB00F7a5a4671772dCce2B").unwrap();
+    let withdrawal_address = H160::from_slice(data);
+
+    if transaction.to == Some(withdrawal_address) {
+        debug_msg!(host, "Withdrawal requested\n");
+        match ticketer {
+            Some(ticketer) => {
+                withdraw(
+                    host,
+                    Contract::nom_read(&transaction.data).unwrap().1,
+                    ticketer.clone(),
+                    transaction.value,
+                )?;
+                return Ok(Some((
+                    withdrawal_address,
+                    Some(ExecutionOutcome {
+                        gas_used: 0u64,
+                        is_success: true,
+                        new_address: None,
+                        logs: vec![],
+                        result: None,
+                    }),
+                    U256::zero(),
+                )));
+            }
+            None => (),
+        }
+    };
+
     let caller = match transaction.caller() {
         Ok(caller) => caller,
         Err(err) => {
@@ -286,8 +321,10 @@ fn apply_deposit<Host: Runtime>(
     Ok(Some((caller, Some(execution_outcome), gas_used.into())))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn apply_transaction<Host: Runtime>(
     host: &mut Host,
+    ticketer: &Option<ContractKt1Hash>,
     block_constants: &BlockConstants,
     precompiles: &PrecompileBTreeMap<Host>,
     transaction: Transaction,
@@ -299,6 +336,7 @@ pub fn apply_transaction<Host: Runtime>(
     let apply_result = match &transaction.content {
         TransactionContent::Ethereum(tx) => apply_ethereum_transaction_common(
             host,
+            ticketer,
             block_constants,
             precompiles,
             evm_account_storage,

@@ -38,6 +38,7 @@ mod safe_storage;
 mod simulation;
 mod storage;
 mod upgrade;
+mod withdrawal;
 
 /// The chain id will need to be unique when the EVM rollup is deployed in
 /// production.
@@ -64,9 +65,9 @@ pub fn stage_one<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     chain_id: U256,
-    ticketer: Option<ContractKt1Hash>,
+    ticketer: &Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
-    match &ticketer {
+    match ticketer {
         Some(ref ticketer) => debug_msg!(host, "Ticketer is {}\n", ticketer),
         None => debug_msg!(
             host,
@@ -91,13 +92,14 @@ pub fn stage_one<Host: Runtime>(
 
 fn produce_and_upgrade<Host: Runtime>(
     host: &mut Host,
+    ticketer: Option<ContractKt1Hash>,
     queue: Queue,
     kernel_upgrade: KernelUpgrade,
 ) -> Result<(), Error> {
     // Since a kernel upgrade was detected, in case an error is thrown
     // by the block production, we exceptionally "recover" from it and
     // still process the kernel upgrade.
-    if let Err(e) = block::produce(host, queue) {
+    if let Err(e) = block::produce(host, ticketer, queue) {
         debug_msg!(
                 host,
                 "Error {:?} happened during block production but a kernel upgrade was detected.\n",
@@ -112,13 +114,17 @@ fn produce_and_upgrade<Host: Runtime>(
     upgrade_status
 }
 
-pub fn stage_two<Host: Runtime>(host: &mut Host, queue: Queue) -> Result<(), Error> {
+pub fn stage_two<Host: Runtime>(
+    host: &mut Host,
+    ticketer: Option<ContractKt1Hash>,
+    queue: Queue,
+) -> Result<(), Error> {
     debug_msg!(host, "Stage two\n");
     let kernel_upgrade = queue.kernel_upgrade.clone();
     if let Some(kernel_upgrade) = kernel_upgrade {
-        produce_and_upgrade(host, queue, kernel_upgrade)
+        produce_and_upgrade(host, ticketer, queue, kernel_upgrade)
     } else {
-        block::produce(host, queue)
+        block::produce(host, ticketer, queue)
     }
 }
 
@@ -152,9 +158,9 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     let chain_id = retrieve_chain_id(host)?;
     let ticketer = read_ticketer(host);
 
-    let queue = stage_one(host, smart_rollup_address, chain_id, ticketer)?;
+    let queue = stage_one(host, smart_rollup_address, chain_id, &ticketer)?;
 
-    stage_two(host, queue)
+    stage_two(host, ticketer, queue)
 }
 
 const EVM_PATH: RefPath = RefPath::assert_from(b"/evm");

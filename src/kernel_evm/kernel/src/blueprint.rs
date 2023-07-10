@@ -56,7 +56,7 @@ pub fn fetch<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     chain_id: U256,
-    ticketer: Option<ContractKt1Hash>,
+    ticketer: &Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
     let inbox_content = read_inbox(host, smart_rollup_address, ticketer)?;
     let transactions = filter_invalid_chain_id(inbox_content.transactions, chain_id);
