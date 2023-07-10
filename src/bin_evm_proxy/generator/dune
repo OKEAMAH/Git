@@ -8,7 +8,13 @@
   tezt
   tezt-tezos
   tezt_ethereum
-  evm_proxy_lib)
+  evm_proxy_lib
+  (select void_for_linking-ethereumjs_common from
+   (ethereumjs_common -> void_for_linking-ethereumjs_common.empty)
+   (-> void_for_linking-ethereumjs_common.empty))
+  (select void_for_linking-ethereumjs_tx from
+   (ethereumjs_tx -> void_for_linking-ethereumjs_tx.empty)
+   (-> void_for_linking-ethereumjs_tx.empty)))
  (flags
   (:standard)
   -open Tezt
@@ -16,3 +22,9 @@
   -open Tezt_tezos
   -open Tezt_tezos.Runnable.Syntax
   -open Tezt_ethereum))
+
+(rule
+ (action
+  (progn
+   (write-file void_for_linking-ethereumjs_common.empty "")
+   (write-file void_for_linking-ethereumjs_tx.empty ""))))

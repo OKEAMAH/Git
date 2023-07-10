@@ -352,6 +352,22 @@ let zarith_stubs_js = external_lib ~js_compatible:true "zarith_stubs_js" V.True
 
 let ledgerwallet_tezos = external_lib "ledgerwallet-tezos" V.(at_least "0.3.0")
 
+let ethereumjs_common =
+  let version = V.(at_least "3.2.0") in
+  external_lib
+    ~npm_deps:[Npm.make "@ethereumjs/common" version]
+    ~js_compatible:true
+    "ethereumjs_common"
+    version
+
+let ethereumjs_tx =
+  let version = V.(at_least "4.2.0") in
+  external_lib
+    ~npm_deps:[Npm.make "@ethereumjs/tx" version]
+    ~js_compatible:true
+    "ethereumjs_tx"
+    version
+
 (* This modules aims to define the list of packages versions that
    generate conflicts. *)
 module Conflicts = struct
@@ -375,7 +391,10 @@ let () =
       external_lib "ocaml-lsp-server" V.(at_least "1.6.1");
       external_lib "merge-fmt" V.True;
       external_lib "js_of_ocaml-lwt" V.(at_least "5.2.0");
-    ]
+    ] ;
+  List.iter
+    (add_dep_to_profile "octez-evm-dev-deps")
+    [ethereumjs_common; ethereumjs_tx]
 
 (* INTERNAL LIBS *)
 
@@ -7612,12 +7631,15 @@ let _octez_evm_tx_generator =
     ~path:"src/bin_evm_proxy/generator"
     ~synopsis:"Generate transactions for the EVM Kernel"
     ~opam:"octez-evm-tx-generator"
+    ~profile:"octez-evm-dev-deps"
     ~deps:
       [
         tezt_lib |> open_ |> open_ ~m:"Base";
         tezt_tezos |> open_ |> open_ ~m:"Runnable.Syntax";
         tezt_ethereum |> open_;
         evm_proxy_lib;
+        optional ethereumjs_common;
+        optional ethereumjs_tx;
       ]
 
 let octez_scoru_wasm_regressions =
