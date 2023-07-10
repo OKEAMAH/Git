@@ -8,6 +8,7 @@ use crate::error::ApplicationError;
 use debug::debug_msg;
 use evm_execution::account_storage::EthereumAccountStorage;
 use evm_execution::precompiles::PrecompileBTreeMap;
+use host::path::{OwnedPath, RefPath};
 use host::runtime::Runtime;
 use primitive_types::{H256, U256};
 use rlp::{Decodable, Rlp};
@@ -47,7 +48,6 @@ pub fn process_inbox_message<'a, Host: Runtime>(
             debug_msg!(host, "InfoPerLevel: {}", info);
             process_info(host, level, info)
         }
-
         InboxMessage::Internal(
             msg @ (InternalInboxMessage::StartOfLevel | InternalInboxMessage::EndOfLevel),
         ) => {
@@ -57,18 +57,52 @@ pub fn process_inbox_message<'a, Host: Runtime>(
         InboxMessage::External(message) => {
             debug_msg!(host, "Got an external message");
             let current_block = BlockConstants::first_block(U256::zero());
-            // decoding
-            let decoder = Rlp::new(message);
-            let ethereum_transaction = EthereumTransactionCommon::decode(&decoder)
-                .map_err(ApplicationError::MalformedRlpTransaction)?;
-            process_ethereum_transaction(
-                host,
-                evm_account_storage,
-                &current_block,
-                &precompiles,
-                ethereum_transaction,
-            )
+
+            let path: OwnedPath =
+                RefPath::assert_from(b"/benchmark_kernel_chunked_message").into();
+
+            let stored_chunks = get_stored_message_chunks(host, &path);
+
+            // The first byte of each message is either 0 or 1
+            //   - 0 means that the transaction is > 2kb and the current message isn't the last chunk of the transaction
+            //   - 1 means the the the current message is the last chunk of the transaction
+            if message[0] == 0 {
+                let updated_stored_chunks = [&stored_chunks, &message[1..]].concat();
+
+                if host.store_write_all(&path, &updated_stored_chunks).is_err() {
+                    debug_msg!(host, "Storing chunked message failed");
+                }
+
+                Ok(())
+            } else {
+                if host.store_delete_value(&path).is_err() {
+                    debug_msg!(host, "Deleting chunked message failed");
+                }
+
+                let full_message: &[u8] = &[&stored_chunks, &message[1..]].concat();
+
+                let decoder = Rlp::new(full_message);
+                let ethereum_transaction = EthereumTransactionCommon::decode(&decoder)
+                    .map_err(ApplicationError::MalformedRlpTransaction)?;
+                process_ethereum_transaction(
+                    host,
+                    evm_account_storage,
+                    &current_block,
+                    &precompiles,
+                    ethereum_transaction,
+                )
+            }
         }
+    }
+}
+
+fn get_stored_message_chunks<Host: Runtime>(
+    host: &mut Host,
+    path: &OwnedPath,
+) -> Vec<u8> {
+    match host.store_read_all(path) {
+        Ok(v) => v,
+        _ => Vec::new(),
     }
 }
 

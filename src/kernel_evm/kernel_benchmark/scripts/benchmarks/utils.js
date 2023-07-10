@@ -10,6 +10,9 @@
 // use print_bench(inputs) to print a benchmark
 //   - inputs is an array of array of transactions (as strings)
 //   - see bench1.js
+// The first byte of each message is either 0 or 1
+//   - 0 means that the transaction is > 2kb and the current message isn't the last chunk of the transaction
+//   - 1 means the the the current message is the last chunk of the transaction
 
 const { sign } = require('../lib/signature');
 const { legacy_contract_address } = require('../lib/contract');
@@ -64,10 +67,19 @@ exports.send = function (player, contract_addr, amount, data) {
 const print_list = function (src) {
     const txs = src.slice();
     console.log("[")
-    while (txs.length > 1) {
-        console.log(`{"external": "${txs.shift()}"},`);
+    const MESSAGE_CHUNK_MAX_SIZE = 2 * 2000;
+    for (var i = 0; i < txs.length; i++) {
+        transaction = txs[i];
+        while (transaction.length >= MESSAGE_CHUNK_MAX_SIZE) {
+            console.log(`{"external": "00${transaction.slice(0, MESSAGE_CHUNK_MAX_SIZE)}"}`);
+            console.log(",");
+            transaction = transaction.slice(MESSAGE_CHUNK_MAX_SIZE);
+        }
+        console.log(`{"external": "01${transaction}"}`);
+        if (i < txs.length - 1) {
+            console.log(",");
+        }
     }
-    console.log(`{"external": "${txs.shift()}"}`);
     console.log("]")
 }
 
