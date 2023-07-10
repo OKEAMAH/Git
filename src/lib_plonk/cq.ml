@@ -373,8 +373,27 @@ module Make (PC : Polynomial_commitment.S) = struct
   let compute_a0 n a =
     Scalar.(List.fold_left (fun acc (_, a) -> acc + a) zero a / of_int n)
 
-  let compute_cm_a0 pp a =
-    snd @@ compute_and_commit (fun (i, a) -> (a, pp.cms_lagrange_0.(i))) a
+  let compute_cm_a0 pp etas a =
+    (* since cm_a0 is a kzg proof, we can batch every a polynomials into one *)
+    let a_agg =
+      List.fold_left
+        (fun (global_acc, k) a ->
+          ( List.fold_left
+              (fun acc (i, ai) ->
+                IMap.update
+                  i
+                  (function
+                    | None -> Some Scalar.(etas.(k) * ai)
+                    | Some a -> Some Scalar.(a + (etas.(k) * ai)))
+                  acc)
+              global_acc
+              a,
+            k + 1 ))
+        (IMap.empty, 0)
+        a
+      |> fst |> IMap.to_seq |> List.of_seq
+    in
+    snd @@ compute_and_commit (fun (i, a) -> (a, pp.cms_lagrange_0.(i))) a_agg
 
   (* produces a kzg proof for steps 3.5 & 3.6 *)
   let kzg_prove (pp : prover_public_parameters) transcript n
@@ -588,9 +607,7 @@ module Make (PC : Polynomial_commitment.S) = struct
     let transcript = Transcript.list_expand Scalar.t a0 transcript in
     let eta, transcript = Fr_generation.random_fr transcript in
     (* 3.7.a *)
-    (* since cm_a0 is a kzg proof, we can batch every cm into one *)
-    let cms_a0 = List.map (compute_cm_a0 pp) a |> Array.of_list in
-    let cm_a0 = G1.pippenger cms_a0 (Fr_generation.powers n eta) in
+    let cm_a0 = compute_cm_a0 pp (Fr_generation.powers n eta) a in
 
     ( {
         cm_f;
