@@ -80,10 +80,7 @@ let genesis_state block_hash node_ctxt ctxt =
 
 let context_of node_ctxt (head : Layer1.head) =
   let open Lwt_result_syntax in
-  let first_inbox_level =
-    Int32.succ node_ctxt.Node_context.genesis_info.level
-  in
-  if head.level < first_inbox_level then
+  if head.level < node_ctxt.Node_context.genesis_info.level then
     (* This is before we have interpreted the boot sector, so we start
        with an empty context in genesis *)
     return (Context.empty node_ctxt.context)
