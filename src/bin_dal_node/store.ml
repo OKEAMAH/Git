@@ -45,7 +45,7 @@ let remove ~msg store path = remove_exn store path ~info:(fun () -> info msg)
 module Shards = struct
   include Key_value_store
 
-  type nonrec t = (Cryptobox.Commitment.t * int, Cryptobox.share) t
+  type nonrec t = (Cryptobox.Commitment.t, int, Cryptobox.share) t
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4973
      Make storage more resilient to DAL parameters change. *)
@@ -53,7 +53,7 @@ module Shards = struct
     let open Lwt_result_syntax in
     List.for_all_es
       (fun index ->
-        let*! value = read_value store (commitment, index) in
+        let*! value = read_value store commitment index in
         match value with
         | Ok _ -> return true
         | Error [Stored_data.Missing_stored_data _] -> return false
@@ -64,7 +64,7 @@ module Shards = struct
     let open Lwt_result_syntax in
     let shards =
       Seq.map
-        (fun {Cryptobox.index; share} -> ((commitment, index), share))
+        (fun {Cryptobox.index; share} -> (commitment, index, share))
         shards
     in
     let* () = write_values shards_store shards |> Errors.other_lwt_result in
@@ -86,11 +86,10 @@ module Shards = struct
   let init node_store_dir shard_store_dir =
     let ( // ) = Filename.concat in
     let dir_path = node_store_dir // shard_store_dir in
-    init ~lru_size:Constants.shards_store_lru_size (fun (commitment, index) ->
+    init ~lru_size:Constants.shards_store_lru_size (fun commitment ->
         let commitment_string = Cryptobox.Commitment.to_b58check commitment in
-        let filename = string_of_int index in
-        let filepath = dir_path // commitment_string // filename in
-        Stored_data.make_file ~filepath Cryptobox.share_encoding Stdlib.( = ))
+        let filepath = dir_path // commitment_string in
+        directory Cryptobox.share_encoding filepath Stdlib.( = ) Fun.id)
 end
 
 module Shard_proofs_cache =
