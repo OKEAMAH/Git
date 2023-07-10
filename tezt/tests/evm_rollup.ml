@@ -291,7 +291,9 @@ let setup_evm_kernel ?config
     ?(rollup_operator_key = Constant.bootstrap1.public_key_hash)
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts) ?dictator
     ~deposit_admin protocol =
-  let* node, client = setup_l1 protocol in
+  let* node, client =
+    setup_l1 ~commitment_period:5 ~challenge_window:5 protocol
+  in
   let* deposit_addresses =
     match deposit_admin with
     | Some admin ->
@@ -1536,22 +1538,34 @@ let test_preinitialized_evm_kernel =
       (sf "Expected to read %%L as dictator key, but found %%R instead") ;
   unit
 
-let test_deposit_fa12 =
+let test_deposit_and_withdraw_fa12 =
   Protocol.register_test
     ~__FILE__
-    ~tags:["evm"; "deposit"]
-    ~title:"Deposit FA1.2 token"
+    ~tags:["evm"; "deposit"; "withdrawal"]
+    ~title:"Deposit and withdraw FA1.2 token"
   @@ fun protocol ->
+  let receiver =
+    Eth_account.
+      {
+        address = "0x1074Fd1EC02cbeaa5A90450505cF3B48D834f3EB";
+        private_key =
+          "0xb7c548b5442f5b28236f0dcd619f65aaaafd952240908adcf9642d8e616587ee";
+        public_key =
+          "0466ed90f9a86c0908746475fbe0a40c72237de22d89076302e22c2a8da259b4aba5c7ee1f3dc3fd0b240645462620ae62b6fe8fe5b3464c3b1b4ae6c06c97b7b6";
+      }
+  in
+
   let admin = Constant.bootstrap5 in
-  let* {
-         client;
-         sc_rollup_address;
-         deposit_addresses;
-         sc_rollup_node;
-         node;
-         endpoint;
-         _;
-       } =
+  let* ({
+          client;
+          sc_rollup_address;
+          deposit_addresses;
+          sc_rollup_node;
+          node;
+          endpoint;
+          sc_rollup_client;
+          _;
+        } as full_evm_setup) =
     setup_evm_kernel ~deposit_admin:(Some admin) protocol
   in
   let {fa12; bridge} =
@@ -1577,6 +1591,14 @@ let test_deposit_fa12 =
          "The bridge does not target the expected EVM rollup, found %%R \
           expected %%L") ;
 
+  (* Amount before the deposit. *)
+  let* amount_before_deposit =
+    Client.from_fa1_2_contract_get_balance
+      ~contract:fa12
+      ~from:admin.public_key_hash
+      client
+  in
+
   (* Gives enough allowance to the bridge. *)
   let amount_cmutez = 100_000_000 in
   let amount_ctez = 100 in
@@ -1592,26 +1614,109 @@ let test_deposit_fa12 =
   let* () = Client.bake_for_and_wait client in
 
   (* Deposit tokens to the EVM rollup. *)
-  let receiver = "0x119811f34EF4491014Fbc3C969C426d37067D6A4" in
   let* () =
     Client.transfer
       ~entrypoint:"deposit"
-      ~arg:(sf {|Pair (Pair %d %s) 1|} amount_cmutez receiver)
+      ~arg:(sf {|Pair (Pair %d %s) 1|} amount_cmutez receiver.address)
       ~amount:Tez.zero
       ~giver:admin.public_key_hash
       ~receiver:bridge
       ~burn_cap:Tez.one
       client
   in
-  let* _ = next_evm_level ~sc_rollup_node ~node ~client in
+  let* withdrawal_level = next_evm_level ~sc_rollup_node ~node ~client in
 
   (* Check the balance in the EVM rollup. *)
-  let* balance = Eth_cli.balance ~account:receiver ~endpoint in
+  let* balance = Eth_cli.balance ~account:receiver.address ~endpoint in
   Check.((balance = Wei.of_eth_int amount_ctez) Wei.typ)
     ~error_msg:
-      (sf
-         "Expected balance of %s should be %%R, but got %%L"
-         Eth_account.bootstrap_accounts.(0).address) ;
+      (sf "Expected balance of %s should be %%R, but got %%L" receiver.address) ;
+
+  (* Withdraw the deposited amount. *)
+  let data =
+    "0000"
+    ^ Tezos_crypto.Signature.Public_key_hash.(
+        of_b58check_exn admin.public_key_hash
+        |> to_string |> Hex.of_string |> Hex.show)
+  in
+  let* _tx =
+    send
+      ~sender:receiver
+      ~receiver:Eth_account.bootstrap_accounts.(2)
+      ~value:(Wei.to_wei_z (Z.of_int amount_cmutez))
+      ~data
+      full_evm_setup
+  in
+
+  let* {commitment_period_in_blocks; challenge_window_in_blocks; _} =
+    get_constants client
+  in
+  (* Bake enough levels to have a commitment. *)
+  let* _ =
+    repeat commitment_period_in_blocks (fun () ->
+        let* _ = next_evm_level ~sc_rollup_node ~node ~client in
+        unit)
+  in
+  (* Bake enough levels to cement the commitment. *)
+  let* _ =
+    repeat (challenge_window_in_blocks + 1) (fun () ->
+        let* _ = next_evm_level ~sc_rollup_node ~node ~client in
+        unit)
+  in
+
+  (* Construct and execute the outbox proof. *)
+  let*! outbox =
+    Sc_rollup_client.outbox
+      ~outbox_level:(withdrawal_level + 2)
+      sc_rollup_client
+  in
+  let outbox_message =
+    JSON.(outbox |=> 0 |-> "message" |-> "transactions" |=> 0)
+  in
+  let parameters_json = JSON.(outbox_message |-> "parameters") in
+  let* parameters =
+    Client.convert_data
+      ~data:(JSON.encode parameters_json)
+      ~src_format:`Json
+      ~dst_format:`Michelson
+      client
+  in
+  let* outbox_proof =
+    Sc_rollup_client.outbox_proof_single
+      sc_rollup_client
+      ~message_index:0
+      ~outbox_level:(withdrawal_level + 2)
+      ~destination:JSON.(outbox_message |-> "destination" |> as_string)
+      ~parameters
+      ~entrypoint:JSON.(outbox_message |-> "entrypoint" |> as_string)
+  in
+  let Sc_rollup_client.{proof; commitment_hash} =
+    match outbox_proof with
+    | Some r -> r
+    | None -> Test.fail "No outbox proof found for the withdrawal"
+  in
+  let*! () =
+    Client.Sc_rollup.execute_outbox_message
+      ~hooks
+      ~burn_cap:(Tez.of_int 10)
+      ~rollup:sc_rollup_address
+      ~src:Constant.bootstrap1.alias
+      ~commitment_hash
+      ~proof
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+
+  (* The balance has returned to the value before the deposit. *)
+  let* amount_after_withdrawal =
+    Client.from_fa1_2_contract_get_balance
+      ~contract:fa12
+      ~from:admin.public_key_hash
+      client
+  in
+
+  Check.((amount_before_deposit = amount_after_withdrawal) int)
+    ~error_msg:"Expected balance of %L after withdrawal, got %R" ;
   unit
 
 let gen_test_kernel_upgrade ?rollup_address ?(should_fail = false) ?(nonce = 2)
@@ -1866,7 +1971,7 @@ let register_evm_proxy_server ~protocols =
   test_eth_call_storage_contract_eth_cli protocols ;
   test_eth_call_large protocols ;
   test_preinitialized_evm_kernel protocols ;
-  test_deposit_fa12 protocols ;
+  test_deposit_and_withdraw_fa12 protocols ;
   test_estimate_gas protocols ;
   test_estimate_gas_additionnal_field protocols ;
   test_kernel_upgrade_to_debug protocols ;
