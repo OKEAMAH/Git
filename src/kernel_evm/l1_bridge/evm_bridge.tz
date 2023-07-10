@@ -1,10 +1,25 @@
 { parameter
     (or (or (pair %deposit (pair (nat %amount) (bytes %evm_address)) (nat %max_gas_price))
             (address %set))
-        (pair %withdraw address nat)) ;
+        (pair %withdraw (ticket unit) address)) ;
   storage
     (pair (pair (address %admin) (address %ctez_contract)) (option %rollup address)) ;
-  code { UNPAIR ;
+  code { LAMBDA
+           (pair address address address nat)
+           operation
+           { UNPAIR 4 ;
+             CONTRACT %transfer (pair (address %from) (address %to) (nat %value)) ;
+             IF_NONE
+               { PUSH string "Failed to find the entrypoint %transfer" ; FAILWITH }
+               {} ;
+             PUSH mutez 0 ;
+             DIG 4 ;
+             DIG 4 ;
+             DIG 4 ;
+             PAIR 3 ;
+             TRANSFER_TOKENS } ;
+         SWAP ;
+         UNPAIR ;
          IF_LEFT
            { IF_LEFT
                { UNPAIR ;
@@ -18,19 +33,16 @@
                    { PUSH string "The EVM rollup was not set" ; FAILWITH }
                    { CONTRACT (pair (pair bytes (ticket unit)) nat bytes) ;
                      IF_NONE { PUSH string "option is None" ; FAILWITH } {} } ;
-                 DIG 7 ;
+                 DUP 5 ;
+                 DIG 2 ;
+                 DIG 3 ;
+                 DIG 8 ;
                  CAR ;
                  CDR ;
-                 CONTRACT %transfer (pair (address %from) (address %to) (nat %value)) ;
-                 IF_NONE
-                   { PUSH string "Failed to find the entrypoint %transfer" ; FAILWITH }
-                   {} ;
-                 PUSH mutez 0 ;
-                 DUP 7 ;
-                 DIG 4 ;
-                 DIG 5 ;
-                 PAIR 3 ;
-                 TRANSFER_TOKENS ;
+                 PAIR 4 ;
+                 DIG 6 ;
+                 SWAP ;
+                 EXEC ;
                  DIG 3 ;
                  UNIT ;
                  TICKET ;
@@ -50,7 +62,9 @@
                  CONS ;
                  SWAP ;
                  CONS }
-               { DUP 2 ;
+               { DIG 2 ;
+                 DROP ;
+                 DUP 2 ;
                  CAR ;
                  CAR ;
                  SENDER ;
@@ -59,6 +73,50 @@
                  IF { DROP 2 ; PUSH string "Unauthorized set entrypoint" ; FAILWITH }
                     { SOME ; UPDATE 2 } ;
                  NIL operation } }
-           { DROP ; NIL operation } ;
+           { DUP 2 ;
+             SWAP ;
+             UNPAIR ;
+             DUP 4 ;
+             CDR ;
+             SENDER ;
+             SOME ;
+             COMPARE ;
+             NEQ ;
+             IF { SWAP ;
+                  DIG 3 ;
+                  DIG 4 ;
+                  DROP 4 ;
+                  PUSH string "Unauthorized withdraw entrypoint" ;
+                  FAILWITH }
+                { READ_TICKET ;
+                  SWAP ;
+                  DROP ;
+                  UNPAIR ;
+                  SWAP ;
+                  CDR ;
+                  SELF_ADDRESS ;
+                  DUP ;
+                  DIG 3 ;
+                  COMPARE ;
+                  NEQ ;
+                  IF { SWAP ;
+                       DIG 2 ;
+                       DIG 4 ;
+                       DIG 5 ;
+                       DROP 5 ;
+                       PUSH string "Unexpected ticketer" ;
+                       FAILWITH }
+                     { NIL operation ;
+                       DIG 2 ;
+                       DIG 3 ;
+                       DIG 3 ;
+                       DIG 5 ;
+                       CAR ;
+                       CDR ;
+                       PAIR 4 ;
+                       DIG 3 ;
+                       SWAP ;
+                       EXEC ;
+                       CONS } } } ;
          PAIR } }
 

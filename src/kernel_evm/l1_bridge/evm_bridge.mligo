@@ -16,7 +16,7 @@ type deposit_args = {
 // Set is available only to the administrator.
 type parameter =
   | Deposit of deposit_args
-  | Withdraw of (address * nat)
+  | Withdraw of (unit ticket * address)
   | Set of address
 
 // EVM rollup expected type.
@@ -77,8 +77,18 @@ let deposit evm_address (amount : nat) (max_gas_price : nat) (store : storage)
 
 // Withdraw the CTEZ from the rollup and sends the according CTEZ to
 // the L1 address withdrawing assets.
-let withdraw (_l1_address, _amount) (_store : storage) : operation list =
-    []
+let withdraw (ticket, l1_address) (store : storage) : operation list =
+  if Some (Tezos.get_sender ()) <> store.rollup then
+    failwith "Unauthorized withdraw entrypoint"
+  else
+    let (ticketer, (_payload, amount)), _new_ticketer =
+      Tezos.read_ticket ticket
+    in
+    let self_address = Tezos.get_self_address () in
+    if ticketer <> self_address then
+      failwith "Unexpected ticketer"
+    else
+      [fa12_transfer store.ctez_contract self_address l1_address amount]
 
 // Set the EVM rollup, only the smart contract admin is able to do it.
 let set (evm_rollup : address) (store : storage) : storage =
