@@ -31,6 +31,16 @@ type fa12_transfer_params = [@layout:comb] {
     value: nat;
 }
 
+let fa12_transfer contract from_ to_ value =
+  // Transfer entrypoint
+  let transfer : fa12_transfer_params contract =
+    match Tezos.get_entrypoint_opt "%transfer" contract with
+    | Some entrypoint -> entrypoint
+    | None -> failwith "Failed to find the entrypoint %transfer"
+  in
+  let params = { from_; to_; value } in
+  Tezos.transaction params 0mutez transfer
+
 // Deposit transfers CTEZ from the contract to the L1 bridge. Transfer
 // the quadruplet (evm_address * nat * nat * 0x) to the EVM rollup.
 let deposit evm_address (amount : nat) (max_gas_price : nat) (store : storage)
@@ -39,12 +49,6 @@ let deposit evm_address (amount : nat) (max_gas_price : nat) (store : storage)
   let from_ = Tezos.get_sender () in
   // L1 bridge
   let self_address = Tezos.get_self_address () in
-  // CTEZ transfer entrypoint
-  let ctez_transfer : fa12_transfer_params contract =
-    match Tezos.get_entrypoint_opt "%transfer" store.ctez_contract with
-    | Some entrypoint -> entrypoint
-    | None -> failwith "Failed to find the entrypoint %transfer"
-  in
   // EVM rollup
   let evm_rollup : rollup_type contract =
     match store.rollup with
@@ -54,8 +58,7 @@ let deposit evm_address (amount : nat) (max_gas_price : nat) (store : storage)
   in
   // Transfer CTEZ to L1 bridge
   let transfer_ctez =
-    let params = { from_; to_ = self_address; value = amount } in
-    Tezos.transaction params 0mutez ctez_transfer
+    fa12_transfer store.ctez_contract from_ self_address amount
   in
   // Mint the ticket
   let ticket =

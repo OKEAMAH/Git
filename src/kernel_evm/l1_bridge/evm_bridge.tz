@@ -13,19 +13,18 @@
                  SENDER ;
                  SELF_ADDRESS ;
                  DUP 7 ;
+                 CDR ;
+                 IF_NONE
+                   { PUSH string "The EVM rollup was not set" ; FAILWITH }
+                   { CONTRACT (pair (pair bytes (ticket unit)) nat bytes) ;
+                     IF_NONE { PUSH string "option is None" ; FAILWITH } {} } ;
+                 DIG 7 ;
                  CAR ;
                  CDR ;
                  CONTRACT %transfer (pair (address %from) (address %to) (nat %value)) ;
                  IF_NONE
                    { PUSH string "Failed to find the entrypoint %transfer" ; FAILWITH }
                    {} ;
-                 DIG 7 ;
-                 CDR ;
-                 IF_NONE
-                   { PUSH string "The EVM rollup was not set" ; FAILWITH }
-                   { CONTRACT (pair (pair bytes (ticket unit)) nat bytes) ;
-                     IF_NONE { PUSH string "option is None" ; FAILWITH } {} } ;
-                 SWAP ;
                  PUSH mutez 0 ;
                  DUP 7 ;
                  DIG 4 ;
