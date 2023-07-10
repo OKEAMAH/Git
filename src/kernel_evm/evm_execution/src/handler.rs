@@ -32,9 +32,6 @@ use sha3::{Digest, Keccak256};
 use std::fmt::Debug;
 use tezos_ethereum::block::BlockConstants;
 
-/// Maximum transaction stack depth.
-const MAXIMUM_TRANSACTION_DEPTH: usize = 1024_usize;
-
 /// Outcome of making the [EvmHandler] run an Ethereum transaction
 ///
 /// Be it contract -call, -create or simple transfer, the handler will update the world
@@ -286,7 +283,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         // TODO: mark `caller` and `address` as hot for gas calculation
         // issue: https://gitlab.com/tezos/tezos/-/issues/4866
 
-        if self.evm_account_storage.stack_depth() >= MAXIMUM_TRANSACTION_DEPTH {
+        if self.evm_account_storage.stack_depth() >= self.config.call_stack_limit {
             return Ok((
                 ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep)),
                 None,
@@ -366,7 +363,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             self.evm_account_storage.stack_depth()
         );
 
-        if self.evm_account_storage.stack_depth() > MAXIMUM_TRANSACTION_DEPTH {
+        if self.evm_account_storage.stack_depth() > self.config.call_stack_limit {
             debug_msg!(self.host, "Execution beyond the call limit of 1024");
 
             return Ok((
