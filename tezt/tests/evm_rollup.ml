@@ -167,19 +167,6 @@ let wait_for_application ~sc_rollup_node ~node ~client apply () =
   let* result, () = Lwt.both application_result (loop ()) in
   return result
 
-let send_and_wait_until_tx_mined ~sc_rollup_node ~node ~client
-    ~source_private_key ~to_public_key ~value ~evm_proxy_server_endpoint ?data
-    () =
-  let send =
-    Eth_cli.transaction_send
-      ~source_private_key
-      ~to_public_key
-      ~value
-      ~endpoint:evm_proxy_server_endpoint
-      ?data
-  in
-  wait_for_application ~sc_rollup_node ~node ~client send ()
-
 let send_n_transactions ~sc_rollup_node ~node ~client ~evm_proxy_server txs =
   let requests =
     List.map
