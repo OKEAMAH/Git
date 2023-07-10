@@ -75,15 +75,7 @@ let get_previous_delayed_inbox_size node_ctxt (head : Layer1.head) =
       (Exn (Failure "Cannot obtain delayed inbox before origination level"))
   in
   let* previous_head = Node_context.get_predecessor node_ctxt head in
-  let first_inbox_level = Int32.succ node_ctxt.genesis_info.level in
-  let* ctxt =
-    if previous_head.level < first_inbox_level then
-      (* This is before we have interpreted the boot sector, so we start
-         with an empty context in genesis *)
-      return (Context.empty node_ctxt.context)
-    else Node_context.checkout_context node_ctxt previous_head.hash
-  in
-  let* _ctxt, state = Interpreter.state_of_head node_ctxt ctxt previous_head in
+  let* _ctxt, state = Interpreter.state_of_head node_ctxt previous_head in
   let open Kernel_durable in
   let*! pointer_bytes = Durable_state.lookup state Delayed_inbox_pointer.path in
   match pointer_bytes with
@@ -206,7 +198,7 @@ let on_new_head state head =
   let* () = produce_batch_sequences state head in
   when_ (head.level >= state.node_ctxt.genesis_info.level) @@ fun () ->
   let* simulation_ctxt =
-    Simulation.start_simulation ~reveal_map:None state.node_ctxt head
+    Simulation.init_simulation_ctxt ~reveal_map:None state.node_ctxt head
   in
   state.simulation_ctxt <- Some simulation_ctxt ;
   return_unit
