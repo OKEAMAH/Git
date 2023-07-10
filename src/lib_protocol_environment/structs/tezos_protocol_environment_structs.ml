@@ -122,6 +122,7 @@ module V8 = struct
   module Array = V7_array
   module Plonk = V8_plonk
   module Seq = V3_seq_monad
+  module Wasm_pvm_state = V8_wasm_pvm_state
 end
 
 module V9 = struct
@@ -130,6 +131,13 @@ module V9 = struct
   module Array = V7_array
   module Plonk = V8_plonk
   module Seq = V9_seq_monad
+  module Wasm_pvm_state = V8_wasm_pvm_state
 end
 
-module V10 = V9
+module V10 = struct
+  module Data_encoding = V8_data_encoding
+  module Error_monad_infix_globals = V0_error_monad_infix_globals
+  module Array = V7_array
+  module Plonk = V8_plonk
+  module Seq = V9_seq_monad
+end

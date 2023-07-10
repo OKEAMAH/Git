@@ -116,10 +116,6 @@ module type T = sig
        and type Wasm_2_0_0.output = Tezos_scoru_wasm.Wasm_pvm_state.output_info
        and type Wasm_2_0_0.reveal_hash =
         Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
-       and type Wasm_2_0_0.reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal
-       and type Wasm_2_0_0.input_request =
-        Tezos_scoru_wasm.Wasm_pvm_state.input_request
-       and type Wasm_2_0_0.info = Tezos_scoru_wasm.Wasm_pvm_state.info
 
   type error += Ecoproto_error of Error_monad.error
 
@@ -128,6 +124,9 @@ module type T = sig
   val wrap_tztrace : Error_monad.error Error_monad.trace -> error trace
 
   val wrap_tzresult : 'a Error_monad.tzresult -> 'a tzresult
+
+  (* TODO: move that to an appropriate place. *)
+  val from_info : Tezos_scoru_wasm.Wasm_pvm_state.info -> Wasm_2_0_0.info
 
   module Lift (P : Updater.PROTOCOL) :
     PROTOCOL
@@ -1115,16 +1114,17 @@ struct
 
     type reveal_hash = Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
 
-    type reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal =
+    type reveal = Tezos_protocol_environment_structs.V8.Wasm_pvm_state.reveal =
       | Reveal_raw_data of reveal_hash
       | Reveal_metadata
 
-    type input_request = Tezos_scoru_wasm.Wasm_pvm_state.input_request =
+    type input_request =
+          Tezos_protocol_environment_structs.V8.Wasm_pvm_state.input_request =
       | No_input_required
       | Input_required
       | Reveal_required of reveal
 
-    type info = Tezos_scoru_wasm.Wasm_pvm_state.info = {
+    type info = Tezos_protocol_environment_structs.V8.Wasm_pvm_state.info = {
       current_tick : Z.t;
       last_input_read : input option;
       input_request : input_request;
@@ -1135,7 +1135,7 @@ struct
     struct
       type Tezos_tree_encoding.tree_instance += PVM_tree of Tree.tree
 
-      include Tezos_scoru_wasm.Wasm_pvm.Make (struct
+      include Tezos_protocol_environment_structs.V8.Wasm_pvm_state.Make (struct
         include Tree
 
         let select = function
@@ -1148,6 +1148,9 @@ struct
       let initial_state = initial_state V0
     end
   end
+
+  (* TODO: Move that to an appropriate place *)
+  let from_info = Tezos_protocol_environment_structs.V9.Wasm_pvm_state.from_info
 
   module Lift (P : Updater.PROTOCOL) = struct
     let environment_version = Protocol.V8

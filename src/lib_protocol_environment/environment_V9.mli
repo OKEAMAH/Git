@@ -120,10 +120,6 @@ module type T = sig
        and type Wasm_2_0_0.output = Tezos_scoru_wasm.Wasm_pvm_state.output_info
        and type Wasm_2_0_0.reveal_hash =
         Tezos_scoru_wasm.Wasm_pvm_state.reveal_hash
-       and type Wasm_2_0_0.reveal = Tezos_scoru_wasm.Wasm_pvm_state.reveal
-       and type Wasm_2_0_0.input_request =
-        Tezos_scoru_wasm.Wasm_pvm_state.input_request
-       and type Wasm_2_0_0.info = Tezos_scoru_wasm.Wasm_pvm_state.info
 
   (** An [Ecoproto_error e] is a shell error that carry a protocol error.
 
@@ -156,6 +152,9 @@ module type T = sig
       (It is [Ok x] if [r] is [Ok x], it is [Error (wrap_tztrace t)] if [r] is
       [Error t].) *)
   val wrap_tzresult : 'a Error_monad.tzresult -> 'a tzresult
+
+  (* TODO: move that to an appropriate place. *)
+  val from_info : Tezos_scoru_wasm.Wasm_pvm_state.info -> Wasm_2_0_0.info
 
   module Lift (P : Updater.PROTOCOL) :
     PROTOCOL

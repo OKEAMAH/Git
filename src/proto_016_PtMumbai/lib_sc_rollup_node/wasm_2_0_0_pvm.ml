@@ -66,6 +66,11 @@ module Make_backend (Tree : TreeS) = struct
   include Tezos_scoru_wasm_fast.Pvm.Make (Make_wrapped_tree (Tree))
 
   let initial_state = initial_state V0
+
+  let get_info tree =
+    let open Tezos_error_monad.Error_monad.Lwt_syntax in
+    let* info = get_info tree in
+    return (Environment.from_info info)
 end
 
 (** Durable part of the storage of this PVM. *)
