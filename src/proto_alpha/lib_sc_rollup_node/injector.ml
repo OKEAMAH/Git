@@ -70,6 +70,7 @@ module Parameters :
     | Cement -> 1
     | Timeout -> 1
     | Refute -> 1
+    | Instant_update -> 1
 
   let operation_tag : Operation.t -> Tag.t = function
     | Add_messages _ -> Add_messages
@@ -77,6 +78,7 @@ module Parameters :
     | Publish _ -> Publish
     | Timeout _ -> Timeout
     | Refute _ -> Refute
+    | Instant_update _ -> Instant_update
 
   let fee_parameter node_ctxt operation =
     Node_context.get_fee_parameter node_ctxt (operation_tag operation)

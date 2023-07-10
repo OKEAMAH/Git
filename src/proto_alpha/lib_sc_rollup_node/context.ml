@@ -80,6 +80,8 @@ let hash_to_istore_hash h =
 let istore_hash_to_hash h =
   IStore.Hash.to_raw_string h |> Sc_rollup_context_hash.of_string_exn
 
+let hash_tree tree = istore_hash_to_hash @@ IStore.Tree.hash tree
+
 let load : type a. a mode -> string -> a raw_index Lwt.t =
  fun mode path ->
   let open Lwt_syntax in

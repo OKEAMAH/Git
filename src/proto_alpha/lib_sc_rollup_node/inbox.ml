@@ -26,6 +26,7 @@
 (* module Constants will be shadowed by Alpha_context.Constansts
    once we open Alpha_context, hence we we alias it to Rollup_node_constants
 *)
+module Etx = Epoxy_tx
 open Protocol
 open Alpha_context
 
@@ -34,18 +35,23 @@ let lift promise = Lwt.map Environment.wrap_tzresult promise
 let get_messages Node_context.{cctxt; _} head =
   let open Lwt_result_syntax in
   let* block = Layer1.fetch_tezos_block cctxt head in
+  let append (l, opt) msgs instant =
+    ( List.rev_append msgs l,
+      Option.bind instant (fun tx -> Option.map (Fun.const tx) opt) )
+  in
   let apply (type kind) accu ~source:_ (operation : kind manager_operation)
       _result =
     let open Result_syntax in
     let+ accu in
     match operation with
-    | Sc_rollup_add_messages {messages} ->
+    (* TODO: apply instant *)
+    | Sc_rollup_add_messages {messages; instant} ->
         let messages =
           List.map
             (fun message -> Sc_rollup.Inbox_message.External message)
             messages
         in
-        List.rev_append messages accu
+        append accu messages instant
     | _ -> accu
   in
   let apply_internal (type kind) accu ~source
@@ -68,17 +74,17 @@ let get_messages Node_context.{cctxt; _} head =
           Sc_rollup.Inbox_message.Transfer
             {destination = rollup; payload; sender; source}
         in
-        Sc_rollup.Inbox_message.Internal message :: accu
+        append accu [Sc_rollup.Inbox_message.Internal message] None
     | _ -> return accu
   in
-  let*? rev_messages =
+  let*? rev_messages, instant =
     Layer1_services.(
       process_applied_manager_operations
-        (Ok [])
+        (Ok ([], None))
         block.operations
         {apply; apply_internal})
   in
-  return (List.rev rev_messages)
+  return (List.rev rev_messages, instant)
 
 let same_inbox_as_layer_1 node_ctxt head_hash inbox =
   let open Lwt_result_syntax in
@@ -165,9 +171,10 @@ let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
     (* We compute the inbox of this block using the inbox of its
        predecessor. That way, the computation of inboxes is robust to chain
        reorganization. *)
-    let* collected_messages = get_messages node_ctxt head.hash in
+    let* collected_messages, instant = get_messages node_ctxt head.hash in
     let*! () =
       Inbox_event.get_messages
+        ~instant:(if Option.is_some instant then 1 else 0)
         head.hash
         head.level
         (List.length collected_messages)
@@ -180,10 +187,10 @@ let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
          migration block. *)
       grandparent.header.proto_level <> predecessor.header.proto_level
     in
-    let* (( _inbox_hash,
-            inbox,
-            _witness_hash,
-            _messages_with_protocol_internal_messages ) as res) =
+    let* ( inbox_hash,
+           inbox,
+           witness_hash,
+           messages_with_protocol_internal_messages ) =
       process_messages
         node_ctxt
         ~is_first_block
@@ -192,14 +199,20 @@ let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
         collected_messages
     in
     let* () = same_inbox_as_layer_1 node_ctxt head.hash inbox in
-    return res
+    return
+      ( inbox_hash,
+        inbox,
+        witness_hash,
+        messages_with_protocol_internal_messages,
+        instant )
   else
     let* inbox = Node_context.genesis_inbox node_ctxt in
     return
       ( Sc_rollup.Inbox.hash inbox,
         inbox,
         Sc_rollup.Inbox.current_witness inbox,
-        [] )
+        [],
+        None )
 
 let start () = Inbox_event.starting ()
 

@@ -26,7 +26,10 @@
 open Protocol.Alpha_context
 
 type t =
-  | Add_messages of {messages : string list}
+  | Add_messages of {
+      messages : string list;
+      instant : Epoxy_tx.Types.P.tx option;
+    }
   | Cement of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.Hash.t;
@@ -39,6 +42,10 @@ type t =
       refutation : Sc_rollup.Game.refutation;
     }
   | Timeout of {rollup : Sc_rollup.t; stakers : Sc_rollup.Game.Index.t}
+  | Instant_update of {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.t;
+    }
 
 let encoding : t Data_encoding.t =
   let open Data_encoding in
@@ -56,9 +63,13 @@ let encoding : t Data_encoding.t =
          case
            0
            "add_messages"
-           (obj1 (req "message" (list (string' Hex))))
-           (function Add_messages {messages} -> Some messages | _ -> None)
-           (fun messages -> Add_messages {messages});
+           (obj2
+              (req "message" (list (string' Hex)))
+              (req "instant" (option Epoxy_tx.Types.P.tx_data_encoding)))
+           (function
+             | Add_messages {messages; instant} -> Some (messages, instant)
+             | _ -> None)
+           (fun (messages, instant) -> Add_messages {messages; instant});
          case
            1
            "cement"
@@ -104,17 +115,29 @@ let encoding : t Data_encoding.t =
            (function
              | Timeout {rollup; stakers} -> Some (rollup, stakers) | _ -> None)
            (fun (rollup, stakers) -> Timeout {rollup; stakers});
+         case
+           5
+           "instant_update"
+           (obj2
+              (req "rollup" Sc_rollup.Address.encoding)
+              (req "commitment" Sc_rollup.Commitment.encoding))
+           (function
+             | Instant_update {rollup; commitment} -> Some (rollup, commitment)
+             | _ -> None)
+           (fun (rollup, commitment) -> Instant_update {rollup; commitment});
        ]
 
 let pp_opt pp =
   Format.pp_print_option ~none:(fun fmtr () -> Format.fprintf fmtr "None") pp
 
 let pp ppf = function
-  | Add_messages {messages} ->
+  | Add_messages {messages; instant} ->
       Format.fprintf
         ppf
-        "publishing %d messages to smart rollups' inbox"
+        "publishing %d messages%s to smart rollups' inbox"
         (List.length messages)
+        Option.(
+          value ~default:"" (map (Fun.const " and an instant message") instant))
   | Cement {rollup = _; commitment; new_state} ->
       Format.fprintf
         ppf
@@ -167,9 +190,13 @@ let pp ppf = function
         Signature.Public_key_hash.pp
         opponent
   | Timeout {rollup = _; stakers = _} -> Format.fprintf ppf "timeout"
+  | Instant_update
+      {rollup = _; commitment = Sc_rollup.Commitment.{inbox_level; _}} ->
+      Format.fprintf ppf "instant update for level %a" Raw_level.pp inbox_level
 
 let to_manager_operation : t -> packed_manager_operation = function
-  | Add_messages {messages} -> Manager (Sc_rollup_add_messages {messages})
+  | Add_messages {messages; instant} ->
+      Manager (Sc_rollup_add_messages {messages; instant})
   | Cement {rollup; commitment; new_state} ->
       Manager (Sc_rollup_cement {rollup; commitment; new_state})
   | Publish {rollup; commitment} ->
@@ -177,10 +204,13 @@ let to_manager_operation : t -> packed_manager_operation = function
   | Refute {rollup; opponent; refutation} ->
       Manager (Sc_rollup_refute {rollup; opponent; refutation})
   | Timeout {rollup; stakers} -> Manager (Sc_rollup_timeout {rollup; stakers})
+  | Instant_update {rollup; commitment} ->
+      Manager (Sc_rollup_instant_update {rollup; commitment})
 
 let of_manager_operation : type kind. kind manager_operation -> t option =
   function
-  | Sc_rollup_add_messages {messages} -> Some (Add_messages {messages})
+  | Sc_rollup_add_messages {messages; instant} ->
+      Some (Add_messages {messages; instant})
   | Sc_rollup_cement {rollup; commitment; new_state} ->
       Some (Cement {rollup; commitment; new_state})
   | Sc_rollup_publish {rollup; commitment} ->
@@ -192,4 +222,4 @@ let of_manager_operation : type kind. kind manager_operation -> t option =
 
 let unique = function
   | Add_messages _ -> false
-  | Cement _ | Publish _ | Refute _ | Timeout _ -> true
+  | Cement _ | Publish _ | Refute _ | Timeout _ | Instant_update _ -> true

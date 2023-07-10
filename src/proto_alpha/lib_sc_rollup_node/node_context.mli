@@ -289,9 +289,9 @@ val save_lpis : rw -> Epoxy_tx.Types.P.state -> unit tzresult Lwt.t
 
 val get_lpis : _ t -> Epoxy_tx.Types.P.state tzresult Lwt.t
 
-val save_lcis : rw -> Epoxy_tx.Types.P.state -> unit tzresult Lwt.t
+val save_lcs : rw -> Epoxy_tx.Types.P.state * bytes -> unit tzresult Lwt.t
 
-val get_lcis : _ t -> Epoxy_tx.Types.P.state tzresult Lwt.t
+val get_lcs : _ t -> (Epoxy_tx.Types.P.state * bytes) tzresult Lwt.t
 
 type diff := Sc_rollup.State_hash.t * Epoxy_tx.Types.P.state
 

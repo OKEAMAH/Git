@@ -662,6 +662,7 @@ val sc_rollup_add_messages :
   ?gas_limit:Gas.Arith.integral ->
   ?storage_limit:Z.t ->
   ?counter:Manager_counter.t ->
+  ?instant:Epoxy_tx.Types.P.tx ->
   source:public_key_hash ->
   messages:string list ->
   src_pk:public_key ->

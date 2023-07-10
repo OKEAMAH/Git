@@ -29,6 +29,12 @@
 val get_inbox :
   Raw_context.t -> (Sc_rollup_inbox_repr.t * Raw_context.t) tzresult Lwt.t
 
+val pop_instant :
+  Raw_context.t -> (Epoxy_tx.Types.P.tx * Raw_context.t) tzresult Lwt.t
+
+val set_instant :
+  Raw_context.t -> Epoxy_tx.Types.P.tx -> Raw_context.t tzresult Lwt.t
+
 (** [add_external_messages context messages] adds [messages] to the smart
     rollups internal inbox level witness. *)
 val add_external_messages :

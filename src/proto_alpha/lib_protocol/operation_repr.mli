@@ -434,6 +434,7 @@ and _ manager_operation =
   (* [Sc_rollup_add_messages] adds messages to the smart rollups' inbox. *)
   | Sc_rollup_add_messages : {
       messages : string list;
+      instant : Epoxy_tx.Types.P.tx option;
     }
       -> Kind.sc_rollup_add_messages manager_operation
   | Sc_rollup_cement : {

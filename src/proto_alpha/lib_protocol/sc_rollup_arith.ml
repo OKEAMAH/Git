@@ -1508,6 +1508,8 @@ module Make (Context : P) :
     then Some (String.sub input prefix_len (input_len - prefix_len))
     else None
 
+  let apply_one _ _ = failwith "Not implemented"
+
   let evaluate =
     let open Monad.Syntax in
     let* i = Code.pop in

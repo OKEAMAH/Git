@@ -776,6 +776,11 @@ module Sc_rollup : sig
       with type value = Sc_rollup_inbox_repr.t
        and type t := Raw_context.t
 
+  module Instant_inbox :
+    Single_data_storage
+      with type value = Epoxy_tx.Types.P.tx
+       and type t := Raw_context.t
+
   module Last_cemented_commitment :
     Non_iterable_indexed_carbonated_data_storage
       with type key = Sc_rollup_repr.t

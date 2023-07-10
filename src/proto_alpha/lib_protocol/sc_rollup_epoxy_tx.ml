@@ -906,6 +906,22 @@ module Make (Context : P) :
 
   let eval state = state_of (ticked eval_step) state
 
+  let apply_one input state =
+    match input with
+    | PS.Inbox_message msg -> (
+        match Sc_rollup_inbox_message_repr.deserialize msg.payload with
+        | Ok (External str) ->
+            let bytes = hex_to_bytes str in
+            let op =
+              Stdlib.Option.get
+              @@ Data_encoding.Binary.of_bytes_opt
+                   TxTypes.tx_data_encoding
+                   bytes
+            in
+            Lwt.return @@ apply op state
+        | _ -> failwith "invalid input")
+    | _ -> failwith "invalid input"
+
   let verify_proof _input_given _proof = failwith "TODO verify_proof"
 
   let produce_proof _context _input_given _state = failwith "TODO produce_proof"

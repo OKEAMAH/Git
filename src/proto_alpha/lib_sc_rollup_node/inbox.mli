@@ -33,6 +33,7 @@
 
 *)
 
+module Etx = Epoxy_tx
 open Protocol.Alpha_context
 open Sc_rollup
 
@@ -47,7 +48,8 @@ val process_head :
   (Sc_rollup.Inbox.Hash.t
   * Sc_rollup.Inbox.t
   * Sc_rollup.Inbox_merkelized_payload_hashes.Hash.t
-  * Sc_rollup.Inbox_message.t list)
+  * Sc_rollup.Inbox_message.t list
+  * Etx.Types.P.tx option)
   tzresult
   Lwt.t
 

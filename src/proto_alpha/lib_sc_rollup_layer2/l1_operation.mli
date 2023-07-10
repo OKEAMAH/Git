@@ -27,7 +27,10 @@ open Protocol.Alpha_context
 
 (** L1 operations produced (and injected) by the rollup node. *)
 type t =
-  | Add_messages of {messages : string list}
+  | Add_messages of {
+      messages : string list;
+      instant : Epoxy_tx.Types.P.tx option;
+    }
   | Cement of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.Hash.t;
@@ -40,6 +43,10 @@ type t =
       refutation : Sc_rollup.Game.refutation;
     }
   | Timeout of {rollup : Sc_rollup.t; stakers : Sc_rollup.Game.Index.t}
+  | Instant_update of {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.t;
+    }
 
 (** Encoding for L1 operations (used by injector for on-disk persistence). *)
 val encoding : t Data_encoding.t

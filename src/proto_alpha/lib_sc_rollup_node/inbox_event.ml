@@ -45,21 +45,25 @@ module Simple = struct
       ()
 
   let get_messages =
-    declare_3
+    declare_4
       ~section
       ~name:"sc_rollup_node_layer_1_get_messages"
       ~msg:
-        "Fetching {number_of_messages} messages from block {hash} at level \
-         {level}"
+        "Fetching {number_of_messages} messages ({number_instant} instant) \
+         from block {hash} at level {level}"
       ~level:Notice
       ("hash", Block_hash.encoding)
       ("level", Data_encoding.int32)
       ("number_of_messages", Data_encoding.int32)
+      ("number_instant", Data_encoding.int32)
 end
 
 let starting = Simple.(emit starting)
 
 let stopping = Simple.(emit stopping)
 
-let get_messages hash level number_of_messages =
-  Simple.(emit get_messages (hash, level, Int32.of_int number_of_messages))
+let get_messages ?(instant = 0) hash level number_of_messages =
+  Simple.(
+    emit
+      get_messages
+      (hash, level, Int32.of_int number_of_messages, Int32.of_int instant))

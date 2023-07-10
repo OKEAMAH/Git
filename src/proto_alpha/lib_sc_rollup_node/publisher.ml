@@ -174,8 +174,12 @@ let genesis_commitment (node_ctxt : _ Node_context.t) ctxt =
   let* () =
     Node_context.save_lpis node_ctxt (Stdlib.Option.get pvm_state.instant)
   in
+  let optimistic_root = Context.hash_tree pvm_state.optimistic in
   let* () =
-    Node_context.save_lcis node_ctxt (Stdlib.Option.get pvm_state.instant)
+    Node_context.save_lcs
+      node_ctxt
+      ( Stdlib.Option.get pvm_state.instant,
+        Sc_rollup_context_hash.to_bytes optimistic_root )
   in
   let commitment =
     Sc_rollup.Commitment.
@@ -420,11 +424,15 @@ let cementable_commitments (node_ctxt : _ Node_context.t) =
                       let* optimistic, instant =
                         Node_context.get_diff node_ctxt commitment_hash
                       in
-                      let* lcis = Node_context.get_lcis node_ctxt in
+                      let* lcs, _ = Node_context.get_lcs node_ctxt in
                       let instant =
-                        Epoxy_tx.Tx_rollup.P.apply_diff lcis instant
+                        Epoxy_tx.Tx_rollup.P.apply_diff lcs instant
                       in
-                      let* () = Node_context.save_lcis node_ctxt instant in
+                      let* () =
+                        Node_context.save_lcs
+                          node_ctxt
+                          (instant, Sc_rollup.State_hash.to_bytes optimistic)
+                      in
                       let instant_root_bytes =
                         Epoxy_tx.Utils.scalar_to_bytes
                         @@ Epoxy_tx.Tx_rollup.P.state_scalar instant

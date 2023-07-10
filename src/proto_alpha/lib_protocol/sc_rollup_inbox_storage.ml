@@ -31,6 +31,21 @@ let get_inbox ctxt =
   let* inbox = Store.Inbox.get ctxt in
   return (inbox, ctxt)
 
+let pop_instant ctxt =
+  let open Lwt_result_syntax in
+  let* instant = Store.Instant_inbox.get ctxt in
+  let*! ctxt = Store.Instant_inbox.remove ctxt in
+  return (instant, ctxt)
+
+let set_instant ctxt op =
+  let open Lwt_result_syntax in
+  let* instant = Store.Instant_inbox.find ctxt in
+  match instant with
+  | Some _ -> failwith "instant already set"
+  | None ->
+      let*! ctxt = Store.Instant_inbox.add ctxt op in
+      return ctxt
+
 let add_messages ctxt messages =
   let open Lwt_result_syntax in
   let open Raw_context in

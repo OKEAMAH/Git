@@ -363,6 +363,7 @@ and _ manager_operation =
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
       messages : string list;
+      instant : Epoxy_tx.Types.P.tx option;
     }
       -> Kind.sc_rollup_add_messages manager_operation
   | Sc_rollup_cement : {
@@ -889,12 +890,19 @@ module Encoding = struct
         {
           tag = sc_rollup_operation_add_message_tag;
           name = "smart_rollup_add_messages";
-          encoding = obj1 (req "message" (list (string Hex)));
+          encoding =
+            obj2
+              (req "message" (list (string Hex)))
+              (req "instant" (option Epoxy_tx.Types.P.tx_data_encoding));
           select =
             (function
             | Manager (Sc_rollup_add_messages _ as op) -> Some op | _ -> None);
-          proj = (function Sc_rollup_add_messages {messages} -> messages);
-          inj = (fun messages -> Sc_rollup_add_messages {messages});
+          proj =
+            (function
+            | Sc_rollup_add_messages {messages; instant} -> (messages, instant));
+          inj =
+            (fun (messages, instant) ->
+              Sc_rollup_add_messages {messages; instant});
         }
 
     let sc_rollup_cement_case =

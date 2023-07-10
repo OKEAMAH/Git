@@ -26,9 +26,15 @@
 
 type mode = Observer | Accuser | Batcher | Maintenance | Operator | Custom
 
-type purpose = Publish | Add_messages | Cement | Timeout | Refute
+type purpose =
+  | Publish
+  | Add_messages
+  | Cement
+  | Timeout
+  | Refute
+  | Instant_update
 
-let purposes = [Publish; Add_messages; Cement; Timeout; Refute]
+let purposes = [Publish; Add_messages; Cement; Timeout; Refute; Instant_update]
 
 module Operator_purpose_map = Map.Make (struct
   type t = purpose
@@ -167,6 +173,7 @@ let default_fee = function
          refutation moves even if the proof is large. The stake is high (we can
          lose the 10k deposit or we can get the reward). *)
       tez 5
+  | Instant_update -> tez 5
 
 let default_burn = function
   | Publish ->
@@ -178,6 +185,7 @@ let default_burn = function
   | Refute ->
       (* A refutation move can store data, e.g. opening a game. *)
       tez 1
+  | Instant_update -> tez 0
 
 let default_fee_parameter ?purpose () =
   let fee_cap, burn_cap =
@@ -232,6 +240,7 @@ let string_of_purpose = function
   | Cement -> "cement"
   | Timeout -> "timeout"
   | Refute -> "refute"
+  | Instant_update -> "instant_update"
 
 let purpose_of_string = function
   | "publish" -> Some Publish
@@ -239,6 +248,7 @@ let purpose_of_string = function
   | "cement" -> Some Cement
   | "timeout" -> Some Timeout
   | "refute" -> Some Refute
+  | "instant_update" -> Some Instant_update
   | _ -> None
 
 let purpose_of_string_exn s =
@@ -679,7 +689,8 @@ let check_mode config =
   | Batcher -> narrow_purposes [Add_messages]
   | Accuser -> narrow_purposes [Publish; Refute]
   | Maintenance -> narrow_purposes [Publish; Cement; Refute]
-  | Operator -> narrow_purposes [Publish; Cement; Add_messages; Refute]
+  | Operator ->
+      narrow_purposes [Publish; Cement; Add_messages; Refute; Instant_update]
   | Custom -> return config
 
 let refutation_player_buffer_levels = 5

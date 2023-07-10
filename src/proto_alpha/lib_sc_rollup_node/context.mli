@@ -55,6 +55,8 @@ type ro = [`Read] t
     committed to disk, i.e. the {!type:commit} hash. *)
 type hash = Sc_rollup_context_hash.t
 
+val hash_tree : tree -> hash
+
 (** The type of commits for the context. *)
 type commit
 

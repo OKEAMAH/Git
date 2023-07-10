@@ -330,6 +330,71 @@ let exit_after_proto_migration node_ctxt ?predecessor head =
       let*! _ = Lwt_exit.exit_and_wait 0 in
       return_unit
 
+let apply_instant (node_ctxt : _ Node_context.t) ctxt inbox_level = function
+  | Some tx ->
+      let open Lwt_result_syntax in
+      let module PVM = (val node_ctxt.pvm) in
+      let hex_of_bytes b =
+        let (`Hex s) = Hex.of_bytes b in
+        s
+      in
+      let tx =
+        let bytes =
+          Data_encoding.Binary.to_bytes_exn Epoxy_tx.Types.P.tx_data_encoding tx
+        in
+        let payload =
+          Sc_rollup.Inbox_message.(
+            Stdlib.Result.get_ok @@ serialize @@ External (hex_of_bytes bytes))
+        in
+        Sc_rollup.(
+          Inbox_message {inbox_level; message_counter = Z.zero; payload})
+      in
+      let* instant, opt_root = Node_context.get_lcs node_ctxt in
+      (* Hack to be able to run apply_one *)
+      let*! state = PVM.State.find ctxt in
+      let state = Stdlib.Option.get state in
+      let start_state = {state with instant = Some instant} in
+      let*! new_state = PVM.apply_one tx start_state in
+      let final_instant = new_state.instant in
+      let* () =
+        Node_context.save_lcs
+          node_ctxt
+          (Stdlib.Option.get final_instant, opt_root)
+      in
+      let instant_root_bytes =
+        Epoxy_tx.Utils.scalar_to_bytes
+        @@ Epoxy_tx.Tx_rollup.P.state_scalar (Stdlib.Option.get final_instant)
+      in
+      let new_state_hash =
+        Sc_rollup.State_hash.hash_bytes [instant_root_bytes; opt_root]
+      in
+      let lcc = Reference.get node_ctxt.lcc in
+      let commitment =
+        Sc_rollup.Commitment.
+          {
+            compressed_state = State new_state_hash;
+            inbox_level;
+            predecessor = lcc.commitment;
+            number_of_ticks = Sc_rollup.Number_of_ticks.zero;
+          }
+      in
+      let commitment_hash = Sc_rollup.Commitment.hash_uncarbonated commitment in
+      let () =
+        Reference.set
+          node_ctxt.lcc
+          {commitment = commitment_hash; level = Raw_level.succ lcc.level}
+      in
+      let l1_op =
+        L1_operation.Instant_update
+          {rollup = node_ctxt.rollup_address; commitment}
+      in
+      let* _ = Injector.add_pending_operation l1_op in
+      let*! () =
+        Commitment_event.publish_instant_update commitment_hash inbox_level
+      in
+      return_unit
+  | None -> return_unit
+
 let rec process_head (node_ctxt : _ Node_context.t) (head : Layer1.header) =
   let open Lwt_result_syntax in
   let* already_processed = Node_context.is_processed node_ctxt head.hash in
@@ -350,7 +415,7 @@ let rec process_head (node_ctxt : _ Node_context.t) (head : Layer1.header) =
           node_ctxt
           {Layer1.hash = head.hash; level = head.level}
       in
-      let* inbox_hash, inbox, inbox_witness, messages =
+      let* inbox_hash, inbox, inbox_witness, messages, instant =
         Inbox.process_head node_ctxt ~predecessor head
       in
       let* () =
@@ -382,6 +447,7 @@ let rec process_head (node_ctxt : _ Node_context.t) (head : Layer1.header) =
           let+ pred = Node_context.get_l2_block node_ctxt predecessor.hash in
           Sc_rollup_block.most_recent_commitment pred.header
       in
+      let* _ = apply_instant node_ctxt ctxt inbox.level instant in
       let header =
         Sc_rollup_block.
           {
@@ -632,6 +698,7 @@ module Internal_for_tests = struct
     let* ctxt, _num_messages, num_ticks, initial_tick =
       Interpreter.process_head node_ctxt ctxt ~predecessor head (inbox, messages)
     in
+
     let*! context_hash = Context.commit ctxt in
     let* commitment_hash =
       Publisher.process_head

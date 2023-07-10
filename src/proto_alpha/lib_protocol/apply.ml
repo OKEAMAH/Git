@@ -1070,7 +1070,7 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_add_messages {messages} ->
+  | Sc_rollup_add_messages {messages; instant = _} ->
       Sc_rollup.Inbox.add_external_messages ctxt messages >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result = Sc_rollup_add_messages_result {consumed_gas} in

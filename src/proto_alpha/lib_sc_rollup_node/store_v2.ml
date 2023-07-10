@@ -172,12 +172,13 @@ module LPIS = Indexed_store.Make_singleton (struct
   let encoding = Epoxy_tx.Tx_rollup.P.state_data_encoding
 end)
 
-module LCIS = Indexed_store.Make_singleton (struct
-  type t = Epoxy_tx.Types.P.state
+module LCS = Indexed_store.Make_singleton (struct
+  type t = Epoxy_tx.Types.P.state * bytes
 
-  let name = "lcis"
+  let name = "lcs"
 
-  let encoding = Epoxy_tx.Tx_rollup.P.state_data_encoding
+  let encoding =
+    Data_encoding.(tup2 Epoxy_tx.Tx_rollup.P.state_data_encoding bytes)
 end)
 
 type nonrec 'a store = {
@@ -187,7 +188,7 @@ type nonrec 'a store = {
   commitments : 'a Commitments.t;
   diffs : 'a Diffs.t;
   lpis : 'a LPIS.t;
-  lcis : 'a LCIS.t;
+  lcs : 'a LCS.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   l2_head : 'a L2_head.t;
   last_finalized_level : 'a Last_finalized_level.t;
@@ -209,7 +210,7 @@ let readonly
        commitments;
        diffs;
        lpis;
-       lcis;
+       lcs;
        commitments_published_at_level;
        l2_head;
        last_finalized_level;
@@ -224,7 +225,7 @@ let readonly
     commitments = Commitments.readonly commitments;
     diffs = Diffs.readonly diffs;
     lpis = LPIS.readonly lpis;
-    lcis = LCIS.readonly lcis;
+    lcs = LCS.readonly lcs;
     commitments_published_at_level =
       Commitments_published_at_level.readonly commitments_published_at_level;
     l2_head = L2_head.readonly l2_head;
@@ -241,7 +242,7 @@ let close
        commitments;
        diffs;
        lpis = _;
-       lcis = _;
+       lcs = _;
        commitments_published_at_level;
        l2_head = _;
        last_finalized_level = _;
@@ -273,7 +274,7 @@ let load (type a) (mode : a mode) ~l2_blocks_cache_size data_dir :
   in
   let* diffs = Diffs.load mode ~path:(path "diffs") ~cache_size in
   let* lpis = LPIS.load mode ~path:(path "lpis") in
-  let* lcis = LCIS.load mode ~path:(path "lcis") in
+  let* lcs = LCS.load mode ~path:(path "lcs") in
   let* commitments_published_at_level =
     Commitments_published_at_level.load
       mode
@@ -294,7 +295,7 @@ let load (type a) (mode : a mode) ~l2_blocks_cache_size data_dir :
     commitments;
     diffs;
     lpis;
-    lcis;
+    lcs;
     commitments_published_at_level;
     l2_head;
     last_finalized_level;

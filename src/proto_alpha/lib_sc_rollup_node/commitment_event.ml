@@ -111,6 +111,15 @@ module Simple = struct
       ("hash", Sc_rollup.Commitment.Hash.encoding)
       ("level", Raw_level.encoding)
 
+  let publish_instant_update =
+    declare_2
+      ~section
+      ~name:"sc_rollup_node_publish_instant_update"
+      ~msg:"Publishing instant update {hash} for inbox level {level}"
+      ~level:Notice
+      ("hash", Sc_rollup.Commitment.Hash.encoding)
+      ("level", Raw_level.encoding)
+
   let commitment_parent_is_not_lcc =
     declare_3
       ~section
@@ -210,6 +219,9 @@ let compute_diff diff = Simple.(emit compute_diff diff)
 
 let publish_commitment head level =
   Simple.(emit publish_commitment (head, level))
+
+let publish_instant_update head level =
+  Simple.(emit publish_instant_update (head, level))
 
 let commitment_parent_is_not_lcc level predecessor_hash lcc_hash =
   Simple.(emit commitment_parent_is_not_lcc (level, predecessor_hash, lcc_hash))

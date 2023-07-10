@@ -3172,6 +3172,8 @@ module Sc_rollup : sig
 
       val eval : state -> state Lwt.t
 
+      val apply_one : input -> state -> state Lwt.t
+
       val verify_proof : input option -> proof -> input_request tzresult Lwt.t
 
       val produce_proof :
@@ -4348,6 +4350,7 @@ and _ manager_operation =
       -> Kind.sc_rollup_originate manager_operation
   | Sc_rollup_add_messages : {
       messages : string list;
+      instant : Epoxy_tx.Types.P.tx option;
     }
       -> Kind.sc_rollup_add_messages manager_operation
   | Sc_rollup_cement : {

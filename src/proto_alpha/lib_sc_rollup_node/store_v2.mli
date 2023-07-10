@@ -65,7 +65,7 @@ module Diffs :
 
 module LPIS : SINGLETON_STORE with type value := Epoxy_tx.Types.P.state
 
-module LCIS : SINGLETON_STORE with type value := Epoxy_tx.Types.P.state
+module LCS : SINGLETON_STORE with type value := Epoxy_tx.Types.P.state * bytes
 
 type +'a store = {
   l2_blocks : 'a L2_blocks.t;
@@ -74,7 +74,7 @@ type +'a store = {
   commitments : 'a Commitments.t;
   diffs : 'a Diffs.t;
   lpis : 'a LPIS.t;
-  lcis : 'a LCIS.t;
+  lcs : 'a LCS.t;
   commitments_published_at_level : 'a Commitments_published_at_level.t;
   l2_head : 'a L2_head.t;
   last_finalized_level : 'a Last_finalized_level.t;

@@ -82,6 +82,9 @@ val compute_diff : Sc_rollup.Diff_hash.t -> unit Lwt.t
 val publish_commitment :
   Sc_rollup.Commitment.Hash.t -> Raw_level.t -> unit Lwt.t
 
+val publish_instant_update :
+  Sc_rollup.Commitment.Hash.t -> Raw_level.t -> unit Lwt.t
+
 (** Events emmitted by the Publisher worker *)
 module Publisher : sig
   (** [request_failed view status errors] emits the event that a worker

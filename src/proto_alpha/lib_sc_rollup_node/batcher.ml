@@ -61,7 +61,7 @@ let message_size s =
 let inject_batch state (l2_messages : L2_message.t list) =
   let open Lwt_result_syntax in
   let messages = List.map L2_message.content l2_messages in
-  let operation = L1_operation.Add_messages {messages} in
+  let operation = L1_operation.Add_messages {messages; instant = None} in
   let+ l1_hash =
     Injector.add_pending_operation ~source:state.signer operation
   in

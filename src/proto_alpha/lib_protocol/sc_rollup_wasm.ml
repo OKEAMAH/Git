@@ -437,6 +437,8 @@ module V2_0_0 = struct
 
     let eval state = state_of eval_step state
 
+    let apply_one _ _ = failwith "Not implemented"
+
     let step_transition input_given state =
       let open Lwt_syntax in
       let* request = is_input_state state in

@@ -246,7 +246,8 @@ let protocol_max_batch_size =
                    gas_limit =
                      Gas.Arith.integral_of_int_exn ((max_int - 1) / 1000);
                    storage_limit = Z.of_int max_int;
-                   operation = Sc_rollup_add_messages {messages = [""]};
+                   operation =
+                     Sc_rollup_add_messages {messages = [""]; instant = None};
                  });
         };
     }
@@ -718,14 +719,14 @@ let get_lpis {store; _} =
   | None -> failwith "Could not retrieve LPIS"
   | Some lpis -> return lpis
 
-let save_lcis {store; _} lcis = Store.LCIS.write store.lcis lcis
+let save_lcs {store; _} lcs = Store.LCS.write store.lcs lcs
 
-let get_lcis {store; _} =
+let get_lcs {store; _} =
   let open Lwt_result_syntax in
-  let* lcis = Store.LCIS.read store.lcis in
-  match lcis with
-  | None -> failwith "Could not retrieve LCIS"
-  | Some lcis -> return lcis
+  let* lcs = Store.LCS.read store.lcs in
+  match lcs with
+  | None -> failwith "Could not retrieve lcs"
+  | Some lcs -> return lcs
 
 let get_diff {store; _} commitment_hash =
   let open Lwt_result_syntax in
