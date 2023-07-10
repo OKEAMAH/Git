@@ -48,15 +48,6 @@ let is_before_origination (node_ctxt : _ Node_context.t)
   let origination_level = node_ctxt.genesis_info.level in
   header.level < origination_level
 
-let previous_context (node_ctxt : _ Node_context.t)
-    ~(predecessor : Layer1.header) =
-  let open Lwt_result_syntax in
-  if is_before_origination node_ctxt predecessor then
-    (* This is before we have interpreted the boot sector, so we start
-       with an empty context in genesis *)
-    return (Context.empty node_ctxt.context)
-  else Node_context.checkout_context node_ctxt predecessor.Layer1.hash
-
 let start_workers ?(degraded = false) (configuration : Configuration.t)
     (module Plugin : Protocol_plugin_sig.S) (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
@@ -121,7 +112,6 @@ let process_new_head ({node_ctxt; _} as state) ~catching_up ~predecessor
       {Layer1.hash = head.hash; level = head.level}
   and* () = Node_context.save_protocol_info node_ctxt head ~predecessor in
   let* () = handle_protocol_migration ~catching_up state head in
-  let* rollup_ctxt = previous_context node_ctxt ~predecessor in
   let module Plugin = (val state.plugin) in
   let* inbox_hash, inbox, inbox_witness, messages =
     Plugin.Inbox.process_head node_ctxt ~predecessor head
@@ -135,12 +125,7 @@ let process_new_head ({node_ctxt; _} as state) ~catching_up ~predecessor
   (* Avoid triggering the pvm execution if this has been done before for
      this head. *)
   let* ctxt, _num_messages, num_ticks, initial_tick =
-    Plugin.Interpreter.process_head
-      node_ctxt
-      rollup_ctxt
-      ~predecessor
-      head
-      (inbox, messages)
+    Plugin.Interpreter.process_head node_ctxt ~predecessor head (inbox, messages)
   in
   let*! context_hash = Context.commit ctxt in
   let* commitment_hash =
@@ -437,7 +422,6 @@ module Internal_for_tests = struct
       (node_ctxt : _ Node_context.t) ~is_first_block ~predecessor head messages
       =
     let open Lwt_result_syntax in
-    let* ctxt = previous_context node_ctxt ~predecessor in
     let* () = Node_context.save_level node_ctxt (Layer1.head_of_header head) in
     let* inbox_hash, inbox, inbox_witness, messages =
       Plugin.Inbox.Internal_for_tests.process_messages
@@ -450,7 +434,6 @@ module Internal_for_tests = struct
     let* ctxt, _num_messages, num_ticks, initial_tick =
       Plugin.Interpreter.process_head
         node_ctxt
-        ctxt
         ~predecessor
         head
         (inbox, messages)
