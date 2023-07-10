@@ -35,11 +35,10 @@ open Protocol.Alpha_context
     evaluation. *)
 val process_head :
   Node_context.rw ->
-  'a Context.t ->
   predecessor:Layer1.header ->
   Layer1.header ->
   Octez_smart_rollup.Inbox.t * string list ->
-  ('a Context.t * int * int64 * Z.t) tzresult Lwt.t
+  (Context.rw * int * int64 * Z.t) tzresult Lwt.t
 
 (** [state_of_tick node_ctxt ?start_state tick level] returns [Some (state,
     hash)] for a given [tick] if this [tick] happened before [level]. Otherwise,
@@ -52,11 +51,10 @@ val state_of_tick :
   Raw_level.t ->
   Fueled_pvm.Accounted.eval_state option tzresult Lwt.t
 
-(** [state_of_head node_ctxt ctxt head] returns the state corresponding to the
+(** [state_of_head node_ctxt head] returns the state corresponding to the
     block [head], or the state at rollup genesis if the block is before the
     rollup origination. *)
 val state_of_head :
   'a Node_context.t ->
-  'a Context.t ->
   Layer1.head ->
   ('a Context.t * Context.tree) tzresult Lwt.t
