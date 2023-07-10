@@ -705,6 +705,8 @@ module Manager = struct
     inject ?request ?force ?error op client
 end
 
+let invalid_signature = rex "The operation signature is invalid"
+
 let gas_limit_exceeded =
   rex
     "Gas limit exceeded during typechecking or execution.\n\

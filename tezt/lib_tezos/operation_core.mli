@@ -578,6 +578,10 @@ end
     - the [rex] argument of {!val:inject_and_capture2_stderr}
     - the [msg] argument of {!val:Process.check_error}. *)
 
+(** Matches the message produced by [Invalid_signature] from
+    [src/proto_<n>/lib_protocol/operation_repr.ml]. *)
+val invalid_signature : rex
+
 (** Matches the client message for the [Operation_quota_exceeded]
     protocol error. *)
 val gas_limit_exceeded : rex
