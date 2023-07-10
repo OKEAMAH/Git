@@ -327,6 +327,10 @@ module V2_0_0 = struct
               Waiting_for_reveal (Reveal_raw_data well_known_reveal_hash))
       | Reveal_required Wasm_2_0_0.Reveal_metadata ->
           try_return_reveal Reveal_metadata
+      | Reveal_required (Wasm_2_0_0.Reveal_dal _page) ->
+          let page = assert false in
+          (* TODO: Implement this. *)
+          Waiting_for_reveal (Request_dal_page page)
 
     let is_input_state ~is_reveal_enabled =
       let open Monad.Syntax in
