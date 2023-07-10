@@ -432,6 +432,16 @@ let pp_reveal out = function
       Format.fprintf out "Reveal_raw_data (%s)" hash
   | Reveal_metadata -> Format.fprintf out "Reveal_metadata"
 
+let pp_page_index out Host_funcs.{published_level; slot_index; page_index} =
+  Format.fprintf
+    out
+    "@[<v 2> Page_index {published_level = %ld;@;\
+     slot_index = %ld;@;\
+     page_index = %ld}"
+    published_level
+    slot_index
+    page_index
+
 let pp_invoke_step_kont out = function
   | Eval.Inv_start {func; code = vs, es} ->
       Format.fprintf
@@ -529,6 +539,24 @@ let pp_invoke_step_kont out = function
         vs
         pp_reveal
         reveal
+        base_destination
+        max_bytes
+  | Inv_dal_reveal_tick {page_index; base_destination; max_bytes; code = vs, es}
+    ->
+      Format.fprintf
+        out
+        "@[<v 2>Inv_reveal_tick {instructions = %a;@;\
+         values = %a;@;\
+         page_index = %a;@;\
+         base_destination = %ld;@;\
+         max_bytes = %ld;@;\
+         }@]"
+        (pp_vector pp_admin_instr)
+        es
+        (pp_vector Values.pp_value)
+        vs
+        pp_page_index
+        page_index
         base_destination
         max_bytes
   | Inv_stop {code = vs, es; fresh_frame; remaining_ticks} ->

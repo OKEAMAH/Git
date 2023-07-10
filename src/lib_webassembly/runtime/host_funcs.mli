@@ -5,6 +5,12 @@ type available_memories =
 
 type reveal_destination = {base : int32; max_bytes : int32}
 
+type page_index = {
+  published_level : int32;
+  slot_index : int32;
+  page_index : int32;
+}
+
 type reveal = Reveal_raw_data of string | Reveal_metadata
 
 type ticks = Z.t
@@ -24,6 +30,10 @@ type host_func =
       Values.value list ->
       (Durable_storage.t * Values.value list * ticks) Lwt.t)
   | Reveal_func of reveal_func
+  | Dal_reveal_fun of
+      (available_memories ->
+      Values.value list ->
+      (page_index * reveal_destination, int32) result Lwt.t)
 
 (** An (immutable) host function registry builder that can be turned
     into a registry using {!construct}. *)

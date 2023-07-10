@@ -2,6 +2,12 @@ type available_memories =
   | No_memories_during_init
   | Available_memories of Instance.memory_inst Instance.Vector.t
 
+type page_index = {
+  published_level : int32;
+  slot_index : int32;
+  page_index : int32;
+}
+
 type reveal = Reveal_raw_data of string | Reveal_metadata
 
 type reveal_destination = {base : int32; max_bytes : int32}
@@ -22,6 +28,10 @@ type host_func =
       Values.value list ->
       (Durable_storage.t * Values.value list * ticks) Lwt.t)
   | Reveal_func of reveal_func
+  | Dal_reveal_fun of
+      (available_memories ->
+      Values.value list ->
+      (page_index * reveal_destination, int32) result Lwt.t)
 
 module Registry = Map.Make (String)
 

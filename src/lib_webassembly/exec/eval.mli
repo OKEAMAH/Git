@@ -123,6 +123,12 @@ type invoke_step_kont =
       max_bytes : int32;
       code : code;
     }
+  | Inv_dal_reveal_tick of {
+      page_index : Host_funcs.page_index;
+      base_destination : int32;
+      max_bytes : int32;
+      code : code;
+    }
   | Inv_stop of {
       code : code;
       fresh_frame : ongoing frame_stack option;

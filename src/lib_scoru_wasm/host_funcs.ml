@@ -1293,6 +1293,36 @@ let reveal_metadata_parse_args _memories args =
 
 let reveal_metadata = Host_funcs.Reveal_func reveal_metadata_parse_args
 
+let reveal_dal_page_parse_args memories args =
+  match args with
+  | Values.
+      [
+        Num (I32 _page_index_addr);
+        Num (I32 _page_index_size);
+        Num (I32 base);
+        Num (I32 max_bytes);
+      ] ->
+      let open Lwt_result_syntax in
+      let*! _memory = retrieve_memory memories in
+      let* page_index =
+        (* TODO: read three int32 *)
+        assert false
+      in
+      Lwt_result.return (page_index, Host_funcs.{base; max_bytes})
+  | _ -> raise Bad_input
+
+let reveal_dal_page = Host_funcs.Dal_reveal_fun reveal_dal_page_parse_args
+
+let reveal_dal_page_name = "tezos_reveal_dal_page"
+
+let reveal_dal_page_type =
+  let input_types =
+    Types.[NumType I32Type; NumType I32Type; NumType I32Type; NumType I32Type]
+    |> Vector.of_list
+  in
+  let output_types = Types.[NumType I32Type] |> Vector.of_list in
+  Types.FuncType (input_types, output_types)
+
 let store_write_name = "tezos_write_read"
 
 let store_write_type =
@@ -1386,6 +1416,8 @@ let lookup_opt ~version name =
       Some (ExternFunc (HostFunc (reveal_preimage_type, reveal_preimage_name)))
   | "reveal_metadata" ->
       Some (ExternFunc (HostFunc (reveal_metadata_type, reveal_metadata_name)))
+  | "reveal_dal_page" ->
+      Some (ExternFunc (HostFunc (reveal_dal_page_type, reveal_dal_page_name)))
   | "store_read" ->
       Some (ExternFunc (HostFunc (store_read_type, store_read_name)))
   | "store_write" ->
@@ -1416,6 +1448,7 @@ let base =
       (store_value_size_name, store_value_size);
       (reveal_preimage_name, reveal_preimage);
       (reveal_metadata_name, reveal_metadata);
+      (reveal_dal_page_name, reveal_dal_page);
       (store_read_name, store_read);
       (store_write_name, store_write);
     ]

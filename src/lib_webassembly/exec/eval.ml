@@ -363,6 +363,12 @@ type invoke_step_kont =
       max_bytes : int32;
       code : code;
     }
+  | Inv_dal_reveal_tick of {
+      page_index : Host_funcs.page_index;
+      base_destination : int32;
+      max_bytes : int32;
+      code : code;
+    }
   | Inv_stop of {
       code : code;
       fresh_frame : ongoing frame_stack option;
@@ -576,6 +582,30 @@ let invoke_step ~init ~host_funcs ?(durable = Durable_storage.empty)
                               code = (vs', es);
                               fresh_frame = None;
                               remaining_ticks = Z.zero;
+                            } ))
+              | Dal_reveal_fun f -> (
+                  let* result = f available_memories args in
+                  match result with
+                  | Ok (page_index, {base; max_bytes}) ->
+                      Lwt.return
+                        ( durable,
+                          Inv_dal_reveal_tick
+                            {
+                              page_index;
+                              max_bytes;
+                              base_destination = base;
+                              code = (vs', es);
+                            } )
+                  | Error err_code ->
+                      let err_code = Num (I32 err_code) in
+                      let vs' = Vector.prepend_list [err_code] vs' in
+                      Lwt.return
+                        ( durable,
+                          Inv_stop
+                            {
+                              code = (vs', es);
+                              fresh_frame = None;
+                              remaining_ticks = Z.zero;
                             } )))
             (function Crash (_, msg) -> Crash.error at msg | exn -> raise exn))
   | Inv_prepare_locals
@@ -663,6 +693,12 @@ let invoke_step ~init ~host_funcs ?(durable = Durable_storage.empty)
       raise
         (Evaluation_step_error
            (Invoke_step "The reveal tick cannot be evaluated as is"))
+  | Inv_dal_reveal_tick _ ->
+      (* This is a DAL reveal tick, not an evaluation tick. The PVM should
+         prevent this execution path. *)
+      raise
+        (Evaluation_step_error
+           (Invoke_step "The DAL reveal tick cannot be evaluated as is"))
   | Inv_concat tick ->
       let+ concat_kont = concat_step tick.concat_kont in
       (durable, Inv_concat {tick with concat_kont})
