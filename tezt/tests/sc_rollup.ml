@@ -90,62 +90,6 @@ let reveal_hash ~protocol ~kind data =
       (* Not used for wasm yet. *)
       assert false
 
-type sc_rollup_constants = {
-  origination_size : int;
-  challenge_window_in_blocks : int;
-  stake_amount : Tez.t;
-  commitment_period_in_blocks : int;
-  max_lookahead_in_blocks : int32;
-  max_active_outbox_levels : int32;
-  max_outbox_messages_per_level : int;
-  number_of_sections_in_dissection : int;
-  timeout_period_in_blocks : int;
-}
-
-let get_sc_rollup_constants client =
-  let* json =
-    RPC.Client.call client @@ RPC.get_chain_block_context_constants ()
-  in
-  let open JSON in
-  let origination_size = json |-> "smart_rollup_origination_size" |> as_int in
-  let challenge_window_in_blocks =
-    json |-> "smart_rollup_challenge_window_in_blocks" |> as_int
-  in
-  let stake_amount =
-    json |-> "smart_rollup_stake_amount" |> as_string |> Int64.of_string
-    |> Tez.of_mutez_int64
-  in
-  let commitment_period_in_blocks =
-    json |-> "smart_rollup_commitment_period_in_blocks" |> as_int
-  in
-  let max_lookahead_in_blocks =
-    json |-> "smart_rollup_max_lookahead_in_blocks" |> as_int32
-  in
-  let max_active_outbox_levels =
-    json |-> "smart_rollup_max_active_outbox_levels" |> as_int32
-  in
-  let max_outbox_messages_per_level =
-    json |-> "smart_rollup_max_outbox_messages_per_level" |> as_int
-  in
-  let number_of_sections_in_dissection =
-    json |-> "smart_rollup_number_of_sections_in_dissection" |> as_int
-  in
-  let timeout_period_in_blocks =
-    json |-> "smart_rollup_timeout_period_in_blocks" |> as_int
-  in
-  return
-    {
-      origination_size;
-      challenge_window_in_blocks;
-      stake_amount;
-      commitment_period_in_blocks;
-      max_lookahead_in_blocks;
-      max_active_outbox_levels;
-      max_outbox_messages_per_level;
-      number_of_sections_in_dissection;
-      timeout_period_in_blocks;
-    }
-
 let originate_forward_smart_contract ?(src = Constant.bootstrap1.alias) client
     protocol =
   (* Originate forwarder contract to send internal messages to rollup *)
@@ -180,7 +124,7 @@ let register_test ?supports ?(regression = false) ~__FILE__ ~tags ~title f =
   else Protocol.register_test ?supports ~__FILE__ ~title ~tags f
 
 let get_sc_rollup_commitment_period_in_blocks client =
-  let* constants = get_sc_rollup_constants client in
+  let* constants = get_constants client in
   return constants.commitment_period_in_blocks
 
 type test = {variant : string option; tags : string list; description : string}
@@ -717,7 +661,7 @@ let forge_and_publish_commitment ?compressed_state ?number_of_ticks ~inbox_level
 let bake_period_then_publish_commitment ?compressed_state ?number_of_ticks
     ~sc_rollup ~src client =
   let* {commitment_period_in_blocks = commitment_period; _} =
-    get_sc_rollup_constants client
+    get_constants client
   in
   let* predecessor, last_inbox_level =
     last_cemented_commitment_hash_with_level ~sc_rollup client
@@ -2240,7 +2184,7 @@ let attempt_withdraw_stake =
 (* Test that nodes do not publish commitments before the last cemented commitment. *)
 let commitment_before_lcc_not_published protocol sc_rollup_node sc_rollup_client
     sc_rollup node client =
-  let* constants = get_sc_rollup_constants client in
+  let* constants = get_constants client in
   let commitment_period = constants.commitment_period_in_blocks in
   let challenge_window = constants.challenge_window_in_blocks in
   (* Rollup node 1 processes messages, produces and publishes two commitments. *)
@@ -2574,7 +2518,7 @@ let _test_reinject_failed_commitment ~protocol:_ ~kind =
      gas than what was simulated. *)
   if not !retried then
     Test.fail "Rollup nodes did not retry to republish commitment" ;
-  let* {stake_amount; _} = get_sc_rollup_constants client in
+  let* {stake_amount; _} = get_constants client in
   let check_committed id =
     let* deposit_json =
       RPC.Client.call client
@@ -2756,7 +2700,7 @@ let test_reveals_fails_on_unknown_hash =
   in
   (* We need to check that the rollup has entered the degraded mode,
       so we wait for 60 blocks (commitment period) + 2. *)
-  let* {commitment_period_in_blocks; _} = get_sc_rollup_constants client in
+  let* {commitment_period_in_blocks; _} = get_constants client in
   let* () =
     repeat (commitment_period_in_blocks + 2) (fun () ->
         Client.bake_for_and_wait client)
@@ -2929,9 +2873,7 @@ let test_consecutive_commitments _protocol _rollup_node _rollup_client sc_rollup
     _tezos_node tezos_client =
   let* inbox_level = Client.level tezos_client in
   let operator = Constant.bootstrap1.public_key_hash in
-  let* {commitment_period_in_blocks; _} =
-    get_sc_rollup_constants tezos_client
-  in
+  let* {commitment_period_in_blocks; _} = get_constants tezos_client in
   (* As we did no publish any commitment yet, this is supposed to fail. *)
   let*? process =
     RPC.Client.spawn tezos_client
@@ -3262,7 +3204,7 @@ let test_refutation_scenario ?commitment_period ?challenge_window ~variant ~mode
             level)
       !published_commitments) ;
 
-  let* {stake_amount; _} = get_sc_rollup_constants client in
+  let* {stake_amount; _} = get_constants client in
   let* honest_deposit_json =
     RPC.Client.call client
     @@ RPC.get_chain_block_context_contract_frozen_bonds ~id:bootstrap1_key ()
@@ -3541,7 +3483,7 @@ let bake_operation_via_rpc ~__LOC__ client op =
    branch c32 -- c321 is published by [operator2].
 *)
 let mk_forking_commitments node client ~sc_rollup ~operator1 ~operator2 =
-  let* {commitment_period_in_blocks; _} = get_sc_rollup_constants client in
+  let* {commitment_period_in_blocks; _} = get_constants client in
   (* This is the starting level on top of wich we'll construct the tree. *)
   let starting_level = Node.get_level node in
   let mk_commit ~src ~ticks ~depth ~pred =
@@ -3666,9 +3608,7 @@ let move_refute_with_unique_state_hash ?number_of_sections_in_dissection client
     match number_of_sections_in_dissection with
     | Some n -> return n
     | None ->
-        let* {number_of_sections_in_dissection; _} =
-          get_sc_rollup_constants client
-        in
+        let* {number_of_sections_in_dissection; _} = get_constants client in
         return number_of_sections_in_dissection
   in
   (* Construct a valid dissection with valid initial hash of size
@@ -3705,7 +3645,7 @@ let test_no_cementation_if_parent_not_lcc_or_if_disputed_commit =
              level0
              level1 ->
   let c1, c2, c31, c32, c311, _c321 = commits in
-  let* constants = get_sc_rollup_constants client in
+  let* constants = get_constants client in
   let challenge_window = constants.challenge_window_in_blocks in
   let cement = cement_commitments protocol client sc_rollup in
   let missing_blocks_to_cement = level0 + challenge_window - level1 in
@@ -3774,7 +3714,7 @@ let test_valid_dispute_dissection =
              _level1 ->
   let c1, c2, c31, c32, _c311, _c321 = commits in
   let cement = cement_commitments protocol client sc_rollup in
-  let* constants = get_sc_rollup_constants client in
+  let* constants = get_constants client in
   let challenge_window = constants.challenge_window_in_blocks in
   let commitment_period = constants.commitment_period_in_blocks in
   let* () =
@@ -3839,7 +3779,7 @@ let test_timeout =
   let c1, c2, c31, c32, _c311, _c321 = commits in
   (* A helper function to cement a sequence of commitments. *)
   let cement = cement_commitments protocol client sc_rollup in
-  let* constants = get_sc_rollup_constants client in
+  let* constants = get_constants client in
   let challenge_window = constants.challenge_window_in_blocks in
   let timeout_period = constants.timeout_period_in_blocks in
 
@@ -4026,9 +3966,7 @@ let test_refutation_reward_and_punishment ~kind =
   @@ fun _protocol sc_rollup node client ->
   (* Timeout is the easiest way to end a game, we set timeout period
          low to produce an outcome quickly. *)
-  let* {commitment_period_in_blocks; stake_amount; _} =
-    get_sc_rollup_constants client
-  in
+  let* {commitment_period_in_blocks; stake_amount; _} = get_constants client in
   let punishment = Tez.to_mutez stake_amount in
   let reward = punishment / 2 in
 
@@ -4730,7 +4668,7 @@ let test_messages_processed_by_commitment ~kind =
     ~kind
   @@ fun _protocol sc_rollup_node sc_rollup_client sc_rollup _node client ->
   let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
-  let* {commitment_period_in_blocks; _} = get_sc_rollup_constants client in
+  let* {commitment_period_in_blocks; _} = get_constants client in
   let* genesis_info =
     RPC.Client.call ~hooks client
     @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_genesis_info
@@ -4787,7 +4725,7 @@ let test_recover_bond_of_stakers =
          stake_amount;
          _;
        } =
-    get_sc_rollup_constants tezos_client
+    get_constants tezos_client
   in
   let* predecessor, level =
     last_cemented_commitment_hash_with_level ~sc_rollup tezos_client
@@ -4974,7 +4912,7 @@ let test_migration_cement ~kind ~migrate_from ~migrate_to =
   and scenario_after tezos_client ~sc_rollup
       ((commitment : Sc_rollup_client.commitment), hash) =
     let* {commitment_period_in_blocks = commitment_period; _} =
-      get_sc_rollup_constants tezos_client
+      get_constants tezos_client
     in
     let last_inbox_level = commitment.inbox_level in
     let* current_level = Client.level tezos_client in
@@ -5022,7 +4960,7 @@ let test_migration_recover ~kind ~migrate_from ~migrate_to =
         tezos_client
     in
     let* {challenge_window_in_blocks = challenge_window; _} =
-      get_sc_rollup_constants tezos_client
+      get_constants tezos_client
     in
     let* current_level = Client.level tezos_client in
     let missing_blocks_to_cement =
@@ -5081,7 +5019,7 @@ let test_migration_refute ~kind ~migrate_from ~migrate_to =
   and scenario_after tezos_client ~sc_rollup
       (player_commitment_hash, opponent_commitment_hash) =
     let* {timeout_period_in_blocks = timeout_period; _} =
-      get_sc_rollup_constants tezos_client
+      get_constants tezos_client
     in
     let* () =
       start_refute
@@ -5191,7 +5129,7 @@ let test_migration_removes_dead_games ~kind ~migrate_from ~migrate_to =
     in
 
     let* {timeout_period_in_blocks = timeout_period; _} =
-      get_sc_rollup_constants tezos_client
+      get_constants tezos_client
     in
     let* () =
       repeat (timeout_period + 1) (fun () ->
@@ -5286,7 +5224,7 @@ let test_cont_refute_pre_migration ~kind ~migrate_from ~migrate_to =
     unit
   and scenario_after tezos_client ~sc_rollup () =
     let* {timeout_period_in_blocks = timeout_period; _} =
-      get_sc_rollup_constants tezos_client
+      get_constants tezos_client
     in
     let* Sc_rollup_client.{compressed_state = state_hash; _} =
       Sc_rollup_helpers.genesis_commitment ~sc_rollup tezos_client

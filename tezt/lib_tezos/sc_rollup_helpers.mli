@@ -131,3 +131,17 @@ val genesis_commitment :
     [smart_rollup_node]. *)
 val call_rpc :
   smart_rollup_node:Sc_rollup_node.t -> service:string -> JSON.t Lwt.t
+
+type constants = {
+  origination_size : int;
+  challenge_window_in_blocks : int;
+  stake_amount : Tez.t;
+  commitment_period_in_blocks : int;
+  max_lookahead_in_blocks : int32;
+  max_active_outbox_levels : int32;
+  max_outbox_messages_per_level : int;
+  number_of_sections_in_dissection : int;
+  timeout_period_in_blocks : int;
+}
+
+val get_constants : Client.t -> constants Lwt.t

@@ -244,3 +244,59 @@ let call_rpc ~smart_rollup_node ~service =
   in
   let*! response = RPC.Curl.get url in
   return response
+
+type constants = {
+  origination_size : int;
+  challenge_window_in_blocks : int;
+  stake_amount : Tez.t;
+  commitment_period_in_blocks : int;
+  max_lookahead_in_blocks : int32;
+  max_active_outbox_levels : int32;
+  max_outbox_messages_per_level : int;
+  number_of_sections_in_dissection : int;
+  timeout_period_in_blocks : int;
+}
+
+let get_constants client =
+  let* json =
+    RPC.Client.call client @@ RPC.get_chain_block_context_constants ()
+  in
+  let open JSON in
+  let origination_size = json |-> "smart_rollup_origination_size" |> as_int in
+  let challenge_window_in_blocks =
+    json |-> "smart_rollup_challenge_window_in_blocks" |> as_int
+  in
+  let stake_amount =
+    json |-> "smart_rollup_stake_amount" |> as_string |> Int64.of_string
+    |> Tez.of_mutez_int64
+  in
+  let commitment_period_in_blocks =
+    json |-> "smart_rollup_commitment_period_in_blocks" |> as_int
+  in
+  let max_lookahead_in_blocks =
+    json |-> "smart_rollup_max_lookahead_in_blocks" |> as_int32
+  in
+  let max_active_outbox_levels =
+    json |-> "smart_rollup_max_active_outbox_levels" |> as_int32
+  in
+  let max_outbox_messages_per_level =
+    json |-> "smart_rollup_max_outbox_messages_per_level" |> as_int
+  in
+  let number_of_sections_in_dissection =
+    json |-> "smart_rollup_number_of_sections_in_dissection" |> as_int
+  in
+  let timeout_period_in_blocks =
+    json |-> "smart_rollup_timeout_period_in_blocks" |> as_int
+  in
+  return
+    {
+      origination_size;
+      challenge_window_in_blocks;
+      stake_amount;
+      commitment_period_in_blocks;
+      max_lookahead_in_blocks;
+      max_active_outbox_levels;
+      max_outbox_messages_per_level;
+      number_of_sections_in_dissection;
+      timeout_period_in_blocks;
+    }
