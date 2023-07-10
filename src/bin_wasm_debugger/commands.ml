@@ -511,6 +511,9 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
         Format.fprintf ppf "Waiting for metadata"
     | Reveal_required (Reveal_raw_data hash) ->
         Format.fprintf ppf "Waiting for reveal: %a" Hex.pp @@ Hex.of_string hash
+    | Reveal_required (Reveal_dal _) ->
+        (* TODO *)
+        Format.fprintf ppf "Waiting for reveal dal page@."
 
   (* [show_status tree] show the state of the PVM. *)
   let show_status tree =

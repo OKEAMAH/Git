@@ -431,6 +431,7 @@ let pp_reveal out = function
   | Host_funcs.Reveal_raw_data hash ->
       Format.fprintf out "Reveal_raw_data (%s)" hash
   | Reveal_metadata -> Format.fprintf out "Reveal_metadata"
+  | Reveal_dal _ -> assert false
 
 let pp_page_index out Host_funcs.{published_level; slot_index; page_index} =
   Format.fprintf

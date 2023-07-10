@@ -62,9 +62,16 @@ type output_info = {
 
 type reveal_hash = string
 
+type page_index = Tezos_webassembly_interpreter.Host_funcs.page_index = {
+  published_level : int32;
+  slot_index : int32;
+  page_index : int32;
+}
+
 type reveal = Tezos_webassembly_interpreter.Host_funcs.reveal =
   | Reveal_raw_data of reveal_hash
   | Reveal_metadata
+  | Reveal_dal of page_index
 
 (** Represents the state of input requests. *)
 type input_request =

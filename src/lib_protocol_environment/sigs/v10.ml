@@ -12085,7 +12085,16 @@ type output = {outbox_level : Bounded.Non_negative_int32.t; message_index : Z.t}
 
 type reveal_hash = string
 
-type reveal = Reveal_raw_data of reveal_hash | Reveal_metadata
+type page_index = {
+  published_level : int32;
+  slot_index : int32;
+  page_index : int32;
+}
+
+type reveal =
+  | Reveal_raw_data of reveal_hash
+  | Reveal_metadata
+  | Reveal_dal of page_index
 
 type input_request =
   | No_input_required

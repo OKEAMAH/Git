@@ -11,7 +11,10 @@ type page_index = {
   page_index : int32;
 }
 
-type reveal = Reveal_raw_data of string | Reveal_metadata
+type reveal =
+  | Reveal_raw_data of string
+  | Reveal_metadata
+  | Reveal_dal of page_index
 
 type ticks = Z.t
 
