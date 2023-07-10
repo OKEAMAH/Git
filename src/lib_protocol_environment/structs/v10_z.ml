@@ -23,43 +23,68 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Testing
-    -------
-    Component:  Protocol (rewards)
-    Invocation: dune exec src/proto_alpha/lib_protocol/test/unit/main.exe \
-                 -- --file test_adaptive_inflation.ml
-    Subject:    Test reward values under adaptive inflation
+include Z
+
+module Errors = struct
+  type overflow =
+    | Overflow
+        (** Raised by conversion functions when the value cannot be represented in
+    the destination type.
 *)
 
-open Protocol
-open Alpha_context
+  type division_by_zero =
+    | Division_by_zero
+        (** Raised by division and remainder functions when the divisor is zero.
+*)
 
-let test_reward_coefficient () =
-  let open Lwt_result_wrap_syntax in
-  let csts = Default_parameters.constants_test in
-  let*?@ default =
-    Delegate.Rewards.For_RPC.(
-      reward_from_constants csts ~reward_kind:Baking_reward_fixed_portion)
-  in
-  let*?@ default_times_4 =
-    Delegate.Rewards.For_RPC.(
-      reward_from_constants
-        ~coeff:(Q.of_int 4)
-        csts
-        ~reward_kind:Baking_reward_fixed_portion)
-  in
-  assert (Tez.(equal (mul_exn default 4) default_times_4)) ;
-  return_unit
+  type invalid_arg =
+    | Invalid_argument of string
+        (** Raised by of_string when the argument is not a syntactically correct
+    representation of an integer.
+*)
+end
 
-let tests =
-  Tztest.
-    [
-      tztest
-        "adaptive inflation - application of coefficient to rewards"
-        `Quick
-        test_reward_coefficient;
-    ]
+let catch_overflow f = try Ok (f ()) with Overflow -> Error Errors.Overflow
 
-let () =
-  Alcotest_lwt.run ~__FILE__ Protocol.name [("adaptive inflation", tests)]
-  |> Lwt_main.run
+let catch_division_by_zero f =
+  try Ok (f ()) with Division_by_zero -> Error Errors.Division_by_zero
+
+let catch_invalid_argument f =
+  try Ok (f ())
+  with Invalid_argument err -> Error (Errors.Invalid_argument err)
+
+let div a b = catch_division_by_zero (fun () -> div a b)
+
+let rem a b = catch_division_by_zero (fun () -> rem a b)
+
+let div_rem a b = catch_division_by_zero (fun () -> div_rem a b)
+
+let cdiv a b = catch_division_by_zero (fun () -> cdiv a b)
+
+let fdiv a b = catch_division_by_zero (fun () -> fdiv a b)
+
+let ediv_rem a b = catch_division_by_zero (fun () -> ediv_rem a b)
+
+let ediv a b = catch_division_by_zero (fun () -> ediv a b)
+
+let erem a b = catch_division_by_zero (fun () -> erem a b)
+
+let divexact a b = catch_division_by_zero (fun () -> divexact a b)
+
+let of_float x = catch_overflow (fun () -> of_float x)
+
+let to_int x = catch_overflow (fun () -> to_int x)
+
+let to_int32 x = catch_overflow (fun () -> to_int32 x)
+
+let to_int64 x = catch_overflow (fun () -> to_int64 x)
+
+let to_nativeint x = catch_overflow (fun () -> to_nativeint x)
+
+let popcount x = catch_overflow (fun () -> popcount x)
+
+let hamdist x y = catch_overflow (fun () -> hamdist x y)
+
+let of_string x = catch_invalid_argument (fun () -> of_string x)
+
+let testbit a b = catch_invalid_argument (fun () -> testbit a b)

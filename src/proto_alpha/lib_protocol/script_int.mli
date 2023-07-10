@@ -69,7 +69,7 @@ val to_string : _ num -> string
 (** Conversion from an OCaml [string].
     Returns [None] in case of an invalid notation.
     Supports [+] and [-] sign modifiers, and [0x], [0o] and [0b] base modifiers. *)
-val of_string : string -> z num option
+val of_string : string -> z num tzresult
 
 (** Conversion from an OCaml [int32]. *)
 val of_int32 : int32 -> z num

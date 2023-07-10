@@ -62,7 +62,9 @@ let ( >! ) : _ t -> int -> bool = Compare.Int.( > )
 let of_int_opt t = if t >= 0 && t < saturated then Some t else None
 
 let of_z_opt z =
-  match Z.to_int z with int -> of_int_opt int | exception Z.Overflow -> None
+  let open Option_syntax in
+  let* int = Z.to_int z |> Result.to_option in
+  of_int_opt int
 
 let to_z x = Z.of_int x
 
@@ -162,9 +164,10 @@ let erem x y = x mod y
 let ediv x y = x / y
 
 let sqrt x =
-  of_int_opt x
-  |> Option.map (fun x -> Z.of_int x |> Z.sqrt |> Z.to_int)
-  |> saturate_if_undef
+  let open Option_syntax in
+  saturate_if_undef
+    (let* x = of_int_opt x in
+     Z.of_int x |> Z.sqrt |> Z.to_int |> Result.to_option)
 
 let t_to_z_exn z =
   match of_z_opt z with

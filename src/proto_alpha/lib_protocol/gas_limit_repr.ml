@@ -89,8 +89,8 @@ module Arith = struct
 
   let integral_exn z =
     match Z.to_int z with
-    | i -> integral_of_int_exn i
-    | exception Z.Overflow -> fatally_saturated_z z
+    | Ok i -> integral_of_int_exn i
+    | Error Z.Errors.Overflow -> fatally_saturated_z z
 
   let integral_to_z (i : integral) : Z.t = S.(to_z (ediv i mul_scaling_factor))
 
@@ -121,9 +121,12 @@ module Arith = struct
     Data_encoding.conv integral_to_z integral_exn Data_encoding.z
 
   let unsafe_fp x =
-    match of_int_opt (Z.to_int x) with
-    | Some int -> int
-    | None -> fatally_saturated_z x
+    match Z.to_int x with
+    | Ok i -> (
+        match of_int_opt i with
+        | Some int -> int
+        | None -> fatally_saturated_z x)
+    | Error Z.Errors.Overflow -> fatally_saturated_z x
 
   let sub_opt = S.sub_opt
 end

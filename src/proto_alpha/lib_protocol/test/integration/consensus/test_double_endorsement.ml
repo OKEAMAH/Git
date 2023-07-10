@@ -74,6 +74,7 @@ let double_preendorsement ctxt ?(correct_order = true) op1 op2 =
     delegate and exposed by a double_endorsement operation. Also verify
     that punishment is operated. *)
 let test_valid_double_endorsement_evidence () =
+  let open Lwt_result_wrap_syntax in
   Context.init2 ~consensus_threshold:0 () >>=? fun (genesis, _contracts) ->
   block_fork genesis >>=? fun (blk_1, blk_2) ->
   (* from blk_1 we bake blk_a and from blk_2 we bake blk_b so that
@@ -118,7 +119,7 @@ let test_valid_double_endorsement_evidence () =
   (* Check that [baker] is rewarded with:
      - baking_reward_fixed_portion for baking and,
      - half of the frozen_deposits for including the evidence *)
-  let baking_reward =
+  let*?@ baking_reward =
     Delegate.Rewards.For_RPC.reward_from_constants
       csts.parametric
       ~reward_kind:Baking_reward_fixed_portion

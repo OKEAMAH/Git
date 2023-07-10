@@ -380,10 +380,13 @@ end
 let default_subsidy =
   let open Tezos_protocol_alpha_parameters in
   let c = Default_parameters.constants_test in
-  Tez.to_mutez
-  @@ Delegate.Rewards.For_RPC.reward_from_constants
-       c
-       ~reward_kind:Liquidity_baking_subsidy
+  let subsidy_tez =
+    Result.value ~default:Tez.zero
+    @@ Delegate.Rewards.For_RPC.reward_from_constants
+         c
+         ~reward_kind:Liquidity_baking_subsidy
+  in
+  Tez.to_mutez @@ subsidy_tez
 
 let security_deposit = 640_000_000L
 

@@ -152,12 +152,14 @@ module S = struct
 end
 
 let q_to_float_string q =
+  let open Result_syntax in
   let offset = 1000 in
-  let unit = Z.div q.Q.num q.den in
+  let* unit = Z_result.div q.Q.num q.den in
   let q = Q.(sub q (unit /// Z.one)) in
   let q = Q.(mul q (offset // 1)) in
-  let dec = Z.div q.num q.den in
-  let padded_dec_string = Format.asprintf "%03d" (Z.to_int dec) in
+  let* dec = Z_result.div q.num q.den in
+  let+ dec = Z_result.to_int dec in
+  let padded_dec_string = Format.asprintf "%03d" dec in
   Format.asprintf "%a.%s" Z.pp_print unit padded_dec_string
 
 let current_rewards_per_minute ctxt =
@@ -184,7 +186,7 @@ let current_yearly_rate_value ~formatter ctxt =
   let f = Q.mul f q_min_per_year (* inflation per year *) in
   (* transform into a string *)
   let f = Q.(mul f (100 // 1)) in
-  return (formatter f)
+  formatter f
 
 let collect_expected_rewards ~ctxt =
   let open Lwt_result_syntax in
@@ -193,15 +195,21 @@ let collect_expected_rewards ~ctxt =
   let csts = (Constants.all ctxt).parametric in
   let reward_of_cycle cycle =
     if Cycle.(cycle = ctxt_cycle) then
+      let*? baking_reward_fixed_portion = baking_reward_fixed_portion ctxt in
+      let*? baking_reward_bonus_per_slot = baking_reward_bonus_per_slot ctxt in
+      let*? endorsing_reward_per_slot = endorsing_reward_per_slot ctxt in
+      let*? liquidity_baking_subsidy = liquidity_baking_subsidy ctxt in
+      let*? seed_nonce_revelation_tip = seed_nonce_revelation_tip ctxt in
+      let*? vdf_revelation_tip = vdf_revelation_tip ctxt in
       return
         {
           cycle;
-          baking_reward_fixed_portion = baking_reward_fixed_portion ctxt;
-          baking_reward_bonus_per_slot = baking_reward_bonus_per_slot ctxt;
-          endorsing_reward_per_slot = endorsing_reward_per_slot ctxt;
-          liquidity_baking_subsidy = liquidity_baking_subsidy ctxt;
-          seed_nonce_revelation_tip = seed_nonce_revelation_tip ctxt;
-          vdf_revelation_tip = vdf_revelation_tip ctxt;
+          baking_reward_fixed_portion;
+          baking_reward_bonus_per_slot;
+          endorsing_reward_per_slot;
+          liquidity_baking_subsidy;
+          seed_nonce_revelation_tip;
+          vdf_revelation_tip;
         }
     else
       (* This coeff is correct only when applied to Cycle lesser than
@@ -209,36 +217,39 @@ let collect_expected_rewards ~ctxt =
          not be set and thus we get the default values. *)
       let open Delegate.Rewards.For_RPC in
       let* coeff = get_reward_coeff ctxt ~cycle in
+      let*? baking_reward_fixed_portion =
+        reward_from_constants
+          ~coeff
+          csts
+          ~reward_kind:Baking_reward_fixed_portion
+      in
+      let*? baking_reward_bonus_per_slot =
+        reward_from_constants
+          ~coeff
+          csts
+          ~reward_kind:Baking_reward_bonus_per_slot
+      in
+      let*? endorsing_reward_per_slot =
+        reward_from_constants ~coeff csts ~reward_kind:Endorsing_reward_per_slot
+      in
+      let*? liquidity_baking_subsidy =
+        reward_from_constants ~coeff csts ~reward_kind:Liquidity_baking_subsidy
+      in
+      let*? seed_nonce_revelation_tip =
+        reward_from_constants ~coeff csts ~reward_kind:Seed_nonce_revelation_tip
+      in
+      let*? vdf_revelation_tip =
+        reward_from_constants ~coeff csts ~reward_kind:Vdf_revelation_tip
+      in
       return
         {
           cycle;
-          baking_reward_fixed_portion =
-            reward_from_constants
-              ~coeff
-              csts
-              ~reward_kind:Baking_reward_fixed_portion;
-          baking_reward_bonus_per_slot =
-            reward_from_constants
-              ~coeff
-              csts
-              ~reward_kind:Baking_reward_bonus_per_slot;
-          endorsing_reward_per_slot =
-            reward_from_constants
-              ~coeff
-              csts
-              ~reward_kind:Endorsing_reward_per_slot;
-          liquidity_baking_subsidy =
-            reward_from_constants
-              ~coeff
-              csts
-              ~reward_kind:Liquidity_baking_subsidy;
-          seed_nonce_revelation_tip =
-            reward_from_constants
-              ~coeff
-              csts
-              ~reward_kind:Seed_nonce_revelation_tip;
-          vdf_revelation_tip =
-            reward_from_constants ~coeff csts ~reward_kind:Vdf_revelation_tip;
+          baking_reward_fixed_portion;
+          baking_reward_bonus_per_slot;
+          endorsing_reward_per_slot;
+          liquidity_baking_subsidy;
+          seed_nonce_revelation_tip;
+          vdf_revelation_tip;
         }
   in
   let queried_cycles =
@@ -255,9 +266,10 @@ let register () =
       let cycle = (Level.current ctxt).cycle in
       Stake_distribution.get_total_frozen_stake ctxt cycle) ;
   register0 ~chunked:false S.current_yearly_rate (fun ctxt () () ->
-      current_yearly_rate_value ~formatter:q_to_float_string ctxt) ;
+      let formatter q = Lwt.return @@ q_to_float_string q in
+      current_yearly_rate_value ~formatter ctxt) ;
   register0 ~chunked:false S.current_yearly_rate_exact (fun ctxt () () ->
-      current_yearly_rate_value ~formatter:(fun x -> x) ctxt) ;
+      current_yearly_rate_value ~formatter:return ctxt) ;
   register0 ~chunked:false S.current_rewards_per_minute (fun ctxt () () ->
       let* f = current_rewards_per_minute ctxt in
       return (Tez.of_mutez_exn (Q.to_int64 f))) ;

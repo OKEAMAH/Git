@@ -132,4 +132,11 @@ module V9 = struct
   module Seq = V9_seq_monad
 end
 
-module V10 = V9
+module V10 = struct
+  module Data_encoding = V8_data_encoding
+  module Error_monad_infix_globals = V0_error_monad_infix_globals
+  module Array = V7_array
+  module Plonk = V8_plonk
+  module Seq = V9_seq_monad
+  module Z = V10_z
+end

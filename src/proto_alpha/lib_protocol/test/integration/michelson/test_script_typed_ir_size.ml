@@ -206,7 +206,7 @@ let check_value_size () =
            ~error
            "13270006022583112970 : int"
            Int_t
-           (get @@ Script_int.of_string "13270006022583112970");
+           (is_ok @@ Script_int.of_string "13270006022583112970");
        ]
        @ exs ~error nsample show_script_int Int_t ": int")
     (*

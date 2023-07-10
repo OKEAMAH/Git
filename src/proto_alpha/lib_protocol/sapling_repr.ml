@@ -80,9 +80,9 @@ module Memo_size = struct
      ^ ")")
 
   let parse_z z =
-    if Compare.Z.(Z.zero <= z) && Compare.Z.(z <= max_uint16_z) then
-      Ok (Z.to_int z)
-    else err
+    match Z.to_int z with
+    | Ok x when Compare.Z.(Z.zero <= z) && Compare.Z.(z <= max_uint16_z) -> Ok x
+    | Ok _ | Error Z.Errors.Overflow -> err
 
   let unparse_to_z = Z.of_int
 

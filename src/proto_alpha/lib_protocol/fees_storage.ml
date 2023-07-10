@@ -99,7 +99,8 @@ let burn_storage_fees ?(origin = Receipt_repr.Block_application) c
   if Compare.Z.(remaining < Z.zero) then tzfail Operation_quota_exceeded
   else
     let cost_per_byte = Constants_storage.cost_per_byte c in
-    Tez_repr.(cost_per_byte *? Z.to_int64 consumed) >>?= fun to_burn ->
+    Z_result.to_int64 consumed >>?= fun consumed ->
+    Tez_repr.(cost_per_byte *? consumed) >>?= fun to_burn ->
     (* Burning the fees... *)
     if Tez_repr.(to_burn = Tez_repr.zero) then
       (* If the payer was deleted by transferring all its balance, and no space
@@ -118,7 +119,8 @@ let burn_storage_increase_fees ?(origin = Receipt_repr.Block_application) c
   if Compare.Z.(amount_in_bytes <= Z.zero) then tzfail Negative_storage_input
   else
     let cost_per_byte = Constants_storage.cost_per_byte c in
-    Tez_repr.(cost_per_byte *? Z.to_int64 amount_in_bytes) >>?= fun to_burn ->
+    Z_result.to_int64 amount_in_bytes >>?= fun amount_in_bytes ->
+    Tez_repr.(cost_per_byte *? amount_in_bytes) >>?= fun to_burn ->
     (* Burning the fees... *)
     trace
       Cannot_pay_storage_fee

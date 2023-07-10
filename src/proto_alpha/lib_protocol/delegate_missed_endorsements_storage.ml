@@ -27,6 +27,7 @@
 
 let expected_slots_for_given_active_stake ctxt ~total_active_stake_weight
     ~active_stake_weight =
+  let open Result_syntax in
   let blocks_per_cycle =
     Int32.to_int (Constants_storage.blocks_per_cycle ctxt)
   in
@@ -36,12 +37,14 @@ let expected_slots_for_given_active_stake ctxt ~total_active_stake_weight
   let number_of_endorsements_per_cycle =
     blocks_per_cycle * consensus_committee_size
   in
-  Z.to_int
-    (Z.div
-       (Z.mul
-          (Z.of_int64 active_stake_weight)
-          (Z.of_int number_of_endorsements_per_cycle))
-       (Z.of_int64 total_active_stake_weight))
+  let* res =
+    Z_result.div
+      (Z.mul
+         (Z.of_int64 active_stake_weight)
+         (Z.of_int number_of_endorsements_per_cycle))
+      (Z.of_int64 total_active_stake_weight)
+  in
+  Z_result.to_int res
 
 type level_participation = Participated | Didn't_participate
 
@@ -49,6 +52,7 @@ type level_participation = Participated | Didn't_participate
    recorded in the next cycle. *)
 let record_endorsing_participation ctxt ~delegate ~participation
     ~endorsing_power =
+  let open Lwt_result_syntax in
   match participation with
   | Participated -> Stake_storage.set_active ctxt delegate
   | Didn't_participate -> (
@@ -78,7 +82,7 @@ let record_endorsing_participation ctxt ~delegate ~participation
           | Some active_stake ->
               Stake_storage.get_total_active_stake ctxt level.cycle
               >>=? fun total_active_stake ->
-              let expected_slots =
+              let*? expected_slots =
                 let active_stake_weight =
                   Stake_context.staking_weight ctxt active_stake
                 in
@@ -157,6 +161,7 @@ type participation_info = {
 
 (* Inefficient, only for RPC *)
 let participation_info ctxt delegate =
+  let open Lwt_result_syntax in
   let level = Level_storage.current ctxt in
   Stake_storage.get_selected_distribution ctxt level.cycle
   >>=? fun stake_distribution ->
@@ -180,7 +185,7 @@ let participation_info ctxt delegate =
   | Some active_stake ->
       Stake_storage.get_total_active_stake ctxt level.cycle
       >>=? fun total_active_stake ->
-      let expected_cycle_activity =
+      let*? expected_cycle_activity =
         let active_stake_weight =
           Stake_context.staking_weight ctxt active_stake
         in
@@ -195,7 +200,7 @@ let participation_info ctxt delegate =
       let Ratio_repr.{numerator; denominator} =
         Constants_storage.minimal_participation_ratio ctxt
       in
-      let endorsing_reward_per_slot =
+      let*? endorsing_reward_per_slot =
         Delegate_rewards.endorsing_reward_per_slot ctxt
       in
       let minimal_cycle_activity =

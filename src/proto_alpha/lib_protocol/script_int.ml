@@ -49,15 +49,18 @@ let one_n = Num_tag Z.one
 
 let to_string (Num_tag x) = Z.to_string x
 
-let of_string s = Option.catch (fun () -> Num_tag (Z.of_string s))
+let of_string s =
+  let open Result_syntax in
+  let+ x = Z_result.of_string s in
+  Num_tag x
 
 let of_int32 n = Num_tag (Z.of_int64 @@ Int64.of_int32 n)
 
-let to_int64 (Num_tag x) = Option.catch (fun () -> Z.to_int64 x)
+let to_int64 (Num_tag x) = Z.to_int64 x |> Result.to_option
 
 let of_int64 n = Num_tag (Z.of_int64 n)
 
-let to_int (Num_tag x) = Option.catch (fun () -> Z.to_int x)
+let to_int (Num_tag x) = Z.to_int x |> Result.to_option
 
 let of_int n = Num_tag (Z.of_int n)
 
@@ -72,11 +75,10 @@ let sub (Num_tag x) (Num_tag y) = Num_tag (Z.sub x y)
 let mul (Num_tag x) (Num_tag y) = Num_tag (Z.mul x y)
 
 let ediv (Num_tag x) (Num_tag y) =
-  let ediv_tagged x y =
-    let quo, rem = Z.ediv_rem x y in
-    (Num_tag quo, Num_tag rem)
-  in
-  Option.catch (fun () -> ediv_tagged x y)
+  let open Result_syntax in
+  Result.to_option
+  @@ let+ quo, rem = Z.ediv_rem x y in
+     (Num_tag quo, Num_tag rem)
 
 let add_n = add
 
@@ -96,16 +98,18 @@ let neg (Num_tag x) = Num_tag (Z.neg x)
 let int (Num_tag x) = Num_tag x
 
 let shift_left (Num_tag x) (Num_tag y) =
+  let open Option_syntax in
   if Compare.Int.(Z.compare y (Z.of_int 256) > 0) then None
   else
-    let y = Z.to_int y in
-    Some (Num_tag (Z.shift_left x y))
+    let+ y = Z.to_int y |> Result.to_option in
+    Num_tag (Z.shift_left x y)
 
 let shift_right (Num_tag x) (Num_tag y) =
+  let open Option_syntax in
   if Compare.Int.(Z.compare y (Z.of_int 256) > 0) then None
   else
-    let y = Z.to_int y in
-    Some (Num_tag (Z.shift_right x y))
+    let+ y = Z.to_int y |> Result.to_option in
+    Num_tag (Z.shift_right x y)
 
 let shift_left_n = shift_left
 

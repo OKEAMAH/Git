@@ -43,8 +43,8 @@ let encoding_for_errors = Data_encoding.z
 module Internal_for_injection = struct
   let of_string s =
     match Z.of_string s with
-    | exception _ -> None
-    | z -> if z < Z.zero then None else Some z
+    | Error (Z.Errors.Invalid_argument _) -> None
+    | Ok z -> if z < Z.zero then None else Some z
 end
 
 module Internal_for_tests = struct
@@ -52,7 +52,7 @@ module Internal_for_tests = struct
     assert (Compare.Int.(i >= 0)) ;
     Z.of_int i
 
-  let to_int = Z.to_int
+  let to_int = Z_result.to_int
 
   let add c i =
     let c = Z.(add c (of_int i)) in

@@ -49,10 +49,24 @@
 type t
 (** Type of integers of arbitrary length. *)
 
-exception Overflow
+module Errors : sig
+  type overflow =
+  | Overflow
 (** Raised by conversion functions when the value cannot be represented in
     the destination type.
- *)
+*)
+
+  type division_by_zero =
+  | Division_by_zero
+(** Raised by division and remainder functions when the divisor is zero.
+*)
+
+  type invalid_arg =
+  | Invalid_argument of string
+(** Raised by of_string when the argument is not a syntactically correct
+    representation of an integer.
+*)
+end
 
 (** {1 Construction} *)
 
@@ -74,7 +88,7 @@ external of_int32: int32 -> t = "ml_z_of_int32"
 external of_int64: int64 -> t = "ml_z_of_int64"
 (** Converts from a 64-bit integer. *)
 
-val of_string: string -> t
+val of_string: string -> (t, Errors.invalid_arg) result
 (** Converts a string to an integer.
     An optional [-] prefix indicates a negative number, while a [+]
     prefix is ignored.
@@ -83,8 +97,8 @@ val of_string: string -> t
     represented, in hexadecimal, octal, or binary, respectively.
     Otherwise, base 10 is assumed.
     (Unlike C, a lone [0] prefix does not denote octal.)
-    Raises an [Invalid_argument] exception if the string is not a
-    syntactically correct representation of an integer.
+    Returns [Error (Invalid_arument _)] if the string is not a syntactically
+    correct representation of an integer.
  *)
 
 val of_substring : string -> pos:int -> len:int -> t
@@ -129,54 +143,54 @@ val sub: t -> t -> t
 val mul: t -> t -> t
 (** Multiplication. *)
 
-val div: t -> t -> t
+val div: t -> t -> (t, Errors.division_by_zero) result
 (** Integer division. The result is truncated towards zero
     and obeys the rule of signs.
-    Raises [Division_by_zero] if the divisor (second argument) is 0.
+    Returns [Error Division_by_zero] if the divisor (second argument) is 0.
  *)
 
-val rem: t -> t -> t
-(** Integer remainder. Can raise a [Division_by_zero].
+val rem: t -> t -> (t, Errors.division_by_zero) result
+(** Integer remainder. Can return [Error Division_by_zero].
     The result of [rem a b] has the sign of [a], and its absolute value is
     strictly smaller than the absolute value of [b].
     The result satisfies the equality [a = b * div a b + rem a b].
  *)
 
-external div_rem: t -> t -> (t * t) = "ml_z_div_rem"
+val div_rem: t -> t -> (t * t, Errors.division_by_zero) result
 (** Computes both the integer quotient and the remainder.
     [div_rem a b] is equal to [(div a b, rem a b)].
     Raises [Division_by_zero] if [b = 0].
  *)
 
-external cdiv: t -> t -> t = "ml_z_cdiv"
+val cdiv: t -> t -> (t, Errors.division_by_zero) result
 (** Integer division with rounding towards +oo (ceiling).
     Can raise a [Division_by_zero].
  *)
 
-external fdiv: t -> t -> t = "ml_z_fdiv"
+val fdiv: t -> t -> (t, Errors.division_by_zero) result
 (** Integer division with rounding towards -oo (floor).
     Can raise a [Division_by_zero].
  *)
 
-val ediv_rem: t -> t -> (t * t)
+val ediv_rem: t -> t -> (t * t, Errors.division_by_zero) result
 (** Euclidean division and remainder.  [ediv_rem a b] returns a pair [(q, r)]
     such that [a = b * q + r] and [0 <= r < |b|].
     Raises [Division_by_zero] if [b = 0].
  *)
 
-val ediv: t -> t -> t
+val ediv: t -> t -> (t, Errors.division_by_zero) result
 (** Euclidean division. [ediv a b] is equal to [fst (ediv_rem a b)].
     The result satisfies [0 <= a - b * ediv a b < |b|].
     Raises [Division_by_zero] if [b = 0].
  *)
 
-val erem: t -> t -> t
+val erem: t -> t -> (t, Errors.division_by_zero) result
 (** Euclidean remainder.  [erem a b] is equal to [snd (ediv_rem a b)].
     The result satisfies [0 <= erem a b < |b|] and
     [a = b * ediv a b + erem a b].  Raises [Division_by_zero] if [b = 0].
  *)
 
-val divexact: t -> t -> t
+val divexact: t -> t -> (t, Errors.division_by_zero) result
 (** [divexact a b] divides [a] by [b], only producing correct result when the
     division is exact, i.e., when [b] evenly divides [a].
     It should be faster than general division.
@@ -253,19 +267,19 @@ external trailing_zeros: t -> int = "ml_z_trailing_zeros" [@@noalloc]
     Note that [trailing_zeros] is defined for negative arguments,
     and that [trailing_zeros (-x) = trailing_zeros x]. *)
 
-val testbit: t -> int -> bool
+val testbit: t -> int -> (bool, Errors.invalid_arg) result
 (** [testbit x n] return the value of bit number [n] in [x]:
     [true] if the bit is 1, [false] if the bit is 0.
     Bits are numbered from 0.  Raise [Invalid_argument] if [n]
     is negative. *)
 
-external popcount: t -> int = "ml_z_popcount"
+val popcount: t -> (int, Errors.overflow) result
 (** Counts the number of bits set.
     Raises [Overflow] for negative arguments, as those have an infinite
     number of bits set.
  *)
 
-external hamdist: t -> t -> int = "ml_z_hamdist"
+val hamdist: t -> t -> (int, Errors.overflow) result
 (** Counts the number of different bits.
     Raises [Overflow] if the arguments have different signs
     (in which case the distance is infinite).
@@ -277,14 +291,14 @@ external hamdist: t -> t -> int = "ml_z_hamdist"
     converted value, an [Overflow] exception is raised.
  *)
 
-val to_int: t -> int
-(** Converts to a base integer. May raise an [Overflow]. *)
+val to_int: t -> (int, Errors.overflow) result
+(** Converts to a base integer. *)
 
-external to_int32: t -> int32 = "ml_z_to_int32"
-(** Converts to a 32-bit integer. May raise [Overflow]. *)
+val to_int32: t -> (int32, Errors.overflow) result
+(** Converts to a 32-bit integer. *)
 
-external to_int64: t -> int64 = "ml_z_to_int64"
-(** Converts to a 64-bit integer. May raise [Overflow]. *)
+val to_int64: t -> (int64, Errors.overflow) result
+(** Converts to a 64-bit integer. *)
 
 val to_string: t -> string
 (** Gives a human-readable, decimal string representation of the argument. *)

@@ -27,6 +27,31 @@
 
 include Tez_repr
 
-let of_int64 x = one_mutez *? x
-
 let to_int64 = to_mutez
+
+type error += Overflow
+
+let () =
+  let open Data_encoding in
+  register_error_kind
+    `Temporary
+    ~id:"staking_pseudotoken_overflow"
+    ~title:"Overflowing pseudotoken conversion"
+    ~pp:(fun ppf () -> Format.fprintf ppf "Overflowing pseudotoken conversion")
+    ~description:
+      "Pseudotokens are non-negative int64 numbers, a conversion to \
+       pseudotoken outside the representible range was attempted."
+    unit
+    (function Overflow -> Some () | _ -> None)
+    (fun () -> Overflow)
+
+let of_int64 x =
+  if Compare.Int64.(x < 0L) then error Overflow else ok @@ of_mutez_exn x
+
+let of_z x =
+  let open Result_syntax in
+  record_trace Overflow
+  @@ let* x = Z_result.to_int64 x in
+     of_int64 x
+
+let to_z x = Z.of_int64 (to_int64 x)

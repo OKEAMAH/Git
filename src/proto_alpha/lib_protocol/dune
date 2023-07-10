@@ -33,6 +33,7 @@
   -open Tezos_protocol_environment_alpha.Error_monad)
  (modules
   Misc
+  Z_result
   Non_empty_string
   Path_encoding
   Storage_description
@@ -298,6 +299,7 @@
  (alias runtest_compile_protocol)
  (deps
   misc.ml misc.mli
+  z_result.ml z_result.mli
   non_empty_string.ml non_empty_string.mli
   path_encoding.ml path_encoding.mli
   storage_description.ml storage_description.mli
@@ -568,6 +570,7 @@
  (targets functor.ml)
  (deps
   misc.ml misc.mli
+  z_result.ml z_result.mli
   non_empty_string.ml non_empty_string.mli
   path_encoding.ml path_encoding.mli
   storage_description.ml storage_description.mli
@@ -822,6 +825,7 @@
  (targets registerer.ml)
  (deps
   misc.ml misc.mli
+  z_result.ml z_result.mli
   non_empty_string.ml non_empty_string.mli
   path_encoding.ml path_encoding.mli
   storage_description.ml storage_description.mli

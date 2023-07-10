@@ -27,11 +27,17 @@
     It represents a share of the total frozen deposits of a baker. *)
 type t
 
+type error += Overflow
+
 val encoding : t Data_encoding.t
 
 val zero : t
 
 val of_int64 : int64 -> t tzresult
+
+val of_z : Z.t -> t tzresult
+
+val to_z : t -> Z.t
 
 val to_int64 : t -> int64
 

@@ -79,6 +79,8 @@ val to_mutez : t -> int64
 (** [of_mutez n] (micro tez) is None if n is negative *)
 val of_mutez : int64 -> t option
 
+val of_z : Z.t -> t tzresult
+
 (** [of_mutez_exn n] fails if n is negative.
     It should only be used at toplevel for constants. *)
 val of_mutez_exn : int64 -> t

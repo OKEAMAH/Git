@@ -1406,7 +1406,7 @@ let parse_uint ~nb_bits =
   function
   | Micheline.Int (_, n) when Compare.Z.(Z.zero <= n) && Compare.Z.(n <= max_z)
     ->
-      ok (Z.to_int n)
+      Z_result.to_int n
   | node ->
       error
       @@ Invalid_syntactic_constant
@@ -1485,16 +1485,13 @@ let parse_nat ctxt :
   | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr)
 
 let parse_mutez ctxt : Script.node -> (Tez.t * context) tzresult = function
-  | Int (loc, v) as expr -> (
-      match
-        let open Option in
-        bind (catch (fun () -> Z.to_int64 v)) Tez.of_mutez
-      with
-      | Some tez -> Ok (tez, ctxt)
-      | None ->
-          error
-          @@ Invalid_syntactic_constant
-               (loc, strip_locations expr, "a valid mutez amount"))
+  | Int (loc, v) as expr ->
+      let open Result_syntax in
+      record_trace_eval (fun () ->
+          Invalid_syntactic_constant
+            (loc, strip_locations expr, "a valid mutez amount"))
+      @@ let+ tez = Tez.of_z v in
+         (tez, ctxt)
   | expr -> error @@ Invalid_kind (location expr, [Int_kind], kind expr)
 
 let parse_timestamp ctxt :

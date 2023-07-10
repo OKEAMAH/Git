@@ -421,13 +421,9 @@ let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
       Signature.Public_key_hash.(sender = destination)
       Invalid_self_transaction_destination
   in
-  let requested_amount_opt =
-    if Z.fits_int64 requested_amount then
-      Tez.of_mutez (Z.to_int64 requested_amount)
-    else None
-  in
+  let*? requested_amount_int64 = Z_result.to_int64 requested_amount in
   let*? requested_amount =
-    match requested_amount_opt with
+    match Tez.of_mutez requested_amount_int64 with
     | None -> error (Invalid_unstake_request_amount {requested_amount})
     | Some requested_amount -> Ok requested_amount
   in
@@ -493,11 +489,11 @@ let apply_set_delegate_parameters ~ctxt ~sender ~destination
   in
   let* is_delegate = Contract.is_delegate ctxt sender in
   let*? () = error_unless is_delegate Invalid_staking_parameters_sender in
-  let staking_over_baking_limit_millionth =
-    Z.to_int32 staking_over_baking_limit_millionth
+  let*? staking_over_baking_limit_millionth =
+    Z_result.to_int32 staking_over_baking_limit_millionth
   in
-  let baking_over_staking_edge_billionth =
-    Z.to_int32 baking_over_staking_edge_billionth
+  let*? baking_over_staking_edge_billionth =
+    Z_result.to_int32 baking_over_staking_edge_billionth
   in
   let*? t =
     Staking_parameters_repr.make
@@ -2157,6 +2153,7 @@ let punish_double_baking ctxt (bh1 : Block_header.t) ~payload_producer =
 let apply_contents_list (type kind) ctxt chain_id (mode : mode)
     ~payload_producer ~operation (contents_list : kind contents_list) :
     (context * kind contents_result_list) tzresult Lwt.t =
+  let open Lwt_result_syntax in
   let mempool_mode =
     match mode with
     | Partial_construction _ -> true
@@ -2184,7 +2181,7 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
   | Single (Seed_nonce_revelation {level; nonce}) ->
       let level = Level.from_raw ctxt level in
       Nonce.reveal ctxt level nonce >>=? fun ctxt ->
-      let tip = Delegate.Rewards.seed_nonce_revelation_tip ctxt in
+      let*? tip = Delegate.Rewards.seed_nonce_revelation_tip ctxt in
       let delegate = payload_producer.Consensus_key.delegate in
       Delegate.Staking_parameters.pay_rewards
         ctxt
@@ -2195,7 +2192,7 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
       (ctxt, Single_result (Seed_nonce_revelation_result balance_updates))
   | Single (Vdf_revelation {solution}) ->
       Seed.update_seed ctxt solution >>=? fun ctxt ->
-      let tip = Delegate.Rewards.vdf_revelation_tip ctxt in
+      let*? tip = Delegate.Rewards.vdf_revelation_tip ctxt in
       let delegate = payload_producer.Consensus_key.delegate in
       let receiver =
         if Constants.freeze_rewards ctxt then `Frozen_deposits delegate
@@ -2312,6 +2309,7 @@ let may_start_new_cycle ctxt =
       (ctxt, balance_updates, deactivated)
 
 let apply_liquidity_baking_subsidy ctxt ~per_block_vote =
+  let open Lwt_result_syntax in
   Liquidity_baking.on_subsidy_allowed
     ctxt
     ~per_block_vote
@@ -2328,13 +2326,12 @@ let apply_liquidity_baking_subsidy ctxt ~per_block_vote =
         Gas.set_limit
           ctxt
           (Gas.Arith.integral_exn
-             (Z.div
+             (Z_result.div20
                 (Gas.Arith.integral_to_z
-                   (Constants.hard_gas_limit_per_block ctxt))
-                (Z.of_int 20)))
+                   (Constants.hard_gas_limit_per_block ctxt))))
       in
       let backtracking_ctxt = ctxt in
-      (let liquidity_baking_subsidy =
+      (let*? liquidity_baking_subsidy =
          Delegate.Rewards.liquidity_baking_subsidy ctxt
        in
        (* credit liquidity baking subsidy to CPMM contract *)
@@ -2717,7 +2714,7 @@ let finalize_application ctxt block_data_contents ~round ~predecessor_hash
       return (ctxt, Some rewards_bonus)
     else return (ctxt, None)
   in
-  let baking_reward = Delegate.Rewards.baking_reward_fixed_portion ctxt in
+  let*? baking_reward = Delegate.Rewards.baking_reward_fixed_portion ctxt in
   let* ctxt, baking_receipts =
     Delegate.record_baking_activity_and_pay_rewards_and_fees
       ctxt

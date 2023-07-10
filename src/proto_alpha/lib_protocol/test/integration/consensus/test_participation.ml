@@ -121,6 +121,7 @@ let test_participation ~sufficient_participation () =
    returned by the '../delegates/<pkh>/participation' RPC for the
    non-participating account. *)
 let test_participation_rpc () =
+  let open Lwt_result_wrap_syntax in
   let n_accounts = 2 in
   Context.init2 ~consensus_threshold:1 () >>=? fun (b0, (account1, account2)) ->
   let del1 = Context.Contract.pkh account1 in
@@ -137,7 +138,7 @@ let test_participation_rpc () =
     expected_cycle_activity * numerator / denominator
   in
   let allowed_missed_slots = expected_cycle_activity - minimal_cycle_activity in
-  let endorsing_reward_per_slot =
+  let*?@ endorsing_reward_per_slot =
     Alpha_context.Delegate.Rewards.For_RPC.reward_from_constants
       csts.parametric
       ~reward_kind:Endorsing_reward_per_slot

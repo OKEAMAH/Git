@@ -255,7 +255,7 @@ let raw_level_offset_of_round round_durations ~round =
     in
     if Compare.Z.(sum_durations > Z.of_int64 Int64.max_int) then
       error (Round_too_high round)
-    else ok (Z.to_int64 sum_durations)
+    else Z_result.to_int64 sum_durations
 
 type error += Level_offset_too_high of Period_repr.t
 

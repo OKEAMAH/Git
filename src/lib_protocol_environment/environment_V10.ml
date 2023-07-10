@@ -282,7 +282,7 @@ struct
     let sha3_512 msg = Tezos_crypto.Hacl.Hash.SHA3_512.digest msg
   end
 
-  module Z = Z
+  module Z = Tezos_protocol_environment_structs.V10.Z
   module Q = Q
   module Lwt = Lwt
 

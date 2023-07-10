@@ -34,12 +34,16 @@ let of_int64 i = Timestamp_tag (Z.of_int64 i)
 
 let of_string x =
   match Time_repr.of_notation x with
-  | None -> Option.catch (fun () -> Timestamp_tag (Z.of_string x))
+  | None -> (
+      match Z.of_string x with
+      | Ok x -> Some (Timestamp_tag x)
+      | Error (Z.Errors.Invalid_argument _) -> None)
   | Some time -> Some (of_int64 (Time_repr.to_seconds time))
 
 let to_notation (Timestamp_tag x) =
-  Option.catch (fun () ->
-      Time_repr.to_notation (Time.of_seconds (Z.to_int64 x)))
+  match Z.to_int64 x with
+  | Ok t -> Some (Time_repr.to_notation (Time.of_seconds t))
+  | Error Z.Errors.Overflow -> None
 
 let to_num_str (Timestamp_tag x) = Z.to_string x
 

@@ -886,7 +886,9 @@ module Raw = struct
             let length = Script_int.to_zint length in
             if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
             then
-              let s = Script_string.sub s (Z.to_int offset) (Z.to_int length) in
+              Z_result.to_int length >>?= fun length ->
+              Z_result.to_int offset >>?= fun offset ->
+              let s = Script_string.sub s offset length in
               (step [@ocaml.tailcall]) g gas k ks (Some s) stack
             else (step [@ocaml.tailcall]) g gas k ks None stack
         | IString_size (_, k) ->
@@ -919,7 +921,9 @@ module Raw = struct
             let length = Script_int.to_zint length in
             if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
             then
-              let s = Bytes.sub s (Z.to_int offset) (Z.to_int length) in
+              Z_result.to_int length >>?= fun length ->
+              Z_result.to_int offset >>?= fun offset ->
+              let s = Bytes.sub s offset length in
               (step [@ocaml.tailcall]) g gas k ks (Some s) stack
             else (step [@ocaml.tailcall]) g gas k ks None stack
         | IBytes_size (_, k) ->

@@ -72,6 +72,7 @@ module M = struct
 
   let reward_from_constants ~(csts : Constants_parametric_repr.t) ~reward_kind
       ~(coeff : Q.t) =
+    let open Result_syntax in
     let reward_weights = csts.reward_weights in
     let weight =
       match reward_kind with
@@ -109,8 +110,11 @@ module M = struct
       | _ -> rewards
     in
     let mutez_base_rewards = Tez_repr.to_mutez base_rewards |> Z.of_int64 in
-    let mutez_rewards = Z.(div (mul mutez_base_rewards coeff.num) coeff.den) in
-    Tez_repr.of_mutez_exn (Z.to_int64 mutez_rewards)
+    let* mutez_rewards =
+      Z_result.(div Z.(mul mutez_base_rewards coeff.num) coeff.den)
+    in
+    let+ mutez_rewards = Z_result.to_int64 mutez_rewards in
+    Tez_repr.of_mutez_exn mutez_rewards
 end
 
 open M

@@ -445,12 +445,13 @@ let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
      in case a message for the rollup, outbox-level and message index has
      already been executed. The storage diff returned may be negative.
   *)
+  let*? message_index = Z_result.to_int message_index in
   let* applied_msg_size_diff, ctxt =
     Sc_rollup.Outbox.record_applied_message
       ctxt
       rollup
       outbox_level
-      ~message_index:(Z.to_int message_index)
+      ~message_index
   in
   (* TODO: #3121
      Implement a more refined model. For instance a water-mark based one.

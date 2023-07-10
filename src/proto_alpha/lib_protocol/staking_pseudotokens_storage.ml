@@ -25,6 +25,7 @@
 
 let pseudotokens_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
     ~tez_amount =
+  let open Result_syntax in
   if Tez_repr.(frozen_deposits_tez = zero) then (
     (* When there are no frozen deposits, starts with 1 pseudotoken = 1 mutez. *)
     assert (Staking_pseudotoken_repr.(frozen_deposits_pseudotokens = zero)) ;
@@ -38,19 +39,20 @@ let pseudotokens_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
         (Staking_pseudotoken_repr.to_int64 frozen_deposits_pseudotokens)
     in
     let tez_amount_z = Z.of_int64 (Tez_repr.to_mutez tez_amount) in
-    let res_z =
-      Z.div
+    let* res_z =
+      Z_result.div
         (Z.mul tez_amount_z frozen_deposits_pseudotokens_z)
         frozen_deposits_tez_z
     in
-    Staking_pseudotoken_repr.of_int64 (Z.to_int64 res_z)
+    Staking_pseudotoken_repr.of_z res_z
 
 let tez_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
     ~pseudotoken_amount =
+  let open Result_syntax in
   if Staking_pseudotoken_repr.(frozen_deposits_pseudotokens = zero) then (
     (* When there are no frozen deposits, starts with 1 mutez = 1 pseudotoken. *)
     assert (Tez_repr.(frozen_deposits_tez = zero)) ;
-    Tez_repr.of_mutez_exn (Staking_pseudotoken_repr.to_int64 pseudotoken_amount))
+    Tez_repr.of_z (Staking_pseudotoken_repr.to_z pseudotoken_amount))
   else
     let frozen_deposits_tez_z =
       Z.of_int64 (Tez_repr.to_mutez frozen_deposits_tez)
@@ -62,12 +64,12 @@ let tez_of ~frozen_deposits_pseudotokens ~frozen_deposits_tez
     let pseudotoken_amount_z =
       Z.of_int64 (Staking_pseudotoken_repr.to_int64 pseudotoken_amount)
     in
-    let res_z =
-      Z.div
+    let* res_z =
+      Z_result.div
         (Z.mul frozen_deposits_tez_z pseudotoken_amount_z)
         frozen_deposits_pseudotokens_z
     in
-    Tez_repr.of_mutez_exn (Z.to_int64 res_z)
+    Tez_repr.of_z res_z
 
 let update_frozen_deposits_pseudotokens ~f ctxt delegate =
   let open Lwt_result_syntax in
@@ -147,11 +149,11 @@ let debit_frozen_deposits_pseudotokens ctxt delegate pseudotoken_amount =
   else
     let f ~frozen_deposits_pseudotokens ~frozen_deposits_tez =
       let open Result_syntax in
-      let+ new_pseudotokens_balance =
+      let* new_pseudotokens_balance =
         Staking_pseudotoken_repr.(
           frozen_deposits_pseudotokens -? pseudotoken_amount)
       in
-      let tez_amount =
+      let+ tez_amount =
         tez_of
           ~frozen_deposits_pseudotokens
           ~frozen_deposits_tez
@@ -188,13 +190,16 @@ let costaking_balance_as_tez ctxt ~contract ~delegate =
     match frozen_deposits_pseudotokens_opt with
     | Some frozen_deposits_pseudotokens
       when Staking_pseudotoken_repr.(frozen_deposits_pseudotokens <> zero) ->
-        let+ {current_amount = frozen_deposits_tez; initial_amount = _} =
+        let* {current_amount = frozen_deposits_tez; initial_amount = _} =
           Frozen_deposits_storage.get ctxt delegate_contract
         in
-        tez_of
-          ~frozen_deposits_pseudotokens
-          ~frozen_deposits_tez
-          ~pseudotoken_amount
+        let*? res =
+          tez_of
+            ~frozen_deposits_pseudotokens
+            ~frozen_deposits_tez
+            ~pseudotoken_amount
+        in
+        return res
     | _ -> assert false
 
 let update_costaking_pseudotokens ~f ctxt contract =

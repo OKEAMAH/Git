@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +23,24 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = Z.t
+type error += Overflow | Division_by_zero | Invalid_argument of string
 
-type error += Invalid_position of int
+val to_int : Z.t -> int tzresult
 
-let encoding = Data_encoding.z
+val to_int32 : Z.t -> int32 tzresult
 
-let empty = Z.zero
+val to_int64 : Z.t -> int64 tzresult
 
-let mem field pos =
-  error_when Compare.Int.(pos < 0) (Invalid_position pos) >>? fun () ->
-  Z_result.testbit field pos
+val testbit : Z.t -> int -> bool tzresult
 
-let add field pos =
-  error_when Compare.Int.(pos < 0) (Invalid_position pos) >>? fun () ->
-  ok @@ Z.logor field Z.(shift_left one pos)
+val div : Z.t -> Z.t -> Z.t tzresult
 
-let from_list positions = List.fold_left_e add empty positions
+val div2 : Z.t -> Z.t
 
-let fill ~length =
-  error_when Compare.Int.(length < 0) (Invalid_position length) >>? fun () ->
-  ok Z.(pred (shift_left one length))
+val div20 : Z.t -> Z.t
 
-let inter = Z.logand
+val div100 : Z.t -> Z.t
 
-let diff b1 b2 = Z.logand b1 (Z.lognot b2)
+val rem : Z.t -> Z.t -> Z.t tzresult
 
-let () =
-  let open Data_encoding in
-  register_error_kind
-    `Permanent
-    ~id:"bitfield_invalid_position"
-    ~title:"Invalid bitfield’s position"
-    ~description:"Bitfields does not accept negative positions"
-    (obj1 (req "position" int31))
-    (function Invalid_position i -> Some i | _ -> None)
-    (fun i -> Invalid_position i)
-
-let occupied_size_in_bits = Z.numbits
-
-let to_z z = z
+val of_string : string -> Z.t tzresult

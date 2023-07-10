@@ -141,7 +141,8 @@ let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
   not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
 
 let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
-  let endorsing_reward_per_slot =
+  let open Lwt_result_syntax in
+  let*? endorsing_reward_per_slot =
     Delegate_rewards.endorsing_reward_per_slot ctxt
   in
   let unrevealed_nonces_set =
@@ -170,7 +171,7 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
       let active_stake_weight =
         Stake_context.staking_weight ctxt active_stake
       in
-      let expected_slots =
+      let*? expected_slots =
         Delegate_missed_endorsements_storage
         .expected_slots_for_given_active_stake
           ctxt

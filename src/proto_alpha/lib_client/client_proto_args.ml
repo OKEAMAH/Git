@@ -424,8 +424,10 @@ let default_fee_arg =
     (tez_parameter "--default-fee")
 
 let level_kind =
+  let open Lwt_result_syntax in
   Tezos_clic.parameter (fun (cctxt : #Client_context.full) s ->
-      match Option.bind (Script_int.of_string s) Script_int.is_nat with
+      let*? k = Environment.wrap_tzresult (Script_int.of_string s) in
+      match Script_int.is_nat k with
       | Some n -> return n
       | None -> cctxt#error "invalid level (must be a positive number)")
 

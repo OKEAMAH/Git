@@ -529,11 +529,11 @@ module V2_0_0 = struct
 
     let check_sections_number ~default_number_of_sections ~number_of_sections
         ~dist =
+      let open Result_syntax in
       let open Sc_rollup_dissection_chunk_repr in
-      let is_stop_chunk_aligned =
-        Compare.Z.(Z.rem dist ticks_per_snapshot = Z.zero)
-      in
-      let max_number_of_sections = Z.(div dist ticks_per_snapshot) in
+      let* r = Z_result.rem dist ticks_per_snapshot in
+      let is_stop_chunk_aligned = Compare.Z.(r = Z.zero) in
+      let* max_number_of_sections = Z_result.(div dist ticks_per_snapshot) in
       let expected =
         Compare.Z.min
           (Z.of_int default_number_of_sections)
@@ -564,7 +564,7 @@ module V2_0_0 = struct
       *)
       if Compare.Z.(dist <= ticks_per_snapshot) then
         default_check
-          ~section_maximum_size:Z.(div dist (Z.of_int 2))
+          ~section_maximum_size:Z_result.(div2 dist)
           ~check_sections_number:default_check_sections_number
           ~default_number_of_sections
           ~start_chunk
@@ -587,9 +587,8 @@ module V2_0_0 = struct
              2. The final section contains all the ticks of the
                 interrupted [kernel_run].
         *)
-        let is_stop_chunk_aligned =
-          Compare.Z.(Z.rem dist ticks_per_snapshot = Z.zero)
-        in
+        let* r = Z_result.rem dist ticks_per_snapshot in
+        let is_stop_chunk_aligned = Compare.Z.(r = Z.zero) in
         (*
            We keep the same dissection predicate as the default
            dissection that a given section cannot be more than half of
@@ -597,17 +596,16 @@ module V2_0_0 = struct
            calls to [kernel_run] in the “full distance”. The remainder
            ticks will be put in the very last section.
         *)
-        let considered_dist =
-          if is_stop_chunk_aligned then dist
+        let* considered_dist =
+          if is_stop_chunk_aligned then return dist
           else
+            let+ divided =
+              Z_result.div
+                (Sc_rollup_tick_repr.to_z stop_chunk.tick)
+                ticks_per_snapshot
+            in
             let last_valid_stop_tick =
-              Sc_rollup_tick_repr.of_z
-                Z.(
-                  mul
-                    (div
-                       (Sc_rollup_tick_repr.to_z stop_chunk.tick)
-                       ticks_per_snapshot)
-                    ticks_per_snapshot)
+              Sc_rollup_tick_repr.of_z Z.(mul divided ticks_per_snapshot)
             in
             Sc_rollup_tick_repr.(distance start_chunk.tick last_valid_stop_tick)
         in
@@ -623,7 +621,7 @@ module V2_0_0 = struct
            [ticks_per_snapshot].
         *)
         let section_maximum_size =
-          Z.max ticks_per_snapshot (Z.div considered_dist (Z.of_int 2))
+          Z.max ticks_per_snapshot (Z_result.div2 considered_dist)
         in
         let* () =
           default_check
@@ -638,8 +636,13 @@ module V2_0_0 = struct
           (List.for_all
              (fun chunk ->
                let open Sc_rollup_tick_repr in
+               let r =
+                 match Z.rem (to_z chunk.tick) ticks_per_snapshot with
+                 | Ok r -> r
+                 | Error Z.Errors.Division_by_zero -> Z.one
+               in
                Z.(
-                 equal (rem (to_z chunk.tick) ticks_per_snapshot) zero
+                 equal r zero
                  || Sc_rollup_tick_repr.equal start_chunk.tick chunk.tick
                  || Sc_rollup_tick_repr.equal stop_chunk.tick chunk.tick))
              dissection)

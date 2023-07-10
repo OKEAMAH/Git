@@ -36,8 +36,6 @@ type prepared_finalize_unstake = {
   unfinalizable : stored_requests;
 }
 
-let z100 = Z.of_int 100
-
 let apply_slashes ~preserved_plus_slashing slashing_history ~from_cycle amount =
   let first_cycle_to_apply_slash = from_cycle in
   let last_cycle_to_apply_slash =
@@ -55,12 +53,13 @@ let apply_slashes ~preserved_plus_slashing slashing_history ~from_cycle amount =
           Cycle_repr.(
             slashing_cycle >= first_cycle_to_apply_slash
             && slashing_cycle <= last_cycle_to_apply_slash)
-        then Z.div (Z.mul amount (Z.of_int (100 - slashing_percentage))) z100
+        then
+          Z_result.div100 (Z.mul amount (Z.of_int (100 - slashing_percentage)))
         else amount)
       amount
       slashing_history
   in
-  Tez_repr.of_mutez_exn (Z.to_int64 amount)
+  Tez_repr.of_mutez_exn (Result.value ~default:0L (Z.to_int64 amount))
 
 let prepare_finalize_unstake ctxt contract =
   let open Lwt_result_syntax in

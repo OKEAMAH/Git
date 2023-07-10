@@ -30,6 +30,7 @@ open Alpha_context
     Returns None in case of a tie, if proposal quorum is below required
     minimum or if there are no proposals. *)
 let select_winning_proposal ctxt =
+  let open Lwt_result_syntax in
   Vote.get_proposals ctxt >>=? fun proposals ->
   let merge proposal vote winners =
     match winners with
@@ -46,11 +47,13 @@ let select_winning_proposal ctxt =
       let min_proposal_quorum =
         Z.of_int32 (Constants.min_proposal_quorum ctxt)
       in
-      let min_vote_to_pass =
+      let*? min_vote_to_pass =
         Z.(
-          to_int64
-            (div (mul min_proposal_quorum (of_int64 max_vote)) (of_int 100_00)))
+          Z_result.div
+            (mul min_proposal_quorum (of_int64 max_vote))
+            (of_int 100_00))
       in
+      let*? min_vote_to_pass = Z_result.(to_int64 min_vote_to_pass) in
       if Compare.Int64.(vote >= min_vote_to_pass) then return_some proposal
       else return_none
   | _ -> return_none
@@ -68,6 +71,7 @@ let select_winning_proposal ctxt =
     by the min/max quorum protocol constants. *)
 let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
     ~participation_ema ~expected_quorum =
+  let open Result_syntax in
   (* Note overflows: considering a maximum of 1e9 tokens (around 2^30),
      hence 1e15 mutez (around 2^50)
      In 'participation' a Z is used because in the worst case 'all_votes is
@@ -76,14 +80,14 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
   let casted_votes = Int64.add ballots.yay ballots.nay in
   let all_votes = Int64.add casted_votes ballots.pass in
   let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
-  let participation =
+  let* participation =
     (* in centile of percentage *)
     Z.(
-      to_int32
-        (div
-           (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
-           (Z.of_int64 maximum_vote)))
+      Z_result.div
+        (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
+        (Z.of_int64 maximum_vote))
   in
+  let+ participation = Z_result.to_int32 participation in
   let approval =
     Compare.Int32.(participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)
@@ -94,12 +98,13 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
   (approval, new_participation_ema)
 
 let get_approval_and_update_participation_ema ctxt =
+  let open Lwt_result_syntax in
   Vote.get_ballots ctxt >>=? fun ballots ->
   Vote.get_total_voting_power_free ctxt >>=? fun maximum_vote ->
   Vote.get_participation_ema ctxt >>=? fun participation_ema ->
   Vote.get_current_quorum ctxt >>=? fun expected_quorum ->
   Vote.clear_ballots ctxt >>= fun ctxt ->
-  let approval, new_participation_ema =
+  let*? approval, new_participation_ema =
     approval_and_participation_ema
       ballots
       ~maximum_vote
