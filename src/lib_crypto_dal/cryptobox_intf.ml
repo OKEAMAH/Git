@@ -64,7 +64,7 @@ end
 
 module type VERIFIER = sig
   (** A precomputed set of constants *)
-  type t
+  type verifier_public_parameters
 
   (** Parameters to build a value of type [t] *)
   type parameters = Dal_config.parameters = {
@@ -81,11 +81,12 @@ module type VERIFIER = sig
 
   (** [make] precomputes the set of values needed by the cryptographic
     primitives defined in this module and stores them in a value of type [t] *)
-  val make : parameters -> (t, [> `Fail of string]) result
+  val make :
+    parameters -> (verifier_public_parameters, [> `Fail of string]) result
 
   (** [parameters t] returns the parameters given when [t] was
      initialised with the function {!val:make} *)
-  val parameters : t -> parameters
+  val parameters : verifier_public_parameters -> parameters
 
   (** Commitment to a polynomial. *)
   type commitment
@@ -103,7 +104,8 @@ module type VERIFIER = sig
       [slot_size] declared in [t].
 
       The verification time is constant. *)
-  val verify_commitment : t -> commitment -> commitment_proof -> bool
+  val verify_commitment :
+    verifier_public_parameters -> commitment -> commitment_proof -> bool
 
   (** The original slot can be split into a list of pages of fixed
      size. This size is given by the parameter [page_size] given to the
@@ -142,7 +144,7 @@ module type VERIFIER = sig
       [p = polynomial_from_slot t slot],
       and [commitment = commit t p]. *)
   val verify_page :
-    t ->
+    verifier_public_parameters ->
     commitment ->
     page_index:int ->
     page ->

@@ -73,7 +73,12 @@ type parameters = Dal_config.parameters = {
 (** Encapsulates parameters required to use the cryptographic primitives
     exported by this module. A value of type [t] contains both initial
     [parameters] and computed values depending on it. *)
-type t
+type prover_public_parameters
+
+type verifier_public_parameters
+
+val make_prv :
+  parameters -> (prover_public_parameters, [> `Fail of string]) result
 
 (** Because of the shell/protocol separation, cryptographic primitives
    need to be splitted. An interface, called the {!module:Verifier}
@@ -116,7 +121,7 @@ type error += Invalid_precomputation_hash of (string, string) error_container
 
 module Verifier :
   VERIFIER
-    with type t = t
+    with type verifier_public_parameters = verifier_public_parameters
      and type commitment = commitment
      and type commitment_proof = commitment_proof
      and type page_proof = page_proof
@@ -124,7 +129,7 @@ module Verifier :
 
 include
   VERIFIER
-    with type t := t
+    with type verifier_public_parameters := verifier_public_parameters
      and type parameters := Dal_config.parameters
      and type commitment := commitment
      and type commitment_proof := commitment_proof
@@ -183,14 +188,16 @@ val polynomial_evaluate : polynomial -> scalar -> scalar
     Note:
     - [polynomial_from_slot] is injective. *)
 val polynomial_from_slot :
-  t -> slot -> (polynomial, [> `Slot_wrong_size of string]) Result.t
+  prover_public_parameters ->
+  slot ->
+  (polynomial, [> `Slot_wrong_size of string]) Result.t
 
 (** [polynomial_to_slot t polynomial] returns a slot from a [polynomial].
 
     Ensures:
     - For any [slot] satisfying [Bytes.length slot = parameters.slot_size],
       [polynomial_to_slot (polynomial_from_slot slot) = slot]. *)
-val polynomial_to_slot : t -> polynomial -> slot
+val polynomial_to_slot : prover_public_parameters -> polynomial -> slot
 
 (** [commit t polynomial] returns the commitment associated to a
      polynomial [p].
@@ -198,7 +205,7 @@ val polynomial_to_slot : t -> polynomial -> slot
       Fails with [`Invalid_degree_strictly_less_than_expected _]
       if the degree of [p] exceeds the SRS size. *)
 val commit :
-  t ->
+  prover_public_parameters ->
   polynomial ->
   ( commitment,
     [> `Invalid_degree_strictly_less_than_expected of (int, int) error_container]
@@ -230,7 +237,7 @@ type shard = {index : int; share : share}
 val shard_encoding : shard Data_encoding.t
 
 (** [encoded_share_size t] returns the size of a share in byte depending on [t] *)
-val encoded_share_size : t -> int
+val encoded_share_size : prover_public_parameters -> int
 
 (** [polynomial_from_shards t shards] computes the original polynomial
     from [shards]. The proportion of shards needed is [1] over
@@ -254,7 +261,7 @@ val encoded_share_size : t -> int
     range [0, number_of_shards - 1] (where [number_of_shards] is declared in [t]).
     - [Error (`Invalid_shard_length msg)] if one shard is not of the expected length. *)
 val polynomial_from_shards :
-  t ->
+  prover_public_parameters ->
   shard Seq.t ->
   ( polynomial,
     [> `Not_enough_shards of string
@@ -270,7 +277,8 @@ val polynomial_from_shards :
     for any subset S of shards of [polynomial_length / shard_length] elements,
     [polynomial_from_shards S = p].
     Here, [polynomial_length] and [shard_length] are parameters declared in [t]. *)
-val shards_from_polynomial : t -> polynomial -> shard Seq.t
+val shards_from_polynomial :
+  prover_public_parameters -> polynomial -> shard Seq.t
 
 (** A proof that a shard belongs to some commitment. *)
 type shard_proof
@@ -307,7 +315,7 @@ val shard_proof_encoding : shard_proof Data_encoding.t
     [proof = (prove_shards t ~precomputation ~polynomial).(shard.index)],
     and [commitment = commit t p]. *)
 val verify_shard :
-  t ->
+  verifier_public_parameters ->
   commitment ->
   shard ->
   shard_proof ->
@@ -325,7 +333,7 @@ val verify_shard :
     - [Error `Invalid_degree_strictly_less_than_expected _] if the SRS
     contained in [t] is too small to produce the proof *)
 val prove_commitment :
-  t ->
+  prover_public_parameters ->
   polynomial ->
   ( commitment_proof,
     [> `Invalid_degree_strictly_less_than_expected of (int, int) error_container]
@@ -353,7 +361,7 @@ val prove_commitment :
     [p = polynomial_from_slot t slot],
     and [commitment = commit t p]. *)
 val prove_page :
-  t ->
+  prover_public_parameters ->
   polynomial ->
   int ->
   ( page_proof,
@@ -369,7 +377,8 @@ val shards_proofs_precomputation_encoding :
 
 (** [precomputation_shard_proofs t] returns the precomputation used to
    produce shard proofs. *)
-val precompute_shards_proofs : t -> shards_proofs_precomputation
+val precompute_shards_proofs :
+  prover_public_parameters -> shards_proofs_precomputation
 
 (** [save_precompute_shards_proofs precomputation ~filename] saves the
    given [precomputation] to disk with the given [filename]. *)
@@ -416,7 +425,7 @@ val hash_precomputation : shards_proofs_precomputation -> Tezos_crypto.Blake2B.t
    [proof = (prove_shards t polynomial).(shard.index)],
    and [commitment = commit t polynomial]. *)
 val prove_shards :
-  t ->
+  prover_public_parameters ->
   precomputation:shards_proofs_precomputation ->
   polynomial:polynomial ->
   shard_proof array
@@ -437,7 +446,8 @@ module Internal_for_tests : sig
 
   (** Returns a randomized valid sequence of shards using the random state
      [state] for the given parameters. *)
-  val make_dummy_shards : t -> state:Random.State.t -> shard Seq.t
+  val make_dummy_shards :
+    prover_public_parameters -> state:Random.State.t -> shard Seq.t
 
   (** [polynomials_equal p1 p2] returns true if and only if [p1] and [p2]
      represent the same polynomial. *)
@@ -461,7 +471,8 @@ module Internal_for_tests : sig
 
   (** [minimum_number_of_shards_to_reconstruct_slot t] returns the minimum
      number of shards to reconstruct a slot using [polynomial_from_shards]. *)
-  val minimum_number_of_shards_to_reconstruct_slot : t -> int
+  val minimum_number_of_shards_to_reconstruct_slot :
+    prover_public_parameters -> int
 
   val dummy_commitment : state:Random.State.t -> unit -> commitment
 
@@ -472,13 +483,13 @@ module Internal_for_tests : sig
   val make_dummy_shard :
     state:Random.State.t -> index:int -> length:int -> shard
 
-  val number_of_pages : t -> int
+  val number_of_pages : prover_public_parameters -> int
 
-  val shard_length : t -> int
+  val shard_length : prover_public_parameters -> int
 
   val dummy_polynomial : state:Random.State.t -> degree:int -> polynomial
 
-  val srs_size_g1 : t -> int
+  val srs_size_g1 : prover_public_parameters -> int
 
   (** [select_fft_domain domain_size] selects a suitable domain for the FFT.
 
@@ -500,7 +511,7 @@ module Internal_for_tests : sig
 
   val reset_initialisation_parameters : unit -> unit
 
-  val encoded_share_size : t -> int
+  val encoded_share_size : prover_public_parameters -> int
 
   (** [ensure_validity parameters] returns true if the [parameters] are valid.
      See implementation file for details. *)

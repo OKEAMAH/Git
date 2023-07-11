@@ -126,7 +126,9 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
 (* The srs is made of the initialisation_parameters and two
    well-choosen points. Building the srs from the initialisation
    parameters is almost cost-free. *)
-type srs = {
+type srs_prv = {srs_g1 : Srs_g1.t}
+
+type srs_vrf = {
   srs_g1 : Srs_g1.t;
   offset_monomial_srs_g2 : Bls12_381.G2.t;
   kate_amortized_srs_g2_shards : Bls12_381.G2.t;
@@ -354,10 +356,9 @@ module Inner = struct
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
   let make_domain n = Domains.build n
 
-  type t = {
+  type prover_public_parameters = {
     redundancy_factor : int;
     slot_size : int;
-    page_size : int;
     number_of_shards : int;
     (* Maximum length of the polynomial representation of a slot, also called [polynomial_length]
        in the comments. *)
@@ -367,7 +368,6 @@ module Inner = struct
     erasure_encoded_polynomial_length : int;
     domain_polynomial_length : Domains.t;
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
-    domain_2_times_polynomial_length : Domains.t;
     domain_erasure_encoded_polynomial_length : Domains.t;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
     shard_length : int;
@@ -379,7 +379,27 @@ module Inner = struct
     remaining_bytes : int;
     (* Log of the number of evaluations that constitute an erasure encoded
        polynomial. *)
-    srs : srs;
+    srs : srs_prv;
+  }
+
+  type verifier_public_parameters = {
+    redundancy_factor : int;
+    slot_size : int;
+    page_size : int;
+    number_of_shards : int;
+    domain_polynomial_length : Domains.t;
+    domain_erasure_encoded_polynomial_length : Domains.t;
+    (* Domain for the FFT on erasure encoded slots (as polynomials). *)
+    shard_length : int;
+    (* Length of a shard in terms of scalar elements. *)
+    pages_per_slot : int;
+    (* Number of slot pages. *)
+    page_length : int;
+    page_length_domain : int;
+    remaining_bytes : int;
+    (* Log of the number of evaluations that constitute an erasure encoded
+       polynomial. *)
+    srs : srs_vrf;
   }
 
   (* The input is expected to be a positive integer. *)
@@ -637,7 +657,7 @@ module Inner = struct
 
   (* Error cases of this functions are not encapsulated into
      `tzresult` for modularity reasons. *)
-  let make
+  let make_common
       ({redundancy_factor; slot_size; page_size; number_of_shards} as
       parameters) =
     let open Result_syntax in
@@ -667,7 +687,13 @@ module Inner = struct
     in
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = select_fft_domain page_length in
-    let srs =
+    let domain_polynomial_length = make_domain max_polynomial_length in
+    let domain_erasure_encoded_polynomial_length =
+      make_domain erasure_encoded_polynomial_length
+    in
+    let pages_per_slot = pages_per_slot parameters in
+    let remaining_bytes = page_size mod scalar_bytes_amount in
+    let srs_vrf =
       {
         srs_g1 = raw.srs_g1;
         offset_monomial_srs_g2 =
@@ -676,29 +702,55 @@ module Inner = struct
         kate_amortized_srs_g2_pages = Srs_g2.get raw.srs_g2 page_length_domain;
       }
     in
-    return
+    let pp_vrf =
       {
         redundancy_factor;
         slot_size;
         page_size;
         number_of_shards;
-        max_polynomial_length;
-        erasure_encoded_polynomial_length;
-        domain_polynomial_length = make_domain max_polynomial_length;
-        domain_2_times_polynomial_length =
-          make_domain (2 * max_polynomial_length);
-        domain_erasure_encoded_polynomial_length =
-          make_domain erasure_encoded_polynomial_length;
+        domain_polynomial_length;
+        domain_erasure_encoded_polynomial_length;
         shard_length;
-        pages_per_slot = pages_per_slot parameters;
+        pages_per_slot;
         page_length;
         page_length_domain;
-        remaining_bytes = page_size mod scalar_bytes_amount;
-        srs;
+        remaining_bytes;
+        srs = srs_vrf;
       }
+    in
+    let srs_prv = {srs_g1 = raw.srs_g1} in
+    let pp_prv =
+      {
+        redundancy_factor;
+        slot_size;
+        number_of_shards;
+        max_polynomial_length;
+        erasure_encoded_polynomial_length;
+        domain_polynomial_length;
+        domain_erasure_encoded_polynomial_length;
+        shard_length;
+        pages_per_slot;
+        page_length;
+        page_length_domain;
+        remaining_bytes;
+        srs = srs_prv;
+      }
+    in
+    return (pp_prv, pp_vrf)
+
+  let make parameters =
+    let open Result_syntax in
+    let* _, pp = make_common parameters in
+    return pp
+
+  let make_prv parameters =
+    let open Result_syntax in
+    let* pp, _ = make_common parameters in
+    return pp
 
   let parameters
-      ({redundancy_factor; slot_size; page_size; number_of_shards; _} : t) =
+      ({redundancy_factor; slot_size; page_size; number_of_shards; _} :
+        verifier_public_parameters) =
     {redundancy_factor; slot_size; page_size; number_of_shards}
     [@@coverage off]
 
@@ -719,7 +771,7 @@ module Inner = struct
      are arranged in cosets to produce batched KZG proofs
      [https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf]
      using the technique described in https://eprint.iacr.org/2023/033. *)
-  let polynomial_from_slot (t : t) slot =
+  let polynomial_from_slot (t : prover_public_parameters) slot =
     (* Expects the length of the byte sequence to equal the slot size.
        This can be achieved by adding some padding with null bytes to the
        byte sequence if the length is strictly less than the slot size, or
@@ -1131,14 +1183,18 @@ module Inner = struct
          coefficients. *)
       Ok (Polynomials.truncate ~len:t.max_polynomial_length p)
 
-  let commit t p =
+  let commit_srs srs p =
     let degree = Polynomials.degree p in
-    let srs_g1_size = Srs_g1.size t.srs.srs_g1 in
+    let srs_g1_size = Srs_g1.size srs in
     if degree >= srs_g1_size then
       Error
         (`Invalid_degree_strictly_less_than_expected
           {given = degree; expected = srs_g1_size})
-    else Ok (Srs_g1.pippenger t.srs.srs_g1 p)
+    else Ok (Srs_g1.pippenger srs p)
+
+  let commit (t : prover_public_parameters) = commit_srs t.srs.srs_g1
+
+  let commit_vrf t = commit_srs t.srs.srs_g1
 
   let pp_commit_error fmt
       (`Invalid_degree_strictly_less_than_expected {given; expected}) =
@@ -1166,7 +1222,7 @@ module Inner = struct
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4192
 
      Generalize this function to pass the slot_size in parameter. *)
-  let prove_commitment (t : t) p =
+  let prove_commitment t p =
     let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
     let max_committable_degree = Srs_g1.size t.srs.srs_g1 - 1 in
     let offset_monomial_degree =
@@ -1182,7 +1238,7 @@ module Inner = struct
     commit t p_with_offset
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
-  let verify_commitment (t : t) cm proof =
+  let verify_commitment (t : verifier_public_parameters) cm proof =
     let open Bls12_381 in
     (* checking that cm * committed_offset_monomial = proof *)
     Pairing.pairing_check
@@ -1415,8 +1471,8 @@ module Inner = struct
      for each of the [t.number_of_shards] shards.
 
      Implements the "Multiple multi-reveals" section above. *)
-  let multiple_multi_reveals t ~preprocess:(domain, sj) ~coefficients :
-      shard_proof array =
+  let multiple_multi_reveals (t : prover_public_parameters)
+      ~preprocess:(domain, sj) ~coefficients : shard_proof array =
     (* [t.max_polynomial_length > l] where [l = t.shard_length]. *)
     assert (t.shard_length < t.max_polynomial_length) ;
     (* Step 2. *)
@@ -1504,13 +1560,14 @@ module Inner = struct
      [l]-th root of unity
 
      Implements the "Multi-reveals" section above. *)
-  let verify t ~commitment ~srs_point ~domain ~root ~evaluations ~proof =
+  let verify (t : verifier_public_parameters) ~commitment ~srs_point ~domain
+      ~root ~evaluations ~proof =
     let open Bls12_381 in
     let open Result_syntax in
     (* Compute r_i(x). *)
     let remainder = interpolation_poly ~root ~domain ~evaluations in
     (* Compute [r_i(τ)]_1. *)
-    let* commitment_remainder = commit t remainder in
+    let* commitment_remainder = commit_vrf t remainder in
     (* Compute [w^{i * l}]. *)
     let root_pow = Scalar.pow root (Z.of_int (Domains.length domain)) in
     (* Compute [τ^l]_2 - [w^{i * l}]_2). *)
@@ -1596,8 +1653,8 @@ module Inner = struct
     Array.blit p 0 coefficients 0 p_length ;
     multiple_multi_reveals t ~preprocess:setup ~coefficients
 
-  let verify_shard (t : t) commitment {index = shard_index; share = evaluations}
-      proof =
+  let verify_shard (t : verifier_public_parameters) commitment
+      {index = shard_index; share = evaluations} proof =
     if shard_index < 0 || shard_index >= t.number_of_shards then
       Error
         (`Shard_index_out_of_range
@@ -1625,7 +1682,7 @@ module Inner = struct
         | Ok false -> Error `Invalid_shard
         | Error e -> Error e
 
-  let prove_page t p page_index =
+  let prove_page (t : prover_public_parameters) p page_index =
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Page_index_out_of_range
     else
@@ -1722,7 +1779,7 @@ module Internal_for_tests = struct
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
-  let make_dummy_shards (t : t) ~state =
+  let make_dummy_shards (t : prover_public_parameters) ~state =
     Random.set_state state ;
     let rec loop index seq =
       if index = t.number_of_shards then seq
@@ -1748,7 +1805,8 @@ module Internal_for_tests = struct
 
   let alter_commitment_proof (proof : commitment_proof) = alter_proof proof
 
-  let minimum_number_of_shards_to_reconstruct_slot (t : t) =
+  let minimum_number_of_shards_to_reconstruct_slot
+      (t : prover_public_parameters) =
     t.number_of_shards / t.redundancy_factor
 
   let select_fft_domain = select_fft_domain
@@ -1769,9 +1827,9 @@ module Internal_for_tests = struct
   let make_dummy_shard ~state ~index ~length =
     {index; share = Array.init length (fun _ -> Scalar.(random ~state ()))}
 
-  let number_of_pages t = t.pages_per_slot
+  let number_of_pages (t : prover_public_parameters) = t.pages_per_slot
 
-  let shard_length t = t.shard_length
+  let shard_length (t : prover_public_parameters) = t.shard_length
 
   let dummy_polynomial ~state ~degree =
     let rec nonzero () =
@@ -1781,7 +1839,7 @@ module Internal_for_tests = struct
     Polynomials.init (degree + 1) (fun i ->
         if i = degree then nonzero () else Bls12_381.Fr.random ~state ())
 
-  let srs_size_g1 t = Srs_g1.size t.srs.srs_g1
+  let srs_size_g1 (t : prover_public_parameters) = Srs_g1.size t.srs.srs_g1
 
   let encoded_share_size = encoded_share_size
 

@@ -138,7 +138,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let shards_amount =
@@ -180,7 +180,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let shards_amount =
@@ -222,7 +222,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let shards_amount =
@@ -256,7 +256,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let shards_amount =
@@ -292,7 +292,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let state = QCheck_base_runner.random_state () in
          let shards = Cryptobox.Internal_for_tests.make_dummy_shards t ~state in
          Cryptobox.polynomial_from_shards t shards)
@@ -312,7 +312,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let slot = Cryptobox.(polynomial_to_slot t polynomial) in
          Ok (Bytes.equal slot params.slot))
@@ -331,12 +331,13 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
          let number_of_pages = params.slot_size / params.page_size in
          let page_index = randrange number_of_pages in
-         let* page_proof = Cryptobox.prove_page t polynomial page_index in
+         let* page_proof = Cryptobox.prove_page t_prv polynomial page_index in
          let page =
            Bytes.sub
              params.slot
@@ -359,12 +360,13 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
          let number_of_pages = params.slot_size / params.page_size in
          let page_index = randrange number_of_pages in
-         let* proof = Cryptobox.prove_page t polynomial page_index in
+         let* proof = Cryptobox.prove_page t_prv polynomial page_index in
          let altered_proof =
            Cryptobox.Internal_for_tests.alter_page_proof proof
          in
@@ -390,13 +392,14 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
-         let shards = Cryptobox.shards_from_polynomial t polynomial in
-         let precomputation = Cryptobox.precompute_shards_proofs t in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
+         let shards = Cryptobox.shards_from_polynomial t_prv polynomial in
+         let precomputation = Cryptobox.precompute_shards_proofs t_prv in
          let shard_proofs =
-           Cryptobox.prove_shards t ~polynomial ~precomputation
+           Cryptobox.prove_shards t_prv ~polynomial ~precomputation
          in
          let shard_index = randrange params.number_of_shards in
          match
@@ -428,13 +431,14 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
-         let shards = Cryptobox.shards_from_polynomial t polynomial in
-         let precomputation = Cryptobox.precompute_shards_proofs t in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
+         let shards = Cryptobox.shards_from_polynomial t_prv polynomial in
+         let precomputation = Cryptobox.precompute_shards_proofs t_prv in
          let shard_proofs =
-           Cryptobox.prove_shards t ~precomputation ~polynomial
+           Cryptobox.prove_shards t_prv ~precomputation ~polynomial
          in
          let shard_index = randrange params.number_of_shards in
          match
@@ -468,10 +472,11 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
-         let* commitment_proof = Cryptobox.prove_commitment t polynomial in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
+         let* commitment_proof = Cryptobox.prove_commitment t_prv polynomial in
          return (Cryptobox.verify_commitment t commitment commitment_proof))
         |> function
         | Ok true -> true
@@ -487,10 +492,11 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
-         let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
-         let* commitment = Cryptobox.commit t polynomial in
-         let* commitment_proof = Cryptobox.prove_commitment t polynomial in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
+         let* polynomial = Cryptobox.polynomial_from_slot t_prv params.slot in
+         let* commitment = Cryptobox.commit t_prv polynomial in
+         let* commitment_proof = Cryptobox.prove_commitment t_prv polynomial in
          let altered_proof =
            Cryptobox.Internal_for_tests.alter_commitment_proof commitment_proof
          in
@@ -528,7 +534,7 @@ module Test = struct
         (let* t =
            Result.map_error
              (function `Fail s -> [Error_monad.error_of_exn (Failure s)])
-             (Cryptobox.make (get_cryptobox_parameters params))
+             (Cryptobox.make_prv (get_cryptobox_parameters params))
          in
          let filename = path "test_precomputation" in
          let precomputation = Cryptobox.precompute_shards_proofs t in
@@ -568,7 +574,7 @@ module Test = struct
         (let* t =
            Result.map_error
              (function `Fail s -> [Error_monad.error_of_exn (Failure s)])
-             (Cryptobox.make (get_cryptobox_parameters params))
+             (Cryptobox.make_prv (get_cryptobox_parameters params))
          in
          let precomputation = Cryptobox.precompute_shards_proofs t in
          let dummy_hash = Tezos_crypto.Blake2B.hash_bytes [] in
@@ -658,7 +664,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let slot = Gen.(generate1 (bytes_size (int_range 0 (1 lsl 10)))) in
          assume (Bytes.length slot <> params.slot_size) ;
          Cryptobox.polynomial_from_slot t slot)
@@ -681,7 +687,8 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
          let slot = Gen.(generate1 (bytes_size (int_range 0 (1 lsl 10)))) in
          assume (Bytes.length slot <> params.slot_size) ;
          let state = QCheck_base_runner.random_state () in
@@ -694,7 +701,7 @@ module Test = struct
            Cryptobox.Internal_for_tests.dummy_page_proof ~state ()
          in
          let page_index =
-           randrange (Cryptobox.Internal_for_tests.number_of_pages t)
+           randrange (Cryptobox.Internal_for_tests.number_of_pages t_prv)
          in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -711,13 +718,14 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
          let state = QCheck_base_runner.random_state () in
          let commitment =
            Cryptobox.Internal_for_tests.dummy_commitment ~state ()
          in
          let length = randrange ~min:1 1000 in
-         assume (length <> Cryptobox.Internal_for_tests.shard_length t) ;
+         assume (length <> Cryptobox.Internal_for_tests.shard_length t_prv) ;
          let index = randrange params.number_of_shards in
          let shard =
            Cryptobox.Internal_for_tests.make_dummy_shard ~state ~index ~length
@@ -740,7 +748,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let proof_index =
            out_of_range
@@ -762,7 +770,8 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
          let slot = Gen.(generate1 (bytes_size (int_range 0 (1 lsl 10)))) in
          assume (Bytes.length slot <> params.slot_size) ;
          let state = QCheck_base_runner.random_state () in
@@ -777,7 +786,7 @@ module Test = struct
          let page_index =
            out_of_range
              ~min:0
-             ~max:(Cryptobox.Internal_for_tests.number_of_pages t)
+             ~max:(Cryptobox.Internal_for_tests.number_of_pages t_prv)
          in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -794,7 +803,8 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t_prv = Cryptobox.make_prv (get_cryptobox_parameters params) in
+        let* t = Cryptobox.make (get_cryptobox_parameters params) in
          let slot = Gen.(generate1 (bytes_size (int_range 0 (1 lsl 10)))) in
          assume (Bytes.length slot <> params.slot_size) ;
          let state = QCheck_base_runner.random_state () in
@@ -811,7 +821,7 @@ module Test = struct
            Cryptobox.Internal_for_tests.make_dummy_shard
              ~state
              ~index:shard_index
-             ~length:(Cryptobox.Internal_for_tests.shard_length t)
+             ~length:(Cryptobox.Internal_for_tests.shard_length t_prv)
          in
          Cryptobox.verify_shard t commitment shard shard_proof)
         |> function
@@ -828,7 +838,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let state = QCheck_base_runner.random_state () in
          let degree = randrange (Cryptobox.Internal_for_tests.srs_size_g1 t) in
          let polynomial =
@@ -851,7 +861,7 @@ module Test = struct
         let deg = ref 0 in
         let size_srs_g1 = ref 0 in
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          let state = QCheck_base_runner.random_state () in
          let min = Cryptobox.Internal_for_tests.srs_size_g1 t in
          let degree = randrange ~min (min + (1 lsl 10)) in
@@ -877,7 +887,7 @@ module Test = struct
       (fun params ->
         init () ;
         assume (ensure_validity params) ;
-        (let* t = Cryptobox.make (get_cryptobox_parameters params) in
+        (let* t = Cryptobox.make_prv (get_cryptobox_parameters params) in
          (* This encoding has not a fixed size since it depends on the DAL
             parameters, so we must supply a default value share with the shard
             length from the DAL cryptobox configuration record [t].
@@ -910,7 +920,7 @@ module Test = struct
     init () ;
     let open Error_monad.Result_syntax in
     (let* t1 =
-       Cryptobox.make
+       Cryptobox.make_prv
          {
            redundancy_factor = 2;
            slot_size;
@@ -919,7 +929,7 @@ module Test = struct
          }
      in
      let* t2 =
-       Cryptobox.make
+       Cryptobox.make_prv
          {
            redundancy_factor = 2;
            slot_size;
