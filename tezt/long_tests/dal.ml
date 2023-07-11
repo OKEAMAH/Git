@@ -238,43 +238,20 @@ let test_produce_and_propagate_shards ~executors ~protocol =
     in
     let dal_node_endpoint = Rollup.Dal.endpoint dal_node2 in
     let* () = Client.bake_for_and_wait client1 ~dal_node_endpoint in
-    let publish_level = Node.get_level node1 in
-    (* Wait until slot1 is flagged as attestable by dal_node1
-       (i.e. the slot has propagated from node1 to node2). *)
+    (* Wait until node1 downloads [dal_parameters.cryptobox.number_of_shards] shards.
+       (i.e. the published slot is attestable by node1. *)
     let* () =
-      measure_and_add_data_point ~tag:"wait_slot_attestable" @@ fun () ->
-      let attestor : Account.key = Constant.bootstrap1 in
-      let attested_level = publish_level + dal_parameters.attestation_lag in
-      let rec wait_slot_attestable () =
-        Log.info
-          "Looking for the attestable slots for attestor %s, attested level \
-           %d, slot_index %d...\n"
-          attestor.alias
-          attested_level
-          slot_index ;
-        let* res =
-          RPC.call
-            dal_node1
-            (Rollup.Dal.RPC.get_attestable_slots ~attestor ~attested_level)
-        in
-        match res with
-        | Not_in_committee ->
-            Test.fail
-              "Expected account %s to be in the DAL committee"
-              Constant.bootstrap1.alias
-        | Attestable_slots slots ->
-            if (Array.of_list slots).(slot_index) then (
-              Log.info "Found! Test case successfully finished." ;
-              unit)
-            else
-              let to_sleep = 5.0 in
-              Log.info
-                "Not found. Sleeping for %f seconds then retrying."
-                to_sleep ;
-              let* () = Lwt_unix.sleep to_sleep in
-              wait_slot_attestable ()
-      in
-      wait_slot_attestable ()
+      measure_and_add_data_point ~tag:"wait_slot_propagated" @@ fun () ->
+      let number_of_shards = dal_parameters.cryptobox.number_of_shards in
+      let shard_count = ref 0 in
+      Log.info "Waiting to download %d shards..." number_of_shards ;
+      Dal_node.wait_for dal_node1 "stored_slot_shards.v0" @@ fun e ->
+      let shards_stored = JSON.(e |-> "shards" |> as_int) in
+      shard_count := !shard_count + shards_stored ;
+      if !shard_count = number_of_shards then (
+        Log.info "Downloaded %d shards. Ready to attest." number_of_shards ;
+        Some ())
+      else None
     in
     (* Bake several blocks to surpass the attestation lag. *)
     let* () =
