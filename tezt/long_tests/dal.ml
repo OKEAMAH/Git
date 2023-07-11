@@ -30,21 +30,12 @@
    Subject: Performance regression tests for the DAL.
 *)
 
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/6002
-
-   Add more fine-grained measurements (e.g. time to store a slot, time to download shards) *)
-
-let time_to_produce_and_propagate_shards =
-  "time-to-produce-and-propagate-shards"
+let measurement = "time-to-produce-and-propagate-shards"
 
 let grafana_panels : Grafana.panel list =
   [
     Row "DAL: ";
-    Grafana.simple_graph
-      ~measurement:time_to_produce_and_propagate_shards
-      ~test:time_to_produce_and_propagate_shards
-      ~field:"duration"
-      ();
+    Grafana.simple_graph ~measurement ~test:measurement ~field:"duration" ();
   ]
 
 let start_l1_node ~protocol ~account ?l1_bootstrap_peer ?dal_bootstrap_peer () =
@@ -159,6 +150,19 @@ let publish_slot_header_to_l1_node ~slot_index ~source ~commitment_hash ~proof
   in
   unit
 
+let measure f =
+  let start = Unix.gettimeofday () in
+  let* res = f () in
+  return (res, Unix.gettimeofday () -. start)
+
+let measure_and_add_data_point f ~tag =
+  let* res, time = measure f in
+  let data_point =
+    InfluxDB.data_point ~tags:[("tag", tag)] measurement ("duration", Float time)
+  in
+  Long_test.add_data_point data_point ;
+  return res
+
 (** Test the time it takes for one node to publish a slot
     and another node to download it.
     - The sole baker of the network ([node1]) will:
@@ -171,18 +175,20 @@ let publish_slot_header_to_l1_node ~slot_index ~source ~commitment_hash ~proof
 *)
 let test_produce_and_propagate_shards ~executors ~protocol =
   let timeout = 120 in
-  let repeat = Cli.get_int ~default:3 "repeat" in
+  let repeat = Cli.get_int ~default:10 "repeat" in
   Long_test.register
     ~__FILE__
     ~title:"DAL node produce and propagate shards"
     ~tags:["dal"]
     ~executors
-    ~timeout:(Long_test.Seconds (repeat * 8 * timeout))
+    ~timeout:(Long_test.Seconds (repeat * 10 * timeout))
   @@ fun () ->
   Long_test.measure_and_check_regression_lwt
+    ~tags:[("tag", "total")]
     ~repeat
-    time_to_produce_and_propagate_shards
+    measurement
   @@ fun () ->
+  let slot_index = 0 in
   (* Set up [node1], the only baker in the network. *)
   let* node1, client1 =
     start_l1_node ~protocol ~account:Constant.bootstrap1 ()
@@ -203,15 +209,18 @@ let test_produce_and_propagate_shards ~executors ~protocol =
       ~dal_bootstrap_peer:dal_node1
       ()
   in
-  let* dal_node2 = start_dal_node node2 client2 ~producer_profiles:[0] () in
+  let* dal_node2 =
+    start_dal_node node2 client2 ~producer_profiles:[slot_index] ()
+  in
   let*! () = Client.reveal ~src:Constant.bootstrap2.alias client2 in
   let* () = Client.bake_for_and_wait client1 in
   (* Now that the setup of the nodes are finished, we start measuring the time. *)
-  let* time =
-    let start = Unix.gettimeofday () in
+  let* (), time =
+    measure @@ fun () ->
     (* Store slot in [dal_node2]. *)
     let* dal_parameters = Rollup.Dal.Parameters.from_client client2 in
     let* commitment_hash, proof =
+      measure_and_add_data_point ~tag:"locally_store_slot" @@ fun () ->
       store_slot_to_dal_node
         ~slot_size:dal_parameters.cryptobox.slot_size
         dal_node2
@@ -219,7 +228,7 @@ let test_produce_and_propagate_shards ~executors ~protocol =
     (* Publish slot header from [node2]. *)
     let* () =
       publish_slot_header_to_l1_node
-        ~slot_index:0
+        ~slot_index
         ~source:Constant.bootstrap2
         ~commitment_hash
         ~proof
@@ -227,17 +236,57 @@ let test_produce_and_propagate_shards ~executors ~protocol =
     in
     let dal_node_endpoint = Rollup.Dal.endpoint dal_node2 in
     let* () = Client.bake_for_and_wait client1 ~dal_node_endpoint in
-    (* Bake several blocks to surpass the attestation lag
-       in order for [node1] to attest. *)
+    let publish_level = Node.get_level node1 in
+    (* Wait until slot1 is flagged as attestable by dal_node1
+       (i.e. the slot has propagated from node1 to node2). *)
+    let* () =
+      measure_and_add_data_point ~tag:"wait_slot_attestable" @@ fun () ->
+      let attestor : Account.key = Constant.bootstrap1 in
+      let attested_level = publish_level + dal_parameters.attestation_lag in
+      let rec wait_slot_attestable () =
+        Log.info
+          "Looking for the attestable slots for attestor %s, attested level \
+           %d, slot_index %d...\n"
+          attestor.alias
+          attested_level
+          slot_index ;
+        let* res =
+          RPC.call
+            dal_node1
+            (Rollup.Dal.RPC.get_attestable_slots ~attestor ~attested_level)
+        in
+        match res with
+        | Not_in_committee ->
+            Test.fail
+              "Expected account %s to be in the DAL committee"
+              Constant.bootstrap1.alias
+        | Attestable_slots slots ->
+            if (Array.of_list slots).(slot_index) then (
+              Log.info "Found! Test case successfully finished." ;
+              unit)
+            else
+              let to_sleep = 5.0 in
+              Log.info
+                "Not found. Sleeping for %f seconds then retrying."
+                to_sleep ;
+              let* () = Lwt_unix.sleep to_sleep in
+              wait_slot_attestable ()
+      in
+      wait_slot_attestable ()
+    in
+    (* Bake several blocks to surpass the attestation lag. *)
     let* () =
       range 0 (dal_parameters.attestation_lag - 1)
       |> Tezos_base__TzPervasives.List.iter_s (fun _i ->
              Client.bake_for_and_wait client1 ~dal_node_endpoint)
     in
-    (* TODO:
-
-       Assert that the attestation was actually posted. *)
-    return (Unix.gettimeofday () -. start)
+    (* Assert that the attestation was indeed posted. *)
+    let* {dal_attestation; _} =
+      RPC.(call node1 @@ get_chain_block_metadata ())
+    in
+    Check.((Some [|true|] = dal_attestation) (option (array bool)))
+      ~error_msg:"Unexpected DAL attestations: expected %L, got %R" ;
+    unit
   in
   return time
 
