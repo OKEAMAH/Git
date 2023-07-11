@@ -204,52 +204,69 @@ let publish_slot_data ~level_committee (node_store : Store.node_store) gs_worker
       let* committee = level_committee ~level:attestation_level in
       let attestor_of_shard = shards_to_attestors committee in
       let Cryptobox.{number_of_shards; _} = Cryptobox.parameters cryptobox in
-      Store.Shards.read_all node_store.shard_store commitment ~number_of_shards
-      |> Seq_s.iter_ep (function
-             | _, _, Error [Stored_data.Missing_stored_data s] ->
-                 let*! () =
-                   Event.(
-                     emit loading_shard_data_failed ("Missing stored data " ^ s))
-                 in
-                 return_unit
-             | _, _, Error err ->
-                 let*! () =
-                   Event.(
-                     emit
-                       loading_shard_data_failed
-                       (Format.asprintf "%a" pp_print_trace err))
-                 in
-                 return_unit
-             | commitment, shard_index, Ok share -> (
-                 match
-                   ( attestor_of_shard shard_index,
-                     get_opt shard_proofs shard_index )
-                 with
-                 | None, _ ->
-                     failwith
-                       "Invariant broken: no attestor found for shard %d"
-                       shard_index
-                 | _, None ->
-                     failwith
-                       "Invariant broken: no shard proof found for shard %d"
-                       shard_index
-                 | Some pkh, Some shard_proof ->
-                     let message = Gossipsub.{share; shard_proof} in
-                     let topic = Gossipsub.{slot_index; pkh} in
-                     let message_id =
-                       Gossipsub.
-                         {
-                           commitment;
-                           level = published_level;
-                           slot_index;
-                           shard_index;
-                           pkh;
-                         }
-                     in
-                     Gossipsub.Worker.(
-                       Publish_message {message; topic; message_id}
-                       |> app_input gs_worker) ;
-                     return_unit))
+      let acc = ref 0.0 in
+      let t0 = ref (Unix.gettimeofday ()) in
+      let* () =
+        Store.Shards.read_all
+          node_store.shard_store
+          commitment
+          ~number_of_shards
+        |> Seq_s.iter_ep (fun v ->
+               let t1 = Unix.gettimeofday () in
+               acc := !acc +. (t1 -. !t0) ;
+               match v with
+               | _, _, Error [Stored_data.Missing_stored_data s] ->
+                   let*! () =
+                     Event.(
+                       emit
+                         loading_shard_data_failed
+                         ("Missing stored data " ^ s))
+                   in
+                   t0 := Unix.gettimeofday () ;
+                   return_unit
+               | _, _, Error err ->
+                   let*! () =
+                     Event.(
+                       emit
+                         loading_shard_data_failed
+                         (Format.asprintf "%a" pp_print_trace err))
+                   in
+                   t0 := Unix.gettimeofday () ;
+                   return_unit
+               | commitment, shard_index, Ok share -> (
+                   match
+                     ( attestor_of_shard shard_index,
+                       get_opt shard_proofs shard_index )
+                   with
+                   | None, _ ->
+                       failwith
+                         "Invariant broken: no attestor found for shard %d"
+                         shard_index
+                   | _, None ->
+                       failwith
+                         "Invariant broken: no shard proof found for shard %d"
+                         shard_index
+                   | Some pkh, Some shard_proof ->
+                       let message = Gossipsub.{share; shard_proof} in
+                       let topic = Gossipsub.{slot_index; pkh} in
+                       let message_id =
+                         Gossipsub.
+                           {
+                             commitment;
+                             level = published_level;
+                             slot_index;
+                             shard_index;
+                             pkh;
+                           }
+                       in
+                       Gossipsub.Worker.(
+                         Publish_message {message; topic; message_id}
+                         |> app_input gs_worker) ;
+                       t0 := Unix.gettimeofday () ;
+                       return_unit))
+      in
+      Format.eprintf "read_values: %f seconds@." !acc ;
+      return_unit
 
 let store_slot_headers ~block_level ~block_hash slot_headers node_store =
   Store.Legacy.add_slot_headers ~block_level ~block_hash slot_headers node_store

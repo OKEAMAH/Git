@@ -53,7 +53,10 @@ module Shards = struct
     let open Lwt_result_syntax in
     List.for_all_es
       (fun index ->
+        let t0 = Unix.gettimeofday () in
         let*! value = read_value store commitment index in
+        let t1 = Unix.gettimeofday () in
+        let () = Format.eprintf "read_value: %f seconds@." (t1 -. t0) in
         match value with
         | Ok _ -> return true
         | Error [Stored_data.Missing_stored_data _] -> return false
@@ -62,12 +65,28 @@ module Shards = struct
 
   let save_and_notify shards_store shards_watcher commitment shards =
     let open Lwt_result_syntax in
+    let c = ref 0 in
     let shards =
       Seq.map
-        (fun {Cryptobox.index; share} -> (commitment, index, share))
+        (fun {Cryptobox.index; share} ->
+          incr c ;
+          (commitment, index, share))
         shards
     in
+    let t0 = Unix.gettimeofday () in
     let* () = write_values shards_store shards |> Errors.other_lwt_result in
+    let t1 = Unix.gettimeofday () in
+    let dt = t1 -. t0 in
+    let () =
+      Format.eprintf
+        "write_values (%a): %f seconds to store %d shards, %f second per \
+         shard@."
+        Cryptobox.Commitment.pp
+        commitment
+        dt
+        !c
+        (dt /. float_of_int !c)
+    in
     let*! () =
       Event.(emit stored_slot_shards (commitment, Seq.length shards))
     in
@@ -84,8 +103,13 @@ module Shards = struct
     |> read_values shards_store
 
   let init value_size_fun node_store_dir shard_store_dir =
+    let open Lwt_syntax in
     let ( // ) = Filename.concat in
     let dir_path = node_store_dir // shard_store_dir in
+    let+ () =
+      if not (Sys.file_exists dir_path) then Lwt_utils_unix.create_dir dir_path
+      else return_unit
+    in
     init ~lru_size:Constants.shards_store_lru_size (fun commitment ->
         let commitment_string = Cryptobox.Commitment.to_b58check commitment in
         let filepath = dir_path // commitment_string in
@@ -129,7 +153,7 @@ let init share_size_fun config =
   let shards_watcher = Lwt_watcher.create_input () in
   let*! repo = Repo.v (Irmin_pack.config base_dir) in
   let*! store = main repo in
-  let shard_store = Shards.init share_size_fun base_dir shard_store_dir in
+  let*! shard_store = Shards.init share_size_fun base_dir shard_store_dir in
   let*! () = Event.(emit store_is_ready ()) in
   return
     {

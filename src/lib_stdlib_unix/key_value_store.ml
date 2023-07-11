@@ -110,24 +110,46 @@ end = struct
 
   let set_file_exists handle index = handle.bitset.{index} <- '\001'
 
+  (* let initialize_virtual_directory path value_size =
+   *   let open Lwt_syntax in
+   *   let t0 = Unix.gettimeofday () in
+   *   let fd = Unix.openfile path [O_RDWR; O_CREAT; O_EXCL] 0o660 in
+   *   let t1' = Unix.gettimeofday () in
+   *   let fd = Lwt_unix.of_unix_file_descr ~blocking:true fd in
+   *
+   *   (\* Lwt_unix.openfile path [O_RDWR; O_CREAT; O_EXCL] 0o660 in *\)
+   *   let total_size = bitset_size + (max_number_of_files * value_size) in
+   *   let* () = Lwt_unix.ftruncate fd total_size in
+   *   let bitset =
+   *     Lwt_bytes.map_file
+   *       ~fd:(Lwt_unix.unix_file_descr fd)
+   *       ~shared:true
+   *       ~size:bitset_size
+   *       ()
+   *   in
+   *   let t1 = Unix.gettimeofday () in
+   *   Format.eprintf
+   *     "Initialized virtual directory at %s in %f seconds, including %f for \
+   *      [openfile] and %f for the rest@."
+   *     path
+   *     (t1 -. t0)
+   *     (t1' -. t0)
+   *     (t1 -. t1') ;
+   *   return {fd; bitset} *)
+
   let initialize_virtual_directory path value_size =
     let open Lwt_syntax in
-    Format.eprintf "Initializing virtual directory at %s@." path ;
-    let* () =
-      if Filename.dirname path <> "." then
-        Lwt_utils_unix.create_dir (Filename.dirname path)
-      else return_unit
-    in
-    let* fd = Lwt_unix.openfile path [O_RDWR; O_CREAT; O_EXCL] 0o660 in
+    let t0 = Unix.gettimeofday () in
+    let fd = Unix.openfile path [O_RDWR; O_CREAT; O_EXCL] 0o660 in
     let total_size = bitset_size + (max_number_of_files * value_size) in
-    let* () = Lwt_unix.ftruncate fd total_size in
+    Unix.ftruncate fd total_size ;
     let bitset =
-      Lwt_bytes.map_file
-        ~fd:(Lwt_unix.unix_file_descr fd)
-        ~shared:true
-        ~size:bitset_size
-        ()
+      Unix.map_file fd Bigarray.char Bigarray.c_layout true [|bitset_size|]
+      |> Bigarray.array1_of_genarray
     in
+    let t1 = Unix.gettimeofday () in
+    Format.eprintf "store_init[%s]=%f@." path (t1 -. t0) ;
+    let fd = Lwt_unix.of_unix_file_descr ~blocking:true fd in
     return {fd; bitset}
 
   let load_virtual_directory path =
@@ -297,6 +319,7 @@ end = struct
     let index = spec.index_of file in
     bind_dir_and_lock_file dirs spec index @@ fun cached handle ->
     let perform_write () =
+      let t0 = Unix.gettimeofday () in
       let pos = Int64.of_int (bitset_size + (index * spec.value_size)) in
       let mmap =
         Lwt_bytes.map_file
@@ -313,6 +336,8 @@ end = struct
       else (
         Lwt_bytes.blit_from_bytes bytes 0 mmap 0 (Bytes.length bytes) ;
         set_file_exists handle index ;
+        let t1 = Unix.gettimeofday () in
+        Format.eprintf "write[%s][%d]=%f@." spec.path index (t1 -. t0) ;
         return_unit)
     in
     if not (file_exists handle index) then (
@@ -346,7 +371,9 @@ end = struct
           in
           let bytes = Bytes.make spec.value_size '\000' in
           Lwt_bytes.blit_to_bytes mmap 0 bytes 0 spec.value_size ;
-          return (Data_encoding.Binary.of_bytes_exn spec.encoding bytes)
+          let data = Data_encoding.Binary.of_bytes_exn spec.encoding bytes in
+          File_table.add cached index data ;
+          return data
       | Some v -> return v
     else tzfail (Missing_stored_kvs_data (spec.path, index))
 end
