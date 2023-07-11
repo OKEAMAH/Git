@@ -194,18 +194,20 @@ let initialize_total_supply_for_o chain_id ctxt =
   else
     (* If not on mainnet, iterate over all accounts and get an accurate total supply *)
     let* total_supply =
-      Storage.Contract.fold
-        ctxt
-        ~order:`Undefined
-        ~f:(fun contract acc ->
-          let* full_balance =
-            Contract_storage.For_RPC.get_full_balance ctxt contract
-          in
-          match full_balance with
-          | Ok full_balance ->
-              return @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
-          | _ -> return acc)
-        ~init:Tez_repr.zero
+      Profiler.aggregate_s "init storage total_supply testnet " (fun () ->
+          Storage.Contract.fold
+            ctxt
+            ~order:`Undefined
+            ~f:(fun contract acc ->
+              let* full_balance =
+                Contract_storage.For_RPC.get_full_balance ctxt contract
+              in
+              match full_balance with
+              | Ok full_balance ->
+                  return
+                  @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
+              | _ -> return acc)
+            ~init:Tez_repr.zero)
     in
     Storage.Contract.Total_supply.add ctxt total_supply
 
