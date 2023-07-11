@@ -38,6 +38,7 @@ let grafana_panels : Grafana.panel list =
     Grafana.simple_graph ~measurement ~test:measurement ~field:"duration" ();
   ]
 
+(* Adapted from tezt/tests/dal.ml *)
 let start_l1_node ~protocol ~account ?l1_bootstrap_peer ?dal_bootstrap_peer () =
   let* parameter_file =
     let base = Either.right (protocol, Some Protocol.Constants_mainnet) in
