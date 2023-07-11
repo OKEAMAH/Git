@@ -175,14 +175,15 @@ let measure_and_add_data_point f ~tag =
         - Post a commitment to the slot to L1.
 *)
 let test_produce_and_propagate_shards ~executors ~protocol =
-  let timeout = 120 in
   let repeat = Cli.get_int ~default:10 "repeat" in
+  let expected_running_time = 120 in
+  let timeout = Long_test.Seconds (repeat * 10 * expected_running_time) in
   Long_test.register
     ~__FILE__
     ~title:"DAL node produce and propagate shards"
     ~tags:["dal"]
     ~executors
-    ~timeout:(Long_test.Seconds (repeat * 10 * timeout))
+    ~timeout
   @@ fun () ->
   Long_test.measure_and_check_regression_lwt
     ~tags:[("tag", "total")]
