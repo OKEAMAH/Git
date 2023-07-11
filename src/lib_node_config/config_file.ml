@@ -158,6 +158,7 @@ let blockchain_network_ghostnet =
         (765952l, "PtJakart2xVj7pYXJBXrqHgd82rdkLey5ZeeGwDgPp9rhQUbSqY");
         (1191936l, "PtKathmankSpLLDALzWw7CGD2j2MtyveTwboEYokqUCP4a1LxMg");
         (1654784l, "PtLimaPtLMwfNinJi9rCfDPWea8dFgTZ1MeJ9f1m2SRic6ayiwW");
+        (3219457l, "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK");
       ]
     ~default_bootstrap_peers:
       [
