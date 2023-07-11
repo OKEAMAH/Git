@@ -127,7 +127,8 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
    well-choosen points. Building the srs from the initialisation
    parameters is almost cost-free. *)
 type srs = {
-  raw : initialisation_parameters;
+  srs_g1 : Srs_g1.t;
+  offset_monomial_srs_g2 : Bls12_381.G2.t;
   kate_amortized_srs_g2_shards : Bls12_381.G2.t;
   kate_amortized_srs_g2_pages : Bls12_381.G2.t;
 }
@@ -647,7 +648,7 @@ module Inner = struct
       redundancy_factor * max_polynomial_length
     in
     let shard_length = erasure_encoded_polynomial_length / number_of_shards in
-    let* raw =
+    let* (raw : initialisation_parameters) =
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
       | Some srs -> return srs
@@ -668,7 +669,9 @@ module Inner = struct
     let page_length_domain, _, _ = select_fft_domain page_length in
     let srs =
       {
-        raw;
+        srs_g1 = raw.srs_g1;
+        offset_monomial_srs_g2 =
+          Srs_g2.get raw.srs_g2 (Srs_g1.size raw.srs_g1 - max_polynomial_length);
         kate_amortized_srs_g2_shards = Srs_g2.get raw.srs_g2 shard_length;
         kate_amortized_srs_g2_pages = Srs_g2.get raw.srs_g2 page_length_domain;
       }
@@ -1130,12 +1133,12 @@ module Inner = struct
 
   let commit t p =
     let degree = Polynomials.degree p in
-    let srs_g1_size = Srs_g1.size t.srs.raw.srs_g1 in
+    let srs_g1_size = Srs_g1.size t.srs.srs_g1 in
     if degree >= srs_g1_size then
       Error
         (`Invalid_degree_strictly_less_than_expected
           {given = degree; expected = srs_g1_size})
-    else Ok (Srs_g1.pippenger t.srs.raw.srs_g1 p)
+    else Ok (Srs_g1.pippenger t.srs.srs_g1 p)
 
   let pp_commit_error fmt
       (`Invalid_degree_strictly_less_than_expected {given; expected}) =
@@ -1165,7 +1168,7 @@ module Inner = struct
      Generalize this function to pass the slot_size in parameter. *)
   let prove_commitment (t : t) p =
     let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
-    let max_committable_degree = Srs_g1.size t.srs.raw.srs_g1 - 1 in
+    let max_committable_degree = Srs_g1.size t.srs.srs_g1 - 1 in
     let offset_monomial_degree =
       max_committable_degree - max_allowed_committed_poly_degree
     in
@@ -1180,20 +1183,10 @@ module Inner = struct
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
   let verify_commitment (t : t) cm proof =
-    let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
-    let max_committable_degree = Srs_g1.size t.srs.raw.srs_g1 - 1 in
-    let offset_monomial_degree =
-      max_committable_degree - max_allowed_committed_poly_degree
-    in
-    let committed_offset_monomial =
-      (* This [get] cannot raise since
-         [offset_monomial_degree <= t.max_polynomial_length <= Srs_g2.size t.srs.raw.srs_g2]. *)
-      Srs_g2.get t.srs.raw.srs_g2 offset_monomial_degree
-    in
     let open Bls12_381 in
     (* checking that cm * committed_offset_monomial = proof *)
     Pairing.pairing_check
-      [(cm, committed_offset_monomial); (proof, G2.(negate (copy one)))]
+      [(cm, t.srs.offset_monomial_srs_g2); (proof, G2.(negate (copy one)))]
 
   let diff_next_power_of_two x = (1 lsl Z.log2up (Z.of_int x)) - x
 
@@ -1396,7 +1389,7 @@ module Inner = struct
     assert (t.max_polynomial_length mod t.shard_length = 0) ;
     let domain_length = 2 * t.max_polynomial_length / t.shard_length in
     let domain = Domains.build domain_length in
-    let srs = t.srs.raw.srs_g1 in
+    let srs = t.srs.srs_g1 in
     (* Computes
        points = srs_{m-j-l} srs_{m-j-2l} srs_{m-j-3l} ... srs_{m-j-ql=r}
                 || 0^{2m/l - floor((m-j)/l)},
@@ -1788,7 +1781,7 @@ module Internal_for_tests = struct
     Polynomials.init (degree + 1) (fun i ->
         if i = degree then nonzero () else Bls12_381.Fr.random ~state ())
 
-  let srs_size_g1 t = Srs_g1.size t.srs.raw.srs_g1
+  let srs_size_g1 t = Srs_g1.size t.srs.srs_g1
 
   let encoded_share_size = encoded_share_size
 
