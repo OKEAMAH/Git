@@ -58,8 +58,6 @@ let to_int x = x
    performance penalty first. *)
 let max_value = (1 lsl 16) - 1
 
-let of_int_do_not_use_except_for_parameters i = i
-
 let of_int i =
   if Compare.Int.(i < 0 || i > max_value) then error (Invalid_slot i) else ok i
 

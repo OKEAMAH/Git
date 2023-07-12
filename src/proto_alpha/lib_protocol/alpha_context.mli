@@ -79,8 +79,6 @@ module Slot : sig
 
   val succ : t -> t tzresult
 
-  val of_int_do_not_use_except_for_parameters : int -> t
-
   val encoding : t Data_encoding.encoding
 
   module Range : sig
