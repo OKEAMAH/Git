@@ -219,7 +219,7 @@ let test_endorsement_with_consensus_key () =
   >>=? fun blk' ->
   update_consensus_key blk' delegate consensus_pk >>=? fun b_pre ->
   Block.bake b_pre >>=? fun b ->
-  let slot = Slot.of_int_do_not_use_except_for_parameters 0 in
+  Slot.Internal_for_tests.of_int 0 |> Environment.wrap_tzresult >>?= fun slot ->
   Op.endorsement ~delegate:account1_pkh ~slot b >>=? fun endorsement ->
   Block.bake ~operation:endorsement b >>= fun res ->
   Assert.proto_error ~loc:__LOC__ res (function

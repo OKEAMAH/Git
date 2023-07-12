@@ -159,11 +159,9 @@ let test_negative_slot () =
   Context.get_endorser (B b) >>=? fun (delegate, _slots) ->
   Lwt.catch
     (fun () ->
-      Op.endorsement
-        ~delegate
-        ~slot:(Slot.of_int_do_not_use_except_for_parameters (-1))
-        b
-      >>=? fun (_ : packed_operation) ->
+      Slot.Internal_for_tests.of_int (-1) |> Environment.wrap_tzresult
+      >>?= fun slot ->
+      Op.endorsement ~delegate ~slot b >>=? fun (_ : packed_operation) ->
       failwith "negative slot should not be accepted by the binary format")
     (function
       | Data_encoding.Binary.Write_error _ -> return_unit | e -> Lwt.fail e)
