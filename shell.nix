@@ -90,6 +90,7 @@ in
         curl
         shellcheck
         poetry
+        nixpkgs-fmt
         devPackageSet.ocaml-lsp-server
         devPackageSet.ocamlformat-rpc
         devPackageSet.ocp-indent

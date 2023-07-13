@@ -385,14 +385,18 @@ check-python-typecheck:
 check-ocaml-linting:
 	@./scripts/semgrep/lint-all-ocaml-sources.sh
 
-.PHONY: fmt fmt-ocaml fmt-python
-fmt: fmt-ocaml fmt-python
+.PHONY: fmt fmt-ocaml fmt-python fmt-nix
+fmt: fmt-ocaml fmt-python fmt-nix
 
 fmt-ocaml:
 	@dune build --profile=$(PROFILE) @fmt --auto-promote
 
 fmt-python:
 	@$(MAKE) -C docs fmt
+
+fmt-nix:
+	@nixpkgs-fmt nix/*
+	@nixpkgs-fmt *.nix
 
 .PHONY: build-deps
 build-deps:
