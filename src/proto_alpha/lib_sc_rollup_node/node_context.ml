@@ -57,6 +57,7 @@ type 'a t = {
   context : 'a Context.index;
   lcc : ('a, lcc) Reference.t;
   lpc : ('a, Sc_rollup.Commitment.t option) Reference.t;
+  instant_inbox : ('a, (Epoxy_tx.Types.P.tx * Raw_level.t) option) Reference.t;
   kernel_debug_logger : debug_logger;
   finaliser : unit -> unit Lwt.t;
 }
@@ -362,6 +363,7 @@ let init (cctxt : Protocol_client_context.full) ~data_dir ?log_kernel_debug_file
       genesis_info;
       lcc = Reference.new_ lcc;
       lpc = Reference.new_ lpc;
+      instant_inbox = Reference.new_ None;
       kind;
       pvm = pvm_of_kind kind;
       injector_retention_period = 0;
@@ -427,6 +429,7 @@ let readonly (node_ctxt : _ t) =
     context = Context.readonly node_ctxt.context;
     lcc = Reference.readonly node_ctxt.lcc;
     lpc = Reference.readonly node_ctxt.lpc;
+    instant_inbox = Reference.readonly node_ctxt.instant_inbox;
   }
 
 type 'a delayed_write = ('a, rw) Delayed_write_monad.t
@@ -1025,6 +1028,7 @@ module Internal_for_tests = struct
         genesis_info;
         lcc;
         lpc;
+        instant_inbox = Reference.new_ None;
         kind;
         pvm = pvm_of_kind kind;
         injector_retention_period = 0;

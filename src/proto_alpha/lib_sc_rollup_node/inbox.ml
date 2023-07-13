@@ -37,14 +37,16 @@ let get_messages Node_context.{cctxt; _} head =
   let* block = Layer1.fetch_tezos_block cctxt head in
   let append (l, opt) msgs instant =
     ( List.rev_append msgs l,
-      Option.bind instant (fun tx -> Option.map (Fun.const tx) opt) )
+      match (instant, opt) with
+      | _, Some tx -> Some tx
+      | Some tx, None -> Some tx
+      | _ -> None )
   in
   let apply (type kind) accu ~source:_ (operation : kind manager_operation)
       _result =
     let open Result_syntax in
     let+ accu in
     match operation with
-    (* TODO: apply instant *)
     | Sc_rollup_add_messages {messages; instant} ->
         let messages =
           List.map

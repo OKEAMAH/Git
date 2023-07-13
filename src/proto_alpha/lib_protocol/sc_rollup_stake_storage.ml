@@ -339,7 +339,7 @@ let assert_refine_conditions_met ~current_level ~lcc_inbox_level ctxt rollup lcc
   let commitment_inbox_level = commitment.Commitment.inbox_level in
   let* () =
     fail_unless
-      Raw_level_repr.(commitment_inbox_level > lcc_inbox_level)
+      Raw_level_repr.(commitment_inbox_level >= lcc_inbox_level)
       (Sc_rollup_commitment_too_old
          {last_cemented_inbox_level = lcc_inbox_level; commitment_inbox_level})
   in
@@ -594,35 +594,39 @@ let active_stakers_index ctxt rollup stakers =
     (ctxt, [])
     stakers
 
-let is_cementable_candidate_commitment ctxt rollup lcc commitment_hash =
+let is_cementable_candidate_commitment ctxt rollup _lcc _old_lcc_level
+    commitment_hash =
   let open Lwt_result_syntax in
   let* commitment, ctxt =
     Commitment_storage.get_commitment_unsafe ctxt rollup commitment_hash
   in
-  if Commitment_hash.equal commitment.predecessor lcc then
-    let* ctxt, stakers_on_commitment =
-      Commitment_stakers.get ctxt rollup commitment_hash
-    in
-    let* ctxt, active_stakers_index =
-      active_stakers_index ctxt rollup stakers_on_commitment
-    in
-    (* The commitment is active if its predecessor is the LCC and
-       at least one active steaker has staked on it. *)
-    let commitment =
-      if Compare.List_length_with.(active_stakers_index > 0) then
-        Some commitment
-      else None
-    in
-    return (ctxt, commitment)
-  else (* Dangling commitment. *)
-    return (ctxt, None)
+  let* ctxt, stakers_on_commitment =
+    Commitment_stakers.get ctxt rollup commitment_hash
+  in
+  let* ctxt, active_stakers_index =
+    active_stakers_index ctxt rollup stakers_on_commitment
+  in
+  (* The commitment is active if its predecessor is the LCC and
+     at least one active steaker has staked on it. *)
+  let commitment =
+    if Compare.List_length_with.(active_stakers_index > 0) then Some commitment
+    else None
+  in
+  return (ctxt, commitment)
 
 let cementable_candidate_commitment_of_inbox_level ctxt rollup ~old_lcc
-    inbox_level =
+    ~old_lcc_level inbox_level =
   let open Lwt_result_syntax in
   let* ctxt, commitments =
     Commitments_per_inbox_level.get ctxt rollup inbox_level
   in
+  (* if 1 = 1 then
+     failwith
+       (Format.asprintf
+          "%d commitments for inbox level %a"
+          (List.length commitments)
+          Raw_level_repr.pp
+          inbox_level) ; *)
   let rec collect_commitments ctxt candidate_commitment_res dangling_commitments
       = function
     | [] -> return (ctxt, candidate_commitment_res, dangling_commitments)
@@ -632,6 +636,7 @@ let cementable_candidate_commitment_of_inbox_level ctxt rollup ~old_lcc
             ctxt
             rollup
             old_lcc
+            old_lcc_level
             candidate_commitment_hash
         in
         match (candidate_commitment, candidate_commitment_res) with
@@ -664,7 +669,8 @@ let cementable_candidate_commitment_of_inbox_level ctxt rollup ~old_lcc
       {li The commitment is the only active commitment.}
     }
 *)
-let find_commitment_to_cement ?new_state ctxt rollup ~old_lcc new_lcc_level =
+let find_commitment_to_cement ?new_state ctxt rollup ~old_lcc ~old_lcc_level
+    new_lcc_level =
   let open Lwt_result_syntax in
   (* Checks that the commitment is the only active commitment. *)
   let* ctxt, candidate_commitment, dangling_commitments =
@@ -672,6 +678,7 @@ let find_commitment_to_cement ?new_state ctxt rollup ~old_lcc new_lcc_level =
       ctxt
       rollup
       ~old_lcc
+      ~old_lcc_level
       new_lcc_level
   in
   match candidate_commitment with
@@ -771,7 +778,13 @@ let cement_commitment ?new_state ctxt rollup =
   (* Assert conditions to cement are met. *)
   let* ctxt, (new_lcc_commitment, new_lcc_commitment_hash), dangling_commitments
       =
-    find_commitment_to_cement ?new_state ctxt rollup ~old_lcc new_lcc_level
+    find_commitment_to_cement
+      ?new_state
+      ctxt
+      rollup
+      ~old_lcc
+      ~old_lcc_level
+      new_lcc_level
   in
   let* new_lcc_state_commitment =
     match
@@ -825,6 +838,10 @@ let instant_update ctxt rollup commitment =
   let commitment_hash =
     Sc_rollup_commitment_repr.hash_uncarbonated commitment
   in
+  let* ctxt, _commitment_size_diff, _commit_existed =
+    Store.Commitments.add (ctxt, rollup) commitment_hash commitment
+  in
+  ignore old_lcc ;
   let* ctxt, _size_diff =
     Store.Last_cemented_commitment.update ctxt rollup commitment_hash
   in

@@ -26,6 +26,9 @@
 let get_sc_rollup_addresses_command cctxt =
   Sc_rollup_services.Global.(make_call sc_rollup_address) cctxt () () ()
 
+let get_cemented_account_command cctxt index =
+  Sc_rollup_services.Global.(make_call cemented_account) cctxt () {index} ()
+
 let get_state_value_command cctxt block key =
   Sc_rollup_services.Global.Block.(make_call1 state_value) cctxt block {key} ()
 

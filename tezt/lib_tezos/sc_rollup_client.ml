@@ -142,6 +142,14 @@ let state_value ?hooks ?(block = "head") sc_client ~key =
   |> Runnable.map @@ fun out ->
      Scanf.sscanf (String.trim out) "%S" (fun s -> s) |> String.to_bytes
 
+let cemented_account ?hooks sc_client ~index =
+  spawn_command
+    ?hooks
+    sc_client
+    ["get"; "cemented"; "account"; "for"; string_of_int index]
+  |> Runnable.map @@ fun out ->
+     Scanf.sscanf (String.trim out) "%S" (fun s -> s) |> String.to_bytes
+
 type transaction = {
   destination : string;
   entrypoint : string option;

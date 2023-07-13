@@ -273,7 +273,7 @@ let add_fallbacks map fallbacks =
 
 let make_purpose_map ~default bindings =
   let map = Operator_purpose_map.of_seq @@ List.to_seq bindings in
-  let map = add_fallbacks map [(Timeout, Refute)] in
+  let map = add_fallbacks map [(Timeout, Refute); (Instant_update, Publish)] in
   match default with
   | None -> map
   | Some default ->
@@ -688,7 +688,7 @@ let check_mode config =
   | Observer -> narrow_purposes []
   | Batcher -> narrow_purposes [Add_messages]
   | Accuser -> narrow_purposes [Publish; Refute]
-  | Maintenance -> narrow_purposes [Publish; Cement; Refute]
+  | Maintenance -> narrow_purposes [Publish; Cement; Refute; Instant_update]
   | Operator ->
       narrow_purposes [Publish; Cement; Add_messages; Refute; Instant_update]
   | Custom -> return config

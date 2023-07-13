@@ -65,6 +65,18 @@ let get_state_value_command () =
       RPC.get_state_value_command cctxt block key >>=? fun bytes ->
       cctxt#message "@[%S@]" (String.of_bytes bytes) >>= fun () -> return_unit)
 
+let get_cemented_account () =
+  Tezos_clic.command
+    ~desc:"Observe a cemented account."
+    Tezos_clic.no_options
+    (Tezos_clic.prefixes ["get"; "cemented"; "account"; "for"]
+    @@ Tezos_clic.string ~name:"index" ~desc:"The index of the account"
+    @@ Tezos_clic.stop)
+    (fun () index (cctxt : #Configuration.sc_client_context) ->
+      RPC.get_cemented_account_command cctxt (int_of_string index)
+      >>=? fun bytes ->
+      cctxt#message "@[%S@]" (String.of_bytes bytes) >>= fun () -> return_unit)
+
 (** [display_answer cctxt answer] prints an RPC answer. *)
 let display_answer (cctxt : #Configuration.sc_client_context) :
     Tezos_rpc.Context.generic_call_result -> unit Lwt.t = function
@@ -388,6 +400,7 @@ let all () =
   [
     get_sc_rollup_addresses_command ();
     get_state_value_command ();
+    get_cemented_account ();
     get_output_proof ();
     get_output_message_encoding ();
     Keys.generate_keys ();

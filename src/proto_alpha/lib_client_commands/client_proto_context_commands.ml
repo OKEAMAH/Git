@@ -2826,6 +2826,100 @@ let commands_rw () =
         return_unit);
     command
       ~group
+      ~desc:"Send one or more messages to a smart rollup."
+      (args8
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         simulate_switch
+         fee_parameter_args
+         gas_limit_arg
+         storage_limit_arg
+         counter_arg)
+      (prefixes ["send"; "smart"; "rollup"; "message"]
+      @@ param
+           ~name:"messages"
+           ~desc:
+             "The message(s) to be sent to the rollup (syntax: \
+              bin:<path_to_binary_file>|text:<json list of raw string \
+              messages>|hex:<json list of hex-encoded \
+              messages>|file:<json_file>)."
+           Sc_rollup_params.messages_parameter
+      @@ prefix "instant"
+      @@ param ~name:"instant" ~desc:"instant message" string_parameter
+      @@ prefixes ["from"]
+      @@ Client_keys.Public_key_hash.source_param
+           ~name:"src"
+           ~desc:"Name of the source contract."
+      @@ stop)
+      (fun ( fee,
+             dry_run,
+             verbose_signing,
+             simulation,
+             fee_parameter,
+             gas_limit,
+             storage_limit,
+             counter )
+           messages
+           instant
+           source
+           cctxt ->
+        let open Lwt_result_syntax in
+        let instant =
+          let bytes = Hex.to_bytes_exn (`Hex instant) in
+          Data_encoding.Binary.of_bytes_exn
+            Epoxy_tx.Types.P.tx_data_encoding
+            bytes
+        in
+        let* messages =
+          match messages with
+          | `Bin message -> return [message]
+          | `Json messages -> (
+              match Data_encoding.(Json.destruct (list string) messages) with
+              | exception _ ->
+                  cctxt#error
+                    "Could not read list of messages (expected list of bytes)"
+              | "raw" :: messages -> return messages
+              | "hex" :: messages ->
+                  let* messages =
+                    List.map_es
+                      (fun message ->
+                        match Hex.to_string (`Hex message) with
+                        | None ->
+                            cctxt#error
+                              "'%s' is not a valid hex encoded message"
+                              message
+                        | Some msg -> return [msg])
+                      messages
+                  in
+                  return @@ List.flatten messages
+              | _messages -> assert false)
+        in
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt source in
+        let* _res =
+          sc_rollup_add_messages
+            cctxt
+            ~chain:cctxt#chain
+            ~block:cctxt#block
+            ?dry_run:(Some dry_run)
+            ?verbose_signing:(Some verbose_signing)
+            ?fee
+            ?gas_limit
+            ?storage_limit
+            ?counter
+            ?confirmations:cctxt#confirmations
+            ~simulation
+            ~source
+            ~messages
+            ~src_pk
+            ~src_sk
+            ~fee_parameter
+            ~instant
+            ()
+        in
+        return_unit);
+    command
+      ~group
       ~desc:"Publish a commitment for a smart rollup"
       (args7
          fee_arg

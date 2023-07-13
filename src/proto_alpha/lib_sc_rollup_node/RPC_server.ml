@@ -262,6 +262,19 @@ let () =
       Option.map (fun c -> (c, commitment_hash)) commitment
 
 let () =
+  Global_directory.register0 Sc_rollup_services.Global.cemented_account
+  @@ fun node_ctxt {index} () ->
+  let open Lwt_result_syntax in
+  let* instant, _ = Node_context.get_lcs node_ctxt in
+  let account, _, _ = Epoxy_tx.Tx_rollup.P.get_account index instant.accounts in
+  let bytes =
+    Data_encoding.Binary.to_bytes_exn
+      Epoxy_tx.Types.P.account_data_encoding
+      account
+  in
+  return bytes
+
+let () =
   Local_directory.register0 Sc_rollup_services.Local.last_published_commitment
   @@ fun node_ctxt () () ->
   let open Lwt_result_syntax in

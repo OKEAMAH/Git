@@ -448,6 +448,21 @@ module Global = struct
       ~output:(Data_encoding.option Encodings.commitment_with_hash)
       (path / "last_stored_commitment")
 
+  type cemented_account_query = {index : int}
+
+  let cemented_account_query : cemented_account_query Tezos_rpc.Query.t =
+    let open Tezos_rpc.Query in
+    query (fun index -> {index})
+    |+ field "index" Tezos_rpc.Arg.int 0 (fun t -> t.index)
+    |> seal
+
+  let cemented_account =
+    Tezos_rpc.Service.get_service
+      ~description:"Retrieve cemented account from index"
+      ~query:cemented_account_query
+      ~output:Data_encoding.bytes
+      (path / "cemented_account")
+
   module Helpers = struct
     include Make_services (struct
       type prefix = unit

@@ -83,6 +83,7 @@ type 'a t = {
   lpc : ('a, Sc_rollup.Commitment.t option) Reference.t;
       (** The last published commitment, i.e. commitment that the operator is
           staked on. *)
+  instant_inbox : ('a, (Epoxy_tx.Types.P.tx * Raw_level.t) option) Reference.t;
   kernel_debug_logger : debug_logger;
       (** Logger used for writing [kernel_debug] messages *)
   finaliser : unit -> unit Lwt.t;

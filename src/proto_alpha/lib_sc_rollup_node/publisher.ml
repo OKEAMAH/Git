@@ -321,6 +321,104 @@ let publish_commitment (node_ctxt : _ Node_context.t) ~source
   let* _hash = Injector.add_pending_operation ~source publish_operation in
   return_unit
 
+let next_inbox_level node_ctxt inbox_level lcc_inbox_level =
+  let period = sc_rollup_commitment_period node_ctxt in
+  let rec aux commitment_level =
+    let open Raw_level in
+    if inbox_level <= commitment_level then commitment_level
+    else aux (add_level commitment_level period)
+  in
+  aux lcc_inbox_level
+
+let publish_instant (node_ctxt : _ Node_context.t) =
+  match Reference.get node_ctxt.instant_inbox with
+  | Some (tx, inbox_level) ->
+      let () = Reference.set node_ctxt.instant_inbox None in
+      let open Lwt_result_syntax in
+      let module PVM = (val node_ctxt.pvm) in
+      let hex_of_bytes b =
+        let (`Hex s) = Hex.of_bytes b in
+        s
+      in
+      let tx =
+        let bytes =
+          Data_encoding.Binary.to_bytes_exn Epoxy_tx.Types.P.tx_data_encoding tx
+        in
+        let payload =
+          Sc_rollup.Inbox_message.(
+            Stdlib.Result.get_ok @@ serialize @@ External (hex_of_bytes bytes))
+        in
+        Sc_rollup.(
+          Inbox_message {inbox_level; message_counter = Z.zero; payload})
+      in
+      (* RUN OVER LCS, get commitment, update LCS *)
+      let* instant, opt_root = Node_context.get_lcs node_ctxt in
+      (* Hack to be able to run apply_one *)
+      let* block_hash =
+        Node_context.hash_of_level node_ctxt (Raw_level.to_int32 inbox_level)
+      in
+      let* ctxt = Node_context.checkout_context node_ctxt block_hash in
+      let*! state = PVM.State.find ctxt in
+      let state = Stdlib.Option.get state in
+      let start_state = {state with instant = Some instant} in
+      let*! new_state = PVM.apply_one tx start_state in
+      let final_instant = new_state.instant in
+      let* () =
+        Node_context.save_lcs
+          node_ctxt
+          (Stdlib.Option.get final_instant, opt_root)
+      in
+      let instant_root_bytes =
+        Epoxy_tx.Utils.scalar_to_bytes
+        @@ Epoxy_tx.Tx_rollup.P.state_scalar (Stdlib.Option.get final_instant)
+      in
+      let new_state_hash =
+        Sc_rollup.State_hash.hash_bytes [instant_root_bytes; opt_root]
+      in
+      let lcc = Reference.get node_ctxt.lcc in
+      let inbox_level = next_inbox_level node_ctxt inbox_level lcc.level in
+      let*! () =
+        Event.kernel_debug
+          (Format.asprintf "instant update level: %a" Raw_level.pp inbox_level)
+      in
+      let commitment =
+        Sc_rollup.Commitment.
+          {
+            compressed_state = State new_state_hash;
+            inbox_level;
+            predecessor = lcc.commitment;
+            number_of_ticks = Sc_rollup.Number_of_ticks.zero;
+          }
+      in
+      let commitment_hash = Sc_rollup.Commitment.hash_uncarbonated commitment in
+      let () =
+        Reference.set
+          node_ctxt.lcc
+          {commitment = commitment_hash; level = Raw_level.succ lcc.level}
+      in
+      let*! () =
+        Commitment_event.last_cemented_commitment_updated
+          commitment_hash
+          inbox_level
+      in
+      let l1_op =
+        L1_operation.Instant_update
+          {rollup = node_ctxt.rollup_address; commitment}
+      in
+      let operator = Node_context.get_operator node_ctxt Publish in
+      let source = Stdlib.Option.get operator in
+      ignore (commitment_hash, source, l1_op) ;
+      let* _ = Injector.add_pending_operation ~source l1_op in
+      let*! () =
+        Commitment_event.publish_instant_update commitment_hash inbox_level
+      in
+      (* RUN on HEAD (only instant part) *)
+      let*! new_state = PVM.apply_one tx state in
+      let new_state = {new_state with optimistic = state.optimistic} in
+      let*! _ctxt = PVM.State.set ctxt new_state in
+      return_unit
+  | None -> return_unit
+
 let on_publish_commitments (node_ctxt : state) =
   let open Lwt_result_syntax in
   let operator = Node_context.get_operator node_ctxt Publish in
@@ -334,7 +432,11 @@ let on_publish_commitments (node_ctxt : state) =
         return_unit
     | Some source ->
         let* commitments = missing_commitments node_ctxt in
-        List.iter_es (publish_commitment node_ctxt ~source) commitments
+        let* () =
+          List.iter_es (publish_commitment node_ctxt ~source) commitments
+        in
+        if List.length commitments > 0 then publish_instant node_ctxt
+        else return_unit
 
 let publish_single_commitment node_ctxt (commitment : Sc_rollup.Commitment.t) =
   let open Lwt_result_syntax in
@@ -368,8 +470,8 @@ let earliest_cementing_level node_ctxt commitment_hash =
       start the search for cementable commitments. *)
 let latest_cementable_commitment (node_ctxt : _ Node_context.t)
     (head : Sc_rollup_block.t) =
-  let open Lwt_result_option_syntax in
   let commitment_hash = Sc_rollup_block.most_recent_commitment head.header in
+  let open Lwt_result_option_syntax in
   let** commitment = Node_context.find_commitment node_ctxt commitment_hash in
   let** cementable_level_bound =
     return
@@ -398,10 +500,19 @@ let cementable_commitments (node_ctxt : _ Node_context.t) =
   let rec gather acc (commitment_hash : Sc_rollup.Commitment.Hash.t) =
     let* commitment = Node_context.find_commitment node_ctxt commitment_hash in
     match commitment with
-    | None -> return acc
+    | None ->
+        let*! () =
+          Event.kernel_debug
+            (Format.asprintf
+               "find commitment %a is none"
+               Sc_rollup.Commitment.Hash.pp
+               commitment_hash)
+        in
+        return acc
     | Some commitment when Raw_level.(commitment.inbox_level <= lcc.level) ->
         (* If we have moved backward passed or at the current LCC then we have
            reached the end. *)
+        let*! () = Event.kernel_debug "commitment inbox level <= lcc" in
         return acc
     | Some commitment ->
         let* earliest_cementing_level =

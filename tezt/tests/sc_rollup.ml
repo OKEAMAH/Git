@@ -772,8 +772,9 @@ let bake_period_then_publish_commitment ?compressed_state ?number_of_ticks
    the Tezos node. Then we can observe that the messages are included in the
    inbox.
 *)
-let send_message_client ?hooks ?(src = Constant.bootstrap2.alias) client msg =
-  let* () = Client.Sc_rollup.send_message ?hooks ~src ~msg client in
+let send_message_client ?hooks ?(src = Constant.bootstrap2.alias) ?instant
+    client msg =
+  let* () = Client.Sc_rollup.send_message ?hooks ?instant ~src ~msg client in
   Client.bake_for_and_wait client
 
 let send_messages_client ?hooks ?src ?batch_size n client =
@@ -1395,7 +1396,7 @@ let l2_sks : Schnorr.sk array =
 let l2_pks = Array.map Schnorr.neuterize l2_sks
 
 let epoxy_tx_boot_sector =
-  let tez_balances = [1000; 100; 10] in
+  let tez_balances = [1000; 100; 10; 1] in
   let bals =
     List.mapi (fun i bal -> (l2_pks.(i), Z.of_int bal, [||])) tez_balances
   in
@@ -1449,6 +1450,31 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
   let open Epoxy_tx_helpers.MakeUsers (struct
     let l2_sks = l2_sks
   end) in
+  let print_account i =
+    let*! acc_bytes =
+      Sc_rollup_client.state_value
+        ~hooks
+        sc_rollup_client
+        ~key:("instant/" ^ string_of_int i)
+    in
+    let acc =
+      Data_encoding.Binary.of_bytes_exn TxTypes.account_data_encoding acc_bytes
+    in
+    Log.info "Account %d: %a\n" i TxTypes.pp_account acc ;
+    let*! acc_bytes =
+      Sc_rollup_client.cemented_account ~hooks sc_rollup_client ~index:i
+    in
+    let acc =
+      Data_encoding.Binary.of_bytes_exn TxTypes.account_data_encoding acc_bytes
+    in
+    Log.info "Cemented account %d: %a\n" i TxTypes.pp_account acc ;
+    unit
+  in
+  let bytes_to_hex : bytes -> string =
+   fun b ->
+    let (`Hex s) = Hex.of_bytes b in
+    s
+  in
   let test_message i =
     let*! prev_state_hash =
       Sc_rollup_client.state_hash ~hooks sc_rollup_client
@@ -1457,56 +1483,80 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     let transfer =
       make_transfer ~src:(module User0) ~dst:(module User1) ~amount:10
     in
-    let bytes_to_hex : bytes -> string =
-     fun b ->
-      let (`Hex s) = Hex.of_bytes b in
-      s
-    in
     let message =
       Data_encoding.Binary.to_bytes_exn TxTypes.tx_data_encoding transfer
       |> bytes_to_hex
     in
-    let* () =
-      match forwarder with
-      | None ->
-          (* External message *)
-          send_message ~hooks client (sf "[%S]" message)
-      | Some forwarder ->
-          (* Internal message through forwarder *)
-          let message = hex_encode message in
-          let* () =
-            Client.transfer
-              client
-              ~amount:Tez.zero
-              ~giver:Constant.bootstrap1.alias
-              ~receiver:forwarder
-              ~arg:(sf "Pair 0x%s %S" message sc_rollup)
-          in
-          Client.bake_for_and_wait client
+    let instant_transfer =
+      make_transfer ~src:(module User2) ~dst:(module User3) ~amount:5
     in
+    let instant =
+      Data_encoding.Binary.to_bytes_exn
+        TxTypes.tx_data_encoding
+        instant_transfer
+      |> bytes_to_hex
+    in
+    ignore forwarder ;
+    let* () = send_message ~hooks ~instant client (sf "[%S]" message) in
+
+    (* match forwarder with
+         | None ->
+             (* External message *)
+
+         | Some forwarder ->
+             (* Internal message through forwarder *)
+             let message = hex_encode message in
+             let* () =
+               Client.transfer
+                 client
+                 ~amount:Tez.zero
+                 ~giver:Constant.bootstrap1.alias
+                 ~receiver:forwarder
+                 ~arg:(sf "Pair 0x%s %S" message sc_rollup)
+             in
+             Client.bake_for_and_wait client
+       in *)
+
     (* let* (_ : int) =
          Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
        in *)
-    let* _ = bake_until_lcc_updated ~timeout:20. client sc_rollup_node in
+    let* () =
+      match kind with
+      | "epoxy_tx" ->
+          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+          Log.info "Before cementation, state hash: %s\n\n" hash ;
+          let* () = print_account 0 in
+          let* () = print_account 1 in
+          let* () = print_account 2 in
+          print_account 3
+      | _ -> unit
+    in
+
+    let* _ = bake_until_lcc_updated ~timeout:5. client sc_rollup_node in
+    let* () =
+      match kind with
+      | "epoxy_tx" ->
+          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+          Log.info "Before cementation, state hash: %s\n\n" hash ;
+          let* () = print_account 0 in
+          let* () = print_account 1 in
+          let* () = print_account 2 in
+          print_account 3
+      | _ -> unit
+    in
+
+    let* _ = bake_until_lcc_updated ~timeout:10. client sc_rollup_node in
 
     (* specific per kind PVM checks *)
     let* () =
       match kind with
       | "epoxy_tx" ->
           let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-          let*! acc_bytes =
-            Sc_rollup_client.state_value
-              ~hooks
-              sc_rollup_client
-              ~key:"instant/0"
-          in
-          let acc =
-            Data_encoding.Binary.of_bytes_exn
-              TxTypes.account_data_encoding
-              acc_bytes
-          in
-          Log.info "State hash: %s\n %a\n" hash TxTypes.pp_account acc ;
-          unit
+          Log.info "State hash: %s\n\n" hash ;
+          let* () = print_account 0 in
+          let* () = print_account 1 in
+          let* () = print_account 2 in
+          print_account 3
       | "arith" ->
           let*! encoded_value =
             Sc_rollup_client.state_value
