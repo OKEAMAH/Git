@@ -122,6 +122,10 @@ type t
 
     Default value for [allow_all_rpc] is [true].
 
+    [local_rpc_server] specify whether or not the RPC server must be
+    locally, if true, or on a external process (default). It is not
+    allowed yet to run both server kind at the same time.
+
     The argument list is a list of configuration options that the node
     should run with. It is passed to the first run of [octez-node config init].
     It is also passed to all runs of [octez-node run] that occur before
@@ -143,6 +147,7 @@ val create :
   ?rpc_host:string ->
   ?rpc_port:int ->
   ?rpc_tls:tls_config ->
+  ?local_rpc_server:bool ->
   ?allow_all_rpc:bool ->
   argument list ->
   t
@@ -561,6 +566,7 @@ val init :
   ?rpc_host:string ->
   ?rpc_port:int ->
   ?rpc_tls:tls_config ->
+  ?local_rpc_server:bool ->
   ?event_level:Daemon.Level.default_level ->
   ?event_sections_levels:(string * Daemon.Level.level) list ->
   ?patch_config:(JSON.t -> JSON.t) ->
@@ -572,7 +578,7 @@ val init :
     port of [node]. *)
 val send_raw_data : t -> data:string -> unit Lwt.t
 
-(** [upgrade_storage node] upprades the given [node] storage. *)
+(** [upgrade_storage node] upgrades the given [node] storage. *)
 val upgrade_storage : t -> unit Lwt.t
 
 (** Run [octez-node --version] and return the node's version. *)
