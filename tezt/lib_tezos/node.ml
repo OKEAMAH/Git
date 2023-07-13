@@ -147,6 +147,7 @@ module Parameters = struct
     rpc_port : int;
     rpc_tls : tls_config option;
     allow_all_rpc : bool;
+    rpc_process : bool;
     default_expected_pow : int;
     mutable default_arguments : argument list;
     mutable arguments : argument list;
@@ -568,6 +569,15 @@ let handle_event node {name; value; timestamp = _} =
   match name with
   | "node_is_ready.v0" -> set_ready node
   | "head_increment.v0" | "branch_switch.v0" -> (
+      if node.persistent_state.rpc_process then ()
+      else
+        match JSON.(value |-> "level" |> as_int_opt) with
+        | None ->
+            (* There are several kinds of events and maybe
+               this one is not the one with the level: ignore it. *)
+            ()
+        | Some level -> update_level node level)
+  | "synchronized.v0" -> (
       match JSON.(value |-> "level" |> as_int_opt) with
       | None ->
           (* There are several kinds of events and maybe
@@ -706,6 +716,9 @@ let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
     list_find_map (function Expected_pow x -> Some x | _ -> None) arguments
     |> Option.value ~default:0
   in
+  let rpc_process =
+    not (List.exists (function v -> v = Local_rpc_server) arguments)
+  in
   let node =
     create
       ?runner
@@ -722,6 +735,7 @@ let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
         rpc_port;
         rpc_tls;
         allow_all_rpc;
+        rpc_process;
         default_arguments = arguments;
         arguments;
         default_expected_pow;
