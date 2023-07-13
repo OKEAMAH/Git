@@ -1470,6 +1470,17 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     Log.info "Cemented account %d: %a\n" i TxTypes.pp_account acc ;
     unit
   in
+  let print_accounts () =
+    match kind with
+    | "epoxy_tx" ->
+        let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+        Log.info "State hash: %s\n\n" hash ;
+        let* () = print_account 0 in
+        let* () = print_account 1 in
+        let* () = print_account 2 in
+        print_account 3
+    | _ -> unit
+  in
   let bytes_to_hex : bytes -> string =
    fun b ->
     let (`Hex s) = Hex.of_bytes b in
@@ -1520,43 +1531,17 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     (* let* (_ : int) =
          Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node (level + i)
        in *)
-    let* () =
-      match kind with
-      | "epoxy_tx" ->
-          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-          Log.info "Before cementation, state hash: %s\n\n" hash ;
-          let* () = print_account 0 in
-          let* () = print_account 1 in
-          let* () = print_account 2 in
-          print_account 3
-      | _ -> unit
-    in
+    let* () = print_accounts () in
 
     let* _ = bake_until_lcc_updated ~timeout:5. client sc_rollup_node in
-    let* () =
-      match kind with
-      | "epoxy_tx" ->
-          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-          Log.info "Before cementation, state hash: %s\n\n" hash ;
-          let* () = print_account 0 in
-          let* () = print_account 1 in
-          let* () = print_account 2 in
-          print_account 3
-      | _ -> unit
-    in
+    let* () = print_accounts () in
 
     let* _ = bake_until_lcc_updated ~timeout:10. client sc_rollup_node in
 
     (* specific per kind PVM checks *)
     let* () =
       match kind with
-      | "epoxy_tx" ->
-          let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-          Log.info "State hash: %s\n\n" hash ;
-          let* () = print_account 0 in
-          let* () = print_account 1 in
-          let* () = print_account 2 in
-          print_account 3
+      | "epoxy_tx" -> print_accounts ()
       | "arith" ->
           let*! encoded_value =
             Sc_rollup_client.state_value
