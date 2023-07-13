@@ -15,11 +15,12 @@ let
 
   pkgs =
     import
-    (fetchTarball {
-      url = "https://github.com/NixOS/nixpkgs/archive/6025d713d198ec296eaf27a1f2f78983eccce4d8.tar.gz";
-      sha256 = "0fa6nd1m5lr4fnliw21ppc4qdd4s85x448967333dvmslnvj35xi";
-    })
-    {overlays = [opam-nix-integration.overlay rust-overlay];};
-in {
+      (fetchTarball {
+        url = "https://github.com/NixOS/nixpkgs/archive/6025d713d198ec296eaf27a1f2f78983eccce4d8.tar.gz";
+        sha256 = "0fa6nd1m5lr4fnliw21ppc4qdd4s85x448967333dvmslnvj35xi";
+      })
+      { overlays = [ opam-nix-integration.overlay rust-overlay ]; };
+in
+{
   inherit opam-nix-integration rust-overlay pkgs;
 }

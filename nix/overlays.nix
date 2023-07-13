@@ -1,12 +1,12 @@
-{
-  lib,
-  stdenv,
-  libiconv,
+{ lib
+, stdenv
+, libiconv
+,
 }: {
   pick-latest-packages = final: prev:
     builtins.mapAttrs
-    (name: versions: versions.latest)
-    prev.repository.packages;
+      (name: versions: versions.latest)
+      prev.repository.packages;
 
   common-overlay = final: prev:
     lib.optionalAttrs (lib.hasAttr "ocaml-base-compiler" prev) {
@@ -19,13 +19,13 @@
   darwin-overlay = final: prev: {
     hacl-star-raw = prev.hacl-star-raw.overrideAttrs (old: {
       # Uses unsupported command-line flags
-      NIX_CFLAGS_COMPILE = ["-Wno-unused-command-line-argument"];
+      NIX_CFLAGS_COMPILE = [ "-Wno-unused-command-line-argument" ];
     });
 
     class_group_vdf = prev.class_group_vdf.overrideAttrs (old: {
       hardeningDisable =
-        (old.hardeningDisable or [])
-        ++ lib.optionals stdenv.isAarch64 ["stackprotector"];
+        (old.hardeningDisable or [ ])
+        ++ lib.optionals stdenv.isAarch64 [ "stackprotector" ];
     });
 
     # This package makes no sense to build on MacOS. Some OPAM package
@@ -36,10 +36,10 @@
   fix-rust-packages = final: prev: {
     conf-rust-2021 = prev.conf-rust.overrideAttrs (old: {
       propagatedNativeBuildInputs =
-        (old.propagatedNativeBuildInputs or [])
+        (old.propagatedNativeBuildInputs or [ ])
         ++
         # Upstream conf-rust* packages don't request libiconv
-        [libiconv];
+        [ libiconv ];
     });
   };
 }

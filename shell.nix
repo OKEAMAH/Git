@@ -5,12 +5,12 @@ let
   sources = import ./nix/sources.nix;
   pkgs = sources.pkgs;
 
-  overlays = pkgs.callPackage ./nix/overlays.nix {};
+  overlays = pkgs.callPackage ./nix/overlays.nix { };
 
   kernelPackageSet = [
     # Packages required to build & develop kernels
     (pkgs.rust-bin.stable."1.66.0".default.override {
-      targets = ["wasm32-unknown-unknown"];
+      targets = [ "wasm32-unknown-unknown" ];
     })
     pkgs.rust-analyzer
     pkgs.wabt
@@ -39,7 +39,7 @@ let
       # Set the opam-repository which has the package descriptions.
       (final: prev: {
         repository = prev.repository.override {
-          src = pkgs.callPackage ./nix/opam-repo.nix {};
+          src = pkgs.callPackage ./nix/opam-repo.nix { };
         };
       })
 
@@ -66,44 +66,44 @@ let
       (
         if pkgs.stdenv.isDarwin
         then overlays.darwin-overlay
-        else final: prev: {}
+        else final: prev: { }
       )
     ]
   );
 in
-  pkgs.mkShell {
-    name = "tezos-shell";
+pkgs.mkShell {
+  name = "tezos-shell";
 
-    hardeningDisable =
-      pkgs.lib.optionals
+  hardeningDisable =
+    pkgs.lib.optionals
       (pkgs.stdenv.isAarch64 && pkgs.stdenv.isDarwin)
-      ["stackprotector"];
+      [ "stackprotector" ];
 
-    inherit (mainPackage) NIX_LDFLAGS NIX_CFLAGS_COMPILE TEZOS_WITHOUT_OPAM OPAM_SWITCH_PREFIX;
+  inherit (mainPackage) NIX_LDFLAGS NIX_CFLAGS_COMPILE TEZOS_WITHOUT_OPAM OPAM_SWITCH_PREFIX;
 
-    buildInputs = with pkgs;
-      kernelPackageSet
-      ++ mainPackage.buildInputs
-      ++ [
-        nodejs
-        cacert
-        curl
-        shellcheck
-        poetry
-        nixpkgs-fmt
-        devPackageSet.ocaml-lsp-server
-        devPackageSet.ocamlformat-rpc
-        devPackageSet.ocp-indent
-        devPackageSet.merlin
-        devPackageSet.utop
+  buildInputs = with pkgs;
+    kernelPackageSet
+    ++ mainPackage.buildInputs
+    ++ [
+      nodejs
+      cacert
+      curl
+      shellcheck
+      poetry
+      nixpkgs-fmt
+      devPackageSet.ocaml-lsp-server
+      devPackageSet.ocamlformat-rpc
+      devPackageSet.ocp-indent
+      devPackageSet.merlin
+      devPackageSet.utop
+    ]
+    ++ (
+      if pkgs.stdenv.isDarwin
+      then [
+        fswatch
       ]
-      ++ (
-        if pkgs.stdenv.isDarwin
-        then [
-          fswatch
-        ]
-        else [
-          inotify-tools
-        ]
-      );
-  }
+      else [
+        inotify-tools
+      ]
+    );
+}
