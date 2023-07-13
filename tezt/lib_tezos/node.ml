@@ -149,6 +149,7 @@ module Parameters = struct
     rpc_port : int;
     rpc_tls : tls_config option;
     allow_all_rpc : bool;
+    local_rpc_server : bool;
     default_expected_pow : int;
     mutable default_arguments : argument list;
     mutable arguments : argument list;
@@ -568,7 +569,16 @@ let update_identity node identity =
 let handle_event node {name; value; timestamp = _} =
   match name with
   | "node_is_ready.v0" -> set_ready node
-  | "head_increment.v0" | "branch_switch.v0" -> (
+  | "head_increment.v0" | "branch_switch.v0" ->
+      if node.persistent_state.local_rpc_server then
+        match JSON.(value |-> "level" |> as_int_opt) with
+        | None ->
+            (* There are several kinds of events and maybe
+               this one is not the one with the level: ignore it. *)
+            ()
+        | Some level -> update_level node level
+      else ()
+  | "synchronized.v0" -> (
       match JSON.(value |-> "level" |> as_int_opt) with
       | None ->
           (* There are several kinds of events and maybe
@@ -592,7 +602,9 @@ let handle_event node {name; value; timestamp = _} =
   | "set_head.v0" -> (
       match JSON.(value |> geti 1 |> as_int_opt) with
       | None -> ()
-      | Some level -> update_level node level)
+      | Some level ->
+          if node.persistent_state.local_rpc_server then update_level node level
+          else ())
   | _ -> ()
 
 let check_event ?where node name promise =
@@ -690,8 +702,8 @@ let wait_for_disconnections node disconnections =
 
 let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
     ?event_pipe ?net_addr ?net_port ?advertised_net_port
-    ?(rpc_host = "localhost") ?rpc_port ?rpc_tls ?(allow_all_rpc = true)
-    arguments =
+    ?(rpc_host = "localhost") ?rpc_port ?rpc_tls ?(local_rpc_server = false)
+    ?(allow_all_rpc = true) arguments =
   let name = match name with None -> fresh_name () | Some name -> name in
   let data_dir =
     match data_dir with None -> Temp.dir ?runner name | Some dir -> dir
@@ -723,6 +735,7 @@ let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
         rpc_port;
         rpc_tls;
         allow_all_rpc;
+        local_rpc_server;
         default_arguments = arguments;
         arguments;
         default_expected_pow;
@@ -819,7 +832,8 @@ let runlike_command_arguments node command arguments =
   in
   command :: "--data-dir" :: node.persistent_state.data_dir :: "--net-addr"
   :: (net_addr ^ string_of_int node.persistent_state.net_port)
-  :: "--rpc-addr"
+  :: (if node.persistent_state.local_rpc_server then "--local-rpc-addr"
+     else "--rpc-addr")
   :: (rpc_addr ^ string_of_int node.persistent_state.rpc_port)
   :: command_args
 
@@ -880,8 +894,8 @@ let replay ?on_terminate ?event_level ?event_sections_levels ?(strict = false)
     arguments
 
 let init ?runner ?path ?name ?color ?data_dir ?event_pipe ?net_port
-    ?advertised_net_port ?rpc_host ?rpc_port ?rpc_tls ?event_level
-    ?event_sections_levels ?patch_config ?snapshot arguments =
+    ?advertised_net_port ?rpc_host ?rpc_port ?rpc_tls ?local_rpc_server
+    ?event_level ?event_sections_levels ?patch_config ?snapshot arguments =
   (* The single process argument does not exist in the configuration
      file of the node. It is only known as a command-line option. As a
      consequence, we filter Singleprocess from the list of arguments
@@ -901,6 +915,7 @@ let init ?runner ?path ?name ?color ?data_dir ?event_pipe ?net_port
       ?rpc_host
       ?rpc_port
       ?rpc_tls
+      ?local_rpc_server
       (List.filter (fun x -> x <> Singleprocess) arguments)
   in
   let* () = identity_generate node in
