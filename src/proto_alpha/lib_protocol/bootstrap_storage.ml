@@ -89,7 +89,9 @@ let init_account (ctxt, balance_updates)
             ~origin:Protocol_migration
             ctxt
             (`Contract contract)
-            (`Frozen_deposits public_key_hash)
+            (`Frozen_deposits
+              (Stake_repr.Single
+                 (Contract_repr.Implicit public_key_hash, public_key_hash)))
             amount_to_freeze
           >>=? fun (ctxt, balance_updates) ->
           Staking_pseudotokens_storage
