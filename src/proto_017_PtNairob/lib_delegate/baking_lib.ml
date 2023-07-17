@@ -506,7 +506,7 @@ let baking_minimal_timestamp state =
   let*! () = cctxt#message "Injected block at minimal timestamp" in
   return_unit
 
-let bake (cctxt : Protocol_client_context.full) ?minimal_fees
+let bake (cctxt : Protocol_client_context.full) ?(count = 1) ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?force_apply ?force
     ?(minimal_timestamp = false) ?extra_operations
     ?(monitor_node_mempool = true) ?context_path ?dal_node_endpoint delegates =
@@ -524,23 +524,52 @@ let bake (cctxt : Protocol_client_context.full) ?minimal_fees
       ()
   in
   let cache = Baking_cache.Block_cache.create 10 in
-  let* block_stream, current_proposal = get_current_proposal cctxt ~cache () in
-  let* state =
-    create_state
-      cctxt
-      ~monitor_node_mempool
-      ~synchronize:(not minimal_timestamp)
-      ~config
-      ~current_proposal
-      delegates
+  let* block_stream, _ = get_current_proposal cctxt ~cache () in
+  let rec next_proposal prev_block block_stream =
+    let*! current_proposal = Lwt_stream.next block_stream in
+    Format.printf
+      "streamed provided  %ld : %a@."
+      current_proposal.block.shell.level
+      Block_hash.pp_short
+      current_proposal.block.hash ;
+    if Block_hash.(current_proposal.block.hash = prev_block) then (
+      Format.printf "ignoring reproposed block@." ;
+      next_proposal prev_block block_stream)
+    else (
+      Format.printf "returning this new block.@." ;
+      Lwt.return current_proposal)
   in
-  let* () =
-    when_ monitor_node_mempool (fun () ->
-        (* Make sure the operation worker is populated to avoid empty
-           blocks being baked *)
-        Operation_worker.retrieve_pending_operations
+  let rec bake prev_block n =
+    let*! current_proposal = next_proposal prev_block block_stream in
+    let* () =
+      Format.printf
+        "baking after %a over %ld : %a@."
+        Block_hash.pp_short
+        prev_block
+        current_proposal.block.shell.level
+        Block_hash.pp_short
+        current_proposal.block.hash ;
+      let* state =
+        create_state
           cctxt
-          state.global_state.operation_worker)
+          ~monitor_node_mempool
+          ~synchronize:(not minimal_timestamp)
+          ~config
+          ~current_proposal
+          delegates
+      in
+      let* () =
+        when_ monitor_node_mempool (fun () ->
+            (* Make sure the operation worker is populated to avoid empty
+               blocks being baked *)
+            Operation_worker.retrieve_pending_operations
+              cctxt
+              state.global_state.operation_worker)
+      in
+      if not minimal_timestamp then
+        bake_using_automaton config state block_stream
+      else baking_minimal_timestamp state
+    in
+    if n > 0 then bake current_proposal.block.hash (n - 1) else return_unit
   in
-  if not minimal_timestamp then bake_using_automaton config state block_stream
-  else baking_minimal_timestamp state
+  bake Block_hash.zero count
