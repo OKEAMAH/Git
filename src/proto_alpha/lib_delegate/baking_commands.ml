@@ -364,7 +364,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
     command
       ~group
       ~desc:"Forge and inject block using the delegates' rights."
-      (args10
+      (args11
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
          minimal_nanotez_per_byte_arg
@@ -373,6 +373,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          force_switch
          operations_arg
          context_path_arg
+         adaptive_inflation_vote_arg
          do_not_monitor_node_mempool_arg
          endpoint_arg)
       (prefixes ["bake"; "for"] @@ sources_param)
@@ -384,6 +385,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
              force,
              extra_operations,
              context_path,
+             adaptive_inflation_vote,
              do_not_monitor_node_mempool,
              dal_node_endpoint )
            pkhs
@@ -401,11 +403,19 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
           ?extra_operations
           ?context_path
           ?dal_node_endpoint
+          ?votes:
+            (Option.map
+               (fun adaptive_inflation_vote ->
+                 {
+                   Baking_configuration.default_votes_config with
+                   adaptive_inflation_vote;
+                 })
+               adaptive_inflation_vote)
           delegates);
     command
       ~group
       ~desc:"Forge and inject many blocks using the delegates' rights."
-      (args10
+      (args11
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
          minimal_nanotez_per_byte_arg
@@ -413,6 +423,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          force_apply_switch_arg
          force_switch
          operations_arg
+         adaptive_inflation_vote_arg
          context_path_arg
          do_not_monitor_node_mempool_arg
          endpoint_arg)
@@ -425,6 +436,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
              force_apply,
              force,
              extra_operations,
+             adaptive_inflation_vote,
              context_path,
              do_not_monitor_node_mempool,
              dal_node_endpoint )
@@ -445,6 +457,14 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
           ?extra_operations
           ?context_path
           ?dal_node_endpoint
+          ?votes:
+            (Option.map
+               (fun adaptive_inflation_vote ->
+                 {
+                   Baking_configuration.default_votes_config with
+                   adaptive_inflation_vote;
+                 })
+               adaptive_inflation_vote)
           delegates);
     command
       ~group
