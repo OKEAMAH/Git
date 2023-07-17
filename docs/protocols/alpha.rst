@@ -120,6 +120,8 @@ Breaking Changes
 - Field ``for_double_endorsing`` from context storage has been renamed into
   ``for_double_attesting``.
 
+- Field ``endorsing_reward_per_slot`` from rewards storage has been renamed into
+  ``attesting_reward_per_slot``.
 
 RPC Changes
 -----------
