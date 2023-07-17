@@ -162,7 +162,7 @@ let test_launch threshold expected_vote_duration () =
         (B block)
         delegate
         ~limit_of_staking_over_baking:1_000_000
-        ~baking_over_staking_edge_billionth:1_000_000_000
+        ~edge_of_baking_over_staking_billionth:1_000_000_000
     in
     Block.bake ~operation ~adaptive_inflation_vote:Per_block_vote_on block
   in

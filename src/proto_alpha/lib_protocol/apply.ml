@@ -493,8 +493,8 @@ let apply_finalize_unstake ~ctxt ~sender ~amount ~destination ~before_operation
   return (ctxt, result, [])
 
 let apply_set_delegate_parameters ~ctxt ~sender ~destination
-    ~limit_of_staking_over_baking_millionth ~baking_over_staking_edge_billionth
-    ~before_operation =
+    ~limit_of_staking_over_baking_millionth
+    ~edge_of_baking_over_staking_billionth ~before_operation =
   let open Lwt_result_syntax in
   let*? () =
     error_unless
@@ -506,13 +506,13 @@ let apply_set_delegate_parameters ~ctxt ~sender ~destination
   let limit_of_staking_over_baking_millionth =
     Z.to_int32 limit_of_staking_over_baking_millionth
   in
-  let baking_over_staking_edge_billionth =
-    Z.to_int32 baking_over_staking_edge_billionth
+  let edge_of_baking_over_staking_billionth =
+    Z.to_int32 edge_of_baking_over_staking_billionth
   in
   let*? t =
     Staking_parameters_repr.make
       ~limit_of_staking_over_baking_millionth
-      ~baking_over_staking_edge_billionth
+      ~edge_of_baking_over_staking_billionth
   in
   let* ctxt = Delegate.Staking_parameters.register_update ctxt sender t in
   let result =
@@ -1059,7 +1059,7 @@ let apply_manager_operation :
             Script_typed_ir.pair_int_int_unit_t
             (Micheline.root parameters)
           >>=? fun ( ( limit_of_staking_over_baking_millionth,
-                       (baking_over_staking_edge_billionth, ()) ),
+                       (edge_of_baking_over_staking_billionth, ()) ),
                      ctxt ) ->
           apply_set_delegate_parameters
             ~ctxt
@@ -1067,8 +1067,8 @@ let apply_manager_operation :
             ~destination:pkh
             ~limit_of_staking_over_baking_millionth:
               (Script_int.to_zint limit_of_staking_over_baking_millionth)
-            ~baking_over_staking_edge_billionth:
-              (Script_int.to_zint baking_over_staking_edge_billionth)
+            ~edge_of_baking_over_staking_billionth:
+              (Script_int.to_zint edge_of_baking_over_staking_billionth)
             ~before_operation:ctxt_before_op
       | _ -> tzfail (Script_tc_errors.No_such_entrypoint entrypoint))
       >|=? fun (ctxt, res, ops) -> (ctxt, Transaction_result res, ops)

@@ -118,22 +118,22 @@ type reward_distrib = {to_frozen : Tez_repr.t; to_spendable : Tez_repr.t}
 (** Compute the reward distribution between frozen and spendable according to:
     - the [stake] of the delegate composed of the [frozen] deposits and the
       [delegated] tokens.
-    - the [baking_over_staking_edge_billionth] parameter set by the baker in 1_000_000_000th
+    - the [edge_of_baking_over_staking_billionth] parameter set by the baker in 1_000_000_000th
     - the [staking_over_delegation_edge] constant.
     - the [rewards] to be distributed
 
 Preconditions:
  - [staking_over_delegation_edge] > 0
- - 0 <= [baking_over_staking_edge_billionth]  <= 1_000_000_000
+ - 0 <= [edge_of_baking_over_staking_billionth]  <= 1_000_000_000
 *)
-let compute_reward_distrib ~stake ~baking_over_staking_edge_billionth
+let compute_reward_distrib ~stake ~edge_of_baking_over_staking_billionth
     ~staking_over_delegation_edge ~(rewards : Tez_repr.t) =
   let ({frozen; delegated} : Stake_repr.t) = stake in
   (* convert into Q *)
   let delegated = (* >= 0 *) Q.of_int64 @@ Tez_repr.to_mutez delegated in
   let frozen = (* >= 0 *) Q.of_int64 @@ Tez_repr.to_mutez frozen in
   let baking_over_staking_edge (* 0 <= baking_over_staking_edge <= 1 *) =
-    Q.(of_int32 baking_over_staking_edge_billionth / of_int 1_000_000_000)
+    Q.(of_int32 edge_of_baking_over_staking_billionth / of_int 1_000_000_000)
   in
   let staking_over_delegation_edge (* > 0 ? *) =
     Q.of_int staking_over_delegation_edge
@@ -167,8 +167,8 @@ let compute_reward_distrib ctxt delegate stake rewards =
   let* (delegate_parameter : Staking_parameters_repr.t) =
     of_delegate ctxt delegate
   in
-  let baking_over_staking_edge_billionth =
-    delegate_parameter.baking_over_staking_edge_billionth
+  let edge_of_baking_over_staking_billionth =
+    delegate_parameter.edge_of_baking_over_staking_billionth
   in
   let staking_over_delegation_edge =
     if Constants_storage.adaptive_inflation_enable ctxt then
@@ -178,7 +178,7 @@ let compute_reward_distrib ctxt delegate stake rewards =
   Lwt.return
   @@ compute_reward_distrib
        ~stake
-       ~baking_over_staking_edge_billionth
+       ~edge_of_baking_over_staking_billionth
        ~staking_over_delegation_edge
        ~rewards
 
