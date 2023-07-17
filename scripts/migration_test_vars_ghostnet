@@ -1,0 +1,8 @@
+#!/bin/bash
+
+
+export tarball=~/tezos-snapshots/tezos-ghostnet-rolling-tarball-3217704.lz4
+export uncompressed_dir=~/tezos-snapshots/ghostnet_datadir/data
+export network=ghostnet
+export data_dir=~/.tezos-node-migration-$network
+export yes_wallet=/tmp/yes-wallet-$network

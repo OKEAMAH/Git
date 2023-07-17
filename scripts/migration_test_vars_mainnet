@@ -1,0 +1,8 @@
+#!/bin/bash
+
+
+export tarball=~/tezos-snapshots/tezos-mainnet-rolling-tarball-3823128.lz4
+export uncompressed_dir=~/tezos-snapshots/tezos-node-migration_mainnet_before_migration
+export network=mainnet
+export data_dir=~/tezos-snapshots/tezos-node-migration.mainnet.10_cycles
+export yes_wallet=/tmp/yes-wallet-$network

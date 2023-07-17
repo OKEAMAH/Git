@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# export network=mainnet
+# export history_mode=rolling
+
+# export storage=~/tezos-storage/
+# export data_dir=/tmp/tezos-node-migration-$network
+# export yes_wallet=/tmp/yes-wallet-$network
+
+
+
+# export tarball_name=${network}-${history_mode}-$(date +"%y-%m-%d").tar.gz
+# export rolling_tarball_url=https://lambsonacid-octez.s3.us-east-2.amazonaws.com/${network}/${history_mode}/datadir.tar.gz
+
+# export tezos_dir=$(dirname $0)/../
+
+# export do_not_download_tarball=false
+# export patch_code=false
+# export apply_yes_patch=false
+
+# export libfaketime=$(dpkg --listfiles libfaketime | grep libfaketime.so.1)
