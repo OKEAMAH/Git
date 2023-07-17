@@ -4,7 +4,13 @@ This is a package containing some libraries used by the Octez project.
 
 It contains the following libraries:
 
+- {{!module-Aggregation}Aggregation}
+- {{!module-Communication}Communication}
+- {{!module-Distribution}Distribution}
 - {{!module-Octez_bls12_381_polynomial}Octez_bls12_381_polynomial}
+- {{!module-Plompiler}Plompiler}
+- {{!module-Plonk}Plonk}
+- {{!module-Plonk_test}Plonk_test}
 - {{!module-Polynomial}Polynomial}
 - {{!module-Tezos_base}Tezos_base}
 - {{!module-Tezos_base_p2p_identity_file}Tezos_base_p2p_identity_file}

@@ -6,8 +6,8 @@
  (public_name octez-epoxy-tx)
  (instrumentation (backend bisect_ppx))
  (libraries
-  octez-plompiler
+  octez-libs.octez-plompiler
   hex
   stdint
-  octez-plonk
+  octez-libs.octez-plonk
   octez-mec))

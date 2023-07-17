@@ -12,7 +12,8 @@
   octez-libs.tezos-crypto-dal.octez-dal-config
   octez-libs.tezos-crypto
   octez-libs.octez-bls12-381-polynomial
-  lwt.unix)
+  lwt.unix
+  octez-libs.octez-plonk)
  (flags
   (:standard)
   -open Tezos_stdlib

@@ -12,7 +12,7 @@
   tezos-scoru-wasm
   data-encoding
   bls12-381
-  octez-plonk)
+  octez-libs.octez-plonk)
  (flags
   (:standard)
   -open Plonk))

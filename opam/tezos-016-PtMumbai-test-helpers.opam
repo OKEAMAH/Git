@@ -17,7 +17,6 @@ depends: [
   "tezos-client-016-PtMumbai"
   "tezos-protocol-environment"
   "tezos-protocol-plugin-016-PtMumbai"
-  "octez-plompiler"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

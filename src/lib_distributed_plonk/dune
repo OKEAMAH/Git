@@ -7,9 +7,9 @@
  (instrumentation (backend bisect_ppx))
  (libraries
   octez-aplonk
-  octez-plonk.communication
-  octez-plonk
-  octez-plonk.plonk-test)
+  octez-libs.octez-plonk.communication
+  octez-libs.octez-plonk
+  octez-libs.octez-plonk.plonk-test)
  (preprocess (pps ppx_repr))
  (flags
   (:standard)
@@ -25,7 +25,7 @@
  (name worker_runner)
  (libraries
   octez-distributed-plonk
-  octez-plonk.distribution)
+  octez-libs.octez-plonk.distribution)
  (modules worker_runner))
 
 (executable

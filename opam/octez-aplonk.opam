@@ -11,7 +11,7 @@ depends: [
   "dune" { >= "3.0" }
   "ocaml" { >= "4.14" }
   "ppx_repr" { >= "0.6.0" }
-  "octez-plonk"
+  "octez-libs"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

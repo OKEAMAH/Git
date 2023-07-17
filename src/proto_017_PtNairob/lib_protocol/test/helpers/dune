@@ -17,7 +17,7 @@
   tezos-protocol-environment
   tezos-protocol-plugin-017-PtNairob
   octez-libs.tezos-shell-services
-  octez-plompiler
+  octez-libs.octez-plompiler
   octez-libs.tezos-crypto-dal)
  (flags
   (:standard)

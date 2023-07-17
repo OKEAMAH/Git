@@ -17,7 +17,6 @@ depends: [
   "tezos-client-alpha"
   "tezos-protocol-environment"
   "tezos-protocol-plugin-alpha"
-  "octez-plompiler"
   "tezos-smart-rollup-alpha"
 ]
 build: [

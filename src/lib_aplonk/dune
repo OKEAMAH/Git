@@ -6,5 +6,5 @@
  (public_name octez-aplonk)
  (instrumentation (backend bisect_ppx))
  (libraries
-  octez-plonk.aggregation)
+  octez-libs.octez-plonk.aggregation)
  (preprocess (pps ppx_repr)))

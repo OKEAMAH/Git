@@ -12,7 +12,7 @@ depends: [
   "ocaml" { >= "4.14" }
   "ppx_repr" { >= "0.6.0" }
   "octez-aplonk"
-  "octez-plonk"
+  "octez-libs"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

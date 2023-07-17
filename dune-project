@@ -35,8 +35,6 @@
 (package (name octez-mec))
 (package (name octez-node))
 (package (name octez-node-config))
-(package (name octez-plompiler))
-(package (name octez-plonk))
 (package (name octez-protocol-compiler))
 (package (name octez-proxy-server))
 (package (name octez-signer))

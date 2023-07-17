@@ -17,7 +17,6 @@ depends: [
   "tezos-client-017-PtNairob"
   "tezos-protocol-environment"
   "tezos-protocol-plugin-017-PtNairob"
-  "octez-plompiler"
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

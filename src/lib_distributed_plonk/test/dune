@@ -5,11 +5,11 @@
  (name main)
  (libraries
   octez-distributed-plonk
-  octez-plonk
-  octez-plonk.aggregation
-  octez-plonk.distribution
+  octez-libs.octez-plonk
+  octez-libs.octez-plonk.aggregation
+  octez-libs.octez-plonk.distribution
   octez-aplonk
-  octez-plonk.plonk-test))
+  octez-libs.octez-plonk.plonk-test))
 
 (rule
  (alias runtest)

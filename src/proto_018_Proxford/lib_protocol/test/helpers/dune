@@ -17,7 +17,7 @@
   tezos-protocol-environment
   tezos-protocol-plugin-018-Proxford
   octez-libs.tezos-shell-services
-  octez-plompiler
+  octez-libs.octez-plompiler
   octez-libs.tezos-crypto-dal
   tezos-smart-rollup-018-Proxford)
  (flags

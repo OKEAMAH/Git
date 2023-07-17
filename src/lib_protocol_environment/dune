@@ -9,7 +9,7 @@
   zarith
   zarith_stubs_js
   bls12-381
-  octez-plonk
+  octez-libs.octez-plonk
   octez-libs.tezos-crypto-dal
   class_group_vdf
   aches

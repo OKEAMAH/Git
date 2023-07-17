@@ -17,7 +17,7 @@
   tezos-protocol-environment
   tezos-protocol-plugin-alpha
   octez-libs.tezos-shell-services
-  octez-plompiler
+  octez-libs.octez-plompiler
   octez-libs.tezos-crypto-dal
   tezos-smart-rollup-alpha)
  (flags

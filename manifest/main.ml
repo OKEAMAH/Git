@@ -1549,7 +1549,7 @@ let _octez_srs_extraction_tests =
         ])
 
 let octez_plompiler =
-  public_lib
+  octez_lib
     "octez-plompiler"
     ~internal_name:"plompiler"
     ~path:"src/lib_plompiler"
@@ -1613,7 +1613,7 @@ let make_plonk_runtest_invocation ~package =
     ]
 
 let octez_plonk =
-  public_lib
+  octez_lib
     "octez-plonk"
     ~internal_name:"plonk"
     ~path:"src/lib_plonk"
@@ -1630,7 +1630,7 @@ let octez_plonk =
     ~preprocess:[pps ppx_repr]
 
 let octez_plonk_aggregation =
-  public_lib
+  octez_lib
     "octez-plonk.aggregation"
     ~path:"src/lib_aplonk/plonk-aggregation"
     ~internal_name:"aggregation"
@@ -1649,7 +1649,7 @@ let octez_aplonk =
     ~deps:[octez_plonk_aggregation]
 
 let octez_plonk_distribution =
-  public_lib
+  octez_lib
     "octez-plonk.distribution"
     ~internal_name:"distribution"
     ~path:"src/lib_distributed_plonk/distribution"
@@ -1657,7 +1657,7 @@ let octez_plonk_distribution =
     ~preprocess:[pps ppx_repr]
 
 let octez_plonk_communication =
-  public_lib
+  octez_lib
     "octez-plonk.communication"
     ~internal_name:"communication"
     ~path:"src/lib_distributed_plonk/communication"
@@ -1665,20 +1665,20 @@ let octez_plonk_communication =
     ~preprocess:[pps ppx_repr]
 
 let octez_plonk_test_helpers =
-  public_lib
+  octez_lib
     "octez-plonk.plonk-test"
     ~path:"src/lib_plonk/test"
     ~internal_name:"plonk_test"
     ~deps:[octez_plonk; octez_plonk_aggregation; octez_plonk_distribution]
     ~modules:["helpers"; "cases"]
     ~preprocess:[pps ppx_repr]
-    ~dune:(make_plonk_runtest_invocation ~package:"octez-plonk")
+    ~dune:(make_plonk_runtest_invocation ~package:"octez-libs")
 
 let _octez_plonk_test_helpers_main =
   private_exe
     "main"
     ~path:"src/lib_plonk/test"
-    ~opam:"octez-plonk"
+    ~opam:"octez-libs"
     ~modules:
       [
         "main";
@@ -1706,16 +1706,16 @@ let _octez_plonk_distribution_test =
   private_exe
     "main"
     ~path:"src/lib_distributed_plonk/distribution/test"
-    ~opam:"octez-plonk"
+    ~opam:"octez-libs"
     ~deps:[octez_plonk_aggregation; octez_plonk_test_helpers]
     ~modules:["main"; "test_polynomial_commitment"]
-    ~dune:(make_plonk_runtest_invocation ~package:"octez-plonk")
+    ~dune:(make_plonk_runtest_invocation ~package:"octez-libs")
 
 let _octez_plonk_test_helpers_bench =
   private_exe
     "bench"
     ~path:"src/lib_plonk/test"
-    ~opam:"octez-plonk"
+    ~opam:"octez-libs"
     ~modules:["bench"]
     ~bisect_ppx:No
     ~deps:[octez_plonk_test_helpers]
@@ -1724,7 +1724,7 @@ let _octez_plonk_test_plompiler_afl =
   private_exe
     "afl"
     ~path:"src/lib_plonk/test_plompiler"
-    ~opam:"octez-plonk"
+    ~opam:"octez-libs"
     ~modules:["afl"]
     ~bisect_ppx:No
     ~deps:[octez_plompiler; octez_plonk; bls12_381]
@@ -1733,7 +1733,7 @@ let _octez_plonk_test_plompiler_main =
   private_exe
     "main"
     ~path:"src/lib_plonk/test_plompiler"
-    ~opam:"octez-plonk"
+    ~opam:"octez-libs"
     ~modules:
       [
         "bench_poseidon";
@@ -1764,7 +1764,7 @@ let _octez_plonk_test_plompiler_main =
       ]
     ~bisect_ppx:No
     ~deps:[octez_plonk_test_helpers]
-    ~dune:(make_plonk_runtest_invocation ~package:"octez-plonk")
+    ~dune:(make_plonk_runtest_invocation ~package:"octez-libs")
 
 let octez_distributed_plonk =
   public_lib
@@ -1889,6 +1889,7 @@ let octez_crypto_dal =
         octez_crypto;
         octez_bls12_381_polynomial;
         lwt_unix;
+        octez_plonk;
       ]
 
 let _octez_crypto_dal_tests =
