@@ -1108,7 +1108,7 @@ module Slashed_level = struct
         (for_double_attesting, for_double_baking))
       (fun (for_double_attesting, for_double_baking) ->
         {for_double_attesting; for_double_baking})
-      (obj2 (req "for_double_endorsing" bool) (req "for_double_baking" bool))
+      (obj2 (req "for_double_attestating" bool) (req "for_double_baking" bool))
 end
 
 module Cycle = struct
@@ -1324,7 +1324,7 @@ module Stake = struct
      {!val:Level_storage.may_snapshot_stake_distribution}.
 
      That is, the increment is done every [blocks_per_stake_snaphot]
-     blocks and reset at the end of cycles. So, it goes up to
+     blocks and reset at the end of cycles. So, it go up to
      [blocks_per_cycle / blocks_per_stake_snaphot], which is currently
      16 (= 8192/512 -- the concrete values can be found in
      {!val:Default_parameters.constants_mainnet}), then comes back to
