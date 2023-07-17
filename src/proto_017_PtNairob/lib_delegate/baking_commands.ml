@@ -214,6 +214,12 @@ let sources_param =
          "name of the delegate owning the endorsement/baking right or name of \
           the consensus key signing on the delegate's behalf")
 
+let blocks_count_param () =
+  Tezos_clic.param
+    ~name:"block_count"
+    ~desc:"Number of block"
+    Client_proto_args.int_parameter
+
 let endpoint_arg =
   Tezos_clic.arg
     ~long:"dal-node"
@@ -258,6 +264,51 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
         get_delegates cctxt pkhs >>=? fun delegates ->
         Baking_lib.bake
           cctxt
+          ~minimal_nanotez_per_gas_unit
+          ~minimal_timestamp
+          ~minimal_nanotez_per_byte
+          ~minimal_fees
+          ~force_apply
+          ~force
+          ~monitor_node_mempool:(not do_not_monitor_node_mempool)
+          ?extra_operations
+          ?context_path
+          ?dal_node_endpoint
+          delegates);
+    command
+      ~group
+      ~desc:"Forge and inject many blocks using the delegates' rights."
+      (args10
+         minimal_fees_arg
+         minimal_nanotez_per_gas_unit_arg
+         minimal_nanotez_per_byte_arg
+         minimal_timestamp_switch
+         force_apply_switch_arg
+         force_switch
+         operations_arg
+         context_path_arg
+         do_not_monitor_node_mempool_arg
+         endpoint_arg)
+      (prefixes ["baken"] @@ blocks_count_param () @@ prefixes ["for"]
+     @@ sources_param)
+      (fun ( minimal_fees,
+             minimal_nanotez_per_gas_unit,
+             minimal_nanotez_per_byte,
+             minimal_timestamp,
+             force_apply,
+             force,
+             extra_operations,
+             context_path,
+             do_not_monitor_node_mempool,
+             dal_node_endpoint )
+           block_count
+           pkhs
+           cctxt ->
+        let open Lwt_result_syntax in
+        let* delegates = get_delegates cctxt pkhs in
+        Baking_lib.bake
+          cctxt
+          ~count:block_count
           ~minimal_nanotez_per_gas_unit
           ~minimal_timestamp
           ~minimal_nanotez_per_byte
