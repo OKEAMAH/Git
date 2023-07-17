@@ -145,7 +145,7 @@ let test_launch threshold expected_vote_duration () =
   (* To test that adaptive inflation is active, we test that
      costaking, a feature only available after the activation, is
      allowed. But by default, delegates reject costakers, they must
-     explicitely set a positive staking_over_baking_limit to allow
+     explicitely set a positive limit_of_staking_over_baking to allow
      them. Setting this limit does not immediately take effect but can
      be done before the activation. For these reasons, we set it at
      the beginning.
@@ -161,7 +161,7 @@ let test_launch threshold expected_vote_duration () =
       set_delegate_parameters
         (B block)
         delegate
-        ~staking_over_baking_limit:1_000_000
+        ~limit_of_staking_over_baking:1_000_000
         ~baking_over_staking_edge_billionth:1_000_000_000
     in
     Block.bake ~operation ~adaptive_inflation_vote:Per_block_vote_on block

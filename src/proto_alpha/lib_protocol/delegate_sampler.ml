@@ -167,19 +167,19 @@ let get_delegate_stake_from_staking_balance ctxt
       delegate
       delegate_own_pseudotokens
   in
-  let* {staking_over_baking_limit_millionth; _} =
+  let* {limit_of_staking_over_baking_millionth; _} =
     Delegate_staking_parameters.of_delegate ctxt delegate
   in
-  let staking_over_baking_limit_millionth =
-    let delegate_staking_over_baking_limit_millionth =
-      Int64.of_int32 staking_over_baking_limit_millionth
+  let limit_of_staking_over_baking_millionth =
+    let delegate_limit_of_staking_over_baking_millionth =
+      Int64.of_int32 limit_of_staking_over_baking_millionth
     in
     Compare.Int64.min
       staking_over_baking_global_limit_millionth
-      delegate_staking_over_baking_limit_millionth
+      delegate_limit_of_staking_over_baking_millionth
   in
-  let staking_over_baking_limit_plus_1_millionth =
-    Int64.add 1_000_000L staking_over_baking_limit_millionth
+  let limit_of_staking_over_baking_plus_1_millionth =
+    Int64.add 1_000_000L limit_of_staking_over_baking_millionth
   in
   let open Tez_repr in
   let* {current_amount = all_frozen_deposits; initial_amount = _} =
@@ -189,7 +189,7 @@ let get_delegate_stake_from_staking_balance ctxt
     match
       mul_ratio
         delegate_own_frozen_deposits
-        ~num:staking_over_baking_limit_plus_1_millionth
+        ~num:limit_of_staking_over_baking_plus_1_millionth
         ~den:1_000_000L
     with
     | Ok max_allowed_frozen_deposits ->

@@ -237,7 +237,8 @@ let () =
     (fun () -> Stake_modification_with_no_delegate_set) ;
   let staking_to_delegate_that_refuses_costaking_description =
     "The delegate currently does not accept staking operations from sources \
-     other than itself: its `staking_over_baking_limit` parameter is set to 0."
+     other than itself: its `limit_of_staking_over_baking` parameter is set to \
+     0."
   in
   register_error_kind
     `Permanent
@@ -388,12 +389,12 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
       let*? () =
         error_unless allowed Staking_for_nondelegate_while_costaking_disabled
       in
-      let* {staking_over_baking_limit_millionth; _} =
+      let* {limit_of_staking_over_baking_millionth; _} =
         Delegate.Staking_parameters.of_delegate ctxt delegate
       in
       let forbidden =
         Signature.Public_key_hash.(delegate <> sender)
-        && Compare.Int32.(staking_over_baking_limit_millionth = 0l)
+        && Compare.Int32.(limit_of_staking_over_baking_millionth = 0l)
       in
       let*? () =
         error_when forbidden Staking_to_delegate_that_refuses_costaking
@@ -492,7 +493,7 @@ let apply_finalize_unstake ~ctxt ~sender ~amount ~destination ~before_operation
   return (ctxt, result, [])
 
 let apply_set_delegate_parameters ~ctxt ~sender ~destination
-    ~staking_over_baking_limit_millionth ~baking_over_staking_edge_billionth
+    ~limit_of_staking_over_baking_millionth ~baking_over_staking_edge_billionth
     ~before_operation =
   let open Lwt_result_syntax in
   let*? () =
@@ -502,15 +503,15 @@ let apply_set_delegate_parameters ~ctxt ~sender ~destination
   in
   let* is_delegate = Contract.is_delegate ctxt sender in
   let*? () = error_unless is_delegate Invalid_staking_parameters_sender in
-  let staking_over_baking_limit_millionth =
-    Z.to_int32 staking_over_baking_limit_millionth
+  let limit_of_staking_over_baking_millionth =
+    Z.to_int32 limit_of_staking_over_baking_millionth
   in
   let baking_over_staking_edge_billionth =
     Z.to_int32 baking_over_staking_edge_billionth
   in
   let*? t =
     Staking_parameters_repr.make
-      ~staking_over_baking_limit_millionth
+      ~limit_of_staking_over_baking_millionth
       ~baking_over_staking_edge_billionth
   in
   let* ctxt = Delegate.Staking_parameters.register_update ctxt sender t in
@@ -1057,15 +1058,15 @@ let apply_manager_operation :
             ~allow_forged:false
             Script_typed_ir.pair_int_int_unit_t
             (Micheline.root parameters)
-          >>=? fun ( ( staking_over_baking_limit_millionth,
+          >>=? fun ( ( limit_of_staking_over_baking_millionth,
                        (baking_over_staking_edge_billionth, ()) ),
                      ctxt ) ->
           apply_set_delegate_parameters
             ~ctxt
             ~sender:source
             ~destination:pkh
-            ~staking_over_baking_limit_millionth:
-              (Script_int.to_zint staking_over_baking_limit_millionth)
+            ~limit_of_staking_over_baking_millionth:
+              (Script_int.to_zint limit_of_staking_over_baking_millionth)
             ~baking_over_staking_edge_billionth:
               (Script_int.to_zint baking_over_staking_edge_billionth)
             ~before_operation:ctxt_before_op

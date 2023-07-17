@@ -66,7 +66,7 @@ Adaptive Inflation (ongoing)
 
 - Introduce feature flag for Adaptive Inflation. (MR :gl:`!8566`)
 
-- Add parameter ``staking_over_baking_limit`` as the limit of co-staked tokens over the baked tokens for a given baker. (MR :gl:`!8744`)
+- Add parameter ``limit_of_staking_over_baking`` as the limit of co-staked tokens over the baked tokens for a given baker. (MR :gl:`!8744`)
 
 When the feature flag is enabled, the following extra changes happen:
 
@@ -77,7 +77,7 @@ When the feature flag is enabled, the following extra changes happen:
 
 - Multiplicative coefficient (with a dynamic part) applied to reward values. (MRs :gl:`!8860`, :gl:`!8861`)
 
-- Denunciation rewards computation updated to depend on ``staking_over_baking_limit``. (MR :gl:`!8939`)
+- Denunciation rewards computation updated to depend on ``limit_of_staking_over_baking``. (MR :gl:`!8939`)
 
 - EMA and launch cycle. (MRs :gl:`!8967`, :gl:`!9002`, :gl:`!9025`, :gl:`!9058`)
 

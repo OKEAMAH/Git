@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 type t = private {
-  staking_over_baking_limit_millionth : int32;
+  limit_of_staking_over_baking_millionth : int32;
   baking_over_staking_edge_billionth : int32;
 }
 
@@ -34,7 +34,7 @@ val default : t
 type error += Invalid_staking_parameters
 
 val make :
-  staking_over_baking_limit_millionth:int32 ->
+  limit_of_staking_over_baking_millionth:int32 ->
   baking_over_staking_edge_billionth:int32 ->
   t tzresult
 
