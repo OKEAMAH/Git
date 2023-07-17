@@ -57,7 +57,7 @@ open Identities
 
 (** Functor building an implementation of a polynomial protocol given a
     polynomial commitment scheme [PC]. *)
-module Make_impl (PC : Polynomial_commitment.S) = struct
+module Make_impl (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
   module PC = PC
 
   type prover_public_parameters = PC.Public_parameters.prover [@@deriving repr]
@@ -207,7 +207,7 @@ end
 module type S = sig
   (** Underlying polynomial commitment scheme on which the polynomial protocol
       is based. Input of the functor [Polynomial_protocol.Make]. *)
-  module PC : Polynomial_commitment.S
+  module PC : Kzg_toolbox_intf.Polynomial_commitment
 
   (** The type of prover public parameters. *)
   type prover_public_parameters = PC.Public_parameters.prover [@@deriving repr]
@@ -280,7 +280,8 @@ module type S = sig
     bool * transcript
 end
 
-module Make : functor (PC : Polynomial_commitment.S) -> S with module PC = PC =
+module Make : functor (PC : Kzg_toolbox_intf.Polynomial_commitment) ->
+  S with module PC = PC =
   Make_impl
 
-include Make (Polynomial_commitment)
+include Make (Kzg_toolbox.Polynomial_commitment)

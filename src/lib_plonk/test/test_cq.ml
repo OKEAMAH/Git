@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 open Plonk.Bls
-module PC = Plonk.Polynomial_commitment
+module PC = Plonk.Kzg_toolbox.Polynomial_commitment
 
 let ( !! ) = Plonk_test.Cases.( !! )
 

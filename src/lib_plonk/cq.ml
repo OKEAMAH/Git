@@ -68,7 +68,7 @@ module type Cq_sig = sig
     verifier_public_parameters -> transcript -> proof -> bool * transcript
 end
 
-module Make (PC : Polynomial_commitment.S) = struct
+module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
   open Utils
   module ISet = Set.Make (Int)
   module IMap = Map.Make (Int)
@@ -725,4 +725,4 @@ module Make (PC : Polynomial_commitment.S) = struct
     (f_agg_verif && kzg_verif && check_a && check_b0 && check_a0, transcript)
 end
 
-include (Make (Polynomial_commitment) : Cq_sig)
+include (Make (Kzg_toolbox.Polynomial_commitment) : Cq_sig)

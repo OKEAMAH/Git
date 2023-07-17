@@ -27,7 +27,7 @@ open Plonk.Bls
 open Plonk.Utils
 
 module Internal = struct
-  open Plonk.Polynomial_commitment.Kzg_impl
+  open Plonk.Kzg_toolbox.Polynomial_commitment
 
   let test_verifier_srs () =
     let n = 2 in
@@ -38,7 +38,7 @@ module Internal = struct
     assert (G2.eq pp_prv.encoding_x pp_vrf.encoding_x)
 end
 
-module External (PC : Plonk.Polynomial_commitment.S) = struct
+module External (PC : Plonk.Kzg_toolbox_intf.Polynomial_commitment) = struct
   module SMap = Plonk.SMap
 
   let generate_random_poly degree =
@@ -147,7 +147,7 @@ module External (PC : Plonk.Polynomial_commitment.S) = struct
     assert (not @@ prove_and_verify_instance ~wrong_transcript:true instance)
 end
 
-module KZG_Tests = External (Plonk.Polynomial_commitment)
+module KZG_Tests = External (Plonk.Kzg_toolbox.Polynomial_commitment)
 module KZG_Pack_Tests = External (Aggregation.Polynomial_commitment)
 
 let tests =

@@ -28,7 +28,7 @@ open Bls
 open Utils
 
 module type S = sig
-  include Polynomial_commitment.S
+  include Kzg_toolbox_intf.Polynomial_commitment
 
   (** Auxiliary information needed by the prover for the meta-verification in
       aPlonK *)
@@ -54,7 +54,8 @@ module type S = sig
 end
 
 module Make_impl
-    (PC : Polynomial_commitment.S with type Commitment.t = Bls.G1.t SMap.t) =
+    (PC : Kzg_toolbox_intf.Polynomial_commitment
+            with type Commitment.t = Bls.G1.t SMap.t) =
 struct
   type secret = PC.secret
 
@@ -307,8 +308,9 @@ struct
 end
 
 module Make : functor
-  (PC : Polynomial_commitment.S with type Commitment.t = Bls.G1.t SMap.t)
+  (PC : Kzg_toolbox_intf.Polynomial_commitment
+          with type Commitment.t = Bls.G1.t SMap.t)
   -> S =
   Make_impl
 
-include Make (Polynomial_commitment.Kzg_impl)
+include Make (Kzg_toolbox.Polynomial_commitment)
