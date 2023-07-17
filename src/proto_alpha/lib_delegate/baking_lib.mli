@@ -40,6 +40,7 @@ val bake :
   ?monitor_node_mempool:bool ->
   ?context_path:string ->
   ?dal_node_endpoint:Uri.t ->
+  ?votes:Baking_configuration.per_block_votes_config ->
   Baking_state.consensus_key list ->
   unit tzresult Lwt.t
 
