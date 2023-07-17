@@ -98,3 +98,5 @@ module Worker_instance :
 module Validate_message_hook : sig
   val set : (message -> message_id -> [`Invalid | `Unknown | `Valid]) -> unit
 end
+
+val topic_pp : Format.formatter -> Types.Topic.t -> unit

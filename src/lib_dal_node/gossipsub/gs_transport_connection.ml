@@ -152,6 +152,12 @@ let new_connections_handler gs_worker p2p_layer peer conn =
   let {Transport_layer_interface.is_bootstrap_peer = bootstrap; _} =
     P2p.connection_remote_metadata p2p_layer conn
   in
+  Format.eprintf
+    "NEW CONNECTION (incoming = %b, bootstrap = %b) id = %a@."
+    incoming
+    bootstrap
+    P2p_addr.pp
+    addr ;
   let pool_opt = P2p.pool p2p_layer in
   let fold_pool_opt f arg =
     Option.fold
@@ -211,14 +217,25 @@ let wrap_p2p_message p2p_layer =
   let module W = Worker in
   let open Transport_layer_interface in
   function
-  | W.Graft {topic} -> Graft {topic}
+  | W.Graft {topic} ->
+      Format.eprintf "Send GRAFT@." ;
+      Graft {topic}
   | W.Prune {topic; px; backoff} ->
+      Format.eprintf "Send PRUNE@." ;
       let px = Seq.filter_map (fun peer -> px_of_peer p2p_layer peer) px in
       Prune {topic; px; backoff}
-  | W.IHave {topic; message_ids} -> IHave {topic; message_ids}
-  | W.IWant {message_ids} -> IWant {message_ids}
-  | W.Subscribe {topic} -> Subscribe {topic}
-  | W.Unsubscribe {topic} -> Unsubscribe {topic}
+  | W.IHave {topic; message_ids} ->
+      Format.eprintf "Send IHAVE@." ;
+      IHave {topic; message_ids}
+  | W.IWant {message_ids} ->
+      Format.eprintf "Send IWANT@." ;
+      IWant {message_ids}
+  | W.Subscribe {topic} ->
+      Format.eprintf "Send SUBSCRIBE@." ;
+      Subscribe {topic}
+  | W.Unsubscribe {topic} ->
+      Format.eprintf "Send UNSUBSCRIBE@." ;
+      Unsubscribe {topic}
   | W.Message_with_header {message; topic; message_id} ->
       Message_with_header {message; topic; message_id}
 
@@ -228,8 +245,14 @@ let unwrap_p2p_message p2p_layer ~from_peer px_cache =
   let open Worker in
   let module I = Transport_layer_interface in
   function
-  | I.Graft {topic} -> Graft {topic}
+  | I.Graft {topic} ->
+      Format.eprintf "Recv GRAFT@." ;
+      Graft {topic}
   | I.Prune {topic; px; backoff} ->
+      Format.eprintf
+        "Recv PRUNE %a@."
+        Format.(pp_print_list P2p_point.Id.pp)
+        (List.map (fun p -> p.I.point) (List.of_seq px)) ;
       let px =
         Seq.map
           (fun I.{point; peer} ->
@@ -239,10 +262,18 @@ let unwrap_p2p_message p2p_layer ~from_peer px_cache =
           px
       in
       Prune {topic; px; backoff}
-  | I.IHave {topic; message_ids} -> IHave {topic; message_ids}
-  | I.IWant {message_ids} -> IWant {message_ids}
-  | I.Subscribe {topic} -> Subscribe {topic}
-  | I.Unsubscribe {topic} -> Unsubscribe {topic}
+  | I.IHave {topic; message_ids} ->
+      Format.eprintf "Recv IHAVE@." ;
+      IHave {topic; message_ids}
+  | I.IWant {message_ids} ->
+      Format.eprintf "Recv WANT@." ;
+      IWant {message_ids}
+  | I.Subscribe {topic} ->
+      Format.eprintf "Recv SUBSCRIBE on %a@." Gs_interface.topic_pp topic ;
+      Subscribe {topic}
+  | I.Unsubscribe {topic} ->
+      Format.eprintf "Recv UNSUBSCRIBE@." ;
+      Unsubscribe {topic}
   | I.Message_with_header {message; topic; message_id} ->
       Message_with_header {message; topic; message_id}
 
@@ -365,6 +396,7 @@ let app_messages_handler gs_worker ~app_messages_callback =
 
 let activate gs_worker p2p_layer ~app_messages_callback =
   let px_cache = PX_cache.create () in
+  Format.eprintf "ACTIVATE@." ;
   (* Register a handler to notify new P2P connections to GS. *)
   let () =
     new_connections_handler gs_worker p2p_layer

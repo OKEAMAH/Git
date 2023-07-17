@@ -289,3 +289,5 @@ let span_encoding : Span.t Data_encoding.t =
        (obj1 (req "span" int16))
 
 module Worker_instance = Tezos_gossipsub.Worker (Worker_config)
+
+let topic_pp = Worker_config.GS.Topic.pp
