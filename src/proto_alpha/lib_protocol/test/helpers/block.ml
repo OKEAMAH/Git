@@ -502,7 +502,7 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
     ?level ?cost_per_byte ?reward_weights ?origination_size ?blocks_per_cycle
     ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
     ?dal_enable ?zk_rollup_enable ?hard_gas_limit_per_block
-    ?nonce_revelation_threshold () =
+    ?nonce_revelation_threshold ?dal () =
   let open Tezos_protocol_alpha_parameters in
   let constants = Default_parameters.constants_test in
   let min_proposal_quorum =
@@ -550,6 +550,8 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       ~default:constants.nonce_revelation_threshold
       nonce_revelation_threshold
   in
+  let dal = Option.value ~default:constants.dal dal in
+
   let constants =
     {
       constants with
@@ -566,7 +568,7 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
           enable = sc_rollup_enable;
           arith_pvm_enable = sc_rollup_arith_pvm_enable;
         };
-      dal = {constants.dal with feature_enable = dal_enable};
+      dal = {dal with feature_enable = dal_enable};
       zk_rollup = {constants.zk_rollup with enable = zk_rollup_enable};
       adaptive_inflation = constants.adaptive_inflation;
       hard_gas_limit_per_block;
@@ -602,7 +604,7 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
     ?bootstrap_contracts ?level ?cost_per_byte ?reward_weights ?origination_size
     ?blocks_per_cycle ?cycles_per_voting_period ?sc_rollup_enable
     ?sc_rollup_arith_pvm_enable ?dal_enable ?zk_rollup_enable
-    ?hard_gas_limit_per_block ?nonce_revelation_threshold
+    ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
     (bootstrap_accounts : Parameters.bootstrap_account list) =
   prepare_initial_context_params
     ?consensus_threshold
@@ -619,6 +621,7 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
     ?zk_rollup_enable
     ?hard_gas_limit_per_block
     ?nonce_revelation_threshold
+    ?dal
     ()
   >>=? fun (constants, shell, hash) ->
   validate_bootstrap_accounts bootstrap_accounts constants.minimal_stake
