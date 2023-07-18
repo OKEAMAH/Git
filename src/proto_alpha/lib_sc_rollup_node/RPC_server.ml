@@ -275,6 +275,22 @@ let () =
   return bytes
 
 let () =
+  Global_directory.register0 Sc_rollup_services.Global.cemented_hash
+  @@ fun node_ctxt () () ->
+  let open Lwt_result_syntax in
+  let* instant, optimistic = Node_context.get_lcs node_ctxt in
+  let instant_root_bytes =
+    Epoxy_tx.Utils.scalar_to_bytes @@ Epoxy_tx.Tx_rollup.P.state_scalar instant
+  in
+  let optimistic_hash_bytes = optimistic in
+  let hash =
+    Sc_rollup_repr.State_hash.hash_bytes
+      [instant_root_bytes; optimistic_hash_bytes]
+  in
+  let string = Format.asprintf "%a" Sc_rollup_repr.State_hash.pp hash in
+  return string
+
+let () =
   Local_directory.register0 Sc_rollup_services.Local.last_published_commitment
   @@ fun node_ctxt () () ->
   let open Lwt_result_syntax in

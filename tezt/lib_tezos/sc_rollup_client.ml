@@ -150,6 +150,10 @@ let cemented_account ?hooks sc_client ~index =
   |> Runnable.map @@ fun out ->
      Scanf.sscanf (String.trim out) "%S" (fun s -> s) |> String.to_bytes
 
+let cemented_hash ?hooks sc_client =
+  spawn_command ?hooks sc_client ["get"; "cemented"; "hash"]
+  |> Runnable.map @@ fun out -> Scanf.sscanf (String.trim out) "%S" (fun s -> s)
+
 type transaction = {
   destination : string;
   entrypoint : string option;

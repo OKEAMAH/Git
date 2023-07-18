@@ -94,7 +94,7 @@ let retrieve_constants cctxt =
 let get_last_cemented_commitment (cctxt : Protocol_client_context.full)
     rollup_address =
   let open Lwt_result_syntax in
-  let+ commitment, level =
+  let+ commitment, _, level =
     Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
       cctxt
       (cctxt#chain, `Head 0)

@@ -57,10 +57,13 @@ let get_commitment ctxt rollup commitment =
 let last_cemented_commitment_hash_with_level ctxt rollup =
   let open Lwt_result_syntax in
   let* commitment_hash, ctxt = last_cemented_commitment ctxt rollup in
-  let+ {inbox_level; _}, ctxt =
+  let+ {inbox_level; compressed_state; _}, ctxt =
     get_commitment_unsafe ctxt rollup commitment_hash
   in
-  (commitment_hash, inbox_level, ctxt)
+  let state =
+    match compressed_state with State s -> s | Diff _ -> assert false
+  in
+  (commitment_hash, state, inbox_level, ctxt)
 
 let set_commitment_added ctxt rollup node new_value =
   let open Lwt_result_syntax in

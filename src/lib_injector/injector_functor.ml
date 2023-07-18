@@ -673,7 +673,7 @@ module Make (Parameters : PARAMETERS) = struct
   let register_error state (op : Inj_operation.t) error =
     let open Lwt_result_syntax in
     Inj_operation.register_error op error ;
-    if op.errors.count > state.allowed_attempts then
+    if op.errors.count >= 0 (* > state.allowed_attempts  *) then
       let*! () =
         Event.(emit3 discard_error_operation)
           state

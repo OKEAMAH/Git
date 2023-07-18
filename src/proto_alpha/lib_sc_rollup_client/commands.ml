@@ -77,6 +77,15 @@ let get_cemented_account () =
       >>=? fun bytes ->
       cctxt#message "@[%S@]" (String.of_bytes bytes) >>= fun () -> return_unit)
 
+let get_cemented_hash () =
+  Tezos_clic.command
+    ~desc:"Observe the lcs hash."
+    Tezos_clic.no_options
+    (Tezos_clic.prefixes ["get"; "cemented"; "hash"] @@ Tezos_clic.stop)
+    (fun () (cctxt : #Configuration.sc_client_context) ->
+      RPC.get_cemented_hash_command cctxt >>=? fun string ->
+      cctxt#message "@[%S@]" string >>= fun () -> return_unit)
+
 (** [display_answer cctxt answer] prints an RPC answer. *)
 let display_answer (cctxt : #Configuration.sc_client_context) :
     Tezos_rpc.Context.generic_call_result -> unit Lwt.t = function
@@ -401,6 +410,7 @@ let all () =
     get_sc_rollup_addresses_command ();
     get_state_value_command ();
     get_cemented_account ();
+    get_cemented_hash ();
     get_output_proof ();
     get_output_message_encoding ();
     Keys.generate_keys ();

@@ -190,7 +190,7 @@ let get_conflict_point ctxt rollup staker1 staker2 =
   let* ctxt, staker2_index =
     Sc_rollup_staker_index_storage.get_staker_index_unsafe ctxt rollup staker2
   in
-  let* _lcc, lcc_inbox_level, ctxt =
+  let* _lcc, _, lcc_inbox_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
   let current_level = (Raw_context.current_level ctxt).level in

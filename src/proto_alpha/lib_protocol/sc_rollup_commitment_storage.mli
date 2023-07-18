@@ -141,7 +141,12 @@ val last_cemented_commitment :
 val last_cemented_commitment_hash_with_level :
   Raw_context.t ->
   Sc_rollup_repr.t ->
-  (Commitment_hash.t * Raw_level_repr.t * Raw_context.t) tzresult Lwt.t
+  (Commitment_hash.t
+  * Sc_rollup_repr.State_hash.t
+  * Raw_level_repr.t
+  * Raw_context.t)
+  tzresult
+  Lwt.t
 
 (** [get_commitment context rollup commitment_hash] returns the commitment with
     the given hash.

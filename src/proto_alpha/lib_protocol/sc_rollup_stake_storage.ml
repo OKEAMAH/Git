@@ -229,7 +229,7 @@ let deposit_stake ctxt rollup staker =
 
 let withdraw_stake ctxt rollup staker =
   let open Lwt_result_syntax in
-  let* _lcc, lcc_inbox_level, ctxt =
+  let* _lcc, _, lcc_inbox_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
   let* ctxt, staker_index =
@@ -557,7 +557,7 @@ let refine_stake ctxt rollup commitment ~staker_index ~lcc ~lcc_inbox_level =
 
 let publish_commitment ctxt rollup staker commitment =
   let open Lwt_result_syntax in
-  let* lcc, lcc_inbox_level, ctxt =
+  let* lcc, _, lcc_inbox_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
   let* () =
@@ -766,7 +766,7 @@ let update_saved_cemented_commitments ctxt rollup old_lcc =
 
 let cement_commitment ?new_state ctxt rollup =
   let open Lwt_result_syntax in
-  let* old_lcc, old_lcc_level, ctxt =
+  let* old_lcc, _, old_lcc_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
   let sc_rollup_commitment_period =
@@ -793,17 +793,21 @@ let cement_commitment ?new_state ctxt rollup =
     | State _, _ -> return new_lcc_commitment
     | Diff _, Some new_state ->
         return {new_lcc_commitment with compressed_state = State new_state}
-    | _ -> tzfail Sc_rollup_no_valid_commitment_to_cement
+    | _ -> assert false
+    (* tzfail Sc_rollup_no_valid_commitment_to_cement *)
   in
   let new_lcc_state_commitment_hash =
     Sc_rollup_commitment_repr.hash_uncarbonated new_lcc_state_commitment
   in
-  (* Update the LCC. *)
-  let* ctxt, _size_diff =
-    Store.Last_cemented_commitment.update
-      ctxt
-      rollup
+  let* ctxt, _, _ =
+    Store.Commitments.add
+      (ctxt, rollup)
       new_lcc_state_commitment_hash
+      new_lcc_state_commitment
+  in
+  (* Update the LCC. *)
+  let* ctxt, _, _ =
+    Store.Last_cemented_commitment.add ctxt rollup new_lcc_state_commitment_hash
   in
   (* Clean the storage. *)
   let* ctxt =
@@ -820,7 +824,7 @@ let cement_commitment ?new_state ctxt rollup =
 
 let instant_update ctxt rollup commitment =
   let open Lwt_result_syntax in
-  let* old_lcc, old_lcc_level, ctxt =
+  let* old_lcc, _, old_lcc_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
   (*
@@ -834,6 +838,10 @@ let instant_update ctxt rollup commitment =
   in
   let _new_lcc_level =
     Raw_level_repr.add old_lcc_level sc_rollup_commitment_period
+  in
+  let _ =
+    let open Sc_rollup_commitment_repr in
+    match commitment.compressed_state with Diff _ -> assert false | _ -> ()
   in
   let commitment_hash =
     Sc_rollup_commitment_repr.hash_uncarbonated commitment
@@ -872,7 +880,7 @@ module Internal_for_tests = struct
 
   let refine_stake ctxt rollup staker commitment =
     let open Lwt_result_syntax in
-    let* lcc, lcc_inbox_level, _ctxt =
+    let* lcc, _, lcc_inbox_level, _ctxt =
       Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
     in
     let* _ctxt, staker_index =

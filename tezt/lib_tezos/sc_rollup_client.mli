@@ -116,6 +116,8 @@ val state_value :
 val cemented_account :
   ?hooks:Process.hooks -> t -> index:int -> bytes Runnable.process
 
+val cemented_hash : ?hooks:Process.hooks -> t -> string Runnable.process
+
 type 'output_type durable_state_operation =
   | Value : string option durable_state_operation
   | Length : int64 option durable_state_operation

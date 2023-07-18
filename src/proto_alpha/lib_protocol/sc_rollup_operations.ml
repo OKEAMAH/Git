@@ -382,7 +382,7 @@ let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
   (* Get inbox level of last cemented commitment, needed to validate that the
      outbox message is active. This call also implicitly checks that the rollup
      exists. *)
-  let* lcc_hash, lcc_level, ctxt =
+  let* lcc_hash, _, lcc_level, ctxt =
     Sc_rollup.Commitment.last_cemented_commitment_hash_with_level ctxt rollup
   in
   (* Check that the commitment is a cemented commitment still stored in the

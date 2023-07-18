@@ -2114,8 +2114,9 @@ module Sc_rollup = struct
           "Level and hash of the last cemented commitment for a smart rollup"
         ~query:RPC_query.empty
         ~output:
-          (obj2
+          (obj3
              (req "hash" Sc_rollup.Commitment.Hash.encoding)
+             (req "state_hash" Sc_rollup.State_hash.encoding)
              (req "level" Raw_level.encoding))
         RPC_path.(path_sc_rollup / "last_cemented_commitment_hash_with_level")
 
@@ -2308,13 +2309,13 @@ module Sc_rollup = struct
       S.last_cemented_commitment_hash_with_level
     @@ fun ctxt address () () ->
     let open Lwt_result_syntax in
-    let+ last_cemented_commitment, level, _ctxt =
+    let+ last_cemented_commitment, state, level, _ctxt =
       Alpha_context.Sc_rollup.Commitment
       .last_cemented_commitment_hash_with_level
         ctxt
         address
     in
-    (last_cemented_commitment, level)
+    (last_cemented_commitment, state, level)
 
   let register_staked_on_commitment () =
     Registration.register2 ~chunked:false S.staked_on_commitment

@@ -463,6 +463,13 @@ module Global = struct
       ~output:Data_encoding.bytes
       (path / "cemented_account")
 
+  let cemented_hash =
+    Tezos_rpc.Service.get_service
+      ~description:"Retrieve hash of last cemented state"
+      ~query:Tezos_rpc.Query.empty
+      ~output:Data_encoding.string
+      (path / "cemented_hash")
+
   module Helpers = struct
     include Make_services (struct
       type prefix = unit

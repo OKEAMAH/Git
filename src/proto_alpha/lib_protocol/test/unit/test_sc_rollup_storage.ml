@@ -577,7 +577,7 @@ module Stake_storage_tests = struct
     let open Lwt_result_wrap_syntax in
     let* ctxt = new_context () in
     let*@ rollup, genesis_hash, ctxt = new_sc_rollup ctxt in
-    let*@ c1, inbox_level, ctxt =
+    let*@ c1, _, inbox_level, ctxt =
       Sc_rollup_commitment_storage.last_cemented_commitment_hash_with_level
         ctxt
         rollup
@@ -969,7 +969,7 @@ module Stake_storage_tests = struct
     let*@ ctxt =
       publish_and_cement_commitments ctxt rollup staker commitments
     in
-    let*@ _ctxt, last_cemented_inbox_level, _ =
+    let*@ _ctxt, _, last_cemented_inbox_level, _ =
       Sc_rollup_commitment_storage.last_cemented_commitment_hash_with_level
         ctxt
         rollup
@@ -1474,7 +1474,7 @@ module Stake_storage_tests = struct
     in
     let ctxt = Raw_context.Internal_for_tests.add_level ctxt challenge_window in
     let*@ ctxt, _, _ = Sc_rollup_stake_storage.cement_commitment ctxt rollup in
-    let*@ c1', inbox_level', _ctxt =
+    let*@ c1', _, inbox_level', _ctxt =
       Sc_rollup_commitment_storage.last_cemented_commitment_hash_with_level
         ctxt
         rollup

@@ -1474,7 +1474,27 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     match kind with
     | "epoxy_tx" ->
         let*! hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
-        Log.info "State hash: %s\n\n" hash ;
+        let*! lcs_hash =
+          Sc_rollup_client.cemented_hash ~hooks sc_rollup_client
+        in
+        Log.info
+          "Rollup node state hash: %s, cemented state hash %s\n\n"
+          hash
+          lcs_hash ;
+        let* json =
+          RPC.Client.call ~hooks client
+          @@ RPC
+             .get_chain_block_context_smart_rollups_smart_rollup_last_cemented_commitment_hash_with_level
+               sc_rollup
+        in
+        let l1_lcc, l1_lcs, l1_level =
+          JSON.
+            ( json |-> "hash" |> as_string,
+              json |-> "state_hash" |> as_string,
+              json |-> "level" |> as_int )
+        in
+        assert (l1_lcs = lcs_hash) ;
+        Log.info "L1 LCC: %s, LCS:%s, for level: %d" l1_lcc l1_lcs l1_level ;
         let* () = print_account 0 in
         let* () = print_account 1 in
         let* () = print_account 2 in
@@ -1534,6 +1554,7 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     let* () = print_accounts () in
 
     let* _ = bake_until_lcc_updated ~timeout:5. client sc_rollup_node in
+    let* () = Client.bake_for_and_wait client in
     let* () = print_accounts () in
 
     let* _ = bake_until_lcc_updated ~timeout:10. client sc_rollup_node in
