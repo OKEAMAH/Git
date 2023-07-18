@@ -309,7 +309,7 @@ module Timestamp = struct
             Base_samplers.nat ~size:{min = 1; max = 100_000} rng_state
           in
           let tstamp =
-            Script_timestamp.of_zint Z.(of_int 1597764116 + offset)
+            Script_timestamp.of_zint Z.(add (of_int 1597764116) offset)
           in
           Script_timestamp.to_string tstamp)
         ~make_bench:(fun generator ->
