@@ -152,6 +152,7 @@
   Commitment_storage
   Voting_period_storage
   Cache_repr
+  Cache_repr_costs
   Zk_rollup_storage
   Stake_context
   Contract_delegate_storage
@@ -423,6 +424,7 @@
   commitment_storage.ml commitment_storage.mli
   voting_period_storage.ml voting_period_storage.mli
   cache_repr.ml cache_repr.mli
+  cache_repr_costs.ml
   zk_rollup_storage.ml zk_rollup_storage.mli
   stake_context.ml stake_context.mli
   contract_delegate_storage.ml contract_delegate_storage.mli
@@ -696,6 +698,7 @@
   commitment_storage.ml commitment_storage.mli
   voting_period_storage.ml voting_period_storage.mli
   cache_repr.ml cache_repr.mli
+  cache_repr_costs.ml
   zk_rollup_storage.ml zk_rollup_storage.mli
   stake_context.ml stake_context.mli
   contract_delegate_storage.ml contract_delegate_storage.mli
@@ -953,6 +956,7 @@
   commitment_storage.ml commitment_storage.mli
   voting_period_storage.ml voting_period_storage.mli
   cache_repr.ml cache_repr.mli
+  cache_repr_costs.ml
   zk_rollup_storage.ml zk_rollup_storage.mli
   stake_context.ml stake_context.mli
   contract_delegate_storage.ml contract_delegate_storage.mli

@@ -23,37 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Cache_costs = struct
-  module S = Saturation_repr
-
-  (* Computed by typing the contract
-     "{parameter unit; storage unit; code FAILWITH}"
-     and evaluating
-     [(8 * Obj.reachable_words (Obj.repr typed_script))]
-     where [typed_script] is of type [ex_script] *)
-  let minimal_size_of_typed_contract_in_bytes = 688
-
-  let approximate_cardinal bytes =
-    S.safe_int (bytes / minimal_size_of_typed_contract_in_bytes)
-
-  let log2 x = S.safe_int (1 + S.numbits x)
-
-  let cache_update_constant = S.safe_int 600
-
-  let cache_update_coeff = S.safe_int 43
-
-  (* Cost of calling [Environment_cache.update]. *)
-  (* model cache/CACHE_UPDATE *)
-  let cache_update ~cache_size_in_bytes =
-    let approx_card = approximate_cardinal cache_size_in_bytes in
-    Gas_limit_repr.atomic_step_cost
-      S.(add cache_update_constant (mul cache_update_coeff (log2 approx_card)))
-
-  (* Cost of calling [Environment_cache.find].
-     This overapproximates [cache_find] slightly. *)
-  let cache_find = cache_update
-end
-
 type index = int
 
 type size = int
@@ -256,14 +225,16 @@ let register_exn (type cvalue)
       let cache_size_in_bytes = size ctxt in
       Raw_context.consume_gas
         ctxt
-        (Cache_costs.cache_update ~cache_size_in_bytes)
+        (Cache_repr_costs.cache_update ~cache_size_in_bytes)
       >|? fun ctxt ->
       let v = Option.map (fun (v, size) -> (K v, size)) v in
       Admin.update ctxt (mk ~id) v
 
     let find ctxt id =
       let cache_size_in_bytes = size ctxt in
-      Raw_context.consume_gas ctxt (Cache_costs.cache_find ~cache_size_in_bytes)
+      Raw_context.consume_gas
+        ctxt
+        (Cache_repr_costs.cache_find ~cache_size_in_bytes)
       >>?= fun ctxt ->
       Admin.find ctxt (mk ~id) >>= function
       | None -> return None
