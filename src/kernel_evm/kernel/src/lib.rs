@@ -40,7 +40,7 @@ mod upgrade;
 
 /// The chain id will need to be unique when the EVM rollup is deployed in
 /// production.
-pub const CHAIN_ID: u32 = 1337;
+pub const CHAIN_ID: u32 = 128123;
 
 /// The configuration for the EVM execution.
 pub const CONFIG: Config = Config::london();
