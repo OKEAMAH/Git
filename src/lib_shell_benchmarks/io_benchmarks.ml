@@ -35,19 +35,19 @@ let ns = Namespace.make Shell_namespace.ns "io"
 
 let fv s = Free_variable.of_namespace (ns s)
 
-let read_model =
+let read_model ~name =
   Model.bilinear_affine
-    ~name:(ns "read_model")
-    ~intercept:(fv "read_latency")
-    ~coeff1:(fv "depth")
-    ~coeff2:(fv "storage_bytes")
+    ~name:(ns @@ name ^ "read_model")
+    ~intercept:(fv @@ name ^ "read_latency")
+    ~coeff1:(fv @@ name ^ "depth")
+    ~coeff2:(fv @@ name ^ "storage_bytes_read")
 
-let write_model =
+let write_model ~name =
   Model.bilinear_affine
-    ~name:(ns "write_model")
-    ~intercept:(fv "write_latency")
-    ~coeff1:(fv "keys_written")
-    ~coeff2:(fv "storage_bytes")
+    ~name:(ns @@ name ^ "write_model")
+    ~intercept:(fv @@ name ^ "write_latency")
+    ~coeff1:(fv @@ name ^ "keys_written")
+    ~coeff2:(fv @@ name ^ "storage_bytes_write")
 
 module Helpers = struct
   (* Samples keys in an alphabet of [card] elements. *)
@@ -244,15 +244,6 @@ module Context_size_dependent_shared = struct
           ]
         in
         Sparse_vec.String.of_list keys
-
-  let read_access =
-    Model.make
-      ~conv:(function
-        | Random_context_random_access {depth; storage_bytes; _} ->
-            (depth, (storage_bytes, ())))
-      ~model:read_model
-
-  let group = Benchmark.Group "io_read"
 end
 
 module Context_size_dependent_read_bench : Benchmark.Simple = struct
@@ -338,7 +329,14 @@ module Context_size_dependent_read_bench : Benchmark.Simple = struct
     in
     Generator.With_context {workload; closure; with_context}
 
-  let model = read_access
+  let group = Benchmark.Group "io_read"
+
+  let model =
+    Model.make
+      ~conv:(function
+        | Random_context_random_access {depth; storage_bytes; _} ->
+            (depth, (storage_bytes, ())))
+      ~model:(read_model ~name:"context_dependent")
 end
 
 let () = Registration.register_simple (module Context_size_dependent_read_bench)
@@ -364,7 +362,14 @@ module Context_size_dependent_write_bench : Benchmark.Simple = struct
   let write_storage context key bytes =
     Lwt_main.run (Tezos_protocol_environment.Context.add context key bytes)
 
-  let model = read_access
+  let group = Benchmark.Group "io_write"
+
+  let model =
+    Model.make
+      ~conv:(function
+        | Random_context_random_access {depth; storage_bytes; _} ->
+            (depth, (storage_bytes, ())))
+      ~model:(write_model ~name:"context_dependent")
 
   let create_benchmark ~rng_state cfg =
     let insertions =
@@ -608,7 +613,7 @@ module Irmin_pack_read_bench : Benchmark.Simple = struct
       ~conv:(function
         | Irmin_pack_read {depth; storage_bytes; _} ->
             (depth, (storage_bytes, ())))
-      ~model:read_model
+      ~model:(read_model ~name:"irmin")
 
   let group = Benchmark.Group "io_read"
 
@@ -786,7 +791,7 @@ module Irmin_pack_write_bench : Benchmark.Simple = struct
       ~conv:(function
         | Irmin_pack_write {keys_written; storage_bytes; _} ->
             (keys_written, (storage_bytes, ())))
-      ~model:write_model
+      ~model:(write_model ~name:"irmin")
 
   let group = Benchmark.Group "io_write"
 
@@ -887,8 +892,11 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
 
   let default_config =
     {
-      existing_context = ("/no/such/directory", Context_hash.zero);
-      subdirectory = ["no"; "such"; "key"];
+      existing_context =
+        ( "/home/hsaito/Git/tezos/tezos-mainet-2250000/context",
+          Context_hash.of_b58check_exn
+            "CoVbMJMgycg4AFwk33FDaPzaEN152KKz1NYqaqaQ6T1657STa6Wk" );
+      subdirectory = ["contracts"; "index"];
     }
 
   let config_encoding =
@@ -936,7 +944,7 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
     Model.make
       ~conv:(function
         | Read_random_key {depth; storage_bytes} -> (depth, (storage_bytes, ())))
-      ~model:read_model
+      ~model:(read_model ~name:"random")
 
   let make_bench rng_state config keys () =
     let card = Array.length keys in
@@ -979,7 +987,23 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
       Io_helpers.with_context ~base_dir ~context_hash (fun context ->
           Io_stats.load_tree context config.subdirectory)
     in
-    let keys = Array.of_seq (Io_helpers.Key_map.to_seq tree) in
+    let keys =
+      Array.of_seq
+        (Io_helpers.Key_map.to_seq tree
+        |> Seq.take ~when_negative_length:0 100
+        |> Result.value ~default:Seq.empty)
+    in
+    let () =
+      let open Format in
+      eprintf
+        "keys: %a\n"
+        (pp_print_seq
+           ~pp_sep:pp_print_newline
+           (pp_print_list
+              ~pp_sep:(fun ppf () -> pp_print_char ppf '/')
+              pp_print_string))
+        (Array.to_seq keys |> Seq.map fst)
+    in
     List.repeat bench_num (make_bench rng_state config keys)
 end
 
@@ -999,12 +1023,15 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
 
   let default_config =
     {
-      existing_context = ("/no/such/directory", Context_hash.zero);
+      existing_context =
+        ( "/home/hsaito/Git/tezos/tezos-mainet-2250000/context",
+          Context_hash.of_b58check_exn
+            "CoVbMJMgycg4AFwk33FDaPzaEN152KKz1NYqaqaQ6T1657STa6Wk" );
       storage_chunk_bytes = 1000;
       storage_chunks = {min = 1; max = 1000};
       max_written_keys = 10_000;
       temp_dir = None;
-      subdirectory = ["no"; "such"; "key"];
+      subdirectory = ["contracts"; "index"];
     }
 
   let config_encoding =
@@ -1087,7 +1114,7 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
       ~conv:(function
         | Write_random_keys {keys_written; storage_bytes; _} ->
             (keys_written, (storage_bytes, ())))
-      ~model:write_model
+      ~model:(write_model ~name:"random")
 
   let write_storage context key bytes =
     Lwt_main.run (Context.add context key bytes)

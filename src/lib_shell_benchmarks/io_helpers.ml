@@ -93,8 +93,8 @@ let with_context ~base_dir ~context_hash f =
     Lwt.return res)
 
 let prepare_base_dir base_dir =
-  Unix.unlink base_dir ;
-  Unix.mkdir base_dir 0o700
+  Unix.unlink base_dir (* ;
+  Unix.mkdir base_dir 0o700 *)
 
 (* This function updates the context with random bytes at a given depth. *)
 let initialize_key rng_state context path storage_size =

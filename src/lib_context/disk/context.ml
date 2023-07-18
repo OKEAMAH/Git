@@ -305,6 +305,7 @@ module Make (Encoding : module type of Tezos_context_encoding.Context) = struct
   let checkout index key =
     let open Lwt_syntax in
     let* () = sync index in
+    let () = Format.eprintf "checkout: %a\n" Context_hash.pp key in
     let* o = Store.Commit.of_hash index.repo (Hash.of_context_hash key) in
     match o with
     | None -> return_none

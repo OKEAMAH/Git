@@ -1095,6 +1095,7 @@ end = struct
               exit 1
           | oc -> (filename, oc))
     in
+    let () = Format.eprintf "gnuplot tmpfile: %s\n" filename in
     output_string oc script ;
     close_out oc ;
     filename
