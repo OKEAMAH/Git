@@ -197,24 +197,25 @@ let read_per_block_votes ~per_block_vote_file : 'a tzresult Lwt.t =
   return votes
 
 let read_per_block_votes_no_fail ~default ~per_block_vote_file =
-  read_per_block_votes ~per_block_vote_file >>= function
+  let open Lwt_syntax in
+  let* result = read_per_block_votes ~per_block_vote_file in
+  match result with
   | Error errs ->
-      Events.(emit per_block_vote_file_fail) errs >>= fun () ->
-      Lwt.return default
+      let* () = Events.(emit per_block_vote_file_fail) errs in
+      return default
   | Ok
       {
         liquidity_baking_toggle_vote;
         adaptive_inflation_vote_opt = Some adaptive_inflation_vote;
       } ->
-      Lwt.return
+      return
         Protocol.Alpha_context.Per_block_votes.
           {
             liquidity_baking_vote = liquidity_baking_toggle_vote;
             adaptive_inflation_vote;
           }
   | Ok {liquidity_baking_toggle_vote; adaptive_inflation_vote_opt = None} ->
-      Lwt.return
-        {default with liquidity_baking_vote = liquidity_baking_toggle_vote}
+      return {default with liquidity_baking_vote = liquidity_baking_toggle_vote}
 
 let load_per_block_votes_config ~default_liquidity_baking_vote
     ~default_adaptive_inflation_vote ~per_block_vote_file :
@@ -259,7 +260,7 @@ let load_per_block_votes_config ~default_liquidity_baking_vote
                 adaptive_inflation_vote;
               }
         | Error errs ->
-            Events.(emit per_block_vote_file_fail) errs >>= fun () ->
+            let*! () = Events.(emit per_block_vote_file_fail) errs in
             tzfail Missing_vote_on_startup)
   in
   let*! () =
