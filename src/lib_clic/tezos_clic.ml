@@ -958,7 +958,10 @@ let check_version_flag =
   let open Lwt_result_syntax in
   function
   (* No "-v", it is taken by man output verbosity *)
-  | "--version" :: _ -> tzfail Version
+  | "--version" :: _ ->
+      let _ = 10 in
+      prerr_endline "Printing version" ;
+      tzfail Version
   | _ -> return_unit
 
 let add_occurrence long value acc =
