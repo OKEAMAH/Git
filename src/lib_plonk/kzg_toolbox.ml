@@ -354,3 +354,10 @@ module DegreeCheck = struct
     Pairing.pairing_check [(G1.negate cm, srs_n_d); (proof, srs_0)]
 end
 
+(* [open_at_0 p] returns (p - p(0))/X *)
+let open_at_0 p =
+  let q, r =
+    Poly.(division_xn (p - constant (evaluate p Scalar.zero)) 1 Scalar.zero)
+  in
+  assert (Poly.is_zero r) ;
+  q

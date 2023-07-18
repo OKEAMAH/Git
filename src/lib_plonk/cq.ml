@@ -175,14 +175,6 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
   (* We use PC’s function to commit our polynomials *)
   let commit1 = PC.Commitment.commit_single
 
-  (* [kzg_0 p] returns (p - p(0))/X *)
-  let kzg_0 p =
-    let q, r =
-      Poly.(division_xn (p - constant (evaluate p Scalar.zero)) 1 Scalar.zero)
-    in
-    if not (Poly.is_zero r) then failwith "Cq.kzg_0 : division error." ;
-    q
-
   (* This function avoid some lines of code duplication *)
   let compute_and_commit f list =
     let m, l = List.map f list |> Array.of_list |> Array.split in
@@ -219,7 +211,9 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
           |> Evaluations.interpolation_fft domain)
     in
     let cms_lagrange = Array.map (commit1 pc) lagrange in
-    let cms_lagrange_0 = Array.map (fun p -> commit1 pc @@ kzg_0 p) lagrange in
+    let cms_lagrange_0 =
+      Array.map (fun p -> commit1 pc @@ open_at_0 p) lagrange
+    in
 
     let q =
       List.map2
@@ -588,7 +582,8 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
     let b0 =
       SMap.of_list
       @@ List.mapi
-           (fun i b -> (SMap.Aggregation.add_prefix ~n ~i "" b0_name, kzg_0 b))
+           (fun i b ->
+             (SMap.Aggregation.add_prefix ~n ~i "" b0_name, open_at_0 b))
            b
     in
     (* 2.8, 2.9 *)
