@@ -68,6 +68,12 @@ Adaptive Inflation (ongoing)
 
 - Add parameter ``staking_over_baking_limit`` as the limit of co-staked tokens over the baked tokens for a given baker. (MR :gl:`!8744`)
 
+- In the computation of voting rights, frozen tez above the
+  ``staking_over_baking_limit`` count as delegated ones and
+  overdelegated tez don't count anymore. This makes the computation of
+  voting rights identical to the computation of baking rights. (MR
+  :gl:`!9515`)
+
 When the feature flag is enabled, the following extra changes happen:
 
 - Most rewards (baking rewards, baking bonuses, attestation rewards, revelation
