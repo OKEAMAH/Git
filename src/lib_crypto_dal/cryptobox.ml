@@ -1164,20 +1164,19 @@ module Inner = struct
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4192
 
      Generalize this function to pass the slot_size in parameter. *)
-  let prove_commitment (t : t) p =
-    let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
-    let max_committable_degree = Srs_g1.size t.srs.raw.srs_g1 - 1 in
-    let offset_monomial_degree =
-      max_committable_degree - max_allowed_committed_poly_degree
-    in
-    (* Note: this reallocates a buffer of size (Srs_g1.size t.srs.raw.srs_g1)
-       (2^21 elements in practice), so roughly 100MB. We can get rid of the
-       allocation by giving an offset for the SRS in Pippenger. *)
-    let p_with_offset =
-      Polynomials.mul_xn p offset_monomial_degree Scalar.(copy zero)
-    in
-    (* proof = commit(p X^offset_monomial_degree), with deg p < t.max_polynomial_length *)
-    commit t p_with_offset
+  let prove_commitment
+      ({srs = {raw = {srs_g1; _}; _}; max_polynomial_length; _} : t) p =
+    if Srs_g1.size srs_g1 >= max_polynomial_length then
+      Ok
+        (Plonk.Kzg_toolbox.DegreeCheck.prove
+           ~max_commit:(Srs_g1.size srs_g1 - 1)
+           ~max_degree:(max_polynomial_length - 1)
+           srs_g1
+           p)
+    else
+      Error
+        (`Invalid_degree_strictly_less_than_expected
+          {given = max_polynomial_length; expected = Srs_g1.size srs_g1})
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
   let verify_commitment (t : t) cm proof =
@@ -1186,15 +1185,9 @@ module Inner = struct
     let offset_monomial_degree =
       max_committable_degree - max_allowed_committed_poly_degree
     in
-    let committed_offset_monomial =
-      (* This [get] cannot raise since
-         [offset_monomial_degree <= t.max_polynomial_length <= Srs_g2.size t.srs.raw.srs_g2]. *)
-      Srs_g2.get t.srs.raw.srs_g2 offset_monomial_degree
-    in
-    let open Bls12_381 in
-    (* checking that cm * committed_offset_monomial = proof *)
-    Pairing.pairing_check
-      [(cm, committed_offset_monomial); (proof, G2.(negate (copy one)))]
+    let srs_0 = Srs_g2.get t.srs.raw.srs_g2 0 in
+    let srs_n_d = Srs_g2.get t.srs.raw.srs_g2 offset_monomial_degree in
+    Plonk.Kzg_toolbox.DegreeCheck.verify {srs_0; srs_n_d} cm proof
 
   let diff_next_power_of_two x = (1 lsl Z.log2up (Z.of_int x)) - x
 

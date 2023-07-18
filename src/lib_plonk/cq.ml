@@ -709,8 +709,10 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
 
     (* 2.12 *)
     let check_b0 =
-      Pairing.pairing_check
-        G1.[(negate cm_b0, pp.srs2_N_1_k_2); (cm_p, pp.srs2_0)]
+      DegreeCheck.verify
+        {srs_0 = pp.srs2_0; srs_n_d = pp.srs2_N_1_k_2}
+        cm_b0
+        cm_p
     in
 
     (* 3.6.b *)
