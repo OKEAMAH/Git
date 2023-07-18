@@ -327,7 +327,7 @@ let pp_manager_operation_content (type kind) source ppf
         sc_rollup
         Signature.Public_key_hash.pp
         staker
-  | Sc_rollup_instant_update {rollup; commitment} ->
+  | Sc_rollup_instant_update {rollup; commitment; _} ->
       Format.fprintf
         ppf
         "Smart rollup instant update:@,Address: %a@,Commitment: %a"

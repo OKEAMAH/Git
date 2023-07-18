@@ -1070,8 +1070,14 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_add_messages {messages; instant = _} ->
-      Sc_rollup.Inbox.add_external_messages ctxt messages >>=? fun ctxt ->
+  | Sc_rollup_add_messages {messages; instant} ->
+      let instant =
+        Option.map
+          (Data_encoding.Binary.to_string_exn Epoxy_tx.Types.P.tx_data_encoding)
+          instant
+      in
+      Sc_rollup.Inbox.add_external_messages ?instant ctxt messages
+      >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result = Sc_rollup_add_messages_result {consumed_gas} in
       return (ctxt, result, [])
@@ -1176,8 +1182,8 @@ let apply_manager_operation :
           }
       in
       return (ctxt, result, [])
-  | Sc_rollup_instant_update {rollup; commitment} ->
-      Sc_rollup.Stake_storage.instant_update ctxt rollup commitment
+  | Sc_rollup_instant_update {rollup; commitment; proof} ->
+      Sc_rollup.Stake_storage.instant_update ctxt rollup commitment proof
       >>=? fun (ctxt, _commitment, commitment_hash) ->
       let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
       let result =

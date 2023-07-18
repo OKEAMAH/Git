@@ -3041,7 +3041,8 @@ module Sc_rollup : sig
       val make_proof : inclusion_proof -> payloads_proof -> proof
     end
 
-    val add_external_messages : context -> string list -> context tzresult Lwt.t
+    val add_external_messages :
+      ?instant:string -> context -> string list -> context tzresult Lwt.t
 
     val add_deposit :
       context ->
@@ -3782,6 +3783,7 @@ module Sc_rollup : sig
       context ->
       t ->
       Commitment.t ->
+      bytes ->
       (context * Commitment.t * Commitment.Hash.t) tzresult Lwt.t
 
     val withdraw_stake :
@@ -4391,6 +4393,7 @@ and _ manager_operation =
   | Sc_rollup_instant_update : {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup.Commitment.t;
+      proof : bytes;
     }
       -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {

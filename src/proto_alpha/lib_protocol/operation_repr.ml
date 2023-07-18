@@ -402,6 +402,7 @@ and _ manager_operation =
   | Sc_rollup_instant_update : {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.t;
+      proof : bytes;
     }
       -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {
@@ -1044,19 +1045,20 @@ module Encoding = struct
           tag = sc_rollup_instant_update_tag;
           name = "smart_rollup_instant_update";
           encoding =
-            obj2
+            obj3
               (req "rollup" Sc_rollup_repr.Address.encoding)
-              (req "commitment" Sc_rollup_commitment_repr.encoding);
+              (req "commitment" Sc_rollup_commitment_repr.encoding)
+              (req "proof" (Data_encoding.bytes Plain));
           select =
             (function
             | Manager (Sc_rollup_instant_update _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Sc_rollup_instant_update {rollup; commitment} ->
-                (rollup, commitment));
+            | Sc_rollup_instant_update {rollup; commitment; proof} ->
+                (rollup, commitment, proof));
           inj =
-            (fun (rollup, commitment) ->
-              Sc_rollup_instant_update {rollup; commitment});
+            (fun (rollup, commitment, proof) ->
+              Sc_rollup_instant_update {rollup; commitment; proof});
         }
   end
 

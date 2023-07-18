@@ -822,10 +822,23 @@ let cement_commitment ?new_state ctxt rollup =
   let* ctxt = update_saved_cemented_commitments ctxt rollup old_lcc in
   return (ctxt, new_lcc_state_commitment, new_lcc_state_commitment_hash)
 
-let instant_update ctxt rollup commitment =
+let instant_update ctxt rollup commitment proof =
   let open Lwt_result_syntax in
   let* old_lcc, _, old_lcc_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
+  in
+  let* ctxt, instant_inbox_message =
+    Store.Instant_inbox.find
+      ctxt
+      commitment.Sc_rollup_commitment_repr.inbox_level
+  in
+  ignore proof ;
+  let* () =
+    fail_unless
+      (* (Option.is_some instant_inbox_message) *)
+      (Option.map (fun s -> Bytes.of_string s = proof) instant_inbox_message
+      = Some true)
+      Sc_rollup_bad_inbox_level
   in
   (*
     TODO:

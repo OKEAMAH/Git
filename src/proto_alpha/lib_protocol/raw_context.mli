@@ -412,6 +412,10 @@ module Sc_rollup_in_memory_inbox : sig
 
   val set_current_messages :
     t -> Sc_rollup_inbox_merkelized_payload_hashes_repr.t -> t
+
+  val instant_message : t -> string option
+
+  val set_instant_message : t -> string -> t
 end
 
 module Dal : sig

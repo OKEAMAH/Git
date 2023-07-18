@@ -1757,45 +1757,18 @@ module Sc_rollup = struct
       add_or_remove ctxt (Option.map to_versioned value)
   end
 
-  module Instant_inbox = struct
-    include
-      Make_single_data_storage (Registered) (Raw_context)
-        (struct
-          let name = ["instant_inbox"]
-        end)
-        (struct
-          type t = Epoxy_tx.Types.P.tx
+  module Instant_inbox =
+    Make_indexed_carbonated_data_storage
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["instant_inbox"]
+         end))
+         (Make_index (Raw_level_repr.Index))
+      (struct
+        type t = string
 
-          let encoding = Epoxy_tx.Types.P.tx_data_encoding
-        end)
-
-    (* type value = Sc_rollup_inbox_repr.t
-
-       let of_versioned = Sc_rollup_inbox_repr.of_versioned
-
-       let to_versioned = Sc_rollup_inbox_repr.to_versioned
-
-       let get ctxt =
-         let open Lwt_result_syntax in
-         let* versioned = get ctxt in
-         return (of_versioned versioned)
-
-       let find ctxt =
-         let open Lwt_result_syntax in
-         let* versioned = find ctxt in
-         return (Option.map of_versioned versioned)
-
-       let init ctxt value = init ctxt (to_versioned value)
-
-       let update ctxt value = update ctxt (to_versioned value)
-
-       let add ctxt value =
-         let versioned = to_versioned value in
-         add ctxt versioned
-
-       let add_or_remove ctxt value =
-         add_or_remove ctxt (Option.map to_versioned value) *)
-  end
+        let encoding = Data_encoding.string Plain
+      end)
 
   module Last_cemented_commitment =
     Indexed_context.Make_carbonated_map

@@ -253,6 +253,7 @@ type back = {
     Stake_repr.t Signature.Public_key_hash.Map.t option;
   reward_coeff_for_current_cycle : Q.t;
   sc_rollup_current_messages : Sc_rollup_inbox_merkelized_payload_hashes_repr.t;
+  sc_rollup_instant_message : string option;
   dal_slot_fee_market : Dal_slot_repr.Slot_market.t;
   (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3105
 
@@ -845,6 +846,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ctxt =
         stake_distribution_for_current_cycle = None;
         reward_coeff_for_current_cycle = Q.one;
         sc_rollup_current_messages;
+        sc_rollup_instant_message = None;
         dal_slot_fee_market =
           Dal_slot_repr.Slot_market.init
             ~length:constants.Constants_parametric_repr.dal.number_of_slots;
@@ -1514,6 +1516,11 @@ module Sc_rollup_in_memory_inbox = struct
 
   let set_current_messages ctxt witness =
     {ctxt with back = {ctxt.back with sc_rollup_current_messages = witness}}
+
+  let instant_message ctxt = ctxt.back.sc_rollup_instant_message
+
+  let set_instant_message ctxt msg =
+    {ctxt with back = {ctxt.back with sc_rollup_instant_message = Some msg}}
 end
 
 module Dal = struct

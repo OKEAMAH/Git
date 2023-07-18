@@ -491,6 +491,7 @@ and _ manager_operation =
   | Sc_rollup_instant_update : {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_commitment_repr.t;
+      proof : bytes;
     }
       -> Kind.sc_rollup_instant_update manager_operation
   | Zk_rollup_origination : {

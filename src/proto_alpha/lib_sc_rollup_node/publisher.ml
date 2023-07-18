@@ -340,7 +340,7 @@ let publish_instant (node_ctxt : _ Node_context.t) =
         let (`Hex s) = Hex.of_bytes b in
         s
       in
-      let tx =
+      let proof, tx =
         let bytes =
           Data_encoding.Binary.to_bytes_exn Epoxy_tx.Types.P.tx_data_encoding tx
         in
@@ -348,8 +348,9 @@ let publish_instant (node_ctxt : _ Node_context.t) =
           Sc_rollup.Inbox_message.(
             Stdlib.Result.get_ok @@ serialize @@ External (hex_of_bytes bytes))
         in
-        Sc_rollup.(
-          Inbox_message {inbox_level; message_counter = Z.zero; payload})
+        ( bytes,
+          Sc_rollup.(
+            Inbox_message {inbox_level; message_counter = Z.zero; payload}) )
       in
       (* RUN OVER LCS, get commitment, update LCS *)
       let* instant, opt_root = Node_context.get_lcs node_ctxt in
@@ -403,7 +404,7 @@ let publish_instant (node_ctxt : _ Node_context.t) =
       in
       let l1_op =
         L1_operation.Instant_update
-          {rollup = node_ctxt.rollup_address; commitment}
+          {rollup = node_ctxt.rollup_address; commitment; proof}
       in
       let operator = Node_context.get_operator node_ctxt Publish in
       let source = Stdlib.Option.get operator in

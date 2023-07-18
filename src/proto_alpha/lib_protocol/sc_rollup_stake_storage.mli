@@ -105,6 +105,7 @@ val instant_update :
   Raw_context.t ->
   Sc_rollup_repr.t ->
   Sc_rollup_commitment_repr.t ->
+  bytes ->
   (Raw_context.t
   * Sc_rollup_commitment_repr.t
   * Sc_rollup_commitment_repr.Hash.t)

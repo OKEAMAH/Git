@@ -45,6 +45,7 @@ type t =
   | Instant_update of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.t;
+      proof : bytes;
     }
 
 let encoding : t Data_encoding.t =
@@ -118,13 +119,16 @@ let encoding : t Data_encoding.t =
          case
            5
            "instant_update"
-           (obj2
+           (obj3
               (req "rollup" Sc_rollup.Address.encoding)
-              (req "commitment" Sc_rollup.Commitment.encoding))
+              (req "commitment" Sc_rollup.Commitment.encoding)
+              (req "proof" Data_encoding.bytes))
            (function
-             | Instant_update {rollup; commitment} -> Some (rollup, commitment)
+             | Instant_update {rollup; commitment; proof} ->
+                 Some (rollup, commitment, proof)
              | _ -> None)
-           (fun (rollup, commitment) -> Instant_update {rollup; commitment});
+           (fun (rollup, commitment, proof) ->
+             Instant_update {rollup; commitment; proof});
        ]
 
 let pp_opt pp =
@@ -191,7 +195,7 @@ let pp ppf = function
         opponent
   | Timeout {rollup = _; stakers = _} -> Format.fprintf ppf "timeout"
   | Instant_update
-      {rollup = _; commitment = Sc_rollup.Commitment.{inbox_level; _}} ->
+      {rollup = _; commitment = Sc_rollup.Commitment.{inbox_level; _}; _} ->
       Format.fprintf ppf "instant update for level %a" Raw_level.pp inbox_level
 
 let to_manager_operation : t -> packed_manager_operation = function
@@ -204,8 +208,8 @@ let to_manager_operation : t -> packed_manager_operation = function
   | Refute {rollup; opponent; refutation} ->
       Manager (Sc_rollup_refute {rollup; opponent; refutation})
   | Timeout {rollup; stakers} -> Manager (Sc_rollup_timeout {rollup; stakers})
-  | Instant_update {rollup; commitment} ->
-      Manager (Sc_rollup_instant_update {rollup; commitment})
+  | Instant_update {rollup; commitment; proof} ->
+      Manager (Sc_rollup_instant_update {rollup; commitment; proof})
 
 let of_manager_operation : type kind. kind manager_operation -> t option =
   function
@@ -218,6 +222,8 @@ let of_manager_operation : type kind. kind manager_operation -> t option =
   | Sc_rollup_refute {rollup; opponent; refutation} ->
       Some (Refute {rollup; opponent; refutation})
   | Sc_rollup_timeout {rollup; stakers} -> Some (Timeout {rollup; stakers})
+  | Sc_rollup_instant_update {rollup; commitment; proof} ->
+      Some (Instant_update {rollup; commitment; proof})
   | _ -> None
 
 let unique = function

@@ -46,6 +46,7 @@ type t =
   | Instant_update of {
       rollup : Sc_rollup.t;
       commitment : Sc_rollup.Commitment.t;
+      proof : bytes;
     }
 
 (** Encoding for L1 operations (used by injector for on-disk persistence). *)

@@ -31,21 +31,6 @@ let get_inbox ctxt =
   let* inbox = Store.Inbox.get ctxt in
   return (inbox, ctxt)
 
-let pop_instant ctxt =
-  let open Lwt_result_syntax in
-  let* instant = Store.Instant_inbox.get ctxt in
-  let*! ctxt = Store.Instant_inbox.remove ctxt in
-  return (instant, ctxt)
-
-let set_instant ctxt op =
-  let open Lwt_result_syntax in
-  let* instant = Store.Instant_inbox.find ctxt in
-  match instant with
-  | Some _ -> failwith "instant already set"
-  | None ->
-      let*! ctxt = Store.Instant_inbox.add ctxt op in
-      return ctxt
-
 let add_messages ctxt messages =
   let open Lwt_result_syntax in
   let open Raw_context in
@@ -112,9 +97,19 @@ let serialize_internal_message ctxt internal_message =
   in
   return (message, ctxt)
 
-let add_external_messages ctxt external_messages =
+let add_external_messages ?instant ctxt external_messages =
   let open Lwt_result_syntax in
   let*? ctxt, messages = serialize_external_messages ctxt external_messages in
+  let current_instant =
+    Raw_context.Sc_rollup_in_memory_inbox.instant_message ctxt
+  in
+  let ctxt =
+    match (instant, current_instant) with
+    | _, Some _ -> ctxt
+    | Some instant, None ->
+        Raw_context.Sc_rollup_in_memory_inbox.set_instant_message ctxt instant
+    | None, None -> ctxt
+  in
   add_messages ctxt messages
 
 let add_internal_message ctxt internal_message =
@@ -134,6 +129,15 @@ let finalize_inbox_level ctxt =
   let witness = Raw_context.Sc_rollup_in_memory_inbox.current_messages ctxt in
   let inbox =
     Sc_rollup_inbox_repr.finalize_inbox_level_no_history inbox witness
+  in
+  let instant = Raw_context.Sc_rollup_in_memory_inbox.instant_message ctxt in
+  let* ctxt, _ =
+    match instant with
+    | Some instant ->
+        if 1 = 1 then
+          failwith (Format.asprintf "level: %a" Raw_level_repr.pp inbox.level) ;
+        Store.Instant_inbox.init ctxt inbox.level instant
+    | _ -> return (ctxt, 0)
   in
   Store.Inbox.update ctxt inbox
 
