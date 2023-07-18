@@ -24,8 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 
 (** To implement the interface of this module, as described and
     documented in the related MLI file, we rely on the OCaml module
@@ -112,7 +111,7 @@ let blocks_per_mint_tzbtc = 1L
 
 (** A timestamp “far in the future” which should not be exceeded when
     running tests. *)
-let far_future = Script_timestamp.of_zint (Z.of_int 42_000)
+let far_future = Protocol.Script_timestamp.of_zint (Z.of_int 42_000)
 (* Hypothesis: the tests start at timestamp 0, and 42000 is
    “big enough.” *)
 

@@ -31,8 +31,7 @@
     Subject:      Test zk rollup
 *)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 open Error_monad_operators
 
 exception Zk_rollup_test_error of string
@@ -99,7 +98,8 @@ let test_disable_feature_flag () =
   let* (_i : Incremental.t) =
     Incremental.add_operation
       ~expect_failure:
-        (check_proto_error Validate_errors.Manager.Zk_rollup_feature_disabled)
+        (check_proto_error
+           Protocol.Validate_errors.Manager.Zk_rollup_feature_disabled)
       i
       op
   in
@@ -188,7 +188,7 @@ let test_origination_negative_nb_ops () =
   let* (_i : Incremental.t) =
     Incremental.add_operation
       ~expect_apply_failure:
-        (check_proto_error Zk_rollup_apply.Zk_rollup_negative_nb_ops)
+        (check_proto_error Protocol.Zk_rollup_apply.Zk_rollup_negative_nb_ops)
       i
       operation
   in
@@ -276,7 +276,8 @@ let test_append_out_of_range_op_code () =
   let* (_i : Incremental.t) =
     Incremental.add_operation
       ~expect_apply_failure:
-        (check_proto_error (Zk_rollup_storage.Zk_rollup_invalid_op_code 1))
+        (check_proto_error
+           (Protocol.Zk_rollup_storage.Zk_rollup_invalid_op_code 1))
       i
       operation
   in
@@ -320,14 +321,17 @@ let make_ticket_key ctxt ~ty ~contents ~ticketer zk_rollup =
   | Context.I incr -> return incr)
   >>=? fun incr ->
   let ctxt = Incremental.alpha_ctxt incr in
-  Script_ir_translator.parse_comparable_ty ctxt ty
+  Protocol.Script_ir_translator.parse_comparable_ty ctxt ty
   >>??= fun (Ex_comparable_ty contents_type, ctxt) ->
-  Script_ir_translator.parse_comparable_data ctxt contents_type contents
+  Protocol.Script_ir_translator.parse_comparable_data
+    ctxt
+    contents_type
+    contents
   >>=?? fun (contents, ctxt) ->
-  Ticket_balance_key.of_ex_token
+  Protocol.Ticket_balance_key.of_ex_token
     ctxt
     ~owner:(Zk_rollup zk_rollup)
-    (Ticket_token.Ex_token {ticketer; contents_type; contents})
+    (Protocol.Ticket_token.Ex_token {ticketer; contents_type; contents})
   >|=?? fst
 
 module Make_ticket (T : sig
@@ -337,7 +341,7 @@ module Make_ticket (T : sig
 
   type contents_type
 
-  val contents_type : contents_type Script_typed_ir.comparable_ty
+  val contents_type : contents_type Protocol.Script_typed_ir.comparable_ty
 
   val contents_to_micheline : contents -> contents_type
 
@@ -352,7 +356,7 @@ struct
   let ty = Expr.from_string ty_str
 
   let ex_token ~ticketer =
-    Ticket_token.Ex_token
+    Protocol.Ticket_token.Ex_token
       {ticketer; contents_type; contents = contents_to_micheline contents}
 
   let contents_string = contents_to_string contents
@@ -446,14 +450,15 @@ module Nat_ticket = Make_ticket (struct
 
   type contents = int
 
-  type contents_type = Script_int.n Script_int.num
+  type contents_type = Protocol.Script_int.n Protocol.Script_int.num
 
-  let contents_type = Script_typed_ir.nat_t
+  let contents_type = Protocol.Script_typed_ir.nat_t
 
   let contents_to_string = string_of_int
 
   let contents_to_micheline c =
-    WithExceptions.Option.get ~loc:__LOC__ @@ Script_int.(of_int c |> is_nat)
+    WithExceptions.Option.get ~loc:__LOC__
+    @@ Protocol.Script_int.(of_int c |> is_nat)
 end)
 
 module String_ticket = Make_ticket (struct
@@ -461,14 +466,16 @@ module String_ticket = Make_ticket (struct
 
   type contents = string
 
-  type contents_type = Script_string.t
+  type contents_type = Protocol.Script_string.t
 
-  let contents_type = Script_typed_ir.string_t
+  let contents_type = Protocol.Script_typed_ir.string_t
 
   let contents_to_string s = "\"" ^ s ^ "\""
 
   let contents_to_micheline c =
-    WithExceptions.Result.get_ok ~loc:__LOC__ Script_string.(of_string c)
+    WithExceptions.Result.get_ok
+      ~loc:__LOC__
+      Protocol.Script_string.(of_string c)
 end)
 
 let test_append_errors () =
@@ -553,7 +560,8 @@ let test_append_errors () =
 
 let assert_ticket_balance ~loc incr token owner expected =
   let ctxt = Incremental.alpha_ctxt incr in
-  Ticket_balance_key.of_ex_token ctxt ~owner token >>=?? fun (key_hash, ctxt) ->
+  Protocol.Ticket_balance_key.of_ex_token ctxt ~owner token
+  >>=?? fun (key_hash, ctxt) ->
   Ticket_balance.get_balance ctxt key_hash >>=?? fun (balance, _) ->
   match (balance, expected) with
   | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
@@ -690,7 +698,7 @@ let test_invalid_deposit () =
     Incremental.add_operation
       ~expect_apply_failure:
         (check_proto_error_f (function
-            | Script_interpreter.Runtime_contract_error _ -> true
+            | Protocol.Script_interpreter.Runtime_contract_error _ -> true
             | _ -> false))
       i
       operation
@@ -737,7 +745,9 @@ let test_invalid_deposit () =
     constants.parametric.zk_rollup.max_ticket_payload_size |> return
   in
   let* (_i : Incremental.t) =
-    let payload_size = Saturation_repr.safe_int (contents_size + 216) in
+    let payload_size =
+      Protocol.Saturation_repr.safe_int (contents_size + 216)
+    in
     Incremental.add_operation
       ~expect_apply_failure:
         (check_proto_error
@@ -930,7 +940,8 @@ let test_update_more_public_than_pending () =
   let* _i =
     Incremental.add_operation
       ~expect_apply_failure:
-        (check_proto_error Zk_rollup_storage.Zk_rollup_pending_list_too_short)
+        (check_proto_error
+           Protocol.Zk_rollup_storage.Zk_rollup_pending_list_too_short)
       i
       operation
   in
@@ -957,7 +968,8 @@ let test_update_more_public_than_pending () =
   let* _i =
     Incremental.add_operation
       ~expect_apply_failure:
-        (check_proto_error Zk_rollup_storage.Zk_rollup_pending_list_too_short)
+        (check_proto_error
+           Protocol.Zk_rollup_storage.Zk_rollup_pending_list_too_short)
       i
       operation
   in

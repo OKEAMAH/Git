@@ -33,9 +33,8 @@
 
 let failwith = Stdlib.failwith
 
-open Protocol
-open Script_int
-open Script_bytes
+open Protocol.Script_int
+open Protocol.Script_bytes
 
 let gen_n =
   let open QCheck2.Gen in

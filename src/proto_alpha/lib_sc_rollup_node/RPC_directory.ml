@@ -26,7 +26,6 @@
 (*****************************************************************************)
 
 open Rpc_directory_helpers
-open Protocol
 
 module Slot_pages_map = struct
   open Protocol
@@ -114,7 +113,7 @@ let get_state (node_ctxt : _ Node_context.t) block_hash =
 let simulate_messages (node_ctxt : Node_context.ro) block ~reveal_pages
     ~insight_requests messages =
   let open Lwt_result_syntax in
-  let open Alpha_context in
+  let open Protocol.Alpha_context in
   let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let reveal_map =
     match reveal_pages with

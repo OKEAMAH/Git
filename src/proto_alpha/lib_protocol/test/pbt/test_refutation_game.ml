@@ -31,9 +31,8 @@
                   -- --file test_refutation_game.ml
     Subject:      SCORU refutation game
 *)
-open Protocol
 
-open Alpha_context
+open Protocol.Alpha_context
 open Sc_rollup
 open Qcheck2_helpers
 open Sc_rollup_helpers
@@ -59,7 +58,7 @@ let number_of_ticks_of_int64_exn ?(__LOC__ = __LOC__) n =
 
 let game_status_of_refute_op_result = function
   | [
-      Apply_results.Operation_metadata
+      Protocol.Apply_results.Operation_metadata
         {
           contents =
             Single_result
@@ -280,7 +279,6 @@ let gen_tick ?(lower_bound = 0) ?(upper_bound = 10_000) () =
 (** Generate two chunks consisting in valid boundaries for a dissection *)
 let gen_wasm_pvm_dissection_boundaries kind =
   let open QCheck2.Gen in
-  let open Alpha_context in
   let* broken = bool in
   let* state_hash = gen_random_hash in
   let* base = Z.of_int <$> 0 -- 10_000 in
@@ -1584,36 +1582,37 @@ let test_cut_at_level =
     ~print:(fun (origination_level, commit_inbox_level, input_level) ->
       Format.asprintf
         "origination_level: %a, commit_inbox_level: %a, input_level: %a"
-        Raw_level_repr.pp
+        Protocol.Raw_level_repr.pp
         origination_level
-        Raw_level_repr.pp
+        Protocol.Raw_level_repr.pp
         commit_inbox_level
-        Raw_level_repr.pp
+        Protocol.Raw_level_repr.pp
         input_level)
     Gen.(
       let level =
         map
-          (fun i -> Raw_level_repr.of_int32_exn (Int32.of_int i))
+          (fun i -> Protocol.Raw_level_repr.of_int32_exn (Int32.of_int i))
           (0 -- 1_000_000)
       in
       triple level level level)
     (fun (origination_level, commit_inbox_level, input_level) ->
-      let input : Sc_rollup_PVM_sig.input =
+      let input : Protocol.Sc_rollup_PVM_sig.input =
         Inbox_message
           {
             inbox_level = input_level;
             message_counter = Z.zero;
-            payload = Sc_rollup_inbox_message_repr.unsafe_of_string "foo";
+            payload =
+              Protocol.Sc_rollup_inbox_message_repr.unsafe_of_string "foo";
           }
       in
       let input_cut =
-        Sc_rollup_proof_repr.Internal_for_tests.cut_at_level
+        Protocol.Sc_rollup_proof_repr.Internal_for_tests.cut_at_level
           ~origination_level
           ~commit_inbox_level
           input
       in
       let should_be_none =
-        Raw_level_repr.(
+        Protocol.Raw_level_repr.(
           input_level <= origination_level || commit_inbox_level < input_level)
       in
       match input_cut with

@@ -23,8 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 
 let update_metrics ~protocol_metadata (fitness : Tezos_base.Fitness.t)
     update_metrics_callback =
@@ -34,7 +33,7 @@ let update_metrics ~protocol_metadata (fitness : Tezos_base.Fitness.t)
             ( unit,
               Environment.Error_monad.error Environment.Error_monad.trace )
             result) =
-      let*? round = Alpha_context.Fitness.round_from_raw fitness in
+      let*? round = Fitness.round_from_raw fitness in
       let proto_metrics =
         match
           Data_encoding.Binary.of_bytes_opt

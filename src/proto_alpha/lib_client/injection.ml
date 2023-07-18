@@ -24,11 +24,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
-open Apply_results
-open Apply_operation_result
-open Apply_internal_results
+open Protocol.Alpha_context
+open Protocol.Apply_results
+open Protocol.Apply_operation_result
+open Protocol.Apply_internal_results
 open Protocol_client_context
 
 let get_branch (rpc_config : #Protocol_client_context.full) ~chain
@@ -287,9 +286,9 @@ let preapply (type t) (cctxt : #Protocol_client_context.full) ~chain ~block
   | [(Operation_data op', Operation_metadata result)] -> (
       match
         ( Operation.equal op {shell = {branch}; protocol_data = op'},
-          Apply_results.kind_equal_list contents result.contents )
+          kind_equal_list contents result.contents )
       with
-      | Some Operation.Eq, Some Apply_results.Eq ->
+      | Some Operation.Eq, Some Eq ->
           return ((oph, op, result) : t preapply_result)
       | _ -> failwith "Unexpected result")
   | _ -> failwith "Unexpected result"
@@ -318,9 +317,9 @@ let simulate (type t) (cctxt : #Protocol_client_context.full) ~chain ~block
   | Operation_data op', Operation_metadata result -> (
       match
         ( Operation.equal op {shell = {branch}; protocol_data = op'},
-          Apply_results.kind_equal_list contents result.contents )
+          kind_equal_list contents result.contents )
       with
-      | Some Operation.Eq, Some Apply_results.Eq ->
+      | Some Operation.Eq, Some Eq ->
           return ((oph, op, result) : t preapply_result)
       | _ -> failwith "Unexpected result")
   | _ -> failwith "Unexpected result"
@@ -664,7 +663,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
            };
          _;
        } =
-    Alpha_services.Constants.all cctxt (chain, block)
+    Protocol.Alpha_services.Constants.all cctxt (chain, block)
   in
   let user_gas_limit_needs_patching user_gas_limit =
     Limit.fold user_gas_limit ~unknown:true ~known:(fun user_gas_limit ->
@@ -698,7 +697,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
       int * Gas.Arith.integral =
    fun op need_patching gas_consumed ->
     match op with
-    | Single_manager minfo ->
+    | Annotated_manager_operation.Single_manager minfo ->
         gas_patching_stats minfo need_patching gas_consumed
     | Cons_manager (minfo, rest) ->
         let need_patching, gas_consumed =
@@ -727,7 +726,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
       kind Annotated_manager_operation.t option =
    fun op ->
     match op with
-    | Manager_info c ->
+    | Annotated_manager_operation.Manager_info c ->
         let needs_patching =
           Limit.is_unknown c.fee
           || user_gas_limit_needs_patching c.gas_limit
@@ -756,7 +755,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
         type kind.
         kind Annotated_manager_operation.annotated_list ->
         kind Annotated_manager_operation.annotated_list option = function
-      | Single_manager annotated_op ->
+      | Annotated_manager_operation.Single_manager annotated_op ->
           Option.map (fun op -> Annotated_manager_operation.Single_manager op)
           @@ may_need_patching_single annotated_op
       | Cons_manager (annotated_op, rest) -> (
@@ -832,7 +831,8 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
       kind Annotated_manager_operation.t * kind Kind.manager contents_result ->
       kind Kind.manager contents tzresult Lwt.t =
    fun ~first -> function
-    | (Manager_info c as op), (Manager_operation_result _ as result) ->
+    | ( (Annotated_manager_operation.Manager_info c as op),
+        (Manager_operation_result _ as result) ) ->
         let* op =
           if user_gas_limit_needs_patching c.gas_limit then
             let*! gas = Lwt.return (estimated_gas_single result) in
@@ -932,7 +932,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
       kind Kind.manager contents_list tzresult Lwt.t =
    fun first annotated_list result_list ->
     match (annotated_list, result_list) with
-    | Single_manager annotated, Single_result res ->
+    | Annotated_manager_operation.Single_manager annotated, Single_result res ->
         let* op = patch ~first (annotated, res) in
         return (Single op)
     | Cons_manager (annotated, annotated_rest), Cons_result (res, res_rest) ->
@@ -1134,9 +1134,8 @@ let inject_operation_internal (type kind) cctxt ~chain ~block ?confirmations
               in
               failwith "Internal error: unexpected receipt."
           | Receipt (Operation_metadata receipt) -> (
-              match Apply_results.kind_equal_list contents receipt.contents with
-              | Some Apply_results.Eq ->
-                  return (receipt : kind operation_metadata)
+              match kind_equal_list contents receipt.contents with
+              | Some Eq -> return (receipt : kind operation_metadata)
               | None -> failwith "Internal error: unexpected receipt."))
     in
     let*! () =
@@ -1149,7 +1148,10 @@ let inject_operation_internal (type kind) cctxt ~chain ~block ?confirmations
     let*! () =
       List.iter_s
         (fun c ->
-          cctxt#message "New contract %a originated." Contract_hash.pp c)
+          cctxt#message
+            "New contract %a originated."
+            Protocol.Contract_hash.pp
+            c)
         contracts
     in
     let*! () =
@@ -1472,18 +1474,22 @@ let inject_manager_operation cctxt ~chain ~block ?successor_level ?branch
     match counter with
     | None ->
         let* pcounter =
-          Alpha_services.Contract.counter cctxt (chain, block) source
+          Protocol.Alpha_services.Contract.counter cctxt (chain, block) source
         in
         let counter = Manager_counter.succ pcounter in
         return counter
     | Some counter -> return counter
   in
-  let* key = Alpha_services.Contract.manager_key cctxt (chain, block) source in
+  let* key =
+    Protocol.Alpha_services.Contract.manager_key cctxt (chain, block) source
+  in
   (* [has_reveal] assumes that a Reveal operation only appears as the first of a batch *)
   let has_reveal :
       type kind. kind Annotated_manager_operation.annotated_list -> bool =
     function
-    | Single_manager (Manager_info {operation = Reveal _; _}) -> true
+    | Annotated_manager_operation.Single_manager
+        (Manager_info {operation = Reveal _; _}) ->
+        true
     | Cons_manager (Manager_info {operation = Reveal _; _}, _) -> true
     | _ -> false
   in

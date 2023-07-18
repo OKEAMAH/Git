@@ -23,8 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 
 (** This is a simulation of the CPMM contract, as implemented in mligo
     in [src/proto_alpha/lib_protocol/contracts/cpmm.mligo]. The
