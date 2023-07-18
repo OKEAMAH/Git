@@ -70,6 +70,7 @@
   Fitness_repr
   Level_repr
   Script_repr
+  Script_repr_costs
   Cache_memory_helpers
   Seed_repr
   Sampler
@@ -341,6 +342,7 @@
   fitness_repr.ml fitness_repr.mli
   level_repr.ml level_repr.mli
   script_repr.ml script_repr.mli
+  script_repr_costs.ml
   cache_memory_helpers.ml
   seed_repr.ml seed_repr.mli
   sampler.ml sampler.mli
@@ -616,6 +618,7 @@
   fitness_repr.ml fitness_repr.mli
   level_repr.ml level_repr.mli
   script_repr.ml script_repr.mli
+  script_repr_costs.ml
   cache_memory_helpers.ml
   seed_repr.ml seed_repr.mli
   sampler.ml sampler.mli
@@ -875,6 +878,7 @@
   fitness_repr.ml fitness_repr.mli
   level_repr.ml level_repr.mli
   script_repr.ml script_repr.mli
+  script_repr_costs.ml
   cache_memory_helpers.ml
   seed_repr.ml seed_repr.mli
   sampler.ml sampler.mli
