@@ -24,6 +24,9 @@ unified_coverage:
   dependencies:
     - "tezt 1/2"
     - "tezt 2/2"
+  before_script:
+    - opam remote add default https://opam.ocaml.org --rank=-1
+    - opam pin https://github.com/maxim092001/bisect_ppx.git#master --yes
   script:
     # On the development branches, we compute coverage
     - ./scripts/ci/report_coverage.sh

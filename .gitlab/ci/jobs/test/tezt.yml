@@ -31,6 +31,8 @@ include: .gitlab/ci/jobs/test/common.yml
     # certain tests can be blacklisted by adding it to this variable
     when: always
   script:
+    - opam remote add default https://opam.ocaml.org --rank=-1
+    - opam pin https://github.com/maxim092001/bisect_ppx.git#master --yes
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt
 
 tezt:

@@ -6,6 +6,9 @@ include: .gitlab/ci/jobs/build/common.yml
     # These job are the main bottleneck since a lot of tests depend on
     # them.  So we start them even before sanity_ci.
   needs: [trigger]
+  before_script:
+    - opam remote add default https://opam.ocaml.org --rank=-1
+    - opam pin https://github.com/maxim092001/bisect_ppx.git#master --yes
   variables:
     ARCH: "x86_64"
 
