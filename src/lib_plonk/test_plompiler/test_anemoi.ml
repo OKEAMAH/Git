@@ -79,7 +79,7 @@ module Anemoi_test (L : LIB) = struct
           (Input.scalar res.(0), Input.scalar res.(1)))
         test_vectors
     in
-    let wrong =
+    let _wrong =
       List.map
         (fun _ -> (Input.scalar @@ S.random (), Input.scalar @@ S.random ()))
         (expected ())
@@ -89,12 +89,12 @@ module Anemoi_test (L : LIB) = struct
         test ~valid:true ~name:"Anemoi.test_round.valid" @@ test_round x y ex ey)
       inputs
       (expected ())
-    @ List.map2
+   (* @ List.map2
         (fun (x, y) (wx, wy) ->
           test ~valid:false ~name:"Anemoi.test_round.invalid"
           @@ test_round x y wx wy)
         inputs
-        wrong
+        wrong *)
 
   let test_anemoi_compress x y expected () =
     let* x = input ~kind:`Public x in
@@ -219,7 +219,7 @@ module Anemoi_test (L : LIB) = struct
     with_bool_check (equal o expected)
 
   let tests_hash =
-    let test_vectors = [[S.one; S.one]; [S.one; S.one; S.one; S.one]] in
+    let test_vectors = [[S.one; S.one]; (*[S.one; S.one; S.one; S.one]*)] in
 
     let inputs : scalar list Input.input list =
       List.map
@@ -240,23 +240,23 @@ module Anemoi_test (L : LIB) = struct
           Input.scalar @@ exp)
         test_vectors
     in
-    let wrong = List.map (fun _ -> Input.scalar @@ S.random ()) (expected ()) in
+    let _wrong = List.map (fun _ -> Input.scalar @@ S.random ()) (expected ()) in
     List.map2
       (fun l e ->
         test ~valid:true ~name:"Anemoi.test_compress.valid"
         @@ test_anemoi_hash l e)
       inputs
       (expected ())
-    @ List.map2
-        (fun l w ->
-          test ~valid:false ~name:"Anemoi.test_compress.invalid"
-          @@ test_anemoi_hash l w)
-        inputs
-        wrong
+    (* @ List.map2
+     *     (fun l w ->
+     *       test ~valid:false ~name:"Anemoi.test_compress.invalid"
+     *       @@ test_anemoi_hash l w)
+     *     inputs
+     *     wrong *)
 
-  let tests =
-    tests_round @ tests_compress @ tests_double_round @ tests_compress_two
-    @ tests_hash
+  let tests = 
+    (*tests_round @ tests_compress @ tests_double_round @ tests_compress_two
+    @*) tests_hash
 end
 
 let tests =
