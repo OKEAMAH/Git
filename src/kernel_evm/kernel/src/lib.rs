@@ -41,8 +41,9 @@ mod storage;
 mod upgrade;
 
 /// The chain id will need to be unique when the EVM rollup is deployed in
-/// production.
-pub const CHAIN_ID: u32 = 1337;
+/// production. This one is the default chain id for dailynet and internal
+/// tests.
+pub const DEFAULT_CHAIN_ID: u32 = 0x26d3;
 
 /// The configuration for the EVM execution.
 pub const CONFIG: Config = Config::london();
@@ -146,7 +147,11 @@ fn retrieve_chain_id<Host: Runtime>(host: &mut Host) -> Result<U256, Error> {
     match read_chain_id(host) {
         Ok(chain_id) => Ok(chain_id),
         Err(_) => {
-            let chain_id = U256::from(CHAIN_ID);
+            debug_msg!(
+                host,
+                "No chain id found, defaulting to {DEFAULT_CHAIN_ID}\n"
+            );
+            let chain_id = U256::from(DEFAULT_CHAIN_ID);
             store_chain_id(host, chain_id)?;
             Ok(chain_id)
         }
