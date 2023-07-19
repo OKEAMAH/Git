@@ -100,6 +100,7 @@ module Make (L : LIB) = struct
     with_label ~label:"Anemoi.double_round"
     @@ let* res = Anemoi.anemoi_double_round ~kx1 ~ky1 ~kx2 ~ky2 (xi, yi) in
        let xj, yj = of_pair res in
+       (*why is in the monad ?*)
        ret @@ (xj, yj, i + 4)
 
   let compress_two : scalar repr -> scalar repr -> scalar repr t =
@@ -136,6 +137,7 @@ module Make (L : LIB) = struct
   let compress_19_5 : scalar repr -> scalar repr -> scalar repr t =
    fun x0 y0 ->
     (* Anemoi of 20 rounds without the first linear layer *)
+    (*why no init state ? why was it 20 rounds ? *)
     (* let* x1, y1 = init_state_for_rounds x0 y0 in *)
     with_label ~label:"Anemoi.19.5"
     @@ let* xn, yn, _ = repeat ~n:11 custom_round (x0, y0, 0) in

@@ -256,6 +256,7 @@ let jive128_1 x y =
   let state = [|x; y|] in
   let ctxt = allocate_ctxt Parameters.security_128_state_size_2 in
   let () = set_state ctxt state in
+  (*why no flystel ?*)
   let () = apply_permutation ctxt in
   let state = get_state ctxt in
   Bls12_381.Fr.(x + y + state.(0) + state.(1))
