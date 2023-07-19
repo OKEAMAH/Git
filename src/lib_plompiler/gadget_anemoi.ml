@@ -163,6 +163,7 @@ module Anemoi128 = struct
       AnemoiPerm.(allocate_ctxt Parameters.security_128_state_size_2)
 
     let jive x y =
+      (* AnemoiPerm.jive128_1 x y *)
       let state =
         AnemoiPerm.set_state anemoi_instance [|x; y|] ;
         AnemoiPerm.apply_flystel anemoi_instance ;
