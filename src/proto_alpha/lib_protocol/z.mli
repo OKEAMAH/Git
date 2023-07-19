@@ -29,8 +29,6 @@ type non_zero = private t
 
 val make_non_zero_exn : t -> non_zero
 
-exception Overflow
-
 val zero : t
 
 val one : t
@@ -94,12 +92,6 @@ val to_int64 : t -> int64 tzresult
 val to_int64_exn : t -> int64
 
 val to_string : t -> string
-
-val fits_int : t -> bool
-
-val fits_int32 : t -> bool
-
-val fits_int64 : t -> bool
 
 val pp_print : Format.formatter -> t -> unit
 
