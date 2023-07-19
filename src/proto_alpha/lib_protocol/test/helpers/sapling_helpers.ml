@@ -23,16 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-
 module Common = struct
   let memo_size_of_int i =
-    match Alpha_context.Sapling.Memo_size.parse_z @@ Z.of_int i with
+    match Protocol.Alpha_context.Sapling.Memo_size.parse_z @@ Z.of_int i with
     | Ok memo_size -> memo_size
     | Error _ -> assert false
 
   let int_of_memo_size ms =
-    Alpha_context.Sapling.Memo_size.unparse_to_z ms |> Z.to_int
+    Protocol.Alpha_context.Sapling.Memo_size.unparse_to_z ms |> Z.to_int
 
   let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
@@ -133,7 +131,7 @@ module Common = struct
 
   (* rebuilds from empty at each call *)
   let client_state_of_diff ~memo_size (root, diff) =
-    let open Alpha_context.Sapling in
+    let open Protocol.Alpha_context.Sapling in
     let cs =
       Tezos_sapling.Storage.add
         (Tezos_sapling.Storage.empty ~memo_size)
@@ -151,7 +149,7 @@ module Alpha_context_helpers = struct
 
   let init () =
     Context.init1 () >>=? fun (b, _contract) ->
-    Alpha_context.prepare
+    Protocol.Alpha_context.prepare
       b.context
       ~level:b.header.shell.level
       ~predecessor_timestamp:b.header.shell.timestamp
@@ -163,7 +161,7 @@ module Alpha_context_helpers = struct
   (* takes a state obtained from Sapling.empty_state or Sapling.state_from_id and
      passed through Sapling.verify_update *)
   let finalize ctx =
-    let open Alpha_context in
+    let open Protocol.Alpha_context in
     let open Sapling in
     function
     | {id = None; diff; memo_size} ->
@@ -196,23 +194,23 @@ module Alpha_context_helpers = struct
         | Some memo_size -> return memo_size)
         >>=? fun memo_size ->
         let memo_size = memo_size_of_int memo_size in
-        let vs = Alpha_context.Sapling.empty_state ~memo_size () in
+        let vs = Protocol.Alpha_context.Sapling.empty_state ~memo_size () in
         return (vs, ctx)
     | Some id ->
         (* Storage.Sapling.Roots.get (Obj.magic ctx, id) 0l *)
         (*       >>= wrap *)
         (*       >>=? fun (_, root) -> *)
         (*       print ~prefix:"verify: " Environment.Sapling.Hash.encoding root ; *)
-        Alpha_context.Sapling.state_from_id ctx id >>= wrap)
+        Protocol.Alpha_context.Sapling.state_from_id ctx id >>= wrap)
     >>=? fun (vs, ctx) ->
-    Alpha_context.Sapling.verify_update ctx vs vt anti_replay >>= wrap
+    Protocol.Alpha_context.Sapling.verify_update ctx vs vt anti_replay >>= wrap
     >>=? fun (ctx, res) ->
     match res with
     | None -> return_none
     | Some (_balance, vs) ->
         finalize ctx vs >>=? fun (ctx, id) ->
         let fake_fitness =
-          Alpha_context.(
+          Protocol.Alpha_context.(
             let level =
               match Raw_level.of_int32 0l with
               | Error _ -> assert false
@@ -224,12 +222,12 @@ module Alpha_context_helpers = struct
               ~round:Round.zero
             |> Fitness.to_raw)
         in
-        let ectx = (Alpha_context.finalize ctx fake_fitness).context in
+        let ectx = (Protocol.Alpha_context.finalize ctx fake_fitness).context in
         (* bump the level *)
-        Alpha_context.prepare
+        Protocol.Alpha_context.prepare
           ectx
           ~level:
-            Alpha_context.(
+            Protocol.Alpha_context.(
               Raw_level.to_int32 Level.((succ ctx (current ctx)).level))
           ~predecessor_timestamp:(Time.Protocol.of_seconds Int64.zero)
           ~timestamp:(Time.Protocol.of_seconds Int64.zero)
@@ -252,23 +250,24 @@ module Alpha_context_helpers = struct
         | Some memo_size -> return memo_size)
         >>=? fun memo_size ->
         let memo_size = memo_size_of_int memo_size in
-        let vs = Alpha_context.Sapling.empty_state ~memo_size () in
+        let vs = Protocol.Alpha_context.Sapling.empty_state ~memo_size () in
         return (vs, ctx)
     | Some id ->
         (* Storage.Sapling.Roots.get (Obj.magic ctx, id) 0l *)
         (*       >>= wrap *)
         (*       >>=? fun (_, root) -> *)
         (*       print ~prefix:"verify: " Environment.Sapling.Hash.encoding root ; *)
-        Alpha_context.Sapling.state_from_id ctx id >>= wrap)
+        Protocol.Alpha_context.Sapling.state_from_id ctx id >>= wrap)
     >>=? fun (vs, ctx) ->
-    Alpha_context.Sapling.Legacy.verify_update ctx vs vt anti_replay >>= wrap
+    Protocol.Alpha_context.Sapling.Legacy.verify_update ctx vs vt anti_replay
+    >>= wrap
     >>=? fun (ctx, res) ->
     match res with
     | None -> return_none
     | Some (_balance, vs) ->
         finalize ctx vs >>=? fun (ctx, id) ->
         let fake_fitness =
-          Alpha_context.(
+          Protocol.Alpha_context.(
             let level =
               match Raw_level.of_int32 0l with
               | Error _ -> assert false
@@ -280,12 +279,12 @@ module Alpha_context_helpers = struct
               ~round:Round.zero
             |> Fitness.to_raw)
         in
-        let ectx = (Alpha_context.finalize ctx fake_fitness).context in
+        let ectx = (Protocol.Alpha_context.finalize ctx fake_fitness).context in
         (* bump the level *)
-        Alpha_context.prepare
+        Protocol.Alpha_context.prepare
           ectx
           ~level:
-            Alpha_context.(
+            Protocol.Alpha_context.(
               Raw_level.to_int32 Level.((succ ctx (current ctx)).level))
           ~predecessor_timestamp:(Time.Protocol.of_seconds Int64.zero)
           ~timestamp:(Time.Protocol.of_seconds Int64.zero)
@@ -333,8 +332,8 @@ module Alpha_context_helpers = struct
     Tezos_sapling.Forge.forge_transaction_legacy ins outs w.sk anti_replay cs
 
   let client_state_alpha ctx id =
-    Alpha_context.Sapling.get_diff ctx id () >>= wrap >>=? fun diff ->
-    Alpha_context.Sapling.state_from_id ctx id >>= wrap
+    Protocol.Alpha_context.Sapling.get_diff ctx id () >>= wrap >>=? fun diff ->
+    Protocol.Alpha_context.Sapling.state_from_id ctx id >>= wrap
     >|=? fun ({memo_size; _}, _ctx) ->
     let memo_size = int_of_memo_size memo_size in
     client_state_of_diff ~memo_size diff
@@ -353,7 +352,12 @@ module Interpreter_helpers = struct
   let originate_contract_hash file storage src b baker =
     originate_contract_hash file storage src b baker >|=? fun (dst, b) ->
     let anti_replay =
-      Format.asprintf "%a%a" Contract_hash.pp dst Chain_id.pp Chain_id.zero
+      Format.asprintf
+        "%a%a"
+        Protocol.Contract_hash.pp
+        dst
+        Chain_id.pp
+        Chain_id.zero
     in
     (dst, b, anti_replay)
 
@@ -391,7 +395,7 @@ module Interpreter_helpers = struct
      of addresses that cannot bake the block*)
   let transac_and_sync ~memo_size block parameters amount src dst baker =
     let amount_tez =
-      Test_tez.(Alpha_context.Tez.one_mutez *! Int64.of_int amount)
+      Test_tez.(Protocol.Alpha_context.Tez.one_mutez *! Int64.of_int amount)
     in
     let fee = Test_tez.of_int 10 in
     Op.transaction
@@ -399,7 +403,7 @@ module Interpreter_helpers = struct
       ~fee
       (B block)
       src
-      (Alpha_context.Contract.Originated dst)
+      (Protocol.Alpha_context.Contract.Originated dst)
       amount_tez
       ~parameters
     >>=? fun operation ->
@@ -407,7 +411,7 @@ module Interpreter_helpers = struct
     >>=? fun incr ->
     Incremental.add_operation incr operation >>=? fun incr ->
     Incremental.finalize_block incr >>=? fun block ->
-    Alpha_services.Contract.single_sapling_get_diff
+    Protocol.Alpha_services.Contract.single_sapling_get_diff
       Block.rpc_ctxt
       block
       dst

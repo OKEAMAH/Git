@@ -21,8 +21,7 @@
 (* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 
 let assert_balance ctxt ~loc key expected =
   let open Lwt_result_wrap_syntax in
@@ -37,17 +36,17 @@ let string_ticket_token ticketer content =
   let open Lwt_result_syntax in
   let contents =
     Result.value_f ~default:(fun _ -> assert false)
-    @@ Script_string.of_string content
+    @@ Protocol.Script_string.of_string content
   in
   let*? ticketer = Environment.wrap_tzresult @@ Contract.of_b58check ticketer in
   return
-    (Ticket_token.Ex_token
-       {ticketer; contents_type = Script_typed_ir.string_t; contents})
+    (Protocol.Ticket_token.Ex_token
+       {ticketer; contents_type = Protocol.Script_typed_ir.string_t; contents})
 
 let adjust_ticket_token_balance alpha_ctxt owner ticket_token ~delta =
   let open Lwt_result_wrap_syntax in
   let*@ ticket_token_hash, ctxt =
-    Ticket_balance_key.of_ex_token alpha_ctxt ~owner ticket_token
+    Protocol.Ticket_balance_key.of_ex_token alpha_ctxt ~owner ticket_token
   in
   let*@ (_ : Z.t), alpha_ctxt =
     Ticket_balance.adjust_balance ctxt ticket_token_hash ~delta
