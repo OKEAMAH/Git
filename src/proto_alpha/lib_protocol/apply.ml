@@ -2532,7 +2532,7 @@ let apply_liquidity_baking_subsidy ctxt ~per_block_vote =
              (Z.div
                 (Gas.Arith.integral_to_z
                    (Constants.hard_gas_limit_per_block ctxt))
-                (Z.of_int 20)))
+                (Z.make_non_zero_exn @@ Z.of_int 20)))
       in
       let backtracking_ctxt = ctxt in
       let*! result =

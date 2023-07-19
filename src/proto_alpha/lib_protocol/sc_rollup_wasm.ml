@@ -105,7 +105,7 @@ let () =
 module V2_0_0 = struct
   let current_version = Wasm_2_0_0.v3
 
-  let ticks_per_snapshot = Z.of_int64 11_000_000_000L
+  let ticks_per_snapshot = Z.make_non_zero_exn (Z.of_int64 11_000_000_000L)
 
   let outbox_validity_period = Int32.of_int 80_640
 
@@ -283,6 +283,7 @@ module V2_0_0 = struct
     let initial_state ~empty = WASM_machine.initial_state current_version empty
 
     let install_boot_sector state boot_sector =
+      let ticks_per_snapshot = (ticks_per_snapshot :> Z.t) in
       WASM_machine.install_boot_sector
         ~ticks_per_snapshot
         ~outbox_validity_period
@@ -606,9 +607,9 @@ module V2_0_0 = struct
         Execution cannot be leveraged in that case, which means the
         ad-hoc dissection predicate would not provide any speed up.
       *)
-      if Compare.Z.(dist <= ticks_per_snapshot) then
+      if Compare.Z.(dist <= (ticks_per_snapshot :> Z.t)) then
         default_check
-          ~section_maximum_size:Z.(div dist (Z.of_int 2))
+          ~section_maximum_size:Z.(div dist Z.two)
           ~check_sections_number:default_check_sections_number
           ~default_number_of_sections
           ~start_chunk
@@ -651,7 +652,7 @@ module V2_0_0 = struct
                     (div
                        (Sc_rollup_tick_repr.to_z stop_chunk.tick)
                        ticks_per_snapshot)
-                    ticks_per_snapshot)
+                    (ticks_per_snapshot :> Z.t))
             in
             Sc_rollup_tick_repr.(distance start_chunk.tick last_valid_stop_tick)
         in
@@ -667,7 +668,7 @@ module V2_0_0 = struct
            [ticks_per_snapshot].
         *)
         let section_maximum_size =
-          Z.max ticks_per_snapshot (Z.div considered_dist (Z.of_int 2))
+          Z.max (ticks_per_snapshot :> Z.t) (Z.div considered_dist Z.two)
         in
         let* () =
           default_check

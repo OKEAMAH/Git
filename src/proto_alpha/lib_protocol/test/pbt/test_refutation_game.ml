@@ -290,18 +290,14 @@ let gen_wasm_pvm_dissection_boundaries kind =
     | `Short -> 2 -- 32
     | `Large -> 1_000 -- 10_000
   in
-  let+ offset =
-    if broken then 1 -- Z.to_int Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot
-    else pure 0
+  let ticks_per_snapshot =
+    (Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot :> Z.t)
   in
-  let start_tick =
-    Sc_rollup.Tick.of_z @@ Z.(base * Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot)
-  in
+  let+ offset = if broken then 1 -- Z.to_int ticks_per_snapshot else pure 0 in
+  let start_tick = Sc_rollup.Tick.of_z @@ Z.(base * ticks_per_snapshot) in
   let stop_tick =
     Sc_rollup.Tick.of_z
-    @@ Z.(
-         ((base + len) * Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot)
-         + Z.of_int offset)
+    @@ Z.(((base + len) * ticks_per_snapshot) + Z.of_int offset)
   in
   let start_chunk =
     Sc_rollup.Dissection_chunk.
@@ -1417,6 +1413,9 @@ let check_distribution = function
   | fst :: snd :: rst ->
       let open Dissection_chunk in
       let dist = Tick.distance fst.tick snd.tick in
+      let ticks_per_snapshot =
+        (Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot :> Z.t)
+      in
       let _, min_len, max_len =
         List.fold_left
           (fun (previous_tick, min_len, max_len) chunk ->
@@ -1424,13 +1423,13 @@ let check_distribution = function
             (* We only consider length that are greater or equal than
                the snapshot size. The last one may not be as big, if
                the PVM was stuck. *)
-            if Compare.Z.(dist < Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot)
-            then (chunk.tick, min_len, max_len)
+            if Compare.Z.(dist < ticks_per_snapshot) then
+              (chunk.tick, min_len, max_len)
             else (chunk.tick, Z.min min_len dist, Z.max max_len dist))
           (snd.tick, dist, dist)
           rst
       in
-      Z.(max_len - min_len <= Sc_rollup.Wasm_2_0_0PVM.ticks_per_snapshot)
+      Z.(max_len - min_len <= ticks_per_snapshot)
   | _ -> true
 
 let test_wasm_dissection name kind =

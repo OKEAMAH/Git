@@ -50,7 +50,9 @@ let select_winning_proposal ctxt =
       let min_vote_to_pass =
         Z.(
           to_int64
-            (div (mul min_proposal_quorum (of_int64 max_vote)) (of_int 100_00)))
+            (div
+               (mul min_proposal_quorum (of_int64 max_vote))
+               (make_non_zero_exn (of_int 100_00))))
       in
       if Compare.Int64.(vote >= min_vote_to_pass) then return_some proposal
       else return_none
@@ -69,6 +71,7 @@ let select_winning_proposal ctxt =
     by the min/max quorum protocol constants. *)
 let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
     ~participation_ema ~expected_quorum =
+  let open Result_syntax in
   (* Note overflows: considering a maximum of 1e9 tokens (around 2^30),
      hence 1e15 mutez (around 2^50)
      In 'participation' a Z is used because in the worst case 'all_votes is
@@ -77,14 +80,14 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
   let casted_votes = Int64.add ballots.yay ballots.nay in
   let all_votes = Int64.add casted_votes ballots.pass in
   let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
-  let participation =
+  let+ participation =
     (* in centile of percentage *)
     Z.(
-      to_int32
-        (div
-           (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
-           (Z.of_int64 maximum_vote)))
+      div_result
+        (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
+        (Z.of_int64 maximum_vote))
   in
+  let participation = Z.to_int32 participation in
   let approval =
     Compare.Int32.(participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)
@@ -101,7 +104,7 @@ let get_approval_and_update_participation_ema ctxt =
   let* participation_ema = Vote.get_participation_ema ctxt in
   let* expected_quorum = Vote.get_current_quorum ctxt in
   let*! ctxt = Vote.clear_ballots ctxt in
-  let approval, new_participation_ema =
+  let*? approval, new_participation_ema =
     approval_and_participation_ema
       ballots
       ~maximum_vote

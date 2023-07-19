@@ -111,12 +111,14 @@ module Make (EMA_parameters : EMA_PARAMETERS) : T = struct
   let attenuation_numerator =
     Z.(sub ema_max_z (mul (of_int 2) EMA_parameters.baker_contribution))
 
-  let attenuation_denominator = ema_max_z
+  let attenuation_denominator = Z.make_non_zero_exn ema_max_z
 
   let attenuate z =
     Z.(div (mul attenuation_numerator z) attenuation_denominator)
 
-  let half_ema_max_z = Z.(div ema_max_z (of_int 2))
+  let z2 = Z.make_non_zero_exn (Z.of_int 2)
+
+  let half_ema_max_z = Z.(div ema_max_z z2)
 
   (* Outside of this module, the EMA is always between 0l and ema_max.
      This [recenter] wrappers, puts it in between -ema_max/2 and

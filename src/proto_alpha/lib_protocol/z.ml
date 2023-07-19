@@ -25,7 +25,14 @@
 
 include Tezos_protocol_environment_alpha.Z
 
-type error += Invalid_string of string
+type non_zero = t
+
+let make_non_zero_exn x =
+  if Compare.Z.(x = zero) then raise Division_by_zero else x
+
+let two = of_int 2
+
+type error += Invalid_string of string | Division_by_zero
 
 let () =
   let open Data_encoding in
@@ -43,12 +50,24 @@ let () =
        argument"
     (obj1 (req "string" (string Plain)))
     (function Invalid_string s -> Some s | _ -> None)
-    (fun s -> Invalid_string s)
+    (fun s -> Invalid_string s) ;
+  register_error_kind
+    `Permanent
+    ~id:"z.division_by_zero"
+    ~title:"Division by zero"
+    ~pp:(fun ppf () -> Format.fprintf ppf "Division by zero")
+    ~description:"Divition by zero"
+    unit
+    (function Division_by_zero -> Some () | _ -> None)
+    (fun () -> Division_by_zero)
 
 let of_string s =
   try ok (of_string s) with Invalid_argument _ -> error @@ Invalid_string s
 
-type non_zero = t
+let make_non_zero x =
+  if Compare.Z.(x = zero) then error Division_by_zero else ok x
 
-let make_non_zero_exn x =
-  if Compare.Z.(x = zero) then raise Division_by_zero else x
+let div_result a b =
+  let open Result_syntax in
+  let+ b = make_non_zero b in
+  div a b

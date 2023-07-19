@@ -109,7 +109,9 @@ module M = struct
       | _ -> rewards
     in
     let mutez_base_rewards = Tez_repr.to_mutez base_rewards |> Z.of_int64 in
-    let mutez_rewards = Z.(div (mul mutez_base_rewards coeff.num) coeff.den) in
+    let mutez_rewards =
+      Z.(div (mul mutez_base_rewards coeff.num) (Z.make_non_zero_exn coeff.den))
+    in
     Tez_repr.of_mutez_exn (Z.to_int64 mutez_rewards)
 end
 

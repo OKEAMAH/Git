@@ -153,10 +153,11 @@ end
 
 let q_to_float_string q =
   let offset = 1000 in
-  let unit = Z.div q.Q.num q.den in
+  let den = Z.make_non_zero_exn q.Q.den in
+  let unit = Z.div q.Q.num den in
   let q = Q.(sub q (unit /// Z.one)) in
   let q = Q.(mul q (offset // 1)) in
-  let dec = Z.div q.num q.den in
+  let dec = Z.div q.num den in
   let padded_dec_string = Format.asprintf "%03d" (Z.to_int dec) in
   Format.asprintf "%a.%s" Z.pp_print unit padded_dec_string
 

@@ -136,7 +136,7 @@ let test_negative_amount () =
 (** We create an implicit account with not enough tez to pay for the
     storage increase. *)
 let test_no_tez_to_pay () =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* b, (source, baker, receiver) = Context.init3 ~consensus_threshold:0 () in
   let* b, destination = contract_originate b source in
   let pkh_for_bake = Context.Contract.pkh baker in
@@ -144,8 +144,8 @@ let test_no_tez_to_pay () =
     Incremental.begin_construction ~policy:Block.(By_account pkh_for_bake) b
   in
   let* {parametric = {cost_per_byte; _}; _} = Context.get_constants (I inc) in
-  let increase_amount =
-    Z.div (Z.of_int 2_000_000) (Z.of_int64 (Tez.to_mutez cost_per_byte))
+  let*?@ increase_amount =
+    Z.div_result (Z.of_int 2_000_000) (Z.of_int64 (Tez.to_mutez cost_per_byte))
   in
   let* balance = Context.Contract.balance (I inc) source in
   let*? tez_to_substract = Test_tez.(balance -? Tez.one) in

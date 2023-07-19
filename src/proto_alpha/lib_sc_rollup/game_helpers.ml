@@ -71,7 +71,7 @@ module Wasm = struct
   let new_dissection ~default_number_of_sections ~start_chunk ~our_stop_chunk =
     let open Dissection_chunk in
     let dist = Tick.distance start_chunk.tick our_stop_chunk.tick in
-    let ticks_per_snapshot = Wasm_2_0_0PVM.ticks_per_snapshot in
+    let ticks_per_snapshot = (Wasm_2_0_0PVM.ticks_per_snapshot :> Z.t) in
     if Compare.Z.(dist <= ticks_per_snapshot) then
       (*
          There are two cases that require us to fall back to the

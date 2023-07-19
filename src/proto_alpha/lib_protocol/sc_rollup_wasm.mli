@@ -101,7 +101,7 @@ module V2_0_0 : sig
          as per Number_of_ticks.max_value)
 
       see #3590 for more pointers *)
-  val ticks_per_snapshot : Z.t
+  val ticks_per_snapshot : Z.non_zero
 
   (* The number of outboxes to keep, which is for a period of two weeks. For a
      block time of 30 seconds, this equals to 2 * 60 * 24 * 14 = 40_320

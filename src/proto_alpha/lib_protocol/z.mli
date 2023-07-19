@@ -25,11 +25,17 @@
 
 type t = Compare.Z.t
 
+type non_zero = private t
+
+val make_non_zero_exn : t -> non_zero
+
 exception Overflow
 
 val zero : t
 
 val one : t
+
+val two : non_zero
 
 val of_int : int -> t
 
@@ -53,13 +59,11 @@ val sub : t -> t -> t
 
 val mul : t -> t -> t
 
-type non_zero = private t
+val div : t -> non_zero -> t
 
-val make_non_zero_exn : t -> non_zero
+val div_result : t -> t -> t tzresult
 
-val div : t -> t -> t
-
-val rem : t -> t -> t
+val rem : t -> non_zero -> t
 
 val ediv_rem : t -> t -> t * t
 

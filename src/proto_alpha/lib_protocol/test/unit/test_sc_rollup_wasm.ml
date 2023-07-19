@@ -254,7 +254,7 @@ let test_output () =
   in
   let*! tree =
     Wasm.install_boot_sector
-      ~ticks_per_snapshot:Sc_rollup_wasm.V2_0_0.ticks_per_snapshot
+      ~ticks_per_snapshot:(Sc_rollup_wasm.V2_0_0.ticks_per_snapshot :> Z.t)
       ~outbox_validity_period:Sc_rollup_wasm.V2_0_0.outbox_validity_period
       ~outbox_message_limit:Sc_rollup_wasm.V2_0_0.outbox_message_limit
       boot_sector

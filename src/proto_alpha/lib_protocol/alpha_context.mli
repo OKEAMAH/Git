@@ -3423,7 +3423,7 @@ module Sc_rollup : sig
   end
 
   module Wasm_2_0_0PVM : sig
-    val ticks_per_snapshot : Z.t
+    val ticks_per_snapshot : Z.non_zero
 
     val outbox_validity_period : int32
 

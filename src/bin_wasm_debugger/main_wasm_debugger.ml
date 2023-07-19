@@ -71,7 +71,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
     let*! tree =
       Wasm.initial_tree
         ~version
-        ~ticks_per_snapshot:(Z.to_int64 Wasm_2_0_0PVM.ticks_per_snapshot)
+        ~ticks_per_snapshot:
+          (Z.to_int64 (Wasm_2_0_0PVM.ticks_per_snapshot :> Z.t))
         ~outbox_validity_period:Wasm_2_0_0PVM.outbox_validity_period
         ~outbox_message_limit:Wasm_2_0_0PVM.outbox_message_limit
         ~from_binary:binary

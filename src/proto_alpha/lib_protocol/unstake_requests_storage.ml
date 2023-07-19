@@ -68,7 +68,7 @@ let prepared_finalize_unstake_encoding :
        (req "finalizable" finalizable_encoding)
        (req "unfinalizable" stored_requests_encoding))
 
-let z100 = Z.of_int 100
+let z100 = Z.make_non_zero_exn (Z.of_int 100)
 
 let apply_slashes ~preserved_plus_slashing slashing_history ~from_cycle amount =
   let first_cycle_to_apply_slash = from_cycle in
