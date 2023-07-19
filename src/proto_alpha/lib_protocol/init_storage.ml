@@ -190,7 +190,7 @@ let migrate_liquidity_baking_ema ctxt =
   Storage.Liquidity_baking.Toggle_ema.init ctxt (Int64.of_int32 ema_i32)
 
 let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
-    ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
+    ~typecheck_smart_rollup ~level ~timestamp ~predecessor:_ =
   Raw_context.prepare_first_block ~level ~timestamp ctxt
   >>=? fun (previous_protocol, ctxt) ->
   let parametric = Raw_context.constants ctxt in
@@ -248,7 +248,6 @@ let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
       >>=? fun (ctxt, operation_results) ->
       Storage.Pending_migration.Operation_results.init ctxt operation_results
       >>=? fun ctxt ->
-      Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt >>=? fun ctxt ->
       Storage.Adaptive_inflation.Launch_ema.init ctxt 0L >>=? fun ctxt ->
       return
         ( ctxt,
