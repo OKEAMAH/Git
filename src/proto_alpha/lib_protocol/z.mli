@@ -53,6 +53,10 @@ val sub : t -> t -> t
 
 val mul : t -> t -> t
 
+type non_zero = private t
+
+val make_non_zero_exn : t -> non_zero
+
 val div : t -> t -> t
 
 val rem : t -> t -> t

@@ -47,3 +47,8 @@ let () =
 
 let of_string s =
   try ok (of_string s) with Invalid_argument _ -> error @@ Invalid_string s
+
+type non_zero = t
+
+let make_non_zero_exn x =
+  if Compare.Z.(x = zero) then raise Division_by_zero else x
