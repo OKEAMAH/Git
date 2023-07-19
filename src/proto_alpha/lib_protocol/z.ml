@@ -71,3 +71,8 @@ let div_result a b =
   let open Result_syntax in
   let+ b = make_non_zero b in
   div a b
+
+let ediv_rem a b =
+  let open Result_syntax in
+  let+ b = make_non_zero b in
+  ediv_rem a b

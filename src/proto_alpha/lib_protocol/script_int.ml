@@ -76,11 +76,10 @@ let sub (Num_tag x) (Num_tag y) = Num_tag (Z.sub x y)
 let mul (Num_tag x) (Num_tag y) = Num_tag (Z.mul x y)
 
 let ediv (Num_tag x) (Num_tag y) =
-  let ediv_tagged x y =
-    let quo, rem = Z.ediv_rem x y in
-    (Num_tag quo, Num_tag rem)
-  in
-  Option.catch (fun () -> ediv_tagged x y)
+  let open Result_syntax in
+  Result.to_option
+  @@ let+ quo, rem = Z.ediv_rem x y in
+     (Num_tag quo, Num_tag rem)
 
 let add_n = add
 

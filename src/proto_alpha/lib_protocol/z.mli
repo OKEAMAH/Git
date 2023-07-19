@@ -65,7 +65,7 @@ val div_result : t -> t -> t tzresult
 
 val rem : t -> non_zero -> t
 
-val ediv_rem : t -> t -> t * t
+val ediv_rem : t -> t -> (t * t) tzresult
 
 val logand : t -> t -> t
 
