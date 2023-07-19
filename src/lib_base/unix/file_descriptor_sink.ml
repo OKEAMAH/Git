@@ -25,7 +25,7 @@
 
 open Error_monad
 
-type current = {day : int * int * int; fd : Lwt_unix.file_descr}
+type current = {day : int * int * int * int * int; fd : Lwt_unix.file_descr}
 
 type rotating = {
   rights : int;
@@ -266,17 +266,18 @@ let day_of_the_year ts =
   let today =
     match Ptime.of_float_s ts with Some s -> s | None -> Ptime.min
   in
-  let (y, m, d), _ = Ptime.to_date_time today in
-  (y, m, d)
+  let (y, m, d), ((hh, mm, _), _) = Ptime.to_date_time today in
+  (y, m, d, hh, mm)
 
-let string_of_day_of_the_year (y, m, d) = Format.sprintf "%d%02d%02d" y m d
+let string_of_day_of_the_year (y, m, d, hh, mm) =
+  Format.sprintf "%d%02d%02d%d%d" y m d hh mm
 
 let check_file_format_with_date base_filename s =
   let name_no_ext = Filename.remove_extension base_filename in
   let ext = Filename.extension base_filename in
   let open Re.Perl in
   let re_ext = "(." ^ ext ^ ")?" in
-  let re_date = "-\\d{4}\\d{2}\\d{2}" in
+  let re_date = "-*\\." in
   let re = compile @@ re (name_no_ext ^ re_date ^ re_ext) in
   Re.execp re s
 
@@ -548,11 +549,16 @@ end) : Internal_event.SINK with type t = t = struct
   let output_one_with_rotation {rights; base_path; current; days_kept} now
       to_write =
     let open Lwt_result_syntax in
-    let {day; fd} = !current in
-    let today = Ptime.to_date now in
-    let should_rotate_output = day <> today in
     let* () =
       Lwt_mutex.with_lock write_mutex (fun () ->
+          let {day; fd} = !current in
+          (* let today = Ptime.to_date now in *)
+          let today =
+            let (y, m, d), ((hh, mm, _), _) = Ptime.to_date_time now in
+            (y, m, d, hh, mm)
+          in
+          let should_rotate_output = day <> today in
+          let*! () = Lwt_unix.sleep 1. in
           let* output =
             if not should_rotate_output then return fd
             else
@@ -572,12 +578,18 @@ end) : Internal_event.SINK with type t = t = struct
               current := {fd; day = today} ;
               return fd
           in
-          Lwt_result.ok @@ Lwt_utils_unix.write_string output to_write)
-    in
-    let*! () =
-      if should_rotate_output then
-        remove_older_files (Filename.dirname base_path) days_kept base_path
-      else Lwt.return_unit
+          let* () =
+            Lwt_result.ok @@ Lwt_utils_unix.write_string output to_write
+          in
+          let*! () =
+            if should_rotate_output then
+              remove_older_files
+                (Filename.dirname base_path)
+                days_kept
+                base_path
+            else Lwt.return_unit
+          in
+          return_unit)
     in
     return_unit
 
