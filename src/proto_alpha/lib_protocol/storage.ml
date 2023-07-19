@@ -1625,6 +1625,13 @@ module Adaptive_inflation = struct
       (Encoding.Int64)
 end
 
+module Plop =
+  Make_single_data_storage (Registered) (Raw_context)
+    (struct
+      let name = ["plop"]
+    end)
+    (Encoding.Int32)
+
 module Ticket_balance = struct
   module Name = struct
     let name = ["ticket_balance"]

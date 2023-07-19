@@ -710,6 +710,9 @@ module Adaptive_inflation : sig
     Single_data_storage with type t := Raw_context.t and type value = Int64.t
 end
 
+module Plop :
+  Single_data_storage with type t := Raw_context.t and type value = Int32.t
+
 (** A map of [Script_repr.expr] values, indexed by their hash ([Script_expr_hash.t]).
     Values from this map can be incorporated by any contract via the primitive
     [Michelson_v1_primitives.H_constant]. *)
