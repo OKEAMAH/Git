@@ -128,7 +128,9 @@ let int_parameter =
 
 let z_parameter =
   Tezos_clic.parameter (fun (cctxt : #Client_context.full) p ->
-      try return (Z.of_string p) with _ -> cctxt#error "Cannot read integer")
+      match Z.of_string p with
+      | Ok n -> return n
+      | Error _ -> cctxt#error "Cannot read integer")
 
 let uri_parameter = Tezos_clic.parameter (fun _ x -> return (Uri.of_string x))
 
@@ -385,10 +387,10 @@ let everything_or_tez_param ~name ~desc next =
 
 let non_negative_z_parser (cctxt : #Client_context.io) s =
   match Z.of_string s with
-  | exception Invalid_argument _ -> cctxt#error "Expected number"
-  | v when Compare.Z.(v < Z.zero) ->
+  | Error _ -> cctxt#error "Expected number"
+  | Ok v when Compare.Z.(v < Z.zero) ->
       cctxt#error "Invalid number, must be a non negative number."
-  | v -> Lwt_result_syntax.return v
+  | Ok v -> Lwt_result_syntax.return v
 
 let non_negative_z_parameter () = Tezos_clic.parameter non_negative_z_parser
 
@@ -482,10 +484,9 @@ let now_arg =
 
 let gas_limit_kind =
   Tezos_clic.parameter (fun (cctxt : #Client_context.full) s ->
-      try
-        let v = Z.of_string s in
-        return (Gas.Arith.integral_exn v)
-      with _ -> cctxt#error "invalid gas limit (must be a positive number)")
+      match Z.of_string s with
+      | Ok v -> return (Gas.Arith.integral_exn v)
+      | Error _ -> cctxt#error "invalid gas limit (must be a positive number)")
 
 let gas_limit_arg =
   Tezos_clic.arg
@@ -523,12 +524,13 @@ let unlimited_gas_arg =
 
 let storage_limit_kind =
   Tezos_clic.parameter (fun (cctxt : #Client_context.full) s ->
-      try
-        let v = Z.of_string s in
-        assert (Compare.Z.(v >= Z.zero)) ;
-        return v
-      with _ ->
-        cctxt#error "invalid storage limit (must be a positive number of bytes)")
+      match Z.of_string s with
+      | Ok v ->
+          assert (Compare.Z.(v >= Z.zero)) ;
+          return v
+      | Error _ ->
+          cctxt#error
+            "invalid storage limit (must be a positive number of bytes)")
 
 let storage_limit_arg =
   Tezos_clic.arg

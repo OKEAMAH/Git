@@ -99,7 +99,7 @@ module MakeId (Title : Title) : TitleWithId = struct
     let rpc_arg =
       let construct = Z.to_string in
       let destruct hash =
-        Result.catch_f (fun () -> Z.of_string hash) (fun _ -> rpc_arg_error)
+        Result.map_error (fun _ -> rpc_arg_error) (Z.of_string hash)
       in
       RPC_arg.make ~descr:description ~name ~construct ~destruct ()
 
@@ -123,7 +123,7 @@ module MakeId (Title : Title) : TitleWithId = struct
 
     let of_path = function
       | [] | _ :: _ :: _ -> None
-      | [z] -> Some (Z.of_string z)
+      | [z] -> Z.of_string z |> Result.to_option
   end
 
   module Temp_id = struct

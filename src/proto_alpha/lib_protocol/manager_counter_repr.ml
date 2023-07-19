@@ -43,8 +43,8 @@ let encoding_for_errors = Data_encoding.z
 module Internal_for_injection = struct
   let of_string s =
     match Z.of_string s with
-    | exception _ -> None
-    | z -> if z < Z.zero then None else Some z
+    | Error _ -> None
+    | Ok z -> if z < Z.zero then None else Some z
 end
 
 module Internal_for_tests = struct

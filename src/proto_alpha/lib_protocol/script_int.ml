@@ -49,7 +49,11 @@ let one_n = Num_tag Z.one
 
 let to_string (Num_tag x) = Z.to_string x
 
-let of_string s = Option.catch (fun () -> Num_tag (Z.of_string s))
+let of_string s =
+  let open Result_syntax in
+  Result.to_option
+  @@ let+ n = Z.of_string s in
+     Num_tag n
 
 let of_int32 n = Num_tag (Z.of_int64 @@ Int64.of_int32 n)
 

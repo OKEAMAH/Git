@@ -40,11 +40,11 @@ module Index : Storage_description.INDEX with type t = t = struct
 
   let of_path = function
     | [] | _ :: _ :: _ -> None
-    | [c] -> Some (Z.of_string c)
+    | [c] -> Z.of_string c |> Result.to_option
 
   let rpc_arg =
     let z_of_string s =
-      try Ok (Z.of_string s) with Failure _ -> Error "Cannot parse z value"
+      Result.map_error (fun _ -> "Cannot parse z value") (Z.of_string s)
     in
     RPC_arg.make ~name:"z" ~destruct:z_of_string ~construct:Z.to_string ()
 end

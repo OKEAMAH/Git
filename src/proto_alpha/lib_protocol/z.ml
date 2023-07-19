@@ -24,3 +24,26 @@
 (*****************************************************************************)
 
 include Tezos_protocol_environment_alpha.Z
+
+type error += Invalid_string of string
+
+let () =
+  let open Data_encoding in
+  register_error_kind
+    `Permanent
+    ~id:"z.invalid_string"
+    ~title:"Invalid string notation for an arbitrary-precision number"
+    ~pp:(fun ppf s ->
+      Format.fprintf
+        ppf
+        "String %S is not a valid notation for an arbitrary-precision integer"
+        s)
+    ~description:
+      "During a conversion from string to Z, an invalid string was given as \
+       argument"
+    (obj1 (req "string" (string Plain)))
+    (function Invalid_string s -> Some s | _ -> None)
+    (fun s -> Invalid_string s)
+
+let of_string s =
+  try ok (of_string s) with Invalid_argument _ -> error @@ Invalid_string s

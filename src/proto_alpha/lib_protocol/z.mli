@@ -37,7 +37,7 @@ val of_int32 : int32 -> t
 
 val of_int64 : int64 -> t
 
-val of_string : string -> t
+val of_string : string -> t tzresult
 
 val succ : t -> t
 

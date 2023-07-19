@@ -55,12 +55,12 @@ let amount_param () =
     ~name:"amount"
     ~desc:"number of tokens"
     (Tezos_clic.parameter (fun (cctxt : #Client_context.full) s ->
-         try
-           let v = Z.of_string s in
-           assert (Compare.Z.(v >= Z.zero)) ;
-           Lwt_result_syntax.return v
-         with _ ->
-           cctxt#error "invalid amount (must be a non-negative number)"))
+         match Z.of_string s with
+         | Ok v ->
+             assert (Compare.Z.(v >= Z.zero)) ;
+             Lwt_result_syntax.return v
+         | Error _ ->
+             cctxt#error "invalid amount (must be a non-negative number)"))
 
 let tez_amount_arg =
   tez_arg ~default:"0" ~parameter:"tez-amount" ~doc:"amount in \xEA\x9C\xA9"

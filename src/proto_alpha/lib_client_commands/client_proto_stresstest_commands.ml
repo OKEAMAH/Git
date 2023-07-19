@@ -950,10 +950,9 @@ let gas_limit_arg =
   let open Tezos_clic in
   let gas_limit_kind =
     parameter (fun (cctxt : #Client_context.full) s ->
-        try
-          let v = Z.of_string s in
-          Lwt_result_syntax.return (Gas.Arith.integral_exn v)
-        with _ -> cctxt#error "invalid gas limit (must be a positive number)")
+        match Z.of_string s with
+        | Ok v -> Lwt_result_syntax.return (Gas.Arith.integral_exn v)
+        | Error _ -> cctxt#error "invalid gas limit (must be a positive number)")
   in
   arg
     ~long:"gas-limit"
@@ -971,13 +970,13 @@ let storage_limit_arg =
   let open Tezos_clic in
   let storage_limit_kind =
     parameter (fun (cctxt : #Client_context.full) s ->
-        try
-          let v = Z.of_string s in
-          assert (Compare.Z.(v >= Z.zero)) ;
-          Lwt_result_syntax.return v
-        with _ ->
-          cctxt#error
-            "invalid storage limit (must be a positive number of bytes)")
+        match Z.of_string s with
+        | Ok v ->
+            assert (Compare.Z.(v >= Z.zero)) ;
+            Lwt_result_syntax.return v
+        | Error _ ->
+            cctxt#error
+              "invalid storage limit (must be a positive number of bytes)")
   in
   arg
     ~long:"storage-limit"

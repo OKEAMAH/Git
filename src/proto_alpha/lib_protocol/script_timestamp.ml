@@ -33,8 +33,12 @@ let compare (Timestamp_tag x) (Timestamp_tag y) = Z.compare x y
 let of_int64 i = Timestamp_tag (Z.of_int64 i)
 
 let of_string x =
+  let open Result_syntax in
   match Time_repr.of_notation x with
-  | None -> Option.catch (fun () -> Timestamp_tag (Z.of_string x))
+  | None ->
+      Result.to_option
+      @@ let+ n = Z.of_string x in
+         Timestamp_tag n
   | Some time -> Some (of_int64 (Time_repr.to_seconds time))
 
 let to_notation (Timestamp_tag x) =
