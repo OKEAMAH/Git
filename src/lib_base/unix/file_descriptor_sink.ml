@@ -549,14 +549,14 @@ end) : Internal_event.SINK with type t = t = struct
   let output_one_with_rotation {rights; base_path; current; days_kept} now
       to_write =
     let open Lwt_result_syntax in
+    let {day; fd} = !current in
+    (* let today = Ptime.to_date now in *)
+    let today =
+      let (y, m, d), ((hh, mm, _), _) = Ptime.to_date_time now in
+      (y, m, d, hh, mm)
+    in
     let* () =
       Lwt_mutex.with_lock write_mutex (fun () ->
-          let {day; fd} = !current in
-          (* let today = Ptime.to_date now in *)
-          let today =
-            let (y, m, d), ((hh, mm, _), _) = Ptime.to_date_time now in
-            (y, m, d, hh, mm)
-          in
           let should_rotate_output = day <> today in
           let*! () = Lwt_unix.sleep 1. in
           let* output =
