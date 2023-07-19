@@ -148,6 +148,7 @@ module Make (L : LIB) = struct
     | [x] ->
         let* zero = Num.zero in
         compress_19_5 zero x
+    (*that's not how jive is used on bigger state*)
     | x :: rest -> foldM compress_19_5 x rest
 end
 
