@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Profiler = Tezos_shell_services.Shell_profiling.Requester_profiler
+
 module type REQUESTER = sig
   type t
 
@@ -191,6 +193,19 @@ module Make_request_scheduler
     (Request : REQUEST with type key := Hash.t) : sig
   include SCHEDULER with type key := Hash.t and type param := Request.param
 end = struct
+  module Request = struct
+    include Request
+
+    let send p peer keys =
+      let peer_str = Format.asprintf "%a" P2p_peer.Id.pp peer in
+      List.iter
+        (fun k ->
+          let key_str = Format.asprintf "%a" Hash.pp k in
+          Profiler.mark [key_str; "send_p2p_request"; peer_str])
+        keys ;
+      send p peer keys
+  end
+
   module Events = Requester_event.Make (Hash)
 
   type key = Hash.t
@@ -416,7 +431,9 @@ end = struct
             | Replace {key; status} -> Table.replace state.pending key status)
           actions ;
         state.min_next_request <- min_next_request ;
-        P2p_peer.Map.iter (Request.send state.param) requests ;
+        P2p_peer.Map.iter
+          (fun peer keys -> Request.send state.param peer keys)
+          requests ;
         let* () =
           P2p_peer.Map.iter_s
             (fun peer request ->
@@ -561,7 +578,9 @@ module Make
   let wrap s k ?timeout t =
     let open Lwt_syntax in
     let t = Lwt.protected t in
+    let key_str = Format.asprintf "%a" Hash.pp k in
     Lwt.on_cancel t (fun () ->
+        Profiler.mark [key_str; "canceled"] ;
         match Memory_table.find s.memory k with
         | None -> ()
         | Some (Found _) -> ()
@@ -576,18 +595,23 @@ module Make
     | Some delay ->
         let timeout =
           let* () = Systime_os.sleep delay in
+          Profiler.mark [key_str; "timeout"] ;
           Lwt_result_syntax.tzfail (Timeout k)
         in
         Lwt.pick [t; timeout]
 
   let fetch s ?peer ?timeout k param =
     let open Lwt_syntax in
+    let key_str = Format.asprintf "%a" Hash.pp k in
+    Profiler.mark [key_str; "fetching"] ;
     match Memory_table.find s.memory k with
     | None -> (
+        Profiler.mark [key_str; "cache_miss"] ;
         let* o = Disk_table.read_opt s.disk k in
         match o with
         | Some v -> return_ok v
         | None -> (
+            Profiler.mark [key_str; "disk_miss"] ;
             (* It is necessary to check the memory-table again in case another
                promise has altered it whilst this one was waiting for the
                disk-table query. *)
@@ -606,10 +630,13 @@ module Make
                 wrap s k ?timeout data.waiter
             | Some (Found v) -> return_ok v))
     | Some (Pending data) ->
+        Profiler.mark [key_str; "pending"] ;
         Scheduler.request s.scheduler peer k ;
         data.waiters <- data.waiters + 1 ;
         wrap s k ?timeout data.waiter
-    | Some (Found v) -> return_ok v
+    | Some (Found v) ->
+        Profiler.mark [key_str; "found"] ;
+        return_ok v
 
   let notify_when_pending s p k w param v =
     let open Lwt_syntax in
@@ -626,6 +653,8 @@ module Make
         Lwt.return_unit
 
   let notify s p k v =
+    let key_str = Format.asprintf "%a" Hash.pp k in
+    Profiler.mark [key_str; "notify"] ;
     let open Lwt_syntax in
     match Memory_table.find s.memory k with
     | None -> (
@@ -646,6 +675,8 @@ module Make
     | Some (Found _) -> Scheduler.notify_duplicate s.scheduler p k
 
   let inject s k v =
+    let key_str = Format.asprintf "%a" Hash.pp k in
+    Profiler.mark [key_str; "inject"] ;
     let open Lwt_syntax in
     match Memory_table.find s.memory k with
     | None -> (
@@ -664,6 +695,8 @@ module Make
     | Some (Pending _) | Some (Found _) -> Lwt.return_false
 
   let clear_or_cancel s k =
+    let key_str = Format.asprintf "%a" Hash.pp k in
+    Profiler.mark [key_str; "cleared"] ;
     match Memory_table.find s.memory k with
     | None -> ()
     | Some (Pending status) ->
