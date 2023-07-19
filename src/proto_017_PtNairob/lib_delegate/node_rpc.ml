@@ -30,6 +30,7 @@ open Baking_state
 module Lifted_protocol = Tezos_protocol_017_PtNairob_lifted.Lifted_protocol
 module Block_services = Block_services.Make (Lifted_protocol) (Lifted_protocol)
 module Events = Baking_events.Node_rpc
+module Profiler = Baking_profiler.Node_rpc_profiler
 
 let inject_block cctxt ?(force = false) ~chain signed_block_header operations =
   let signed_shell_header_bytes =
@@ -107,6 +108,7 @@ let info_of_header_and_ops ~in_protocol block_hash block_header operations =
         | None -> assert false
       in
       let preendorsements, quorum, dal_attestations, payload =
+        Profiler.aggregate_f "operations classification" @@ fun () ->
         WithExceptions.Option.get
           ~loc:__LOC__
           (Operation_pool.extract_operations_of_list_list operations)
@@ -130,11 +132,19 @@ let info_of_header_and_ops ~in_protocol block_hash block_header operations =
 let compute_block_info cctxt ~in_protocol ?operations ~chain block_hash
     block_header =
   let open Lwt_result_syntax in
+  Profiler.record_s
+    ("compute block " ^ Block_hash.to_short_b58check block_hash ^ " info")
+  @@ fun () ->
   let* operations =
     match operations with
     | None when not in_protocol -> return_nil
     | None ->
         let open Protocol_client_context in
+        Profiler.aggregate_s
+          ("retrieve block "
+          ^ Block_hash.to_short_b58check block_hash
+          ^ " operations")
+        @@ fun () ->
         let* operations =
           Alpha_block_services.Operations.operations
             cctxt
@@ -155,13 +165,26 @@ let compute_block_info cctxt ~in_protocol ?operations ~chain block_hash
     | Some operations ->
         let parse_op (raw_op : Tezos_base.Operation.t) =
           let protocol_data =
+            Profiler.aggregate_f "parse operation" @@ fun () ->
             Data_encoding.Binary.of_bytes_exn
               Operation.protocol_data_encoding
               raw_op.proto
           in
           {shell = raw_op.shell; protocol_data}
         in
-        protect @@ fun () -> return (List.map (List.map parse_op) operations)
+        Profiler.aggregate_s
+          ("parse " ^ Block_hash.to_short_b58check block_hash ^ " operations")
+        @@ fun () ->
+        protect @@ fun () ->
+        return
+          (List.mapi
+             (fun i -> function
+               | [] -> []
+               | l ->
+                   Profiler.aggregate_f
+                     (Printf.sprintf "parse operations (pass:%d)" i)
+                   @@ fun () -> List.map parse_op l)
+             operations)
   in
   let*? block_info =
     info_of_header_and_ops ~in_protocol block_hash block_header operations
@@ -179,14 +202,27 @@ let proposal cctxt ?(cache : block_info Block_cache.t option) ?operations ~chain
   let* is_proposal_in_protocol, predecessor =
     match predecessor_opt with
     | Some predecessor ->
+        Profiler.mark
+          [
+            "pred_block("
+            ^ Block_hash.to_short_b58check predecessor_hash
+            ^ "):cache_hit";
+          ] ;
         return
           ( predecessor.shell.proto_level = block_header.shell.proto_level,
             predecessor )
     | None ->
+        Profiler.mark
+          [
+            "pred_block("
+            ^ Block_hash.to_short_b58check predecessor_hash
+            ^ "):cache_miss";
+          ] ;
         let* {
                current_protocol = pred_current_protocol;
                next_protocol = pred_next_protocol;
              } =
+          Profiler.aggregate_s "pred block protocol RPC" @@ fun () ->
           Shell_services.Blocks.protocols cctxt ~chain ~block:pred_block ()
         in
         let is_proposal_in_protocol =
@@ -200,6 +236,7 @@ let proposal cctxt ?(cache : block_info Block_cache.t option) ?operations ~chain
             Shell_services.Blocks.raw_header cctxt ~chain ~block:pred_block ()
           in
           let predecessor_header =
+            Profiler.aggregate_f "parse pred block header" @@ fun () ->
             Data_encoding.Binary.of_bytes_exn
               Tezos_base.Block_header.encoding
               raw_header_b
@@ -221,8 +258,17 @@ let proposal cctxt ?(cache : block_info Block_cache.t option) ?operations ~chain
   in
   let* block =
     match block_opt with
-    | Some pi -> return pi
+    | Some pi ->
+        Profiler.mark
+          ["new_block(" ^ Block_hash.to_short_b58check pi.hash ^ "):cache_hit"] ;
+        return pi
     | None ->
+        Profiler.mark
+          [
+            "new_block("
+            ^ Block_hash.to_short_b58check block_hash
+            ^ "):cache_miss";
+          ] ;
         let* pi =
           compute_block_info
             cctxt
@@ -238,6 +284,7 @@ let proposal cctxt ?(cache : block_info Block_cache.t option) ?operations ~chain
   return {block; predecessor}
 
 let proposal cctxt ?cache ?operations ~chain block_hash block_header =
+  Profiler.record_s "proposal_computation" @@ fun () ->
   protect @@ fun () ->
   proposal cctxt ?cache ?operations ~chain block_hash block_header
 
@@ -249,6 +296,9 @@ let monitor_valid_proposals cctxt ~chain ?cache () =
   in
   let stream =
     let map (_chain_id, block_hash, block_header, operations) =
+      Profiler.record_s
+        ("received valid proposal " ^ Block_hash.to_short_b58check block_hash)
+      @@ fun () ->
       let*! map_result =
         proposal cctxt ?cache ~operations ~chain block_hash block_header
       in
@@ -270,6 +320,9 @@ let monitor_heads cctxt ~chain ?cache () =
   in
   let stream =
     let map (block_hash, block_header) =
+      Profiler.record_s
+        ("received new head " ^ Block_hash.to_short_b58check block_hash)
+      @@ fun () ->
       let*! map_result = proposal cctxt ?cache ~chain block_hash block_header in
       match map_result with
       | Ok proposal -> Lwt.return_some proposal

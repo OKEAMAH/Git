@@ -91,6 +91,7 @@ let find ctxt addr =
   | Some (unparsed_script, ex_script) ->
       return (ctxt, identifier, Some (unparsed_script, ex_script))
   | None -> (
+      Profiler.aggregate_s "cache_miss" (fun () ->
       load_and_elaborate ctxt addr >>=? function
       | ctxt, None -> return (ctxt, identifier, None)
       | ctxt, Some (unparsed_script, script_ir, size) ->
@@ -98,7 +99,7 @@ let find ctxt addr =
           Lwt.return
             ( Cache.update ctxt identifier (Some (cached_value, size))
             >>? fun ctxt ->
-              ok (ctxt, identifier, Some (unparsed_script, script_ir)) ))
+              ok (ctxt, identifier, Some (unparsed_script, script_ir)) )))
 
 let update ctxt identifier updated_script approx_size =
   Cache.update ctxt identifier (Some (updated_script, approx_size))

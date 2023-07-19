@@ -104,6 +104,7 @@ let endorsing_rights (ctxt : t) level =
     slots
 
 let endorsing_rights_by_first_slot ctxt level =
+  Profiler.aggregate_s "endorsing_rights_by_first_slot" @@ fun () ->
   Slot.Range.create ~min:0 ~count:(Constants.consensus_committee_size ctxt)
   >>?= fun slots ->
   Slot.Range.fold_es

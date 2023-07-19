@@ -26,6 +26,7 @@
 open Protocol
 open Alpha_context
 module Events = Baking_events.Nonces
+module Profiler = Baking_profiler.Nonce_profiler
 
 type state = {
   cctxt : Protocol_client_context.full;
@@ -172,9 +173,12 @@ let blocks_from_current_cycle {cctxt; chain; _} block ?(offset = 0l) () =
             (List.length l))
 
 let get_unrevealed_nonces ({cctxt; chain; _} as state) nonces =
-  blocks_from_current_cycle state (`Head 0) ~offset:(-1l) () >>=? fun blocks ->
+  Profiler.record_s "blocks from current cycle" (fun () ->
+      blocks_from_current_cycle state (`Head 0) ~offset:(-1l) ())
+  >>=? fun blocks ->
   List.filter_map_es
     (fun hash ->
+      Profiler.aggregate_s "process nonce" @@ fun () ->
       match find_opt nonces hash with
       | None -> return_none
       | Some nonce -> (
@@ -262,12 +266,19 @@ let reveal_potential_nonces state new_proposal =
     let block = `Head 0 in
     let branch = new_predecessor_hash in
     (* improve concurrency *)
+    Profiler.record "waiting lock" ;
     cctxt#with_lock @@ fun () ->
-    load cctxt nonces_location >>= function
+    Profiler.stop "waiting lock" ;
+    Profiler.record_s "load nonce file" (fun () -> load cctxt nonces_location)
+    >>= fun r ->
+    match r with
     | Error err ->
         Events.(emit cannot_read_nonces err) >>= fun () -> return_unit
     | Ok nonces -> (
-        get_unrevealed_nonces state nonces >>= function
+        Profiler.aggregate_s "get unrevealed nonces" (fun () ->
+            get_unrevealed_nonces state nonces)
+        >>= fun r ->
+        match r with
         | Error err ->
             Events.(emit cannot_retrieve_unrevealed_nonces err) >>= fun () ->
             return_unit
@@ -309,6 +320,7 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
       last_predecessor = Block_hash.zero;
     }
   in
+  let last_proposal = ref None in
   let rec worker_loop () =
     Lwt_canceler.on_cancel canceler (fun () ->
         should_shutdown := true ;
@@ -319,10 +331,17 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
            with the node was interrupted: exit *)
         return_unit
     | Some new_proposal ->
+        Option.iter
+          (fun bh -> Profiler.stop (Block_hash.to_short_b58check bh))
+          !last_proposal ;
+        Profiler.record
+          (Block_hash.to_short_b58check new_proposal.Baking_state.block.hash) ;
+        last_proposal := Some new_proposal.Baking_state.block.hash ;
         if !should_shutdown then return_unit
         else
-          reveal_potential_nonces state new_proposal >>=? fun () ->
-          worker_loop ()
+          Profiler.record_s "reveal potential nonces" (fun () ->
+              reveal_potential_nonces state new_proposal)
+          >>=? fun () -> worker_loop ()
   in
   Lwt.dont_wait
     (fun () ->

@@ -202,29 +202,45 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
     delegates
 
 let cycle_end ctxt last_cycle =
-  Seed_storage.cycle_end ctxt last_cycle >>=? fun (ctxt, unrevealed_nonces) ->
+  Profiler.aggregate_s "cycle-end: seed storage" (fun () ->
+      Seed_storage.cycle_end ctxt last_cycle)
+  >>=? fun (ctxt, unrevealed_nonces) ->
   let new_cycle = Cycle_repr.add last_cycle 1 in
   (* TODO #5807: is this the right place?? *)
-  Delegate_staking_parameters.activate ctxt ~new_cycle >>=? fun ctxt ->
-  Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle
+  Profiler.aggregate_s "cycle-end: activate staking parameters" (fun () ->
+      Delegate_staking_parameters.activate ctxt ~new_cycle)
   >>=? fun ctxt ->
-  Delegate_consensus_key.activate ctxt ~new_cycle >>=? fun ctxt ->
+  Profiler.aggregate_s "cycle-end: select new distribution" (fun () ->
+      Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle)
+  >>=? fun ctxt ->
+  Profiler.aggregate_s "cycle-end: activate consensus key" (fun () ->
+      Delegate_consensus_key.activate ctxt ~new_cycle)
+  >>=? fun ctxt ->
   Delegate_slashed_deposits_storage.clear_outdated_slashed_deposits
     ctxt
     ~new_cycle
   >>= fun ctxt ->
-  distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
+  Profiler.aggregate_s "cycle-end: distribute endorsing rewards" (fun () ->
+      distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces)
   >>=? fun (ctxt, balance_updates) ->
-  update_initial_frozen_deposits ctxt ~new_cycle >>=? fun ctxt ->
+  Profiler.aggregate_s "cycle-end: update initial frozen deposits" (fun () ->
+      update_initial_frozen_deposits ctxt ~new_cycle)
+  >>=? fun ctxt ->
   Stake_storage.clear_at_cycle_end ctxt ~new_cycle >>=? fun ctxt ->
   Delegate_sampler.clear_outdated_sampling_data ctxt ~new_cycle >>=? fun ctxt ->
-  update_activity ctxt last_cycle >>=? fun (ctxt, deactivated_delegates) ->
-  Adaptive_inflation_storage.update_stored_rewards_at_cycle_end ctxt ~new_cycle
+  Profiler.aggregate_s "cycle-end: update activity" (fun () ->
+      update_activity ctxt last_cycle)
+  >>=? fun (ctxt, deactivated_delegates) ->
+  Profiler.aggregate_s "cycle-end: update stored rewards" (fun () ->
+      Adaptive_inflation_storage.update_stored_rewards_at_cycle_end
+        ctxt
+        ~new_cycle)
   >>=? fun ctxt ->
-  Unstaked_frozen_deposits_storage
-  .squash_unslashable_unstaked_frozen_deposits_at_cycle_end
-    ctxt
-    ~last_cycle
+  Profiler.aggregate_s "cycle-end: squash frozen deposits" (fun () ->
+      Unstaked_frozen_deposits_storage
+      .squash_unslashable_unstaked_frozen_deposits_at_cycle_end
+        ctxt
+        ~last_cycle)
   >>=? fun ctxt -> return (ctxt, balance_updates, deactivated_delegates)
 
 let init_first_cycles ctxt =

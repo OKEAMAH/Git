@@ -26,6 +26,7 @@
 open Protocol_client_context
 open Protocol
 open Alpha_context
+module Profiler = Baking_profiler.Operation_worker_profiler
 
 module Events = struct
   include Internal_event.Simple
@@ -533,23 +534,41 @@ let update_operations_pool state (head_level, head_round) =
 
 let create ?(monitor_node_operations = true)
     (cctxt : #Protocol_client_context.full) =
-  let state = make_initial_state ~monitor_node_operations () in
+  let state =
+    Profiler.record_f "make initial state" @@ fun () ->
+    make_initial_state ~monitor_node_operations ()
+  in
+  let last_head = ref None in
+  let sym_of_head (lvl, rnd) =
+    Printf.sprintf "level:%ld, round:%ld" lvl (Round.to_int32 rnd)
+  in
   (* TODO should we continue forever ? *)
   let rec worker_loop () =
-    monitor_operations cctxt >>= function
+    Profiler.record_s "monitor operation RPC" (fun () ->
+        monitor_operations cctxt)
+    >>= fun r ->
+    match r with
     | Error err -> Events.(emit loop_failed err)
     | Ok (head, operation_stream, op_stream_stopper) ->
+        Option.iter
+          (fun last_head -> Profiler.stop (sym_of_head last_head))
+          !last_head ;
+        Profiler.record (sym_of_head head) ;
+        last_head := Some head ;
         (* request distant mempools (note: the node might not have
            received the full mempools, but just the deltas with respect
            to the last time the mempools where sent) *)
-        Alpha_block_services.Mempool.request_operations cctxt () >>= fun _ ->
+        Profiler.record_s "request operations" (fun () ->
+            Alpha_block_services.Mempool.request_operations cctxt ())
+        >>= fun _ ->
         Events.(emit starting_new_monitoring ()) >>= fun () ->
         state.canceler <- Lwt_canceler.create () ;
         Lwt_canceler.on_cancel state.canceler (fun () ->
             op_stream_stopper () ;
             cancel_monitoring state ;
             Lwt.return_unit) ;
-        update_operations_pool state head ;
+        Profiler.record_f "update operations pool" (fun () ->
+            update_operations_pool state head) ;
         let rec loop () =
           Lwt_stream.get operation_stream >>= function
           | None ->
@@ -557,12 +576,21 @@ let create ?(monitor_node_operations = true)
                  we reset the monitoring and flush current operations *)
               Events.(emit end_of_stream ()) >>= fun () ->
               op_stream_stopper () ;
-              reset_monitoring state >>= fun () -> worker_loop ()
+              Profiler.mark ["stream stopped"] ;
+              ( Profiler.record_s "reset monitoring state" @@ fun () ->
+                reset_monitoring state )
+              >>= fun () ->
+              Profiler.stop "operations processing" ;
+              worker_loop ()
           | Some ops ->
               state.operation_pool <-
-                Operation_pool.add_operations state.operation_pool ops ;
-              update_monitoring state ops >>= fun () -> loop ()
+                Profiler.aggregate_f "add operations" (fun () ->
+                    Operation_pool.add_operations state.operation_pool ops) ;
+              Profiler.aggregate_s "update monitoring state" (fun () ->
+                  update_monitoring state ops)
+              >>= fun () -> loop ()
         in
+        Profiler.aggregate "operations processing" ;
         loop ()
   in
   Lwt.dont_wait

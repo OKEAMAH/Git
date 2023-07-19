@@ -179,6 +179,8 @@ let validate_operation inc op =
       (* No receipt if force_apply is not set *)
       Lwt.return_some resulting_state
   | Ok (resulting_state, Some receipt) -> (
+      Baking_profiler.aggregate_f "checking operation receipt roundtrip"
+      @@ fun () ->
       (* Check that the metadata are serializable/deserializable *)
       let encoding_result =
         let enc = Protocol.operation_receipt_encoding in
@@ -211,8 +213,12 @@ let filter_valid_operations_up_to_quota inc (ops, quota) =
           Option.iter
             (fun max_op -> if max_op = nb_ops + 1 then raise (Full (inc, acc)))
             max_op ;
-          validate_operation inc op >>= function
-          | None -> Lwt.return (inc, curr_size, nb_ops, acc)
+          ( Baking_profiler.aggregate_s "verifying operation" @@ fun () ->
+            validate_operation inc op )
+          >>= function
+          | None ->
+              Baking_profiler.mark ["invalid operation filtered"] ;
+              Lwt.return (inc, curr_size, nb_ops, acc)
           | Some inc' -> Lwt.return (inc', new_size, nb_ops + 1, op :: acc)))
       (inc, 0, 0, [])
       ops
@@ -228,20 +234,24 @@ let filter_operations_with_simulation initial_inc fees_config
   } =
     fees_config
   in
-  filter_valid_operations_up_to_quota
-    initial_inc
-    (Prioritized_operation_set.operations consensus, consensus_quota)
+  Baking_profiler.aggregate_s "simulate and filter consensus" (fun () ->
+      filter_valid_operations_up_to_quota
+        initial_inc
+        (Prioritized_operation_set.operations consensus, consensus_quota))
   >>= fun (inc, consensus) ->
-  filter_valid_operations_up_to_quota
-    inc
-    (Prioritized_operation_set.operations votes, votes_quota)
+  Baking_profiler.aggregate_s "simulate and filter votes" (fun () ->
+      filter_valid_operations_up_to_quota
+        inc
+        (Prioritized_operation_set.operations votes, votes_quota))
   >>= fun (inc, votes) ->
-  filter_valid_operations_up_to_quota
-    inc
-    (Prioritized_operation_set.operations anonymous, anonymous_quota)
+  Baking_profiler.aggregate_s "simulate and filter anonymous" (fun () ->
+      filter_valid_operations_up_to_quota
+        inc
+        (Prioritized_operation_set.operations anonymous, anonymous_quota))
   >>= fun (inc, anonymous) ->
   (* Sort the managers *)
   let prioritized_managers =
+    Baking_profiler.aggregate_f "prioritize managers" @@ fun () ->
     prioritize_managers
       ~hard_gas_limit_per_block
       ~minimal_fees
@@ -249,14 +259,16 @@ let filter_operations_with_simulation initial_inc fees_config
       ~minimal_nanotez_per_byte
       managers
   in
-  filter_valid_operations_up_to_quota
-    inc
-    ( PrioritizedManagerSet.elements prioritized_managers
-      |> List.map (fun {op; _} -> Prioritized_operation.packed op),
-      managers_quota )
+  Baking_profiler.aggregate_s "simulate and filter managers" (fun () ->
+      filter_valid_operations_up_to_quota
+        inc
+        ( PrioritizedManagerSet.elements prioritized_managers
+          |> List.map (fun {op; _} -> Prioritized_operation.packed op),
+          managers_quota ))
   >>= fun (inc, managers) ->
   let operations = [consensus; votes; anonymous; managers] in
   let operations_hash =
+    Baking_profiler.aggregate_f "compute operations merkle root" @@ fun () ->
     Operation_list_list_hash.compute
       (List.map
          (fun sl ->
@@ -264,7 +276,9 @@ let filter_operations_with_simulation initial_inc fees_config
          operations)
   in
   let inc = {inc with header = {inc.header with operations_hash}} in
-  Baking_simulator.finalize_construction inc >>=? function
+  Baking_profiler.aggregate_s "finalize construction" (fun () ->
+      Baking_simulator.finalize_construction inc)
+  >>=? function
   | Some (validation_result, block_header_metadata) ->
       return
         {

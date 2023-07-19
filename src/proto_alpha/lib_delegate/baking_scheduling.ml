@@ -545,8 +545,13 @@ let compute_next_timeout state : Baking_state.timeout_kind Lwt.t tzresult Lwt.t
   in
   (* TODO: re-use what has been done in round_synchronizer.ml *)
   (* Compute the timestamp of the next possible round. *)
-  let next_round = compute_next_round_time state in
-  compute_next_potential_baking_time_at_next_level state >>= fun next_baking ->
+  let next_round =
+    Baking_profiler.aggregate_f "compute next round time" @@ fun () ->
+    compute_next_round_time state
+  in
+  Baking_profiler.aggregate_s "compute next potential baking time" (fun () ->
+      compute_next_potential_baking_time_at_next_level state)
+  >>= fun next_baking ->
   match (next_round, next_baking) with
   | None, None ->
       Events.(emit waiting_for_new_head ()) >>= fun () ->
@@ -735,6 +740,30 @@ let compute_bootstrap_event state =
     >>? fun ending_round ->
     ok @@ Baking_state.Timeout (End_of_round {ending_round})
 
+let prev_head = ref None
+
+let may_reset_profiler =
+  let () =
+    at_exit (fun () ->
+        Option.iter
+          (fun bh -> Baking_profiler.stop (Block_hash.to_short_b58check bh))
+          !prev_head)
+  in
+  function
+  | Baking_state.New_head_proposal proposal
+  | Baking_state.New_valid_proposal proposal -> (
+      let curr_head_hash = proposal.block.hash in
+      match !prev_head with
+      | None ->
+          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
+          prev_head := Some curr_head_hash
+      | Some prev_head_hash when prev_head_hash <> curr_head_hash ->
+          Baking_profiler.stop (Block_hash.to_short_b58check prev_head_hash) ;
+          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
+          prev_head := Some curr_head_hash
+      | _ -> ())
+  | _ -> ()
+
 let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
     loop_state state event =
   let state_recorder ~new_state =
@@ -743,8 +772,15 @@ let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
         Baking_state.may_record_new_state ~previous_state:state ~new_state
     | Baking_configuration.Disabled -> return_unit
   in
-  State_transitions.step state event >>= fun (state', action) ->
-  (Baking_actions.perform_action ~state_recorder state' action >>= function
+  may_reset_profiler event ;
+  ( Baking_profiler.record_s
+      (Format.asprintf "do step with event '%a'" pp_short_event event)
+  @@ fun () -> State_transitions.step state event )
+  >>= fun (state', action) ->
+  (Baking_profiler.record_s
+     (Format.asprintf "perform action '%a'" Baking_actions.pp_action action)
+     (fun () -> Baking_actions.perform_action ~state_recorder state' action)
+   >>= function
    | Ok state'' -> return state''
    | Error error ->
        on_error error >>=? fun () ->
@@ -752,7 +788,9 @@ let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
           errors. *)
        state_recorder ~new_state:state' >>= fun _ -> return state')
   >>=? fun state'' ->
-  compute_next_timeout state'' >>=? fun next_timeout ->
+  ( Baking_profiler.record_s "compute next timeout" @@ fun () ->
+    compute_next_timeout state'' )
+  >>=? fun next_timeout ->
   wait_next_event ~timeout:(next_timeout >|= fun e -> `Timeout e) loop_state
   >>=? function
   | None ->
@@ -899,6 +937,10 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
     on_error err
   in
   compute_bootstrap_event initial_state >>?= fun initial_event ->
+  Baking_profiler.stop "initialization" ;
+  Baking_profiler.record
+    (Block_hash.to_short_b58check current_proposal.block.hash) ;
+  prev_head := Some current_proposal.block.hash ;
   protect
     ~on_error:(fun err ->
       Option.iter_es Lwt_canceler.cancel canceler >>= fun _ ->

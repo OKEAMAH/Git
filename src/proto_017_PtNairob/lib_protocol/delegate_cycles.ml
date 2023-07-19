@@ -248,22 +248,31 @@ let distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces =
     delegates
 
 let cycle_end ctxt last_cycle =
-  Seed_storage.cycle_end ctxt last_cycle >>=? fun (ctxt, unrevealed_nonces) ->
+  Profiler.aggregate_s "seed storage" (fun () ->
+      Seed_storage.cycle_end ctxt last_cycle)
+  >>=? fun (ctxt, unrevealed_nonces) ->
   let new_cycle = Cycle_repr.add last_cycle 1 in
-  Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle
+  Profiler.aggregate_s "select new distribution" (fun () ->
+      Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle)
   >>=? fun ctxt ->
-  Delegate_consensus_key.activate ctxt ~new_cycle >>=? fun ctxt ->
+  Profiler.aggregate_s "activate consensus keys" (fun () ->
+      Delegate_consensus_key.activate ctxt ~new_cycle)
+  >>=? fun ctxt ->
   Delegate_slashed_deposits_storage.clear_outdated_slashed_deposits
     ctxt
     ~new_cycle
   >>= fun ctxt ->
-  distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces
+  Profiler.aggregate_s "distribute endorsing rewards" (fun () ->
+      distribute_endorsing_rewards ctxt last_cycle unrevealed_nonces)
   >>=? fun (ctxt, balance_updates) ->
-  freeze_deposits ctxt ~new_cycle ~balance_updates
+  Profiler.aggregate_s "freeze deposits" (fun () ->
+      freeze_deposits ctxt ~new_cycle ~balance_updates)
   >>=? fun (ctxt, balance_updates) ->
   Stake_storage.clear_at_cycle_end ctxt ~new_cycle >>=? fun ctxt ->
   Delegate_sampler.clear_outdated_sampling_data ctxt ~new_cycle >>=? fun ctxt ->
-  update_activity ctxt last_cycle >>=? fun (ctxt, deactivated_delagates) ->
+  Profiler.aggregate_s "update activity" (fun () ->
+      update_activity ctxt last_cycle)
+  >>=? fun (ctxt, deactivated_delagates) ->
   return (ctxt, balance_updates, deactivated_delagates)
 
 let init_first_cycles ctxt ~origin =
