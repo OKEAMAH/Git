@@ -249,7 +249,6 @@ let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
       Storage.Pending_migration.Operation_results.init ctxt operation_results
       >>=? fun ctxt ->
       Storage.Adaptive_inflation.Launch_ema.init ctxt 0L >>=? fun ctxt ->
-      Storage.Plop.add ctxt 6_000_000l >>= fun ctxt ->
       return
         ( ctxt,
           commitments_balance_updates @ bootstrap_balance_updates
