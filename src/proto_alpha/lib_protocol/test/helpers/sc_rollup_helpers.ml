@@ -23,8 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Protocol.Alpha_context
 
 let originated_rollup op =
   let nonce =
@@ -113,18 +112,18 @@ let genesis_commitment ~boot_sector ~origination_level kind =
 let genesis_commitment_raw ~boot_sector ~origination_level kind =
   let open Lwt_syntax in
   let origination_level =
-    Raw_level_repr.to_int32 origination_level
-    |> Alpha_context.Raw_level.of_int32_exn
+    Protocol.Raw_level_repr.to_int32 origination_level |> Raw_level.of_int32_exn
   in
   let kind =
     match kind with
-    | Sc_rollups.Kind.Example_arith -> Sc_rollup.Kind.Example_arith
-    | Sc_rollups.Kind.Wasm_2_0_0 -> Sc_rollup.Kind.Wasm_2_0_0
+    | Protocol.Sc_rollups.Kind.Example_arith -> Sc_rollup.Kind.Example_arith
+    | Protocol.Sc_rollups.Kind.Wasm_2_0_0 -> Sc_rollup.Kind.Wasm_2_0_0
   in
   let* res = genesis_commitment ~boot_sector ~origination_level kind in
   let res =
     Data_encoding.Binary.to_bytes_exn Sc_rollup.Commitment.encoding res
-    |> Data_encoding.Binary.of_bytes_exn Sc_rollup_commitment_repr.encoding
+    |> Data_encoding.Binary.of_bytes_exn
+         Protocol.Sc_rollup_commitment_repr.encoding
   in
   return res
 
@@ -339,16 +338,17 @@ let gen_payloads_for_levels ~start_level ~max_level gen_message =
 let message_serialize_repr msg =
   WithExceptions.Result.get_ok
     ~loc:__LOC__
-    Sc_rollup_inbox_message_repr.(serialize msg)
+    Protocol.Sc_rollup_inbox_message_repr.(serialize msg)
 
 let make_external_inbox_message_repr str = message_serialize_repr (External str)
 
 let make_internal_inbox_message_repr internal_msg =
   message_serialize_repr (Internal internal_msg)
 
-let make_input_repr ?(inbox_level = Raw_level_repr.root)
+let make_input_repr ?(inbox_level = Protocol.Raw_level_repr.root)
     ?(message_counter = Z.zero) payload =
-  Sc_rollup_PVM_sig.Inbox_message {inbox_level; message_counter; payload}
+  Protocol.Sc_rollup_PVM_sig.Inbox_message
+    {inbox_level; message_counter; payload}
 
 let make_external_input_repr ?inbox_level ?message_counter str =
   let payload = make_external_inbox_message_repr str in
@@ -373,18 +373,18 @@ let make_eol_repr ~inbox_level ~message_counter =
 
 *)
 type message_repr = {
-  input_repr : Sc_rollup_PVM_sig.input;
+  input_repr : Protocol.Sc_rollup_PVM_sig.input;
   message_repr : [`SOL | `Message of string | `EOL];
 }
 
-let pp_input_repr fmt (input_repr : Sc_rollup_PVM_sig.input) =
+let pp_input_repr fmt (input_repr : Protocol.Sc_rollup_PVM_sig.input) =
   match input_repr with
   | Reveal _ -> assert false
   | Inbox_message {inbox_level; message_counter; _} ->
       Format.fprintf
         fmt
         "(%a, %s)"
-        Raw_level_repr.pp
+        Protocol.Raw_level_repr.pp
         inbox_level
         (Z.to_string message_counter)
 
@@ -444,7 +444,8 @@ let gen_message_reprs_for_levels_repr ~start_level ~max_level gen_message_repr =
     | 0 -> return acc
     | n when n > 0 ->
         let inbox_level =
-          Raw_level_repr.of_int32_exn (Int32.of_int (start_level + n - 1))
+          Protocol.Raw_level_repr.of_int32_exn
+            (Int32.of_int (start_level + n - 1))
         in
         let* empty_level = bool in
         let* level_message_reprs =
@@ -522,9 +523,9 @@ let dumb_init level =
     level
 
 let dumb_init_repr level =
-  Sc_rollup_inbox_repr.genesis
+  Protocol.Sc_rollup_inbox_repr.genesis
     ~protocol_migration_message:
-      Raw_context.protocol_migration_serialized_message
+      Protocol.Raw_context.protocol_migration_serialized_message
     ~predecessor_timestamp:Time.Protocol.epoch
     ~predecessor:Block_hash.zero
     level
