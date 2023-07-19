@@ -370,7 +370,7 @@ let tez_of (delegate_balances : delegate_balances) pseudotoken_amount =
       (Z.mul frozen_deposits_staked_tez_z pseudotoken_amount_z)
       frozen_deposits_pseudotokens_z
   in
-  Tez_repr.of_mutez_exn (Z.to_int64 res_z)
+  Tez_repr.of_mutez_exn (Z.to_int64_exn res_z)
 
 (** [compute_pseudotoken_credit_for_tez_amount delegate_balances
     tez_amount] is a safe wrapper around [pseudotokens_of

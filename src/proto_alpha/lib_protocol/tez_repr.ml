@@ -168,6 +168,7 @@ let div_exn t d =
   | Error _ -> invalid_arg "div_exn"
 
 let mul_ratio tez ~num ~den =
+  let open Result_syntax in
   let (Tez_tag t) = tez in
   if num < 0L then error (Negative_multiplicator (tez, num))
   else if den <= 0L then error (Invalid_divisor (tez, den))
@@ -176,8 +177,8 @@ let mul_ratio tez ~num ~den =
     if num = 0L then ok zero
     else
       let z = Z.(div (mul (of_int64 t) (of_int64 num)) den) in
-      if Z.fits_int64 z then ok (Tez_tag (Z.to_int64 z))
-      else error (Multiplication_overflow (tez, num))
+      let+ n = Z.to_int64 z in
+      Tez_tag n
 
 let of_mutez t = if t < 0L then None else Some (Tez_tag t)
 
@@ -187,10 +188,16 @@ let of_mutez_exn x =
 let to_mutez (Tez_tag t) = t
 
 let encoding =
+  let open Result_syntax in
   let open Data_encoding in
   let decode (Tez_tag t) = Z.of_int64 t in
-  let encode = Json.wrap_error (fun i -> Tez_tag (Z.to_int64 i)) in
-  Data_encoding.def name (check_size 10 (conv decode encode n))
+  let encode i =
+    Result.map_error
+      (fun _ -> "Encoding error: int64 overflow")
+      (let+ n = Z.to_int64 i in
+       Tez_tag n)
+  in
+  Data_encoding.def name (check_size 10 (conv_with_guard decode encode n))
 
 let () =
   let open Data_encoding in

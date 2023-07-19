@@ -92,3 +92,7 @@ let to_int_exn = to_int
 let to_int x = if fits_int x then ok @@ to_int x else error Overflow
 
 let to_int32 x = if fits_int32 x then ok @@ to_int32 x else error Overflow
+
+let to_int64_exn = to_int64
+
+let to_int64 x = if fits_int64 x then ok @@ to_int64 x else error Overflow

@@ -440,13 +440,9 @@ let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
       Signature.Public_key_hash.(sender = destination)
       Invalid_self_transaction_destination
   in
-  let requested_amount_opt =
-    if Z.fits_int64 requested_amount then
-      Tez.of_mutez (Z.to_int64 requested_amount)
-    else None
-  in
+  let*? requested_amount_i64 = Z.to_int64 requested_amount in
   let*? requested_amount =
-    match requested_amount_opt with
+    match Tez.of_mutez requested_amount_i64 with
     | None ->
         Result_syntax.tzfail (Invalid_unstake_request_amount {requested_amount})
     | Some requested_amount -> Ok requested_amount

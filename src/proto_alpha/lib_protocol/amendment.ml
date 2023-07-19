@@ -47,7 +47,7 @@ let select_winning_proposal ctxt =
       let min_proposal_quorum =
         Z.of_int32 (Constants.min_proposal_quorum ctxt)
       in
-      let min_vote_to_pass =
+      let*? min_vote_to_pass =
         Z.(
           to_int64
             (div

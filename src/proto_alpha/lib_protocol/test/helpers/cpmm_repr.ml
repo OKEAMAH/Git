@@ -106,7 +106,7 @@ module Storage = struct
             Tezos_micheline.Micheline.String (_, lqtAddress);
           ],
           [] ) ->
-        let xtzPool = Tez.of_mutez_exn (Z.to_int64 xtzPool) in
+        let xtzPool = Tez.of_mutez_exn (Z.to_int64_exn xtzPool) in
         let tokenAddress = originated_of_string_exn tokenAddress in
         let lqtAddress = originated_of_string_exn lqtAddress in
         {tokenPool; xtzPool; lqtTotal; tokenAddress; lqtAddress}

@@ -89,7 +89,7 @@ let apply_slashes ~preserved_plus_slashing slashing_history ~from_cycle amount =
       amount
       slashing_history
   in
-  Tez_repr.of_mutez_exn (Z.to_int64 amount)
+  Tez_repr.of_mutez_exn (Z.to_int64_exn amount)
 
 let prepare_finalize_unstake ctxt contract =
   let open Lwt_result_syntax in

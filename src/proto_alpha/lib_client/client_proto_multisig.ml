@@ -753,7 +753,7 @@ let action_of_expr_not_generic e =
               [] );
         ],
         [] ) -> (
-      match Tez.of_mutez (Z.to_int64 i) with
+      match Tez.of_mutez (Z.to_int64_exn i) with
       | None -> fail ()
       | Some amount ->
           return
