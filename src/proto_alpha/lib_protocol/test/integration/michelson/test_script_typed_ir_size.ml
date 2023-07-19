@@ -196,12 +196,14 @@ let check_value_size () =
            ~error
            "37^73 : int"
            Int_t
-           (Script_int.of_zint Z.(pow (of_int 37) 73));
+           (Script_int.of_zint
+              Tezos_protocol_environment_alpha.Z.(pow (of_int 37) 73));
          ex
            ~error
            "-37^73 : int"
            Int_t
-           (Script_int.of_zint Z.(neg (pow (of_int 37) 73)));
+           (Script_int.of_zint
+              Tezos_protocol_environment_alpha.Z.(neg (pow (of_int 37) 73)));
          ex
            ~error
            "13270006022583112970 : int"
@@ -225,7 +227,11 @@ let check_value_size () =
            ~error
            "37^73 : int"
            Nat_t
-           (get Script_int.(is_nat @@ of_zint Z.(pow (of_int 37) 73)));
+           (get
+              Script_int.(
+                is_nat
+                @@ of_zint
+                     Tezos_protocol_environment_alpha.Z.(pow (of_int 37) 73)));
        ]
        @ exs ~error nsample show_script_int Nat_t ": nat")
     (*
@@ -1022,7 +1028,7 @@ let check_micheline_sizes () =
     [
       ("empty micheline", seq []);
       ("a single number", int 1024);
-      ("a large number", big_int Z.(of_int 3 * of_int max_int));
+      ("a large number", big_int Z.(mul (of_int 3) (of_int max_int)));
       ("a short string", str "tezostezostezos");
       ("a short bytestring", bytes "tezostezostezos");
       ("a prim with no args", prim I_UNIT []);

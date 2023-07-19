@@ -102,7 +102,7 @@ module Fold_benchmark : Benchmark.S = struct
         let key = Base_samplers.int rng_state ~size:{min = 1; max = 5} in
         (* Value should not be important *)
         let value = () in
-        (Z.to_int key, value)
+        (Z.to_int_exn key, value)
       in
       Structure_samplers.list
         rng_state
@@ -329,7 +329,7 @@ module Int = struct
   let type_name = "int"
 
   let sampler rng_state =
-    Z.to_int @@ Base_samplers.int rng_state ~size:{min = 1; max = 6}
+    Z.to_int_exn @@ Base_samplers.int rng_state ~size:{min = 1; max = 6}
 end
 
 module Benchmarks_int = Make (Int)

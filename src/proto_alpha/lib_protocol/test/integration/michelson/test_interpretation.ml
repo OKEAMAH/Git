@@ -263,10 +263,10 @@ module Test_map_instr_on_options = struct
     let open Michelson_v1_primitives in
     function
     | Prim (_, D_Pair, [Prim (_, D_None, [], _); Int (_, total)], _) ->
-        {prev = None; total = Z.to_int total}
+        {prev = None; total = Z.to_int_exn total}
     | Prim (_, D_Pair, [Prim (_, D_Some, [Int (_, prev)], _); Int (_, total)], _)
       ->
-        {prev = Some (Z.to_int prev); total = Z.to_int total}
+        {prev = Some (Z.to_int_exn prev); total = Z.to_int_exn total}
     | _ -> QCheck2.assume_fail ()
 
   let assertions storage_before storage_after = function

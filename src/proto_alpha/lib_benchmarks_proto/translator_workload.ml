@@ -136,7 +136,7 @@ let data_typechecker_workload ctxt t_kind micheline_node ex_ty =
                    code_or_data = Data;
                    micheline_size;
                    consumed =
-                     Size.of_int (Z.to_int (Gas_helpers.fp_to_z consumed));
+                     Size.of_int (Z.to_int_exn (Gas_helpers.fp_to_z consumed));
                  }
              in
              return_some trace
@@ -178,7 +178,8 @@ let code_typechecker_workload (ctxt : Protocol.Alpha_context.context)
                t_kind;
                code_or_data = Code;
                micheline_size;
-               consumed = Size.of_int (Z.to_int (Gas_helpers.fp_to_z consumed));
+               consumed =
+                 Size.of_int (Z.to_int_exn (Gas_helpers.fp_to_z consumed));
              }
          in
          return_some trace

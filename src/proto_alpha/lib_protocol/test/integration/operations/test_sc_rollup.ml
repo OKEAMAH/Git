@@ -706,9 +706,9 @@ let assert_ticket_token_balance ~loc ctxt token owner expected =
     Ticket_balance.get_balance ctxt key_hash
   in
   match (balance, expected) with
-  | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
+  | Some b, Some e -> Assert.equal_int ~loc (Z.to_int_exn b) e
   | Some b, None ->
-      failwith "%s: Expected no balance but got some %d" loc (Z.to_int b)
+      failwith "%s: Expected no balance but got some %d" loc (Z.to_int_exn b)
   | None, Some b -> failwith "%s: Expected balance %d but got none" loc b
   | None, None -> return_unit
 
@@ -1807,7 +1807,7 @@ let test_inbox_max_number_of_messages_per_level () =
   let* incr = Incremental.begin_construction block in
   (* This just one message below the limit *)
   let messages =
-    List.repeat (Z.to_int max_number_of_messages_per_level) "foo"
+    List.repeat (Z.to_int_exn max_number_of_messages_per_level) "foo"
   in
   let* op =
     Op.sc_rollup_add_messages ~gas_limit:Max (I incr) account1 messages

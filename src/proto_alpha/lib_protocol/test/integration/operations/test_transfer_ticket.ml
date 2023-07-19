@@ -140,7 +140,7 @@ let test_mint_deposit_withdraw_implicit_transfer () =
   in
   let*@ amount, _ = Ticket_balance.get_balance ctxt key in
   match amount with
-  | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int amount) 1
+  | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int_exn amount) 1
   | _ -> return_unit
 
 (* In this test, a ticketer contract is called to mint and send a ticket
@@ -283,7 +283,7 @@ let test_contract_as_ticket_transfer_destination () =
   let*@ amount, _ = Ticket_balance.get_balance ctxt key in
   let* () =
     match amount with
-    | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int amount) 1
+    | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int_exn amount) 1
     | _ -> return_unit
   in
   let* block =
@@ -326,7 +326,7 @@ let test_contract_as_ticket_transfer_destination () =
   in
   let*@ amount, _ = Ticket_balance.get_balance ctxt key in
   match amount with
-  | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int amount) 1
+  | Some amount -> Assert.equal_int ~loc:__LOC__ (Z.to_int_exn amount) 1
   | _ -> return_unit
 
 let tests =

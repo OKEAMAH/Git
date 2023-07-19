@@ -226,7 +226,7 @@ let validate_storage :
       (let* cpmm_tzbtc =
          ConcreteMachine.get_tzbtc_balance env.cpmm_contract env blk
        in
-       return (Z.to_int cpmm_storage.tokenPool = cpmm_tzbtc));
+       return (Z.to_int_exn cpmm_storage.tokenPool = cpmm_tzbtc));
     ]
 
 (** [machine_validation_tests] is a list of asynchronous tests aiming

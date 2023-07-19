@@ -83,7 +83,7 @@ let test_balances ~amount =
   (* check that after the block has been baked, the source was debited of all
      the burned tez *)
   let* {parametric = {cost_per_byte; _}; _} = Context.get_constants (I inc) in
-  let burned_tez = Tez.mul_exn cost_per_byte (Z.to_int amount) in
+  let burned_tez = Tez.mul_exn cost_per_byte (Z.to_int_exn amount) in
   let* () =
     Assert.balance_was_debited
       ~loc:__LOC__
@@ -102,8 +102,8 @@ let test_balances ~amount =
   let storage_minus_amount = Z.sub storage amount in
   Assert.equal_int
     ~loc:__LOC__
-    (Z.to_int storage_before_op)
-    (Z.to_int storage_minus_amount)
+    (Z.to_int_exn storage_before_op)
+    (Z.to_int_exn storage_minus_amount)
 
 (******************************************************)
 (* Tests *)

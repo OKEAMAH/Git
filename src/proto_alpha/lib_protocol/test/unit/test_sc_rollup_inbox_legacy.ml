@@ -203,7 +203,7 @@ let next_inbox_message levels_and_messages l n =
     WithExceptions.Option.get ~loc:__LOC__
     @@ List.assoc ~equal l levels_and_messages
   in
-  match List.nth messages (Z.to_int n) with
+  match List.nth messages (Z.to_int_exn n) with
   | Some Sc_rollup_helpers.{input_repr = input; _} ->
       inbox_message_of_input input
   | None -> (

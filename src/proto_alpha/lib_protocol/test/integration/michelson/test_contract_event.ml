@@ -107,7 +107,7 @@ let contract_test () =
        | _ -> assert false) ;
 
        match root data2 with
-       | Prim (_, D_Left, [Int (_, n)], _) -> assert (Z.to_int n = 2)
+       | Prim (_, D_Left, [Int (_, n)], _) -> assert (Z.to_int_exn n = 2)
        | _ -> assert false) ;
       assert (Entrypoint.to_string tag1 = "tag1") ;
       assert (Entrypoint.to_string tag2 = "tag2") ;

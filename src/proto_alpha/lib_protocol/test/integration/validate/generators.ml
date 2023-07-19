@@ -219,7 +219,10 @@ let gen_2_operation_req :
   in
   let counter =
     match op1.counter with
-    | Some x -> Manager_counter.Internal_for_tests.to_int x
+    | Some x -> (
+        match Manager_counter.Internal_for_tests.to_int x with
+        | Ok x -> x
+        | Error _ -> 1)
     | None -> 1
   in
   let op_cstr =

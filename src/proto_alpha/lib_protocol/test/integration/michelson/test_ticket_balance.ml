@@ -153,9 +153,9 @@ let assert_token_balance ~loc block token owner expected =
     get_balance ctxt ~token ~owner:(Destination.Contract owner)
   in
   match (balance, expected) with
-  | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
+  | Some b, Some e -> Assert.equal_int ~loc (Z.to_int_exn b) e
   | Some b, None ->
-      failwith "%s: Expected no balance but got some %d" loc (Z.to_int b)
+      failwith "%s: Expected no balance but got some %d" loc (Z.to_int_exn b)
   | None, Some b -> failwith "%s: Expected balance %d but got none" loc b
   | None, None -> return_unit
 

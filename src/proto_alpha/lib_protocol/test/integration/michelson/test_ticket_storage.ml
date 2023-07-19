@@ -51,14 +51,15 @@ let assert_balance ctxt ~loc key expected =
   let open Lwt_result_wrap_syntax in
   let*@ balance, _ = Ticket_balance.get_balance ctxt key in
   match balance with
-  | Some b -> Assert.equal_int ~loc (Z.to_int b) expected
+  | Some b -> Assert.equal_int ~loc (Z.to_int_exn b) expected
   | None -> failwith "Expected balance %d" expected
 
 let assert_no_balance ctxt key =
   let open Lwt_result_wrap_syntax in
   let*@ balance, _ = Ticket_balance.get_balance ctxt key in
   match balance with
-  | Some b -> failwith "Expected empty (none) balance but got %d" (Z.to_int b)
+  | Some b ->
+      failwith "Expected empty (none) balance but got %d" (Z.to_int_exn b)
   | None -> return_unit
 
 let adjust_balance ctxt key delta =
@@ -212,13 +213,13 @@ let test_storage_space () =
   let*?@ alice_red, ctxt = make_key ctxt "alice_red" in
   (* Space for adding an entry is 65 for the key plus 1 for the value. *)
   let*@ space, ctxt = adjust_balance ctxt alice_red 1 in
-  let* () = Assert.equal_int ~loc:__LOC__ 66 (Z.to_int space) in
+  let* () = Assert.equal_int ~loc:__LOC__ 66 (Z.to_int_exn space) in
   (* Adding one does not consume additional space. *)
   let*@ space, ctxt = adjust_balance ctxt alice_red 1 in
-  let* () = Assert.equal_int ~loc:__LOC__ 0 (Z.to_int space) in
+  let* () = Assert.equal_int ~loc:__LOC__ 0 (Z.to_int_exn space) in
   (* Adding a big balance costs extra. *)
   let*@ space, ctxt = adjust_balance ctxt alice_red 1000 in
-  let* () = Assert.equal_int ~loc:__LOC__ 1 (Z.to_int space) in
+  let* () = Assert.equal_int ~loc:__LOC__ 1 (Z.to_int_exn space) in
   (* Reset balance to zero should free up space.
      The freed up space is 65 for the key + 2 for the value *)
   let*@ b, ctxt = Ticket_balance.get_balance ctxt alice_red in
@@ -228,13 +229,13 @@ let test_storage_space () =
       alice_red
       ~delta:(Z.neg @@ Option.value ~default:Z.zero b)
   in
-  let* () = Assert.equal_int ~loc:__LOC__ (-67) (Z.to_int space) in
+  let* () = Assert.equal_int ~loc:__LOC__ (-67) (Z.to_int_exn space) in
   (* Adjusting the space to 0 again should not free anything *)
   let*@ space, ctxt = adjust_balance ctxt alice_red 0 in
-  let* () = Assert.equal_int ~loc:__LOC__ 0 (Z.to_int space) in
+  let* () = Assert.equal_int ~loc:__LOC__ 0 (Z.to_int_exn space) in
   (* Adding a balance requiers extra space. *)
   let*@ space, _ = adjust_balance ctxt alice_red 10 in
-  Assert.equal_int ~loc:__LOC__ 66 (Z.to_int space)
+  Assert.equal_int ~loc:__LOC__ 66 (Z.to_int_exn space)
 
 let tests =
   [

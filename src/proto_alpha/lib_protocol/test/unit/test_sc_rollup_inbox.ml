@@ -304,7 +304,7 @@ let test_merkelized_payload_hashes_proof (payloads, index) =
     @@ Merkelized_payload_hashes.produce_proof history ~index merkelized_payload
   in
   let payload : Message.serialized =
-    opt_get ~__LOC__ @@ List.nth payloads (Z.to_int index)
+    opt_get ~__LOC__ @@ List.nth payloads (Z.to_int_exn index)
   in
   let payload_hash = Message.hash_serialized_message payload in
   let* () = assert_equal_payload ~__LOC__ proof_payload payload in

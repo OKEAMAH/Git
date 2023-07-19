@@ -635,7 +635,7 @@ module Ty_eq : Benchmark.S = struct
            let consumed = Alpha_context.Gas.consumed ~since:ctxt ~until:ctxt' in
            let workload =
              Ty_eq_workload
-               {nodes; consumed = Z.to_int (Gas_helpers.fp_to_z consumed)}
+               {nodes; consumed = Z.to_int_exn (Gas_helpers.fp_to_z consumed)}
            in
            let closure () =
              ignore
@@ -761,7 +761,7 @@ module Parse_type_benchmark : Benchmark.S = struct
          let* unparsed, _ = Environment.wrap_tzresult @@ unparse_ty ctxt ty in
          let* _, ctxt' = Environment.wrap_tzresult @@ parse_ty ctxt unparsed in
          let consumed =
-           Z.to_int
+           Z.to_int_exn
              (Gas_helpers.fp_to_z
                 (Alpha_context.Gas.consumed ~since:ctxt ~until:ctxt'))
          in
@@ -807,7 +807,7 @@ module Unparse_type_benchmark : Benchmark.S = struct
      | Ex_ty ty ->
          let* _, ctxt' = Environment.wrap_tzresult @@ unparse_ty ctxt ty in
          let consumed =
-           Z.to_int
+           Z.to_int_exn
              (Gas_helpers.fp_to_z
                 (Alpha_context.Gas.consumed ~since:ctxt ~until:ctxt'))
          in

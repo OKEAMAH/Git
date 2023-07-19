@@ -2322,25 +2322,25 @@ module Stake_storage_tests = struct
     (* Record a new message. *)
     let*@ size_diff, ctxt = record ctxt rollup level 1 in
     (* Size diff is 11 bytes. 4 bytes for level and 7 bytes for a new Z.t *)
-    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int size_diff) 5 in
+    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int_exn size_diff) 5 in
     let*@ size_diff, ctxt = record ctxt rollup level 2 in
     (* Recording a new message in the bitset at a lower index does not occupy
        any additional space. *)
-    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int size_diff) 0 in
+    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int_exn size_diff) 0 in
     (* Record a new message at the highest index at an existing level. This
        expands the bitset but does not charge for the level. *)
     let*@ size_diff, ctxt = record ctxt rollup level max_message_index in
-    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int size_diff) 14 in
+    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int_exn size_diff) 14 in
     (* Record a new message at the highest index at a new level. This charges for
        space for level and maximum bitset. *)
     let*@ size_diff, ctxt = record ctxt rollup (level + 1) max_message_index in
     let* () =
-      Assert.equal_int ~loc:__LOC__ (Z.to_int size_diff) max_size_diff
+      Assert.equal_int ~loc:__LOC__ (Z.to_int_exn size_diff) max_size_diff
     in
     (* Record a new message for a level that resets an index. This replaces the
        bitset with a smaller one. Hence we get a negative size diff. *)
     let*@ size_diff, _ctxt = record ctxt rollup (level + max_active_levels) 0 in
-    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int size_diff) (-14) in
+    let* () = Assert.equal_int ~loc:__LOC__ (Z.to_int_exn size_diff) (-14) in
     return_unit
 
   let test_get_cemented_commitments_with_levels_of_missing_rollup () =

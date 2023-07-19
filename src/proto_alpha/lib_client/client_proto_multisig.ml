@@ -220,17 +220,17 @@ let () =
     ~pp:(fun ppf (received, expected) ->
       Format.fprintf
         ppf
-        "Bad deserialized counter, received %d expected %d."
+        "Bad deserialized counter, received %a expected %a."
+        Z.pp_print
         received
+        Z.pp_print
         expected)
-    Data_encoding.(obj1 (req "received_expected" (tup2 int31 int31)))
+    Data_encoding.(obj1 (req "received_expected" (tup2 z z)))
     (function
       | Bad_deserialized_counter {received; expected} ->
-          Some (Z.to_int received, Z.to_int expected)
+          Some (received, expected)
       | _ -> None)
-    (fun (received, expected) ->
-      Bad_deserialized_counter
-        {received = Z.of_int received; expected = Z.of_int expected}) ;
+    (fun (received, expected) -> Bad_deserialized_counter {received; expected}) ;
   register_error_kind
     `Permanent
     ~id:"thresholdTooHigh"
@@ -952,7 +952,7 @@ let multisig_bytes ~counter ~action ~contract ~chain_id ~descr () =
 
 let check_threshold ~threshold ~keys () =
   let open Lwt_result_syntax in
-  let threshold = Z.to_int threshold in
+  let threshold = Z.to_int_exn threshold in
   if Compare.List_length_with.(keys < threshold) then
     tzfail (Threshold_too_high (threshold, List.length keys))
   else if Compare.Int.(threshold <= 0) then
@@ -1110,7 +1110,7 @@ let check_multisig_signatures ~bytes ~threshold ~keys signatures =
       0
       opt_sigs
   in
-  let threshold_int = Z.to_int threshold in
+  let threshold_int = Z.to_int_exn threshold in
   if signature_count >= threshold_int then return opt_sigs
   else tzfail (Not_enough_signatures (threshold_int, signature_count))
 

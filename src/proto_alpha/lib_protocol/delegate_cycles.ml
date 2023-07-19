@@ -140,7 +140,7 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
       let active_stake_weight =
         Stake_context.staking_weight ctxt active_stake
       in
-      let expected_slots =
+      let*? expected_slots =
         Delegate_missed_attestations_storage
         .expected_slots_for_given_active_stake
           ctxt

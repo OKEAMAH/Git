@@ -1074,7 +1074,7 @@ let test_originate_big_map_with_tickets () =
   let* block = Incremental.finalize_block incr in
   let* orig_contract, operation, incr =
     let storage =
-      Printf.sprintf "%d" @@ Z.to_int (Big_map.Id.unparse_to_z big_map_id)
+      Printf.sprintf "%d" @@ Z.to_int_exn (Big_map.Id.unparse_to_z big_map_id)
     in
     origination_operation
       block
