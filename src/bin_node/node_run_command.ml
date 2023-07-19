@@ -519,6 +519,16 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
   let*! () =
     Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
+  let () =
+    match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
+    | Some ("true" | "on" | "yes") ->
+        let profiler_maker ~name =
+          Tezos_base_unix.Simple_profiler.make
+            Filename.Infix.((config.data_dir // name) ^ "_profiling.txt")
+        in
+        Shell_profiling.init profiler_maker
+    | _ -> ()
+  in
   let*! () =
     Lwt_list.iter_s (fun evt -> Internal_event.Simple.emit evt ()) cli_warnings
   in

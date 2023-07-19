@@ -494,6 +494,16 @@ let run ?verbosity ~singleprocess ~strict ~operation_metadata_size_limit
   let*! () =
     Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
+  let node_profiler_driver =
+    match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
+    | Some ("true" | "on" | "yes") ->
+        Some
+          (Tezos_base_unix.Simple_profiler.make
+             Filename.Infix.(config.data_dir // "/node_profiling.txt"))
+    | _ -> None
+  in
+  Tezos_base.Profiler.Main.plug node_profiler_driver ;
+  Tezos_protocol_environment.Environment_profiler.plug node_profiler_driver ;
   Updater.init (Data_version.protocol_dir config.data_dir) ;
   Lwt_exit.(
     wrap_and_exit
