@@ -25,6 +25,7 @@
 (*****************************************************************************)
 
 open Chain_validator_worker_state
+module Profiler = Shell_profiling.Chain_validator_profiler
 
 module Name = struct
   type t = Chain_id.t
@@ -491,6 +492,26 @@ let may_synchronise_context synchronisation_state chain_store =
     Context_ops.sync context_index
   else Lwt.return_unit
 
+let reset_profilers previous block =
+  (try
+     Shell_profiling.P2p_reader_profiler.stop
+       (Block_hash.to_b58check (Store.Block.hash previous))
+   with _ -> ()) ;
+  Shell_profiling.P2p_reader_profiler.aggregate
+    (Block_hash.to_b58check (Store.Block.hash block)) ;
+  (try
+     Shell_profiling.Requester_profiler.stop
+       (Block_hash.to_b58check (Store.Block.hash previous))
+   with _ -> ()) ;
+  Shell_profiling.Requester_profiler.aggregate
+    (Block_hash.to_b58check (Store.Block.hash block)) ;
+  (try
+     Shell_profiling.Chain_validator_profiler.stop
+       (Block_hash.to_b58check (Store.Block.hash previous))
+   with _ -> ()) ;
+  Shell_profiling.Chain_validator_profiler.aggregate
+    (Block_hash.to_b58check (Store.Block.hash block))
+
 let on_validation_request w peer start_testchain active_chains spawn_child block
     resulting_context_hash =
   let open Lwt_result_syntax in
@@ -511,6 +532,7 @@ let on_validation_request w peer start_testchain active_chains spawn_child block
   if not accepted_head then return Ignored_head
   else
     let* previous = Store.Chain.set_head chain_store block in
+    reset_profilers previous block ;
     let () =
       if is_bootstrapped nv then
         Distributed_db.Advertise.current_head nv.chain_db block
@@ -559,6 +581,10 @@ let on_notify_head w peer_id (hash, header) mempool =
   let nv = Worker.state w in
   let* () = check_and_update_synchronisation_state w (hash, header) peer_id in
   let* (r : (_, Empty.t) result) =
+    let open Shell_profiling in
+    Chain_validator_profiler.span_s
+      ["notify head"; P2p_peer_id.to_short_b58check peer_id]
+    @@ fun () ->
     with_activated_peer_validator w peer_id (fun pv ->
         Peer_validator.notify_head pv hash header ;
         return_ok_unit)
@@ -801,6 +827,11 @@ let on_launch w _ parameters =
   let disconnection peer_id =
     Worker.Queue.push_request_now w (Disconnection peer_id)
   in
+  let*! current_head = Store.Chain.current_head parameters.chain_store in
+  (try
+     Shell_profiling.P2p_reader_profiler.aggregate
+       (Block_hash.to_b58check (Store.Block.hash current_head))
+   with _ -> ()) ;
   let chain_db =
     Distributed_db.activate
       parameters.db

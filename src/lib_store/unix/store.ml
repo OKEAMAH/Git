@@ -25,6 +25,7 @@
 
 open Store_types
 open Store_errors
+module Profiler = Shell_profiling.Store_profiler
 
 module Shared = struct
   type 'a t = {mutable data : 'a; lock : Lwt_idle_waiter.t}
@@ -444,6 +445,7 @@ module Block = struct
 
   let store_block chain_store ~block_header ~operations validation_result =
     let open Lwt_result_syntax in
+    Profiler.aggregate_s "store_block" @@ fun () ->
     let {
       Block_validation.validation_store =
         {
@@ -1398,6 +1400,7 @@ module Chain = struct
 
   let set_head chain_store new_head =
     let open Lwt_result_syntax in
+    Profiler.aggregate_s "set_head" @@ fun () ->
     Shared.update_with chain_store.chain_state (fun chain_state ->
         (* The merge cannot finish until we release the lock on the
            chain state so its status cannot change while this
@@ -1433,6 +1436,7 @@ module Chain = struct
         (* Check that its predecessor exists and has metadata *)
         let predecessor = Block.predecessor new_head in
         let* new_head_metadata =
+          Profiler.aggregate_s "get_pred_block" @@ fun () ->
           trace
             Bad_head_invariant
             (let* pred_block = Block.read_block chain_store predecessor in
@@ -1444,7 +1448,10 @@ module Chain = struct
         in
         let*! target = Stored_data.get chain_state.target_data in
         let new_head_lafl = Block.last_allowed_fork_level new_head_metadata in
-        let* () = may_split_context chain_store new_head_lafl previous_head in
+        let* () =
+          Profiler.aggregate_s "may_split_context" @@ fun () ->
+          may_split_context chain_store new_head_lafl previous_head
+        in
         let*! cementing_highwatermark =
           locked_determine_cementing_highwatermark
             chain_store
@@ -1523,6 +1530,7 @@ module Chain = struct
                    - The heavy-work of this function is asynchronously
                      done so this call is expected to return quickly. *)
                 let* () =
+                  Profiler.span_s ["start merge store"] @@ fun () ->
                   Block_store.merge_stores
                     chain_store.block_store
                     ~on_error
@@ -1578,11 +1586,16 @@ module Chain = struct
         (* Update values on disk but not the cementing highwatermark
            which will be updated by the merge finalizer. *)
         let* () =
+          Profiler.aggregate_s "write_new_head" @@ fun () ->
           Stored_data.write chain_state.current_head_data new_head_descr
         in
-        let* () = Stored_data.write chain_state.target_data new_target in
+        let* () =
+          Profiler.aggregate_s "write_new_target" @@ fun () ->
+          Stored_data.write chain_state.target_data new_target
+        in
         (* Update live_data *)
         let*! live_blocks, live_operations =
+          Profiler.aggregate_s "compute_live_blocks" @@ fun () ->
           locked_compute_live_blocks
             ~update_cache:true
             chain_store

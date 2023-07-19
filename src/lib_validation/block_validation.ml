@@ -594,6 +594,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
     trace
       (invalid_block block_hash Economic_protocol_error)
       (let* state =
+         Tezos_base.Profiler.Main.record_s "begin_application" @@ fun () ->
          (Proto.begin_application
             context
             chain_id
@@ -602,12 +603,15 @@ module Make (Filter : Shell_plugin.FILTER) = struct
             ~cache [@time.duration_lwt application_beginning])
        in
        let* state, ops_metadata =
-         (List.fold_left_es
-            (fun (state, acc) ops ->
+         Tezos_base.Profiler.Main.aggregate_s "apply_operations" @@ fun () ->
+         (List.fold_left_i_es
+            (fun i (state, acc) ops ->
+              let sec = "apply_operation_list(" ^ string_of_int i ^ ")" in
               let* state, ops_metadata =
                 List.fold_left_es
                   (fun (state, acc) (oph, op, _check_signature) ->
                     let* state, op_metadata =
+                      Tezos_base.Profiler.Main.aggregate_s sec @@ fun () ->
                       Proto.apply_operation state oph op
                     in
                     return (state, op_metadata :: acc))
@@ -620,6 +624,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
        in
        let ops_metadata = List.rev ops_metadata in
        let* validation_result, block_data =
+         Tezos_base.Profiler.Main.record_s "finalize_application" @@ fun () ->
          (Proto.finalize_application
             state
             (Some block_header.shell) [@time.duration_lwt block_finalization])
@@ -708,11 +713,13 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         let* () = check_operation_quota block_hash operations in
         let predecessor_hash = Block_header.hash predecessor_block_header in
         let* operations =
+          Tezos_base.Profiler.Main.aggregate_s "parse_operations" @@ fun () ->
           (parse_operations
              block_hash
              operations [@time.duration_lwt operations_parsing])
         in
         let* context =
+          Tezos_base.Profiler.Main.record_s "prepare_context" @@ fun () ->
           prepare_context
             predecessor_block_metadata_hash
             predecessor_ops_metadata_hash
@@ -730,6 +737,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
             block_hash
             operations
         in
+        Tezos_base.Profiler.Main.record_s "post_validation" @@ fun () ->
         let*! validation_result =
           may_patch_protocol
             ~user_activated_upgrades
@@ -768,6 +776,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         in
         let* validation_result, new_protocol_env_version, expected_context_hash
             =
+          Tezos_base.Profiler.Main.aggregate_s "record_protocol" @@ fun () ->
           may_init_new_protocol
             chain_id
             new_protocol
@@ -782,6 +791,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         in
         let validation_result = {validation_result with max_operations_ttl} in
         let* block_metadata, ops_metadata =
+          Tezos_base.Profiler.Main.aggregate_s "compute_metadata" @@ fun () ->
           compute_metadata
             ~operation_metadata_size_limit
             new_protocol_env_version
@@ -791,6 +801,7 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         let (Context {cache; _}) = validation_result.context in
         let context = validation_result.context in
         let*! resulting_context_hash =
+          Tezos_base.Profiler.Main.aggregate_s "commit" @@ fun () ->
           if simulate then
             Lwt.return
             @@ Context_ops.hash
@@ -1271,8 +1282,12 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         ~predecessor_hash:predecessor_block_hash
         block_header.shell.timestamp
     in
-    let* operations = parse_operations block_hash operations in
+    let* operations =
+      Tezos_base.Profiler.Main.aggregate_s "parse_operations" @@ fun () ->
+      parse_operations block_hash operations
+    in
     let* state =
+      Tezos_base.Profiler.Main.record_s "begin_validation" @@ fun () ->
       Proto.begin_validation
         context
         chain_id
@@ -1280,22 +1295,30 @@ module Make (Filter : Shell_plugin.FILTER) = struct
         ~predecessor:predecessor_block_header.shell
         ~cache
     in
-
     let* state =
-      List.fold_left_es
-        (fun state ops ->
+      Tezos_base.Profiler.Main.aggregate_s "validate_operations" @@ fun () ->
+      List.fold_left_i_es
+        (fun i state ops ->
+          let sec = "validate_operation_list(" ^ string_of_int i ^ ")" in
           List.fold_left_es
             (fun state (oph, op, check_signature) ->
               match Filter.Mempool.syntactic_check op with
               | `Ill_formed -> failwith "Ill-formed operation filtered"
               | `Well_formed ->
-                  Proto.validate_operation ~check_signature state oph op)
+                  let* state =
+                    Tezos_base.Profiler.Main.aggregate_s sec @@ fun () ->
+                    Proto.validate_operation ~check_signature state oph op
+                  in
+                  return state)
             state
             ops)
         state
         operations
     in
-    let* () = Proto.finalize_validation state in
+    let* () =
+      Tezos_base.Profiler.Main.record_s "finalize_validation" @@ fun () ->
+      Proto.finalize_validation state
+    in
     return_unit
 
   let precheck chain_id ~(predecessor_block_header : Block_header.t)

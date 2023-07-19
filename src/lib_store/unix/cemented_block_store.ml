@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Store_errors
+module Merge_profiler = Shell_profiling.Merge_profiler
 
 (* Cemented files overlay:
 
@@ -702,6 +703,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
       in
       let metadata_writer
           (block_bytes, total_block_length, block_level, metadata_offset) =
+        Merge_profiler.aggregate_s "write metadata" @@ fun () ->
         Lwt_preemptive.detach
           (fun () ->
             let add, finish =
@@ -718,6 +720,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
           ()
       in
       let metadata_finalizer () =
+        Merge_profiler.aggregate_s "finalize metadata" @@ fun () ->
         let*! () = Lwt_preemptive.detach Zip.close_out out_file in
         let metadata_file_path =
           Naming.cemented_blocks_metadata_file cemented_metadata_dir file
@@ -744,12 +747,14 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
         let first_offset = preamble_length in
         (* Cursor is now at the beginning of the element section *)
         let*! _ =
+          Merge_profiler.aggregate_s "write cemented cycle" @@ fun () ->
           Seq.ES.fold_left
             (fun (i, current_offset) block_read ->
               let* block_hash, total_block_length, block_bytes = block_read in
               let pruned_block_length =
                 (* This call rewrites [block_bytes] to a pruned block
                    (with its size modified) *)
+                Merge_profiler.aggregate_f "prune raw block" @@ fun () ->
                 Block_repr_unix.prune_raw_block_bytes block_bytes
               in
               (* We start by blitting the corresponding offset in the preamble part *)
@@ -759,6 +764,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
                 (Int32.of_int current_offset) ;
               (* We write the block in the file *)
               let*! () =
+                Merge_profiler.aggregate_s "write pruned block" @@ fun () ->
                 Lwt_utils_unix.write_bytes
                   ~pos:0
                   ~len:pruned_block_length
@@ -782,6 +788,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
                     else return_unit)
               in
               (* We also populate the indexes *)
+              Merge_profiler.aggregate_s "update index" @@ fun () ->
               Cemented_block_level_index.replace
                 cemented_store.cemented_block_level_index
                 block_hash
@@ -796,19 +803,24 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
         in
         (* We now write the real offsets in the preamble *)
         let*! _ofs = Lwt_unix.lseek fd 0 Unix.SEEK_SET in
+        Merge_profiler.aggregate_s "blit cemented cycle offsets" @@ fun () ->
         Lwt_utils_unix.write_bytes ~pos:0 ~len:preamble_length fd offsets_buffer)
       (fun () ->
         let*! _ = Lwt_utils_unix.safe_close fd in
         Lwt.return_unit)
   in
-  let*! () = Lwt_unix.rename tmp_file_path final_path in
+  let*! () =
+    Merge_profiler.aggregate_s "mv temp file to final file" @@ fun () ->
+    Lwt_unix.rename tmp_file_path final_path
+  in
   (* Flush the indexes to make sure that the data is stored on disk *)
-  Cemented_block_level_index.flush
-    ~with_fsync:true
-    cemented_store.cemented_block_level_index ;
-  Cemented_block_hash_index.flush
-    ~with_fsync:true
-    cemented_store.cemented_block_hash_index ;
+  Merge_profiler.aggregate_f "flush indexes" (fun () ->
+      Cemented_block_level_index.flush
+        ~with_fsync:true
+        cemented_store.cemented_block_level_index ;
+      Cemented_block_hash_index.flush
+        ~with_fsync:true
+        cemented_store.cemented_block_hash_index) ;
   (* Update table *)
   let cemented_block_interval =
     {start_level = first_block_level; end_level = last_block_level; file}
@@ -830,6 +842,7 @@ let cement_blocks ?(check_consistency = true) (cemented_store : t)
 let trigger_full_gc cemented_store cemented_blocks_files offset =
   let open Lwt_syntax in
   let nb_files = Array.length cemented_blocks_files in
+  Merge_profiler.mark ["trigger full gc"] ;
   if nb_files <= offset then Lwt.return_unit
   else
     let cemented_files = Array.to_list cemented_blocks_files in
@@ -857,6 +870,7 @@ let trigger_full_gc cemented_store cemented_blocks_files offset =
 let trigger_rolling_gc cemented_store cemented_blocks_files offset =
   let open Lwt_syntax in
   let nb_files = Array.length cemented_blocks_files in
+  Merge_profiler.mark ["trigger rolling gc"] ;
   if nb_files <= offset then Lwt.return_unit
   else
     let {end_level = last_level_to_purge; _} =
@@ -898,6 +912,7 @@ let trigger_rolling_gc cemented_store cemented_blocks_files offset =
 let trigger_gc cemented_store history_mode =
   let open Lwt_syntax in
   let* () = Store_events.(emit start_store_garbage_collection) () in
+  Merge_profiler.aggregate_s "trigger gc" @@ fun () ->
   match cemented_store.cemented_blocks_files with
   | None -> return_unit
   | Some cemented_blocks_files -> (

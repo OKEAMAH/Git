@@ -27,6 +27,7 @@
 
 open Block_validator_worker_state
 open Block_validator_errors
+module Profiler = Shell_profiling.Chain_validator_profiler
 
 type validation_result =
   | Already_committed
@@ -177,10 +178,19 @@ let on_validation_request w
   let open Lwt_result_syntax in
   let bv = Worker.state w in
   let chain_store = Distributed_db.chain_store chain_db in
+  let sym_prefix l =
+    "block_validator"
+    :: Block_hash.to_short_b58check hash
+    :: "validation_request" :: l
+  in
+  Profiler.span_s (sym_prefix []) @@ fun () ->
   let*! b = Store.Block.is_known_valid chain_store hash in
   match b with
-  | true -> return Already_committed
+  | true ->
+      Profiler.mark (sym_prefix ["already commited"]) ;
+      return Already_committed
   | false -> (
+      Profiler.mark (sym_prefix ["not already commited"]) ;
       let*! r =
         match
           Block_hash_ring.find_opt bv.invalid_blocks_after_precheck hash
@@ -201,6 +211,8 @@ let on_validation_request w
                   return Outdated_block
                 else
                   let* pred =
+                    Profiler.span_s (sym_prefix ["read predecessor block"])
+                    @@ fun () ->
                     Store.Block.read_block chain_store header.shell.predecessor
                   in
                   let with_retry_to_load_protocol f =
@@ -231,6 +243,8 @@ let on_validation_request w
                     protect ~canceler:(Worker.canceler w) (fun () ->
                         protect ?canceler (fun () ->
                             with_retry_to_load_protocol (fun () ->
+                                Profiler.span_s (sym_prefix ["precheck block"])
+                                @@ fun () ->
                                 precheck_block
                                   bv.validation_process
                                   chain_db
@@ -247,7 +261,12 @@ let on_validation_request w
                       if precheck_and_notify then
                         (* Headers which have been preapplied can be advertised
                            before being fully applied. *)
-                        Distributed_db.Advertise.prechecked_head chain_db header ;
+                        Profiler.span_f
+                          (sym_prefix ["advertise prechecked head"])
+                          (fun () ->
+                            Distributed_db.Advertise.prechecked_head
+                              chain_db
+                              header) ;
                       let* result =
                         protect ~canceler:(Worker.canceler w) (fun () ->
                             protect ?canceler (fun () ->
@@ -255,6 +274,8 @@ let on_validation_request w
                                   Events.(emit validating_block) hash
                                 in
                                 with_retry_to_load_protocol (fun () ->
+                                    Profiler.span_s (sym_prefix ["apply block"])
+                                    @@ fun () ->
                                     Block_validator_process.apply_block
                                       ~should_precheck:false
                                       bv.validation_process
@@ -270,6 +291,8 @@ let on_validation_request w
                             (fun v -> Int.to_float (List.length v))
                             operations) ;
                       let* o =
+                        Profiler.span_s (sym_prefix ["commit block"])
+                        @@ fun () ->
                         Distributed_db.commit_block
                           chain_db
                           hash
@@ -279,6 +302,8 @@ let on_validation_request w
                       in
                       match o with
                       | Some block ->
+                          Profiler.span_f (sym_prefix ["notify new block"])
+                          @@ fun () ->
                           notify_new_block
                             {
                               block;
@@ -497,34 +522,44 @@ let validate w ?canceler ?peer ?(notify_new_block = fun _ -> ())
     operations =
   let open Lwt_syntax in
   let chain_store = Distributed_db.chain_store chain_db in
+  let sym_prefix l =
+    "block_validator" :: Block_hash.to_short_b58check hash :: "validate" :: l
+  in
+  Profiler.span_s (sym_prefix ["validate"]) @@ fun () ->
   let* b = Store.Block.is_known_valid chain_store hash in
   match b with
   | true ->
       let* () = Events.(emit previously_validated) hash in
+      Profiler.mark (sym_prefix ["already validated"]) ;
       return Valid
   | false -> (
       let* r =
         let open Lwt_result_syntax in
-        let hashes = List.map (List.map Operation.hash) operations in
-        let computed_hash =
-          Operation_list_list_hash.compute
-            (List.map Operation_list_hash.compute hashes)
+        let* () =
+          Profiler.span_s (sym_prefix ["merkle root check"]) @@ fun () ->
+          let computed_hash =
+            let hashes = List.map (List.map Operation.hash) operations in
+            Operation_list_list_hash.compute
+              (List.map Operation_list_hash.compute hashes)
+          in
+          let* () =
+            fail_when
+              (Operation_list_list_hash.compare
+                 computed_hash
+                 header.shell.operations_hash
+              <> 0)
+              (Inconsistent_operations_hash
+                 {
+                   block = hash;
+                   expected = header.shell.operations_hash;
+                   found = computed_hash;
+                 })
+            |> Lwt_result.map_error (fun e -> Worker.Request_error e)
+          in
+          return_unit
         in
         let* () =
-          fail_when
-            (Operation_list_list_hash.compare
-               computed_hash
-               header.shell.operations_hash
-            <> 0)
-            (Inconsistent_operations_hash
-               {
-                 block = hash;
-                 expected = header.shell.operations_hash;
-                 found = computed_hash;
-               })
-          |> Lwt_result.map_error (fun e -> Worker.Request_error e)
-        in
-        let* () =
+          Profiler.span_s (sym_prefix ["check chain liveness"]) @@ fun () ->
           check_chain_liveness chain_db hash header
           |> Lwt_result.map_error (fun e -> Worker.Request_error e)
         in

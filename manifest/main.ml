@@ -3159,6 +3159,7 @@ let octez_requester =
       [
         octez_base |> open_ ~m:"TzPervasives";
         octez_stdlib_unix |> open_;
+        octez_shell_services |> open_;
         lwt_watcher;
       ]
 

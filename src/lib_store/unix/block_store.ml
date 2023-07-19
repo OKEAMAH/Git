@@ -26,6 +26,7 @@
 open Store_types
 open Block_repr
 open Store_errors
+module Merge_profiler = Shell_profiling.Merge_profiler
 
 let default_block_cache_limit = 100
 
@@ -420,6 +421,7 @@ let cement_blocks ?(check_consistency = true) ~write_metadata block_store
   let open Lwt_result_syntax in
   let*! () = Store_events.(emit start_cementing_blocks) () in
   let {cemented_store; _} = block_store in
+  Merge_profiler.record_s "cement blocks" @@ fun () ->
   Cemented_block_store.cement_blocks
     ~check_consistency
     cemented_store
@@ -890,6 +892,7 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
   let open Lwt_result_syntax in
   let*! () = Store_events.(emit start_updating_floating_stores) () in
   let* lafl_block =
+    Merge_profiler.record_s "read lafl block" @@ fun () ->
     read_predecessor_block_by_level block_store ~head:new_head new_head_lafl
   in
   let final_hash, final_level = Block_repr.descriptor lafl_block in
@@ -909,6 +912,7 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
     [ro_store; rw_store]
   in
   let*! lafl_predecessors =
+    Merge_profiler.record_s "retrieve N lafl's predecessors" @@ fun () ->
     try_retrieve_n_predecessors
       floating_stores
       final_hash
@@ -917,6 +921,7 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
   (* [min_level_to_preserve] is the lowest block that we want to keep
      in the floating stores. *)
   let*! min_level_to_preserve =
+    Merge_profiler.record_s "read min level block to preserve" @@ fun () ->
     match lafl_predecessors with
     | [] -> Lwt.return new_head_lafl
     | oldest_predecessor :: _ -> (
@@ -934,6 +939,7 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
      the resulting [new_store] will be correct and will contain older
      blocks before more recent ones. *)
   let* () =
+    Merge_profiler.record_s "copy all lafl predecessors" @@ fun () ->
     Floating_block_store.raw_copy_all
       ~src_floating_stores:floating_stores
       ~block_hashes:lafl_predecessors
@@ -952,8 +958,18 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
   let blocks_lafl = ref BlocksLAFL.empty in
   let*! () = Store_events.(emit start_retreiving_cycles) () in
   let* () =
+    Merge_profiler.record_s "iterate and prune floating stores" @@ fun () ->
     List.iter_es
       (fun store ->
+        let kind =
+          match Floating_block_store.kind store with
+          | RO -> "RO"
+          | RW -> "RW"
+          | _ -> assert false
+        in
+        Merge_profiler.aggregate_s
+          (Printf.sprintf "iterate over floating store '%s'" kind)
+        @@ fun () ->
         Floating_block_store.raw_iterate
           (fun (block_bytes, total_block_length) ->
             let block_level = Block_repr_unix.raw_get_block_level block_bytes in
@@ -985,10 +1001,12 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
                 visited := Block_hash.Set.add block_hash !visited ;
                 let*! {predecessors; resulting_context_hash} =
                   let*! pred_opt =
-                    Floating_block_store.find_info store block_hash
+                    Merge_profiler.aggregate_s "find block index info"
+                    @@ fun () -> Floating_block_store.find_info store block_hash
                   in
                   Lwt.return (WithExceptions.Option.get ~loc:__LOC__ pred_opt)
                 in
+                Merge_profiler.aggregate_s "raw append block" @@ fun () ->
                 Floating_block_store.raw_append
                   new_store
                   ( block_hash,
@@ -1025,8 +1043,12 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
   let sorted_lafl =
     List.sort Compare.Int32.compare (BlocksLAFL.elements !blocks_lafl)
   in
-  let* cycles_to_cement = loop [] initial_pred sorted_lafl in
+  let* cycles_to_cement =
+    Merge_profiler.aggregate_s "retrieve cycle to cement" @@ fun () ->
+    loop [] initial_pred sorted_lafl
+  in
   let* new_savepoint =
+    Merge_profiler.aggregate_s "compute new savepoint" @@ fun () ->
     compute_new_savepoint
       block_store
       history_mode
@@ -1036,6 +1058,7 @@ let update_floating_stores block_store ~history_mode ~ro_store ~rw_store
       ~cycles_to_cement
   in
   let* new_caboose =
+    Merge_profiler.aggregate_s "compute new caboose" @@ fun () ->
     compute_new_caboose
       block_store
       history_mode
@@ -1100,16 +1123,19 @@ let move_all_floating_stores block_store ~new_ro_store =
     (fun () ->
       (* (atomically?) Promote [new_ro] to [ro] *)
       let* () =
+        Merge_profiler.record_s "promote new ro floating as ro" @@ fun () ->
         move_floating_store block_store ~src:new_ro_store ~dst_kind:RO
       in
       (* ...and [new_rw] to [rw]  *)
       let* () =
+        Merge_profiler.record_s "promote new rw floating as rw" @@ fun () ->
         move_floating_store
           block_store
           ~src:block_store.rw_floating_block_store
           ~dst_kind:RW
       in
       (* Load the swapped stores *)
+      Merge_profiler.record_s "open new floating stores" @@ fun () ->
       let*! ro = Floating_block_store.init chain_dir ~readonly:false RO in
       block_store.ro_floating_block_stores <- [ro] ;
       let*! rw = Floating_block_store.init chain_dir ~readonly:false RW in
@@ -1187,6 +1213,7 @@ let instanciate_temporary_floating_store block_store =
            block_store.rw_floating_block_store
            :: block_store.ro_floating_block_stores ;
          let*! new_rw_store =
+           Merge_profiler.record_s "initializing RW TMP" @@ fun () ->
            Floating_block_store.init
              block_store.chain_dir
              ~readonly:false
@@ -1201,12 +1228,14 @@ let create_merging_thread block_store ~history_mode ~old_ro_store ~old_rw_store
   let open Lwt_result_syntax in
   let*! () = Store_events.(emit start_merging_thread) () in
   let*! new_ro_store =
+    Merge_profiler.record_s "initializing RO TMP floating store" @@ fun () ->
     Floating_block_store.init block_store.chain_dir ~readonly:false RO_TMP
   in
   let* new_savepoint, new_caboose =
     Lwt.catch
       (fun () ->
         let* cycles_interval_to_cement, new_savepoint, new_caboose =
+          Merge_profiler.record_s "update floating stores" @@ fun () ->
           update_floating_stores
             block_store
             ~history_mode
@@ -1335,6 +1364,7 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
   let* () = fail_when block_store.readonly Cannot_write_in_readonly in
   (* Do not allow multiple merges: force waiting for a potential
      previous merge. *)
+  Merge_profiler.record "merge store" ;
   let*! () = Lwt_mutex.lock block_store.merge_mutex in
   protect
     ~on_error:(fun err ->
@@ -1348,7 +1378,10 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
           (Cannot_merge_store {status = status_to_string store_status})
       in
       (* Mark the store's status as Merging *)
-      let* () = write_status block_store Merging in
+      let* () =
+        Merge_profiler.span_s ["write status"] @@ fun () ->
+        write_status block_store Merging
+      in
       let new_head_lafl =
         Block_repr.last_allowed_fork_level new_head_metadata
       in
@@ -1363,10 +1396,13 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
       in
       let merge_start = Time.System.now () in
       let* () =
+        Merge_profiler.record "waiting for lock (start)" ;
         Lwt_idle_waiter.force_idle block_store.merge_scheduler (fun () ->
+            Merge_profiler.stop "waiting for lock (start)" ;
             (* Move the rw in the ro stores and create a new tmp *)
             let* old_ro_store, old_rw_store, _new_rw_store =
-              instanciate_temporary_floating_store block_store
+              Merge_profiler.record_s "instanciate tmp floating stores"
+              @@ fun () -> instanciate_temporary_floating_store block_store
             in
             (* Important: do not clean-up the temporary stores on
                failures as they will delete the recently arrived
@@ -1388,6 +1424,7 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
                         on_error (Merge_error :: err))
                       (fun () ->
                         let* new_ro_store, new_savepoint, new_caboose =
+                          Merge_profiler.record_s "merging thread" @@ fun () ->
                           create_merging_thread
                             block_store
                             ~history_mode
@@ -1399,15 +1436,22 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
                             ~cementing_highwatermark
                         in
                         let* () =
+                          Merge_profiler.record "waiting for lock (end)" ;
                           Lwt_idle_waiter.force_idle
                             block_store.merge_scheduler
                             (fun () ->
+                              Merge_profiler.stop "waiting for lock (end)" ;
                               (* Critical section: update on-disk values *)
                               let* () =
+                                Merge_profiler.record_s
+                                  "move all floating stores"
+                                @@ fun () ->
                                 move_all_floating_stores
                                   block_store
                                   ~new_ro_store
                               in
+                              Merge_profiler.span_s ["write new checkpoints"]
+                              @@ fun () ->
                               let* () = write_caboose block_store new_caboose in
                               let* () =
                                 write_savepoint block_store new_savepoint
@@ -1417,11 +1461,15 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
                         (* Don't call the finalizer in the critical
                            section, in case it needs to access the block
                            store. *)
-                        let* () = finalizer new_head_lafl in
+                        let* () =
+                          Merge_profiler.record_s "calling finalizer"
+                          @@ fun () -> finalizer new_head_lafl
+                        in
                         (* We can now trigger the context GC: if the
                            GC is performed, this call will block until
                            its end. *)
                         let* () =
+                          Merge_profiler.span_s ["performing GC"] @@ fun () ->
                           may_trigger_gc
                             block_store
                             history_mode
@@ -1430,7 +1478,10 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
                         in
                         (* The merge operation succeeded, the store is now idle. *)
                         block_store.merging_thread <- None ;
-                        let* () = write_status block_store Idle in
+                        let* () =
+                          Merge_profiler.span_s ["reset store status to idle"]
+                          @@ fun () -> write_status block_store Idle
+                        in
                         return_unit))
                   (fun () ->
                     Lwt_mutex.unlock block_store.merge_mutex ;
@@ -1442,6 +1493,7 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
               Prometheus.Gauge.set
                 Store_metrics.metrics.last_store_merge_time
                 (Ptime.Span.to_float_s merging_time) ;
+              Merge_profiler.stop "merge store" ;
               return_unit
             in
             block_store.merging_thread <- Some (new_head_lafl, merging_thread) ;

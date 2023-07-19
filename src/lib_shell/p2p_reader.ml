@@ -26,6 +26,7 @@
 
 module Message = Distributed_db_message
 module P2p_reader_event = Distributed_db_event.P2p_reader_event
+module Profiler = Shell_profiling.P2p_reader_profiler
 
 type p2p = (Message.t, Peer_metadata.t, Connection_metadata.t) P2p.net
 
@@ -175,6 +176,7 @@ let handle_msg state msg =
   in
   match msg with
   | Get_current_branch chain_id ->
+      Profiler.span_s ["Get_current_branch"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Branch ;
       may_handle_global state chain_id @@ fun chain_db ->
       activate state chain_id chain_db ;
@@ -183,6 +185,7 @@ let handle_msg state msg =
       in
       let* current_head = Store.Chain.current_head chain_db.chain_store in
       let* locator =
+        Profiler.aggregate_s "compute_current_branch_locator" @@ fun () ->
         Store.Chain.compute_locator chain_db.chain_store current_head seed
       in
       Peer_metadata.update_responses meta Branch
@@ -190,6 +193,7 @@ let handle_msg state msg =
       @@ Current_branch (chain_id, locator) ;
       Lwt.return_unit
   | Current_branch (chain_id, locator) ->
+      Profiler.span_s ["Current_branch"] @@ fun () ->
       may_handle state chain_id @@ fun chain_db ->
       let {Block_locator.head_hash; head_header; history} = locator in
       let* known_invalid =
@@ -214,11 +218,13 @@ let handle_msg state msg =
         Peer_metadata.incr meta @@ Received_advertisement Branch ;
         Lwt.return_unit)
   | Deactivate chain_id ->
+      Profiler.span_s ["Deactivate"] @@ fun () ->
       may_handle state chain_id @@ fun chain_db ->
       deactivate state.gid chain_db ;
       Chain_id.Table.remove state.peer_active_chains chain_id ;
       Lwt.return_unit
   | Get_current_head chain_id ->
+      Profiler.span_s ["Get_current_head"] @@ fun () ->
       may_handle state chain_id @@ fun chain_db ->
       Peer_metadata.incr meta @@ Received_request Head ;
       let {Connection_metadata.disable_mempool; _} =
@@ -236,6 +242,7 @@ let handle_msg state msg =
       @@ Current_head (chain_id, head, mempool) ;
       Lwt.return_unit
   | Current_head (chain_id, header, mempool) ->
+      Profiler.span_s ["Current_head"] @@ fun () ->
       may_handle state chain_id @@ fun chain_db ->
       let header_hash = Block_header.hash header in
       let* known_invalid =
@@ -266,6 +273,7 @@ let handle_msg state msg =
         Peer_metadata.incr meta @@ Received_advertisement Head ;
         Lwt.return_unit)
   | Get_block_headers hashes ->
+      Profiler.span_s ["Get_block_headers"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Block_header ;
       List.iter_p
         (fun hash ->
@@ -281,6 +289,7 @@ let handle_msg state msg =
               Lwt.return_unit)
         hashes
   | Block_header block -> (
+      Profiler.span_s ["Block_header"] @@ fun () ->
       let hash = Block_header.hash block in
       match find_pending_block_header state hash with
       | None ->
@@ -297,6 +306,7 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Block_header ;
           Lwt.return_unit)
   | Get_operations hashes ->
+      Profiler.span_s ["Get_operations"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Operations ;
       List.iter_p
         (fun hash ->
@@ -313,6 +323,17 @@ let handle_msg state msg =
         hashes
   | Operation operation -> (
       let hash = Operation.hash operation in
+      Profiler.mark
+        [
+          ("operation:"
+          ^
+          match Char.code (Bytes.get operation.proto 0) with
+          | 0x14 -> "preendorsement"
+          | 0x15 -> "endorsement"
+          | _ -> "other");
+          Format.asprintf "Operation(%a)" Operation_hash.pp hash;
+          P2p_peer_id.to_short_b58check state.gid;
+        ] ;
       match find_pending_operation state hash with
       | None ->
           Peer_metadata.incr meta Unexpected_response ;
@@ -328,6 +349,7 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Operations ;
           Lwt.return_unit)
   | Get_protocols hashes ->
+      Profiler.span_s ["Get_protocols"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Protocols ;
       List.iter_p
         (fun hash ->
@@ -343,6 +365,7 @@ let handle_msg state msg =
               Lwt.return_unit)
         hashes
   | Protocol protocol ->
+      Profiler.span_s ["Protocol"] @@ fun () ->
       let hash = Protocol.hash protocol in
       let* () =
         Distributed_db_requester.Raw_protocol.notify
@@ -354,6 +377,7 @@ let handle_msg state msg =
       Peer_metadata.incr meta @@ Received_response Protocols ;
       Lwt.return_unit
   | Get_operations_for_blocks blocks ->
+      Profiler.span_s ["Get_operations_for_blocks"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Operations_for_block ;
       List.iter_p
         (fun (hash, ofs) ->
@@ -368,6 +392,7 @@ let handle_msg state msg =
               Lwt.return_unit)
         blocks
   | Operations_for_block (block, ofs, ops, path) -> (
+      Profiler.span_s ["Operations_for_block"] @@ fun () ->
       match find_pending_operations state block ofs with
       | None ->
           Peer_metadata.incr meta Unexpected_response ;
@@ -383,6 +408,7 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Operations_for_block ;
           Lwt.return_unit)
   | Get_checkpoint chain_id -> (
+      Profiler.span_s ["Get_checkpoint"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Checkpoint ;
       may_handle_global state chain_id @@ fun chain_db ->
       let* checkpoint_hash, _ = Store.Chain.checkpoint chain_db.chain_store in
@@ -398,11 +424,13 @@ let handle_msg state msg =
           @@ Checkpoint (chain_id, checkpoint_header) ;
           Lwt.return_unit)
   | Checkpoint _ ->
+      Profiler.span_s ["Checkpoint"] @@ fun () ->
       (* This message is currently unused: it will be used for future
          bootstrap heuristics. *)
       Peer_metadata.incr meta @@ Received_response Checkpoint ;
       Lwt.return_unit
   | Get_protocol_branch (chain_id, proto_level) -> (
+      Profiler.span_s ["Get_protocol_branch"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Protocol_branch ;
       may_handle_global state chain_id @@ fun chain_db ->
       activate state chain_id chain_db ;
@@ -423,11 +451,13 @@ let handle_msg state msg =
           Lwt.return_unit
       | None -> Lwt.return_unit)
   | Protocol_branch (_chain, _proto_level, _locator) ->
+      Profiler.span_s ["Protocol_branch"] @@ fun () ->
       (* This message is currently unused: it will be used for future
          multipass. *)
       Peer_metadata.incr meta @@ Received_response Protocol_branch ;
       Lwt.return_unit
   | Get_predecessor_header (block_hash, offset) -> (
+      Profiler.span_s ["Get_predecessor_header"] @@ fun () ->
       Peer_metadata.incr meta @@ Received_request Predecessor_header ;
       let* o = read_predecessor_header state block_hash offset in
       match o with
@@ -442,6 +472,7 @@ let handle_msg state msg =
           @@ Predecessor_header (block_hash, offset, header) ;
           Lwt.return_unit)
   | Predecessor_header (_block_hash, _offset, _header) ->
+      Profiler.span_s ["Predecessor_header"] @@ fun () ->
       (* This message is currently unused: it will be used to improve
          bootstrapping. *)
       Peer_metadata.incr meta @@ Received_response Predecessor_header ;

@@ -257,6 +257,17 @@ let run ~readonly ~using_std_channel input output =
     if using_std_channel then Lwt.return_unit
     else Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
+  let profiler_driver =
+    match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
+    | Some ("true" | "on" | "yes") ->
+        Some
+          (Tezos_base_unix.Simple_profiler.make
+             (Filename.dirname protocol_root ^ "/validator_profiling.txt"))
+    | _ -> None
+  in
+  let module Profiler = Tezos_base.Profiler.Main in
+  Tezos_base.Profiler.Main.plug profiler_driver ;
+  Tezos_protocol_environment.Environment_profiler.plug profiler_driver ;
   (* Main loop waiting for request to be processed, forever, until the
      [Terminate] request is received.
      TODO: https://gitlab.com/tezos/tezos/-/issues/5177
@@ -298,6 +309,13 @@ let run ~readonly ~using_std_channel input output =
           simulate;
         } ->
         let*! () = Events.(emit validation_request block_header) in
+        let sec =
+          Format.asprintf
+            "apply_block(%a)"
+            Block_hash.pp
+            (Block_header.hash block_header)
+        in
+        Profiler.record sec ;
         let*! block_application_result =
           let* predecessor_context =
             Error_monad.catch_es (fun () ->
@@ -369,6 +387,7 @@ let run ~readonly ~using_std_channel input output =
             (Error_monad.result_encoding Block_validation.result_encoding)
             block_application_result
         in
+        Profiler.stop sec ;
         loop cache None
     | Preapply
         {
@@ -455,6 +474,13 @@ let run ~readonly ~using_std_channel input output =
           hash;
         } ->
         let*! () = Events.(emit precheck_request hash) in
+        let sec =
+          Format.asprintf
+            "validate_block(%a)"
+            Block_hash.pp
+            (Block_header.hash header)
+        in
+        Profiler.record sec ;
         let*! block_precheck_result =
           let* predecessor_context =
             Error_monad.catch_es (fun () ->
@@ -473,7 +499,7 @@ let run ~readonly ~using_std_channel input output =
           in
           let cache =
             match cache with
-            | None -> `Lazy
+            | None -> `Load
             | Some cache ->
                 `Inherited (cache, predecessor_resulting_context_hash)
           in
@@ -496,6 +522,7 @@ let run ~readonly ~using_std_channel input output =
             (Error_monad.result_encoding Data_encoding.unit)
             block_precheck_result
         in
+        Profiler.stop sec ;
         loop cache cached_result
     | External_validation.Fork_test_chain
         {chain_id; context_hash; forked_header} ->
