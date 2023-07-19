@@ -42,12 +42,15 @@ let on_cpmm_exists ctxt f =
   | true -> f ctxt cpmm_contract
 
 let update_toggle_ema ctxt ~per_block_vote =
-  get_toggle_ema ctxt >>=? fun old_ema ->
-  let new_ema = compute_new_liquidity_baking_ema ~per_block_vote old_ema in
-  Storage.Liquidity_baking.Toggle_ema.update
-    ctxt
-    (Liquidity_baking_toggle_EMA.to_int32 new_ema)
-  >|=? fun ctxt -> (ctxt, new_ema)
+  let open Lwt_result_syntax in
+  let* old_ema = get_toggle_ema ctxt in
+  let*? new_ema = compute_new_liquidity_baking_ema ~per_block_vote old_ema in
+  let+ ctxt =
+    Storage.Liquidity_baking.Toggle_ema.update
+      ctxt
+      (Liquidity_baking_toggle_EMA.to_int32 new_ema)
+  in
+  (ctxt, new_ema)
 
 let check_ema_below_threshold ctxt ema =
   Liquidity_baking_toggle_EMA.(

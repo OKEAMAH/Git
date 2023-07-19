@@ -820,7 +820,6 @@ type ballots_info = {
 }
 
 let get_ballots_info (cctxt : #full) ~chain ~block =
-  let open Lwt_result_syntax in
   (* Get the next level, not the current *)
   let open Lwt_result_syntax in
   let cb = (chain, block) in
@@ -835,7 +834,7 @@ let get_ballots_info (cctxt : #full) ~chain ~block =
            (mul (of_int64 all_votes) (of_int 100_00))
            (of_int64 max_participation))
   in
-  let participation = Z.to_int32 participation in
+  let*? participation = Environment.wrap_tzresult @@ Z.to_int32 participation in
   let supermajority = Int64.(div (mul 8L (add ballots.yay ballots.nay)) 10L) in
   return {current_quorum; participation; supermajority; ballots}
 

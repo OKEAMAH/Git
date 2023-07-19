@@ -78,9 +78,9 @@ module type T = sig
 
   val ( < ) : t -> Int32.t -> bool
 
-  val update_ema_up : t -> t
+  val update_ema_up : t -> t tzresult
 
-  val update_ema_down : t -> t
+  val update_ema_down : t -> t tzresult
 end
 
 module Make (EMA_parameters : EMA_PARAMETERS) : T = struct
@@ -127,14 +127,14 @@ module Make (EMA_parameters : EMA_PARAMETERS) : T = struct
      respect to rounding. *)
   let recenter f ema = Z.(add half_ema_max_z (f (sub ema half_ema_max_z)))
 
-  let update_ema_up (ema : t) : t =
+  let update_ema_up (ema : t) : t tzresult =
     let ema = Z.of_int32 ema in
     recenter
       (fun ema -> Z.add (attenuate ema) EMA_parameters.baker_contribution)
       ema
     |> Z.to_int32
 
-  let update_ema_down (ema : t) : t =
+  let update_ema_down (ema : t) : t tzresult =
     let ema = Z.of_int32 ema in
     recenter
       (fun ema -> Z.sub (attenuate ema) EMA_parameters.baker_contribution)

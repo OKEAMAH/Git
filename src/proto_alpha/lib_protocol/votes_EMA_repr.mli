@@ -48,9 +48,9 @@ module type T = sig
 
   val ( < ) : t -> Int32.t -> bool
 
-  val update_ema_up : t -> t
+  val update_ema_up : t -> t tzresult
 
-  val update_ema_down : t -> t
+  val update_ema_down : t -> t tzresult
 end
 
 module Make (_ : EMA_PARAMETERS) : T

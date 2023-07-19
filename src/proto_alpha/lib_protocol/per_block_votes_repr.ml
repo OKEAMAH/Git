@@ -116,12 +116,12 @@ end)
 
 let compute_new_liquidity_baking_ema ~per_block_vote ema =
   match per_block_vote with
-  | Per_block_vote_pass -> ema
+  | Per_block_vote_pass -> ok ema
   | Per_block_vote_off -> Liquidity_baking_toggle_EMA.update_ema_up ema
   | Per_block_vote_on -> Liquidity_baking_toggle_EMA.update_ema_down ema
 
 let compute_new_adaptive_issuance_ema ~per_block_vote ema =
   match per_block_vote with
-  | Per_block_vote_pass -> ema
+  | Per_block_vote_pass -> ok ema
   | Per_block_vote_off -> Adaptive_issuance_launch_EMA.update_ema_down ema
   | Per_block_vote_on -> Adaptive_issuance_launch_EMA.update_ema_up ema

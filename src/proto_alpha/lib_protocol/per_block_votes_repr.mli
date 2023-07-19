@@ -62,7 +62,7 @@ module Adaptive_issuance_launch_EMA : Votes_EMA_repr.T
 val compute_new_liquidity_baking_ema :
   per_block_vote:per_block_vote ->
   Liquidity_baking_toggle_EMA.t ->
-  Liquidity_baking_toggle_EMA.t
+  Liquidity_baking_toggle_EMA.t tzresult
 
 (** [compute_new_adaptive_issuance_ema ~per_block_vote old_ema] returns the value
     [new_ema] of the exponential moving average [old_ema] updated by the vote
@@ -80,4 +80,4 @@ val compute_new_liquidity_baking_ema :
 val compute_new_adaptive_issuance_ema :
   per_block_vote:per_block_vote ->
   Adaptive_issuance_launch_EMA.t ->
-  Adaptive_issuance_launch_EMA.t
+  Adaptive_issuance_launch_EMA.t tzresult

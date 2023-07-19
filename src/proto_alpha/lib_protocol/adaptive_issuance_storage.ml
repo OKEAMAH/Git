@@ -292,7 +292,7 @@ let update_ema ctxt ~vote =
   let* old_ema =
     Per_block_votes_repr.Adaptive_issuance_launch_EMA.of_int32 old_ema
   in
-  let new_ema =
+  let*? new_ema =
     Per_block_votes_repr.compute_new_adaptive_issuance_ema
       ~per_block_vote:vote
       old_ema

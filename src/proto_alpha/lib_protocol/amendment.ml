@@ -80,14 +80,14 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~maximum_vote
   let casted_votes = Int64.add ballots.yay ballots.nay in
   let all_votes = Int64.add casted_votes ballots.pass in
   let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
-  let+ participation =
+  let* participation =
     (* in centile of percentage *)
     Z.(
       div_result
         (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
         (Z.of_int64 maximum_vote))
   in
-  let participation = Z.to_int32 participation in
+  let+ participation = Z.to_int32 participation in
   let approval =
     Compare.Int32.(participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)

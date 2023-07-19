@@ -87,7 +87,7 @@ val to_int : t -> int tzresult
 
 val to_int_exn : t -> int
 
-val to_int32 : t -> int32
+val to_int32 : t -> int32 tzresult
 
 val to_int64 : t -> int64
 

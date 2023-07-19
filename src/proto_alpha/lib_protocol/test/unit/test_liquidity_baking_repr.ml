@@ -38,15 +38,18 @@ let ema_of_int32 ema = Votes_EMA.of_int32 ema >|= Environment.wrap_tzresult
 
 let ema_to_int32 = Votes_EMA.to_int32
 
+let assert_ok = function Ok x -> x | Error _ -> assert false
+
 let compute_new_ema ~per_block_vote ema =
   Per_block_votes_repr.compute_new_liquidity_baking_ema ~per_block_vote ema
-  |> ema_to_int32
+  |> assert_ok |> ema_to_int32
 
 (* Folds compute_new_ema on a list of votes *)
 let compute_new_ema_n per_block_votes initial_ema =
   List.fold_left
     (fun ema per_block_vote ->
-      Per_block_votes_repr.compute_new_liquidity_baking_ema ~per_block_vote ema)
+      Per_block_votes_repr.compute_new_liquidity_baking_ema ~per_block_vote ema
+      |> assert_ok)
     initial_ema
     per_block_votes
   |> ema_to_int32
