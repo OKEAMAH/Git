@@ -138,7 +138,7 @@ module Make (L : LIB) = struct
     (* Anemoi of 20 rounds without the first linear layer *)
     (* let* x1, y1 = init_state_for_rounds x0 y0 in *)
     with_label ~label:"Anemoi.19.5"
-    @@ let* xn, yn, _ = repeat ~n:10 custom_round (x0, y0, 0) in
+    @@ let* xn, yn, _ = repeat ~n:11 custom_round (x0, y0, 0) in
        Num.add_list (to_list [x0; y0; xn; yn])
 
   let digest : ?input_length:int -> scalar list repr -> scalar repr t =
