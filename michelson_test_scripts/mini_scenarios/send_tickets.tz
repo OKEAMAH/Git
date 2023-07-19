@@ -1,0 +1,18 @@
+parameter address ;
+storage unit ;
+code { CAR ;
+       CONTRACT (ticket string) ;
+       IF_NONE
+         { PUSH string "Contract of type `ticket(string)` not found" ;
+           FAILWITH }
+         { PUSH mutez 0 ;
+           PUSH nat 1 ;
+           PUSH string "BLUE" ;
+           TICKET ;
+           ASSERT_SOME ;
+           TRANSFER_TOKENS ;
+           PUSH unit Unit ;
+           NIL operation ;
+           DIG 2 ;
+           CONS ;
+           PAIR } }

@@ -1,0 +1,3 @@
+parameter (ticket string);
+storage (list (ticket string));
+code { CAR; NIL (ticket string); SWAP; CONS; NIL operation ; PAIR }

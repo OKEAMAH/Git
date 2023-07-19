@@ -190,6 +190,48 @@ let test_send_values_in_big_map =
   in
   unit
 
+let test_send_tickets =
+  Protocol.register_regression_test
+    ~__FILE__
+    ~title:"Send tickets"
+    ~tags:["client"; "michelson"]
+  @@ fun protocol ->
+  let* client = Client.init_mockup ~protocol () in
+  let* _receive_contract_alias, receive_contract_hash =
+    Client.originate_contract_at
+      ~amount:(Tez.of_int 200)
+      ~src:"bootstrap1"
+      ~init:"{}"
+      ~burn_cap:Tez.one
+      ~hooks
+      client
+      ["mini_scenarios"; "receive_tickets"]
+      protocol
+  in
+  let* _alias_contract_hash, send_contract_hash =
+    Client.originate_contract_at
+      ~amount:(Tez.of_int 200)
+      ~src:"bootstrap1"
+      ~init:"Unit"
+      ~burn_cap:Tez.one
+      ~hooks
+      client
+      ["mini_scenarios"; "send_tickets"]
+      protocol
+  in
+  let* () =
+    Client.transfer
+      ~burn_cap:(Tez.of_int 30)
+      ~storage_limit:1000000
+      ~amount:Tez.zero
+      ~giver:"bootstrap2"
+      ~receiver:send_contract_hash
+      ~arg:(sf "%S" receive_contract_hash)
+      ~hooks
+      client
+  in
+  unit
+
 let assert_ticket_balance ?hooks ~contract ~ticketer ~ty ~contents ~expected
     client =
   let* actual =
@@ -1003,6 +1045,7 @@ let register ~protocols =
   test_create_and_remove_tickets protocols ;
   test_send_tickets_in_big_map protocols ;
   test_send_values_in_big_map protocols ;
+  test_send_tickets protocols ;
   test_send_tickets_to_implicit_account protocols ;
   test_send_tickets_to_implicit_account_non_zero_amount protocols ;
   test_send_tickets_to_implicit_with_wrong_type protocols ;
