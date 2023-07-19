@@ -190,6 +190,7 @@ struct
   module CamlinternalFormatBasics = CamlinternalFormatBasics
   include Stdlib
   module Pervasives = Stdlib
+  module Profiler = Environment_profiler
 
   module Logging = struct
     type level = Internal_event.level =
@@ -1199,6 +1200,9 @@ struct
       in
       let*? f = wrap_tzresult r in
       return (fun x ->
+          Environment_profiler.aggregate_s
+            (Format.asprintf "load_key(%s)" (Context.Cache.identifier_of_key x))
+          @@ fun () ->
           let*! r = f x in
           Lwt.return (wrap_tzresult r))
 
@@ -1206,6 +1210,7 @@ struct
         before running any operations. *)
     let load_predecessor_cache predecessor_context chain_id mode
         (predecessor_header : Block_header.shell_header) cache =
+      Environment_profiler.record_s "load_predecessor_cache" @@ fun () ->
       let open Lwt_result_syntax in
       let predecessor_hash, timestamp =
         match mode with

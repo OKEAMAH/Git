@@ -31,6 +31,8 @@ module type T = sig
 
   module Lwt : [%sig "v8/lwt.mli"]
 
+  module Profiler : [%sig "v8/profiler.mli"]
+
   module Data_encoding : [%sig "v8/data_encoding.mli"]
 
   module Raw_hashes : [%sig "v8/raw_hashes.mli"]

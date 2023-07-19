@@ -62,6 +62,7 @@ module V10 = Environment_V10
 module Memory_context = Memory_context
 module Proxy_context = Proxy_context
 module Proxy_delegate = Proxy_delegate
+module Environment_profiler = Environment_profiler
 
 module Internal_for_tests = struct
   module Environment_protocol_T_test = Environment_protocol_T_test
