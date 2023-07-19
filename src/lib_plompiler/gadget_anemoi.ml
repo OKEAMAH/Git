@@ -120,6 +120,7 @@ module Make (L : LIB) = struct
     with_label ~label:"Anemoi.custom_round"
     @@ let* res = Anemoi.anemoi_custom ~kx1 ~ky1 ~kx2 ~ky2 (xi, yi) in
        let xj, yj = of_pair res in
+       (*why is i in the monad*)
        ret @@ (xj, yj, i + 4)
 
   let compress_custom : scalar repr -> scalar repr -> scalar repr t =
