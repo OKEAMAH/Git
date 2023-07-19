@@ -115,12 +115,9 @@ module Storage = struct
         let msg =
           Format.asprintf
             "Not a valid CPMM storage: %s /// %a"
-            (try
-               Michelson_v1_printer.micheline_string_of_expression
-                 ~zero_loc:true
-                 canonical
-             with Z.Overflow ->
-               "Cannot represent as micheline due to overflowing Z -> int")
+            (Michelson_v1_printer.micheline_string_of_expression
+               ~zero_loc:true
+               canonical)
             Michelson_v1_printer.print_expr
             canonical
         in
