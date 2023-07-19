@@ -165,6 +165,7 @@ struct
   module CamlinternalFormatBasics = CamlinternalFormatBasics
   include Stdlib
   module Pervasives = Stdlib
+  module Profiler = Environment_profiler
 
   module Logging = struct
     type level = Internal_event.level =
@@ -275,7 +276,19 @@ struct
   module Secp256k1 = Signature.Secp256k1
   module P256 = Signature.P256
   module Bls = Signature.Bls
-  module Signature = Signature.V0
+
+  module Signature = struct
+    include Tezos_crypto.Signature.V0
+
+    let check ?watermark pk s bytes =
+      Profiler.aggregate_f
+        (match (pk : public_key) with
+        | Ed25519 _ -> "check_signature_ed25519"
+        | Secp256k1 _ -> "check_signature_secp256k1"
+        | P256 _ -> "check_signature_p256")
+        (fun () -> check ?watermark pk s bytes)
+  end
+
   module Timelock = Tezos_crypto.Timelock_legacy
   module Vdf = Class_group_vdf.Vdf_self_contained
 
@@ -1137,6 +1150,9 @@ struct
       in
       let*? f = wrap_tzresult r in
       return (fun x ->
+          Environment_profiler.aggregate_s
+            (Format.asprintf "load_key(%s)" (Context.Cache.identifier_of_key x))
+          @@ fun () ->
           let*! r = f x in
           Lwt.return (wrap_tzresult r))
 
@@ -1144,6 +1160,7 @@ struct
         before running any operations. *)
     let load_predecessor_cache predecessor_context chain_id mode
         (predecessor_header : Block_header.shell_header) cache =
+      Environment_profiler.record_s "load_predecessor_cache" @@ fun () ->
       let open Lwt_result_syntax in
       let predecessor_hash, timestamp =
         match mode with
