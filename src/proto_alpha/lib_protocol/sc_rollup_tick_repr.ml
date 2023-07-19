@@ -40,7 +40,7 @@ let distance tick1 tick2 = Z.abs (Z.sub tick1 tick2)
 
 let of_int x = if Compare.Int.(x < 0) then None else Some (Z.of_int x)
 
-let to_int x = if Z.fits_int x then Some (Z.to_int x) else None
+let to_int x = Z.to_int x |> Result.to_option
 
 let of_z x = x
 

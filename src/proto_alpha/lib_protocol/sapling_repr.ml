@@ -74,14 +74,14 @@ module Memo_size = struct
 
   let max_uint16_z = Z.of_int max_uint16
 
-  let err =
-    Error
-      ("a positive 16-bit integer (between 0 and " ^ string_of_int max_uint16
-     ^ ")")
+  let error_message =
+    "a positive 16-bit integer (between 0 and " ^ string_of_int max_uint16 ^ ")"
+
+  let err = Error error_message
 
   let parse_z z =
     if Compare.Z.(Z.zero <= z) && Compare.Z.(z <= max_uint16_z) then
-      Ok (Z.to_int z)
+      Result.map_error (fun _ -> error_message) (Z.to_int z)
     else err
 
   let unparse_to_z = Z.of_int

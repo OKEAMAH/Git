@@ -158,7 +158,7 @@ let q_to_float_string q =
   let q = Q.(sub q (unit /// Z.one)) in
   let q = Q.(mul q (offset // 1)) in
   let dec = Z.div q.num den in
-  let padded_dec_string = Format.asprintf "%03d" (Z.to_int dec) in
+  let padded_dec_string = Format.asprintf "%03d" (Z.to_int_exn dec) in
   Format.asprintf "%a.%s" Z.pp_print unit padded_dec_string
 
 let current_rewards_per_minute ctxt =

@@ -83,7 +83,9 @@ val numbits : t -> int
 
 val testbit : t -> int -> bool
 
-val to_int : t -> int
+val to_int : t -> int tzresult
+
+val to_int_exn : t -> int
 
 val to_int32 : t -> int32
 

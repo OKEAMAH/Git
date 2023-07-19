@@ -210,9 +210,9 @@ let micheline_string_of_expression ~zero_loc expression =
     | Int (loc, i) ->
         let z =
           match Z.to_int i with
-          | 0 -> "Z.zero"
-          | 1 -> "Z.one"
-          | i -> Format.asprintf "Z.of_int %d" i
+          | Ok 0 -> "Z.zero"
+          | Ok 1 -> "Z.one"
+          | _ -> Format.asprintf "Z.of_int %a" Z.pp_print i
         in
         Format.asprintf "Int (%d, %s)" (show_loc loc) z
     | String (loc, s) -> Format.asprintf "String (%d, \"%s\")" (show_loc loc) s

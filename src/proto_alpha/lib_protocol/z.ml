@@ -32,7 +32,7 @@ let make_non_zero_exn x =
 
 let two = of_int 2
 
-type error += Invalid_string of string | Division_by_zero
+type error += Invalid_string of string | Division_by_zero | Overflow
 
 let () =
   let open Data_encoding in
@@ -59,7 +59,17 @@ let () =
     ~description:"Divition by zero"
     unit
     (function Division_by_zero -> Some () | _ -> None)
-    (fun () -> Division_by_zero)
+    (fun () -> Division_by_zero) ;
+  register_error_kind
+    `Permanent
+    ~id:"z.conversion_overflow"
+    ~title:"Z Conversion Overflow"
+    ~pp:(fun ppf () -> Format.fprintf ppf "Conversion overflow")
+    ~description:
+      "A conversion from Z failed because the converted Z is too large."
+    unit
+    (function Overflow -> Some () | _ -> None)
+    (fun () -> Overflow)
 
 let of_string s =
   try ok (of_string s) with Invalid_argument _ -> error @@ Invalid_string s
@@ -76,3 +86,7 @@ let ediv_rem a b =
   let open Result_syntax in
   let+ b = make_non_zero b in
   ediv_rem a b
+
+let to_int_exn = to_int
+
+let to_int x = if fits_int x then ok @@ to_int x else error Overflow
