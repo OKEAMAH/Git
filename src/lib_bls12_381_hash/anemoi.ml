@@ -110,7 +110,10 @@ module Parameters = struct
     let alg_attack = 2 + aux 0 in
     let lft = 8 in
     let rgt = security_margin + alg_attack in
-    max lft rgt
+    let res = max lft rgt in
+    (*We round up if odd, because our custom gate does two
+      round at a time*)
+    if res mod 2 = 0 then res else res + 1
 
   let get_number_of_rounds p = p.nb_rounds
 
