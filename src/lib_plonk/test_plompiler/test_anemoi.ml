@@ -228,6 +228,7 @@ module Anemoi_test (L : LIB) = struct
     in
     let expected () =
       let direct l = Anemoi128.P.direct (Array.of_list l) in
+      (*tf is direct2*)
       let direct2 l =
         let anemoi_instance = Anemoi128.P.init () in
         let anemoi_instance = Anemoi128.P.digest anemoi_instance l in
