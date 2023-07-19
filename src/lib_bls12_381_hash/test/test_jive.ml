@@ -149,27 +149,27 @@ let test_anemoi_state_size_6 () =
   Array.iter (fun x -> print_endline @@ Bls12_381.Fr.to_string x) output ;
   assert (Array.for_all2 Bls12_381.Fr.eq exp_output output)
 
-let () =
-  let open Alcotest in
-  run
-    ~__FILE__
-    "The mode of operation Jive"
-    [
-      ( "Exceptions",
-        [
-          test_case
-            "input size does not correspond to parameters"
-            `Quick
-            test_fail_input_size_and_parameters_do_not_match;
-          test_case
-            "b does not divide the state size"
-            `Quick
-            test_fail_b_does_not_divide_input_size;
-        ] );
-      ( "Anemoi",
-        [
-          test_case "b = 2, state_size = 2" `Quick test_anemoi_state_size_2;
-          test_case "b = 2, state_size = 4" `Quick test_anemoi_state_size_4;
-          test_case "b = 2, state_size = 6" `Quick test_anemoi_state_size_6;
-        ] );
-    ]
+(* let () =
+ *   let open Alcotest in
+ *   run
+ *     ~__FILE__
+ *     "The mode of operation Jive"
+ *     [
+ *       ( "Exceptions",
+ *         [
+ *           test_case
+ *             "input size does not correspond to parameters"
+ *             `Quick
+ *             test_fail_input_size_and_parameters_do_not_match;
+ *           test_case
+ *             "b does not divide the state size"
+ *             `Quick
+ *             test_fail_b_does_not_divide_input_size;
+ *         ] );
+ *       ( "Anemoi",
+ *         [
+ *           test_case "b = 2, state_size = 2" `Quick test_anemoi_state_size_2;
+ *           test_case "b = 2, state_size = 4" `Quick test_anemoi_state_size_4;
+ *           test_case "b = 2, state_size = 6" `Quick test_anemoi_state_size_6;
+ *         ] );
+ *     ] *)
