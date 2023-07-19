@@ -702,6 +702,14 @@ module Liquidity_baking : sig
        and type value = Contract_hash.t
 end
 
+module Adaptive_inflation : sig
+  (** Exponential moving average (ema) of votes set in the block header
+      protocol_data.contents. Once the feature is activated, it can no
+      longer be deactivated without a protocol amendment. **)
+  module Launch_ema :
+    Single_data_storage with type t := Raw_context.t and type value = Int64.t
+end
+
 (** A map of [Script_repr.expr] values, indexed by their hash ([Script_expr_hash.t]).
     Values from this map can be incorporated by any contract via the primitive
     [Michelson_v1_primitives.H_constant]. *)

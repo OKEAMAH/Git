@@ -249,6 +249,7 @@ let prepare_first_block _chain_id ctxt ~typecheck_smart_contract
       Storage.Pending_migration.Operation_results.init ctxt operation_results
       >>=? fun ctxt ->
       Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt >>=? fun ctxt ->
+      Storage.Adaptive_inflation.Launch_ema.init ctxt 0L >>=? fun ctxt ->
       return
         ( ctxt,
           commitments_balance_updates @ bootstrap_balance_updates
