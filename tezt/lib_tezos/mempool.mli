@@ -78,6 +78,21 @@ val check_mempool :
   t ->
   unit
 
+(** Check that each field of [t] contains **at least** the elements
+    listed in the argument of the same name. Ordening does not
+    matter. Omitted arguments default to the empty list. This is
+    useful when we just want to check that one or a few operations are
+    correctly classified while ignoring the rest of the mempool. *)
+val check_mempool_contains :
+  ?validated:string list ->
+  ?branch_delayed:string list ->
+  ?branch_refused:string list ->
+  ?refused:string list ->
+  ?outdated:string list ->
+  ?unprocessed:string list ->
+  t ->
+  unit
+
 (** Mempool filter configuration. *)
 module Config : sig
   (** Representation of the mempool configuration. [None] means that

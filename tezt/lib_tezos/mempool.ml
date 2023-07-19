@@ -32,6 +32,33 @@ type t = {
   unprocessed : string list;
 }
 
+let pp fmt
+    {validated; branch_delayed; branch_refused; refused; outdated; unprocessed}
+    =
+  let open Format in
+  let pp_sep fmt () = pp_print_char fmt ';' in
+  let pp_string_list = pp_print_list ~pp_sep pp_print_string in
+  fprintf
+    fmt
+    "validated: [%a]\n\
+     branch_delayed: [%a]\n\
+     branch_refused: [%a]\n\
+     refused: [%a]\n\
+     outdated: [%a]\n\
+     unprocessed: [%a]"
+    pp_string_list
+    validated
+    pp_string_list
+    branch_delayed
+    pp_string_list
+    branch_refused
+    pp_string_list
+    refused
+    pp_string_list
+    outdated
+    pp_string_list
+    unprocessed
+
 (* A comparable type for mempool where classification and ordering
    does not matter. *)
 let typ : t Check.typ =
@@ -129,6 +156,31 @@ let check_mempool ?(validated = []) ?(branch_delayed = [])
     (expected_mempool = mempool)
       classified_typ
       ~error_msg:"Expected mempool %L, got %R")
+
+let to_lists
+    {validated; branch_delayed; branch_refused; refused; outdated; unprocessed}
+    =
+  [validated; branch_delayed; branch_refused; refused; outdated; unprocessed]
+
+let is_included_in mempool1 mempool2 =
+  List.for_all2
+    (fun ophs1 ophs2 -> List.for_all (fun oph -> List.mem oph ophs2) ophs1)
+    (to_lists mempool1)
+    (to_lists mempool2)
+
+let check_mempool_contains ?(validated = []) ?(branch_delayed = [])
+    ?(branch_refused = []) ?(refused = []) ?(outdated = []) ?(unprocessed = [])
+    mempool =
+  let expected_mempool =
+    {validated; branch_delayed; branch_refused; refused; outdated; unprocessed}
+  in
+  if not (is_included_in expected_mempool mempool) then
+    Test.fail
+      "Mempool was expected to contain at least:\n%a\nActual mempool:\n%a"
+      pp
+      expected_mempool
+      pp
+      mempool
 
 module Config = struct
   type t = {
