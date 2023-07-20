@@ -1095,7 +1095,7 @@ module Player_client = struct
       {
         player;
         final_tick = tick;
-        states = our_states;
+        states = WithExceptions.Option.get ~loc:__LOC__ @@ our_states;
         inbox;
         payloads_per_levels;
         metadata;

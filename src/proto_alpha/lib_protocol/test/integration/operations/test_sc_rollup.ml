@@ -228,9 +228,9 @@ let test_disable_arith_pvm_feature_flag () =
   return_unit
 
 (** Initializes the context and originates a SCORU. *)
-let sc_originate ?boot_sector ?parameters_ty block contract =
+let sc_originate ?(kind = Sc_rollup.Kind.Example_arith) ?boot_sector
+    ?parameters_ty block contract =
   let open Lwt_result_syntax in
-  let kind = Sc_rollup.Kind.Example_arith in
   let* operation, rollup =
     Sc_rollup_helpers.origination_op
       ?boot_sector
@@ -245,7 +245,7 @@ let sc_originate ?boot_sector ?parameters_ty block contract =
   return (block, rollup)
 
 (** Initializes the context and originates a SCORU. *)
-let init_and_originate ?boot_sector ?parameters_ty
+let init_and_originate ?kind ?boot_sector ?parameters_ty
     ?sc_rollup_challenge_window_in_blocks tup =
   let open Lwt_result_syntax in
   let* block, contracts =
@@ -253,7 +253,7 @@ let init_and_originate ?boot_sector ?parameters_ty
   in
   let contract = Context.tup_hd tup contracts in
   let* block, rollup =
-    sc_originate ?boot_sector ?parameters_ty block contract
+    sc_originate ?kind ?boot_sector ?parameters_ty block contract
   in
   return (block, contracts, rollup)
 
@@ -3480,6 +3480,140 @@ let test_start_game_on_cemented_commitment () =
       return_unit)
     hashes
 
+let kernel_path name =
+  project_root // Filename.dirname __FILE__ // "../wasm_kernel"
+  // (name ^ ".wasm")
+
+let echo_kernel_path = kernel_path "echo"
+
+let test_wasm_pvm_run_with_kernel () =
+  let open Lwt_result_wrap_syntax in
+  let open Sc_rollup_helpers in
+  let boot_sector = echo_kernel_path in
+  let* block, account, rollup =
+    init_and_originate
+      ~kind:Sc_rollup.Kind.Wasm_2_0_0
+      ~boot_sector
+      ~sc_rollup_challenge_window_in_blocks:1000
+      Context.T1
+  in
+  let* {commitment_hash; _} = Context.Sc_rollup.genesis_info (B block) rollup in
+  let* {
+         compressed_state = genesis_state_hash;
+         inbox_level = genesis_inbox_level;
+         _;
+       } =
+    Context.Sc_rollup.commitment (B block) rollup commitment_hash
+  in
+  let*! initial_state = Wasm_pvm_eval.boot_sector_state ~boot_sector in
+  let*! initial_state_hash = Wasm_pvm_eval.state_hash initial_state in
+  let* () =
+    Assert.equal
+      ~loc:__LOC__
+      Sc_rollup.State_hash.equal
+      "smart rollup state hash"
+      Sc_rollup.State_hash.pp
+      genesis_state_hash
+      initial_state_hash
+  in
+  let* ticket_receiver, _, block =
+    Contract_helpers.originate_contract_from_string_hash
+      ~script:ticket_receiver
+      ~storage:"{}"
+      ~source_contract:account
+      ~baker:(Account.pkh_of_contract_exn account)
+      block
+  in
+  let transactions =
+    Sc_rollup.Outbox.Message.Atomic_transaction_batch
+      {
+        transactions =
+          [
+            {
+              destination = ticket_receiver;
+              entrypoint = Entrypoint.default;
+              unparsed_parameters =
+                Expr.from_string
+                  {|Pair 42 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1)|};
+            };
+          ];
+      }
+  in
+  let transactions_encoded =
+    WithExceptions.Result.get_ok ~loc:__LOC__
+    @@ Data_encoding.(
+         Binary.to_string Sc_rollup.Outbox.Message.encoding transactions)
+  in
+  let* state, _ticks, _block =
+    add_messages_bake_and_eval_n
+      (module Wasm_pvm_eval)
+      ~messages:[[transactions_encoded]]
+      account
+      (initial_state, block)
+      1
+  in
+  let output : Sc_rollup.output =
+    {
+      outbox_level = Raw_level.succ genesis_inbox_level;
+      message_index = Z.zero;
+      message = transactions;
+    }
+  in
+  let ctxt = Wasm_pvm_eval.make_empty_context () in
+  let*! proof = Wasm_pvm_eval.produce_output_proof ctxt state output in
+  let proof = WithExceptions.Result.get_ok ~loc:__LOC__ @@ proof in
+  let _proof_encoded =
+    Data_encoding.Binary.to_string_exn Wasm_pvm_eval.output_proof_encoding proof
+  in
+
+  (*   let* block = Block.bake_n 59 block in *)
+  (*   let*! compressed_state = Wasm_pvm_eval.state_hash state in *)
+  (*   let* constants = Context.get_constants (B block) in *)
+  (*   let inbox_level = *)
+  (*     let commitment_freq = *)
+  (*       constants.parametric.sc_rollup.commitment_period_in_blocks *)
+  (*     in *)
+  (*     Raw_level.Internal_for_tests.add genesis_inbox_level commitment_freq *)
+  (*   in *)
+  (*   let commitment = *)
+  (*     Sc_rollup.Commitment. *)
+  (*       { *)
+  (*         predecessor = commitment_hash; *)
+  (*         inbox_level; *)
+  (*         number_of_ticks = *)
+  (*           (WithExceptions.Option.get ~loc:__LOC__ *)
+  (*           @@ Sc_rollup.Number_of_ticks.of_value @@ Z.to_int64 *)
+  (*           @@ Sc_rollup.Tick.(to_z ticks)); *)
+  (*         compressed_state; *)
+  (*       } *)
+  (*   in *)
+  (*   let* incr = Incremental.begin_construction block in *)
+  (*   let* commit_hash, incr = *)
+  (*     publish_and_cement_commitment *)
+  (*       incr *)
+  (*       ~baker:(Account.pkh_of_contract_exn account) *)
+  (*       ~originator:account *)
+  (*       rollup *)
+  (*       commitment *)
+  (*   in *)
+  (*   let* block = Incremental.finalize_block incr in *)
+  (*   let ctxt = Wasm_pvm_eval.make_empty_context () in *)
+  (*   let*! proof = Wasm_pvm_eval.produce_output_proof ctxt state output in *)
+  (*   let proof = WithExceptions.Result.get_ok ~loc:__LOC__ @@ proof in *)
+  (*   let proof_encoded = *)
+  (*     Data_encoding.Binary.to_string_exn Wasm_pvm_eval.output_proof_encoding proof *)
+  (*   in *)
+  (*   let* execute_outbox_msg = *)
+  (*     Op.sc_rollup_execute_outbox_message *)
+  (*       (B block) *)
+  (*       account *)
+  (*       rollup *)
+  (*       commit_hash *)
+  (*       ~output_proof:proof_encoded *)
+  (*   in *)
+  (*   let* _block = Block.bake ~operation:execute_outbox_msg block in *)
+  return_unit
+
 let tests =
   [
     Tztest.tztest
@@ -3621,6 +3755,10 @@ let tests =
       "cannot start a game on a cemented commitment"
       `Quick
       test_start_game_on_cemented_commitment;
+    Tztest.tztest
+      "start pvm_rollup with echo kernel"
+      `Quick
+      test_wasm_pvm_run_with_kernel;
   ]
 
 let () =

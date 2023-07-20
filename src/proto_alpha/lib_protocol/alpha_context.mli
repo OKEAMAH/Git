@@ -3141,6 +3141,8 @@ module Sc_rollup : sig
             transactions : typed_transaction list;
           }
 
+      val encoding : t Data_encoding.t
+
       val pp : Format.formatter -> t -> unit
 
       type serialized

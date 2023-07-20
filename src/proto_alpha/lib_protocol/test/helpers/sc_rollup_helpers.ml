@@ -758,18 +758,17 @@ module Protocol_inbox_with_ctxt = struct
           let predecessor_timestamp = block.header.shell.timestamp in
 
           let* block =
-            match messages with
-            | [] ->
-                let* block = Block.bake block in
-                return block
-            | messages ->
-                let* operation_add_message =
-                  Op.sc_rollup_add_messages (B block) contract messages
-                in
-                let* block =
-                  Block.bake ~operation:operation_add_message block
-                in
-                return block
+            let* operation =
+              match messages with
+              | [] -> return_none
+              | messages ->
+                  let* op =
+                    Op.sc_rollup_add_messages (B block) contract messages
+                  in
+                  return_some op
+            in
+            let* block = Block.bake ?operation block in
+            return block
           in
 
           return
@@ -790,23 +789,34 @@ let tick_of_int_exn ?(__LOC__ = __LOC__) n =
 module type PVM_eval = sig
   include Sc_rollup.PVM.S
 
+  val boot_sector_state : boot_sector:string -> state Lwt.t
+
   val make_empty_context : unit -> context
 
   val initial_hash : hash Lwt.t
 
-  val eval_until_input :
-    fuel:int option ->
-    our_states:(int * hash) trace ->
-    int ->
+  val eval_inputs :
+    ?fuel:int ->
+    ?our_states:(Sc_rollup.Tick.t * hash) list ->
+    ?metadata:Sc_rollup.Metadata.t ->
+    ?get_reveal:(Sc_rollup_reveal_hash.t -> Sc_rollup.reveal_data) ->
+    ?inbox_messages:Sc_rollup.inbox_message list ->
+    tick:Sc_rollup.Tick.t ->
     state ->
-    (state * int option * int * (int * hash) trace) Lwt.t
+    (state
+    * int option
+    * Sc_rollup.Tick.t
+    * (Sc_rollup.Tick.t * hash) list option)
+    Lwt.t
 
   val eval_inputs_from_initial_state :
-    metadata:Sc_rollup.Metadata.t ->
     ?fuel:int ->
-    ?bootsector:string ->
-    Sc_rollup.input trace trace ->
-    (state * Sc_rollup.Tick.t * (Sc_rollup.Tick.t * hash) trace, 'a) result
+    ?our_states:(Sc_rollup.Tick.t * hash) list ->
+    ?metadata:Sc_rollup.Metadata.t ->
+    ?get_reveal:(Sc_rollup_reveal_hash.t -> Sc_rollup.reveal_data) ->
+    ?boot_sector:string ->
+    Sc_rollup.input list list ->
+    (state * Sc_rollup.Tick.t * (Sc_rollup.Tick.t * hash) list option) tzresult
     Lwt.t
 end
 
@@ -820,11 +830,11 @@ end) : PVM_eval with type context = PVM.context and type state = PVM.state =
 struct
   include PVM
 
-  let bootsector_state ~bootsector =
+  let boot_sector_state ~boot_sector =
     let open Lwt_syntax in
     let empty = make_empty_state () in
     let* state = initial_state ~empty in
-    let* state = install_boot_sector state bootsector in
+    let* state = install_boot_sector state boot_sector in
     return state
 
   let initial_hash =
@@ -835,19 +845,25 @@ struct
 
   let consume_fuel = Option.map pred
 
-  let continue_with_fuel ~our_states ~(tick : int) fuel state f =
+  let next_tick = Sc_rollup.Tick.next
+
+  let add_state state tick our_states =
+    let open Lwt_syntax in
+    Option.map_s
+      (fun our_states ->
+        let* hash = state_hash state in
+        return ((tick, hash) :: our_states))
+      our_states
+
+  let continue_with_fuel ~our_states ~tick fuel state f =
     let open Lwt_syntax in
     match fuel with
     | Some 0 -> return (state, fuel, tick, our_states)
     | _ -> f tick our_states (consume_fuel fuel) state
 
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/3498
-
-     the following is almost the same code as in the rollup node, except that it
-     creates the association list (tick, state_hash). *)
-  let eval_until_input ~fuel ~our_states start_tick state =
+  let eval_until_input ?fuel ?our_states start_tick state =
     let open Lwt_syntax in
-    let rec go ~our_states fuel (tick : int) state =
+    let rec go our_states fuel tick state =
       let* input_request =
         is_input_state ~is_reveal_enabled:is_reveal_enabled_default state
       in
@@ -857,103 +873,117 @@ struct
           match input_request with
           | No_input_required ->
               let* state = eval state in
-              let* state_hash = state_hash state in
-              let our_states = (tick, state_hash) :: our_states in
-              go ~our_states (consume_fuel fuel) (tick + 1) state
-          | Needs_reveal (Request_dal_page _pid) ->
-              (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/4160
-                 We assume that there are no confirmed Dal slots.
-                 We'll reuse the infra to provide Dal pages in the future. *)
-              let input = Sc_rollup.(Reveal (Dal_page None)) in
-              let* state = set_input input state in
-              let* state_hash = state_hash state in
-              let our_states = (tick, state_hash) :: our_states in
-              go ~our_states (consume_fuel fuel) (tick + 1) state
-          | Needs_reveal (Reveal_raw_data _)
-          | Needs_reveal Reveal_metadata
-          | Initial | First_after _ ->
+              let* our_states = add_state state tick our_states in
+              go our_states (consume_fuel fuel) (next_tick tick) state
+          | Needs_reveal _ | Initial | First_after _ ->
               return (state, fuel, tick, our_states))
     in
-    go ~our_states fuel start_tick state
+    go our_states fuel start_tick state
 
-  let eval_metadata ~fuel ~our_states tick state ~metadata =
+  let feed_input ?get_reveal ?metadata ?inbox_message state =
     let open Lwt_syntax in
-    continue_with_fuel ~our_states ~tick fuel state
-    @@ fun tick our_states fuel state ->
-    let input = Sc_rollup.(Reveal (Metadata metadata)) in
-    let* state = set_input input state in
-    let* state_hash = state_hash state in
-    let our_states = (tick, state_hash) :: our_states in
-    let tick = succ tick in
-    return (state, fuel, tick, our_states)
+    let* input_request =
+      is_input_state ~is_reveal_enabled:is_reveal_enabled_default state
+    in
+    match input_request with
+    | No_input_required -> assert false
+    | Needs_reveal (Request_dal_page _pid) ->
+        (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/4160
+           We assume that there are no confirmed Dal slots.
+           We'll reuse the infra to provide Dal pages in the future. *)
+        let input = Sc_rollup.(Reveal (Dal_page None)) in
+        let* state = set_input input state in
+        return state
+    | Needs_reveal (Reveal_raw_data hash) -> (
+        match get_reveal with
+        | Some get_reveal ->
+            let preimage = get_reveal hash in
+            let* state = set_input (Reveal preimage) state in
+            return state
+        | None -> assert false)
+    | Needs_reveal Reveal_metadata -> (
+        match metadata with
+        | Some metadata ->
+            let input = Sc_rollup.(Reveal (Metadata metadata)) in
+            set_input input state
+        | None -> assert false)
+    | Initial -> (
+        match inbox_message with
+        | Some input -> set_input (Inbox_message input) state
+        | None -> assert false)
+    | First_after (level, index) -> (
+        match inbox_message with
+        | Some ({inbox_level; message_counter; _} as inbox_message) ->
+            let is_valid =
+              (Raw_level.(inbox_level = level)
+              && Z.(message_counter = succ index))
+              || Raw_level.(inbox_level = succ level)
+                 && Z.(message_counter = zero)
+            in
+            if is_valid then set_input (Inbox_message inbox_message) state
+            else assert false
+        | None -> assert false)
 
-  let feed_input ~fuel ~our_states ~tick state input =
+  let eval_inputs ?fuel ?our_states ?metadata ?get_reveal ?inbox_messages ~tick
+      state =
     let open Lwt_syntax in
-    let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
+    let rec go ?our_states ?fuel ~tick ?inbox_messages state =
+      let* state, fuel, tick, our_states =
+        eval_until_input ?our_states ?fuel tick state
+      in
+      match inbox_messages with
+      | None -> return (state, fuel, tick, our_states)
+      | Some inbox_messages ->
+          continue_with_fuel ~our_states ~tick fuel state
+          @@ fun tick our_states fuel state ->
+          let* state =
+            feed_input
+              ?metadata
+              ?get_reveal
+              ?inbox_message:(List.hd inbox_messages)
+              state
+          in
+          let* our_states = add_state state tick our_states in
+          go
+            ?our_states
+            ?fuel
+            ~tick
+            ?inbox_messages:(List.tl inbox_messages)
+            state
     in
-    continue_with_fuel ~our_states ~tick fuel state
-    @@ fun tick our_states fuel state ->
-    let* state = set_input input state in
-    let* state_hash = state_hash state in
-    let our_states = (tick, state_hash) :: our_states in
-    let tick = tick + 1 in
-    let* state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
-    in
-    return (state, fuel, tick, our_states)
+    go ?our_states ?fuel ~tick ?inbox_messages state
 
-  let eval_inbox ?fuel ~inputs ~tick state =
+  let eval_inputs_from_initial_state ?fuel ?our_states ?metadata ?get_reveal
+      ?(boot_sector = "") inputs_per_levels =
     let open Lwt_result_syntax in
-    List.fold_left_es
-      (fun (state, fuel, tick, our_states) input ->
-        let*! state, fuel, tick, our_states =
-          feed_input ~fuel ~our_states ~tick state input
-        in
-        return (state, fuel, tick, our_states))
-      (state, fuel, tick, [])
-      inputs
-
-  let eval_inputs ~fuel ~tick ?(our_states = []) ~inputs_per_levels state =
-    let open Lwt_result_syntax in
-    List.fold_left_es
-      (fun (state, fuel, tick, our_states) inputs ->
-        let* state, fuel, tick, our_states' =
-          eval_inbox ?fuel ~inputs ~tick state
-        in
-        return (state, fuel, tick, our_states @ our_states'))
-      (state, fuel, tick, our_states)
-      inputs_per_levels
-
-  let eval_inputs_from_initial_state ~metadata ?fuel ?(bootsector = "")
-      inputs_per_levels =
-    let open Lwt_result_syntax in
-    let*! state = bootsector_state ~bootsector in
-    let*! state_hash = state_hash state in
-    let tick = 0 in
-    let our_states = [(tick, state_hash)] in
-    let tick = succ tick in
-    (* 1. We evaluate the boot sector. *)
-    let*! state, fuel, tick, our_states =
-      eval_until_input ~fuel ~our_states tick state
+    let*! state = boot_sector_state ~boot_sector in
+    let tick =
+      WithExceptions.Option.get ~loc:__LOC__ @@ Sc_rollup.Tick.of_int 0
     in
-    (* 2. We evaluate the metadata. *)
-    let*! state, fuel, tick, our_states =
-      eval_metadata ~fuel ~our_states tick state ~metadata
+    let*! our_states = add_state state tick our_states in
+    let tick = next_tick tick in
+    let go (state, fuel, tick, our_states) inputs =
+      let inbox_messages =
+        List.map
+          (function Sc_rollup.Inbox_message msg -> msg | _ -> assert false)
+          inputs
+      in
+      let*! state, fuel, tick, our_states =
+        eval_inputs
+          ?fuel
+          ?our_states
+          ~tick
+          ?metadata
+          ?get_reveal
+          ~inbox_messages
+          state
+      in
+      return (state, fuel, tick, our_states)
     in
-    (* 3. We evaluate the inbox. *)
     let* state, _fuel, tick, our_states =
-      eval_inputs state ~fuel ~tick ~our_states ~inputs_per_levels
+      List.fold_left_es go (state, fuel, tick, our_states) inputs_per_levels
     in
-    let our_states =
-      List.sort (fun (x, _) (y, _) -> Compare.Int.compare x y) our_states
-    in
-    let our_states =
-      List.map
-        (fun (tick_int, state) -> (tick_of_int_exn tick_int, state))
-        our_states
-    in
-    let tick = tick_of_int_exn tick in
+    let our_states = Option.map List.rev our_states in
     return (state, tick, our_states)
 end
 
@@ -1003,3 +1033,92 @@ let make_pvm_with_context_and_state (type context state)
         Default_parameters.constants_test.dal.attestation_lag
     end
   end)
+
+let get_inbox_from_block ~predecessor_timestamp
+    Block.{operations; header = {shell = {level; predecessor; _}; _}; _} =
+  let messages =
+    List.fold_left
+      (fun acc -> function
+        | {
+            protocol_data =
+              Operation_data
+                {
+                  contents =
+                    Single
+                      (Manager_operation
+                        {operation = Sc_rollup_add_messages {messages}; _});
+                  _;
+                };
+            _;
+          } ->
+            messages @ acc
+        | _ -> acc)
+      []
+      operations
+  in
+  let messages =
+    wrap_messages
+      ~pred_info:(predecessor_timestamp, predecessor)
+      (Raw_level.of_int32_exn level)
+      messages
+  in
+  messages
+
+let bake_with_add_messages ?messages account block =
+  let open Lwt_result_syntax in
+  (*   Format.printf *)
+  (*     "submitted messages: %a\n" *)
+  (*     Format.(pp_print_option (pp_print_list pp_print_string)) *)
+  (*     messages ; *)
+  let* operation =
+    match messages with
+    | None -> return_none
+    | Some messages ->
+        let* op = Op.sc_rollup_add_messages (B block) account messages in
+        return_some op
+  in
+  Block.bake ?operation block
+
+let add_messages_bake_and_eval (type state)
+    (module Pvm_eval : PVM_eval with type state = state) ?metadata ?get_reveal
+    ~messages account ((state, block) : state * Block.t) =
+  let open Lwt_result_syntax in
+  let predecessor_timestamp = block.Block.header.shell.timestamp in
+  let* block =
+    bake_with_add_messages ?messages:(List.hd messages) account block
+  in
+  let {inputs; _} = get_inbox_from_block ~predecessor_timestamp block in
+  let inbox_messages =
+    List.map
+      (function Sc_rollup.Inbox_message msg -> msg | _ -> assert false)
+      inputs
+  in
+  let*! state, _, tick, _ =
+    Pvm_eval.eval_inputs
+      ~fuel:10000
+      ~tick:(Sc_rollup.Tick.of_z Z.zero)
+      ?metadata
+      ?get_reveal
+      ~inbox_messages
+      state
+  in
+  return (state, tick, block)
+
+let add_messages_bake_and_eval_n pvm_eval account (state, block) ?metadata
+    ?get_reveal ?messages n =
+  let open Lwt_result_wrap_syntax in
+  let rec go ?(messages = []) pvm_eval (state, tick, block) n =
+    if n < 0 then return (state, tick, block)
+    else
+      let* state, tick, block =
+        add_messages_bake_and_eval
+          ?metadata
+          ?get_reveal
+          pvm_eval
+          ~messages
+          account
+          (state, block)
+      in
+      go ?messages:(List.tl messages) pvm_eval (state, tick, block) (n - 1)
+  in
+  go ?messages pvm_eval (state, Sc_rollup.Tick.of_z Z.zero, block) n
