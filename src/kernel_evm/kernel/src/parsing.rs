@@ -9,8 +9,9 @@ use crate::inbox::{Deposit, KernelUpgrade, Transaction, TransactionContent};
 use primitive_types::{H160, U256};
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_ethereum::{
-    signatures::EthereumTransactionCommon, transaction::TransactionHash,
-    wei::eth_from_mutez,
+    signatures::EthereumTransactionCommon,
+    transaction::TransactionHash,
+    wei::{eth_from_mutez, from_eth},
 };
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
 use tezos_smart_rollup_debug::{debug_msg, Runtime};
@@ -227,8 +228,7 @@ impl InputResult {
         // bytes. Afterward it's transform to `u64` to use `eth_from_mutez`, it's
         // obviously safe as we deposit CTEZ and the amount is limited by
         // the XTZ quantity.
-        let amount: u64 = U256::from_little_endian(&amount_bytes).as_u64();
-        let amount: U256 = eth_from_mutez(amount);
+        let amount: U256 = U256::from_little_endian(&amount_bytes);
 
         // Amount for gas
         let gas_price: MichelsonInt = transfer.payload.1 .0;
