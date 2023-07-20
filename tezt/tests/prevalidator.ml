@@ -2533,7 +2533,7 @@ let forge_pre_filtered_operation =
          ()
   in
   let counter = JSON.as_int base_counter_json in
-  let* branch = Operation.Manager.get_branch client_1 in
+  let* branch = Operation.get_branch client_1 in
 
   (* Step 3 *)
   (* Forge operation, inject it and check injection *)
@@ -2649,7 +2649,7 @@ let refetch_failed_operation =
          ()
   in
   let counter = JSON.as_int counter_json in
-  let* branch = Operation.Manager.get_branch client_1 in
+  let* branch = Operation.get_branch client_1 in
 
   (* Step 3 *)
   (* Forge operation and inject it in node_1, checks that the fetch fail in node_2 *)
@@ -3185,7 +3185,7 @@ let test_pending_operation_version =
   Log.info "Activated protocol." ;
   (* Step 2 *)
   (* Inject refused operation *)
-  let* branch = Operation.Manager.get_branch client_1 in
+  let* branch = Operation.get_branch client_1 in
 
   let* _ =
     forge_and_inject_operation
@@ -3310,7 +3310,7 @@ let force_operation_injection =
          ()
   in
   let counter = JSON.as_int json in
-  let* branch = Operation.Manager.get_branch client2 in
+  let* branch = Operation.get_branch client2 in
 
   Log.info "%s" step4_msg ;
   let* (`Hex op_str_hex as op_hex) =
@@ -3396,7 +3396,7 @@ let injecting_old_operation_fails =
          ()
   in
   let counter = JSON.as_int json in
-  let* branch = Operation.Manager.get_branch client in
+  let* branch = Operation.get_branch client in
   log_step 3 step3 ;
   (* To avoid off-by-one mistakes *)
   let blocks_to_bake = 2 in

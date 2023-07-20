@@ -211,6 +211,12 @@ val make_run_operation_input : ?chain_id:string -> t -> Client.t -> JSON.u Lwt.t
 val make_preapply_operation_input :
   protocol:Protocol.t -> signature:Tezos_crypto.Signature.t -> t -> JSON.u
 
+(** A wrapper for {!RPC.get_chain_block_hash} with an offset for the block.
+
+    [offset] defaults to [2], to pick the newest finalized branch with
+    Tenderbake. *)
+val get_branch : ?offset:int -> Client.t -> string Lwt.t
+
 module Consensus : sig
   (** A representation of a consensus operation. *)
   type t
@@ -563,13 +569,6 @@ module Manager : sig
     t list ->
     Client.t ->
     [`OpHash of string] Lwt.t
-
-  (** A wrapper for {!RPC.get_chain_block_hash} with an offset for the block.
-
-      [offset] defaults to [2], to pick the latested finalized branch with
-      Tenderbake.
-  *)
-  val get_branch : ?chain:string -> ?offset:int -> Client.t -> string Lwt.t
 end
 
 (** Regular expressions for specific error messages.

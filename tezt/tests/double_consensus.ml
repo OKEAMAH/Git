@@ -248,7 +248,7 @@ let double_consensus_wrong_branch
   let* (client, accuser), (_branch, level, round, slots, block_payload_hash) =
     double_attestation_init consensus_for consensus_name protocol ()
   in
-  let* branch = Operation.Manager.get_branch ~offset:4 client in
+  let* branch = Operation.get_branch ~offset:4 client in
   Log.info "Inject an invalid %s and wait for denounciation" consensus_name ;
   let op =
     mk_consensus ~slot:(List.nth slots 0) ~level ~round ~block_payload_hash
@@ -266,7 +266,7 @@ let double_consensus_wrong_branch
   Log.info
     "Inject another invalid %s and wait for already_denounced event"
     consensus_name ;
-  let* branch = Operation.Manager.get_branch ~offset:5 client in
+  let* branch = Operation.get_branch ~offset:5 client in
   let op =
     mk_consensus ~slot:(List.nth slots 2) ~level ~round ~block_payload_hash
   in
