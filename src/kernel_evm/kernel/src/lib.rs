@@ -64,7 +64,7 @@ pub fn current_timestamp<Host: Runtime>(host: &mut Host) -> Timestamp {
 pub fn stage_one<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-    chain_id: U256,
+    chain_id: u64,
     ticketer: Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
     match &ticketer {
@@ -156,7 +156,9 @@ fn retrieve_chain_id<Host: Runtime>(host: &mut Host) -> Result<U256, Error> {
 pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
     let smart_rollup_address = retrieve_smart_rollup_address(host)
         .context("Failed to retrieve smart rollup address")?;
-    let chain_id = retrieve_chain_id(host).context("Failed to retrieve chain id")?;
+    let chain_id = retrieve_chain_id(host)
+        .context("Failed to retrieve chain id")?
+        .as_u64();
     let ticketer = read_ticketer(host);
 
     let queue = stage_one(host, smart_rollup_address, chain_id, ticketer)

@@ -11,10 +11,10 @@
 
 use std::array::TryFromSliceError;
 
+use ethereum::TransactionSignature;
 use hex::FromHexError;
 use libsecp256k1::{
-    curve::Scalar, recover, sign, verify, Message, PublicKey, RecoveryId, SecretKey,
-    Signature,
+    curve::Scalar, recover, sign, Message, PublicKey, RecoveryId, SecretKey, Signature,
 };
 use primitive_types::{H160, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
@@ -29,10 +29,10 @@ use crate::rlp_helpers::{
 #[derive(Error, Debug, PartialEq)]
 pub enum ParityError {
     #[error("Couldn't reconstruct V from chain_id: {0}")]
-    ChainId(U256),
+    ChainId(u64),
 
     #[error("Couldn't reconstruct parity from V: {0}")]
-    V(U256),
+    V(u64),
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -51,6 +51,12 @@ pub enum SigError {
 
     #[error("Error recomputing parity of signature: {0}")]
     Parity(ParityError),
+
+    #[error("Error constructing recovery tag")]
+    ConstructingRecoveryError,
+
+    #[error("Unsigned transaction doesn't have a signature")]
+    UnsignedTransactionError,
 }
 
 impl From<libsecp256k1::Error> for SigError {
@@ -78,25 +84,17 @@ pub fn string_to_sk_and_address(s: String) -> Result<(SecretKey, H160), SigError
     Ok((sk, value.into()))
 }
 
-/// the type of a transaction
-#[derive(Debug, PartialEq, Eq, Clone)]
-
-pub enum EthereumTransactionType {
-    /// transfer
-    EthereumTransfer,
-    ///create
-    EthereumCreate,
-    /// call
-    EthereumCall,
-}
-
-/// Data common to all Ethereum transaction types
+/// Data common for all kind of Ethereum transactions
+/// (transfers, contract creation and contract invocation).
+/// All transaction versions (Legacy, EIP-2930 and EIP-1559)
+/// are parsed to this common type.
+/// This type is common for both signed and unsigned transactions as well.
 #[derive(Debug, PartialEq, Eq, Clone)]
 
 pub struct EthereumTransactionCommon {
     /// the id of the chain
     /// see `<https://chainlist.org/>` for values
-    pub chain_id: U256,
+    pub chain_id: u64,
     /// A scalar value equal to the number of transactions sent by the sender
     pub nonce: U256,
     /// A scalar value equal to the number of
@@ -120,48 +118,43 @@ pub struct EthereumTransactionCommon {
     pub value: U256,
     /// the transaction data. In principle this can be large
     pub data: Vec<u8>,
-    /// Signature x-axis part of point on elliptic curve. See yellow paper, appendix F
-    pub r: H256,
-    /// Signature, See yellow paper appendix F
-    pub s: H256,
-    /// the parity (recovery id) of the signature See yellow paper appendix F
-    /// used to recompute chain_id is applicable
+    // If transaction is unsigned then this field is None
     /// See encoding details in <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md>
-    pub v: U256,
+    pub signature: Option<TransactionSignature>,
 }
 
 impl EthereumTransactionCommon {
     /// Extracts the Keccak encoding of a message from an EthereumTransactionCommon
-    pub fn message(&self) -> Message {
+    fn message(&self) -> Message {
         let to_sign = EthereumTransactionCommon {
-            v: self.chain_id,
-            r: H256::zero(),
-            s: H256::zero(),
+            signature: None,
             ..self.clone()
         };
-        let bytes = to_sign.rlp_bytes();
+
+        let bytes = to_sign.to_rlp_bytes();
         let hash: [u8; 32] = Keccak256::digest(bytes).into();
         Message::parse(&hash)
     }
 
-    /// recompute parity from v and chain_id
-    fn compute_parity(&self) -> Option<U256> {
-        let chain_id_encoding = self
-            .chain_id
-            .checked_mul(U256::from(2))?
-            .checked_add(U256::from(35))?;
-        self.v.checked_sub(chain_id_encoding)
+    fn compute_parity(chain_id: u64, signature: &TransactionSignature) -> Option<u64> {
+        let chain_id_encoding = chain_id.checked_mul(2)?.checked_add(35)?;
+        signature.v().checked_sub(chain_id_encoding)
     }
 
     /// Extracts the signature from an EthereumTransactionCommon
-    pub fn signature(&self) -> Result<(Signature, RecoveryId), SigError> {
+    fn validated_signature(&self) -> Result<(Signature, RecoveryId), SigError> {
+        let signature = self
+            .signature
+            .clone()
+            .ok_or(SigError::UnsignedTransactionError)?;
+
         // copy r to Scalar
-        let r: H256 = self.r;
+        let r: H256 = signature.r().to_owned();
         let r1: [u8; 32] = r.into();
         let mut r = Scalar([0; 8]);
         let _ = r.set_b32(&r1);
         // copy s to Scalar
-        let s: H256 = self.s;
+        let s: H256 = signature.s().to_owned();
         let s1: [u8; 32] = s.into();
         let mut s = Scalar([0; 8]);
         let _ = s.set_b32(&s1);
@@ -171,10 +164,12 @@ impl EthereumTransactionCommon {
             Err(SigError::ECDSAError(libsecp256k1::Error::InvalidSignature))
         } else {
             // recompute parity from v and chain_id
-            let ri_val = self
-                .compute_parity()
-                .ok_or(SigError::Parity(ParityError::V(self.v)))?;
-            let ri = RecoveryId::parse(ri_val.byte(0))?;
+            let parity = Self::compute_parity(self.chain_id, &signature);
+            let parity = match parity {
+                Some(p) if p == 0 || p == 1 => Ok(p),
+                _ => Err(SigError::Parity(ParityError::V(signature.v()))),
+            }?;
+            let ri = RecoveryId::parse(parity as u8)?;
             Ok((Signature { r, s }, ri))
         }
     }
@@ -185,7 +180,7 @@ impl EthereumTransactionCommon {
     // TODO <https://gitlab.com/tezos/tezos/-/milestones/115>
     pub fn caller(&self) -> Result<H160, SigError> {
         let mes = self.message();
-        let (sig, ri) = self.signature()?;
+        let (sig, ri) = self.validated_signature()?;
         let pk = recover(&mes, &sig, &ri)?;
         let serialised = &pk.serialize()[1..];
         let kec = Keccak256::digest(serialised);
@@ -195,16 +190,13 @@ impl EthereumTransactionCommon {
     }
 
     /// compute v from parity and chain_id
-    fn compute_v(&self, parity: u8) -> Option<U256> {
-        if self.chain_id == U256::zero() {
-            // parity is 0 or 1
-            Some((27 + parity).into())
+    fn compute_v(&self, parity: u8) -> Option<u64> {
+        if self.chain_id == 0 {
+            // we don't support transactions with unpresented chain_id
+            None
         } else {
-            let chain_id_encoding = self
-                .chain_id
-                .checked_mul(U256::from(2))?
-                .checked_add(U256::from(35))?;
-            U256::from(parity).checked_add(chain_id_encoding)
+            let chain_id_encoding = self.chain_id.checked_mul(2)?.checked_add(35)?;
+            u64::from(parity).checked_add(chain_id_encoding)
         }
     }
 
@@ -223,19 +215,12 @@ impl EthereumTransactionCommon {
             .compute_v(parity)
             .ok_or(SigError::Parity(ParityError::ChainId(self.chain_id)))?;
         Ok(EthereumTransactionCommon {
-            v,
-            r,
-            s,
+            signature: Some(
+                TransactionSignature::new(v, r, s)
+                    .ok_or(SigError::ConstructingRecoveryError)?,
+            ),
             ..self.clone()
         })
-    }
-
-    /// verifies the signature
-    pub fn verify_signature(self) -> Result<bool, SigError> {
-        let mes = self.message();
-        let (sig, ri) = self.signature()?;
-        let pk = recover(&mes, &sig, &ri)?;
-        Ok(verify(&mes, &sig, &pk))
     }
 
     /// Unserialize bytes as a RLP encoded legacy transaction.
@@ -247,17 +232,21 @@ impl EthereumTransactionCommon {
     }
 
     /// Unserialize an hex string as a RLP encoded legacy transaction.
-    pub fn from_rlp(e: String) -> Result<EthereumTransactionCommon, DecoderError> {
+    pub fn from_rlp_hex(e: String) -> Result<EthereumTransactionCommon, DecoderError> {
         let tx =
             hex::decode(e).or(Err(DecoderError::Custom("Couldn't parse hex value")))?;
         Self::from_rlp_bytes(&tx)
+    }
+
+    pub fn to_rlp_bytes(self) -> Vec<u8> {
+        Encodable::rlp_bytes(&self).to_vec()
     }
 }
 
 impl From<String> for EthereumTransactionCommon {
     /// Decode a transaction in hex format. Unsafe, to be used only in tests : panics when fails
     fn from(e: String) -> Self {
-        EthereumTransactionCommon::from_rlp(e).unwrap()
+        EthereumTransactionCommon::from_rlp_hex(e).unwrap()
     }
 }
 
@@ -273,6 +262,9 @@ impl Decodable for EthereumTransactionCommon {
     fn decode(decoder: &Rlp<'_>) -> Result<EthereumTransactionCommon, DecoderError> {
         if decoder.is_list() {
             if Ok(9) == decoder.item_count() {
+                // Decoding is done manually instead of using `ethereum` crate,
+                // because we would like to support decoding of unsigned transactions for sake of simulation,
+                // however, `ethereum` crate doesn't support decoding of unsigned messages
                 let mut it = decoder.iter();
                 let nonce: U256 = decode_field(&next(&mut it)?, "nonce")?;
                 let gas_price: U256 = decode_field(&next(&mut it)?, "gas_price")?;
@@ -280,15 +272,32 @@ impl Decodable for EthereumTransactionCommon {
                 let to: Option<H160> = decode_option(&next(&mut it)?, "to")?;
                 let value: U256 = decode_field(&next(&mut it)?, "value")?;
                 let data: Vec<u8> = decode_field(&next(&mut it)?, "data")?;
-                let v: U256 = decode_field(&next(&mut it)?, "v")?;
+                let v: u64 = decode_field(&next(&mut it)?, "v")?;
                 let r: H256 = decode_field_h256(&next(&mut it)?, "r")?;
                 let s: H256 = decode_field_h256(&next(&mut it)?, "s")?;
-                // in a rlp encoded unsigned eip-155 transaction, v is used to store the chainid
-                // in a rlp encoded signed eip-155 transaction, v is {0,1} + CHAIN_ID * 2 + 35
-                let chain_id: U256 = if v > U256::from(35) {
-                    (v - U256::from(35)) / U256::from(2)
+
+                let is_unsigned = r == H256::zero() && s == H256::zero();
+                let chain_id = if is_unsigned {
+                    // in a rlp encoded unsigned eip-155 transaction, v is used to store the chainid
+                    Ok(v)
                 } else {
-                    v
+                    // in a rlp encoded signed eip-155 transaction, v is {0,1} + CHAIN_ID * 2 + 35
+                    // v > 36 is because we support only chain_id which is strictly greater than 0
+                    if v > 36 {
+                        Ok((v - 35) / 2)
+                    } else {
+                        Err(DecoderError::Custom(
+                            "Couldn't decode transaction without chain_id",
+                        ))
+                    }
+                }?;
+                let signature = if is_unsigned {
+                    None
+                } else {
+                    Some(
+                        TransactionSignature::new(v, r, s)
+                            .ok_or(DecoderError::Custom("Invalid signature"))?,
+                    )
                 };
                 Ok(Self {
                     chain_id,
@@ -298,9 +307,7 @@ impl Decodable for EthereumTransactionCommon {
                     to,
                     value,
                     data,
-                    v,
-                    r,
-                    s,
+                    signature,
                 })
             } else {
                 Err(DecoderError::RlpIncorrectListLen)
@@ -320,9 +327,18 @@ impl Encodable for EthereumTransactionCommon {
         append_option(stream, self.to);
         stream.append(&self.value);
         append_vec(stream, self.data.clone());
-        stream.append(&self.v);
-        append_h256(stream, self.r);
-        append_h256(stream, self.s);
+        match self.signature {
+            None => {
+                stream.append(&self.chain_id);
+                append_h256(stream, H256::zero());
+                append_h256(stream, H256::zero());
+            }
+            Some(ref sig) => {
+                stream.append(&sig.v());
+                append_h256(stream, *sig.r());
+                append_h256(stream, *sig.s());
+            }
+        }
         assert!(stream.is_finished());
     }
 }
@@ -330,7 +346,7 @@ impl Encodable for EthereumTransactionCommon {
 #[allow(clippy::from_over_into)]
 impl Into<Vec<u8>> for EthereumTransactionCommon {
     fn into(self) -> Vec<u8> {
-        self.rlp_bytes().to_vec()
+        self.to_rlp_bytes()
     }
 }
 
@@ -347,6 +363,10 @@ mod test {
         Some(H160::from_slice(data))
     }
 
+    fn new_sig_unsafe(v: u64, r: H256, s: H256) -> TransactionSignature {
+        TransactionSignature::new(v, r, s).unwrap()
+    }
+
     // utility function to just build a standard correct transaction
     // extracted from example in EIP 155 standard
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
@@ -356,28 +376,28 @@ mod test {
     // signed tx : 0xf86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83
     fn basic_eip155_transaction() -> EthereumTransactionCommon {
         EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(9),
             gas_price: U256::from(20000000000u64),
             gas_limit: 21000u64,
             to: address_from_str("3535353535353535353535353535353535353535"),
             value: U256::from(1000000000000000000u64),
             data: vec![],
-            v: U256::from(37),
-            r: string_to_h256_unsafe(
-                "28EF61340BD939BC2195FE537567866003E1A15D3C71FF63E1590620AA636276",
-            ),
-            s: string_to_h256_unsafe(
-                "67CBE9D8997F761AECB703304B3800CCF555C9F3DC64214B297FB1966A3B6D83",
-            ),
+            signature: Some(new_sig_unsafe(
+                37,
+                string_to_h256_unsafe(
+                    "28EF61340BD939BC2195FE537567866003E1A15D3C71FF63E1590620AA636276",
+                ),
+                string_to_h256_unsafe(
+                    "67CBE9D8997F761AECB703304B3800CCF555C9F3DC64214B297FB1966A3B6D83",
+                ),
+            )),
         }
     }
 
     fn basic_eip155_transaction_unsigned() -> EthereumTransactionCommon {
         EthereumTransactionCommon {
-            v: U256::one(),
-            r: H256::zero(),
-            s: H256::zero(),
+            signature: None,
             ..basic_eip155_transaction()
         }
     }
@@ -450,7 +470,7 @@ mod test {
             address_from_str("9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F").unwrap();
 
         // act
-        let transaction = EthereumTransactionCommon::from_rlp(encoded).unwrap();
+        let transaction = EthereumTransactionCommon::from_rlp_hex(encoded).unwrap();
         let address = transaction.caller().unwrap();
 
         // assert
@@ -466,8 +486,7 @@ mod test {
 
         // act
         let tx = hex::decode(signing_data).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
         assert!(decoded.is_ok(), "testing the decoding went ok");
 
         // assert
@@ -482,8 +501,7 @@ mod test {
 
         // act
         let tx = hex::decode(signed_tx).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert!(decoded.is_ok(), "testing the decoding went ok");
@@ -496,10 +514,10 @@ mod test {
         let signing_data = "ec098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080";
 
         // act
-        let encoded = expected_transaction.rlp_bytes();
+        let encoded = expected_transaction.to_rlp_bytes();
 
         // assert
-        assert_eq!(signing_data, hex::encode(&encoded));
+        assert_eq!(signing_data, hex::encode(encoded));
     }
 
     pub fn string_to_h256_unsafe(s: &str) -> H256 {
@@ -519,8 +537,8 @@ mod test {
         let to = None;
         let value = U256::from(1000000000u64);
         let data: Vec<u8> = hex::decode("ffff").unwrap();
-        let chain_id = U256::one();
-        let v = U256::from(38);
+        let chain_id = 1;
+        let v = 38;
         let r = string_to_h256_unsafe(
             "e9637495be4c216a833ef390b1f6798917c8a102ab165c5085cced7ca1f2eb3a",
         );
@@ -535,9 +553,7 @@ mod test {
             to,
             value,
             data,
-            v,
-            r,
-            s,
+            signature: Some(new_sig_unsafe(v, r, s)),
         }
     }
 
@@ -548,10 +564,10 @@ mod test {
         let expected_encoded = "f8572e8506c50218ba8304312280843b9aca0082ffff26a0e9637495be4c216a833ef390b1f6798917c8a102ab165c5085cced7ca1f2eb3aa057854e7044a8fee7bccb6a2c32c4229dd9cbacad74350789e0ce75bf40b6f713";
 
         // act
-        let encoded = transaction.rlp_bytes();
+        let encoded = transaction.to_rlp_bytes();
 
         // assert
-        assert_eq!(expected_encoded, hex::encode(&encoded));
+        assert_eq!(expected_encoded, hex::encode(encoded));
     }
 
     #[test]
@@ -562,8 +578,7 @@ mod test {
 
         // act
         let tx = hex::decode(signed_tx).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert!(decoded.is_ok());
@@ -577,10 +592,10 @@ mod test {
         let signed_tx = "f86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83";
 
         // act
-        let encoded = expected_transaction.rlp_bytes();
+        let encoded = expected_transaction.to_rlp_bytes();
 
         // assert
-        assert_eq!(signed_tx, hex::encode(&encoded));
+        assert_eq!(signed_tx, hex::encode(encoded));
     }
 
     #[test]
@@ -593,7 +608,7 @@ mod test {
         let to = address_from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea");
         let value = U256::from(5000000000000000u64);
         let data: Vec<u8> = hex::decode("deace8f5000000000000000000000000000000000000000000000000000000000000a4b100000000000000000000000041bca408a6b4029b42883aeb2c25087cab76cb58000000000000000000000000000000000000000000000000002386f26fc10000000000000000000000000000000000000000000000000000002357a49c7d75f600000000000000000000000000000000000000000000000000000000640b5549000000000000000000000000710bda329b2a6224e4b44833de30f38e7f81d5640000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let v = U256::from(37);
+        let v = 37;
         let r = string_to_h256_unsafe(
             "25dd6c973368c45ddfc17f5148e3f468a2e3f2c51920cbe9556a64942b0ab2eb",
         );
@@ -601,23 +616,20 @@ mod test {
             "31da07ce40c24b0a01f46fb2abc028b5ccd70dbd1cb330725323edc49a2a9558",
         );
         let expected_transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce,
             gas_price,
             gas_limit,
             to,
             value,
             data,
-            v,
-            r,
-            s,
+            signature: Some(new_sig_unsafe(v, r, s)),
         };
         let signed_data = "f90150808509502f900082520894423163e58aabec5daa3dd1130b759d24bef0f6ea8711c37937e08000b8e4deace8f5000000000000000000000000000000000000000000000000000000000000a4b100000000000000000000000041bca408a6b4029b42883aeb2c25087cab76cb58000000000000000000000000000000000000000000000000002386f26fc10000000000000000000000000000000000000000000000000000002357a49c7d75f600000000000000000000000000000000000000000000000000000000640b5549000000000000000000000000710bda329b2a6224e4b44833de30f38e7f81d564000000000000000000000000000000000000000000000000000000000000000025a025dd6c973368c45ddfc17f5148e3f468a2e3f2c51920cbe9556a64942b0ab2eba031da07ce40c24b0a01f46fb2abc028b5ccd70dbd1cb330725323edc49a2a9558";
 
         // act
         let tx = hex::decode(signed_data).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert_eq!(Ok(expected_transaction), decoded)
@@ -631,8 +643,7 @@ mod test {
 
         // act
         let tx = hex::decode(signed_data).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert!(decoded.is_ok(), "testing the decoding went ok");
@@ -656,7 +667,7 @@ mod test {
         let to = address_from_str("ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b");
         let value = U256::from(760460536160301065u64); // /!\ > 2^53 -1
         let data: Vec<u8> = hex::decode("3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let v = U256::from(37);
+        let v = 37;
         let r = string_to_h256_unsafe(
             "c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45a",
         );
@@ -664,23 +675,20 @@ mod test {
             "5721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06",
         );
         let expected_transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce,
             gas_price,
             gas_limit,
             to,
             value,
             data,
-            v,
-            r,
-            s,
+            signature: Some(new_sig_unsafe(v, r, s)),
         };
 
         // act
         let signed_data = "f903732e8506c50218ba8304312294ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b880a8db2d41b89b009b903043593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c600000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000025a0c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45aa05721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06";
         let tx = hex::decode(signed_data).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert_eq!(Ok(expected_transaction), decoded);
@@ -702,7 +710,7 @@ mod test {
         let to = address_from_str("ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b");
         let value = U256::from(760460536160301065u64); // /!\ > 2^53 -1
         let data: Vec<u8> = hex::decode("3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let v = U256::from(37);
+        let v = 37;
         let r = string_to_h256_unsafe(
             "c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45a",
         );
@@ -710,24 +718,22 @@ mod test {
             "5721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06",
         );
         let expected_transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce,
             gas_price,
             gas_limit,
             to,
             value,
             data,
-            v,
-            r,
-            s,
+            signature: Some(new_sig_unsafe(v, r, s)),
         };
         let signed_data = "f903732e8506c50218ba8304312294ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b880a8db2d41b89b009b903043593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c600000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000025a0c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45aa05721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06";
 
         // act
-        let encoded = expected_transaction.rlp_bytes();
+        let encoded = expected_transaction.to_rlp_bytes();
 
         // assert
-        assert_eq!(signed_data, hex::encode(&encoded));
+        assert_eq!(signed_data, hex::encode(encoded));
     }
 
     #[test]
@@ -747,27 +753,28 @@ mod test {
         // tx: 0xf869018506fc23ac0083100000944e1b2c985d729ae6e05ef7974013eeb48f394449843b9aca008026a0bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ada06053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f
 
         let expected_transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(1),
             gas_price: U256::from(30000000000u64),
             gas_limit: 1048576u64,
             to: address_from_str("4e1b2c985d729ae6e05ef7974013eeb48f394449"),
             value: U256::from(1000000000u64),
             data: vec![],
-            v: U256::from(38),
-            r: string_to_h256_unsafe(
-                "bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ad",
-            ),
-            s: string_to_h256_unsafe(
-                "6053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f",
-            ),
+            signature: Some(new_sig_unsafe(
+                38,
+                string_to_h256_unsafe(
+                    "bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ad",
+                ),
+                string_to_h256_unsafe(
+                    "6053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f",
+                ),
+            )),
         };
         let signed_data = "f869018506fc23ac0083100000944e1b2c985d729ae6e05ef7974013eeb48f394449843b9aca008026a0bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ada06053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f";
 
         // act
         let tx = hex::decode(signed_data).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // assert
         assert_eq!(Ok(expected_transaction), decoded);
@@ -789,20 +796,22 @@ mod test {
         // tx: 0xf869018506fc23ac0083100000944e1b2c985d729ae6e05ef7974013eeb48f394449843b9aca008026a0bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ada06053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f
 
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(1),
             gas_price: U256::from(30000000000u64),
             gas_limit: 1048576u64,
             to: address_from_str("4e1b2c985d729ae6e05ef7974013eeb48f394449"),
             value: U256::from(1000000000u64),
             data: vec![],
-            v: U256::from(38),
-            r: string_to_h256_unsafe(
-                "bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ad",
-            ),
-            s: string_to_h256_unsafe(
-                "6053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f",
-            ),
+            signature: Some(new_sig_unsafe(
+                38,
+                string_to_h256_unsafe(
+                    "bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ad",
+                ),
+                string_to_h256_unsafe(
+                    "6053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f",
+                ),
+            )),
         };
 
         // assert
@@ -830,28 +839,28 @@ mod test {
 
         // setup
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(1),
             gas_price: U256::from(30000000000u64),
             gas_limit: 1048576u64,
             to: address_from_str("4e1b2c985d729ae6e05ef7974013eeb48f394449"),
             value: U256::from(1000000000u64),
             data: vec![],
-            v: U256::one(),
-            r: H256::zero(),
-            s: H256::zero(),
+            signature: None,
         };
 
         // act
-        let signed = transaction
+        let signature = transaction
             .sign_transaction(
                 "cb9db6b5878db2fa20586e23b7f7b51c22a7c6ed0530daafc2615b116f170cd3"
                     .to_string(),
             )
+            .unwrap()
+            .signature
             .unwrap();
 
         // assert
-        let v = U256::from(38);
+        let v = 38;
         let r = string_to_h256_unsafe(
             "bb03310570362eef497a09dd6e4ef42f56374965cfb09cc4e055a22a2eeac7ad",
         );
@@ -859,9 +868,9 @@ mod test {
             "6053c1bd83abb30c109801844709202208736d598649afe2a53f024b61b3383f",
         );
 
-        assert_eq!(v, signed.v, "checking v");
-        assert_eq!(r, signed.r, "checking r");
-        assert_eq!(s, signed.s, "checking s");
+        assert_eq!(v, signature.v(), "checking v");
+        assert_eq!(&r, signature.r(), "checking r");
+        assert_eq!(&s, signature.s(), "checking s");
     }
 
     #[test]
@@ -876,7 +885,7 @@ mod test {
 
         // Check that the derived sender address is the expected one.
         let encoded = "f86d80843b9aca00825208940b52d4d3be5d18a7ab5e4476a2f5382bbf2b38d888016345785d8a000080820a95a0d9ef1298c18c88604e3f08e14907a17dfa81b1dc6b37948abe189d8db5cb8a43a06fc7040a71d71d3cb74bd05ead7046b10668ad255da60391c017eea31555f156".to_string();
-        let transaction = EthereumTransactionCommon::from_rlp(encoded).unwrap();
+        let transaction = EthereumTransactionCommon::from_rlp_hex(encoded).unwrap();
         let address = transaction.caller().unwrap();
         assert_eq!(expected_address, address);
 
@@ -902,25 +911,20 @@ mod test {
         // than secp256k1n/2 are now considered invalid
 
         let transaction = basic_eip155_transaction();
-
+        let signature = transaction.signature.unwrap();
         // flip s
-        let s: H256 = transaction.s;
-        let s1: [u8; 32] = s.into();
+        let s: &H256 = signature.s();
+        let s1: [u8; 32] = (*s).into();
         let mut scalar = Scalar([0; 8]);
         let _ = scalar.set_b32(&s1);
         let flipped_scalar = scalar.neg();
         let flipped_s = H256::from_slice(&flipped_scalar.b32());
 
         // flip v
-        let flipped_v = if transaction.v == U256::from(37) {
-            U256::from(38)
-        } else {
-            U256::from(37)
-        };
+        let flipped_v = if signature.v() == 37 { 38 } else { 37 };
 
         let flipped_transaction = EthereumTransactionCommon {
-            s: flipped_s,
-            v: flipped_v,
+            signature: Some(new_sig_unsafe(flipped_v, *signature.r(), flipped_s)),
             ..transaction
         };
 
@@ -941,20 +945,22 @@ mod test {
         let data: Vec<u8> = hex::decode("3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000").unwrap();
 
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(46),
             gas_price: U256::from(29075052730u64),
             gas_limit: 274722u64,
             to: address_from_str("ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b"),
             value: U256::from(760460536160301065u64),
             data,
-            v: U256::from(37),
-            r: string_to_h256_unsafe(
-                "c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45a",
-            ),
-            s: string_to_h256_unsafe(
-                "5721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06",
-            ),
+            signature: Some(new_sig_unsafe(
+                37,
+                string_to_h256_unsafe(
+                    "c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45a",
+                ),
+                string_to_h256_unsafe(
+                    "5721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06",
+                ),
+            )),
         };
 
         // check
@@ -973,16 +979,14 @@ mod test {
         let data: Vec<u8> = hex::decode("3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000").unwrap();
 
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(46),
             gas_price: U256::from(29075052730u64),
             gas_limit: 274722u64,
             to: address_from_str("ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b"),
             value: U256::from(760460536160301065u64),
             data,
-            v: U256::one(),
-            r: H256::zero(),
-            s: H256::zero(),
+            signature: None,
         };
 
         // check
@@ -1006,28 +1010,28 @@ mod test {
         let data: Vec<u8> = hex::decode("3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000064023c1700000000000000000000000000000000000000000000000000000000000000030b090c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000a8db2d41b89b009000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000002ab0c205a56c1e000000000000000000000000000000000000000000000000000000a8db2d41b89b00900000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000009eb6299e4bb6669e42cb295a254c8492f67ae2c6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000").unwrap();
 
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::one(),
+            chain_id: 1,
             nonce: U256::from(46),
             gas_price: U256::from(29075052730u64),
             gas_limit: 274722u64,
             to: address_from_str("ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b"),
             value: U256::from(760460536160301065u64),
             data,
-            v: U256::zero(),
-            r: H256::zero(),
-            s: H256::zero(),
+            signature: None,
         };
 
         // act
-        let signed = transaction
+        let signature = transaction
             .sign_transaction(
                 "dcdff53b4f013dbcdc717f89fe3bf4d8b10512aae282b48e01d7530470382701"
                     .to_string(),
             )
+            .unwrap()
+            .signature
             .unwrap();
 
         // assert
-        let v = U256::from(37);
+        let v = 37;
         let r = string_to_h256_unsafe(
             "c78be9ab81c622c08f7098eefc250935365fb794dfd94aec0fea16c32adec45a",
         );
@@ -1035,9 +1039,9 @@ mod test {
             "5721614264d8490c6866f110c1594151bbcc4fac43758adae644db6bc3314d06",
         );
 
-        assert_eq!(v, signed.v, "checking v");
-        assert_eq!(r, signed.r, "checking r");
-        assert_eq!(s, signed.s, "checking s");
+        assert_eq!(v, signature.v(), "checking v");
+        assert_eq!(&r, signature.r(), "checking r");
+        assert_eq!(&s, signature.s(), "checking s");
     }
 
     #[test]
@@ -1063,16 +1067,20 @@ mod test {
     }
 
     #[test]
-    fn test_rlp_decode_encode() {
-        let strings =
-    ["f86c0a8502540be400825208944bbeeb066ed09b7aed07bf39eee0460dfa261520880de0b6b3a7640000801ca0f3ae52c1ef3300f44df0bcfd1341c232ed6134672b16e35699ae3f5fe2493379a023d23d2955a239dd6f61c4e8b2678d174356ff424eac53da53e17706c43ef871".to_string(),
-    "f86a8302ae2a7b82f618948e998a00253cb1747679ac25e69a8d870b52d8898802c68af0bb140000802da0cd2d976eb691dc16a397462c828975f0b836e1b448ecb8f00d9765cf5032cecca066247d13fc2b65fd70a2931b5897fff4b3079e9587e69ac8a0036c99eb5ea927".to_string()];
+    fn test_rlp_decode_fails_without_chain_id() {
+        let malformed_tx = "f86c0a8502540be400825208944bbeeb066ed09b7aed07bf39eee0460dfa261520880de0b6b3a7640000801ca0f3ae52c1ef3300f44df0bcfd1341c232ed6134672b16e35699ae3f5fe2493379a023d23d2955a239dd6f61c4e8b2678d174356ff424eac53da53e17706c43ef871".to_string();
+        let e = EthereumTransactionCommon::from_rlp_hex(malformed_tx);
+        assert!(e.is_err());
+    }
 
-        strings.iter().fold((), |_, str| {
-            let e = EthereumTransactionCommon::from_rlp(str.clone()).unwrap();
-            let encoded = e.rlp_bytes();
-            assert_eq!(hex::encode(&encoded), *str);
-        });
+    #[test]
+    fn test_rlp_decode_encode_with_valid_chain_id() {
+        let wellformed_tx =
+    "f86a8302ae2a7b82f618948e998a00253cb1747679ac25e69a8d870b52d8898802c68af0bb140000802da0cd2d976eb691dc16a397462c828975f0b836e1b448ecb8f00d9765cf5032cecca066247d13fc2b65fd70a2931b5897fff4b3079e9587e69ac8a0036c99eb5ea927".to_string();
+
+        let e = EthereumTransactionCommon::from_rlp_hex(wellformed_tx.clone()).unwrap();
+        let encoded = e.to_rlp_bytes();
+        assert_eq!(hex::encode(encoded), wellformed_tx);
     }
 
     #[test]
@@ -1092,79 +1100,58 @@ mod test {
 
         // setup
         let signed_tx = "f901cc8086010000000000830250008080b90178608060405234801561001057600080fd5b50602a600081905550610150806100286000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100a1565b60405180910390f35b610073600480360381019061006e91906100ed565b61007e565b005b60008054905090565b8060008190555050565b6000819050919050565b61009b81610088565b82525050565b60006020820190506100b66000830184610092565b92915050565b600080fd5b6100ca81610088565b81146100d557600080fd5b50565b6000813590506100e7816100c1565b92915050565b600060208284031215610103576101026100bc565b5b6000610111848285016100d8565b9150509291505056fea26469706673582212204d6c1853cec27824f5dbf8bcd0994714258d22fc0e0dc8a2460d87c70e3e57a564736f6c634300081200331ca06d851632958801b6919ba534b4b1feb1bdfaabd0d42890bce200a11ac735d58da0219b058d7169d7a4839c5cdd555b0820b545797365287a81ba409419912de7b1";
-        let r = string_to_h256_unsafe(
+        let _r = string_to_h256_unsafe(
             "6d851632958801b6919ba534b4b1feb1bdfaabd0d42890bce200a11ac735d58d",
         );
-        let s = string_to_h256_unsafe(
+        let _s = string_to_h256_unsafe(
             "219b058d7169d7a4839c5cdd555b0820b545797365287a81ba409419912de7b1",
         );
 
         // act
         let tx = hex::decode(signed_tx).unwrap();
-        let decoder = Rlp::new(&tx);
-        let decoded = EthereumTransactionCommon::decode(&decoder);
+        let decoded = EthereumTransactionCommon::from_rlp_bytes(&tx);
 
         // sanity check
-        assert!(decoded.is_ok(), "testing the decoding went ok");
-        let decoded_transaction = decoded.unwrap();
-        assert_eq!(U256::from(28), decoded_transaction.v, "testing v");
-        assert_eq!(r, decoded_transaction.r, "testing r");
-        assert_eq!(s, decoded_transaction.s, "testing s");
-
-        // check signature fails gracefully
-        assert!(
-            decoded_transaction.signature().is_err(),
-            "testing signature"
-        );
-        assert!(decoded_transaction.caller().is_err(), "testing caller");
+        assert!(decoded.is_err(), "testing the decoding failed");
     }
 
     #[test]
     fn test_signature_unsigned_fails_gracefully() {
-        // most data is not relevant here, the point is to test failure mode of signature verification
-        let transaction = EthereumTransactionCommon {
-            v: U256::one(), // parity is not consistent with a signed transaction
-            ..basic_eip155_transaction()
-        };
+        let transaction = basic_eip155_transaction_unsigned();
 
         // check signature fails gracefully
-        assert!(transaction.signature().is_err(), "testing invalid parity");
+        assert!(
+            transaction.validated_signature().is_err(),
+            "testing signature for unsigned fails"
+        );
     }
 
     #[test]
-    fn test_signature_invalid_signature_fails_gracefully() {
-        // most data is not relevant here, the point is to test failure mode of signature verification
-        let transaction = EthereumTransactionCommon {
-            v: U256::from(38), // parity is consistent with a signed transaction
-            r: H256::zero(),   // signature value is wrong
-            ..basic_eip155_transaction()
-        };
-
-        // sanity check
-        assert!(
-            transaction.signature().is_ok(),
-            "testing signature is well formed"
-        );
-
-        // check caller fails gracefully
-        assert!(
-            transaction.caller().is_err(),
-            "testing caller fails, because signature is useless"
-        );
+    fn test_impossible_create_invalid_sig() {
+        let basic = basic_eip155_transaction();
+        let signature = basic.signature.unwrap();
+        assert!(TransactionSignature::new(38, H256::zero(), *signature.s()).is_none());
+        assert!(TransactionSignature::new(38, *signature.r(), H256::zero()).is_none());
     }
 
     #[test]
     fn test_signature_invalid_parity_fails_gracefully() {
+        let basic = basic_eip155_transaction();
+        let signature = basic.signature.unwrap();
         // most data is not relevant here, the point is to test failure mode of signature verification
         let transaction = EthereumTransactionCommon {
-            v: U256::from(150), // parity is not consistent with chain_id
-            chain_id: U256::one(),
-            ..basic_eip155_transaction()
+            signature: Some(new_sig_unsafe(
+                150,
+                signature.r().to_owned(),
+                signature.s().to_owned(),
+            )),
+            chain_id: 1,
+            ..basic
         };
 
         // check signature fails gracefully
         assert!(
-            transaction.signature().is_err(),
+            transaction.validated_signature().is_err(),
             "testing signature checking fails gracefully"
         );
     }
@@ -1173,13 +1160,13 @@ mod test {
     fn test_signature_invalid_chain_id_fails_gracefully() {
         // most data is not relevant here, the point is to test failure mode of signature verification
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::max_value(), // chain_id will overflow parity computation
+            chain_id: u64::max_value(), // chain_id will overflow parity computation
             ..basic_eip155_transaction()
         };
 
         // check signature fails gracefully
         assert!(
-            transaction.signature().is_err(),
+            transaction.validated_signature().is_err(),
             "testing signature checking fails gracefully"
         );
     }
@@ -1188,7 +1175,7 @@ mod test {
     fn test_sign_invalid_chain_id_fails_gracefully() {
         // most data is not relevant here, the point is to test failure mode of signature verification
         let transaction = EthereumTransactionCommon {
-            chain_id: U256::max_value(),
+            chain_id: u64::max_value(),
             ..basic_eip155_transaction_unsigned()
         };
 

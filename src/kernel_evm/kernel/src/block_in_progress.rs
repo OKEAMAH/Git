@@ -196,9 +196,7 @@ impl BlockInProgress {
             to: object_info.to,
             index: object_info.index,
             value: object_info.value,
-            v: object_info.v,
-            r: object_info.r,
-            s: object_info.s,
+            signature: object_info.signature,
         }
     }
 }

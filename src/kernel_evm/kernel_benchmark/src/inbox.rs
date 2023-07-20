@@ -10,7 +10,6 @@ use evm_execution::account_storage::EthereumAccountStorage;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use host::runtime::Runtime;
 use primitive_types::{H256, U256};
-use rlp::{Decodable, Rlp};
 use sha3::{Digest, Keccak256};
 use tezos_ethereum::block::BlockConstants;
 use tezos_ethereum::signatures::EthereumTransactionCommon;
@@ -58,8 +57,7 @@ pub fn process_inbox_message<'a, Host: Runtime>(
             debug_msg!(host, "Got an external message");
             let current_block = BlockConstants::first_block(U256::zero());
             // decoding
-            let decoder = Rlp::new(message);
-            let ethereum_transaction = EthereumTransactionCommon::decode(&decoder)
+            let ethereum_transaction = EthereumTransactionCommon::from_rlp_bytes(message)
                 .map_err(ApplicationError::MalformedRlpTransaction)?;
             process_ethereum_transaction(
                 host,

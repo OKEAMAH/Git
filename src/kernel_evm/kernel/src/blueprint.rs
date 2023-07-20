@@ -6,7 +6,6 @@
 
 use crate::inbox::{read_inbox, KernelUpgrade, Transaction, TransactionContent};
 use crate::Error;
-use primitive_types::U256;
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_host::runtime::Runtime;
 
@@ -39,15 +38,13 @@ impl Queue {
 
 fn filter_invalid_chain_id(
     transactions: Vec<Transaction>,
-    chain_id: U256,
+    chain_id: u64,
 ) -> Vec<Transaction> {
     transactions
         .into_iter()
         .filter(|transaction| match &transaction.content {
             TransactionContent::Deposit(_) => true,
-            TransactionContent::Ethereum(transaction) => {
-                U256::eq(&transaction.chain_id, &chain_id)
-            }
+            TransactionContent::Ethereum(transaction) => transaction.chain_id == chain_id,
         })
         .collect()
 }
@@ -55,7 +52,7 @@ fn filter_invalid_chain_id(
 pub fn fetch<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-    chain_id: U256,
+    chain_id: u64,
     ticketer: Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
     let inbox_content = read_inbox(host, smart_rollup_address, ticketer)?;
@@ -71,7 +68,7 @@ pub fn fetch<Host: Runtime>(
 mod tests {
     use super::*;
     use crate::inbox::TransactionContent::Ethereum;
-    use primitive_types::{H160, H256, U256};
+    use primitive_types::{H160, U256};
     use tezos_ethereum::{
         signatures::EthereumTransactionCommon, transaction::TRANSACTION_HASH_SIZE,
     };
@@ -83,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_filter_invalid_chain_id() {
-        let chain_id = U256::one();
+        let chain_id = 1;
 
         let tx = EthereumTransactionCommon {
             chain_id,
@@ -93,9 +90,7 @@ mod tests {
             to: address_from_str("423163e58aabec5daa3dd1130b759d24bef0f6ea"),
             value: U256::from(500000000u64),
             data: vec![],
-            v: U256::from(0),
-            r: H256::from_low_u64_be(0),
-            s: H256::from_low_u64_be(0),
+            signature: None,
         };
 
         let valid_transaction = Transaction {
@@ -105,7 +100,7 @@ mod tests {
         let invalid_transaction = Transaction {
             tx_hash: [1; TRANSACTION_HASH_SIZE],
             content: Ethereum(EthereumTransactionCommon {
-                chain_id: U256::from(1312321),
+                chain_id: 1312321,
                 ..tx
             }),
         };
