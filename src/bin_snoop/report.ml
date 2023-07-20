@@ -303,16 +303,15 @@ let workloads_table (type c t) ((module Bench) : (c, t) Benchmark.poly)
 let model_table (type c t) ((module Bench) : (c, t) Benchmark.poly) =
   let open Latex_syntax in
   let rows =
-    List.filter_map
-      (fun (local_model_name, model) ->
-        match model with
-        | Tezos_benchmark.Model.Aggregate _ -> None
-        | Tezos_benchmark.Model.Abstract {model; _} ->
-            let module M = (val model) in
-            let module Model = M.Def (Pp_impl_abstract) in
-            let printed = to_string Model.model in
-            let printed = Format.asprintf "%s: %s" local_model_name printed in
-            Some (Row [[normal_text printed]]))
+    (fun (local_model_name, model) ->
+      match model with
+      | Tezos_benchmark.Model.Aggregate _ -> []
+      | Tezos_benchmark.Model.Abstract {model; _} ->
+          let module M = (val model) in
+          let module Model = M.Def (Pp_impl_abstract) in
+          let printed = to_string Model.model in
+          let printed = Format.asprintf "%s: %s" local_model_name printed in
+          [Row [[normal_text printed]]])
       Bench.models
   in
   ([Vbar; L; Vbar], splice Hline rows)

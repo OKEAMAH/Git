@@ -687,11 +687,11 @@ type benchmark_type = Registration_helpers.benchmark_type = Time | Alloc
 
 let make_time_model ?amplification instr_name =
   let ir_model = ir_model instr_name in
-  [("interpreter", interpreter_model ?amplification pack_time_model ir_model)]
+  ("interpreter", interpreter_model ?amplification pack_time_model ir_model)
 
 let make_alloc_model instr_name =
   let ir_model = ir_model instr_name in
-  [("interpreter", interpreter_model pack_alloc_model ir_model)]
+  ("interpreter", interpreter_model pack_alloc_model ir_model)
 
 let make_model ?amplification benchmark_type instr_name =
   match benchmark_type with

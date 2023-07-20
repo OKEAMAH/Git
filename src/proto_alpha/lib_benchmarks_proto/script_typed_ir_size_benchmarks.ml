@@ -71,7 +71,7 @@ module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
 
   let models =
     let model = size_based_model ~name in
-    [(local_model_name, model)]
+    (local_model_name, model)
 
   let info = "Benchmarking Script_typed_ir_size.value_size"
 
@@ -187,7 +187,7 @@ module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
 
   let name = ns "KINSTR_SIZE"
 
-  let models = [(local_model_name, size_based_model ~name)]
+  let models = (local_model_name, size_based_model ~name)
 
   let info = "Benchmarking Script_typed_ir_size.kinstr_size"
 

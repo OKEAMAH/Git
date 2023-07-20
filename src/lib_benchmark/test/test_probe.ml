@@ -104,7 +104,7 @@ module Probing_bench = struct
         Sparse_vec.String.of_list [("sha256_nbytes", float_of_int nbytes)]
 
   (* Don't care about the models here. *)
-  let models = []
+  let models = ("", Model.make ~conv:(fun _ -> ()) ~model:Model.zero)
 
   let probing_benchmark rng_state config () =
     let nbytes =

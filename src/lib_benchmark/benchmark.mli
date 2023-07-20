@@ -138,7 +138,7 @@ module type S = sig
   include Benchmark_base
 
   (** Cost models, with a given local name (string) for reference *)
-  val models : (string * workload Model.t) list
+  val models : string * workload Model.t
 
   (** Benchmark generator *)
   val create_benchmarks :

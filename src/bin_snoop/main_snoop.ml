@@ -130,20 +130,16 @@ and infer_cmd_one_shot local_model_name workload_data solver
   | Measure.Measurement
       ((module Bench), {bench_opts = _; workload_data; date = _}) ->
       let model =
-        match
-          List.assoc_opt ~equal:String.equal local_model_name Bench.models
-        with
-        | Some m -> m
-        | None ->
+        match String.equal local_model_name (fst Bench.models) with
+        | true -> snd Bench.models
+        | false ->
             Format.eprintf
               "Requested local model: \"%s\" not found@."
               local_model_name ;
             Format.eprintf
               "Available for this workload: @[%a@] @."
-              (Format.pp_print_list
-                 ~pp_sep:(fun fmtr () -> Format.fprintf fmtr ", ")
-                 Format.pp_print_string)
-              (List.map fst Bench.models) ;
+              Format.pp_print_string
+              (fst Bench.models) ;
             exit 1
       in
       let overrides_map =
@@ -258,14 +254,16 @@ and infer_for_measurements ?local_model_name measurements
         (* Filter [Bench.models] if [local_model_name] is specified *)
         let models =
           match local_model_name with
-          | None -> Bench.models
+          | None -> [Bench.models]
           | Some local_model_name ->
-              List.filter
-                (fun (local_model_name', _) ->
-                  (* [builtin/Timer_latency] bound with ["*"] must be chosen
-                     in every case *)
+              (fun (local_model_name', model) ->
+                (* [builtin/Timer_latency] bound with ["*"] must be chosen
+                   in every case *)
+                if
                   local_model_name' = "*"
-                  || local_model_name = local_model_name')
+                  || local_model_name = local_model_name'
+                then [(local_model_name', model)]
+                else [])
                 Bench.models
         in
 

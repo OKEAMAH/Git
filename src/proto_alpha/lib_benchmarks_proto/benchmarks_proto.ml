@@ -26,6 +26,12 @@
 
 module Benchmark_base = Benchmark
 
+module type Benchmark_multimodel = sig
+  include Benchmark_base.S
+
+  val models : (string * workload Model.t) list
+end
+
 module Benchmark = struct
   type group = Benchmark_base.group = Standalone | Group of string | Generic
 
@@ -75,13 +81,11 @@ module Registration = struct
       include Bench
 
       let models =
-        [
-          ( (match Bench.group with
-            | Generic -> "*"
-            | Group g -> g
-            | Standalone -> Namespace.(cons Bench.name "model" |> to_string)),
-            Bench.model ~name );
-        ]
+        ( (match Bench.group with
+          | Generic -> "*"
+          | Group g -> g
+          | Standalone -> Namespace.(cons Bench.name "model" |> to_string)),
+          Bench.model ~name )
 
       let create_benchmarks ~rng_state ~bench_num config =
         List.repeat bench_num (fun () ->
@@ -99,7 +103,7 @@ module Registration = struct
     Registration.register_simple_with_num
       (module B : Benchmark_base.Simple_with_num)
 
-  let register_as_simple_with_num (module B : Benchmark_base.S) =
+  let register_as_simple_with_num (module B : Benchmark_multimodel) =
     let modules =
       List.map
         (fun (model_name, model) : (module Benchmark_base.Simple_with_num) ->

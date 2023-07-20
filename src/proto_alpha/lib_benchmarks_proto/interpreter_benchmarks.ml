@@ -822,7 +822,7 @@ module Registration_section = struct
       let workload_to_vector n =
         Sparse_vec.String.of_list [("iterations", float_of_int n)]
 
-      let models = [("interpreter", Interpreter_model.amplification_loop_model)]
+      let models = ("interpreter", Interpreter_model.amplification_loop_model)
 
       let benchmark rng_state config () =
         let workload = Random.State.int rng_state config.max_iterations in

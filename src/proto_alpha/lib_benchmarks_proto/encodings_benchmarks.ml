@@ -129,7 +129,7 @@ module Micheline_common = struct
     [("micheline", model_size name); ("micheline_bytes", model_bytes name)]
 end
 
-module Encoding_micheline : Benchmark.S = struct
+module Encoding_micheline = struct
   include Translator_benchmarks.Config
   include Micheline_common
 
@@ -201,7 +201,7 @@ let () =
   Benchmarks_proto.Registration.register_as_simple_with_num
     (module Encoding_micheline)
 
-module Decoding_micheline : Benchmark.S = struct
+module Decoding_micheline = struct
   include Translator_benchmarks.Config
   include Micheline_common
 

@@ -61,7 +61,7 @@ end
 module type S = sig
   include Benchmark_base
 
-  val models : (string * workload Model.t) list
+  val models : string * workload Model.t
 
   include Generator.S with type config := config and type workload := workload
 end
@@ -112,9 +112,9 @@ let pp ppf (module Bench : S) =
     tags ;
   f "@[<v2>default_config:@ @[%a@]@]@;" pp_config default_config ;
   f
-    "@[<v2>local models for inference:@ @[<v>%a@]@]@;"
-    (pp_print_list (fun ppf (local_model_name, model) ->
-         fprintf ppf "@[<v2>%s:@ @[%a@]@]" local_model_name Model.pp model))
+    "@[<v2>local model for inference:@ @[<v>%a@]@]@;"
+    (fun ppf (local_model_name, model) ->
+      fprintf ppf "@[<v2>%s:@ @[%a@]@]" local_model_name Model.pp model)
     models ;
   f "@]"
 
@@ -132,8 +132,6 @@ let tags ((module B) : t) = B.tags
 let ex_unpack : t -> packed = fun (module Bench) -> Ex ((module Bench) : _ poly)
 
 let get_free_variable_set (module Bench : S) =
-  List.fold_left
-    (fun acc (_, model) ->
-      Free_variable.Set.union acc @@ Model.get_free_variable_set_of_t model)
-    Free_variable.Set.empty
-    Bench.models
+  let _, model = Bench.models in
+  Free_variable.Set.union Free_variable.Set.empty
+  @@ Model.get_free_variable_set_of_t model

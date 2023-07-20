@@ -85,7 +85,7 @@ module Apply_diff_bench : Benchmark.S = struct
            ~coeff1:(fv "apply_diff_inputs")
            ~coeff2:(fv "apply_diff_outputs"))
 
-  let models = [("apply_diff", model)]
+  let models = ("apply_diff", model)
 
   let benchmark_apply_diff seed sapling_transition () =
     let sapling_forge_rng_state =

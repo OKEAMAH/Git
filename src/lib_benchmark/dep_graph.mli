@@ -119,7 +119,7 @@ end
 (** [find_model_or_generic local_model_name local_model_list] returns the model
     matching [local_model_name] from a [local_model_list] of a benchmark. If
     none match, then searches for models named ["*"]. *)
-val find_model_or_generic : string -> (string * 'model) list -> 'model option
+val find_model_or_generic : string -> string * 'model -> 'model option
 
 (** [load_workload_files ~local_model_name files] loads [.workload] files given in [files],
     looks for the model [local_model_name], and if found, adds it to a dependency

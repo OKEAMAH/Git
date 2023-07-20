@@ -448,12 +448,12 @@ end
 
 (* Generic models, named "*", are models used to infer generic parameters used in
    many other benchmarks, namely the timer overhead, and the Lwt_main.run call *)
-let find_model_or_generic local_model_name local_model_list =
+let find_model_or_generic local_model_name (local_name, model) =
   match
-    List.assoc_opt ~equal:String.equal local_model_name local_model_list
+    String.equal local_model_name local_name || String.equal "*" local_name
   with
-  | None -> List.assoc_opt ~equal:String.equal "*" local_model_list
-  | res -> res
+  | true -> Some model
+  | false -> None
 
 let load_workload_files ~local_model_name files =
   (* Use a table to store loaded measurements *)

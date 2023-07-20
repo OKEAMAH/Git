@@ -26,6 +26,12 @@
 
 module Benchmark_base = Benchmark
 
+module type Benchmark_multimodel = sig
+  include Benchmark_base.S
+
+  val models : (string * workload Model.t) list
+end
+
 module Benchmark : sig
   type group = Benchmark_base.group = Standalone | Group of string | Generic
 
@@ -95,7 +101,7 @@ module Registration : sig
   *)
   val register : Benchmark.t -> unit
 
-  val register_as_simple_with_num : Benchmark_base.t -> unit
+  val register_as_simple_with_num : (module Benchmark_multimodel) -> unit
 end
 
 module Model : sig

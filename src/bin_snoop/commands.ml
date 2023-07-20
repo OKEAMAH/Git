@@ -1469,7 +1469,7 @@ module Display_info_cmd = struct
   let pp_model_bench fmt (local_name, model) =
     Format.fprintf fmt "@[<v2>%s:@;%a@]" local_name pp_model model
 
-  let pp_models () = Format.pp_print_list pp_model_bench
+  let pp_models () = pp_model_bench
 
   let pp_fancy_benchmark fmt (module B : Benchmark.S) =
     let purpose =
@@ -1482,7 +1482,7 @@ module Display_info_cmd = struct
     bold_block fmt "Purpose" Format.pp_print_string purpose ;
     bold_block fmt "Info" Format.pp_print_string B.info ;
     bold_block fmt "Tags" pp_tags B.tags ;
-    bold_block fmt "Models" (pp_models ()) B.models
+    bold_block fmt "Model" (pp_models ()) B.models
 
   let pp_fancy_model (type a) fmt
       ((module M : Model.Model_impl with type arg_type = a), l) =

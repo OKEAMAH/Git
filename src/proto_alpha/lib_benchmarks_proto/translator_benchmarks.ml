@@ -194,7 +194,7 @@ let bad_code benchmark_name micheline expected_stack_type phase =
 
 let strict = Script_ir_translator_config.make ~legacy:false ()
 
-module Typechecking_data : Benchmark.S = struct
+module Typechecking_data = struct
   include Config
   include Default_boilerplate
 
@@ -271,7 +271,7 @@ let () =
   Benchmarks_proto.Registration.register_as_simple_with_num
     (module Typechecking_data)
 
-module Unparsing_data : Benchmark.S = struct
+module Unparsing_data = struct
   include Config
   include Default_boilerplate
 
@@ -357,7 +357,7 @@ let () =
   Benchmarks_proto.Registration.register_as_simple_with_num
     (module Unparsing_data)
 
-module Typechecking_code : Benchmark.S = struct
+module Typechecking_code = struct
   include Config
   include Default_boilerplate
 
@@ -438,7 +438,7 @@ let () =
   Benchmarks_proto.Registration.register_as_simple_with_num
     (module Typechecking_code)
 
-module Unparsing_code : Benchmark.S = struct
+module Unparsing_code = struct
   include Config
   include Default_boilerplate
 

@@ -152,13 +152,12 @@ let register ?(add_timer = true) ((module Bench) : Benchmark.t) =
         include Bench
 
         let models =
-          List.map
-            (fun (s, m) ->
-              ( s,
-                Model.(
-                  add_model m Builtin_models.timer_model
-                  |> precompose (fun w -> (w, ()))) ))
-            models
+          let s, m = models in
+
+          ( s,
+            Model.(
+              add_model m Builtin_models.timer_model
+              |> precompose (fun w -> (w, ()))) )
       end in
       (module Bench)
     else (module Bench)
@@ -176,9 +175,8 @@ let register ?(add_timer = true) ((module Bench) : Benchmark.t) =
           in
           Generate_code destination
   end in
-  List.iter
-    (fun (local_model_name, m) -> register_model Bench.name local_model_name m)
-    Bench.models ;
+  let s, m = Bench.models in
+  register_model Bench.name s m ;
   Name_table.add bench_table Bench.name (module Bench)
 
 let register_simple ?add_timer (bench : Benchmark.simple) =
@@ -188,13 +186,11 @@ let register_simple ?add_timer (bench : Benchmark.simple) =
       include (val bench)
 
       let models =
-        [
-          ( (match group with
-            | Generic -> "*"
-            | Group g -> g
-            | Standalone -> Namespace.(cons name "model" |> to_string)),
-            model );
-        ]
+        ( (match group with
+          | Generic -> "*"
+          | Group g -> g
+          | Standalone -> Namespace.(cons name "model" |> to_string)),
+          model )
 
       let create_benchmarks ~rng_state ~bench_num config =
         List.repeat bench_num (fun () -> create_benchmark ~rng_state config)
@@ -207,13 +203,11 @@ let register_simple_with_num ?add_timer (bench : Benchmark.simple_with_num) =
       include (val bench)
 
       let models =
-        [
-          ( (match group with
-            | Generic -> "*"
-            | Group g -> g
-            | Standalone -> Namespace.(cons name "model" |> to_string)),
-            model );
-        ]
+        ( (match group with
+          | Generic -> "*"
+          | Group g -> g
+          | Standalone -> Namespace.(cons name "model" |> to_string)),
+          model )
     end)
 
 let add_command cmd = clic_table := cmd :: !clic_table
