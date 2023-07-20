@@ -1758,12 +1758,10 @@ module Sc_rollup = struct
   end
 
   module Instant_inbox =
-    Make_indexed_carbonated_data_storage
-      (Make_subcontext (Registered) (Raw_context)
-         (struct
-           let name = ["instant_inbox"]
-         end))
-         (Make_index (Raw_level_repr.Index))
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["instant_inbox"]
+      end)
       (struct
         type t = string
 

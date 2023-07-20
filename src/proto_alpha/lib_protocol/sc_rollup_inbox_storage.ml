@@ -131,13 +131,10 @@ let finalize_inbox_level ctxt =
     Sc_rollup_inbox_repr.finalize_inbox_level_no_history inbox witness
   in
   let instant = Raw_context.Sc_rollup_in_memory_inbox.instant_message ctxt in
-  let* ctxt, _ =
+  let* ctxt =
     match instant with
-    | Some instant ->
-        if 1 = 1 then
-          failwith (Format.asprintf "level: %a" Raw_level_repr.pp inbox.level) ;
-        Store.Instant_inbox.init ctxt inbox.level instant
-    | _ -> return (ctxt, 0)
+    | Some instant -> Store.Instant_inbox.init ctxt instant
+    | _ -> return ctxt
   in
   Store.Inbox.update ctxt inbox
 

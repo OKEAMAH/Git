@@ -827,11 +827,7 @@ let instant_update ctxt rollup commitment proof =
   let* old_lcc, _, old_lcc_level, ctxt =
     Commitment_storage.last_cemented_commitment_hash_with_level ctxt rollup
   in
-  let* ctxt, instant_inbox_message =
-    Store.Instant_inbox.find
-      ctxt
-      commitment.Sc_rollup_commitment_repr.inbox_level
-  in
+  let* instant_inbox_message = Store.Instant_inbox.find ctxt in
   ignore proof ;
   let* () =
     fail_unless
@@ -840,6 +836,7 @@ let instant_update ctxt rollup commitment proof =
       = Some true)
       Sc_rollup_bad_inbox_level
   in
+  let*! ctxt = Store.Instant_inbox.remove ctxt in
   (*
     TODO:
     Conditions for instant update:
