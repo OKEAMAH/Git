@@ -111,7 +111,7 @@ module Event = struct
       ~level:Notice
       ("host", Data_encoding.string)
       ("port", Data_encoding.uint16)
-      ("acl_policy", Data_encoding.string)
+      ("acl_policy", Data_encoding.option Data_encoding.string)
 
   let starting_internal_rpc_server =
     declare_1
@@ -119,7 +119,7 @@ module Event = struct
       ~name:"starting_internal_rpc_server"
       ~msg:"starting internal RPC server (acl = {acl_policy})"
       ~level:Info
-      ("acl_policy", Data_encoding.string)
+      ("acl_policy", Data_encoding.option Data_encoding.string)
 
   let starting_metrics_server =
     declare_2
@@ -377,7 +377,8 @@ module Metrics_server = Prometheus_app.Cohttp (Cohttp_lwt_unix.Server)
 
 (* Launches an RPC server depending on the given [mode] (which is
    usually TCP, TLS or unix sockets). *)
-let launch_rpc_server ~mode (config : Config_file.t) node (addr, port) =
+let launch_rpc_server ~with_external ~mode (config : Config_file.t) node
+    (addr, port) =
   let open Lwt_result_syntax in
   let rpc_config = config.rpc in
   let media_types = rpc_config.media_type in
@@ -399,34 +400,40 @@ let launch_rpc_server ~mode (config : Config_file.t) node (addr, port) =
       Tezos_rpc.Service.description_service
   in
   let acl =
-    let open RPC_server.Acl in
-    find_policy acl_policy (Ipaddr.V6.to_string addr, Some port)
-    |> Option.value_f ~default:(fun () -> default addr)
+    if with_external then None
+    else
+      let acl =
+        let open RPC_server.Acl in
+        find_policy acl_policy (Ipaddr.V6.to_string addr, Some port)
+        |> Option.value_f ~default:(fun () -> default addr)
+      in
+      Some acl
   in
   let*! () =
     match (mode : Conduit_lwt_unix.server) with
     | `Unix_domain_socket _ ->
         Event.(emit starting_internal_rpc_server)
-          (RPC_server.Acl.policy_type acl)
+          (Option.map RPC_server.Acl.policy_type acl)
     | `TCP _ | `TLS _ ->
         Event.(emit starting_local_rpc_server)
-          (host, port, RPC_server.Acl.policy_type acl)
+          (host, port, Option.map RPC_server.Acl.policy_type acl)
     | _ -> Lwt.return_unit
   in
-  let cors_headers =
-    sanitize_cors_headers ~default:["Content-Type"] rpc_config.cors_headers
-  in
   let cors =
-    Resto_cohttp.Cors.
-      {
-        allowed_origins = rpc_config.cors_origins;
-        allowed_headers = cors_headers;
-      }
+    let cors_headers =
+      sanitize_cors_headers ~default:["Content-Type"] rpc_config.cors_headers
+    in
+    Some
+      Resto_cohttp.Cors.
+        {
+          allowed_origins = rpc_config.cors_origins;
+          allowed_headers = cors_headers;
+        }
   in
   let server =
     RPC_server.init_server
-      ~cors
-      ~acl
+      ?cors
+      ?acl
       ~media_types:(Media_type.Command_line.of_command_line media_types)
       dir
   in
@@ -489,7 +496,7 @@ let init_local_rpc_server (config : Config_file.t) node =
                           `No_password,
                           `Port port )
                 in
-                launch_rpc_server ~mode config node addr)
+                launch_rpc_server ~with_external:false ~mode config node addr)
               addrs)
       config.rpc.local_listen_addrs
   in
@@ -517,7 +524,9 @@ let init_local_rpc_server_for_external_process id (config : Config_file.t) node
     Lwt_exit.register_clean_up_callback ~loc:__LOC__ (fun _ ->
         Lwt_unix.unlink comm_socket_path)
   in
-  let* rpc_server = launch_rpc_server ~mode config node addr in
+  let* rpc_server =
+    launch_rpc_server ~with_external:true ~mode config node addr
+  in
   return (rpc_server, comm_socket_path)
 
 let init_external_rpc_server config node internal_events =
