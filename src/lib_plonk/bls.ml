@@ -1,7 +1,9 @@
 module Scalar = Plompiler.Csir.Scalar
 module Scalar_map = Map.Make (Scalar)
 module Poly = Polynomial
-module Domain = Domain
+module Pairing = Bls12_381.Pairing
+module Srs_g1 = Srs.Srs_g1
+module Srs_g2 = Srs.Srs_g2
 
 (* Module to operate with polynomials in FFT evaluations form. *)
 module Evaluations = Evaluations_map.Make (Evaluations)
@@ -35,6 +37,36 @@ module GT = struct
     Repr.(map (bytes_of (`Fixed size_in_bytes)) of_bytes_exn to_bytes)
 end
 
-module Pairing = Bls12_381.Pairing
-module Srs_g1 = Srs.Srs_g1
-module Srs_g2 = Srs.Srs_g2
+module Domain = struct
+  include Domain
+
+  let encoding =
+    let of_bytes repr bs =
+      Stdlib.Result.get_ok
+      @@ Repr.(unstage @@ of_bin_string repr) (Bytes.unsafe_to_string bs)
+    in
+    let to_bytes repr e =
+      Bytes.unsafe_of_string @@ Repr.(unstage @@ to_bin_string repr) e
+    in
+    let data_encoding_of_repr repr =
+      Data_encoding.conv (to_bytes repr) (of_bytes repr) Data_encoding.bytes
+    in
+    data_encoding_of_repr Domain.t
+end
+
+module G1_carray = struct
+  include G1_carray
+
+  let encoding =
+    let of_bytes repr bs =
+      Stdlib.Result.get_ok
+      @@ Repr.(unstage @@ of_bin_string repr) (Bytes.unsafe_to_string bs)
+    in
+    let to_bytes repr e =
+      Bytes.unsafe_of_string @@ Repr.(unstage @@ to_bin_string repr) e
+    in
+    let data_encoding_of_repr repr =
+      Data_encoding.conv (to_bytes repr) (of_bytes repr) Data_encoding.bytes
+    in
+    data_encoding_of_repr G1_carray.t
+end
