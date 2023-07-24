@@ -82,6 +82,33 @@ let make_transform_callback ?ctx ?on_forwarding forwarding_endpoint callback
     Lwt.return (`Response answer)
   else Lwt.return answer
 
+let make_transform_callback_with_acl ~acl ?ctx ?on_forwarding
+    forwarding_endpoint callback conn req body =
+  let allowed =
+    let path =
+      Resto.Utils.decode_split_path (Uri.path @@ Cohttp.Request.uri req)
+    in
+    match Cohttp.Request.meth req with
+    | #Resto.meth as meth -> RPC_server.Acl.allowed acl ~meth ~path
+    | `HEAD | `OPTIONS | `Other _ | `CONNECT | `TRACE -> true
+  in
+  if allowed then
+    make_transform_callback
+      ?ctx
+      ?on_forwarding
+      forwarding_endpoint
+      callback
+      conn
+      req
+      body
+  else
+    let response =
+      let body, encoding = (Cohttp_lwt.Body.empty, Cohttp.Transfer.Fixed 0L) in
+      let status = `Unauthorized in
+      (Cohttp.Response.make ~status ~encoding (), body)
+    in
+    Lwt.return (`Response response)
+
 let rpc_metrics_transform_callback ~update_metrics dir callback conn req body =
   let open Lwt_result_syntax in
   let do_call () = callback conn req body in
@@ -109,5 +136,12 @@ let rpc_metrics_transform_callback ~update_metrics dir callback conn req body =
       (* Otherwise, the call must be done anyway. *)
       do_call ()
 
-let proxy_server_query_forwarder ?ctx ?on_forwarding forwarding_endpoint =
-  make_transform_callback ?ctx ?on_forwarding forwarding_endpoint
+let proxy_server_query_forwarder ?acl ?ctx ?on_forwarding forwarding_endpoint =
+  match acl with
+  | Some acl ->
+      make_transform_callback_with_acl
+        ~acl
+        ?ctx
+        ?on_forwarding
+        forwarding_endpoint
+  | None -> make_transform_callback ?ctx ?on_forwarding forwarding_endpoint
