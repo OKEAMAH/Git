@@ -104,7 +104,9 @@ let launch_rpc_server (config : Parameters.t) (addr, port) =
       ~media_types:(Media_type.Command_line.of_command_line media_types)
       dir
   in
-  let callback = Forward_handler.callback server config.rpc_comm_socket_path in
+  let callback =
+    Forward_handler.callback ~acl server config.rpc_comm_socket_path
+  in
   Lwt.catch
     (fun () ->
       let*! () = RPC_server.launch ~host server ~callback mode in
