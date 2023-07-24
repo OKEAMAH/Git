@@ -183,9 +183,7 @@ type consensus_watermark =
   | Dal_attestation of Chain_id.t
 
 let to_watermark = function
-  | Preattestation chain_id ->
-      Signature.Custom
-        (Bytes.cat (Bytes.of_string "\x12") (Chain_id.to_bytes chain_id))
+  | Preattestation chain_id -> Signature.Preattestation chain_id
   | Dal_attestation chain_id
   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4479
 
@@ -194,23 +192,11 @@ let to_watermark = function
      later on. Moreover, there is a leak of abstraction with the shell
      which makes adding a new watermark a bit awkward. *)
   | Attestation chain_id ->
-      Signature.Custom
-        (Bytes.cat (Bytes.of_string "\x13") (Chain_id.to_bytes chain_id))
+      Signature.Attestation chain_id
 
 let of_watermark = function
-  | Signature.Custom b ->
-      if Compare.Int.(Bytes.length b > 0) then
-        match Bytes.get b 0 with
-        | '\x12' ->
-            Option.map
-              (fun chain_id -> Preattestation chain_id)
-              (Chain_id.of_bytes_opt (Bytes.sub b 1 (Bytes.length b - 1)))
-        | '\x13' ->
-            Option.map
-              (fun chain_id -> Attestation chain_id)
-              (Chain_id.of_bytes_opt (Bytes.sub b 1 (Bytes.length b - 1)))
-        | _ -> None
-      else None
+  | Signature.Attestation chain_id -> Some (Attestation chain_id)
+  | Signature.Preattestation chain_id -> Some (Preattestation chain_id)
   | _ -> None
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
