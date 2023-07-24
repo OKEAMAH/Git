@@ -25,11 +25,10 @@
 
 open Error_monad
 include Cryptobox_intf
+open Plonk.Bls
 module Kate_amortized = Plonk.Kate_amortized
 module FFT = Plonk.Kzg_toolbox.FFT
 module Base58 = Tezos_crypto.Base58
-module Srs_g1 = Octez_bls12_381_polynomial.Srs.Srs_g1
-module Srs_g2 = Octez_bls12_381_polynomial.Srs.Srs_g2
 
 type error += Failed_to_load_trusted_setup of string
 
@@ -130,35 +129,24 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
    parameters is almost cost-free. *)
 type srs = {
   raw : initialisation_parameters;
-  kate_amortized_srs_g2_shards : Bls12_381.G2.t;
-  kate_amortized_srs_g2_pages : Bls12_381.G2.t;
+  kate_amortized_srs_g2_shards : G2.t;
+  kate_amortized_srs_g2_pages : G2.t;
 }
 
 module Inner = struct
-  (* Scalars are elements of the prime field Fr from BLS. *)
-  module Scalar = Bls12_381.Fr
-  module Polynomials = Octez_bls12_381_polynomial.Polynomial
-  module G1_array = Octez_bls12_381_polynomial.G1_carray
-
-  (* Operations on vector of scalars *)
-  module Evaluations = Octez_bls12_381_polynomial.Evaluations
-
-  (* Domains for the Fast Fourier Transform (FTT). *)
-  module Domains = Octez_bls12_381_polynomial.Domain
-
   type slot = bytes
 
   type scalar = Scalar.t
 
-  type polynomial = Polynomials.t
+  type polynomial = Poly.t
 
-  type commitment = Bls12_381.G1.t
+  type commitment = G1.t
 
-  type shard_proof = Bls12_381.G1.t
+  type shard_proof = G1.t
 
-  type commitment_proof = Bls12_381.G1.t
+  type commitment_proof = G1.t
 
-  type page_proof = Bls12_381.G1.t
+  type page_proof = G1.t
 
   type page = bytes
 
@@ -175,18 +163,15 @@ module Inner = struct
 
     let fr_encoding =
       conv
-        Bls12_381.Fr.to_bytes
-        Bls12_381.Fr.of_bytes_exn
-        (Fixed.bytes Bls12_381.Fr.size_in_bytes)
+        Scalar.to_bytes
+        Scalar.of_bytes_exn
+        (Fixed.bytes Scalar.size_in_bytes)
 
     (* FIXME https://gitlab.com/tezos/tezos/-/issues/3391
 
        The commitment is not bounded. *)
     let g1_encoding =
-      conv
-        Bls12_381.G1.to_compressed_bytes
-        Bls12_381.G1.of_compressed_bytes_exn
-        bytes
+      conv G1.to_compressed_bytes G1.of_compressed_bytes_exn bytes
 
     let page_proof_encoding = g1_encoding
 
@@ -219,23 +204,22 @@ module Inner = struct
 
     type Base58.data += Data of t
 
-    let zero = Bls12_381.G1.zero
+    let zero = G1.zero
 
-    let equal = Bls12_381.G1.eq
+    let equal = G1.eq
 
-    let commitment_to_bytes = Bls12_381.G1.to_compressed_bytes
+    let commitment_to_bytes = G1.to_compressed_bytes
 
-    let commitment_of_bytes_opt = Bls12_381.G1.of_compressed_bytes_opt
-      [@@coverage off]
+    let commitment_of_bytes_opt = G1.of_compressed_bytes_opt [@@coverage off]
 
     let commitment_of_bytes_exn bytes =
-      match Bls12_381.G1.of_compressed_bytes_opt bytes with
+      match G1.of_compressed_bytes_opt bytes with
       | None ->
           Format.kasprintf Stdlib.failwith "Unexpected data (DAL commitment)"
       | Some commitment -> commitment
       [@@coverage off]
 
-    let commitment_size = Bls12_381.G1.compressed_size_in_bytes [@@coverage off]
+    let commitment_size = G1.compressed_size_in_bytes [@@coverage off]
 
     let to_string commitment = commitment_to_bytes commitment |> Bytes.to_string
       [@@coverage off]
@@ -267,9 +251,8 @@ module Inner = struct
        are detected to be not equal. *)
     let compare_commitments a b =
       (* We are obliged to compare commitments by casting to bytes because
-         {!Bls12_381.G1} doesn't provide a compare function. *)
-      if Bls12_381.G1.eq a b then 0
-      else Bytes.compare (Bls12_381.G1.to_bytes a) (Bls12_381.G1.to_bytes b)
+         {!G1} doesn't provide a compare function. *)
+      if G1.eq a b then 0 else Bytes.compare (G1.to_bytes a) (G1.to_bytes b)
 
     let compare = compare_commitments
 
@@ -286,7 +269,7 @@ module Inner = struct
 
       let compare = compare_commitments
 
-      let equal = Bls12_381.G1.eq
+      let equal = G1.eq
 
       let hash _ =
         (* The commitment is not hashed. This is ensured by the
@@ -305,12 +288,12 @@ module Inner = struct
   end
 
   module Commitment_proof = struct
-    let zero = Bls12_381.G1.zero
+    let zero = G1.zero
 
-    let to_bytes = Bls12_381.G1.to_compressed_bytes
+    let to_bytes = G1.to_compressed_bytes
 
     let of_bytes_exn bytes =
-      match Bls12_381.G1.of_compressed_bytes_opt bytes with
+      match G1.of_compressed_bytes_opt bytes with
       | None ->
           Format.kasprintf
             Stdlib.failwith
@@ -318,7 +301,7 @@ module Inner = struct
       | Some proof -> proof
       [@@coverage off]
 
-    let size = Bls12_381.G1.compressed_size_in_bytes
+    let size = G1.compressed_size_in_bytes
 
     let raw_encoding =
       let open Data_encoding in
@@ -353,7 +336,7 @@ module Inner = struct
   let scalar_bytes_amount = Scalar.size_in_bytes - 1
 
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
-  let make_domain n = Domains.build n
+  let make_domain n = Domain.build n
 
   type t = {
     redundancy_factor : int;
@@ -366,10 +349,10 @@ module Inner = struct
     (* Length of the erasure-encoded polynomial representation of a slot,
        also called [erasure_encoded_polynomial_length] in the comments. *)
     erasure_encoded_polynomial_length : int;
-    domain_polynomial_length : Domains.t;
+    domain_polynomial_length : Domain.t;
     (* Domain for the FFT on slots as polynomials to be erasure encoded. *)
-    domain_2_times_polynomial_length : Domains.t;
-    domain_erasure_encoded_polynomial_length : Domains.t;
+    domain_2_times_polynomial_length : Domain.t;
+    domain_erasure_encoded_polynomial_length : Domain.t;
     (* Domain for the FFT on erasure encoded slots (as polynomials). *)
     shard_length : int;
     (* Length of a shard in terms of scalar elements. *)
@@ -615,9 +598,9 @@ module Inner = struct
     {redundancy_factor; slot_size; page_size; number_of_shards}
     [@@coverage off]
 
-  let polynomial_degree = Polynomials.degree
+  let polynomial_degree = Poly.degree
 
-  let polynomial_evaluate = Polynomials.evaluate
+  let polynomial_evaluate = Poly.evaluate
 
   (* [polynomials_multiplication d ps] computes the product of the
      polynomials [ps]. The degree of the resulting product must
@@ -720,7 +703,7 @@ module Inner = struct
          polynomials (as composition preserves injectivity). *)
       Ok
         (FFT.ifft_inplace
-           (Domains.build t.max_polynomial_length)
+           (Domain.build t.max_polynomial_length)
            (Evaluations.of_array (t.max_polynomial_length - 1, coefficients)))
 
   (* [polynomial_to_slot] is the left-inverse function of
@@ -728,7 +711,7 @@ module Inner = struct
   let polynomial_to_slot t p =
     (* The last operation of [polynomial_from_slot] is the interpolation,
        so we undo it with an evaluation on the same domain [t.domain_polynomial_length]. *)
-    let evaluations = FFT.fft (Domains.build t.max_polynomial_length) p in
+    let evaluations = FFT.fft (Domain.build t.max_polynomial_length) p in
     let slot = Bytes.make t.slot_size '\x00' in
     let offset = ref 0 in
     (* Reverse permutation from [polynomial_from_slot]. *)
@@ -754,7 +737,7 @@ module Inner = struct
      supported by the [Scalar] field in time O(n log n). *)
   let encode t p =
     Evaluations.to_array
-      (FFT.fft (Domains.build t.erasure_encoded_polynomial_length) p)
+      (FFT.fft (Domain.build t.erasure_encoded_polynomial_length) p)
 
   (* The shards are arranged in cosets to produce batches of KZG proofs
      for the shards efficiently.
@@ -928,11 +911,11 @@ module Inner = struct
       let mul acc i =
         (* The complexity of [mul_xn] is linear in
            [Polynomials.degree acc + t.shard_length]. *)
-        Polynomials.mul_xn
+        Poly.mul_xn
           acc
           t.shard_length
           (Scalar.negate
-             (Domains.get
+             (Domain.get
                 t.domain_erasure_encoded_polynomial_length
                 (i * t.shard_length)))
       in
@@ -942,7 +925,7 @@ module Inner = struct
         ShardSet.fold
           (fun {index; _} (l, r) -> (mul r index, l))
           seq
-          (Polynomials.one, Polynomials.one)
+          (Poly.one, Poly.one)
       in
       (* The computation of [p1], [p2] has asymptotic complexity
          [O((t.max_polynomial_length + t.shard_length) * (t.max_polynomial_length / t.shard_length))
@@ -950,18 +933,17 @@ module Inner = struct
          It is the most costly operation of this function. *)
       let p1, p2 = partition_products shards in
       (* A(x) is the product of [p1] and [p2], and has degree [polynomial_length] *)
-      assert (
-        Polynomials.degree p1 + Polynomials.degree p2 = t.max_polynomial_length) ;
+      assert (Poly.degree p1 + Poly.degree p2 = t.max_polynomial_length) ;
 
-      let mul_domain = Domains.build (2 * t.max_polynomial_length) in
-      let eep_domain = Domains.build t.erasure_encoded_polynomial_length in
+      let mul_domain = Domain.build (2 * t.max_polynomial_length) in
+      let eep_domain = Domain.build t.erasure_encoded_polynomial_length in
 
       let a_poly = polynomials_product mul_domain [p1; p2] in
 
-      assert (Polynomials.degree a_poly = t.max_polynomial_length) ;
+      assert (Poly.degree a_poly = t.max_polynomial_length) ;
 
       (* 2. Computing formal derivative of A(x). *)
-      let a' = Polynomials.derivative a_poly in
+      let a' = Poly.derivative a_poly in
 
       (* 3. Computing A'(w^i) = A_i(w^i).
 
@@ -1004,7 +986,7 @@ module Inner = struct
               let c_i = share.(j) in
               let i = (t.number_of_shards * j) + index in
               let x_i =
-                Domains.get t.domain_erasure_encoded_polynomial_length i
+                Domain.get t.domain_erasure_encoded_polynomial_length i
               in
               let tmp = Evaluations.get eval_a' i in
               Scalar.mul_inplace tmp tmp x_i ;
@@ -1029,14 +1011,14 @@ module Inner = struct
          B(x) is thus given by the first k components
          of -n * IFFT_n(N). *)
       let b =
-        Polynomials.truncate
+        Poly.truncate
           ~len:t.max_polynomial_length
           (FFT.ifft_inplace eep_domain n_poly)
       in
 
-      Polynomials.mul_by_scalar_inplace
+      Poly.mul_by_scalar_inplace
         b
-        Scalar.(negate (of_int t.erasure_encoded_polynomial_length))
+        (Scalar.negate (Scalar.of_int t.erasure_encoded_polynomial_length))
         b ;
 
       (* 6. Computing Lagrange interpolation polynomial P(x).
@@ -1046,17 +1028,14 @@ module Inner = struct
       let p = polynomials_product mul_domain [a_poly; b] in
       (* P has degree [<= max_polynomial_length - 1] so [<= max_polynomial_length]
          coefficients. *)
-      Ok (Polynomials.truncate ~len:t.max_polynomial_length p)
+      Ok (Poly.truncate ~len:t.max_polynomial_length p)
 
   let commit t p =
     try Ok (Plonk.Kzg_toolbox.Commit.with_srs1 t.srs.raw.srs_g1 p)
     with Plonk.Kzg_toolbox.Commit.SRS_too_short _ ->
       Error
         (`Invalid_degree_strictly_less_than_expected
-          {
-            given = Polynomials.degree p;
-            expected = Srs_g1.size t.srs.raw.srs_g1;
-          })
+          {given = Poly.degree p; expected = Srs_g1.size t.srs.raw.srs_g1})
 
   let pp_commit_error fmt
       (`Invalid_degree_strictly_less_than_expected {given; expected}) =
@@ -1164,8 +1143,8 @@ module Inner = struct
     let coefficients =
       Array.init (t.max_polynomial_length + 1) (fun _ -> Scalar.(copy zero))
     in
-    let p_length = Polynomials.degree polynomial + 1 in
-    let p = Polynomials.to_dense_coefficients polynomial in
+    let p_length = Poly.degree polynomial + 1 in
+    let p = Poly.to_dense_coefficients polynomial in
     Array.blit p 0 coefficients 0 p_length ;
     Kate_amortized.multiple_multi_reveals
       t.kate_amortized
@@ -1190,9 +1169,9 @@ module Inner = struct
         Error `Shard_length_mismatch
       else
         let root =
-          Domains.get t.domain_erasure_encoded_polynomial_length shard_index
+          Domain.get t.domain_erasure_encoded_polynomial_length shard_index
         in
-        let domain = Domains.build t.shard_length in
+        let domain = Domain.build t.shard_length in
         let srs_point = t.srs.kate_amortized_srs_g2_shards in
         if
           Kate_amortized.verify
@@ -1210,12 +1189,12 @@ module Inner = struct
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Page_index_out_of_range
     else
-      let wi = Domains.get t.domain_polynomial_length page_index in
+      let wi = Domain.get t.domain_polynomial_length page_index in
       let quotient, _ =
-        Polynomials.division_xn
+        Poly.division_xn
           p
           t.page_length_domain
-          Scalar.(negate (pow wi (Z.of_int t.page_length_domain)))
+          (Scalar.negate (Scalar.pow wi (Z.of_int t.page_length_domain)))
       in
       commit t quotient
 
@@ -1230,7 +1209,7 @@ module Inner = struct
       if expected_page_length <> got_page_length then
         Error `Page_length_mismatch
       else
-        let domain = Domains.build t.page_length_domain in
+        let domain = Domain.build t.page_length_domain in
         let evaluations =
           Array.init t.page_length_domain (function
               | i when i < t.page_length - 1 ->
@@ -1258,7 +1237,7 @@ module Inner = struct
                   Scalar.of_bytes_exn dst
               | _ -> Scalar.(copy zero))
         in
-        let root = Domains.get t.domain_polynomial_length page_index in
+        let root = Domain.get t.domain_polynomial_length page_index in
         if
           Kate_amortized.verify
             t.kate_amortized
@@ -1280,7 +1259,7 @@ module Internal_for_tests = struct
       {slot_size; page_size; number_of_shards; redundancy_factor; _} =
     let length = slot_as_polynomial_length ~slot_size ~page_size in
     let secret =
-      Bls12_381.Fr.of_string
+      Scalar.of_string
         "20812168509434597367146703229805575690060615791308155437936410982393987532344"
     in
     let srs_g1 = Srs_g1.generate_insecure length secret in
@@ -1315,11 +1294,11 @@ module Internal_for_tests = struct
     in
     loop 0 Seq.empty
 
-  let polynomials_equal = Polynomials.equal
+  let polynomials_equal = Poly.equal
 
-  let page_proof_equal = Bls12_381.G1.eq
+  let page_proof_equal = G1.eq
 
-  let alter_proof proof = Bls12_381.G1.(add proof one)
+  let alter_proof proof = G1.(add proof one)
 
   let alter_page_proof (proof : page_proof) = alter_proof proof
 
@@ -1336,11 +1315,11 @@ module Internal_for_tests = struct
 
   let reset_initialisation_parameters () = initialisation_parameters := None
 
-  let dummy_commitment ~state () = Bls12_381.G1.random ~state ()
+  let dummy_commitment ~state () = G1.random ~state ()
 
-  let dummy_page_proof ~state () = Bls12_381.G1.random ~state ()
+  let dummy_page_proof ~state () = G1.random ~state ()
 
-  let dummy_shard_proof ~state () = Bls12_381.G1.random ~state ()
+  let dummy_shard_proof ~state () = G1.random ~state ()
 
   let make_dummy_shard ~state ~index ~length =
     {index; share = Array.init length (fun _ -> Scalar.(random ~state ()))}
@@ -1351,11 +1330,11 @@ module Internal_for_tests = struct
 
   let dummy_polynomial ~state ~degree =
     let rec nonzero () =
-      let res = Bls12_381.Fr.random ~state () in
-      if Bls12_381.Fr.is_zero res then nonzero () else res
+      let res = Scalar.random ~state () in
+      if Scalar.is_zero res then nonzero () else res
     in
-    Polynomials.init (degree + 1) (fun i ->
-        if i = degree then nonzero () else Bls12_381.Fr.random ~state ())
+    Poly.init (degree + 1) (fun i ->
+        if i = degree then nonzero () else Scalar.random ~state ())
 
   let srs_size_g1 t = Srs_g1.size t.srs.raw.srs_g1
 
