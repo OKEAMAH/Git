@@ -1622,7 +1622,7 @@ let octez_plonk =
       [
         repr;
         hacl_star;
-        data_encoding;
+        data_encoding |> open_;
         octez_bls12_381_polynomial |> open_;
         octez_plompiler |> open_;
         str;

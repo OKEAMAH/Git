@@ -15,5 +15,6 @@
  (preprocess (pps ppx_repr))
  (flags
   (:standard)
+  -open Data_encoding
   -open Octez_bls12_381_polynomial
   -open Plompiler))
