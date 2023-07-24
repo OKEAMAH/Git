@@ -45,6 +45,8 @@ type secret_key =
 type watermark =
   | Block_header of Chain_id.t
   | Endorsement of Chain_id.t
+  | Attestation of Chain_id.t
+  | Preattestation of Chain_id.t
   | Generic_operation
   | Custom of Bytes.t
 
@@ -621,6 +623,10 @@ let bytes_of_watermark = function
       Bytes.cat (Bytes.of_string "\x01") (Chain_id.to_bytes chain_id)
   | Endorsement chain_id ->
       Bytes.cat (Bytes.of_string "\x02") (Chain_id.to_bytes chain_id)
+  | Attestation chain_id ->
+      Bytes.cat (Bytes.of_string "\x13") (Chain_id.to_bytes chain_id)
+  | Preattestation chain_id ->
+      Bytes.cat (Bytes.of_string "\x12") (Chain_id.to_bytes chain_id)
   | Generic_operation -> Bytes.of_string "\x03"
   | Custom bytes -> bytes
 
@@ -629,6 +635,9 @@ let pp_watermark ppf =
   function
   | Block_header chain_id -> fprintf ppf "Block-header: %a" Chain_id.pp chain_id
   | Endorsement chain_id -> fprintf ppf "Endorsement: %a" Chain_id.pp chain_id
+  | Attestation chain_id -> fprintf ppf "Attestation: %a" Chain_id.pp chain_id
+  | Preattestation chain_id ->
+      fprintf ppf "Preattestation: %a" Chain_id.pp chain_id
   | Generic_operation -> pp_print_string ppf "Generic-operation"
   | Custom bytes ->
       let hexed = Hex.of_bytes bytes |> Hex.show in

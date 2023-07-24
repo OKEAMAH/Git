@@ -7173,6 +7173,8 @@ type public_key =
 type watermark =
   | Block_header of Chain_id.t
   | Endorsement of Chain_id.t
+  | Attestation of Chain_id.t
+  | Preattestation of Chain_id.t
   | Generic_operation
   | Custom of bytes
 
