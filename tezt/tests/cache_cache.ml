@@ -143,11 +143,11 @@ let singleprocess_reorg =
   in
   let waiter = Lwt.join (List.map wait_for_reorg_event [node1; node2]) in
   Log.info "Bake a block on a different branch" ;
-  let* () = Client.bake_for ~minimal_timestamp:false ~keys:[] client1 in
+  let* () = Client.bake_for ~minimal_timestamp:false client1 in
   Log.info "Waiting for both node to switch heads" ;
   let* () = waiter in
   Log.info "Baking block at level 3" ;
-  let* () = Client.bake_for ~minimal_timestamp:false ~keys:[] client1 in
+  let* () = Client.bake_for ~minimal_timestamp:false client1 in
   Log.info "Waiting for both nodes to increase their head" ;
   let* (_level : int) = Node.wait_for_level node1 3 in
   let* (_level : int) = Node.wait_for_level node2 3 in

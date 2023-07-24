@@ -152,7 +152,7 @@ let test_protocol_table_update ~migrate_from ~migrate_to =
   let* () =
     repeat num_blocks (fun () ->
         if String.equal ph_n2 (Protocol.hash Alpha) then
-          Client.bake_for_and_wait ~keys:[] client_2
+          Client.bake_for_and_wait client_2
         else Client.bake_for_and_wait client_2)
   in
   let activation_promise_switch = wait_for_protocol_table_update node_1 in

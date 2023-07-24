@@ -730,8 +730,8 @@ let empty_mempool_file ?(filename = "mempool.json") () =
   write_file mempool ~contents:mempool_str ;
   mempool
 
-let spawn_bake_for ?endpoint ?protocol ?(keys = [Constant.bootstrap1.alias])
-    ?minimal_fees ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte
+let spawn_bake_for ?endpoint ?protocol ?(keys = []) ?minimal_fees
+    ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte
     ?(minimal_timestamp = true) ?mempool ?(ignore_node_mempool = false) ?force
     ?context_path ?dal_node_endpoint client =
   spawn_command

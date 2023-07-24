@@ -179,8 +179,7 @@ let with_fresh_rollup ?(pvm_name = "arith") ?dal_node f tezos_node tezos_client
       ~base_dir:(Client.base_dir tezos_client)
       ~default_operator:bootstrap1_key
   in
-  (* Argument ~keys:[] allows to bake with all available delegates. *)
-  let* () = Client.bake_for_and_wait tezos_client ~keys:[] in
+  let* () = Client.bake_for_and_wait tezos_client in
   f rollup_address sc_rollup_node
 
 let make_dal_node ?peers ?attestor_profiles ?producer_profiles
@@ -1989,8 +1988,7 @@ let test_attestor_with_daemon protocol parameters cryptobox node client dal_node
       if level > target_level then return ()
       else
         let* () = publish_and_store level in
-        (* bake (and attest) with all available delegates to go faster *)
-        let* () = Client.bake_for_and_wait ~keys:[] ~dal_node_endpoint client in
+        let* () = Client.bake_for_and_wait ~dal_node_endpoint client in
         let* _ = Node.wait_for_level node level in
         iter (level + 1)
     in
@@ -2413,8 +2411,7 @@ let e2e_test_script ?expand_test:_ ?(beforehand_slot_injection = 1)
     in
     send_messages ~bake:false l1_client [config]
   in
-  (* Argument ~keys:[] allows to bake with all available delegates. *)
-  let* () = Client.bake_for_and_wait l1_client ~keys:[] in
+  let* () = Client.bake_for_and_wait l1_client in
   Log.info "[e2e.pvm] PVM Arith configured@." ;
 
   Log.info
