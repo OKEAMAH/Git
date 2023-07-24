@@ -42,7 +42,7 @@ let combinations_factors =
    The function works as follows: each product of elements from
    an element of the powerset of {3,11,19} is multiplied by 2
    until the product is greater than [domain_size]. *)
-let select_fft_domain (domain_size : int) : int * int * int =
+let select_fft_domain (domain_size : int) : int * int =
   assert (domain_size > 0) ;
   (* {3,11,19} are small prime factors dividing [Scalar.order - 1],
      the order of the multiplicative group Fr\{0}. *)
@@ -52,8 +52,8 @@ let select_fft_domain (domain_size : int) : int * int * int =
       (fun x -> Z.(divisible order_multiplicative_group (of_int x)))
       [3; 11; 19]) ;
   (* This case is needed because the code in the else clause will return
-     (1, 1, 1) and 1 is not a valid domain size. *)
-  if domain_size = 1 then (2, 2, 1)
+     (1, 1) and 1 is not a valid domain size. *)
+  if domain_size = 1 then (2, 1)
   else
     (* [domain_from_factors] computes the power of two to be used in the
        decomposition N = 2^k * factors >= domain_size where [factors] is an
@@ -70,22 +70,19 @@ let select_fft_domain (domain_size : int) : int * int * int =
     in
     let candidate_domains = List.map domain_from_factors combinations_factors in
     (* The list contains at least an element: the next power of 2 of domain_size *)
-    let domain_length, prime_factor_decomposition =
+    let _domain_length, prime_factor_decomposition =
       List.fold_left min (List.hd candidate_domains) (List.tl candidate_domains)
     in
     let power_of_two = List.hd prime_factor_decomposition in
     let remainder_product =
       List.fold_left ( * ) 1 (List.tl prime_factor_decomposition)
     in
-    (domain_length, power_of_two, remainder_product)
+    (power_of_two, remainder_product)
 
-let fft_aux ~dft ~fft ~fft_pfa size coefficients =
-  (* domain_length = power_of_two * remainder_product *)
-  let _domain_length, power_of_two, remainder_product =
-    select_fft_domain size
-  in
+let fft_aux ~dft ~fft ~fft_pfa domain coefficients =
+  let size = Domain.length domain in
+  let power_of_two, remainder_product = select_fft_domain size in
   if size = power_of_two || size = remainder_product then
-    let domain = Domain.build size in
     (if Utils.is_power_of_two size then fft else dft) domain coefficients
   else
     let domain1 = Domain.build power_of_two in
@@ -392,7 +389,7 @@ let interpolation_poly ~root ~domain ~evaluations =
   assert (Array.length evaluations = Domain.length domain) ;
   let size = Domain.length domain in
   let evaluations =
-    ifft_inplace size (Evaluations.of_array (size - 1, evaluations))
+    ifft_inplace domain (Evaluations.of_array (size - 1, evaluations))
   in
   (* Computes root_inverse = 1/root. *)
   let root_inverse = Scalar.inverse_exn root in
