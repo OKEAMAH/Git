@@ -279,16 +279,16 @@ module Time = struct
     if verbose then time description f else f ()
 
   let bench ~nb_rep f () =
-    let rec repeat time n () =
+    let rec repeat (time, time2) n () =
       if n > 0 then (
         (* Gc.full_major () ; *)
         let t0 = Unix.gettimeofday () in
         f () ;
         let t1 = Unix.gettimeofday () in
-        repeat (time +. (t1 -. t0)) (n - 1) ())
-      else time
+        repeat (time +. (t1 -. t0), time2 +. ((t1 -. t0) ** 2.)) (n - 1) ())
+      else (time, time2)
     in
-    repeat 0. nb_rep ()
+    repeat (0., 0.) nb_rep ()
 end
 
 module Make (Main : Plonk.Main_protocol.S) = struct

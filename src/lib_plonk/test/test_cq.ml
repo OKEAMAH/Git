@@ -69,12 +69,12 @@ let test_wrong_proof () =
   in
   assert (not (fst @@ Cq.verify vrf transcript wrong_proof))
 
-let bench_pippenger () =
-  let nb_rep = 1000 in
+let bench_pippenger ?(nb_rep = 1) n () =
+  Gc.full_major () ;
   let open Plonk.Bls in
   let srs, _ =
     let open Octez_bls12_381_polynomial.Bls12_381_polynomial in
-    Srs.generate_insecure 8 0
+    Srs.generate_insecure n 0
   in
   let _srs = Srs_g1.to_array srs in
   let _srs_affine = G1.to_affine_array _srs in
@@ -106,22 +106,43 @@ let bench_pippenger () =
     ()
   in
 
-  let srs = Plonk_test.Helpers.Time.bench ~nb_rep f_srs () in
-  let g1 = Plonk_test.Helpers.Time.bench ~nb_rep f_g1 () in
-  let affine = Plonk_test.Helpers.Time.bench ~nb_rep f_g1_affine () in
-  let affine_conv =
+  let srs, srs2 = Plonk_test.Helpers.Time.bench ~nb_rep f_srs () in
+  let g1, g12 = Plonk_test.Helpers.Time.bench ~nb_rep f_g1 () in
+  let affine, affine2 = Plonk_test.Helpers.Time.bench ~nb_rep f_g1_affine () in
+  let affine_conv, affine_conv2 =
     Plonk_test.Helpers.Time.bench ~nb_rep f_g1_affine_with_conv ()
   in
 
   let n = float_of_int nb_rep in
 
-  Printf.printf "\n\nSRS pippe : %f s — mean : %f s." srs (srs /. n) ;
-  Printf.printf "\nPippenger : %f s — mean : %f s." g1 (g1 /. n) ;
-  Printf.printf "\nWith affi : %f s — mean : %f s." affine (affine /. n) ;
+  let srs_mean = srs /. n in
+  let g1_mean = g1 /. n in
+  let affine_mean = affine /. n in
+  let affine_conv_mean = affine_conv /. n in
+
+  let srs_sd = (srs2 /. n) -. (srs_mean ** 2.) |> abs_float in
+  let g1_sd = (g12 /. n) -. (g1_mean ** 2.) |> abs_float in
+  let affine_sd = (affine2 /. n) -. (affine_mean ** 2.) |> abs_float in
+  let affine_conv_sd =
+    (affine_conv2 /. n) -. (affine_conv_mean ** 2.) |> abs_float
+  in
+
   Printf.printf
-    "\nAf w conv : %f s — mean : %f s."
+    "\n\nSRS pippe : %f s — mean : %f s — σ : %f s."
+    srs
+    srs_mean
+    srs_sd ;
+  Printf.printf "\nPippenger : %f s — mean : %f s — σ : %f s." g1 g1_mean g1_sd ;
+  Printf.printf
+    "\nWith affi : %f s — mean : %f s — σ : %f s."
+    affine
+    affine_mean
+    affine_sd ;
+  Printf.printf
+    "\nAf w conv : %f s — mean : %f s — σ : %f s."
     affine_conv
-    (affine_conv /. n) ;
+    affine_conv_mean
+    affine_conv_sd ;
   Printf.printf "\n\n" ;
   ()
 
@@ -132,5 +153,8 @@ let tests =
       (* ("Correctness", test_correctness); *)
       (* ("Not in table", test_not_in_table); *)
       (* ("Fake proof", test_wrong_proof); *)
-      ("Bench pippenger", bench_pippenger);
+      ("Bench pippenger", bench_pippenger ~nb_rep:500 5);
+      ("Bench pippenger", bench_pippenger ~nb_rep:500 8);
+      ("Bench pippenger", bench_pippenger ~nb_rep:3 18);
+      ("Bench pippenger", bench_pippenger ~nb_rep:3 19);
     ]
