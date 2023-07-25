@@ -459,14 +459,19 @@ val wait_for_level : t -> int -> int Lwt.t
 
 (** Get the current known level of a node.
 
-    Returns [0] if the node is not running or if no [head_increment] or
-    [branch_switch] event was received yet. This makes this function equivalent
-    to [wait_for_level node 0] except that it does not actually wait for the
-    level to be known.
+    If the node is not running, the optional argument function [when_not_running
+    ()] is called. The default behavior is to cause the test to fail.
 
-    Note that, as the node's status is updated only on head
-    increments, this value is wrong just after a snapshot import. *)
-val get_level : t -> int
+    If no [head_increment] or [branch_switch] event was received yet, the
+    optional argument function [when_unknown ()] is called. The default behavior
+    is to return level 0. Note that this may not be the level of the associated
+    Octez node. The level may be higher, for instance when the node was just
+    restarted or its started from a snapshot.
+
+    This function is similar to [wait_for_level node 0] except that it does not
+    actually wait for the level to be known, it returns immediately. *)
+val get_level :
+  ?when_unknown:(unit -> int) -> ?when_not_running:(unit -> int) -> t -> int
 
 (** Wait for the node to read its identity.
 

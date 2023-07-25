@@ -625,10 +625,13 @@ let wait_for_level node level =
         ~where:("level >= " ^ string_of_int level)
         promise
 
-let get_level node =
+let get_level ?(when_unknown = fun () -> 0)
+    ?(when_not_running =
+      fun () -> Test.fail "Node not running for get_known_level") node =
   match node.status with
   | Running {session_state = {level = Known level; _}; _} -> level
-  | Not_running | Running _ -> 0
+  | Running {session_state = {level = Unknown; _}; _} -> when_unknown ()
+  | Not_running -> when_not_running ()
 
 let wait_for_identity node =
   match node.status with
