@@ -156,5 +156,5 @@ let tests =
       (* ("Bench pippenger", bench_pippenger ~nb_rep:500 5);
       ("Bench pippenger", bench_pippenger ~nb_rep:500 8); *)
       (* ("Bench pippenger", bench_pippenger ~nb_rep:10 18); *)
-      ("Bench pippenger", bench_pippenger ~nb_rep:10 19);
+      ("Bench pippenger", bench_pippenger ~nb_rep:50 19);
     ]
