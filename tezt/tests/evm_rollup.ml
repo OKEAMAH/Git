@@ -863,6 +863,129 @@ let test_chunked_transaction =
   @@ transfer ~data:("0x" ^ String.make 12_000 'a')
 
 module Test_rpc = struct
+  (* TODO:
+     - get block by hash
+     - get tx receipt
+     - get tx by hash
+     - send raw tx
+     - send tx *)
+
+  let chainId =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "chain_id"]
+      ~title:"RPC method eth_chainId"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* chain_id =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "eth_chainId"; parameters = `A []})
+    in
+    let _result = chain_id |> Evm_proxy_server.extract_result in
+    unit
+
+  let net_version =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "net_version"]
+      ~title:"RPC method net_version"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* net_version =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "net_version"; parameters = `A []})
+    in
+    let _result = net_version |> Evm_proxy_server.extract_result in
+    unit
+
+  let code =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "code"]
+      ~title:"RPC method eth_getCode"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* code =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {
+            method_ = "eth_getCode";
+            parameters =
+              `A
+                [
+                  `String Eth_account.bootstrap_accounts.(0).address;
+                  `String "latest";
+                ];
+          })
+    in
+    let _result = code |> Evm_proxy_server.extract_result in
+    unit
+
+  let accounts =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "accounts"]
+      ~title:"RPC method eth_accounts"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* accounts =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "eth_accounts"; parameters = `A []})
+    in
+    let _result = accounts |> Evm_proxy_server.extract_result in
+    unit
+
+  let gas_price =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "gas_price"]
+      ~title:"RPC method eth_gasPrice"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* gas_price =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "eth_gasPrice"; parameters = `A []})
+    in
+    let _result = gas_price |> Evm_proxy_server.extract_result in
+    unit
+
+  let block_number =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "block_number"]
+      ~title:"RPC method eth_blockNumber"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* block_number =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "eth_blockNumber"; parameters = `A []})
+    in
+    let _result = block_number |> Evm_proxy_server.extract_result in
+    unit
+
   let getBalance =
     Protocol.register_test
       ~__FILE__
@@ -1842,6 +1965,12 @@ let test_kernel_upgrade_no_dictator =
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
+  Test_rpc.chainId protocols ;
+  Test_rpc.net_version protocols ;
+  Test_rpc.code protocols ;
+  Test_rpc.accounts protocols ;
+  Test_rpc.gas_price protocols ;
+  Test_rpc.block_number protocols ;
   Test_rpc.getBalance protocols ;
   Test_rpc.getBlockByNumber protocols ;
   Test_rpc.getTransactionCount protocols ;
