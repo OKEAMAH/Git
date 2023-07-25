@@ -126,7 +126,7 @@ module Internal = struct
     cm_b0 : PC.Commitment.t;
     cm_qa : PC.Commitment.t;
     cm_m : PC.Commitment.t;
-    cm_p : PC.Commitment.t;
+    cm_p : DegreeCheck.proof;
     cm_b0_qb_f : PC.Commitment.t;
     (* evaluations *)
     a0 : Scalar.t list;
@@ -375,8 +375,13 @@ module Internal = struct
     let q, r = Poly.division_xn bf_1 k Scalar.(negate one) in
     if Poly.is_zero r then q else raise Entry_not_in_table
 
-  let compute_p (pp : prover_public_parameters) k b0 =
-    Poly.mul_xn b0 (pp.n - 1 - (k - 2)) Scalar.zero |> commit1 pp.pc
+  let compute_p (pp : prover_public_parameters) transcript k b0 =
+    DegreeCheck.prove
+      ~max_commit:(pp.n - 1)
+      ~max_degree:(k - 2)
+      (PC.Public_parameters.get_srs1 pp.pc)
+      transcript
+      b0
 
   (* as written p. 13, N × a₀ = ΣA_i for i < N ; since A is sparse, it’s fine *)
   let compute_a0 n a =
@@ -591,14 +596,14 @@ module Internal = struct
     let qb = List.map2 (compute_qb pp beta k) b (SMap.values f_agg_map) in
 
     (* 2.10 *)
-    let cm_p, _ =
-      SMap.map (compute_p pp k) b0
-      |> SMap.values
-      |> PC.Commitment.of_list pp.pc ~name:p_name
+    let cm_p, transcript = compute_p pp transcript k b0 in
+
+    let transcript =
+      Transcript.expand Kzg_toolbox.DegreeCheck.proof_t cm_p transcript
     in
 
     let transcript =
-      Transcript.list_expand PC.Commitment.t [cm_a; cm_qa; cm_p] transcript
+      Transcript.list_expand PC.Commitment.t [cm_a; cm_qa] transcript
     in
     (* 3.6.b *)
     let b0y, fy, fy_agg, cm_b0_qb_f, cm_b0, pc, transcript =
@@ -650,11 +655,25 @@ module Internal = struct
         transcript
     in
     let beta, transcript = Fr_generation.random_fr transcript in
+
+    (* 2.12 *)
+    (* TODO ajouter b0 au transcript ?? *)
+    let check_b0, transcript =
+      DegreeCheck.verify
+        {srs_0 = pp.srs2_0; srs_n_d = pp.srs2_N_1_k_2}
+        transcript
+        proof.cm_b0
+        proof.cm_p
+    in
+
+    let transcript =
+      Transcript.expand Kzg_toolbox.DegreeCheck.proof_t proof.cm_p transcript
+    in
     (* 3.1 *)
     let transcript =
       Transcript.list_expand
         PC.Commitment.t
-        [proof.cm_a; proof.cm_qa; proof.cm_p]
+        [proof.cm_a; proof.cm_qa]
         transcript
     in
 
@@ -675,9 +694,6 @@ module Internal = struct
     let cm_a = aggregate_cm proof.cm_a etas in
     let cm_qa = aggregate_cm proof.cm_qa etas in
     let cm_m = aggregate_cm proof.cm_m etas in
-
-    let cm_b0 = aggregate_cm proof.cm_b0 etas in
-    let cm_p = aggregate_cm proof.cm_p etas in
 
     let a0 =
       List.fold_left
@@ -701,14 +717,6 @@ module Internal = struct
             (cm_qa, pp.cm_zv);
             (add cm_m (negate (mul cm_a beta)), pp.srs2_0);
           ]
-    in
-
-    (* 2.12 *)
-    let check_b0 =
-      DegreeCheck.verify
-        {srs_0 = pp.srs2_0; srs_n_d = pp.srs2_N_1_k_2}
-        cm_b0
-        cm_p
     in
 
     (* 3.6.b *)

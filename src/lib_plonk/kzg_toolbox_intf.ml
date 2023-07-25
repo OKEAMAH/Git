@@ -53,6 +53,8 @@ module type Public_parameters = sig
   val setup : setup_params -> Srs.t * Srs.t -> prover * verifier
 
   val to_bytes : int -> prover -> Bytes.t
+
+  val get_srs1 : prover -> Srs_g1.t
 end
 
 module type Polynomial_commitment = sig

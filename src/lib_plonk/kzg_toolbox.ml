@@ -67,6 +67,8 @@ module Polynomial_commitment = struct
       let prv = setup_prover srs in
       let vrf = setup_verifier (snd srs) in
       (prv, vrf)
+
+    let get_srs1 {srs1; _} = srs1
   end
 
   module Commitment = struct
@@ -80,10 +82,12 @@ module Polynomial_commitment = struct
 
     let commit_single srs = Commit.with_srs1 Public_parameters.(srs.srs1)
 
-    let commit ?all_keys:_ srs f_map =
-      let cmt = SMap.map (commit_single srs) f_map in
+    let commit_with_srs srs f_map =
+      let cmt = SMap.map (Commit.with_srs1 srs) f_map in
       let prover_aux = () in
       (cmt, prover_aux)
+
+    let commit ?all_keys:_ srs = commit_with_srs Public_parameters.(srs.srs1)
 
     let cardinal cmt = SMap.cardinal cmt
 
@@ -322,10 +326,37 @@ module Polynomial_commitment = struct
     verify_single srs transcript cmt_map query answer proof
 end
 
-module DegreeCheck = struct
+module DegreeCheck : sig
   type prover_public_parameters = Srs_g1.t
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Poly.t SMap.t
+
+  type commitment = Polynomial_commitment.Commitment.t
+
+  type proof = G1.t [@@deriving repr]
+
+  val prove :
+    max_commit:int ->
+    max_degree:int ->
+    prover_public_parameters ->
+    bytes ->
+    Poly.t SMap.t ->
+    proof * bytes
+
+  val verify :
+    verifier_public_parameters -> bytes -> commitment -> proof -> bool * bytes
+end = struct
+  type prover_public_parameters = Srs_g1.t
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Poly.t SMap.t
+
+  type commitment = Polynomial_commitment.Commitment.t
+
+  type proof = G1.t [@@deriving repr]
 
   (* p(X) of degree n. Max degree that can be committed: d, which is also the
      SRS's length - 1. We take d = t.max_polynomial_length - 1 since we don't want to commit
@@ -340,18 +371,55 @@ module DegreeCheck = struct
 
   (* Proves that degree(p) < t.max_polynomial_length *)
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4192
-
      Generalize this function to pass the slot_size in parameter. *)
-  let prove ~max_commit ~max_degree srs p =
+  let prove ~max_commit ~max_degree srs transcript p =
     (* Note: this reallocates a buffer of size (Srs_g1.size t.srs.raw.srs_g1)
        (2^21 elements in practice), so roughly 100MB. We can get rid of the
        allocation by giving an offset for the SRS in Pippenger. *)
-    Poly.mul_xn p (max_commit - max_degree) Scalar.zero |> Commit.with_srs1 srs
+    let cm, _ =
+      SMap.map (fun p -> Poly.mul_xn p (max_commit - max_degree) Scalar.zero) p
+      |> Polynomial_commitment.Commitment.commit_with_srs srs
+    in
+    let r, transcript = Fr_generation.random_fr transcript in
+    let rs = Fr_generation.powers (SMap.cardinal cm) r in
+    (Commit.with_affine_array_1 (SMap.values cm |> Array.of_list) rs, transcript)
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
-  let verify {srs_0; srs_n_d} cm proof =
+  let verify {srs_0; srs_n_d} transcript (cm : commitment) proof =
     (* checking that cm * committed_offset_monomial = proof *)
-    Pairing.pairing_check [(G1.negate cm, srs_n_d); (proof, srs_0)]
+    let r, transcript = Fr_generation.random_fr transcript in
+    let rs = Fr_generation.powers (SMap.cardinal cm) r in
+    let cm = Commit.with_affine_array_1 (SMap.values cm |> Array.of_list) rs in
+    (Pairing.pairing_check [(G1.negate cm, srs_n_d); (proof, srs_0)], transcript)
+end
+
+module DegreeCheck_for_Dal = struct
+  type prover_public_parameters = Srs_g1.t
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Poly.t
+
+  type commitment = G1.t
+
+  type proof = G1.t
+
+  let prove ~max_commit ~max_degree srs p =
+    fst
+    @@ DegreeCheck.prove
+         ~max_commit
+         ~max_degree
+         srs
+         Bytes.empty
+         (SMap.singleton "" p)
+
+  let verify {srs_0; srs_n_d} (cm : commitment) proof =
+    fst
+    @@ DegreeCheck.verify
+         {srs_0; srs_n_d}
+         Bytes.empty
+         (SMap.singleton "" cm)
+         proof
 end
 
 module FFT : sig

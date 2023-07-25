@@ -1067,7 +1067,7 @@ module Inner = struct
       ({srs = {raw = {srs_g1; _}; _}; max_polynomial_length; _} : t) p =
     if Srs_g1.size srs_g1 >= max_polynomial_length then
       Ok
-        (Plonk.Kzg_toolbox.DegreeCheck.prove
+        (Plonk.Kzg_toolbox.DegreeCheck_for_Dal.prove
            ~max_commit:(Srs_g1.size srs_g1 - 1)
            ~max_degree:(max_polynomial_length - 1)
            srs_g1
@@ -1086,7 +1086,7 @@ module Inner = struct
     in
     let srs_0 = Srs_g2.get t.srs.raw.srs_g2 0 in
     let srs_n_d = Srs_g2.get t.srs.raw.srs_g2 offset_monomial_degree in
-    Plonk.Kzg_toolbox.DegreeCheck.verify {srs_0; srs_n_d} cm proof
+    Plonk.Kzg_toolbox.DegreeCheck_for_Dal.verify {srs_0; srs_n_d} cm proof
 
   let save_precompute_shards_proofs precomputation ~filename =
     protect (fun () ->
