@@ -6,6 +6,7 @@ default:
 
 # Basic configuration to guard against double-pipelines
 workflow:
+  name: "[$PIPELINE_NAME / -j $TEZT_JOB_COUNT] $CI_COMMIT_TITLE"
   rules:
     # /!\ These rules should be mutually exclusive and kept in sync
     # with the corresponding 'if'-rules on the pipeline includes
@@ -13,6 +14,8 @@ workflow:
 
     # Allow 'Before merging' pipelines
     - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+      variables:
+        PIPELINE_NAME: "before_merging"
     # Allow 'Latest release' pipelines
     - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "latest-release"'
     # Allow 'Test latest release' pipelines for dry running latest

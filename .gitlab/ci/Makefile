@@ -16,6 +16,9 @@ new_proto_version := $(shell if [ "${new_proto_version_int}" -lt "100" ]; then e
 CI_NODE_INDEX ?= 1
 CI_NODE_TOTAL ?= 1
 
+# Controls value given to Tezt's `-j` flag
+TEZT_JOB_COUNT ?= 3
+
 .PHONY: test-protocol-compiles
 test-protocol-compiles:
 	cd ${CI_PROJECT_DIR} && \
@@ -24,7 +27,7 @@ test-protocol-compiles:
 .PHONY: test-tezt
 test-tezt:
 	cd ${CI_PROJECT_DIR} && \
-		_build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 1800 --on-unknown-regression-files fail --junit ${JUNIT} --from-record tezt/records --job ${CI_NODE_INDEX}/${CI_NODE_TOTAL} --record tezt-results-${CI_NODE_INDEX}.json -j 3 --retry 1 && \
+		_build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 1800 --on-unknown-regression-files fail --junit ${JUNIT} --from-record tezt/records --job ${CI_NODE_INDEX}/${CI_NODE_TOTAL} --record tezt-results-${CI_NODE_INDEX}.json -j ${TEZT_JOB_COUNT} --retry 1 && \
 		./scripts/ci/merge_coverage.sh
 
 .PHONY: test-tezt-static-binaries
@@ -33,7 +36,7 @@ ifndef TESTS
 	$(error TESTS is undefined)
 endif
 	cd ${CI_PROJECT_DIR} && \
-		_build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 1800 --on-unknown-regression-files fail --junit ${JUNIT} --from-record tezt/records --job ${CI_NODE_INDEX}/${CI_NODE_TOTAL} --record tezt-results-${CI_NODE_INDEX}.json -j 3 --retry 1
+		_build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 1800 --on-unknown-regression-files fail --junit ${JUNIT} --from-record tezt/records --job ${CI_NODE_INDEX}/${CI_NODE_TOTAL} --record tezt-results-${CI_NODE_INDEX}.json -j ${TEZT_JOB_COUNT} --retry 1
 
 .PHONY: test-tezt-build-long
 test-tezt-build-long:
