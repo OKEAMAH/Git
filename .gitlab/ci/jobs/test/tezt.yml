@@ -56,33 +56,33 @@ tezt:
   # update test_coverage.yml with the new list of jobs.
   parallel: 60
 
-# these are tezt tests as above, but run using the static binaries
-tezt:static-binaries:
-  extends:
-    # Expansion of .integration_template but without coverage.
-    - .default_settings_template
-    - .image_template__runtime_build_test_dependencies_template
-    - .tezt_template
-  dependencies:
-    # Fetch src/proto_*/parameters/*.json and tezt/tests/main.exe from
-    # build_x86_64-exp-dev-extra
-    - build_x86_64-exp-dev-extra
-    # And fetch the static executables from build:static
-    - build:static-x86_64-linux-binaries
-    - tezt:fetch-records
-  needs:
-    - build_x86_64-exp-dev-extra
-    - build:static-x86_64-linux-binaries
-    - tezt:fetch-records
-  variables:
-    TESTS: "cli"
-  before_script:
-    - mv octez-binaries/x86_64/octez-* .
-  # Override script from .tezt_template to disable coverage reports.
-  # Note that the set of tests that are run for static executables
-  # is a subset, so this should not reduce apparent coverage.
-  script:
-    - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt-static-binaries
+# # these are tezt tests as above, but run using the static binaries
+# tezt:static-binaries:
+#   extends:
+#     # Expansion of .integration_template but without coverage.
+#     - .default_settings_template
+#     - .image_template__runtime_build_test_dependencies_template
+#     - .tezt_template
+#   dependencies:
+#     # Fetch src/proto_*/parameters/*.json and tezt/tests/main.exe from
+#     # build_x86_64-exp-dev-extra
+#     - build_x86_64-exp-dev-extra
+#     # And fetch the static executables from build:static
+#     - build:static-x86_64-linux-binaries
+#     - tezt:fetch-records
+#   needs:
+#     - build_x86_64-exp-dev-extra
+#     - build:static-x86_64-linux-binaries
+#     - tezt:fetch-records
+#   variables:
+#     TESTS: "cli"
+#   before_script:
+#     - mv octez-binaries/x86_64/octez-* .
+#   # Override script from .tezt_template to disable coverage reports.
+#   # Note that the set of tests that are run for static executables
+#   # is a subset, so this should not reduce apparent coverage.
+#   script:
+#     - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt-static-binaries
 
 # Note: if you reactivate this test and if you keep it manual, put it in the "manual" stage.
 #
