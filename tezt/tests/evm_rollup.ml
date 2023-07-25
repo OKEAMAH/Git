@@ -512,45 +512,6 @@ let test_originate_evm_kernel =
       ~error_msg:"Expected %L to be initialized by the EVM kernel.") ;
   unit
 
-let test_rpc_getBalance =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "get_balance"]
-    ~title:"RPC method eth_getBalance"
-  @@ fun protocol ->
-  let* {evm_proxy_server; _} =
-    setup_past_genesis ~deposit_admin:None protocol
-  in
-  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
-  let* balance =
-    Eth_cli.balance
-      ~account:Eth_account.bootstrap_accounts.(0).address
-      ~endpoint:evm_proxy_server_endpoint
-  in
-  Check.((balance = Wei.of_eth_int 9999) Wei.typ)
-    ~error_msg:
-      (sf
-         "Expected balance of %s should be %%R, but got %%L"
-         Eth_account.bootstrap_accounts.(0).address) ;
-  unit
-
-let test_rpc_getBlockByNumber =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "get_block_by_number"]
-    ~title:"RPC method eth_getBlockByNumber"
-  @@ fun protocol ->
-  let* {evm_proxy_server; _} =
-    setup_past_genesis ~deposit_admin:None protocol
-  in
-  let evm_proxy_server_endpoint = Evm_proxy_server.endpoint evm_proxy_server in
-  let* block =
-    Eth_cli.get_block ~block_id:"0" ~endpoint:evm_proxy_server_endpoint
-  in
-  Check.((block.number = 0l) int32)
-    ~error_msg:"Unexpected block number, should be %%R, but got %%L" ;
-  unit
-
 let transaction_count_request address =
   Evm_proxy_server.
     {
@@ -565,89 +526,6 @@ let get_transaction_count proxy_server address =
       (transaction_count_request address)
   in
   return JSON.(transaction_count |-> "result" |> as_int64)
-
-let test_rpc_getTransactionCount =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "get_transaction_count"]
-    ~title:"RPC method eth_getTransactionCount"
-  @@ fun protocol ->
-  let* {evm_proxy_server; _} =
-    setup_past_genesis ~deposit_admin:None protocol
-  in
-  let* transaction_count =
-    get_transaction_count
-      evm_proxy_server
-      Eth_account.bootstrap_accounts.(0).address
-  in
-  Check.((transaction_count = 0L) int64)
-    ~error_msg:"Expected a nonce of %R, but got %L" ;
-  unit
-
-let test_rpc_getTransactionCountBatch =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "get_transaction_count_as_batch"]
-    ~title:"RPC method eth_getTransactionCount in batch"
-  @@ fun protocol ->
-  let* {evm_proxy_server; _} =
-    setup_past_genesis ~deposit_admin:None protocol
-  in
-  let* transaction_count =
-    get_transaction_count
-      evm_proxy_server
-      Eth_account.bootstrap_accounts.(0).address
-  in
-  let* transaction_count_batch =
-    let* transaction_count =
-      Evm_proxy_server.batch_evm_rpc
-        evm_proxy_server
-        [transaction_count_request Eth_account.bootstrap_accounts.(0).address]
-    in
-    match JSON.as_list transaction_count with
-    | [transaction_count] ->
-        return JSON.(transaction_count |-> "result" |> as_int64)
-    | _ -> Test.fail "Unexpected result from batching one request"
-  in
-  Check.((transaction_count = transaction_count_batch) int64)
-    ~error_msg:"Nonce from a single request is %L, but got %R from batching it" ;
-  unit
-
-let test_rpc_batch =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "rpc"; "batch"]
-    ~title:"RPC batch requests"
-  @@ fun protocol ->
-  let* {evm_proxy_server; _} =
-    setup_past_genesis ~deposit_admin:None protocol
-  in
-  let* transaction_count, chain_id =
-    let transaction_count =
-      transaction_count_request Eth_account.bootstrap_accounts.(0).address
-    in
-    let chain_id =
-      Evm_proxy_server.{method_ = "eth_chainId"; parameters = `Null}
-    in
-    let* results =
-      Evm_proxy_server.batch_evm_rpc
-        evm_proxy_server
-        [transaction_count; chain_id]
-    in
-    match JSON.as_list results with
-    | [transaction_count; chain_id] ->
-        return
-          ( JSON.(transaction_count |-> "result" |> as_int64),
-            JSON.(chain_id |-> "result" |> as_int64) )
-    | _ -> Test.fail "Unexpected result from batching two requests"
-  in
-  Check.((transaction_count = 0L) int64)
-    ~error_msg:"Expected a nonce of %R, but got %L" ;
-  (* Default chain id for Ethereum custom networks, not chosen randomly. *)
-  let default_chain_id = 1337L in
-  Check.((chain_id = default_chain_id) int64)
-    ~error_msg:"Expected a chain_id of %R, but got %L" ;
-  unit
 
 let test_l2_blocks_progression =
   Protocol.register_test
@@ -984,42 +862,233 @@ let test_chunked_transaction =
     ~title:"Check L2 chunked transfers are applied"
   @@ transfer ~data:("0x" ^ String.make 12_000 'a')
 
-let test_rpc_txpool_content =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "txpool_content"]
-    ~title:"Check RPC txpool_content is available"
-  @@ fun _protocol ->
-  let* evm_proxy_server = setup_mockup () in
-  (* The content of the txpool is not relevant for now, this test only checks
-     the the RPC is correct, i.e. an object containing both the `pending` and
-     `queued` fields, containing the correct objects: addresses pointing to a
-     mapping of nonces to transactions. *)
-  let* _result = Evm_proxy_server.txpool_content evm_proxy_server in
-  unit
+module Test_rpc = struct
+  let getBalance =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "get_balance"]
+      ~title:"RPC method eth_getBalance"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let evm_proxy_server_endpoint =
+      Evm_proxy_server.endpoint evm_proxy_server
+    in
+    let* balance =
+      Eth_cli.balance
+        ~account:Eth_account.bootstrap_accounts.(0).address
+        ~endpoint:evm_proxy_server_endpoint
+    in
+    Check.((balance = Wei.of_eth_int 9999) Wei.typ)
+      ~error_msg:
+        (sf
+           "Expected balance of %s should be %%R, but got %%L"
+           Eth_account.bootstrap_accounts.(0).address) ;
+    unit
 
-let test_rpc_web3_clientVersion =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "client_version"]
-    ~title:"Check RPC web3_clientVersion"
-  @@ fun _protocol ->
-  let* evm_proxy_server = setup_mockup () in
-  let* web3_clientVersion =
-    Evm_proxy_server.(
-      call_evm_rpc
+  let getBlockByNumber =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "get_block_by_number"]
+      ~title:"RPC method eth_getBlockByNumber"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let evm_proxy_server_endpoint =
+      Evm_proxy_server.endpoint evm_proxy_server
+    in
+    let* block =
+      Eth_cli.get_block ~block_id:"0" ~endpoint:evm_proxy_server_endpoint
+    in
+    Check.((block.number = 0l) int32)
+      ~error_msg:"Unexpected block number, should be %%R, but got %%L" ;
+    unit
+
+  let getTransactionCount =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "get_transaction_count"]
+      ~title:"RPC method eth_getTransactionCount"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* transaction_count =
+      get_transaction_count
         evm_proxy_server
-        {method_ = "web3_clientVersion"; parameters = `A []})
-  in
-  let* server_version =
-    evm_proxy_server_version evm_proxy_server |> Runnable.run
-  in
-  Check.(
-    (JSON.(web3_clientVersion |-> "result" |> as_string)
-    = JSON.as_string server_version)
-      string)
-    ~error_msg:"Expected version %%R, got %%L." ;
-  unit
+        Eth_account.bootstrap_accounts.(0).address
+    in
+    Check.((transaction_count = 0L) int64)
+      ~error_msg:"Expected a nonce of %R, but got %L" ;
+    unit
+
+  let getTransactionCountBatch =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "get_transaction_count_as_batch"]
+      ~title:"RPC method eth_getTransactionCount in batch"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* transaction_count =
+      get_transaction_count
+        evm_proxy_server
+        Eth_account.bootstrap_accounts.(0).address
+    in
+    let* transaction_count_batch =
+      let* transaction_count =
+        Evm_proxy_server.batch_evm_rpc
+          evm_proxy_server
+          [transaction_count_request Eth_account.bootstrap_accounts.(0).address]
+      in
+      match JSON.as_list transaction_count with
+      | [transaction_count] ->
+          return JSON.(transaction_count |-> "result" |> as_int64)
+      | _ -> Test.fail "Unexpected result from batching one request"
+    in
+    Check.((transaction_count = transaction_count_batch) int64)
+      ~error_msg:
+        "Nonce from a single request is %L, but got %R from batching it" ;
+    unit
+
+  let batch =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "rpc"; "batch"]
+      ~title:"RPC batch requests"
+    @@ fun protocol ->
+    let* {evm_proxy_server; _} =
+      setup_past_genesis ~deposit_admin:None protocol
+    in
+    let* transaction_count, chain_id =
+      let transaction_count =
+        transaction_count_request Eth_account.bootstrap_accounts.(0).address
+      in
+      let chain_id =
+        Evm_proxy_server.{method_ = "eth_chainId"; parameters = `Null}
+      in
+      let* results =
+        Evm_proxy_server.batch_evm_rpc
+          evm_proxy_server
+          [transaction_count; chain_id]
+      in
+      match JSON.as_list results with
+      | [transaction_count; chain_id] ->
+          return
+            ( JSON.(transaction_count |-> "result" |> as_int64),
+              JSON.(chain_id |-> "result" |> as_int64) )
+      | _ -> Test.fail "Unexpected result from batching two requests"
+    in
+    Check.((transaction_count = 0L) int64)
+      ~error_msg:"Expected a nonce of %R, but got %L" ;
+    (* Default chain id for Ethereum custom networks, not chosen randomly. *)
+    let default_chain_id = 1337L in
+    Check.((chain_id = default_chain_id) int64)
+      ~error_msg:"Expected a chain_id of %R, but got %L" ;
+    unit
+
+  let txpool_content =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "txpool_content"]
+      ~title:"Check RPC txpool_content is available"
+    @@ fun _protocol ->
+    let* evm_proxy_server = setup_mockup () in
+    (* The content of the txpool is not relevant for now, this test only checks
+       the the RPC is correct, i.e. an object containing both the `pending` and
+       `queued` fields, containing the correct objects: addresses pointing to a
+       mapping of nonces to transactions. *)
+    let* _result = Evm_proxy_server.txpool_content evm_proxy_server in
+    unit
+
+  let web3_clientVersion =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "client_version"]
+      ~title:"Check RPC web3_clientVersion"
+    @@ fun _protocol ->
+    let* evm_proxy_server = setup_mockup () in
+    let* web3_clientVersion =
+      Evm_proxy_server.(
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "web3_clientVersion"; parameters = `A []})
+    in
+    let* server_version =
+      evm_proxy_server_version evm_proxy_server |> Runnable.run
+    in
+    Check.(
+      (JSON.(web3_clientVersion |-> "result" |> as_string)
+      = JSON.as_string server_version)
+        string)
+      ~error_msg:"Expected version %%R, got %%L." ;
+    unit
+
+  let estimate_gas =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "estimate_gas"; "simulate"]
+      ~title:"Try to estimate gas for contract creation"
+      (fun protocol ->
+        (* setup *)
+        let* {evm_proxy_server; _} =
+          setup_past_genesis protocol ~deposit_admin:None
+        in
+        (* large request *)
+        let data = read_file simple_storage.bin in
+        let eth_call = [("data", Ezjsonm.encode_string @@ "0x" ^ data)] in
+        (* make call to proxy *)
+        let* call_result =
+          Evm_proxy_server.(
+            call_evm_rpc
+              evm_proxy_server
+              {method_ = "eth_estimateGas"; parameters = `A [`O eth_call]})
+        in
+        (* Check the RPC returns a `result`. *)
+        let r = call_result |> Evm_proxy_server.extract_result in
+        Check.((JSON.as_int r = 21123) int)
+          ~error_msg:"Expected result greater than %R, but got %L" ;
+        unit)
+
+  let estimate_gas_additionnal_field =
+    Protocol.register_test
+      ~__FILE__
+      ~tags:["evm"; "estimate_gas"; "simulate"; "remix"]
+      ~title:"eth_estimateGas allows additional fields"
+      (fun protocol ->
+        (* setup *)
+        let* {evm_proxy_server; _} =
+          setup_past_genesis protocol ~deposit_admin:None
+        in
+        (* large request *)
+        let data = read_file simple_storage.bin in
+        let eth_call =
+          [
+            ( "from",
+              Ezjsonm.encode_string
+              @@ "0x6ce4d79d4e77402e1ef3417fdda433aa744c6e1c" );
+            ("data", Ezjsonm.encode_string @@ "0x" ^ data);
+            ("value", Ezjsonm.encode_string @@ "0x0");
+            (* for some reason remix adds the "type" field *)
+            ("type", Ezjsonm.encode_string @@ "0x1");
+          ]
+        in
+        (* make call to proxy *)
+        let* call_result =
+          Evm_proxy_server.(
+            call_evm_rpc
+              evm_proxy_server
+              {method_ = "eth_estimateGas"; parameters = `A [`O eth_call]})
+        in
+        (* Check the RPC returns a `result`. *)
+        let r = call_result |> Evm_proxy_server.extract_result in
+        Check.((JSON.as_int r = 21123) int)
+          ~error_msg:"Expected result greater than %R, but got %L" ;
+        unit)
+end
 
 let test_simulate =
   Protocol.register_test
@@ -1258,76 +1327,6 @@ let test_eth_call_large =
       let r = call_result |> Evm_proxy_server.extract_result in
       Check.((JSON.as_string r = "0x") string)
         ~error_msg:"Expected result %R, but got %L" ;
-
-      unit)
-
-let test_estimate_gas =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "eth_estimategas"; "simulate"]
-    ~title:"Try to estimate gas for contract creation"
-    (fun protocol ->
-      (* setup *)
-      let* {evm_proxy_server; _} =
-        setup_past_genesis protocol ~deposit_admin:None
-      in
-
-      (* large request *)
-      let data = read_file simple_storage.bin in
-      let eth_call = [("data", Ezjsonm.encode_string @@ "0x" ^ data)] in
-
-      (* make call to proxy *)
-      let* call_result =
-        Evm_proxy_server.(
-          call_evm_rpc
-            evm_proxy_server
-            {method_ = "eth_estimateGas"; parameters = `A [`O eth_call]})
-      in
-
-      (* Check the RPC returns a `result`. *)
-      let r = call_result |> Evm_proxy_server.extract_result in
-      Check.((JSON.as_int r = 21123) int)
-        ~error_msg:"Expected result greater than %R, but got %L" ;
-
-      unit)
-
-let test_estimate_gas_additionnal_field =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "eth_estimategas"; "simulate"; "remix"]
-    ~title:"eth_estimateGas allows additional fields"
-    (fun protocol ->
-      (* setup *)
-      let* {evm_proxy_server; _} =
-        setup_past_genesis protocol ~deposit_admin:None
-      in
-
-      (* large request *)
-      let data = read_file simple_storage.bin in
-      let eth_call =
-        [
-          ( "from",
-            Ezjsonm.encode_string
-            @@ "0x6ce4d79d4e77402e1ef3417fdda433aa744c6e1c" );
-          ("data", Ezjsonm.encode_string @@ "0x" ^ data);
-          ("value", Ezjsonm.encode_string @@ "0x0");
-          (* for some reason remix adds the "type" field *)
-          ("type", Ezjsonm.encode_string @@ "0x1");
-        ]
-      in
-
-      (* make call to proxy *)
-      let* call_result =
-        Evm_proxy_server.(
-          call_evm_rpc
-            evm_proxy_server
-            {method_ = "eth_estimateGas"; parameters = `A [`O eth_call]})
-      in
-
-      (* Check the RPC returns a `result`. *)
-      let r = call_result |> Evm_proxy_server.extract_result in
-      Check.((JSON.as_int r = 21123) int)
-        ~error_msg:"Expected result greater than %R, but got %L" ;
 
       unit)
 
@@ -1843,16 +1842,18 @@ let test_kernel_upgrade_no_dictator =
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
-  test_rpc_getBalance protocols ;
-  test_rpc_getBlockByNumber protocols ;
-  test_rpc_getTransactionCount protocols ;
-  test_rpc_getTransactionCountBatch protocols ;
-  test_rpc_batch protocols ;
+  Test_rpc.getBalance protocols ;
+  Test_rpc.getBlockByNumber protocols ;
+  Test_rpc.getTransactionCount protocols ;
+  Test_rpc.getTransactionCountBatch protocols ;
+  Test_rpc.batch protocols ;
+  Test_rpc.txpool_content protocols ;
+  Test_rpc.web3_clientVersion protocols ;
+  Test_rpc.estimate_gas protocols ;
+  Test_rpc.estimate_gas_additionnal_field protocols ;
   test_l2_blocks_progression protocols ;
   test_l2_transfer protocols ;
   test_chunked_transaction protocols ;
-  test_rpc_txpool_content protocols ;
-  test_rpc_web3_clientVersion protocols ;
   test_simulate protocols ;
   test_full_blocks protocols ;
   test_latest_block protocols ;
@@ -1867,8 +1868,6 @@ let register_evm_proxy_server ~protocols =
   test_eth_call_large protocols ;
   test_preinitialized_evm_kernel protocols ;
   test_deposit_fa12 protocols ;
-  test_estimate_gas protocols ;
-  test_estimate_gas_additionnal_field protocols ;
   test_kernel_upgrade_to_debug protocols ;
   test_kernel_upgrade_evm_to_evm protocols ;
   test_kernel_upgrade_wrong_key protocols ;
