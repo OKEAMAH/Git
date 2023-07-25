@@ -153,8 +153,8 @@ let tests =
       (* ("Correctness", test_correctness); *)
       (* ("Not in table", test_not_in_table); *)
       (* ("Fake proof", test_wrong_proof); *)
-      ("Bench pippenger", bench_pippenger ~nb_rep:500 5);
-      ("Bench pippenger", bench_pippenger ~nb_rep:500 8);
-      ("Bench pippenger", bench_pippenger ~nb_rep:3 18);
-      ("Bench pippenger", bench_pippenger ~nb_rep:3 19);
+      (* ("Bench pippenger", bench_pippenger ~nb_rep:500 5);
+      ("Bench pippenger", bench_pippenger ~nb_rep:500 8); *)
+      (* ("Bench pippenger", bench_pippenger ~nb_rep:10 18); *)
+      ("Bench pippenger", bench_pippenger ~nb_rep:10 19);
     ]
