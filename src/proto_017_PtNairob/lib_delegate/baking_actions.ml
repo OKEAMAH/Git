@@ -42,6 +42,7 @@ module Operations_source = struct
   let retrieve = function
     | None -> Lwt.return_none
     | Some operations -> (
+        Baking_profiler.record_s "retrieve external operations" @@ fun () ->
         let fail reason details =
           let path =
             match operations with
@@ -174,6 +175,7 @@ let sign_block_header state proposer unsigned_block_header =
     unsigned_block_header
   in
   let unsigned_header =
+    Baking_profiler.record_f "serializing" @@ fun () ->
     Data_encoding.Binary.to_bytes_exn
       Alpha_context.Block_header.unsigned_encoding
       (shell, contents)
@@ -181,24 +183,28 @@ let sign_block_header state proposer unsigned_block_header =
   let level = shell.level in
   Baking_state.round_of_shell_header shell >>?= fun round ->
   let open Baking_highwatermarks in
+  Baking_profiler.record "waiting for lockfile" ;
   cctxt#with_lock (fun () ->
+      Baking_profiler.stop () ;
       let block_location =
         Baking_files.resolve_location ~chain_id `Highwatermarks
       in
-      may_sign_block
-        cctxt
-        block_location
-        ~delegate:proposer.public_key_hash
-        ~level
-        ~round
-      >>=? function
-      | true ->
-          record_block
+      Baking_profiler.record_s "check highwatermark" (fun () ->
+          may_sign_block
             cctxt
             block_location
             ~delegate:proposer.public_key_hash
             ~level
-            ~round
+            ~round)
+      >>=? function
+      | true ->
+          Baking_profiler.record_s "record highwatermark" (fun () ->
+              record_block
+                cctxt
+                block_location
+                ~delegate:proposer.public_key_hash
+                ~level
+                ~round)
           >>=? fun () -> return_true
       | false ->
           Events.(emit potential_double_baking (level, round)) >>= fun () ->
@@ -206,6 +212,7 @@ let sign_block_header state proposer unsigned_block_header =
   >>=? function
   | false -> fail (Block_previously_baked {level; round})
   | true ->
+      Baking_profiler.record_s "signing block" @@ fun () ->
       Client_keys.sign
         cctxt
         proposer.secret_key_uri
@@ -234,12 +241,13 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   let chain_id = state.global_state.chain_id in
   let simulation_mode = state.global_state.validation_mode in
   let round_durations = state.global_state.round_durations in
-  Environment.wrap_tzresult
-    (Round.timestamp_of_round
-       round_durations
-       ~predecessor_timestamp:predecessor.shell.timestamp
-       ~predecessor_round:predecessor.round
-       ~round)
+  ( Baking_profiler.record_f "timestamp of round" @@ fun () ->
+    Environment.wrap_tzresult
+      (Round.timestamp_of_round
+         round_durations
+         ~predecessor_timestamp:predecessor.shell.timestamp
+         ~predecessor_round:predecessor.round
+         ~round) )
   >>?= fun timestamp ->
   let external_operation_source = state.global_state.config.extra_operations in
   Operations_source.retrieve external_operation_source >>= fun extern_ops ->
@@ -268,15 +276,17 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   Events.(
     emit forging_block (Int32.succ predecessor.shell.level, round, delegate))
   >>= fun () ->
-  Plugin.RPC.current_level
-    cctxt
-    ~offset:1l
-    (`Hash state.global_state.chain_id, `Hash (predecessor.hash, 0))
+  Baking_profiler.record_s "retrieve injection level" (fun () ->
+      Plugin.RPC.current_level
+        cctxt
+        ~offset:1l
+        (`Hash state.global_state.chain_id, `Hash (predecessor.hash, 0)))
   >>=? fun injection_level ->
-  generate_seed_nonce_hash
-    state.global_state.config.Baking_configuration.nonce
-    consensus_key
-    injection_level
+  Baking_profiler.record_s "generate seed nonce" (fun () ->
+      generate_seed_nonce_hash
+        state.global_state.config.Baking_configuration.nonce
+        consensus_key
+        injection_level)
   >>=? fun seed_nonce_opt ->
   let seed_nonce_hash = Option.map fst seed_nonce_opt in
   let user_activated_upgrades =
@@ -289,6 +299,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   (* Prioritize reading from the [vote_file] if it exists. *)
   (match vote_file with
   | Some per_block_vote_file ->
+      Baking_profiler.record_s "read liquidity baking vote file" @@ fun () ->
       Liquidity_baking_vote.read_liquidity_baking_toggle_vote_no_fail
         ~default_liquidity_baking_vote:liquidity_baking_vote
         ~per_block_vote_file
@@ -318,6 +329,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
   let chain = `Hash state.global_state.chain_id in
   let pred_block = `Hash (predecessor.hash, 0) in
   let* pred_resulting_context_hash =
+    Baking_profiler.record_s "retrieve resulting context hash" @@ fun () ->
     Shell_services.Blocks.resulting_context_hash
       cctxt
       ~chain
@@ -325,6 +337,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
       ()
   in
   let* pred_live_blocks =
+    Baking_profiler.record_s "retrieve live blocks" @@ fun () ->
     Chain_services.Blocks.live_blocks cctxt ~chain ~block:pred_block ()
   in
   Block_forge.forge
@@ -345,7 +358,8 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
-  sign_block_header state consensus_key unsigned_block_header
+  Baking_profiler.record_s "sign block header" (fun () ->
+      sign_block_header state consensus_key unsigned_block_header)
   >>=? fun signed_block_header ->
   (match seed_nonce_opt with
   | None ->
@@ -353,24 +367,26 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
       return_unit
   | Some (_, nonce) ->
       let block_hash = Block_header.hash signed_block_header in
+      Baking_profiler.record_s "register nonce" @@ fun () ->
       Baking_nonces.register_nonce cctxt ~chain_id block_hash nonce)
   >>=? fun () ->
   state_recorder ~new_state:updated_state >>=? fun () ->
   Events.(
     emit injecting_block (signed_block_header.shell.level, round, delegate))
   >>= fun () ->
-  Node_rpc.inject_block
-    cctxt
-    ~force:state.global_state.config.force
-    ~chain:(`Hash state.global_state.chain_id)
-    signed_block_header
-    operations
+  Baking_profiler.record_s "inject block to node" (fun () ->
+      Node_rpc.inject_block
+        cctxt
+        ~force:state.global_state.config.force
+        ~chain:(`Hash state.global_state.chain_id)
+        signed_block_header
+        operations)
   >>=? fun bh ->
   Events.(
     emit block_injected (bh, signed_block_header.shell.level, round, delegate))
   >>= fun () -> return updated_state
 
-let inject_preendorsements state ~preendorsements =
+let sign_preendorsements state preendorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   (* N.b. signing a lot of operations may take some time *)
@@ -380,7 +396,13 @@ let inject_preendorsements state ~preendorsements =
     Baking_files.resolve_location ~chain_id `Highwatermarks
   in
   List.filter_map_es
-    (fun (((consensus_key, _) as delegate), consensus_content) ->
+    (fun (((consensus_key, delegate_pkh) as delegate), consensus_content) ->
+      Baking_profiler.record_s
+        (Format.asprintf
+           "forging preendorsement for %a"
+           Signature.Public_key_hash.pp_short
+           delegate_pkh)
+      @@ fun () ->
       Events.(emit signing_preendorsement delegate) >>= fun () ->
       let shell =
         (* The branch is the latest finalized block. *)
@@ -389,19 +411,26 @@ let inject_preendorsements state ~preendorsements =
             state.level_state.latest_proposal.predecessor.shell.predecessor;
         }
       in
-      let contents = Single (Preendorsement consensus_content) in
+      let contents =
+        (* No preendorsements are included *)
+        Single (Preendorsement consensus_content)
+      in
       let level = Raw_level.to_int32 consensus_content.level in
       let round = consensus_content.round in
       let sk_uri = consensus_key.secret_key_uri in
+      Baking_profiler.record "waiting for lockfile" ;
       cctxt#with_lock (fun () ->
-          Baking_highwatermarks.may_sign_preendorsement
-            cctxt
-            block_location
-            ~delegate:consensus_key.public_key_hash
-            ~level
-            ~round
+          Baking_profiler.stop () ;
+          Baking_profiler.record_s "check highwatermark" (fun () ->
+              Baking_highwatermarks.may_sign_preendorsement
+                cctxt
+                block_location
+                ~delegate:consensus_key.public_key_hash
+                ~level
+                ~round)
           >>=? function
           | true ->
+              Baking_profiler.record_s "record highwatermark" @@ fun () ->
               Baking_highwatermarks.record_preendorsement
                 cctxt
                 block_location
@@ -412,13 +441,15 @@ let inject_preendorsements state ~preendorsements =
           | false -> return state.global_state.config.force)
       >>=? fun may_sign ->
       (if may_sign then
-       let unsigned_operation = (shell, Contents_list contents) in
        let watermark = Operation.(to_watermark (Preendorsement chain_id)) in
+       let unsigned_operation = (shell, Contents_list contents) in
        let unsigned_operation_bytes =
+         Baking_profiler.record_f "serializing" @@ fun () ->
          Data_encoding.Binary.to_bytes_exn
            Operation.unsigned_encoding
            unsigned_operation
        in
+       Baking_profiler.record_s "signing preendorsement" @@ fun () ->
        Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
       else
         fail (Baking_highwatermarks.Block_previously_preendorsed {round; level}))
@@ -433,10 +464,25 @@ let inject_preendorsements state ~preendorsements =
           let operation : Operation.packed = {shell; protocol_data} in
           return_some (delegate, operation, level, round))
     preendorsements
+
+let inject_preendorsements state ~preendorsements =
+  let cctxt = state.global_state.cctxt in
+  let chain_id = state.global_state.chain_id in
+  Baking_profiler.record_s "sign preendorsements" (fun () ->
+      sign_preendorsements state preendorsements)
   >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
+  Baking_profiler.record_s "injecting preendorsements" @@ fun () ->
   List.iter_ep
     (fun (delegate, operation, level, round) ->
+      Baking_profiler.span_s
+        [
+          Format.asprintf
+            "inject preendorsement for %a"
+            Signature.Public_key_hash.pp_short
+            (snd delegate);
+        ]
+      @@ fun () ->
       protect
         ~on_error:(fun err ->
           Events.(emit failed_to_inject_preendorsement (delegate, err))
@@ -458,7 +504,13 @@ let sign_endorsements state endorsements =
     Baking_files.resolve_location ~chain_id `Highwatermarks
   in
   List.filter_map_es
-    (fun (((consensus_key, _) as delegate), consensus_content) ->
+    (fun (((consensus_key, delegate_pkh) as delegate), consensus_content) ->
+      Baking_profiler.record_s
+        (Format.asprintf
+           "forging endorsement for %a"
+           Signature.Public_key_hash.pp_short
+           delegate_pkh)
+      @@ fun () ->
       Events.(emit signing_endorsement delegate) >>= fun () ->
       let shell =
         (* The branch is the latest finalized block. *)
@@ -474,15 +526,19 @@ let sign_endorsements state endorsements =
       let level = Raw_level.to_int32 consensus_content.level in
       let round = consensus_content.round in
       let sk_uri = consensus_key.secret_key_uri in
+      Baking_profiler.record "wait for lockfile" ;
       cctxt#with_lock (fun () ->
-          Baking_highwatermarks.may_sign_endorsement
-            cctxt
-            block_location
-            ~delegate:consensus_key.public_key_hash
-            ~level
-            ~round
+          Baking_profiler.stop () ;
+          Baking_profiler.record_s "check highwatermark" (fun () ->
+              Baking_highwatermarks.may_sign_endorsement
+                cctxt
+                block_location
+                ~delegate:consensus_key.public_key_hash
+                ~level
+                ~round)
           >>=? function
           | true ->
+              Baking_profiler.record_s "record highwatermark" @@ fun () ->
               Baking_highwatermarks.record_endorsement
                 cctxt
                 block_location
@@ -496,10 +552,12 @@ let sign_endorsements state endorsements =
        let watermark = Operation.(to_watermark (Endorsement chain_id)) in
        let unsigned_operation = (shell, Contents_list contents) in
        let unsigned_operation_bytes =
+         Baking_profiler.record_f "serializing" @@ fun () ->
          Data_encoding.Binary.to_bytes_exn
            Operation.unsigned_encoding
            unsigned_operation
        in
+       Baking_profiler.record_s "signing endorsement" @@ fun () ->
        Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
       else fail (Baking_highwatermarks.Block_previously_endorsed {round; level}))
       >>= function
@@ -557,10 +615,21 @@ let sign_dal_attestations state attestations =
 let inject_endorsements state ~endorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  sign_endorsements state endorsements >>=? fun signed_operations ->
+  Baking_profiler.record_s "sign endorsements" (fun () ->
+      sign_endorsements state endorsements)
+  >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
+  Baking_profiler.record_s "injecting endorsements" @@ fun () ->
   List.iter_ep
     (fun (delegate, operation, level, round) ->
+      Baking_profiler.span_s
+        [
+          Format.asprintf
+            "injecting endorsement for %a"
+            Signature.Public_key_hash.pp_short
+            (snd delegate);
+        ]
+      @@ fun () ->
       protect
         ~on_error:(fun err ->
           Events.(emit failed_to_inject_endorsement (delegate, err))
@@ -712,6 +781,7 @@ let compute_round proposal round_durations =
   let open Baking_state in
   let timestamp = Time.System.now () |> Time.System.to_protocol in
   let predecessor_block = proposal.predecessor in
+  Baking_profiler.record_f "compute round" @@ fun () ->
   Environment.wrap_tzresult
   @@ Alpha_context.Round.round_of_timestamp
        round_durations
@@ -733,13 +803,15 @@ let update_to_level state level_update =
   (if Int32.(new_level = succ state.level_state.current_level) then
    return state.level_state.next_level_delegate_slots
   else
+    Baking_profiler.record_s "compute predecessor delegate slots" @@ fun () ->
     Baking_state.compute_delegate_slots cctxt delegates ~level:new_level ~chain)
   >>=? fun delegate_slots ->
-  Baking_state.compute_delegate_slots
-    cctxt
-    delegates
-    ~level:(Int32.succ new_level)
-    ~chain
+  Baking_profiler.record_s "compute current delegate slots" (fun () ->
+      Baking_state.compute_delegate_slots
+        cctxt
+        delegates
+        ~level:(Int32.succ new_level)
+        ~chain)
   >>=? fun next_level_delegate_slots ->
   let round_durations = state.global_state.round_durations in
   compute_round new_level_proposal round_durations >>?= fun current_round ->
@@ -749,6 +821,7 @@ let update_to_level state level_update =
 let synchronize_round state {new_round_proposal; handle_proposal} =
   Events.(emit synchronizing_round new_round_proposal.predecessor.hash)
   >>= fun () ->
+  Baking_profiler.record_s "synchronize round" @@ fun () ->
   let round_durations = state.global_state.round_durations in
   compute_round new_round_proposal round_durations >>?= fun current_round ->
   if Round.(current_round < new_round_proposal.block.round) then
@@ -778,28 +851,45 @@ let rec perform_action ~state_recorder state (action : action) =
   match action with
   | Do_nothing -> state_recorder ~new_state:state >>=? fun () -> return state
   | Inject_block {block_to_bake; updated_state} ->
+      Baking_profiler.record_s
+        (Format.asprintf
+           "forge and inject block for %a"
+           Signature.Public_key_hash.pp_short
+           (snd block_to_bake.delegate))
+      @@ fun () ->
       inject_block state ~state_recorder block_to_bake ~updated_state
   | Inject_preendorsements {preendorsements} ->
-      inject_preendorsements state ~preendorsements >>=? fun () ->
-      perform_action ~state_recorder state Watch_proposal
+      Baking_profiler.record_s "inject preendorsements" (fun () ->
+          inject_preendorsements state ~preendorsements)
+      >>=? fun () -> perform_action ~state_recorder state Watch_proposal
   | Inject_endorsements {endorsements} ->
       state_recorder ~new_state:state >>=? fun () ->
-      inject_endorsements state ~endorsements >>=? fun () ->
+      Baking_profiler.record_s "inject endorsements" (fun () ->
+          inject_endorsements state ~endorsements)
+      >>=? fun () ->
       (* We wait for endorsements to trigger the [Quorum_reached]
          event *)
-      start_waiting_for_endorsement_quorum state >>= fun () ->
+      Baking_profiler.record_s "wait for endorsements quorum" (fun () ->
+          start_waiting_for_endorsement_quorum state)
+      >>= fun () ->
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/4667
          Also inject attestations for the migration block. *)
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/4671
          Don't inject multiple attestations? *)
       get_and_inject_dal_attestations state >>=? fun () -> return state
   | Update_to_level level_update ->
-      update_to_level state level_update >>=? fun (new_state, new_action) ->
+      Baking_profiler.record_s "update to level" (fun () ->
+          update_to_level state level_update)
+      >>=? fun (new_state, new_action) ->
       perform_action ~state_recorder new_state new_action
   | Synchronize_round round_update ->
-      synchronize_round state round_update >>=? fun (new_state, new_action) ->
+      Baking_profiler.record_s "synchronize round" (fun () ->
+          synchronize_round state round_update)
+      >>=? fun (new_state, new_action) ->
       perform_action ~state_recorder new_state new_action
   | Watch_proposal ->
       (* We wait for preendorsements to trigger the
-           [Prequorum_reached] event *)
-      start_waiting_for_preendorsement_quorum state >>= fun () -> return state
+         [Prequorum_reached] event *)
+      Baking_profiler.record_s "wait for preendorsements quorum" (fun () ->
+          start_waiting_for_preendorsement_quorum state)
+      >>= fun () -> return state
