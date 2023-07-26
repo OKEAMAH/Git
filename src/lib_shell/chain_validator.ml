@@ -509,6 +509,10 @@ let reset_profilers block =
 let on_validation_request w peer start_testchain active_chains spawn_child block
     resulting_context_hash =
   let open Lwt_result_syntax in
+  Profiler.span_s
+    Shell_profiling.chain_validator_profiler
+    ["chain_validator"; "validation request (set_head)"]
+  @@ fun () ->
   let*! () =
     Option.iter_s
       (update_synchronisation_state w (Store.Block.header block))
@@ -566,6 +570,9 @@ let on_notify_branch w peer_id locator =
   let* () =
     check_and_update_synchronisation_state w (head_hash, head_header) peer_id
   in
+  Profiler.mark
+    Shell_profiling.chain_validator_profiler
+    ["chain_validator"; "notify branch received"] ;
   with_activated_peer_validator w peer_id (fun pv ->
       Peer_validator.notify_branch pv locator ;
       return_ok_unit)
@@ -575,6 +582,10 @@ let on_notify_head w peer_id (hash, header) mempool =
   let nv = Worker.state w in
   let* () = check_and_update_synchronisation_state w (hash, header) peer_id in
   let* (r : (_, Empty.t) result) =
+    let open Shell_profiling in
+    Profiler.mark
+      chain_validator_profiler
+      ["chain_validator"; "notify head received"] ;
     with_activated_peer_validator w peer_id (fun pv ->
         Peer_validator.notify_head pv hash header ;
         return_ok_unit)
