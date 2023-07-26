@@ -79,6 +79,7 @@ let check_context_consistency (abstract_index : Abstract_context_index.t)
 let begin_construction ~timestamp ~protocol_data ~force_apply
     ~pred_resulting_context_hash (abstract_index : Abstract_context_index.t)
     pred_block chain_id =
+  Baking_profiler.record_s "begin construction" @@ fun () ->
   protect (fun () ->
       let {Baking_state.shell = pred_shell; hash = pred_hash; _} = pred_block in
       abstract_index.checkout_fun pred_resulting_context_hash >>= function
@@ -144,6 +145,7 @@ let add_operation st (op : Operation.packed) =
       let validation_state, application_state = st.state in
       let oph = Operation.hash_packed op in
       let** validation_state =
+        Baking_profiler.aggregate_s "validating operation" @@ fun () ->
         Protocol.validate_operation
           ~check_signature:false
             (* We assume that the operation has already been validated in the
@@ -157,6 +159,7 @@ let add_operation st (op : Operation.packed) =
       let** application_state, receipt =
         match application_state with
         | Some application_state ->
+            Baking_profiler.aggregate_s "applying operation" @@ fun () ->
             Protocol.apply_operation application_state oph op
             >>=? fun (application_state, receipt) ->
             return (Some application_state, Some receipt)
