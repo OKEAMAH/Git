@@ -111,6 +111,11 @@ Smart Rollup WASM Debugger
 - Added flag ``--no-kernel-debug`` to deactivate the kernel debug messages. (MR
   :gl:`!9813`)
 
+- Partially support the installer configuration of the Smart Rollup SDK, i.e.
+  support only the instruction ``Set``. The configuration can be passed to
+  the debugger via the option ``--installer-config`` and will initialize the
+  storage with this configuration. (MR :gl:`!9641`)
+
 Data Availability Committee (DAC)
 ---------------------------------
 
