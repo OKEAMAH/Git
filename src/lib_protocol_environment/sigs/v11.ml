@@ -3476,6 +3476,35 @@ end
 # 32 "v11.in.ml"
 
 
+  module Profiler : sig
+# 1 "v10/profiler.mli"
+type lod = Terse | Detailed | Verbose
+
+val record : ?lod:lod -> string -> unit
+
+val aggregate : ?lod:lod -> string -> unit
+
+val stop : unit -> unit
+
+val stamp : ?lod:lod -> string -> unit
+
+val record_f : ?lod:lod -> string -> (unit -> 'a) -> 'a
+
+val record_s : ?lod:lod -> string -> (unit -> 'a Lwt.t) -> 'a Lwt.t
+
+val aggregate_f : ?lod:lod -> string -> (unit -> 'a) -> 'a
+
+val aggregate_s : ?lod:lod -> string -> (unit -> 'a Lwt.t) -> 'a Lwt.t
+
+val mark : ?lod:lod -> string list -> unit
+
+val span_f : ?lod:lod -> string list -> (unit -> 'a) -> 'a
+
+val span_s : ?lod:lod -> string list -> (unit -> 'a Lwt.t) -> 'a Lwt.t
+end
+# 34 "v11.in.ml"
+
+
   module Data_encoding : sig
 # 1 "v11/data_encoding.mli"
 (*****************************************************************************)
@@ -5242,7 +5271,7 @@ module Binary : sig
   val to_string_exn : ?buffer_size:int -> 'a encoding -> 'a -> string
 end
 end
-# 34 "v11.in.ml"
+# 36 "v11.in.ml"
 
 
   module Raw_hashes : sig
@@ -5284,7 +5313,7 @@ val sha3_256 : bytes -> bytes
 
 val sha3_512 : bytes -> bytes
 end
-# 36 "v11.in.ml"
+# 38 "v11.in.ml"
 
 
   module Compare : sig
@@ -5565,7 +5594,7 @@ let compare (foo_a, bar_a) (foo_b, bar_b) =
 *)
 val or_else : int -> (unit -> int) -> int
 end
-# 38 "v11.in.ml"
+# 40 "v11.in.ml"
 
 
   module Time : sig
@@ -5619,7 +5648,7 @@ val rfc_encoding : t Data_encoding.t
 
 val pp_hum : Format.formatter -> t -> unit
 end
-# 40 "v11.in.ml"
+# 42 "v11.in.ml"
 
 
   module TzEndian : sig
@@ -5685,7 +5714,7 @@ val get_uint16_string : string -> int -> int
 
 val set_uint16 : bytes -> int -> int -> unit
 end
-# 42 "v11.in.ml"
+# 44 "v11.in.ml"
 
 
   module Bits : sig
@@ -5722,7 +5751,7 @@ end
     The behaviour is unspecified if [x < 0].*)
 val numbits : int -> int
 end
-# 44 "v11.in.ml"
+# 46 "v11.in.ml"
 
 
   module Equality_witness : sig
@@ -5790,7 +5819,7 @@ val eq : 'a t -> 'b t -> ('a, 'b) eq option
 (** [hash id] returns a hash for [id]. *)
 val hash : 'a t -> int
 end
-# 46 "v11.in.ml"
+# 48 "v11.in.ml"
 
 
   module FallbackArray : sig
@@ -5880,7 +5909,7 @@ val fold : ('b -> 'a -> 'b) -> 'a t -> 'b -> 'b
    filled. *)
 val fold_map : ('b -> 'a -> 'b * 'c) -> 'a t -> 'b -> 'c -> 'b * 'c t
 end
-# 48 "v11.in.ml"
+# 50 "v11.in.ml"
 
 
   module Error_monad : sig
@@ -6314,7 +6343,7 @@ module Lwt_option_syntax : sig
   val both : 'a option Lwt.t -> 'b option Lwt.t -> ('a * 'b) option Lwt.t
 end
 end
-# 50 "v11.in.ml"
+# 52 "v11.in.ml"
 
 
   open Error_monad
@@ -6441,7 +6470,7 @@ val iter_ep :
     them is. *)
 val iter_p : ('a -> unit Lwt.t) -> 'a t -> unit Lwt.t
 end
-# 54 "v11.in.ml"
+# 56 "v11.in.ml"
 
 
   module List : sig
@@ -7728,7 +7757,7 @@ val exists_ep :
   'a list ->
   (bool, 'error Error_monad.trace) result Lwt.t
 end
-# 56 "v11.in.ml"
+# 58 "v11.in.ml"
 
 
   module Array : sig
@@ -7838,7 +7867,7 @@ val fast_sort : [`You_cannot_sort_arrays_in_the_protocol]
 
 module Floatarray : sig end
 end
-# 58 "v11.in.ml"
+# 60 "v11.in.ml"
 
 
   module Set : sig
@@ -7987,7 +8016,7 @@ end
 
 module Make (Ord : Compare.COMPARABLE) : S with type elt = Ord.t
 end
-# 60 "v11.in.ml"
+# 62 "v11.in.ml"
 
 
   module Map : sig
@@ -8156,7 +8185,7 @@ end
 
 module Make (Ord : Compare.COMPARABLE) : S with type key = Ord.t
 end
-# 62 "v11.in.ml"
+# 64 "v11.in.ml"
 
 
   module Option : sig
@@ -8304,7 +8333,7 @@ val catch : ?catch_only:(exn -> bool) -> (unit -> 'a) -> 'a option
 val catch_s :
   ?catch_only:(exn -> bool) -> (unit -> 'a Lwt.t) -> 'a option Lwt.t
 end
-# 64 "v11.in.ml"
+# 66 "v11.in.ml"
 
 
   module Result : sig
@@ -8470,7 +8499,7 @@ val catch_f :
 val catch_s :
   ?catch_only:(exn -> bool) -> (unit -> 'a Lwt.t) -> ('a, exn) result Lwt.t
 end
-# 66 "v11.in.ml"
+# 68 "v11.in.ml"
 
 
   module RPC_arg : sig
@@ -8540,7 +8569,7 @@ type ('a, 'b) eq = Eq : ('a, 'a) eq
 
 val eq : 'a arg -> 'b arg -> ('a, 'b) eq option
 end
-# 68 "v11.in.ml"
+# 70 "v11.in.ml"
 
 
   module RPC_path : sig
@@ -8596,7 +8625,7 @@ val add_final_args :
 val ( /:* ) :
   ('prefix, 'params) path -> 'a RPC_arg.t -> ('prefix, 'params * 'a list) path
 end
-# 70 "v11.in.ml"
+# 72 "v11.in.ml"
 
 
   module RPC_query : sig
@@ -8668,7 +8697,7 @@ exception Invalid of string
 
 val parse : 'a query -> untyped -> 'a
 end
-# 72 "v11.in.ml"
+# 74 "v11.in.ml"
 
 
   module RPC_service : sig
@@ -8745,7 +8774,7 @@ val put_service :
   ('prefix, 'params) RPC_path.t ->
   ([`PUT], 'prefix, 'params, 'query, 'input, 'output) service
 end
-# 74 "v11.in.ml"
+# 76 "v11.in.ml"
 
 
   module RPC_answer : sig
@@ -8806,7 +8835,7 @@ val not_found : 'o t Lwt.t
 
 val fail : error list -> 'a t Lwt.t
 end
-# 76 "v11.in.ml"
+# 78 "v11.in.ml"
 
 
   module RPC_directory : sig
@@ -9076,7 +9105,7 @@ val register_dynamic_directory :
   ('a -> 'a directory Lwt.t) ->
   'prefix directory
 end
-# 78 "v11.in.ml"
+# 80 "v11.in.ml"
 
 
   module Base58 : sig
@@ -9141,7 +9170,7 @@ val check_encoded_prefix : 'a encoding -> string -> int -> unit
     not start with a registered prefix. *)
 val decode : string -> data option
 end
-# 80 "v11.in.ml"
+# 82 "v11.in.ml"
 
 
   module S : sig
@@ -9518,7 +9547,7 @@ module type CURVE = sig
   val mul : t -> Scalar.t -> t
 end
 end
-# 82 "v11.in.ml"
+# 84 "v11.in.ml"
 
 
   module Blake2B : sig
@@ -9583,7 +9612,7 @@ end
 
 module Make (Register : Register) (Name : PrefixedName) : S.HASH
 end
-# 84 "v11.in.ml"
+# 86 "v11.in.ml"
 
 
   module Bls : sig
@@ -9629,7 +9658,7 @@ module Primitive : sig
   val pairing_check : (G1.t * G2.t) list -> bool
 end
 end
-# 86 "v11.in.ml"
+# 88 "v11.in.ml"
 
 
   module Ed25519 : sig
@@ -9663,7 +9692,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 88 "v11.in.ml"
+# 90 "v11.in.ml"
 
 
   module Secp256k1 : sig
@@ -9697,7 +9726,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 90 "v11.in.ml"
+# 92 "v11.in.ml"
 
 
   module P256 : sig
@@ -9731,7 +9760,7 @@ end
 
 include S.SIGNATURE with type watermark := bytes
 end
-# 92 "v11.in.ml"
+# 94 "v11.in.ml"
 
 
   module Chain_id : sig
@@ -9763,7 +9792,7 @@ end
 
 include S.HASH
 end
-# 94 "v11.in.ml"
+# 96 "v11.in.ml"
 
 
   module Signature : sig
@@ -9831,7 +9860,7 @@ include
 
 val size : t -> int
 end
-# 96 "v11.in.ml"
+# 98 "v11.in.ml"
 
 
   module Block_hash : sig
@@ -9864,7 +9893,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.HASH
 end
-# 98 "v11.in.ml"
+# 100 "v11.in.ml"
 
 
   module Operation_hash : sig
@@ -9897,7 +9926,7 @@ end
 (** Operations hashes / IDs. *)
 include S.HASH
 end
-# 100 "v11.in.ml"
+# 102 "v11.in.ml"
 
 
   module Operation_list_hash : sig
@@ -9930,7 +9959,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_hash.t
 end
-# 102 "v11.in.ml"
+# 104 "v11.in.ml"
 
 
   module Operation_list_list_hash : sig
@@ -9963,7 +9992,7 @@ end
 (** Blocks hashes / IDs. *)
 include S.MERKLE_TREE with type elt = Operation_list_hash.t
 end
-# 104 "v11.in.ml"
+# 106 "v11.in.ml"
 
 
   module Protocol_hash : sig
@@ -9996,7 +10025,7 @@ end
 (** Protocol hashes / IDs. *)
 include S.HASH
 end
-# 106 "v11.in.ml"
+# 108 "v11.in.ml"
 
 
   module Context_hash : sig
@@ -10049,7 +10078,7 @@ end
 
 type version = Version.t
 end
-# 108 "v11.in.ml"
+# 110 "v11.in.ml"
 
 
   module Sapling : sig
@@ -10197,7 +10226,7 @@ module Verification : sig
   val final_check : t -> UTXO.transaction -> string -> bool
 end
 end
-# 110 "v11.in.ml"
+# 112 "v11.in.ml"
 
 
   module Timelock : sig
@@ -10254,7 +10283,7 @@ val open_chest : chest -> chest_key -> time:int -> opening_result
     Used for gas accounting*)
 val get_plaintext_size : chest -> int
 end
-# 112 "v11.in.ml"
+# 114 "v11.in.ml"
 
 
   module Vdf : sig
@@ -10342,7 +10371,7 @@ val prove : discriminant -> challenge -> difficulty -> result * proof
     @raise Invalid_argument when inputs are invalid *)
 val verify : discriminant -> challenge -> difficulty -> result -> proof -> bool
 end
-# 114 "v11.in.ml"
+# 116 "v11.in.ml"
 
 
   module Micheline : sig
@@ -10402,7 +10431,7 @@ val annotations : ('l, 'p) node -> string list
 
 val strip_locations : (_, 'p) node -> 'p canonical
 end
-# 116 "v11.in.ml"
+# 118 "v11.in.ml"
 
 
   module Block_header : sig
@@ -10459,7 +10488,7 @@ type t = {shell : shell_header; protocol_data : bytes}
 
 include S.HASHABLE with type t := t and type hash := Block_hash.t
 end
-# 118 "v11.in.ml"
+# 120 "v11.in.ml"
 
 
   module Bounded : sig
@@ -10608,7 +10637,7 @@ module Int8 (B : BOUNDS with type ocaml_type := int) :
 module Uint8 (B : BOUNDS with type ocaml_type := int) :
   S with type ocaml_type := int
 end
-# 120 "v11.in.ml"
+# 122 "v11.in.ml"
 
 
   module Fitness : sig
@@ -10642,7 +10671,7 @@ end
     compared in a lexicographical order (longer list are greater). *)
 include S.T with type t = bytes list
 end
-# 122 "v11.in.ml"
+# 124 "v11.in.ml"
 
 
   module Operation : sig
@@ -10686,7 +10715,7 @@ type t = {shell : shell_header; proto : bytes}
 
 include S.HASHABLE with type t := t and type hash := Operation_hash.t
 end
-# 124 "v11.in.ml"
+# 126 "v11.in.ml"
 
 
   module Context : sig
@@ -11323,7 +11352,7 @@ module Cache :
      and type key = cache_key
      and type value = cache_value
 end
-# 126 "v11.in.ml"
+# 128 "v11.in.ml"
 
 
   module Updater : sig
@@ -11868,7 +11897,7 @@ end
     not complete until [init] in invoked. *)
 val activate : Context.t -> Protocol_hash.t -> Context.t Lwt.t
 end
-# 128 "v11.in.ml"
+# 130 "v11.in.ml"
 
 
   module RPC_context : sig
@@ -12023,7 +12052,7 @@ val make_opt_call3 :
   'i ->
   'o option shell_tzresult Lwt.t
 end
-# 130 "v11.in.ml"
+# 132 "v11.in.ml"
 
 
   module Context_binary : sig
@@ -12066,7 +12095,7 @@ module Tree :
 
 val make_empty_context : ?root:string -> unit -> t
 end
-# 132 "v11.in.ml"
+# 134 "v11.in.ml"
 
 
   module Wasm_2_0_0 : sig
@@ -12140,7 +12169,7 @@ module Make
   val get_info : Tree.tree -> info Lwt.t
 end
 end
-# 134 "v11.in.ml"
+# 136 "v11.in.ml"
 
 
   module Plonk : sig
@@ -12259,7 +12288,7 @@ val scalar_array_encoding : scalar array Data_encoding.t
     on the given [inputs] according to the [public_parameters]. *)
 val verify : public_parameters -> verifier_inputs -> proof -> bool
 end
-# 136 "v11.in.ml"
+# 138 "v11.in.ml"
 
 
   module Dal : sig
@@ -12382,7 +12411,7 @@ val verify_page :
   page_proof ->
   (bool, [> `Segment_index_out_of_range | `Page_length_mismatch]) Result.t
 end
-# 138 "v11.in.ml"
+# 140 "v11.in.ml"
 
 
   module Skip_list : sig
@@ -12614,7 +12643,7 @@ module Make (_ : sig
   val basis : int
 end) : S
 end
-# 140 "v11.in.ml"
+# 142 "v11.in.ml"
 
 
   module Smart_rollup : sig
@@ -12671,6 +12700,6 @@ module Inbox_hash : S.HASH
 (** Smart rollup merkelized payload hashes' hash *)
 module Merkelized_payload_hashes_hash : S.HASH
 end
-# 142 "v11.in.ml"
+# 144 "v11.in.ml"
 
 end
