@@ -28,6 +28,12 @@
 open Block_validator_worker_state
 open Block_validator_errors
 
+module Profiler = struct
+  include (val Profiler.wrap Shell_profiling.block_validator_profiler)
+
+  let may_start_block = Shell_profiling.may_start_block
+end
+
 type validation_result =
   | Already_committed
   | Outdated_block
@@ -165,6 +171,7 @@ let precheck_block bvp chain_db chain_store ~predecessor block_header block_hash
 
 let check_operations_merkle_root hash header operations =
   let open Result_syntax in
+  Profiler.span_f ["checks"; "merkle_root"] @@ fun () ->
   let fail_unless b e = if b then return_unit else tzfail e in
   let computed_hash =
     let hashes = List.map (List.map Operation.hash) operations in
@@ -194,11 +201,14 @@ let on_validation_request w
       precheck_and_notify;
     } =
   let open Lwt_result_syntax in
+  Profiler.may_start_block (Block_header.hash header) ;
   let bv = Worker.state w in
   let chain_store = Distributed_db.chain_store chain_db in
   let*! b = Store.Block.is_known_valid chain_store hash in
   match b with
-  | true -> return Already_committed
+  | true ->
+      Profiler.mark ["checks"; "already_commited"] ;
+      return Already_committed
   | false -> (
       (* This check might be redundant as operation paths are already
          checked when each pass is received from the network. However,
@@ -225,6 +235,7 @@ let on_validation_request w
                   return Outdated_block
                 else
                   let* pred =
+                    Profiler.record_s "read_predecessor" @@ fun () ->
                     Store.Block.read_block chain_store header.shell.predecessor
                   in
                   let with_retry_to_load_protocol f =
@@ -294,6 +305,7 @@ let on_validation_request w
                             (fun v -> Int.to_float (List.length v))
                             operations) ;
                       let* o =
+                        Profiler.record_s "commit_block" @@ fun () ->
                         Distributed_db.commit_block
                           chain_db
                           hash
@@ -520,6 +532,7 @@ let validate w ?canceler ?peer ?(notify_new_block = fun _ -> ())
     ?(precheck_and_notify = false) chain_db hash (header : Block_header.t)
     operations =
   let open Lwt_syntax in
+  Profiler.may_start_block (Block_header.hash header) ;
   let chain_store = Distributed_db.chain_store chain_db in
   let* b = Store.Block.is_known_valid chain_store hash in
   match b with
@@ -530,6 +543,7 @@ let validate w ?canceler ?peer ?(notify_new_block = fun _ -> ())
       let* r =
         let open Lwt_result_syntax in
         let* () =
+          Profiler.span_s ["checks"; "chain_liveness"] @@ fun () ->
           check_chain_liveness chain_db hash header
           |> Lwt_result.map_error (fun e -> Worker.Request_error e)
         in
