@@ -70,6 +70,23 @@ let await_protocol_start (cctxt : #Protocol_client_context.full) ~chain =
   cctxt#message "Waiting for protocol %s to start..." Protocol.name
   >>= fun () -> Node_rpc.await_protocol_activation cctxt ~chain ()
 
+let may_start_profiler baking_dir =
+  match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
+  | Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode) ->
+      let max_lod =
+        match mode with
+        | "detailed" -> Profiler.Detailed
+        | "verbose" -> Profiler.Verbose
+        | _ -> Profiler.Terse
+      in
+      let profiler_maker ~name =
+        Profiler.instance
+          Tezos_base_unix.Simple_profiler.auto_write_to_file
+          Filename.Infix.((baking_dir // name) ^ "_profiling.txt", max_lod)
+      in
+      Baking_profiler.init profiler_maker
+  | _ -> ()
+
 module Baker = struct
   let run (cctxt : Protocol_client_context.full) ?minimal_fees
       ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?liquidity_baking
@@ -105,6 +122,8 @@ module Baker = struct
             cctxt#message "Shutting down the baker..." >>= fun () ->
             Lwt_canceler.cancel canceler >>= fun _ -> Lwt.return_unit)
       in
+      let () = may_start_profiler cctxt#get_base_dir in
+      Baking_profiler.record "initialization" ;
       Baking_scheduling.run cctxt ~canceler ~chain config delegates
     in
     Client_confirmations.wait_for_bootstrapped
