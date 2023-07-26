@@ -97,6 +97,9 @@ val parameters_encoding : parameters Data_encoding.t
 
 val request_encoding : request Data_encoding.t
 
+val with_report_encoding :
+  'a Data_encoding.t -> ('a * Tezos_base.Profiler.report) Data_encoding.t
+
 val send : Lwt_io.output_channel -> 'a Data_encoding.t -> 'a -> unit Lwt.t
 
 val recv : Lwt_io.input_channel -> 'a Data_encoding.t -> 'a Lwt.t
