@@ -479,6 +479,7 @@ let state_data_encoding =
        (req "endorsable_payload" (option endorsable_payload_encoding)))
 
 let record_state (state : state) =
+  Baking_profiler.record_s "record state" @@ fun () ->
   let cctxt = state.global_state.cctxt in
   let location =
     Baking_files.resolve_location ~chain_id:state.global_state.chain_id `State
@@ -487,24 +488,30 @@ let record_state (state : state) =
     Filename.Infix.(cctxt#get_base_dir // Baking_files.filename location)
   in
   protect @@ fun () ->
+  Baking_profiler.record "waiting lock" ;
   cctxt#with_lock @@ fun () ->
+  Baking_profiler.stop () ;
   let level_data = state.level_state.current_level in
   let locked_round_data = state.level_state.locked_round in
   let endorsable_payload_data = state.level_state.endorsable_payload in
   let bytes =
+    Baking_profiler.record_f "serializing baking state" @@ fun () ->
     Data_encoding.Binary.to_bytes_exn
       state_data_encoding
       {level_data; locked_round_data; endorsable_payload_data}
   in
   let filename_tmp = filename ^ "_tmp" in
-  Lwt_io.with_file
-    ~flags:[Unix.O_CREAT; O_WRONLY; O_TRUNC; O_CLOEXEC; O_SYNC]
-    ~mode:Output
-    filename_tmp
-    (fun channel ->
-      Lwt_io.write_from_exactly channel bytes 0 (Bytes.length bytes))
+  Baking_profiler.record_s "writing baking state" (fun () ->
+      Lwt_io.with_file
+        ~flags:[Unix.O_CREAT; O_WRONLY; O_TRUNC; O_CLOEXEC; O_SYNC]
+        ~mode:Output
+        filename_tmp
+        (fun channel ->
+          Lwt_io.write_from_exactly channel bytes 0 (Bytes.length bytes)))
   >>= fun () ->
-  Lwt_unix.rename filename_tmp filename >>= fun () -> return_unit
+  Baking_profiler.record_s "renaming file" (fun () ->
+      Lwt_unix.rename filename_tmp filename)
+  >>= fun () -> return_unit
 
 type error += Broken_locked_values_invariant
 
@@ -920,3 +927,12 @@ let pp_event fmt = function
         candidate.round_watched
   | Timeout kind ->
       Format.fprintf fmt "timeout reached: %a" pp_timeout_kind kind
+
+let pp_short_event fmt =
+  let open Format in
+  function
+  | New_valid_proposal _ -> fprintf fmt "new valid proposal"
+  | New_head_proposal _ -> fprintf fmt "new head proposal"
+  | Prequorum_reached (_, _) -> fprintf fmt "prequorum reached"
+  | Quorum_reached (_, _) -> fprintf fmt "quorum reached"
+  | Timeout _ -> fprintf fmt "timeout"
