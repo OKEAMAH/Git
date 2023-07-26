@@ -2279,7 +2279,9 @@ let apply_manager_operations ctxt ~payload_producer chain_id ~mempool_mode
     ~source ~operation contents_list =
   let open Lwt_result_syntax in
   let ctxt = if mempool_mode then Gas.reset_block_gas ctxt else ctxt in
-  let* ctxt, fees_updated_contents_list = take_fees ctxt contents_list in
+  let* ctxt, fees_updated_contents_list =
+    Profiler.record_s "take_fees" @@ fun () -> take_fees ctxt contents_list
+  in
   let gas_cost_for_sig_check =
     let algo =
       Michelson_v1_gas.Cost_of.Interpreter.algo_of_public_key_hash source
@@ -2503,6 +2505,7 @@ let may_start_new_cycle ctxt =
   match Level.dawn_of_a_new_cycle ctxt with
   | None -> return (ctxt, [], [])
   | Some last_cycle ->
+      Profiler.record_s "delegate cycle end" @@ fun () ->
       let* ctxt, balance_updates, deactivated =
         Delegate.cycle_end ctxt last_cycle
       in
@@ -2942,6 +2945,7 @@ let finalize_application ctxt block_data_contents ~round ~predecessor_hash
   in
   let* ctxt =
     if Level.may_snapshot_stake_distribution ctxt then
+      Profiler.record_s "snapshot stake distribution" @@ fun () ->
       Stake_distribution.snapshot ctxt
     else return ctxt
   in
