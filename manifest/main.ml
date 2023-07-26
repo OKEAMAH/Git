@@ -3536,7 +3536,7 @@ let _octez_store_mocked =
     ~implements:octez_store
 
 let octez_requester =
-  octez_lib
+  octez_shell_lib
     "requester"
     ~internal_name:"tezos_requester"
     ~path:"src/lib_requester"
@@ -3544,6 +3544,7 @@ let octez_requester =
       [
         octez_base |> open_ ~m:"TzPervasives";
         octez_stdlib_unix |> open_;
+        octez_shell_services |> open_;
         lwt_watcher;
       ]
 
@@ -3551,7 +3552,7 @@ let _octez_requester_tests =
   tezt
     ["test_requester"; "test_fuzzing_requester"; "shared"]
     ~path:"src/lib_requester/test"
-    ~opam:"octez-libs"
+    ~opam:"octez-shell-libs"
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";
