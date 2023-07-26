@@ -27,6 +27,8 @@
 (** Minimal delay between two mempool advertisements *)
 let advertisement_delay = 0.1
 
+module Profiler = (val Profiler.wrap Shell_profiling.mempool_profiler)
+
 (** Argument that will be provided to {!Worker.MakeGroup} to create
     the prevalidator worker. *)
 module Name = struct
@@ -321,6 +323,7 @@ module Make_s
   }
 
   let already_handled ~origin shell oph =
+    Profiler.aggregate_f "is already handled" @@ fun () ->
     if Operation_hash.Set.mem oph shell.banned_operations then (
       (* In order to avoid data-races (for instance in
          [may_fetch_operation]), this event is triggered
@@ -475,6 +478,7 @@ module Make_s
             (* Using Error as an early-return mechanism *)
             Lwt.return_error (acc_validation_state, acc_mempool)
           else (
+            Profiler.mark ["operation classified"] ;
             shell.pending <- Pending_ops.remove oph shell.pending ;
             let* new_validation_state, new_mempool, to_handle =
               classify_operation
@@ -586,17 +590,20 @@ module Make_s
       match peer with Some peer -> Events.Peer peer | None -> Leftover
     in
     let spawn_fetch_operation ~notify_arrival =
+      Profiler.aggregate_f "fetching thread" @@ fun () ->
       ignore
         (Unit.catch_s (fun () ->
              fetch_operation ~notify_arrival shell ?peer oph))
     in
-    if Operation_hash.Set.mem oph shell.fetching then
+    if Operation_hash.Set.mem oph shell.fetching then (
+      Profiler.mark ["already fetching"] ;
       (* If the operation is already being fetched, we notify the DDB
          that another peer may also be requested for the resource. In
          any case, the initial fetching thread will still be resolved
          and push an arrived worker request. *)
-      spawn_fetch_operation ~notify_arrival:false
+      spawn_fetch_operation ~notify_arrival:false)
     else if not (already_handled ~origin shell oph) then (
+      Profiler.mark ["not already handled"] ;
       shell.fetching <- Operation_hash.Set.add oph shell.fetching ;
       spawn_fetch_operation ~notify_arrival:true)
 
@@ -750,7 +757,10 @@ module Make_s
 
     let on_notify (shell : ('operation_data, _) types_state_shell) peer mempool
         =
-      let may_fetch_operation = may_fetch_operation shell (Some peer) in
+      let may_fetch_operation =
+        Profiler.aggregate_f "may_fetch_operation" @@ fun () ->
+        may_fetch_operation shell (Some peer)
+      in
       let () =
         Operation_hash.Set.iter may_fetch_operation mempool.Mempool.known_valid
       in
@@ -1227,13 +1237,19 @@ module Make
           (r, request_error) result Lwt.t -> (r, request_error) result Lwt.t =
        fun r ->
         let open Lwt_syntax in
-        let* () = handle_unprocessed pv in
+        let* () =
+          Profiler.aggregate_s "handle_unprocessed" @@ fun () ->
+          handle_unprocessed pv
+        in
         r
       in
       post_processing
       @@
       match request with
       | Request.Flush (hash, event, live_blocks, live_operations) ->
+          Profiler.stop () ;
+          let bh = Block_hash.to_short_b58check hash in
+          Format.kasprintf Profiler.record "head:%s" bh ;
           Requests.on_advertise pv.shell ;
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/1727
              Rebase the advertisement instead. *)
@@ -1246,6 +1262,7 @@ module Make
           in
           Lwt_mutex.with_lock pv.lock
           @@ fun () : (r, error trace) result Lwt.t ->
+          Profiler.aggregate_s "on_flush" @@ fun () ->
           Requests.on_flush
             ~handle_branch_refused
             pv
@@ -1253,17 +1270,24 @@ module Make
             live_blocks
             live_operations
       | Request.Notify (peer, mempool) ->
+          Profiler.aggregate_f "on_notify" @@ fun () ->
           Requests.on_notify pv.shell peer mempool ;
           return_unit
       | Request.Leftover ->
           (* unprocessed ops are handled just below *)
           return_unit
-      | Request.Inject {op; force} -> Requests.on_inject pv ~force op
-      | Request.Arrived (oph, op) -> Requests.on_arrived pv oph op
+      | Request.Inject {op; force} ->
+          Profiler.aggregate_s "on_inject" @@ fun () ->
+          Requests.on_inject pv ~force op
+      | Request.Arrived (oph, op) ->
+          Profiler.aggregate_s "on_arrived" @@ fun () ->
+          Requests.on_arrived pv oph op
       | Request.Advertise ->
+          Profiler.aggregate_s "on_advertise" @@ fun () ->
           Requests.on_advertise pv.shell ;
           return_unit
-      | Request.Ban oph -> Requests.on_ban pv oph
+      | Request.Ban oph ->
+          Profiler.aggregate_s "on_ban" @@ fun () -> Requests.on_ban pv oph
 
     let on_close w =
       let pv = Worker.state w in
@@ -1317,6 +1341,8 @@ module Make
       let open Lwt_result_syntax in
       let chain_store = Distributed_db.chain_store chain_db in
       let*! head = Store.Chain.current_head chain_store in
+      let bh = Block_hash.to_short_b58check (Store.Block.hash head) in
+      Format.kasprintf Profiler.record "head:%s" bh ;
       let*! mempool = Store.Chain.mempool chain_store in
       let*! live_blocks, live_operations =
         Store.Chain.live_blocks chain_store
