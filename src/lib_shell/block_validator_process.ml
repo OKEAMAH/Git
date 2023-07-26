@@ -931,7 +931,16 @@ module External_validator_process = struct
           simulate;
         }
     in
-    send_request validator request Block_validation.result_encoding
+    let* res, report =
+      send_request
+        validator
+        request
+        (External_validation.with_report_encoding
+           Block_validation.result_encoding)
+    in
+    (try Profiler.inc Shell_profiling.block_validator_profiler report
+     with _ -> ()) ;
+    return res
 
   let preapply_block validator ~chain_id ~timestamp ~protocol_data ~live_blocks
       ~live_operations ~predecessor_shell_header ~predecessor_hash
@@ -977,7 +986,15 @@ module External_validator_process = struct
           hash;
         }
     in
-    send_request validator request Data_encoding.unit
+    let* res, report =
+      send_request
+        validator
+        request
+        (External_validation.with_report_encoding Data_encoding.unit)
+    in
+    (try Profiler.inc Shell_profiling.block_validator_profiler report
+     with _ -> ()) ;
+    return res
 
   let context_garbage_collection validator _index context_hash ~gc_lockfile_path
       =
