@@ -175,26 +175,44 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
 
 let cycle_end ctxt last_cycle =
   let open Lwt_result_syntax in
-  let* ctxt, unrevealed_nonces = Seed_storage.cycle_end ctxt last_cycle in
+  let* ctxt, unrevealed_nonces =
+    Profiler.record_s "seed storage" @@ fun () ->
+    Seed_storage.cycle_end ctxt last_cycle
+  in
   let new_cycle = Cycle_repr.add last_cycle 1 in
   let* ctxt =
+    Profiler.record_s "select new distribution" @@ fun () ->
     Delegate_sampler.select_new_distribution_at_cycle_end ctxt ~new_cycle
   in
-  let*! ctxt = Delegate_consensus_key.activate ctxt ~new_cycle in
+  let*! ctxt =
+    Profiler.record_s "activate consensus key" @@ fun () ->
+    Delegate_consensus_key.activate ctxt ~new_cycle
+  in
   let*! ctxt =
     Delegate_slashed_deposits_storage.clear_outdated_slashed_deposits
       ctxt
       ~new_cycle
   in
   let* ctxt, balance_updates =
+    Profiler.record_s "distribute attesting rewards" @@ fun () ->
     distribute_attesting_rewards ctxt last_cycle unrevealed_nonces
   in
-  let* ctxt = update_initial_frozen_deposits ctxt ~new_cycle in
+  let* ctxt =
+    Profiler.record_s "update initial frozen deposits" @@ fun () ->
+    update_initial_frozen_deposits ctxt ~new_cycle
+  in
   let* ctxt = Stake_storage.clear_at_cycle_end ctxt ~new_cycle in
   let* ctxt = Delegate_sampler.clear_outdated_sampling_data ctxt ~new_cycle in
-  let*! ctxt = Delegate_staking_parameters.activate ctxt ~new_cycle in
-  let* ctxt, deactivated_delegates = update_activity ctxt last_cycle in
+  let*! ctxt =
+    Profiler.record_s "activate staking parameters" @@ fun () ->
+    Delegate_staking_parameters.activate ctxt ~new_cycle
+  in
+  let* ctxt, deactivated_delegates =
+    Profiler.record_s "update activity" @@ fun () ->
+    update_activity ctxt last_cycle
+  in
   let* ctxt =
+    Profiler.record_s "update stored rewards at cycle end" @@ fun () ->
     Adaptive_issuance_storage.update_stored_rewards_at_cycle_end ctxt ~new_cycle
   in
   return (ctxt, balance_updates, deactivated_delegates)
