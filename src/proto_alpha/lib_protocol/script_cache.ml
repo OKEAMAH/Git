@@ -97,6 +97,7 @@ let find ctxt addr =
   | Some (unparsed_script, ex_script) ->
       return (ctxt, identifier, Some (unparsed_script, ex_script))
   | None -> (
+      Profiler.record_s "cache_miss" @@ fun () ->
       let* ctxt, result = load_and_elaborate ctxt addr in
       match result with
       | None -> return (ctxt, identifier, None)
