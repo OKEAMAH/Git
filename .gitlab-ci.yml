@@ -2,7 +2,7 @@
 
 # General setup
 default:
-  interruptible: true
+  interruptible: false
 
 # Basic configuration to guard against double-pipelines
 workflow:
