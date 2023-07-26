@@ -107,6 +107,7 @@ let attesting_rights (ctxt : t) level =
 
 let attesting_rights_by_first_slot ctxt level =
   let open Lwt_result_syntax in
+  Profiler.record_s "attesting_rights_by_first_slot" @@ fun () ->
   let*? slots =
     Slot.Range.create ~min:0 ~count:(Constants.consensus_committee_size ctxt)
   in
