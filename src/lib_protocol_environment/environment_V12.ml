@@ -188,6 +188,7 @@ struct
   module CamlinternalFormatBasics = CamlinternalFormatBasics
   include Stdlib
   module Pervasives = Stdlib
+  module Profiler = Environment_profiler
 
   module Logging = struct
     type level = Internal_event.level =
@@ -329,7 +330,22 @@ struct
   module Secp256k1 = Tezos_crypto.Signature.Secp256k1
   module P256 = Tezos_crypto.Signature.P256
   module Bls = Tezos_crypto.Signature.Bls
-  module Signature = Tezos_crypto.Signature.V1
+
+  module Signature = struct
+    include Tezos_crypto.Signature.V1
+
+    let check ?watermark pk s bytes =
+      Profiler.span_f
+        [
+          (match (pk : public_key) with
+          | Ed25519 _ -> "check_signature_ed25519"
+          | Secp256k1 _ -> "check_signature_secp256k1"
+          | P256 _ -> "check_signature_p256"
+          | Bls _ -> "check_signature_bls");
+        ]
+        (fun () -> check ?watermark pk s bytes)
+  end
+
   module Timelock = Tezos_crypto.Timelock
   module Vdf = Class_group_vdf.Vdf_self_contained
 
