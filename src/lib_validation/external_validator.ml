@@ -257,6 +257,13 @@ let run ~readonly ~using_std_channel input output =
     if using_std_channel then Lwt.return_unit
     else Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
+  let headless =
+    Tezos_base.Profiler.instance
+      Tezos_base_unix.Simple_profiler.headless
+      Profiler.Detailed
+  in
+  Tezos_base.Profiler.(plug main) headless ;
+  Tezos_protocol_environment.Environment_profiler.plug headless ;
   (* Main loop waiting for request to be processed, forever, until the
      [Terminate] request is received.
      TODO: https://gitlab.com/tezos/tezos/-/issues/5177
@@ -298,6 +305,7 @@ let run ~readonly ~using_std_channel input output =
           simulate;
         } ->
         let*! () = Events.(emit validation_request block_header) in
+        Tezos_protocol_environment.Environment_profiler.record "apply_block" ;
         let*! block_application_result =
           let* predecessor_context =
             Error_monad.catch_es (fun () ->
@@ -363,11 +371,18 @@ let run ~readonly ~using_std_channel input output =
                     cache;
                   } )
         in
+        Tezos_protocol_environment.Environment_profiler.stop () ;
+        let report =
+          match Tezos_base.Profiler.report headless with
+          | None -> assert false
+          | Some report -> report
+        in
         let*! () =
           External_validation.send
             output
-            (Error_monad.result_encoding Block_validation.result_encoding)
-            block_application_result
+            (External_validation.with_report_encoding
+               (Error_monad.result_encoding Block_validation.result_encoding))
+            (block_application_result, report)
         in
         loop cache None
     | Preapply
@@ -455,6 +470,7 @@ let run ~readonly ~using_std_channel input output =
           hash;
         } ->
         let*! () = Events.(emit precheck_request hash) in
+        Tezos_protocol_environment.Environment_profiler.record "validate_block" ;
         let*! block_precheck_result =
           let* predecessor_context =
             Error_monad.catch_es (fun () ->
@@ -473,7 +489,7 @@ let run ~readonly ~using_std_channel input output =
           in
           let cache =
             match cache with
-            | None -> `Lazy
+            | None -> `Load
             | Some cache ->
                 `Inherited (cache, predecessor_resulting_context_hash)
           in
@@ -490,11 +506,18 @@ let run ~readonly ~using_std_channel input output =
                 header
                 operations)
         in
+        Tezos_protocol_environment.Environment_profiler.stop () ;
+        let report =
+          match Tezos_base.Profiler.report headless with
+          | None -> assert false
+          | Some report -> report
+        in
         let*! () =
           External_validation.send
             output
-            (Error_monad.result_encoding Data_encoding.unit)
-            block_precheck_result
+            (External_validation.with_report_encoding
+               (Error_monad.result_encoding Data_encoding.unit))
+            (block_precheck_result, report)
         in
         loop cache cached_result
     | External_validation.Fork_test_chain
