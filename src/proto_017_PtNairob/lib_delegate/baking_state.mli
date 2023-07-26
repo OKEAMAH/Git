@@ -244,3 +244,5 @@ val pp : Format.formatter -> t -> unit
 val pp_timeout_kind : Format.formatter -> timeout_kind -> unit
 
 val pp_event : Format.formatter -> event -> unit
+
+val pp_short_event : Format.formatter -> event -> unit

@@ -831,10 +831,12 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
   | _, Timeout (End_of_round {ending_round}) ->
       (* If the round is ending, stop everything currently going on and
          increment the round. *)
+      Baking_profiler.record_s "end of round" @@ fun () ->
       end_of_round state ending_round
   | _, Timeout (Time_to_bake_next_level {at_round}) ->
       (* If it is time to bake the next level, stop everything currently
          going on and propose the next level block *)
+      Baking_profiler.record_s "time to bake at next level" @@ fun () ->
       time_to_bake_at_next_level state at_round
   | Idle, New_head_proposal proposal ->
       let* () =
@@ -845,6 +847,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
               proposal.block.shell.level,
               proposal.block.round ))
       in
+      Baking_profiler.record_s "handle new head" @@ fun () ->
       handle_proposal ~is_proposal_applied:true state proposal
   | Awaiting_application, New_head_proposal proposal ->
       if
@@ -862,11 +865,13 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
         let* () =
           Events.(emit unexpected_new_head_while_waiting_for_application ())
         in
+        Baking_profiler.record_s "handle unexpected new head" @@ fun () ->
         handle_proposal ~is_proposal_applied:true state proposal
       else
         let* () =
           Events.(emit applied_expected_proposal_received proposal.block.hash)
         in
+        Baking_profiler.record_s "handle expected new head" @@ fun () ->
         handle_expected_applied_proposal state
   | Awaiting_attestations, New_head_proposal proposal
   | Awaiting_preattestations, New_head_proposal proposal ->
@@ -879,7 +884,8 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
               proposal.block.round ))
       in
       let* () = Events.(emit new_head_while_waiting_for_qc ()) in
-      handle_proposal ~is_proposal_applied:true state proposal
+      Baking_profiler.record_s "handle new head while waiting for quorum"
+      @@ fun () -> handle_proposal ~is_proposal_applied:true state proposal
   | Idle, New_valid_proposal proposal ->
       let* () =
         Events.(
@@ -906,16 +912,20 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
         do_nothing state
       else
         let* () = Events.(emit new_valid_proposal_while_waiting_for_qc ()) in
-        handle_proposal ~is_proposal_applied:false state proposal
+        Baking_profiler.record_s "handle new proposal while waiting for quorum"
+        @@ fun () -> handle_proposal ~is_proposal_applied:false state proposal
   | Awaiting_application, Prequorum_reached (candidate, preattestation_qc) ->
+      Baking_profiler.record_s "register early prequorum" @@ fun () ->
       may_register_early_prequorum state (candidate, preattestation_qc)
   | Awaiting_preattestations, Prequorum_reached (candidate, preattestation_qc)
     ->
+      Baking_profiler.record_s "handle prequorum reached" @@ fun () ->
       prequorum_reached_when_awaiting_preattestations
         state
         candidate
         preattestation_qc
   | Awaiting_attestations, Quorum_reached (candidate, attestation_qc) ->
+      Baking_profiler.record_s "handle quorum reached" @@ fun () ->
       quorum_reached_when_waiting_attestations state candidate attestation_qc
   (* Unreachable cases *)
   | Idle, (Prequorum_reached _ | Quorum_reached _)
