@@ -252,6 +252,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
       cctxt
   else
     let* shell_header =
+      Baking_profiler.record_s "finalize block header" @@ fun () ->
       finalize_block_header
         ~shell_header:incremental.header
         ~validation_result
@@ -263,6 +264,7 @@ let filter_with_context ~chain_id ~fees_config ~hard_gas_limit_per_block
     in
     let operations = List.map (List.map convert_operation) operations in
     let payload_hash =
+      Baking_profiler.record_f "compute payload hash" @@ fun () ->
       let operation_hashes =
         Stdlib.List.tl operations |> List.flatten
         |> List.map Tezos_base.Operation.hash
@@ -303,6 +305,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
     ~context_index ~payload_hash cctxt =
   let open Lwt_result_syntax in
   let* incremental =
+    Baking_profiler.record_s "begin construction" @@ fun () ->
     Baking_simulator.begin_construction
       ~timestamp
       ~protocol_data:faked_protocol_data
@@ -315,12 +318,14 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
   (* We still need to filter attestations. Two attestations could be
      referring to the same slot. *)
   let* incremental, ordered_pool =
+    Baking_profiler.record_s "filter consensus operations" @@ fun () ->
     Operation_selection.filter_consensus_operations_only
       incremental
       ordered_pool
   in
   let operations = Operation_pool.ordered_to_list_list ordered_pool in
   let operations_hash =
+    Baking_profiler.record_f "compute operations merkle root" @@ fun () ->
     Operation_list_list_hash.compute
       (List.map
          (fun sl ->
@@ -332,7 +337,10 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
   let incremental =
     {incremental with header = {incremental.header with operations_hash}}
   in
-  let* validation_result = Baking_simulator.finalize_construction incremental in
+  let* validation_result =
+    Baking_profiler.record_s "finalize construction" @@ fun () ->
+    Baking_simulator.finalize_construction incremental
+  in
   let validation_result = Option.map fst validation_result in
   let* changed =
     check_protocol_changed
@@ -365,6 +373,7 @@ let apply_with_context ~chain_id ~faked_protocol_data ~user_activated_upgrades
           (Option.value (List.hd operations) ~default:[])
     in
     let* shell_header =
+      Baking_profiler.record_s "finalize block header" @@ fun () ->
       finalize_block_header
         ~shell_header:incremental.header
         ~validation_result
@@ -394,6 +403,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
         (* We cannot include operations that are not live with respect
            to our predecessor otherwise the node would reject the block. *)
         let filtered_pool =
+          Baking_profiler.record_f "filter non live operations" @@ fun () ->
           retain_live_operations_only
             ~live_blocks:pred_live_blocks
             operation_pool
@@ -412,6 +422,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~adaptive_issuance_vote
             ()
         in
+        Baking_profiler.record_s "filter via node" @@ fun () ->
         filter_via_node
           ~chain_id
           ~faked_protocol_data
@@ -432,6 +443,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~adaptive_issuance_vote
             ()
         in
+        Baking_profiler.record_s "apply via node" @@ fun () ->
         apply_via_node
           ~chain_id
           ~faked_protocol_data
@@ -449,6 +461,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~adaptive_issuance_vote
             ()
         in
+        Baking_profiler.record_s "filter with context" @@ fun () ->
         filter_with_context
           ~chain_id
           ~faked_protocol_data
@@ -474,6 +487,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
             ~adaptive_issuance_vote
             ()
         in
+        Baking_profiler.record_s "apply with context" @@ fun () ->
         apply_with_context
           ~chain_id
           ~faked_protocol_data
@@ -489,6 +503,7 @@ let forge (cctxt : #Protocol_client_context.full) ~chain_id
           cctxt
   in
   let* contents =
+    Baking_profiler.record_s "compute proof of work" @@ fun () ->
     Baking_pow.mine
       ~proof_of_work_threshold:constants.proof_of_work_threshold
       shell_header
