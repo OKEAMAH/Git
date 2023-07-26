@@ -4821,18 +4821,20 @@ let parse_script :
     Script.t ->
     (ex_script * context) tzresult Lwt.t =
  fun ~unparse_code_rec ~elab_conf ctxt ~allow_forged_in_storage {code; storage} ->
-  parse_code ~unparse_code_rec ~elab_conf ctxt ~code
+  Profiler.record_s"parse_code" (fun () ->
+      parse_code ~unparse_code_rec ~elab_conf ctxt ~code)
   >>=? fun ( Ex_code
                (Code
                  {code; arg_type; storage_type; views; entrypoints; code_size}),
              ctxt ) ->
-  parse_storage
-    ~unparse_code_rec
-    ~elab_conf
-    ctxt
-    ~allow_forged:allow_forged_in_storage
-    storage_type
-    ~storage
+  Profiler.record_s"parse_storage" (fun () ->
+      parse_storage
+        ~unparse_code_rec
+        ~elab_conf
+        ctxt
+        ~allow_forged:allow_forged_in_storage
+        storage_type
+        ~storage)
   >|=? fun (storage, ctxt) ->
   ( Ex_script
       (Script
@@ -5441,6 +5443,7 @@ let list_of_big_map_ids ids =
   Lazy_storage.IdSet.fold Big_map (fun id acc -> id :: acc) ids []
 
 let parse_data ~elab_conf ctxt ~allow_forged ty t =
+  Profiler.record_s"parse_data" @@ fun () ->
   parse_data ~unparse_code_rec ~elab_conf ~allow_forged ~stack_depth:0 ctxt ty t
 
 let parse_view ~elab_conf ctxt ty view =

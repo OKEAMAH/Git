@@ -1738,6 +1738,7 @@ type execution_result = {
 
 let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     unparsed_script cached_script arg =
+  Profiler.record_s"execute" @@ fun () ->
   let elab_conf =
     Script_ir_translator_config.make
       ~legacy:true
@@ -1780,9 +1781,10 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
   >>?= fun (to_duplicate, ctxt) ->
   Script_ir_translator.collect_lazy_storage ctxt storage_type old_storage
   >>?= fun (to_update, ctxt) ->
-  trace
-    (Runtime_contract_error step_constants.self)
-    (interp logger (ctxt, step_constants) code (arg, old_storage))
+  Profiler.record_s"interprete" (fun () ->
+      trace
+        (Runtime_contract_error step_constants.self)
+        (interp logger (ctxt, step_constants) code (arg, old_storage)))
   >>=? fun ((ops, new_storage), ctxt) ->
   Script_ir_translator.extract_lazy_storage_diff
     ctxt
