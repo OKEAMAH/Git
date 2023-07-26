@@ -416,6 +416,10 @@ let case_context_split tag =
     (function Context_split -> Some () | _ -> None)
     (fun () -> Context_split)
 
+let with_report_encoding enc =
+  let open Data_encoding in
+  merge_objs enc (obj1 (req "report" Tezos_base.Profiler.report_encoding))
+
 let request_encoding =
   let open Data_encoding in
   union
