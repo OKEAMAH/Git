@@ -28,6 +28,8 @@
 
 open Peer_validator_worker_state
 
+module Profiler = (val Profiler.wrap Shell_profiling.chain_validator_profiler)
+
 module Name = struct
   type t = Chain_id.t * P2p_peer.Id.t
 
@@ -158,8 +160,15 @@ let validate_new_head w hash (header : Block_header.t) =
   let open Lwt_result_syntax in
   let pv = Worker.state w in
   let block_received = (pv.peer_id, hash) in
+  let sym_prefix l =
+    "peer_validator"
+    :: Block_hash.to_short_b58check hash
+    :: "validate new head" :: l
+  in
   let*! () = Events.(emit fetching_operations_for_head) block_received in
+  Profiler.span_s (sym_prefix ["validate new head"]) @@ fun () ->
   let* operations =
+    Profiler.span_s (sym_prefix ["operation fetching"]) @@ fun () ->
     List.map_ep
       (fun i ->
         protect ~canceler:(Worker.canceler w) (fun () ->
@@ -187,6 +196,7 @@ let validate_new_head w hash (header : Block_header.t) =
   | `Ok -> (
       let*! () = Events.(emit requesting_new_head_validation) block_received in
       let*! v =
+        Profiler.span_s (sym_prefix ["validate"]) @@ fun () ->
         Block_validator.validate
           ~notify_new_block:pv.parameters.notify_new_block
           ~precheck_and_notify:true
@@ -232,6 +242,12 @@ let assert_acceptable_head w hash (header : Block_header.t) =
 
 let may_validate_new_head w hash (header : Block_header.t) =
   let open Lwt_result_syntax in
+  Profiler.mark
+    [
+      "peer_validator";
+      Block_hash.to_short_b58check hash;
+      "may validate new head";
+    ] ;
   let pv = Worker.state w in
   let chain_store = Distributed_db.chain_store pv.parameters.chain_db in
   let*! valid_block = Store.Block.is_known_valid chain_store hash in
@@ -269,6 +285,14 @@ let may_validate_new_head w hash (header : Block_header.t) =
     only_if_fitness_increases w header hash @@ function
     | `Known_valid | `Lower_fitness -> return_unit
     | `Ok ->
+        Profiler.mark
+          [
+            "peer_validator";
+            Block_hash.to_short_b58check hash;
+            "may validate new head";
+            "validate new head";
+          ] ;
+
         let* () = assert_acceptable_head w hash header in
         validate_new_head w hash header
 
