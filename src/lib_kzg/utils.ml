@@ -23,21 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Hash : sig
-  type state
-
-  val init : unit -> state
-
-  val update : state -> bytes -> unit
-
-  val finish : state -> bytes
-
-  val hash_bytes : bytes list -> bytes
-
-  val bytes_to_seed : bytes -> int array * bytes
-end = struct
-  type state = Hacl_star.EverCrypt.Hash.t
-
+module Hash = struct
   let init () =
     Hacl_star.EverCrypt.Hash.init ~alg:Hacl_star.SharedDefs.HashDefs.BLAKE2b
 
@@ -79,6 +65,21 @@ end = struct
 end
 
 module Transcript = struct
+  type t = bytes [@@deriving repr]
+
+  let empty = Bytes.empty
+
+  let equal = Bytes.equal
+
+  let of_srs ~len1 ~len2 (srs1, srs2) =
+    let open Hash in
+    let st = init () in
+    let srs1 = Bls.Srs_g1.to_array ~len:len1 srs1 in
+    Array.iter (fun key -> update st (Bls.G1.to_bytes key)) srs1 ;
+    let srs2 = Bls.Srs_g2.to_array ~len:len2 srs2 in
+    Array.iter (fun key -> update st (Bls.G2.to_bytes key)) srs2 ;
+    finish st
+
   (* expand a transcript with the elements of a list *)
   let list_expand repr list transcript =
     let open Hash in
@@ -92,25 +93,12 @@ module Transcript = struct
       list ;
     finish st
 
-  let expand : 'a Repr.t -> 'a -> bytes -> bytes =
-   fun repr x transcript -> list_expand repr [x] transcript
+  let expand repr x transcript = list_expand repr [x] transcript
 end
 
+(* TODO remove ? *)
 module Array = struct
   include Array
-
-  (* Pad array to given size with the last element of the array *)
-  let pad array final_size =
-    let size = Array.length array in
-    Array.init final_size (fun i ->
-        if i < size then array.(i) else array.(size - 1))
-
-  (* Resize array: return the array, subarray or pad it with its last element *)
-  let resize array final_size =
-    let size = Array.length array in
-    if size = final_size then array
-    else if size > final_size then Array.sub array 0 final_size
-    else pad array final_size
 
   let build init next len =
     let xi = ref init in
@@ -198,13 +186,7 @@ let is_power_of_two n =
   assert (n >= 0) ;
   n <> 0 && n land (n - 1) = 0
 
-module FFT : sig
-  val select_fft_domain : int -> int * int * int
-
-  val fft : Domain.t -> Bls.Poly.t -> Evaluations.t
-
-  val ifft_inplace : Domain.t -> Evaluations.t -> Bls.Poly.t
-end = struct
+module FFT = struct
   (* Return the powerset of {3,11,19}. *)
   let combinations_factors =
     let rec powerset = function
@@ -293,3 +275,16 @@ end = struct
       ~fft:Evaluations.interpolation_fft
       ~fft_pfa:Evaluations.interpolation_fft_prime_factor_algorithm
 end
+
+(* Pad array to given size with the last element of the array *)
+let pad_array array final_size =
+  let size = Array.length array in
+  Array.init final_size (fun i ->
+      if i < size then array.(i) else array.(size - 1))
+
+(* Resize array: return the array, subarray or pad it with its last element *)
+let resize_array array final_size =
+  let size = Array.length array in
+  if size = final_size then array
+  else if size > final_size then Array.sub array 0 final_size
+  else pad_array array final_size
