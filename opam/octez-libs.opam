@@ -62,7 +62,6 @@ depends: [
   "integers_stubs_js"
   "tezos-rust-libs" { = "1.6" }
   "tezos-sapling-parameters" { >= "1.1.0" }
-  "lwt-watcher" { = "0.2" }
   "resto-cohttp" { >= "1.2" }
   "resto-cohttp-client" { >= "1.2" }
   "cohttp-lwt-unix" { >= "5.2.0" }
