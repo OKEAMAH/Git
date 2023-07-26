@@ -12,7 +12,7 @@
   octez-libs.tezos-base-test-helpers
   octez-libs.tezos-stdlib
   octez-libs.tezos-stdlib-unix
-  octez-libs.tezos-requester
+  octez-shell-libs.tezos-requester
   octez-alcotezt
   qcheck-alcotest)
  (library_flags (:standard -linkall))
@@ -38,7 +38,7 @@
 
 (rule
  (alias runtest)
- (package octez-libs)
+ (package octez-shell-libs)
  (enabled_if (<> false %{env:RUNTEZTALIAS=true}))
  (action (run %{dep:./main.exe})))
 
