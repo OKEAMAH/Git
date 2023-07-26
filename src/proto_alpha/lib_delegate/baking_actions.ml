@@ -438,8 +438,20 @@ let sign_consensus_votes state operations kind =
       let round = consensus_content.round in
       (* Filter all operations that don't satisfy the highwatermark *)
       let* authorized_consensus_votes =
+        Baking_profiler.record_s
+          ("filter consensus votes: "
+          ^
+          match kind with
+          | `Preattestation -> "preattestation"
+          | `Attestation -> "attestation")
+        @@ fun () ->
+        Baking_profiler.record "wait for lock" ;
         cctxt#with_lock @@ fun () ->
-        let* highwatermarks = Baking_highwatermarks.load cctxt block_location in
+        Baking_profiler.stop () ;
+        let* highwatermarks =
+          Baking_profiler.record_s "load highwatermarks" @@ fun () ->
+          Baking_highwatermarks.load cctxt block_location
+        in
         let may_sign_consensus_vote =
           match kind with
           | `Preattestation -> Baking_highwatermarks.may_sign_preattestation
@@ -484,6 +496,13 @@ let sign_consensus_votes state operations kind =
         in
         (* Record all consensus votes new highwatermarks as one batch *)
         let* () =
+          Baking_profiler.record_s
+            ("record consensus votes: "
+            ^
+            match kind with
+            | `Preattestation -> "preattestation"
+            | `Attestation -> "attestation")
+          @@ fun () ->
           let delegates =
             List.map
               (fun ((ck, _), _) -> ck.public_key_hash)
@@ -530,6 +549,13 @@ let sign_consensus_votes state operations kind =
         let round = consensus_content.round in
         let sk_uri = consensus_key.secret_key_uri in
         let*! signature =
+          Baking_profiler.record_s
+            ("sign consensus vote: "
+            ^
+            match kind with
+            | `Preattestation -> "preattestation"
+            | `Attestation -> "attestation")
+          @@ fun () ->
           Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
         in
         match signature with
@@ -572,7 +598,15 @@ let inject_consensus_vote state preattestations kind =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  let* signed_operations = sign_consensus_votes state preattestations kind in
+  let* signed_operations =
+    Baking_profiler.record_s
+      ("sign consensus votes: "
+      ^
+      match kind with
+      | `Preattestation -> "preattestation"
+      | `Attestation -> "attestation")
+      (fun () -> sign_consensus_votes state preattestations kind)
+  in
   (* TODO: add a RPC to inject multiple operations *)
   let fail_inject_event, injected_event =
     match kind with
