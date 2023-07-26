@@ -97,6 +97,8 @@ struct
           PC.Public_parameters.to_bytes d pp_pc_prover;
           Pack.public_parameters_to_bytes pp_pack_prover;
         ]
+
+    let get_srs1 pp = PC.Public_parameters.get_srs1 pp.pp_pc_prover
   end
 
   module Commitment = struct
