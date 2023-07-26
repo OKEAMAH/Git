@@ -12,7 +12,7 @@
   octez-libs.base-test-helpers
   octez-libs.stdlib
   octez-libs.stdlib-unix
-  octez-libs.requester
+  octez-shell-libs.requester
   octez-alcotezt
   qcheck-alcotest)
  (library_flags (:standard -linkall))
@@ -38,7 +38,7 @@
 
 (rule
  (alias runtest)
- (package octez-libs)
+ (package octez-shell-libs)
  (enabled_if (<> false %{env:RUNTEZTALIAS=true}))
  (action (run %{dep:./main.exe})))
 
