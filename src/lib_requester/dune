@@ -3,13 +3,15 @@
 
 (library
  (name tezos_requester)
- (public_name octez-libs.requester)
+ (public_name octez-shell-libs.requester)
  (instrumentation (backend bisect_ppx))
  (libraries
   octez-libs.base
   octez-libs.stdlib-unix
+  octez-shell-libs.shell-services
   lwt-watcher)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
-  -open Tezos_stdlib_unix))
+  -open Tezos_stdlib_unix
+  -open Tezos_shell_services))
