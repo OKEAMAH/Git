@@ -1801,6 +1801,7 @@ type execution_result = {
 let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     unparsed_script cached_script arg =
   let open Lwt_result_syntax in
+  Profiler.record_s "execute" @@ fun () ->
   let elab_conf =
     Script_ir_translator_config.make
       ~legacy:true
@@ -1853,6 +1854,7 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     Script_ir_translator.collect_lazy_storage ctxt storage_type old_storage
   in
   let* (ops, new_storage), ctxt =
+    Profiler.record_s "interprete" @@ fun () ->
     trace
       (Runtime_contract_error step_constants.self)
       (interp logger (ctxt, step_constants) code (arg, old_storage))
