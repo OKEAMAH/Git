@@ -95,6 +95,17 @@ let file_channel () =
     try
       let fd = Unix.(openfile filename [O_WRONLY; O_CREAT; O_EXCL] 0o644) in
       let channel = Unix.out_channel_of_descr fd in
+      let detail =
+        Printf.sprintf
+          "Process %d: '%s' writes coverage to %s, tezt test: '%s'"
+          (Unix.getpid ())
+          (Sys.argv |> Array.to_list |> String.concat " ")
+          filename
+          (match Sys.getenv_opt "TEZT_TEST_TITLE" with
+           | None | Some "" -> "?"
+           | Some title -> title)
+      in
+      verbose (String detail);
       Some channel
     with
     | Unix.Unix_error (Unix.EEXIST, _, _) -> create_file ()
