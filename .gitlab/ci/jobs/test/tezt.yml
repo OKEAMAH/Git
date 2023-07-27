@@ -31,6 +31,8 @@ include: .gitlab/ci/jobs/test/common.yml
     expire_in: 1 day
     # certain tests can be blacklisted by adding it to this variable
     when: always
+  before_script:
+    - sudo apk add strace
   script:
     - make -C ${CI_PROJECT_DIR}/.gitlab/ci test-tezt
 
