@@ -44,7 +44,7 @@ tezt:
   variables:
     # Do not tests with the tag 'ci_disabled' and 'flaky'.
     # See tezt/lib_tezos/tag.mli for more information.
-    TESTS: "/ci_disabled /flaky /late"
+    TESTS: "/ci_disabled /flaky"
   dependencies:
     - "build_x86_64-released"
     - "build_x86_64-exp-dev-extra"
