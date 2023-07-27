@@ -59,26 +59,34 @@ fn reveal_and_move_binary_config() {
 
 #[test]
 fn set_instr_config() {
-    let mut host = MockHost::default();
+    fn test_set_instr(to: String, value: String) {
+        let mut host = MockHost::default();
 
-    let to: OwnedPath =
-        OwnedPath::try_from(String::from("/foo/tmp")).expect("Invalid owned path");
-    let value_str = "Un festival de GADT";
-    let value = OwnedBytes(value_str.as_bytes().to_vec());
+        let to: OwnedPath = OwnedPath::try_from(to).expect("Invalid owned path");
+        let value_bytes = OwnedBytes(value.as_bytes().to_vec());
 
-    let instrs = vec![OwnedConfigInstruction::set_instr(value, to.clone())];
+        let instrs = vec![OwnedConfigInstruction::set_instr(value_bytes, to.clone())];
 
-    let kernel = with_config_program(OwnedConfigProgram(instrs));
-    write_kernel_to_boot_path(&mut host, kernel);
+        let kernel = with_config_program(OwnedConfigProgram(instrs));
+        write_kernel_to_boot_path(&mut host, kernel);
 
-    installer_kernel::installer(&mut host);
+        installer_kernel::installer(&mut host);
 
-    let mut buffer = vec![0; value_str.len()];
-    host.store_read_slice(&to, 0, &mut buffer)
-        .expect("Failed to read previously set value");
+        let mut buffer = vec![0; value.len()];
+        host.store_read_slice(&to, 0, &mut buffer)
+            .expect("Failed to read previously set value");
 
-    let actual = String::from_utf8(buffer).unwrap();
-    assert_eq!(value_str, actual)
+        let actual = String::from_utf8(buffer).unwrap();
+        assert_eq!(value, actual)
+    }
+
+    // Test value that require a single write.
+    test_set_instr(
+        String::from("/foo/tmp"),
+        String::from("Un festival de GADT"),
+    );
+    // Test a value that requires multiple writes.
+    test_set_instr(String::from("/foo/machin"), String::from("a").repeat(1000));
 }
 
 #[test]

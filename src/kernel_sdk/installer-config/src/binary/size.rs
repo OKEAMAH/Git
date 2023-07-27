@@ -5,7 +5,9 @@
 use tezos_smart_rollup_core::{MAX_FILE_CHUNK_SIZE, PREIMAGE_HASH_SIZE};
 use tezos_smart_rollup_host::path::PATH_MAX_SIZE;
 
-use super::{ConfigInstruction, MoveInstruction, RefBytes, RevealInstruction};
+use super::{
+    ConfigInstruction, MoveInstruction, RefBytes, RevealInstruction, SetInstruction,
+};
 
 // https://stackoverflow.com/questions/53619695/calculating-maximum-value-of-a-set-of-constant-expressions-at-compile-time
 const fn max(a: usize, b: usize) -> usize {
@@ -35,9 +37,16 @@ impl<Path, Bytes> EncodingSize for RevealInstruction<Path, Bytes> {
     const MAX_SIZE: usize = PREIMAGE_HASH_SIZE + MAX_SIZE_REF_PATH;
 }
 
+impl<Path, Bytes> EncodingSize for SetInstruction<Path, Bytes> {
+    const MAX_SIZE: usize = MAX_SIZE_REF_PATH + 4096;
+}
+
 impl<Path, Bytes> EncodingSize for ConfigInstruction<Path, Bytes> {
     const MAX_SIZE: usize = 1 + max(
         MoveInstruction::<Path>::MAX_SIZE,
-        RevealInstruction::<Path, Bytes>::MAX_SIZE,
+        max(
+            RevealInstruction::<Path, Bytes>::MAX_SIZE,
+            SetInstruction::<Path, Bytes>::MAX_SIZE,
+        ),
     );
 }
