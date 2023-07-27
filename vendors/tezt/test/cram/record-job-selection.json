@@ -1,0 +1,35 @@
+[
+  {
+    "file": "test/cram/main.ml",
+    "title": "4s test",
+    "tags": [
+      "job_selection"
+    ],
+    "successful_runs": {
+      "total_time": "4000000",
+      "count": "1"
+    }
+  },
+  {
+    "file": "test/cram/main.ml",
+    "title": "2s test (1)",
+    "tags": [
+      "job_selection"
+    ],
+    "successful_runs": {
+      "total_time": "2000000",
+      "count": "1"
+    }
+  },
+  {
+    "file": "test/cram/main.ml",
+    "title": "2s test (2)",
+    "tags": [
+      "job_selection"
+    ],
+    "successful_runs": {
+      "total_time": "2000000",
+      "count": "1"
+    }
+  }
+]
