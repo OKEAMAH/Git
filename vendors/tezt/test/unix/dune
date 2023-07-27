@@ -1,0 +1,1 @@
+(test (name main) (modes native) (libraries tezt_common_tests tezt))
