@@ -32,8 +32,7 @@ module S = Saturation_repr
    where [typed_script] is of type [ex_script] *)
 let minimal_size_of_typed_contract_in_bytes = 688
 
-let approximate_cardinal bytes =
-  S.safe_int (bytes / minimal_size_of_typed_contract_in_bytes)
+let approximate_cardinal bytes = bytes / minimal_size_of_typed_contract_in_bytes
 
 let cache_update_constant = S.safe_int 600
 
@@ -41,12 +40,16 @@ let cache_update_coeff = S.safe_int 43
 
 let log2 x = S.safe_int (1 + S.numbits x)
 
-(* Cost of calling [Environment_cache.update]. *)
 (* model cache/CACHE_UPDATE *)
+let cost_CACHE_UPDATE size =
+  let size = S.safe_int size in
+  Gas_limit_repr.atomic_step_cost
+    S.(add cache_update_constant (mul cache_update_coeff (log2 size)))
+
+(* Cost of calling [Environment_cache.update]. *)
 let cache_update ~cache_size_in_bytes =
   let approx_card = approximate_cardinal cache_size_in_bytes in
-  Gas_limit_repr.atomic_step_cost
-    S.(add cache_update_constant (mul cache_update_coeff (log2 approx_card)))
+  cost_CACHE_UPDATE approx_card
 
 (* Cost of calling [Environment_cache.find].
    This overapproximates [cache_find] slightly. *)
