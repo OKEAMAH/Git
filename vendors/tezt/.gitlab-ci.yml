@@ -1,0 +1,26 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+include: 'https://gitlab.com/nomadic-labs/gitlab-ocaml-ci-example/-/raw/main/.gitlab-ci.yml'
+
+.build-matrix:
+  parallel:
+    matrix:
+    - OCAML_COMPILER: ["4.12.1", "4.13.1", "4.14.0"]
+      DUNE_BUILD_TARGETS: "@all"
+      DUNE_TEST_TARGETS: "@runtest @fmt"
+      DUNE_DOC_TARGETS: [""]
+
+variables:
+  CLEAN_OPAM_CACHE: "false"
+  CLEAN_DUNE_CACHE: "false"
