@@ -226,6 +226,17 @@ let register_protocol_specific_because_regression_tests () =
   Timelock_disabled.register ~protocols:[Nairobi]
 
 let () =
+  let reset test =
+    Unix.putenv "TEZT_TEST_TITLE" (Test.title test)
+  in
+  let cleanup _test =
+    Unix.putenv "TEZT_TEST_TITLE" "" ;
+    unit
+  in
+  Test.declare_reset_function reset ;
+  Test.declare_cleanup_function cleanup
+
+let () =
   register_protocol_independent_tests () ;
   register_protocol_migration_tests () ;
   register_old_protocol_migration_tests () ;
