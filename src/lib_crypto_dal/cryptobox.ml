@@ -144,7 +144,7 @@ module Inner = struct
 
   type shard_proof = G1.t
 
-  type commitment_proof = G1.t
+  type commitment_proof = Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof.t
 
   type page_proof = G1.t
 
@@ -287,28 +287,7 @@ module Inner = struct
     let of_b58check = of_b58check
   end
 
-  module Commitment_proof = struct
-    let zero = G1.zero
-
-    let to_bytes = G1.to_compressed_bytes
-
-    let of_bytes_exn bytes =
-      match G1.of_compressed_bytes_opt bytes with
-      | None ->
-          Format.kasprintf
-            Stdlib.failwith
-            "Unexpected data (DAL commitment proof)"
-      | Some proof -> proof
-      [@@coverage off]
-
-    let size = G1.compressed_size_in_bytes
-
-    let raw_encoding =
-      let open Data_encoding in
-      conv to_bytes of_bytes_exn (Fixed.bytes size)
-
-    let encoding = raw_encoding
-  end
+  module Commitment_proof = Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof
 
   type error += Invalid_precomputation_hash of (string, string) error_container
 
@@ -1304,7 +1283,8 @@ module Internal_for_tests = struct
 
   let alter_shard_proof (proof : shard_proof) = alter_proof proof
 
-  let alter_commitment_proof (proof : commitment_proof) = alter_proof proof
+  let alter_commitment_proof (proof : commitment_proof) =
+    Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof.alter_proof proof
 
   let minimum_number_of_shards_to_reconstruct_slot (t : t) =
     t.number_of_shards / t.redundancy_factor

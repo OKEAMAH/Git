@@ -326,37 +326,28 @@ module Polynomial_commitment = struct
     verify_single srs transcript cmt_map query answer proof
 end
 
-module DegreeCheck : sig
+module DegreeCheck_proof = struct
+  type t = G1.t [@@deriving repr]
+
+  let zero = G1.zero
+
+  let alter_proof proof = G1.(add proof one)
+
+  let encoding = Bls.to_encoding G1.t
+end
+
+module DegreeCheck :
+  Kzg_toolbox_intf.DegreeCheck
+    with type commitment = Polynomial_commitment.Commitment.t = struct
+  module Proof = DegreeCheck_proof
+
   type prover_public_parameters = Srs_g1.t
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
 
   type secret = Poly.t SMap.t
 
-  type commitment = Polynomial_commitment.Commitment.t
-
-  type proof = G1.t [@@deriving repr]
-
-  val prove :
-    max_commit:int ->
-    max_degree:int ->
-    prover_public_parameters ->
-    bytes ->
-    Poly.t SMap.t ->
-    proof * bytes
-
-  val verify :
-    verifier_public_parameters -> bytes -> commitment -> proof -> bool * bytes
-end = struct
-  type prover_public_parameters = Srs_g1.t
-
-  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
-
-  type secret = Poly.t SMap.t
-
-  type commitment = Polynomial_commitment.Commitment.t
-
-  type proof = G1.t [@@deriving repr]
+  type commitment = Polynomial_commitment.Commitment.t [@@deriving repr]
 
   (* p(X) of degree n. Max degree that can be committed: d, which is also the
      SRS's length - 1. We take d = t.max_polynomial_length - 1 since we don't want to commit
@@ -393,7 +384,10 @@ end = struct
     (Pairing.pairing_check [(G1.negate cm, srs_n_d); (proof, srs_0)], transcript)
 end
 
-module DegreeCheck_for_Dal = struct
+module DegreeCheck_for_Dal : Kzg_toolbox_intf.DegreeCheck_for_Dal = struct
+  open DegreeCheck
+  module Proof = Proof
+
   type prover_public_parameters = Srs_g1.t
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
@@ -402,24 +396,13 @@ module DegreeCheck_for_Dal = struct
 
   type commitment = G1.t
 
-  type proof = G1.t
+  type proof = Proof.t [@@deriving repr]
 
   let prove ~max_commit ~max_degree srs p =
-    fst
-    @@ DegreeCheck.prove
-         ~max_commit
-         ~max_degree
-         srs
-         Bytes.empty
-         (SMap.singleton "" p)
+    fst @@ prove ~max_commit ~max_degree srs Bytes.empty (SMap.singleton "" p)
 
   let verify {srs_0; srs_n_d} (cm : commitment) proof =
-    fst
-    @@ DegreeCheck.verify
-         {srs_0; srs_n_d}
-         Bytes.empty
-         (SMap.singleton "" cm)
-         proof
+    fst @@ verify {srs_0; srs_n_d} Bytes.empty (SMap.singleton "" cm) proof
 end
 
 module FFT : sig

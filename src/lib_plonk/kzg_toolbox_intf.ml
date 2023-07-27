@@ -96,3 +96,57 @@ module type Polynomial_commitment = sig
     proof ->
     bool * transcript
 end
+
+module type DegreeCheck_proof = sig
+  type t [@@deriving repr]
+
+  val zero : t
+
+  val alter_proof : t -> t
+
+  val encoding : t encoding
+end
+
+module type DegreeCheck = sig
+  module Proof : DegreeCheck_proof
+
+  type prover_public_parameters = Srs_g1.t
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Poly.t SMap.t
+
+  type commitment [@@deriving repr]
+
+  val prove :
+    max_commit:int ->
+    max_degree:int ->
+    prover_public_parameters ->
+    bytes ->
+    secret ->
+    Proof.t * bytes
+
+  val verify :
+    verifier_public_parameters -> bytes -> commitment -> Proof.t -> bool * bytes
+end
+
+module type DegreeCheck_for_Dal = sig
+  module Proof : DegreeCheck_proof
+
+  type prover_public_parameters = Srs_g1.t
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Poly.t
+
+  type commitment = G1.t
+
+  val prove :
+    max_commit:int ->
+    max_degree:int ->
+    prover_public_parameters ->
+    secret ->
+    Proof.t
+
+  val verify : verifier_public_parameters -> commitment -> Proof.t -> bool
+end

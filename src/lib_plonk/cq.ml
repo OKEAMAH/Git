@@ -126,7 +126,7 @@ module Internal = struct
     cm_b0 : PC.Commitment.t;
     cm_qa : PC.Commitment.t;
     cm_m : PC.Commitment.t;
-    cm_p : DegreeCheck.proof;
+    cm_p : DegreeCheck.Proof.t;
     cm_b0_qb_f : PC.Commitment.t;
     (* evaluations *)
     a0 : Scalar.t list;
@@ -599,7 +599,7 @@ module Internal = struct
     let cm_p, transcript = compute_p pp transcript k b0 in
 
     let transcript =
-      Transcript.expand Kzg_toolbox.DegreeCheck.proof_t cm_p transcript
+      Transcript.expand Kzg_toolbox.DegreeCheck.Proof.t cm_p transcript
     in
 
     let transcript =
@@ -667,7 +667,7 @@ module Internal = struct
     in
 
     let transcript =
-      Transcript.expand Kzg_toolbox.DegreeCheck.proof_t proof.cm_p transcript
+      Transcript.expand Kzg_toolbox.DegreeCheck.Proof.t proof.cm_p transcript
     in
     (* 3.1 *)
     let transcript =
