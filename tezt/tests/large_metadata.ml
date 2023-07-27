@@ -49,7 +49,12 @@ let get_metadata ?(metadata_query_string = Not_provided) client =
   let rpc_args = ["chains"; "main"; "blocks"; "head"; "operations"; "3"; "0"] in
   match convert_metadata_query_param metadata_query_string with
   | Some query ->
-      Client.rpc ~query_string:[("metadata", query)] Client.GET rpc_args client
+      Client.rpc
+        ~log_output:false
+        ~query_string:[("metadata", query)]
+        Client.GET
+        rpc_args
+        client
   | None -> Client.rpc Client.GET rpc_args client
 
 let metadata_is_available ?(metadata_query_string = Not_provided) client
