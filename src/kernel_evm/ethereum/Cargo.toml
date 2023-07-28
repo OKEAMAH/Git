@@ -15,6 +15,7 @@ rlp = "0.5.2"
 hex = "0.4"
 sha3 = { version = "0.10.6", default-features = false }
 tezos_crypto_rs = { version = "0.5", default-features = false }
+tezos_data_encoding = "0.5"
 libsecp256k1 = { version = "0.7", default-features = false, features = ["static-context", "hmac"] }
 
 [dependencies.tezos-smart-rollup-encoding]

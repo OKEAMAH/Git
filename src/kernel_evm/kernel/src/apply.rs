@@ -281,6 +281,7 @@ fn apply_deposit<Host: Runtime>(
         new_address: None,
         logs: vec![],
         result: None,
+        withdrawals: vec![],
     };
 
     let caller = H160::zero();

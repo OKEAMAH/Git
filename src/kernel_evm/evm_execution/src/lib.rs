@@ -11,7 +11,6 @@ use account_storage::{AccountStorageError, EthereumAccountStorage};
 use alloc::borrow::Cow;
 use alloc::collections::TryReserveError;
 use debug::debug_msg;
-use evm::executor::stack::PrecompileFailure;
 use host::runtime::Runtime;
 use primitive_types::{H160, U256};
 use tezos_ethereum::block::BlockConstants;
@@ -56,10 +55,6 @@ pub enum EthereumError {
     /// exact variant, but we can retain the message.
     #[error("Wrapped Ethereum error: {0}")]
     WrappedError(Cow<'static, str>),
-    /// Calling a precompiled failed (implies there was a precompiled contract
-    /// at the call address.
-    #[error("Precompile call failed")]
-    PrecompileFailed(PrecompileFailure),
     /// The SputnikVM runtime returned a Trap. This should be impossible.
     #[error("Internal SputnikVM trap")]
     InternalTrapError,
@@ -288,6 +283,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -346,6 +342,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -398,6 +395,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -594,6 +592,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -635,6 +634,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -769,6 +769,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -815,6 +816,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -862,6 +864,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -912,6 +915,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -957,6 +961,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: Some(vec![0u8; 32]),
+            withdrawals: vec![],
         });
 
         assert_eq!(expected_result, result);
@@ -1129,6 +1134,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         // assert that call fails
@@ -1204,6 +1210,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         // assert that call fails
@@ -1310,6 +1317,7 @@ mod test {
             new_address: None,
             logs: vec![log_record1, log_record2],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(result, expected_result);
@@ -1400,6 +1408,7 @@ mod test {
             new_address: None,
             logs: vec![log_record1],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(result, expected_result);
@@ -1479,6 +1488,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: Some(vec![]),
+            withdrawals: vec![],
         });
 
         assert_eq!(result, expected_result);
@@ -1579,6 +1589,7 @@ mod test {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         });
 
         assert_eq!(result, expected_result);

@@ -1,0 +1,11 @@
+[
+  {
+    "type": "function",
+    "name": "withdraw",
+    "constant": false,
+    "payable": true,
+    "inputs": [
+      { "type": "string", "name": "target" }
+    ]
+  }
+]

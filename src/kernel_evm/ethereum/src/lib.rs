@@ -8,3 +8,4 @@ pub mod rlp_helpers;
 pub mod signatures;
 pub mod transaction;
 pub mod wei;
+pub mod withdrawal;

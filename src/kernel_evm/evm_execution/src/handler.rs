@@ -31,6 +31,7 @@ use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
 use std::fmt::Debug;
 use tezos_ethereum::block::BlockConstants;
+use tezos_ethereum::withdrawal::Withdrawal;
 
 /// Maximum transaction stack depth.
 const MAXIMUM_TRANSACTION_DEPTH: usize = 1024_usize;
@@ -63,6 +64,8 @@ pub struct ExecutionOutcome {
     pub logs: Vec<Log>,
     /// Result of the execution
     pub result: Option<Vec<u8>>,
+    /// Xxx
+    pub withdrawals: Vec<Withdrawal>,
 }
 
 /// The result of calling a contract as expected by the SputnikVM EVM implementation.
@@ -103,6 +106,9 @@ struct TransactionLayerData {
     /// The addresses of contracts that have been deleted as part of
     /// the current transaction.
     pub deleted_contracts: Vec<H160>,
+    /// Eithdrawals created at the current transaction or during
+    /// succesful sub-contexts.
+    pub withdrawals: Vec<Withdrawal>,
 }
 
 impl TransactionLayerData {
@@ -114,6 +120,7 @@ impl TransactionLayerData {
             is_static,
             logs: vec![],
             deleted_contracts: vec![],
+            withdrawals: vec![],
         }
     }
 }
@@ -217,6 +224,16 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
             }
             CreateScheme::Fixed(address) => address,
+        }
+    }
+
+    /// Add withdrawal
+    fn add_withdrawal(&mut self, withdrawal: Withdrawal) -> Result<(), EthereumError> {
+        if let Some(top_data) = self.transaction_data.last_mut() {
+            top_data.withdrawals.push(withdrawal);
+            Ok(())
+        } else {
+            Err(EthereumError::InconsistentTransactionStack(0, false, false))
         }
     }
 
@@ -398,7 +415,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         // TODO: touch address - mark as hot for gas calculation
         // issue: https://gitlab.com/tezos/tezos/-/issues/4866
 
-        if let Some(transfer) = transfer {
+        if let Some(ref transfer) = transfer {
             match self.execute_transfer(
                 transaction_context.context.caller,
                 address,
@@ -431,14 +448,19 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             gas_limit,
             &transaction_context.context,
             self.is_static(),
+            transfer,
         ) {
             match precompile_result {
-                Ok(precompile_output) => Ok((
-                    ExitReason::Succeed(precompile_output.exit_status),
-                    None,
-                    precompile_output.output,
-                )),
-                Err(e) => Err(EthereumError::PrecompileFailed(e)),
+                Ok(outcome) => {
+                    // TODO add withdrawals
+
+                    for withdrawal in outcome.withdrawals {
+                        self.add_withdrawal(withdrawal)?;
+                    }
+
+                    Ok((outcome.exit_status, None, outcome.output))
+                }
+                Err(e) => Err(e),
             }
         } else if !self.deleted(address) {
             let code = self.code(address);
@@ -752,6 +774,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 new_address,
                 logs: last_layer.logs,
                 result: Some(result),
+                withdrawals: last_layer.withdrawals,
             })
         } else {
             Err(EthereumError::InconsistentState(Cow::from(
@@ -811,6 +834,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             new_address: None,
             logs: vec![],
             result: None,
+            withdrawals: vec![],
         })
     }
 
@@ -925,6 +949,13 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 top_layer
                     .deleted_contracts
                     .append(&mut committed_data.deleted_contracts);
+
+                top_layer
+                    .withdrawals
+                    .reserve(committed_data.withdrawals.len());
+                top_layer
+                    .withdrawals
+                    .append(&mut committed_data.withdrawals);
 
                 Ok(())
             } else {
