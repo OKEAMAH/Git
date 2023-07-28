@@ -5,11 +5,11 @@ module type Commitment = sig
 
   type prover_aux [@@deriving repr]
 
-  type prover_public_parameters
+  type public_parameters
 
   type secret = Poly.t SMap.t
 
-  val commit_single : prover_public_parameters -> Poly.t -> G1.t
+  val commit_single : public_parameters -> Poly.t -> G1.t
 
   (* [all_keys] is an optional argument that should only be used for
      partial commitments. It contains all the polynomial names that
@@ -20,10 +20,7 @@ module type Commitment = sig
      {"a", "b"}).
   *)
   val commit :
-    ?all_keys:string list ->
-    prover_public_parameters ->
-    secret ->
-    t * prover_aux
+    ?all_keys:string list -> public_parameters -> secret -> t * prover_aux
 
   val cardinal : t -> int
 
@@ -37,8 +34,7 @@ module type Commitment = sig
 
   val empty_prover_aux : prover_aux
 
-  val of_list :
-    prover_public_parameters -> name:string -> G1.t list -> t * prover_aux
+  val of_list : public_parameters -> name:string -> G1.t list -> t * prover_aux
 
   val to_map : t -> G1.t SMap.t
 end
@@ -48,13 +44,15 @@ module type Public_parameters = sig
 
   type verifier [@@deriving repr]
 
+  type commitment
+
   type setup_params = int
 
   val setup : setup_params -> Srs.t * Srs.t -> prover * verifier
 
   val to_bytes : int -> prover -> Bytes.t
 
-  val get_srs1 : prover -> Srs_g1.t
+  val get_commit_parameters : prover -> commitment
 end
 
 module type Polynomial_commitment = sig
@@ -74,7 +72,13 @@ module type Polynomial_commitment = sig
   module Commitment : Commitment
 
   module Public_parameters :
-    Public_parameters with type prover = Commitment.prover_public_parameters
+    Public_parameters with type commitment = Commitment.public_parameters
+
+  val commit :
+    ?all_keys:string list ->
+    Public_parameters.prover ->
+    secret ->
+    Commitment.t * Commitment.prover_aux
 
   val evaluate : secret -> query -> answer
 

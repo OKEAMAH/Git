@@ -4,7 +4,7 @@ module type S = sig
   module Commitment :
     Kzg_toolbox_intf.Commitment with type secret = Poly.t SMap.t
 
-  type public_parameters = Commitment.prover_public_parameters
+  type public_parameters = Commitment.public_parameters
 
   type prover_aux = {poly : Poly.t; pc_prover_aux : Commitment.prover_aux}
   [@@deriving repr]
@@ -23,7 +23,7 @@ end
 module Make_impl (Commitment : Kzg_toolbox_intf.Commitment) = struct
   module Commitment = Commitment
 
-  type public_parameters = Commitment.prover_public_parameters
+  type public_parameters = Commitment.public_parameters
 
   type prover_aux = {poly : Poly.t; pc_prover_aux : Commitment.prover_aux}
   [@@deriving repr]

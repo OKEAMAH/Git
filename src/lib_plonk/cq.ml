@@ -174,7 +174,8 @@ module Internal = struct
     List.map (convert_eval_points ~generator:Scalar.zero ~x:gamma) [[X]]
 
   (* We use PC’s function to commit our polynomials *)
-  let commit1 = PC.Commitment.commit_single
+  let commit1 srs =
+    PC.(Commitment.commit_single (Public_parameters.get_commit_parameters srs))
 
   (* This function avoid some lines of code duplication *)
   let compute_and_commit f list =
@@ -379,7 +380,7 @@ module Internal = struct
     DegreeCheck.prove
       ~max_commit:(pp.n - 1)
       ~max_degree:(k - 2)
-      (PC.Public_parameters.get_srs1 pp.pc)
+      (PC.Public_parameters.get_commit_parameters pp.pc)
       transcript
       b0
 
@@ -414,8 +415,8 @@ module Internal = struct
       ((cm_f, f_aux), (cm_f_agg, f_agg_aux)) (b0_map, f, f_agg, qb) =
     let qb_map = SMap.Aggregation.of_list ~n "" qb_name qb in
     let f_map = SMap.union_disjoint_list [f; f_agg; b0_map; qb_map] in
-    let cm_b0, b0_aux = PC.Commitment.commit pp.pc b0_map in
-    let cm_qb, qb_aux = PC.Commitment.commit pp.pc qb_map in
+    let cm_b0, b0_aux = PC.commit pp.pc b0_map in
+    let cm_qb, qb_aux = PC.commit pp.pc qb_map in
     (* Does this must be in lexicographic order ? *)
     let cm_map = PC.Commitment.(recombine [cm_b0; cm_f; cm_f_agg; cm_qb]) in
     let aux =
@@ -534,7 +535,7 @@ module Internal = struct
              |> SMap.Aggregation.prefix_map ~n ~i "")
            f_map_list
     in
-    let cm_f, f_aux = PC.Commitment.commit pp.pc f_map in
+    let cm_f, f_aux = PC.commit pp.pc f_map in
     let transcript = Transcript.expand PC.Commitment.t cm_f transcript in
     (* α will be used to aggregate wires & table’s columns *)
     let alpha, transcript = Fr_generation.random_fr transcript in
@@ -558,7 +559,7 @@ module Internal = struct
         f_agg_arrays_list
     in
     let f_agg_map = SMap.Aggregation.of_list ~n "" f_agg_name f_agg_list in
-    let cm_f_agg, f_agg_aux = PC.Commitment.commit pp.pc f_agg_map in
+    let cm_f_agg, f_agg_aux = PC.commit pp.pc f_agg_map in
 
     (* 1.1, 1.2 *)
     let m_and_t, cm_m =
@@ -733,3 +734,5 @@ module Internal = struct
 end
 
 include (Internal : Cq_sig)
+
+(* TODO check in Q2 *)

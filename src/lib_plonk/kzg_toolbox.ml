@@ -33,46 +33,8 @@ module Commit = struct
 end
 
 module Polynomial_commitment = struct
-  module Public_parameters = struct
-    (* Structured Reference String
-       - srs1 : [[1]₁, [x¹]₁, …, [x^(d-1)]₁] ;
-       - encoding_1 : [1]₂;
-       - encoding_x : [x]₂ *)
-    type prover = {srs1 : Srs_g1.t; encoding_1 : G2.t; encoding_x : G2.t}
-    [@@deriving repr]
-
-    let to_bytes len srs =
-      let open Utils.Hash in
-      let st = init () in
-      update st (G2.to_bytes srs.encoding_1) ;
-      update st (G2.to_bytes srs.encoding_x) ;
-      let srs1 = Srs_g1.to_array ~len srs.srs1 in
-      Array.iter (fun key -> update st (G1.to_bytes key)) srs1 ;
-      finish st
-
-    type verifier = {encoding_1 : G2.t; encoding_x : G2.t} [@@deriving repr]
-
-    type setup_params = int
-
-    let setup_verifier srs_g2 =
-      let encoding_1 = Srs_g2.get srs_g2 0 in
-      let encoding_x = Srs_g2.get srs_g2 1 in
-      {encoding_1; encoding_x}
-
-    let setup_prover (srs_g1, srs_g2) =
-      let {encoding_1; encoding_x} = setup_verifier srs_g2 in
-      {srs1 = srs_g1; encoding_1; encoding_x}
-
-    let setup _ (srs, _) =
-      let prv = setup_prover srs in
-      let vrf = setup_verifier (snd srs) in
-      (prv, vrf)
-
-    let get_srs1 {srs1; _} = srs1
-  end
-
   module Commitment = struct
-    type prover_public_parameters = Public_parameters.prover
+    type public_parameters = Srs_g1.t
 
     type secret = Poly.t SMap.t
 
@@ -80,14 +42,12 @@ module Polynomial_commitment = struct
 
     type prover_aux = unit [@@deriving repr]
 
-    let commit_single srs = Commit.with_srs1 Public_parameters.(srs.srs1)
+    let commit_single srs = Commit.with_srs1 srs
 
-    let commit_with_srs srs f_map =
-      let cmt = SMap.map (Commit.with_srs1 srs) f_map in
+    let commit ?all_keys:_ srs f_map =
+      let cmt = SMap.map (commit_single srs) f_map in
       let prover_aux = () in
       (cmt, prover_aux)
-
-    let commit ?all_keys:_ srs = commit_with_srs Public_parameters.(srs.srs1)
 
     let cardinal cmt = SMap.cardinal cmt
 
@@ -116,6 +76,46 @@ module Polynomial_commitment = struct
     let to_map cm = cm
   end
 
+  module Public_parameters = struct
+    (* Structured Reference String
+       - srs1 : [[1]₁, [x¹]₁, …, [x^(d-1)]₁] ;
+       - encoding_1 : [1]₂;
+       - encoding_x : [x]₂ *)
+    type prover = {srs1 : Srs_g1.t; encoding_1 : G2.t; encoding_x : G2.t}
+    [@@deriving repr]
+
+    let to_bytes len srs =
+      let open Utils.Hash in
+      let st = init () in
+      update st (G2.to_bytes srs.encoding_1) ;
+      update st (G2.to_bytes srs.encoding_x) ;
+      let srs1 = Srs_g1.to_array ~len srs.srs1 in
+      Array.iter (fun key -> update st (G1.to_bytes key)) srs1 ;
+      finish st
+
+    type verifier = {encoding_1 : G2.t; encoding_x : G2.t} [@@deriving repr]
+
+    type commitment = Commitment.public_parameters
+
+    type setup_params = int
+
+    let setup_verifier srs_g2 =
+      let encoding_1 = Srs_g2.get srs_g2 0 in
+      let encoding_x = Srs_g2.get srs_g2 1 in
+      {encoding_1; encoding_x}
+
+    let setup_prover (srs_g1, srs_g2) =
+      let {encoding_1; encoding_x} = setup_verifier srs_g2 in
+      {srs1 = srs_g1; encoding_1; encoding_x}
+
+    let setup _ (srs, _) =
+      let prv = setup_prover srs in
+      let vrf = setup_verifier (snd srs) in
+      (prv, vrf)
+
+    let get_commit_parameters {srs1; _} = srs1
+  end
+
   (* polynomials to be committed *)
   type secret = Commitment.secret
 
@@ -128,6 +128,9 @@ module Polynomial_commitment = struct
   type transcript = Bytes.t
 
   type proof = G1.t SMap.t [@@deriving repr]
+
+  let commit ?all_keys pp =
+    Commitment.commit ?all_keys Public_parameters.(pp.srs1)
 
   (* compute W := (f(x) - s) / (x - z), where x is the srs secret exponent,
      for every evaluation point [zname], key of the [query] map, where
@@ -148,7 +151,7 @@ module Polynomial_commitment = struct
         (* WARNING: This modifies [batched_polys], but we won't use it again: *)
         Poly.sub_inplace f f @@ Poly.constant s ;
         let h = fst @@ Poly.division_xn f 1 (Scalar.negate z) in
-        Commitment.commit_single srs h)
+        Commitment.commit_single Public_parameters.(srs.srs1) h)
       query
 
   (* verify the KZG equation: e(F - [s]₁ + z W, [1]₂) = e(W, [x]₂)
@@ -369,7 +372,7 @@ module DegreeCheck :
        allocation by giving an offset for the SRS in Pippenger. *)
     let cm, _ =
       SMap.map (fun p -> Poly.mul_xn p (max_commit - max_degree) Scalar.zero) p
-      |> Polynomial_commitment.Commitment.commit_with_srs srs
+      |> Polynomial_commitment.Commitment.commit srs
     in
     let r, transcript = Fr_generation.random_fr transcript in
     let rs = Fr_generation.powers (SMap.cardinal cm) r in

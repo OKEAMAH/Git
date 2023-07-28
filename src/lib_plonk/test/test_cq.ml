@@ -82,7 +82,7 @@ let test_wrong_proof () =
   let proof_f, _ = Cq.prove prv transcript [List.hd f_map] in
   let wrong_proof =
     let cm_f, _ =
-      PC.Commitment.commit
+      PC.commit
         Cq.(prv.pc)
         (Plonk.SMap.map
            (fun f ->
