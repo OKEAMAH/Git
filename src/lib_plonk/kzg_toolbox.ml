@@ -352,7 +352,7 @@ module DegreeCheck :
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
 
-  type secret = Poly.t SMap.t
+  type secret = Commitment.secret
 
   (* p(X) of degree n. Max degree that can be committed: d, which is also the
      SRS's length - 1. We take d = t.max_polynomial_length - 1 since we don't want to commit
@@ -389,17 +389,102 @@ module DegreeCheck :
     (Pairing.pairing_check [(G1.negate cm, srs_n_d); (proof, srs_0)], transcript)
 end
 
-module DegreeCheck_for_Dal : Kzg_toolbox_intf.DegreeCheck_for_Dal = struct
-  open DegreeCheck
-  module Proof = Proof
+module Commitment_for_Dal = struct
+  exception SRS_too_short = Commit.SRS_too_short
 
-  type prover_public_parameters = Srs_g1.t
+  type t = G1.t [@@deriving repr]
 
-  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+  type Tezos_crypto.Base58.data += Data of t
+
+  type public_parameters = Commitment.public_parameters
 
   type secret = Poly.t
 
-  type commitment = G1.t
+  let zero = G1.zero
+
+  let equal = G1.eq
+
+  let compare a b =
+    if G1.eq a b then 0 else Bytes.compare (G1.to_bytes a) (G1.to_bytes b)
+
+  let commit = Commit.with_srs1
+
+  let commitment_of_bytes_exn bytes =
+    match G1.of_compressed_bytes_opt bytes with
+    | None ->
+        Format.kasprintf Stdlib.failwith "Unexpected data (DAL commitment)"
+    | Some commitment -> commitment
+    [@@coverage off]
+
+  let to_string commitment =
+    G1.to_compressed_bytes commitment |> Bytes.to_string
+    [@@coverage off]
+
+  let of_string_opt str = G1.of_compressed_bytes_opt (String.to_bytes str)
+    [@@coverage off]
+
+  let b58check_encoding =
+    Tezos_crypto.Base58.register_encoding
+      ~prefix:Tezos_crypto.Base58.Prefix.slot_header
+      ~length:G1.compressed_size_in_bytes
+      ~to_raw:to_string
+      ~of_raw:of_string_opt
+      ~wrap:(fun x -> Data x)
+    [@@coverage off]
+
+  let raw_encoding =
+    let open Data_encoding in
+    conv
+      G1.to_compressed_bytes
+      commitment_of_bytes_exn
+      (Fixed.bytes G1.compressed_size_in_bytes)
+    [@@coverage off]
+
+  include Tezos_crypto.Helpers.Make (struct
+    type t = G1.t
+
+    let name = "DAL_commitment"
+
+    let title = "Commitment representation for the DAL"
+
+    let b58check_encoding = b58check_encoding
+
+    let raw_encoding = raw_encoding
+
+    let compare = compare
+
+    let equal = G1.eq
+
+    let hash _ =
+      (* The commitment is not hashed. This is ensured by the
+         function exposed. We only need the Base58 encoding and the
+         rpc_arg. *)
+      assert false
+      [@@coverage off]
+
+    let seeded_hash _ _ =
+      (* Same argument. *)
+      assert false
+      [@@coverage off]
+  end)
+
+  let of_b58check = of_b58check
+end
+
+module DegreeCheck_for_Dal :
+  Kzg_toolbox_intf.DegreeCheck_for_Dal
+    with module Commitment = Commitment_for_Dal = struct
+  open DegreeCheck
+  module Proof = Proof
+  module Commitment = Commitment_for_Dal
+
+  type prover_public_parameters = Commitment.public_parameters
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Commitment.secret
+
+  type commitment = Commitment.t
 
   type proof = Proof.t [@@deriving repr]
 

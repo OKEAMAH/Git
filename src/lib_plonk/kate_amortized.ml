@@ -1,5 +1,6 @@
 open Bls
-open Kzg_toolbox
+module FFT = Kzg_toolbox.FFT
+module Commitment = Kzg_toolbox.Commitment_for_Dal
 
 type public_parameters = {
   max_polynomial_length : int;
@@ -14,11 +15,9 @@ let preprocess_encoding : preprocess t =
   let open Data_encoding in
   tup2 Domain.encoding (array G1_carray.encoding)
 
-type commitment = G1.t
-
 type shard_proof = G1.t
 
-let commit t = Commit.with_srs1 t.srs_g1
+let commit t = Commitment.commit t.srs_g1
 
 let preprocess_equal (d1, a1) (d2, a2) =
   Domain.equal d1 d2 && Array.for_all2 G1_carray.eq a1 a2

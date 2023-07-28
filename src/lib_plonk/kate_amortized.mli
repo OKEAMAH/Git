@@ -11,13 +11,11 @@ type preprocess
 
 val preprocess_encoding : preprocess t
 
-type commitment = G1.t
-
 type shard_proof = G1.t
 
 val preprocess_equal : preprocess -> preprocess -> bool
 
-val commit : public_parameters -> Poly.t -> commitment
+val commit : public_parameters -> Poly.t -> Kzg_toolbox.Commitment_for_Dal.t
 
 val preprocess_multiple_multi_reveals : public_parameters -> preprocess
 
@@ -29,7 +27,7 @@ val multiple_multi_reveals :
 
 val verify :
   public_parameters ->
-  commitment:commitment ->
+  commitment:Kzg_toolbox.Commitment_for_Dal.t ->
   srs_point:G2.t ->
   domain:Domain.t ->
   root:scalar ->

@@ -26,6 +26,7 @@
 open Error_monad
 include Cryptobox_intf
 open Plonk.Bls
+module DegreeCheck = Plonk.Kzg_toolbox.DegreeCheck_for_Dal
 module Kate_amortized = Plonk.Kate_amortized
 module FFT = Plonk.Kzg_toolbox.FFT
 module Base58 = Tezos_crypto.Base58
@@ -134,17 +135,20 @@ type srs = {
 }
 
 module Inner = struct
+  module Commitment = Plonk.Kzg_toolbox.Commitment_for_Dal
+  module Commitment_proof = DegreeCheck.Proof
+
   type slot = bytes
 
   type scalar = Scalar.t
 
   type polynomial = Poly.t
 
-  type commitment = G1.t
+  type commitment = Commitment.t
 
   type shard_proof = G1.t
 
-  type commitment_proof = Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof.t
+  type commitment_proof = Commitment_proof.t
 
   type page_proof = G1.t
 
@@ -198,96 +202,6 @@ module Inner = struct
   end
 
   include Encoding
-
-  module Commitment = struct
-    type t = commitment
-
-    type Base58.data += Data of t
-
-    let zero = G1.zero
-
-    let equal = G1.eq
-
-    let commitment_to_bytes = G1.to_compressed_bytes
-
-    let commitment_of_bytes_opt = G1.of_compressed_bytes_opt [@@coverage off]
-
-    let commitment_of_bytes_exn bytes =
-      match G1.of_compressed_bytes_opt bytes with
-      | None ->
-          Format.kasprintf Stdlib.failwith "Unexpected data (DAL commitment)"
-      | Some commitment -> commitment
-      [@@coverage off]
-
-    let commitment_size = G1.compressed_size_in_bytes [@@coverage off]
-
-    let to_string commitment = commitment_to_bytes commitment |> Bytes.to_string
-      [@@coverage off]
-
-    let of_string_opt str = commitment_of_bytes_opt (String.to_bytes str)
-      [@@coverage off]
-
-    let b58check_encoding =
-      Base58.register_encoding
-        ~prefix:Base58.Prefix.slot_header
-        ~length:commitment_size
-        ~to_raw:to_string
-        ~of_raw:of_string_opt
-        ~wrap:(fun x -> Data x)
-      [@@coverage off]
-
-    let raw_encoding =
-      let open Data_encoding in
-      conv
-        commitment_to_bytes
-        commitment_of_bytes_exn
-        (Fixed.bytes commitment_size)
-      [@@coverage off]
-
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/5593
-
-       We could have a smarter compare eg. using lazy Data_encoding.compare that
-       encodes the two values to bytes lazily and stops as soon as the values
-       are detected to be not equal. *)
-    let compare_commitments a b =
-      (* We are obliged to compare commitments by casting to bytes because
-         {!G1} doesn't provide a compare function. *)
-      if G1.eq a b then 0 else Bytes.compare (G1.to_bytes a) (G1.to_bytes b)
-
-    let compare = compare_commitments
-
-    include Tezos_crypto.Helpers.Make (struct
-      type t = commitment
-
-      let name = "DAL_commitment"
-
-      let title = "Commitment representation for the DAL"
-
-      let b58check_encoding = b58check_encoding
-
-      let raw_encoding = raw_encoding
-
-      let compare = compare_commitments
-
-      let equal = G1.eq
-
-      let hash _ =
-        (* The commitment is not hashed. This is ensured by the
-           function exposed. We only need the Base58 encoding and the
-           rpc_arg. *)
-        assert false
-        [@@coverage off]
-
-      let seeded_hash _ _ =
-        (* Same argument. *)
-        assert false
-        [@@coverage off]
-    end)
-
-    let of_b58check = of_b58check
-  end
-
-  module Commitment_proof = Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof
 
   type error += Invalid_precomputation_hash of (string, string) error_container
 
@@ -1010,8 +924,8 @@ module Inner = struct
       Ok (Poly.truncate ~len:t.max_polynomial_length p)
 
   let commit t p =
-    try Ok (Plonk.Kzg_toolbox.Commit.with_srs1 t.srs.raw.srs_g1 p)
-    with Plonk.Kzg_toolbox.Commit.SRS_too_short _ ->
+    try Ok (Commitment.commit t.srs.raw.srs_g1 p)
+    with Commitment.SRS_too_short _ ->
       Error
         (`Invalid_degree_strictly_less_than_expected
           {given = Poly.degree p; expected = Srs_g1.size t.srs.raw.srs_g1})
@@ -1046,7 +960,7 @@ module Inner = struct
       ({srs = {raw = {srs_g1; _}; _}; max_polynomial_length; _} : t) p =
     if Srs_g1.size srs_g1 >= max_polynomial_length then
       Ok
-        (Plonk.Kzg_toolbox.DegreeCheck_for_Dal.prove
+        (DegreeCheck.prove
            ~max_commit:(Srs_g1.size srs_g1 - 1)
            ~max_degree:(max_polynomial_length - 1)
            srs_g1
@@ -1065,7 +979,7 @@ module Inner = struct
     in
     let srs_0 = Srs_g2.get t.srs.raw.srs_g2 0 in
     let srs_n_d = Srs_g2.get t.srs.raw.srs_g2 offset_monomial_degree in
-    Plonk.Kzg_toolbox.DegreeCheck_for_Dal.verify {srs_0; srs_n_d} cm proof
+    DegreeCheck.verify {srs_0; srs_n_d} cm proof
 
   let save_precompute_shards_proofs precomputation ~filename =
     protect (fun () ->
@@ -1284,7 +1198,7 @@ module Internal_for_tests = struct
   let alter_shard_proof (proof : shard_proof) = alter_proof proof
 
   let alter_commitment_proof (proof : commitment_proof) =
-    Plonk.Kzg_toolbox.DegreeCheck_for_Dal.Proof.alter_proof proof
+    DegreeCheck.Proof.alter_proof proof
 
   let minimum_number_of_shards_to_reconstruct_slot (t : t) =
     t.number_of_shards / t.redundancy_factor

@@ -80,7 +80,8 @@ module type VERIFIER = sig
   (** Commitment to a polynomial. *)
   type commitment
 
-  module Commitment : COMMITMENT with type t := commitment
+  module Commitment :
+    Plonk.Kzg_toolbox_intf.Commitment_for_Dal with type t := commitment
 
   (** A proof that the polynomial associated to some commitment is
      bounded by a constant. *)

@@ -138,16 +138,53 @@ module type DegreeCheck = sig
     bool * bytes
 end
 
-module type DegreeCheck_for_Dal = sig
-  module Proof : DegreeCheck_proof
+module type Commitment_for_Dal = sig
+  exception SRS_too_short of string
 
-  type prover_public_parameters = Srs_g1.t
+  type t [@@deriving repr]
 
-  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+  type public_parameters = Srs_g1.t
 
   type secret = Poly.t
 
-  type commitment = G1.t
+  val encoding : t encoding
+
+  val zero : t
+
+  val equal : t -> t -> bool
+
+  val compare : t -> t -> int
+
+  val commit : public_parameters -> secret -> t
+
+  (** [to_b58check commitment] returns a b58 representation
+        of [commitment]. *)
+  val to_b58check : t -> string
+
+  (** [of_b58check_opt bytes] computes a commitment from
+              its b58 representation. Returns [None] if it is not a valid
+              representation. *)
+  val of_b58check_opt : string -> t option
+
+  val of_b58check : string -> t Tezos_error_monad.Error_monad.tzresult
+
+  val pp : Format.formatter -> t -> unit
+
+  val rpc_arg : t Resto.Arg.t
+end
+
+module type DegreeCheck_for_Dal = sig
+  module Proof : DegreeCheck_proof
+
+  module Commitment : Commitment_for_Dal
+
+  type prover_public_parameters = Commitment.public_parameters
+
+  type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
+
+  type secret = Commitment.secret
+
+  type commitment = Commitment.t
 
   val prove :
     max_commit:int ->

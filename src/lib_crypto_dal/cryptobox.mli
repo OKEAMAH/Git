@@ -137,11 +137,8 @@ include
    the secret is unknown. *)
 type initialisation_parameters
 
-module Commitment : sig
-  include COMMITMENT with type t = commitment
-
-  val rpc_arg : commitment Resto.Arg.t
-end
+module Commitment :
+  Plonk.Kzg_toolbox_intf.Commitment_for_Dal with type t = commitment
 
 (** A slot is a byte sequence corresponding to some data. *)
 type slot = bytes
