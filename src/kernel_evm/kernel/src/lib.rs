@@ -8,9 +8,9 @@ use anyhow::Context;
 use evm_execution::Config;
 use primitive_types::U256;
 use storage::{
-    read_chain_id, read_last_info_per_level_timestamp,
+    read_chain_id, read_kernel_version, read_last_info_per_level_timestamp,
     read_last_info_per_level_timestamp_stats, read_ticketer, store_chain_id,
-    store_kernel_upgrade_nonce,
+    store_kernel_upgrade_nonce, store_kernel_version,
 };
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -50,6 +50,8 @@ pub const CHAIN_ID: u32 = 1337;
 
 /// The configuration for the EVM execution.
 pub const CONFIG: Config = Config::london();
+
+const KERNEL_VERSION: &str = env!("GIT_HASH");
 
 pub fn stage_zero<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     log!(host, Info, "Entering stage zero.");
@@ -155,6 +157,18 @@ fn retrieve_smart_rollup_address<Host: Runtime>(
     }
 }
 
+fn set_kernel_version<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+    match read_kernel_version(host) {
+        Ok(kernel_version) => {
+            if kernel_version != KERNEL_VERSION {
+                store_kernel_version(host, &kernel_version)?
+            };
+            Ok(())
+        }
+        Err(_) => store_kernel_version(host, KERNEL_VERSION),
+    }
+}
+
 fn retrieve_chain_id<Host: Runtime>(host: &mut Host) -> Result<U256, Error> {
     match read_chain_id(host) {
         Ok(chain_id) => Ok(chain_id),
@@ -171,6 +185,7 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
         .context("Failed to retrieve smart rollup address")?;
     let chain_id = retrieve_chain_id(host).context("Failed to retrieve chain id")?;
     let ticketer = read_ticketer(host);
+    set_kernel_version(host)?;
 
     stage_zero(host).context("Failed during stage 0")?;
 
