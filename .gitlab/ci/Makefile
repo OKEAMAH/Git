@@ -51,7 +51,10 @@ endif
 		--junit ${JUNIT} \
 		--record tezt-results-${CI_NODE_INDEX}.json \
 		--loop-count $(TZ_FLAKE_TEST_LOOP_COUNT) \
-		--test-timeout $(TZ_FLAKE_TEST_TEST_TIMEOUT) $(TZ_FLAKE_TEST_TEZT_OPTS) ${TZ_FLAKE_TEST_TESTS} && \
+		--test-timeout $(TZ_FLAKE_TEST_TEST_TIMEOUT) \
+		--reset-regressions \
+		$(TZ_FLAKE_TEST_TEZT_OPTS) \
+		${TZ_FLAKE_TEST_TESTS} && \
 		./scripts/ci/merge_coverage.sh
 
 .PHONY: test-unit-flake
