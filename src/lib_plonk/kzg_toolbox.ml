@@ -32,50 +32,52 @@ module Commit = struct
     commit_single Srs_g2.pippenger G2.zero (Srs_g2.size srs) srs p
 end
 
+module Commitment = struct
+  type public_parameters = Srs_g1.t
+
+  type secret = Poly.t SMap.t
+
+  type t = G1.t SMap.t [@@deriving repr]
+
+  type prover_aux = unit [@@deriving repr]
+
+  let commit_single srs = Commit.with_srs1 srs
+
+  let commit ?all_keys:_ srs f_map =
+    let cmt = SMap.map (commit_single srs) f_map in
+    let prover_aux = () in
+    (cmt, prover_aux)
+
+  let cardinal cmt = SMap.cardinal cmt
+
+  let rename f cmt =
+    SMap.fold (fun key x acc -> SMap.add (f key) x acc) cmt SMap.empty
+
+  let recombine cmt_list =
+    List.fold_left
+      (SMap.union (fun _k x _ -> Some x))
+      (List.hd cmt_list)
+      (List.tl cmt_list)
+
+  let recombine_prover_aux _ = ()
+
+  let empty = SMap.empty
+
+  let empty_prover_aux = ()
+
+  let of_list _ ~name l =
+    let n = List.length l in
+    ( SMap.(
+        of_list
+          (List.mapi (fun i c -> (Aggregation.add_prefix ~n ~i "" name, c)) l)),
+      () )
+
+  let to_map cm = cm
+end
+
+(* Implements a batched version of the KZG10 scheme, described in Section 3 of
+   the PlonK paper: https://eprint.iacr.org/2019/953.pdf *)
 module Polynomial_commitment = struct
-  module Commitment = struct
-    type public_parameters = Srs_g1.t
-
-    type secret = Poly.t SMap.t
-
-    type t = G1.t SMap.t [@@deriving repr]
-
-    type prover_aux = unit [@@deriving repr]
-
-    let commit_single srs = Commit.with_srs1 srs
-
-    let commit ?all_keys:_ srs f_map =
-      let cmt = SMap.map (commit_single srs) f_map in
-      let prover_aux = () in
-      (cmt, prover_aux)
-
-    let cardinal cmt = SMap.cardinal cmt
-
-    let rename f cmt =
-      SMap.fold (fun key x acc -> SMap.add (f key) x acc) cmt SMap.empty
-
-    let recombine cmt_list =
-      List.fold_left
-        (SMap.union (fun _k x _ -> Some x))
-        (List.hd cmt_list)
-        (List.tl cmt_list)
-
-    let recombine_prover_aux _ = ()
-
-    let empty = SMap.empty
-
-    let empty_prover_aux = ()
-
-    let of_list _ ~name l =
-      let n = List.length l in
-      ( SMap.(
-          of_list
-            (List.mapi (fun i c -> (Aggregation.add_prefix ~n ~i "" name, c)) l)),
-        () )
-
-    let to_map cm = cm
-  end
-
   module Public_parameters = struct
     (* Structured Reference String
        - srs1 : [[1]₁, [x¹]₁, …, [x^(d-1)]₁] ;
@@ -115,6 +117,8 @@ module Polynomial_commitment = struct
 
     let get_commit_parameters {srs1; _} = srs1
   end
+
+  module Commitment = Commitment
 
   (* polynomials to be committed *)
   type secret = Commitment.secret
@@ -340,8 +344,7 @@ module DegreeCheck_proof = struct
 end
 
 module DegreeCheck :
-  Kzg_toolbox_intf.DegreeCheck
-    with type commitment = Polynomial_commitment.Commitment.t = struct
+  Kzg_toolbox_intf.DegreeCheck with type commitment = Commitment.t = struct
   module Proof = DegreeCheck_proof
 
   type prover_public_parameters = Srs_g1.t
@@ -350,7 +353,7 @@ module DegreeCheck :
 
   type secret = Poly.t SMap.t
 
-  type commitment = Polynomial_commitment.Commitment.t [@@deriving repr]
+  type commitment = Commitment.t [@@deriving repr]
 
   (* p(X) of degree n. Max degree that can be committed: d, which is also the
      SRS's length - 1. We take d = t.max_polynomial_length - 1 since we don't want to commit
@@ -372,7 +375,7 @@ module DegreeCheck :
        allocation by giving an offset for the SRS in Pippenger. *)
     let cm, _ =
       SMap.map (fun p -> Poly.mul_xn p (max_commit - max_degree) Scalar.zero) p
-      |> Polynomial_commitment.Commitment.commit srs
+      |> Commitment.commit srs
     in
     let r, transcript = Fr_generation.random_fr transcript in
     let rs = Fr_generation.powers (SMap.cardinal cm) r in
