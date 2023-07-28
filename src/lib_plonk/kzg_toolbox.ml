@@ -344,16 +344,15 @@ module DegreeCheck_proof = struct
 end
 
 module DegreeCheck :
-  Kzg_toolbox_intf.DegreeCheck with type commitment = Commitment.t = struct
+  Kzg_toolbox_intf.DegreeCheck with module Commitment = Commitment = struct
   module Proof = DegreeCheck_proof
+  module Commitment = Commitment
 
-  type prover_public_parameters = Srs_g1.t
+  type prover_public_parameters = Commitment.public_parameters
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
 
   type secret = Poly.t SMap.t
-
-  type commitment = Commitment.t [@@deriving repr]
 
   (* p(X) of degree n. Max degree that can be committed: d, which is also the
      SRS's length - 1. We take d = t.max_polynomial_length - 1 since we don't want to commit
@@ -382,7 +381,7 @@ module DegreeCheck :
     (Commit.with_affine_array_1 (SMap.values cm |> Array.of_list) rs, transcript)
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
-  let verify {srs_0; srs_n_d} transcript (cm : commitment) proof =
+  let verify {srs_0; srs_n_d} transcript (cm : Commitment.t) proof =
     (* checking that cm * committed_offset_monomial = proof *)
     let r, transcript = Fr_generation.random_fr transcript in
     let rs = Fr_generation.powers (SMap.cardinal cm) r in

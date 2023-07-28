@@ -114,13 +114,13 @@ end
 module type DegreeCheck = sig
   module Proof : DegreeCheck_proof
 
-  type prover_public_parameters = Srs_g1.t
+  module Commitment : Commitment
+
+  type prover_public_parameters = Commitment.public_parameters
 
   type verifier_public_parameters = {srs_0 : G2.t; srs_n_d : G2.t}
 
   type secret = Poly.t SMap.t
-
-  type commitment [@@deriving repr]
 
   val prove :
     max_commit:int ->
@@ -131,7 +131,11 @@ module type DegreeCheck = sig
     Proof.t * bytes
 
   val verify :
-    verifier_public_parameters -> bytes -> commitment -> Proof.t -> bool * bytes
+    verifier_public_parameters ->
+    bytes ->
+    Commitment.t ->
+    Proof.t ->
+    bool * bytes
 end
 
 module type DegreeCheck_for_Dal = sig
