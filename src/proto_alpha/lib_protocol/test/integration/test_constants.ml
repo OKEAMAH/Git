@@ -121,11 +121,13 @@ let test_sc_rollup_max_commitment_storage_cost_lt_deposit () =
    {!test_sc_rollup_max_commitment_storage_cost_lt_deposit}
 *)
 let test_sc_rollup_max_commitment_storage_size () =
+  let open Lwt_result_syntax in
   let open Protocol in
-  Assert.get_some
-    ~loc:__LOC__
-    (Sc_rollup_repr.Number_of_ticks.of_value 1232909L)
-  >>=? fun number_of_ticks ->
+  let* number_of_ticks =
+    Assert.get_some
+      ~loc:__LOC__
+      (Sc_rollup_repr.Number_of_ticks.of_value 1232909L)
+  in
   let commitment =
     Sc_rollup_commitment_repr.
       {
