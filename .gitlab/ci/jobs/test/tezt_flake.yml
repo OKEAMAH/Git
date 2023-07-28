@@ -8,7 +8,9 @@ include: .gitlab/ci/jobs/test/common.yml
 
 tezt:
   extends:
-  - .integration_template
+    - .integration_template
+    - .template__coverage_files
+    - .tezt_template
   variables:
     JUNIT: "tezt-junit.xml"
   artifacts:
@@ -18,12 +20,6 @@ tezt:
       - tezt.log
       - tezt-results-$CI_NODE_INDEX.json
       - $JUNIT
-    # These record artifacts (tezt-results-$CI_NODE_INDEX.json) should
-    # be stored for as long as a given commit on master is expected to
-    # be HEAD in order to support auto-balancing. At the time of
-    # writing, we have approximately 6 merges per day, so 1 day should
-    # more than enough. The tezt artifacts (including records and
-    # coverage) take up roughly 1MB.
     expire_in: 1 hour
     when: always
   script:
