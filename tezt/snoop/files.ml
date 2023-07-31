@@ -66,14 +66,13 @@ let inference_results_dir = "inference_results"
 
 let codegen_results_dir = "generated_code"
 
-let solution_csv local_model_name = sf "inferred_%s.csv" local_model_name
+let solution_csv = sf "inferred.csv"
 
-let solution_bin local_model_name = sf "inferred_%s.sol" local_model_name
+let solution_bin = sf "inferred.sol"
 
-let report_tex local_model_name = sf "report_%s.tex" local_model_name
+let report_tex = sf "report.tex"
 
-let dep_graph local_model_name = sf "graph_%s.dot" local_model_name
-
+let dep_graph = sf "graph.dot"
 (* ------------------------------------------------------------------------- *)
 (* Helpers *)
 

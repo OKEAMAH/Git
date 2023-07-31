@@ -571,6 +571,64 @@ module Infer_cmd = struct
       infer_handler
 end
 
+module Infer_all_cmd = struct
+  include Infer_cmd
+
+  let params =
+    Tezos_clic.(
+      prefixes ["infer"; "parameters"]
+      @@ prefixes ["on"; "data"]
+      @@ string ~name:"WORKLOAD-DATA" ~desc:"Directory containing workload data"
+      @@ prefix "using" @@ regression_param @@ stop)
+
+  let group =
+    {
+      Tezos_clic.name = "inference";
+      title = "Command for infering parameters of cost models";
+    }
+
+  let infer_handler
+      ( print_problem,
+        csv,
+        plot,
+        ridge_alpha,
+        lasso_alpha,
+        lasso_positive,
+        report,
+        override_files,
+        save_solution,
+        dot_file,
+        full_plot_verbosity,
+        plot_raw_workload,
+        empirical_plot ) workload_data solver () =
+    let options =
+      default_infer_parameters_options
+      |> set_print_problem print_problem
+      |> set_csv_export csv |> set_plot plot
+      |> lift_opt set_ridge_alpha ridge_alpha
+      |> lift_opt set_lasso_alpha lasso_alpha
+      |> set_lasso_positive lasso_positive
+      |> set_report report
+      |> set_override_files override_files
+      |> set_save_solution save_solution
+      |> set_dot_file dot_file
+      |> set_full_plot_verbosity full_plot_verbosity
+      |> set_plot_raw_workload plot_raw_workload
+      |> lift_opt set_empirical_plot empirical_plot
+    in
+    commandline_outcome_ref :=
+      Some (Infer_all {workload_data; solver; infer_opts = options}) ;
+    Lwt.return_ok ()
+
+  let command =
+    Tezos_clic.command
+      ~desc:"Perform parameter inference on data set"
+      ~group
+      options
+      params
+      infer_handler
+end
+
 module Codegen_cmd = struct
   (* ------------------------------------------------------------------------- *)
   (* Handling options for the "generate code" command *)
@@ -779,14 +837,16 @@ module Codegen_for_solutions_cmd = struct
     Lwt.return_ok ()
 
   let params =
-    Tezos_clic.(
-      prefixes ["generate"; "code"; "for"; "solutions"]
-      @@ seq_of_param
-           (string
-              ~name:"SOLUTION-FILE"
-              ~desc:
-                "File containing solution, as obtained using the \
-                 --save-solution switch"))
+    let open Tezos_clic in
+    let files =
+      seq_of_param
+        (string
+           ~name:"SOLUTION-FILE or a Directory containing SOLUTION-FILE"
+           ~desc:
+             "File or a Directory containing solution, as obtained using the \
+              --save-solution switch")
+    in
+    prefixes ["generate"; "code"; "for"; "solutions"] @@ files
 
   let options = Codegen_inferred_cmd.options
 
@@ -1701,6 +1761,7 @@ let all_commands =
   [
     Benchmark_cmd.command;
     Infer_cmd.command;
+    Infer_all_cmd.command;
     Codegen_cmd.command;
     Codegen_all_cmd.command;
     Codegen_inferred_cmd.command;

@@ -23,7 +23,6 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-let local_model_names = Perform_inference.local_model_names
 
 let cost_function_ml fp = if fp then "auto_build_no_fp.ml" else "auto_build.ml"
 
@@ -42,8 +41,8 @@ let rec cleanup () =
       Sys.rmdir codegen_root ;
       cleanup ()
 
-let solution_fn inference_root local_model_name =
-  Files.(inference_root // solution_bin local_model_name)
+let destination fp =
+  Files.(working_dir // codegen_results_dir // cost_function_ml fp)
 
 let prepare_fp_json inference_root =
   let fn = inference_root // "fp.json" in
@@ -57,34 +56,24 @@ let prepare_fp_json inference_root =
       "resolution": 5 }|} ;
   fn
 
-let destination fp =
-  Files.(working_dir // codegen_results_dir // cost_function_ml fp)
-
 let main () =
   Log.info "Entering Perform_codegen.main" ;
   let snoop = Snoop.create () in
   let inference_root = Files.(working_dir // inference_results_dir) in
-  let fp_json_fn = prepare_fp_json inference_root in
   let* () = cleanup () in
-  Lwt_list.iter_s
-    (fun local_model_name ->
-      let open Lwt.Syntax in
-      let saved_model_name =
-        String.split_on_char '/' local_model_name |> String.concat "__"
-      in
-      let solution_fn = solution_fn inference_root saved_model_name in
-      let* _ =
-        Snoop.generate_code_using_solution
-          ~solution:solution_fn
-          ~save_to:(destination true)
-          snoop
-      in
-      let* _ =
-        Snoop.generate_code_using_solution
-          ~solution:solution_fn
-          ~save_to:(destination false)
-          ~fixed_point:fp_json_fn
-          snoop
-      in
-      Lwt.return_unit)
-    local_model_names
+  let fp_json_fn = prepare_fp_json inference_root in
+  let open Lwt.Syntax in
+  let* _ =
+    Snoop.generate_code_using_solution
+      ~solution:inference_root
+      ~save_to:(destination true)
+      snoop
+  in
+  let* _ =
+    Snoop.generate_code_using_solution
+      ~solution:inference_root
+      ~save_to:(destination false)
+      ~fixed_point:fp_json_fn
+      snoop
+  in
+  Lwt.return_unit

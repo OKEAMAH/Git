@@ -63,7 +63,6 @@ type regression_method =
 
 (** Infers parameters for a model on some benchmark data. *)
 val infer_parameters :
-  local_model_name:string ->
   workload_data:string ->
   regression_method:regression_method ->
   dump_csv:string ->
