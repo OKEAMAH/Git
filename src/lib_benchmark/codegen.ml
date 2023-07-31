@@ -60,6 +60,11 @@ module Codegen_helpers = struct
 
   let saturated name = ["S"; name]
 
+  let extract (f : Parsetree.expression) =
+    match f.pexp_desc with
+    | Parsetree.Pexp_let (_, bindings, expr) -> Some (bindings, expr)
+    | _ -> None
+
   let call f args =
     let f = WithExceptions.Option.get ~loc:__LOC__ @@ Longident.unflatten f in
     let args = List.map (fun x -> (Asttypes.Nolabel, x)) args in
@@ -68,64 +73,279 @@ module Codegen_helpers = struct
   let string_of_fv fv = Format.asprintf "%a" Free_variable.pp fv
 end
 
-module Codegen : Costlang.S with type 'a repr = Parsetree.expression = struct
-  type 'a repr = Parsetree.expression
+type code_repr = {
+  expr : Parsetree.expression;
+  lifted : Parsetree.expression option;
+}
+
+let gen_var, reset_id =
+  let id = ref 0 in
+  let gen_var () =
+    let r = "const_" ^ string_of_int !id in
+    incr id ;
+    r
+  in
+  (gen_var, fun () -> id := 0)
+
+module Codegen : Costlang.S with type 'a repr = code_repr = struct
+  type 'a repr = code_repr
 
   type size = int
 
   open Codegen_helpers
   open Ast_helper
 
-  let true_ = Exp.construct (loc_ident "true") None
+  let mk expr = {expr; lifted = None}
 
-  let false_ = Exp.construct (loc_ident "false") None
+  let lift t = (t.expr, t.lifted)
 
-  let int i = call (saturated "safe_int") [Exp.constant (Const.int i)]
+  let merge (a : Parsetree.expression) (b : Parsetree.expression) =
+    let open Option_syntax in
+    let* a, _ = extract a in
+    let* b, _ = extract b in
+    Option.some @@ Exp.let_ Nonrecursive (a @ b) (ident "shouldn't appear")
+
+  let mk_lifted expr =
+    let name = gen_var () in
+    let var = pvar name in
+    let expr =
+      Exp.let_ Nonrecursive [Vb.mk var expr] (ident "shouldn't appear")
+    in
+    {expr = ident name; lifted = Some expr}
+
+  type on_zero = Remove | Zero | Nothing
+
+  let mk_call ?(on_zero = Nothing) f args =
+    let rec go ?acc x =
+      let open Option_syntax in
+      match x with
+      | [] -> acc
+      | x :: rest -> (
+          match acc with
+          | None -> go ~acc:x rest
+          | Some acc ->
+              let* res = merge acc x in
+              go ~acc:res rest)
+    in
+    let args, lifted = List.map (fun x -> lift x) args |> List.split in
+    let is_all_idents =
+      List.for_all
+        (fun (x : Parsetree.expression) ->
+          match x.pexp_desc with Parsetree.Pexp_ident _ -> true | _ -> false)
+        args
+    in
+    if
+      is_all_idents
+      && List.for_all
+           (fun (x : Parsetree.expression) ->
+             match x.pexp_desc with
+             | Parsetree.Pexp_ident {txt = Lident id; _} ->
+                 let res =
+                   List.find_map
+                     (fun (x : Parsetree.expression) ->
+                       let open Option_syntax in
+                       let* bindings, _ = extract x in
+                       if
+                         List.exists
+                           (fun (x : Parsetree.value_binding) ->
+                             x.pvb_pat = pvar id)
+                           bindings
+                       then Some true
+                       else None)
+                     (List.concat_map Option.to_list lifted)
+                 in
+                 Option.value res ~default:false
+             | _ -> false)
+           args
+    then
+      let lifted =
+        List.filter_map
+          (fun (x : Parsetree.expression) ->
+            let open Option_syntax in
+            let* expr, _ = extract x in
+            let* head = List.hd expr in
+            Some head.pvb_expr)
+          (List.concat_map Option.to_list lifted)
+      in
+      let repr = mk_lifted (call f lifted) in
+      repr
+    else
+      let new_args =
+        List.filter_map
+          (fun (x : Parsetree.expression) ->
+            match x.pexp_desc with
+            | Parsetree.Pexp_constant (Pconst_integer ("0", _)) -> None
+            | _ -> Some x)
+          args
+      in
+      let not_var (f : Parsetree.expression) =
+        match f.pexp_desc with Parsetree.Pexp_ident _ -> false | _ -> true
+      in
+      let result =
+        match (on_zero, new_args) with
+        | Remove, x :: [] when not_var x -> mk @@ x
+        | Zero, x :: [] when not_var x -> mk @@ Exp.constant (Const.int 0)
+        | Remove, _ | Zero, _ | Nothing, _ -> mk (call f args)
+      in
+      {
+        result with
+        lifted =
+          go
+            (List.concat_map
+               (fun x -> Option.to_list x)
+               (lifted @ [result.lifted]));
+      }
+
+  let true_ = mk @@ Exp.construct (loc_ident "true") None
+
+  let false_ = mk @@ Exp.construct (loc_ident "false") None
+
+  let int i =
+    if i = 0 then mk @@ Exp.constant (Const.int 0)
+    else mk_lifted @@ call (saturated "safe_int") [Exp.constant (Const.int i)]
 
   let float f =
-    call
-      (saturated "safe_int")
-      [call ["int_of_float"] [Exp.constant @@ Const.float (string_of_float f)]]
+    if f = 0. then mk @@ Exp.constant (Const.int (int_of_float f))
+    else
+      mk_lifted
+      @@ call
+           (saturated "safe_int")
+           [
+             call
+               ["int_of_float"]
+               [Exp.constant @@ Const.float (string_of_float f)];
+           ]
 
-  let ( + ) x y = call ["+"] [x; y]
+  let ( + ) x y = mk_call ~on_zero:Remove ["+"] @@ [x; y]
 
-  let sat_sub x y = call (saturated "sub") [x; y]
+  let sat_sub x y = mk_call ~on_zero:Remove (saturated "sub") [x; y]
 
-  let ( * ) x y = call ["*"] [x; y]
+  let ( * ) x y = mk_call ~on_zero:Zero ["*"] [x; y]
 
-  let ( / ) x y = call ["/"] [x; y]
+  let ( / ) x y = mk_call ~on_zero:Zero ["/"] [x; y]
 
-  let max x y = call (saturated "max") [x; y]
+  let max x y = mk_call ~on_zero:Remove (saturated "max") [x; y]
 
-  let min x y = call (saturated "min") [x; y]
+  let min x y = mk_call ~on_zero:Remove (saturated "min") [x; y]
 
-  let log2 x = call ["log2"] [x]
+  let log2 x = mk_call ~on_zero:Remove ["log2"] [x]
 
-  let sqrt x = call ["sqrt"] [x]
+  let sqrt x = mk_call ~on_zero:Remove ["sqrt"] [x]
 
-  let free ~name = Exp.ident (loc_ident (string_of_fv name))
+  let free ~name = mk @@ Exp.ident (loc_ident (string_of_fv name))
 
-  let lt x y = call ["<"] [x; y]
+  let lt x y = mk_call ["<"] [x; y]
 
-  let eq x y = call ["="] [x; y]
+  let eq x y = mk_call ["="] [x; y]
 
-  let shift_left i bits = call ["lsl"] [i; Exp.constant (Const.int bits)]
+  let shift_left i bits =
+    mk @@ call ["lsl"] [i.expr; Exp.constant (Const.int bits)]
 
-  let shift_right i bits = call ["lsr"] [i; Exp.constant (Const.int bits)]
+  let shift_right i bits =
+    mk @@ call ["lsr"] [i.expr; Exp.constant (Const.int bits)]
 
   let lam ~name f =
     let patt = pvar name in
     let var = ident name in
-    Exp.fun_ Nolabel None patt (f var)
+    let f, lifted = lift (f (mk @@ var)) in
+    {(mk @@ Exp.fun_ Nolabel None patt f) with lifted}
 
-  let app x y = Exp.apply x [(Nolabel, y)]
+  let app x y =
+    let rec go ?acc x =
+      let open Option_syntax in
+      match x with
+      | [] -> acc
+      | x :: rest -> (
+          match acc with
+          | None -> go ~acc:x rest
+          | Some acc ->
+              let* res = merge acc x in
+              go ~acc:res rest)
+    in
+    let x, lifted = lift x in
+    let y, lifted2 = lift y in
+    {
+      (mk @@ Exp.apply x [(Nolabel, y)]) with
+      lifted = go (List.concat_map Option.to_list [lifted; lifted2]);
+    }
 
   let let_ ~name m f =
     let id = ident name in
     let var = pvar name in
-    Exp.let_ Nonrecursive [Vb.mk var m] (f id)
+    let f, lifted = lift (f (mk @@ id)) in
+    let m, lifted2 = lift m in
+    let bindings = ref String.Set.empty in
+    let mapper =
+      let open Ast_mapper in
+      {
+        default_mapper with
+        expr =
+          (fun mapper expr ->
+            match expr with
+            | {pexp_desc = Parsetree.Pexp_let (_, [binding], e); _} ->
+                let expr' = binding.pvb_expr in
+                if m = expr' then
+                  let () =
+                    match binding.pvb_pat.ppat_desc with
+                    | Parsetree.Ppat_var x ->
+                        bindings := String.Set.add x.txt !bindings
+                    | _ -> ()
+                  in
+                  mapper.expr mapper e
+                else default_mapper.expr mapper expr
+            | {
+             pexp_desc = Parsetree.Pexp_ident {txt = Longident.Lident x; _};
+             _;
+            } ->
+                if String.Set.mem x !bindings then id
+                else default_mapper.expr mapper expr
+            | other -> default_mapper.expr mapper other);
+      }
+    in
+    let f = mapper.expr mapper f in
+    let is_rebind, remap =
+      match m.pexp_desc with
+      | Parsetree.Pexp_ident {txt = Longident.Lident _; _} ->
+          bindings := String.Set.singleton name ;
+          let mapper =
+            let open Ast_mapper in
+            {
+              default_mapper with
+              expr =
+                (fun mapper expr ->
+                  match expr with
+                  | {
+                   pexp_desc =
+                     Parsetree.Pexp_ident {txt = Longident.Lident x; _};
+                   _;
+                  } ->
+                      if String.Set.mem x !bindings then m else expr
+                  | other -> default_mapper.expr mapper other);
+            }
+          in
+          (true, mapper.expr mapper)
+      | _ -> (false, Fun.id)
+    in
+    let result =
+      if is_rebind then remap f else Exp.let_ Nonrecursive [Vb.mk var m] f
+    in
+    let rec go ?acc x =
+      let open Option_syntax in
+      match x with
+      | [] -> acc
+      | x :: rest -> (
+          match acc with
+          | None -> go ~acc:x rest
+          | Some acc ->
+              let* res = merge acc x in
+              go ~acc:res rest)
+    in
+    {
+      (mk @@ result) with
+      lifted = go (List.concat_map Option.to_list [lifted; lifted2]);
+    }
 
-  let if_ cond ift iff = Exp.ifthenelse cond ift (Some iff)
+  let if_ cond ift iff = mk @@ Exp.ifthenelse cond.expr ift.expr (Some iff.expr)
 end
 
 let detach_funcs =
@@ -163,8 +383,8 @@ let generate_let_binding =
   let open Ast_helper in
   let open Codegen_helpers in
   let let_open_in x expr = Exp.open_ (Opn.mk (Mod.ident (loc_ident x))) expr in
-  fun name expr ->
-    let args, expr = detach_funcs expr in
+  fun name expr' ->
+    let args, expr = detach_funcs expr'.expr in
     let used_vars =
       let vs = ref [] in
       let super = Ast_iterator.default_iterator in
@@ -191,9 +411,19 @@ let generate_let_binding =
         expr
         args
     in
-    let expr = let_open_in "S.Syntax" expr in
+    let expr'' = expr'.lifted in
     let expr = restore_funcs ~used_vars (args, expr) in
-    Str.value Asttypes.Nonrecursive [Vb.mk (pvar name) expr]
+    let rest =
+      match expr'' with
+      | None -> expr
+      | Some x -> (
+          match extract x with
+          | Some (bindings, _) -> Exp.let_ Nonrecursive bindings expr
+          | _ -> expr)
+    in
+    Str.value
+      Asttypes.Nonrecursive
+      [Vb.mk (pvar name) (let_open_in "S.Syntax" rest)]
 
 (* ------------------------------------------------------------------------- *)
 
@@ -379,6 +609,7 @@ let codegen_models models sol transform ~exclusions =
       then None
       else
         let code = codegen model sol transform model_name in
+        reset_id () ;
         Some (List.map (fun destination -> (destination, code)) benchmarks))
     models
   |> List.flatten
