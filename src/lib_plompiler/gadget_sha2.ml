@@ -359,5 +359,5 @@ functor
   ->
   MAKE (L) (Sha512)
     (L.Limbs (struct
-      let nb_bits = 4
+      let nb_bits = 8
     end))

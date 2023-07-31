@@ -238,6 +238,54 @@ let table_rotate_right4_3 =
   Table.of_list
   @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 3)
 
+(* 8-bit lookup *)
+let table_bnot8 =
+  let nb_bits = 8 in
+  let mask8 = (1 lsl nb_bits) - 1 in
+  Table.of_list
+  @@ generate_lookup_table_op1 ~nb_bits (fun x -> Int.(logand (lognot x) mask8))
+
+let table_xor8 =
+  Table.of_list @@ generate_lookup_table_op2 ~nb_bits:8 Int.logxor
+
+let table_band8 =
+  Table.of_list @@ generate_lookup_table_op2 ~nb_bits:8 Int.logand
+
+let table_rotate_right8_1 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 1)
+
+let table_rotate_right8_2 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 2)
+
+let table_rotate_right8_3 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 3)
+
+let table_rotate_right8_4 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 4)
+
+let table_rotate_right8_5 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 5)
+
+let table_rotate_right8_6 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 6)
+
+let table_rotate_right8_7 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 7)
+
 module Tables = Map.Make (String)
 
 let table_registry =
@@ -251,6 +299,17 @@ let table_registry =
   let t = Tables.add "rotate_right4_1" table_rotate_right4_1 t in
   let t = Tables.add "rotate_right4_2" table_rotate_right4_2 t in
   let t = Tables.add "rotate_right4_3" table_rotate_right4_3 t in
+  (* 8-bit lookup *)
+  let t = Tables.add "bnot8" table_bnot8 t in
+  let t = Tables.add "xor8" table_xor8 t in
+  let t = Tables.add "band8" table_band8 t in
+  let t = Tables.add "rotate_right8_1" table_rotate_right8_1 t in
+  let t = Tables.add "rotate_right8_2" table_rotate_right8_2 t in
+  let t = Tables.add "rotate_right8_3" table_rotate_right8_3 t in
+  let t = Tables.add "rotate_right8_4" table_rotate_right8_4 t in
+  let t = Tables.add "rotate_right8_5" table_rotate_right8_5 t in
+  let t = Tables.add "rotate_right8_6" table_rotate_right8_6 t in
+  let t = Tables.add "rotate_right8_7" table_rotate_right8_7 t in
   t
 
 module CS = struct
