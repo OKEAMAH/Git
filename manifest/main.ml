@@ -1624,6 +1624,7 @@ let octez_plonk =
         hacl_star;
         data_encoding |> open_;
         octez_bls12_381_polynomial |> open_;
+        octez_crypto;
         octez_plompiler |> open_;
         str;
       ]
@@ -1886,7 +1887,6 @@ let octez_crypto_dal =
         octez_error_monad |> open_;
         data_encoding |> open_;
         octez_dal_config |> open_;
-        octez_crypto;
         octez_bls12_381_polynomial;
         lwt_unix;
         octez_plonk;

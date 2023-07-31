@@ -10,6 +10,7 @@
   hacl-star
   data-encoding
   octez-libs.octez-bls12-381-polynomial
+  octez-libs.tezos-crypto
   octez-libs.octez-plompiler
   str)
  (preprocess (pps ppx_repr))
