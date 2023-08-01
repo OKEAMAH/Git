@@ -38,6 +38,8 @@ let mone = S.(negate one)
 
 let wql, wqr, wqo = (0, 1, 2)
 
+type limb = Y of (S.t * int)
+
 type scalar = X of S.t
 
 (* Wire representation.
@@ -45,6 +47,7 @@ type scalar = X of S.t
 type _ repr =
   | Unit : unit repr
   | Scalar : int -> scalar repr
+  | Limb : int -> limb repr
   | Bool : int -> bool repr
   | Pair : 'a repr * 'b repr -> ('a * 'b) repr
   | List : 'a repr list -> 'a list repr
@@ -182,6 +185,7 @@ module Input = struct
   type 'a t' =
     | U : unit t'
     | S : scalar -> scalar t'
+    | Limb : limb -> limb t'
     | B : bool -> bool t'
     | P : 'a t' * 'b t' -> ('a * 'b) t'
     | L : 'a t' list -> 'a list t'
@@ -236,6 +240,7 @@ module Input = struct
     match input with
     | U -> (Unit, start)
     | S _ -> (Scalar start, start + 1)
+    | Limb _ -> (Limb start, start + 1)
     | B _ -> (Bool start, start + 1)
     | P (l, r) ->
         let l, m = make_repr l start in
@@ -268,6 +273,7 @@ let rec encode : type a. a Input.t' -> S.t list =
   match input with
   | U -> []
   | S (X s) -> [s]
+  | Limb (Y (s, _)) -> [s]
   | B b -> if b then [S.one] else [S.zero]
   | P (l, r) -> encode l @ encode r
   | L l -> List.concat_map encode l
@@ -279,7 +285,7 @@ let serialize i = Array.of_list @@ encode i
 let rec eq : type a. a repr -> a repr -> bool =
  fun a b ->
   match (a, b) with
-  | Scalar a, Scalar b | Bool a, Bool b -> a = b
+  | Limb a, Limb b | Scalar a, Scalar b | Bool a, Bool b -> a = b
   | Pair (al, ar), Pair (bl, br) -> eq al bl && eq ar br
   | List l1, List l2 -> List.for_all2 eq l1 l2
   | Unit, Unit -> true
@@ -403,6 +409,20 @@ let input : type a. ?kind:input_kind -> a Input.t -> a repr t =
     | Input.S _ ->
         let r, nvars = Input.make_repr inp s.nvars in
         ({s with nvars; inputs; input_com_sizes; pi_size; input_flag}, r)
+    | Input.Limb (Y (_, nb_bits)) ->
+        let Limb r, nvars = Input.make_repr inp s.nvars in
+        let s =
+          {
+            s with
+            nvars;
+            inputs;
+            input_com_sizes;
+            pi_size;
+            input_flag;
+            range_checks = Range_checks.add ~nb_bits r s.range_checks;
+          }
+        in
+        (s, Limb r)
     | Input.B _ ->
         let Bool o, nvars = Input.make_repr inp s.nvars in
         let s =
@@ -466,6 +486,16 @@ let fresh : type a. a Input.t' -> a repr t =
     | Input.U | Input.S _ ->
         let r, nvars = Input.make_repr input s.nvars in
         ({s with nvars}, r)
+    | Input.Limb (Y (_, nb_bits)) ->
+        let Limb o, nvars = Input.make_repr input s.nvars in
+        let s =
+          {
+            s with
+            nvars;
+            range_checks = Range_checks.add ~nb_bits o s.range_checks;
+          }
+        in
+        (s, Limb o)
     | Input.B _ ->
         let Bool o, nvars = Input.make_repr input s.nvars in
         let s, _ =
@@ -504,6 +534,9 @@ let deserialize : type a. S.t array -> a Input.t -> a Input.t =
     | S _ ->
         let s = a.(i) in
         (S (X s), i + 1)
+    | Limb (Y (_, nb_bits)) ->
+        let s = a.(i) in
+        (Limb (Y (s, nb_bits)), i + 1)
     | B _ ->
         let s = a.(i) in
         (B (S.is_one s), i + 1)
@@ -525,6 +558,8 @@ let deserialize : type a. S.t array -> a Input.t -> a Input.t =
   fun a (w, check) -> (fst @@ aux a w 0, check)
 
 let scalar_of_bool (Bool b) = Scalar b
+
+let scalar_of_limb (Limb l) = Scalar l
 
 let unsafe_bool_of_scalar (Scalar b) = Bool b
 
@@ -841,6 +876,10 @@ module Bool = struct
       match (x, y) with
       | Unit, Unit -> ret (pair Unit Unit)
       | Scalar _, Scalar _ -> scalar_swap b x y
+      | Limb _, Limb _ ->
+          let* res = scalar_swap b (scalar_of_limb x) (scalar_of_limb y) in
+          let Scalar u, Scalar v = of_pair res in
+          ret @@ pair (Limb u) (Limb v)
       | Bool _, Bool _ ->
           let* res = scalar_swap b (scalar_of_bool x) (scalar_of_bool y) in
           let Scalar u, Scalar v = of_pair res in
@@ -962,7 +1001,7 @@ let assert_equal : type a. a repr -> a repr -> unit repr t =
    fun a b ->
     match (a, b) with
     | Unit, Unit -> ret Unit
-    | Bool a, Bool b | Scalar a, Scalar b ->
+    | Bool a, Bool b | Limb a, Limb b | Scalar a, Scalar b ->
         append
           [|
             CS.new_constraint
@@ -984,6 +1023,9 @@ let equal : type a. a repr -> a repr -> bool repr t =
     match (a, b) with
     | Unit, Unit -> Bool.constant true
     | Bool a, Bool b ->
+        let* s = sub (Scalar a) (Scalar b) in
+        is_zero s
+    | Limb a, Limb b ->
         let* s = sub (Scalar a) (Scalar b) in
         is_zero s
     | Scalar _, Scalar _ ->
