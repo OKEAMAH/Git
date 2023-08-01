@@ -143,6 +143,7 @@
   Storage_sigs
   Storage_functors
   Storage
+  Global_constants_costs
   Ticket_hash_builder
   Constants_storage
   Level_storage
@@ -189,7 +190,6 @@
   Remove_zero_amount_ticket_migration_for_o
   Legacy_script_patches
   Sapling_validator
-  Global_constants_costs
   Global_constants_storage
   Sc_rollup_staker_index_storage
   Sc_rollup_commitment_storage
@@ -417,6 +417,7 @@
   storage_sigs.ml
   storage_functors.ml storage_functors.mli
   storage.ml storage.mli
+  global_constants_costs.ml global_constants_costs.mli
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
@@ -464,7 +465,6 @@
   remove_zero_amount_ticket_migration_for_o.ml
   legacy_script_patches.ml
   sapling_validator.ml
-  global_constants_costs.ml global_constants_costs.mli
   global_constants_storage.ml global_constants_storage.mli
   sc_rollup_staker_index_storage.ml sc_rollup_staker_index_storage.mli
   sc_rollup_commitment_storage.ml sc_rollup_commitment_storage.mli
@@ -693,6 +693,7 @@
   storage_sigs.ml
   storage_functors.ml storage_functors.mli
   storage.ml storage.mli
+  global_constants_costs.ml global_constants_costs.mli
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
@@ -740,7 +741,6 @@
   remove_zero_amount_ticket_migration_for_o.ml
   legacy_script_patches.ml
   sapling_validator.ml
-  global_constants_costs.ml global_constants_costs.mli
   global_constants_storage.ml global_constants_storage.mli
   sc_rollup_staker_index_storage.ml sc_rollup_staker_index_storage.mli
   sc_rollup_commitment_storage.ml sc_rollup_commitment_storage.mli
@@ -953,6 +953,7 @@
   storage_sigs.ml
   storage_functors.ml storage_functors.mli
   storage.ml storage.mli
+  global_constants_costs.ml global_constants_costs.mli
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
@@ -1000,7 +1001,6 @@
   remove_zero_amount_ticket_migration_for_o.ml
   legacy_script_patches.ml
   sapling_validator.ml
-  global_constants_costs.ml global_constants_costs.mli
   global_constants_storage.ml global_constants_storage.mli
   sc_rollup_staker_index_storage.ml sc_rollup_staker_index_storage.mli
   sc_rollup_commitment_storage.ml sc_rollup_commitment_storage.mli

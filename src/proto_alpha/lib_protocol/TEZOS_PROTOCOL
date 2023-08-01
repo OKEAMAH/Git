@@ -124,6 +124,7 @@
         "Storage_functors",
         "Storage",
 
+        "Global_constants_costs",
         "Ticket_hash_builder",
         "Constants_storage",
         "Level_storage",
@@ -176,7 +177,6 @@
         "Legacy_script_patches",
         "Sapling_validator",
 
-        "Global_constants_costs",
         "Global_constants_storage",
         "Sc_rollup_staker_index_storage",
         "Sc_rollup_commitment_storage",
