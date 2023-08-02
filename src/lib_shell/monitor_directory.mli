@@ -22,6 +22,15 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+val monitor_head :
+  head_watcher:Store.Block.t Lwt_stream.t * Lwt_watcher.stopper ->
+  Store.t ->
+  Chain_services.chain ->
+  < next_protocols : Protocol_hash.t trace
+  ; protocols : Protocol_hash.t trace
+  ; .. > ->
+  unit ->
+  (Block_hash.t * Block_header.t) Tezos_rpc.Answer.t Lwt.t
 
 val build_rpc_directory :
   commit_info:Node_version.commit_info ->
