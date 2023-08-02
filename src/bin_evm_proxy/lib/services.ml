@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -77,7 +78,7 @@ let dispatch_service =
     Path.(root)
 
 let get_block ~full_transaction_object block_param
-    (module Rollup_node_rpc : Rollup_node.S) =
+    (module Rollup_node_rpc : Current_rollup_node.S) =
   match block_param with
   | Ethereum_types.(Hash_param (Block_height n)) ->
       Rollup_node_rpc.nth_block ~full_transaction_object n
@@ -85,11 +86,16 @@ let get_block ~full_transaction_object block_param
       Rollup_node_rpc.current_block ~full_transaction_object
 
 let dispatch_input
-    ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) (input, id)
-    =
+    ((module Rollup_node_rpc : Current_rollup_node.S), smart_rollup_address)
+    (input, id) =
   let open Lwt_result_syntax in
   let* output =
     match input with
+    (* INTERNAL RPCs *)
+    | Kernel_version.Input _ ->
+        let* kernel_version = Rollup_node_rpc.kernel_version () in
+        return (Kernel_version.Output (Ok kernel_version))
+    (* ETHEREUM JSON-RPC API *)
     | Accounts.Input _ -> return (Accounts.Output (Ok []))
     | Network_id.Input _ ->
         let* (Qty chain_id) = Rollup_node_rpc.chain_id () in
@@ -166,5 +172,5 @@ let dispatch ctx dir =
           let+ outputs = List.map_es (dispatch_input ctx) inputs in
           Batch outputs)
 
-let directory (rollup_node_config : (module Rollup_node.S) * string) =
+let directory (rollup_node_config : (module Current_rollup_node.S) * string) =
   Directory.empty |> version |> dispatch rollup_node_config

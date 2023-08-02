@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -90,6 +91,10 @@ module Event = struct
       ("port", Data_encoding.uint16)
 end
 
+(* This version is the one compatible with the latest released/deployed
+   kernel. *)
+let current_kernel_version = "75c84da3cebf0f9a45d339dea12f0a4e4786ed8f"
+
 let start {rpc_addr; rpc_port; debug; rollup_node_endpoint} =
   let open Lwt_result_syntax in
   let open Tezos_rpc_http_server in
@@ -100,14 +105,28 @@ let start {rpc_addr; rpc_port; debug; rollup_node_endpoint} =
   let* rollup_node_config =
     match rollup_node_endpoint with
     | Endpoint endpoint ->
-        let module Rollup_node_rpc = Rollup_node.Make (struct
+        let module Current_rollup_node_rpc = Current_rollup_node.Make (struct
           let base = endpoint
         end) in
+        (* Since the proxy is stateless, for now, we have to check the kernel version
+           before executing any RPC. *)
+        let* kernel_version = Current_rollup_node_rpc.kernel_version () in
+        let (module Rollup_node_rpc) =
+          if kernel_version = current_kernel_version then
+            (module Current_rollup_node_rpc : Current_rollup_node.S)
+          else
+            let module Next_rollup_node_rpc = Next_rollup_node.Make (struct
+              let base = endpoint
+            end) in
+            (module Next_rollup_node_rpc)
+        in
         let* smart_rollup_address = Rollup_node_rpc.smart_rollup_address in
-        return ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
+        return
+          ( (module Rollup_node_rpc : Current_rollup_node.S),
+            smart_rollup_address )
     | Mockup ->
         let* smart_rollup_address = Mockup.smart_rollup_address in
-        return ((module Mockup : Rollup_node.S), smart_rollup_address)
+        return ((module Mockup : Current_rollup_node.S), smart_rollup_address)
   in
   let directory = Services.directory rollup_node_config in
   let server =
