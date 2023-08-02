@@ -199,10 +199,12 @@ let serialization_cost_estimated_from_bytes bytes_len =
   @@ Micheline_encoding.bytes_dependent_cost (S.safe_int bytes_len)
 
 let cost_micheline_strip_locations size =
-  Gas_limit_repr.atomic_step_cost @@ Script_repr_costs.cost_strip_locations_micheline size
+  Gas_limit_repr.atomic_step_cost
+  @@ Script_repr_costs.cost_strip_locations_micheline size
 
 let cost_micheline_strip_annotations size =
-  Gas_limit_repr.atomic_step_cost @@ Script_repr_costs.cost_strip_annotations size
+  Gas_limit_repr.atomic_step_cost
+  @@ Script_repr_costs.cost_strip_annotations size
 
 (* This is currently used to estimate the cost of serializing an operation. *)
 let bytes_node_cost s = serialization_cost_estimated_from_bytes (Bytes.length s)

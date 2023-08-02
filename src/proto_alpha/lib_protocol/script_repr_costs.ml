@@ -78,5 +78,4 @@ let cost_strip_locations_micheline size =
    [Script_repr_benchmarks.Script_repr_strip_annotations].
 *)
 (* model script_repr/strip_annotations *)
-let cost_strip_annotations size =
-  S.mul (S.safe_int size) (S.safe_int 51)
+let cost_strip_annotations size = S.mul (S.safe_int size) (S.safe_int 51)
