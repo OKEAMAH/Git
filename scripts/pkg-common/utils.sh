@@ -1,14 +1,18 @@
 #!/bin/sh
 
-file="script-inputs/active_protocol_versions_without_number"
+# Initialise from active protocol versions
+#
+proto_file="script-inputs/active_protocol_versions_without_number"
 
-if [ ! -f $file ]; then
+if [ ! -f $proto_file ]; then
         echo "Cannot find active protocol list"
         exit 2
 fi
-protocols=$(tr '\n' ' ' < $file | sed -e 's/ $//g')
+protocols=$(tr '\n' ' ' < $proto_file | sed -e 's/ $//g')
 
 
+# Expand protocols in configuration and init files
+#
 expand_PROTOCOL() {
     file="$1"
 
