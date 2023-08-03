@@ -52,14 +52,10 @@ for specfile in "$myhome"/*spec.in; do
 
 	binaries=fixBinaryList "${common}/${pg}-binaries"
 
-  zcashstuff=
-  if [ -f "${common}/${pg}-zcash" ]; then
-    zcashstuff=$(cat "${common}/${pg}-zcash" 2>/dev/null)
-  fi
 
 	if [ -f "$rpm_fullname" ]; then
 		echo "built already - skipping"
-    continue
+    		continue
 	fi
 
 	tar_name=${rpm_name}-${pkg_vers}
@@ -101,13 +97,7 @@ for specfile in "$myhome"/*spec.in; do
 
 	# Zcash parameters must ship with the node
 	#
-	if [ -n "${zcashstuff}" ]; then
-		echo "=> Zcash"
-		mkdir -p "${build_dir}/usr/share/zcash-params"
-		for shr in ${zcashstuff}; do
-			cp "_opam/share/zcash-params/${shr}" "${build_dir}/usr/share/zcash-params"
-		done
-	fi
+	zcashParams ${common}/${pg}-zcash "${build_dir}/usr/share/zcash-params"
 
 	# Edit the spec file to contain real values
 	#
