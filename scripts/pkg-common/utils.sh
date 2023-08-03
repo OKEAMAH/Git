@@ -1,0 +1,120 @@
+#!/bin/sh
+
+# Common packaging routines for Octez
+#
+
+# A better way to do this would be to build the package from source
+# but given the various hurdles of Rust and OPAM during the build
+# we construct packages afterwards. Which is not best practice :-)
+#
+# A better strategy would be to extract the version number, build a
+# master spec file, build Octez and then make the packages from the
+# master spec file.
+#
+# Place files in the dpkg directory to declare a package. e.g.
+#
+# baker-control.in      - a template for the Debian control file
+#
+# Place files in the rpm directory to declare packages similarly:
+#
+# baker-spec.in         - a template for the RPM SPEC file
+# cf. https://rpm-packaging-guide.github.io/#binary-rpms
+#
+# These files are shared with the Debian package build in pkg-common
+#
+# baker.conf            - an example configuration file (optional)
+# baker-binaries.in        - the list of binaries to include
+# baker.initd.in           - System V init script (optional)
+#
+# Where Protocol variations are needed use @PROTOCOL@ and @PROTOCOLS@
+#
+# You can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
+# to change from the defaults.
+#
+
+
+# Initialise from active protocol versions
+#
+proto_file="script-inputs/active_protocol_versions_without_number"
+
+if [ ! -f $proto_file ]; then
+        echo "Cannot find active protocol list"
+        exit 2
+fi
+protocols=$(tr '\n' ' ' < $proto_file | sed -e 's/ $//g')
+
+expand_PROTOCOL() {
+    file="$1"
+
+    protocols_formatted=""
+    for i in $protocols; do
+        protocols_formatted="$protocols_formatted\\1${i}\\2\\n"
+    done
+
+    sed -e "/@PROTOCOL@/ { s/^\(.*\)@PROTOCOL@\(.*\)$/$protocols_formatted/; s/\\n$//; }" "$file"
+
+    sed -e "s/@PROTOCOLS@/$protocols_formatted/g" "$file"
+}
+
+# Get Octez version from the build
+#
+
+getOctezVersion() {
+
+	if ! _vers=$(dune exec tezos-version 2>/dev/null); then
+		echo "Cannot get version. Try eval \`opam env\`?"
+		exit 1
+	fi
+	_vers_fix=$(echo "$_vers" | sed -e 's/\~//' -e 's/\+//')
+	echo "$_vers_fix"
+}
+
+# Build init.d scripts
+#
+
+initdScripts() {
+	_initin=$1 	# Init script
+	_inittarget=$2	# The target (e.g. octez-node)
+	_stagedir=$3	# The staging area
+       	_initd="${_stagedir}/etc/init.d"
+
+	if [ -f "${_initin}" ]; then
+                mkdir -p "${_initd}"
+		expand_PROTOCOL "${_initin}" \
+			> "${_initd}/${_inittarget}"
+                chmod +x "${_initd}/${_inittarget}"
+        fi
+
+}
+
+# Fix up the binary lists
+#
+fixBinaryList() {
+	_binlist=$1
+	_binaries=""
+	if [ -f "${_binlist}.in" ]; then
+            expand_PROTOCOL "${_binlist}.in" > "${_binlist}"
+        fi
+
+        if [ -f "${_binlist}" ]; then
+                _binaries=$(cat "${_binlist}" 2>/dev/null)
+        fi
+	echo "$_binaries"
+}
+
+# Deal with Zcash parameters
+#
+zcashParams() {
+	_pkgzcash=$1
+	_zcashtgt=$2
+
+	if [ -f "${_pkgzcash}" ]; then
+		zcashstuff=$(cat "${_pkgzcash}" 2>/dev/null)
+		echo "=> Zcash"
+		mkdir -p "${_zcashtgt}"
+		for shr in ${zcashstuff}; do
+      cp "${shr}" "${_zcashtgt}"
+    done
+	fi
+}
+
