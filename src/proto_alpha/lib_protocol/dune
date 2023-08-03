@@ -109,6 +109,7 @@
   Dal_errors_repr
   Dal_operations_repr
   Dal_costs_generated
+  Dal_costs
   Zk_rollup_scalar
   Zk_rollup_repr
   Zk_rollup_state_repr
@@ -382,6 +383,7 @@
   dal_errors_repr.ml
   dal_operations_repr.ml dal_operations_repr.mli
   dal_costs_generated.ml dal_costs_generated.mli
+  dal_costs.ml
   zk_rollup_scalar.ml zk_rollup_scalar.mli
   zk_rollup_repr.ml zk_rollup_repr.mli
   zk_rollup_state_repr.ml zk_rollup_state_repr.mli
@@ -658,6 +660,7 @@
   dal_errors_repr.ml
   dal_operations_repr.ml dal_operations_repr.mli
   dal_costs_generated.ml dal_costs_generated.mli
+  dal_costs.ml
   zk_rollup_scalar.ml zk_rollup_scalar.mli
   zk_rollup_repr.ml zk_rollup_repr.mli
   zk_rollup_state_repr.ml zk_rollup_state_repr.mli
@@ -918,6 +921,7 @@
   dal_errors_repr.ml
   dal_operations_repr.ml dal_operations_repr.mli
   dal_costs_generated.ml dal_costs_generated.mli
+  dal_costs.ml
   zk_rollup_scalar.ml zk_rollup_scalar.mli
   zk_rollup_repr.ml zk_rollup_repr.mli
   zk_rollup_state_repr.ml zk_rollup_state_repr.mli
