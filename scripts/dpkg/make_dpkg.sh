@@ -18,9 +18,6 @@ protocols=${protocols:?protocols not specified} # Not used?
 
 warnings
 pkg_vers=getOctezVersion
-
-### Debian specific
-
 staging_root=_dpkgstage
 
 # Checking prerequisites
@@ -41,9 +38,6 @@ for control_file in "$myhome"/*control.in; do
 	pg=$(basename "$control_file" | sed -e 's/-control.in$//g')
 	echo "===> Building package $pg v$pkg_vers rev $OCTEZ_PKGREV"
 
-	if [ -f "${common}/${pg}-binaries.in" ]; then
-	    expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
-	fi
 
 	# Derivative variables
 	#
@@ -51,13 +45,14 @@ for control_file in "$myhome"/*control.in; do
 	init_name=${OCTEZ_REALNAME}-${pg}
 	dpkg_dir="${dpkg_name}_${pkg_vers}-${OCTEZ_PKGREV}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
-  if [ -f "${common}/${pg}-binaries" ]; then
-    binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)
-  fi
-  zcashstuff=
-  if [ -f "${common}/${pg}-zcash" ]; then
-    zcashstuff=$(cat "${common}/${pg}-zcash" 2>/dev/null)
-  fi
+	
+
+	binaries=fixBinaryList "${common}/${pg}-binaries"
+
+	zcashstuff=""
+	if [ -f "${common}/${pg}-zcash" ]; then
+		zcashstuff=$(cat "${common}/${pg}-zcash" 2>/dev/null)
+	fi
 
 	if [ -f "$dpkg_fullname" ]; then
 		echo "built already - skipping"

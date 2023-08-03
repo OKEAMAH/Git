@@ -44,18 +44,14 @@ for specfile in "$myhome"/*spec.in; do
 	pg=$(basename "$specfile" | sed -e 's/-spec.in$//g')
 	echo "===> Building package $pg v$pkg_vers rev $OCTEZ_PKGREV"
 
-	if [ -f "${common}/${pg}-binaries.in" ]; then
-	  expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
-	fi
-
 	# Derivative variables
 	#
 	rpm_name=${OCTEZ_PKGNAME}-${pg}
 	init_name=${OCTEZ_REALNAME}-${pg}
 	rpm_fullname="${rpm_name}-${pkg_vers}-${OCTEZ_PKGREV}.${rpm_arch}.rpm"
-  if [ -f "${common}/${pg}-binaries" ]; then
-    binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)
-  fi
+
+	binaries=fixBinaryList "${common}/${pg}-binaries"
+
   zcashstuff=
   if [ -f "${common}/${pg}-zcash" ]; then
     zcashstuff=$(cat "${common}/${pg}-zcash" 2>/dev/null)

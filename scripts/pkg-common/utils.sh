@@ -138,3 +138,18 @@ initdScripts($$$) {
         fi
 
 }	
+
+# Fix up the binary lists
+#
+fixBinaryList($) {
+	_binlist=$1
+	_binaries=""
+	if [ -f "${_binlist}.in" ]; then
+            expand_PROTOCOL "${_binlist}.in" > "${_binlist}"
+        fi
+
+        if [ -f "${_binlist}" ]; then
+                _binaries=$(cat "${_binlist}" 2>/dev/null)
+        fi
+	return $_binaries
+}	
