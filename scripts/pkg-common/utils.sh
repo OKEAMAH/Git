@@ -161,7 +161,7 @@ zcashParams() {
 	_zcashtgt=$2
 
 	if [ -f "${_pkgzcash}" ]; then
-		zcashstuff=$(cat "${_pkgcash}" 2>/dev/null)
+		zcashstuff=$(cat "${_pkgzcash}" 2>/dev/null)
 		echo "=> Zcash"
 		mkdir -p "${_zcashtgt}"
 		for shr in ${zcashstuff}; do
