@@ -45,6 +45,9 @@ protocols=$(tr '\n' ' ' < $proto_file | sed -e 's/ $//g')
 
 # Variables
 #
+# Where the zcash files are
+zcashdir="_opam/share/zcash-params"
+#
 # Package maintainer
 OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
 #
@@ -165,7 +168,7 @@ zcashParams() {
 		echo "=> Zcash"
 		mkdir -p "${_zcashtgt}"
 		for shr in ${zcashstuff}; do
-                        cp "_opam/share/zcash-params/${shr}" \
+                        cp "${zcashdir}/${shr}" \
 				"${_zcashtgt}"
                 done
 	fi
