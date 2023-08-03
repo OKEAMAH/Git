@@ -30,9 +30,6 @@
 # baker.initd		- System V init script (optional)
 #
 # you can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
-# OR:
-# Edit scripts/rpm/maintainer for your maintenance e-mail and
-# scripts/rpm/pkgname to change the base name from octez to something else
 #
 
 set -eu
@@ -47,16 +44,6 @@ common=scripts/pkg-common
 protocols=${protocols:?protocols not specified}
 
 warnings
-
-# Maintainer
-#
-OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
-if [ -f "$myhome/maintainer" ]; then
-  OCTEZ_PKGMAINTAINER=$(cat "$myhome/maintainer")
-fi
-OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
-
-
 pkg_vers=getOctezVersion
 
 ### RPM specifc

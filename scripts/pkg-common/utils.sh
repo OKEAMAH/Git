@@ -10,6 +10,16 @@ if [ ! -f $proto_file ]; then
 fi
 protocols=$(tr '\n' ' ' < $proto_file | sed -e 's/ $//g')
 
+# Variables
+#
+# Package name and maintainer
+#
+OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
+OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
+export OCTEZ_PKGMAINTAINER
+export OCTEZ_PKGNAME
+
+
 
 # Expand protocols in configuration and init files
 #

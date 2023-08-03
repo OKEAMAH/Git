@@ -16,7 +16,7 @@
 # Place files in the dpkg directory to declare a package
 #
 # baker-control.in	- a template for the Debian control file
-# baker.initd		- System V init script (optional)
+# baker.initd.in	- System V init script (optional)
 #
 # These files are shared with the RPM build tool in the pkg-common
 # directory:
@@ -25,9 +25,6 @@
 # baker.conf		- an example configuration file (optional)
 #
 # you can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
-# OR:
-# Edit scripts/dpkg/maintainer for your maintenance e-mail and
-# scripts/dpkg/pkgname to change the base name from octez to something else
 #
 
 set -eu
@@ -39,19 +36,9 @@ common=scripts/pkg-common
 
 #shellcheck disable=SC1091
 . ${common}/utils.sh
-protocols=${protocols:?protocols not specified}
+protocols=${protocols:?protocols not specified} # Not used?
 
 warnings
-
-# Maintainer
-#
-OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
-if [ -f "$myhome/maintainer" ]; then
-	OCTEZ_PKGMAINTAINER=$(cat "$myhome/maintainer")
-fi
-OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
-
-
 pkg_vers=getOctezVersion
 
 ### Debian specific
