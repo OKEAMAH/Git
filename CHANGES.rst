@@ -358,3 +358,5 @@ Miscellaneous
 - Sapling parameters files are installed by ``make build-deps`` via opam
 
 - Removed binaries of Mumbai (MR :gl:`!9693`)
+
+- Beta scripts to build Debian and RedHat packages have been added to the tree.
