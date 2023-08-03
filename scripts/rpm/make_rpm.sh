@@ -96,10 +96,10 @@ for specfile in "$myhome"/*spec.in; do
 
 	# init.d scripts
 	#
-	initdScripts "${common}/${pg}.initd.in" ${init_name} ${build_dir}
+	initdScripts "${common}/${pg}.initd.in" "${init_name}" "${build_dir}"
   	if [ "$pg" = "baker" ]; then
 		initdScripts "${common}/vdf.initd.in" octez-vdf \
-			${build_dir}
+			"${build_dir}"
 	fi
 
 
@@ -113,7 +113,7 @@ for specfile in "$myhome"/*spec.in; do
 
 	# Zcash parameters must ship with the node
 	#
-	zcashParams ${common}/${pg}-zcash "${build_dir}/usr/share/zcash-params"
+	zcashParams "${common}/${pg}-zcash" "${build_dir}/usr/share/zcash-params"
 
 	# Edit the spec file to contain real values
 	#
