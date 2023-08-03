@@ -45,7 +45,7 @@ for control_file in "$myhome"/*control.in; do
 	dpkg_dir="${dpkg_name}_${pkg_vers}-${OCTEZ_PKGREV}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
 	
-	binaries=fixBinaryList "${common}/${pg}-binaries"
+	binaries=$(fixBinaryList "${common}/${pg}-binaries")
 
 	if [ -f "$dpkg_fullname" ]; then
 		echo "built already - skipping"
