@@ -34,10 +34,6 @@ spec_dir="${rpmbuild_root}/SPECS"
 rpm_dir="${rpmbuild_root}/RPMS"
 src_dir="${rpmbuild_root}/SOURCES"
 
-# Package name
-#
-rpm_real="octez"
-
 # Revision (set RPM_REV in the environment)
 #
 rpm_rev="${RPM_REV:-1}"
@@ -59,7 +55,7 @@ for specfile in "$myhome"/*spec.in; do
 	# Derivative variables
 	#
 	rpm_name=${OCTEZ_PKGNAME}-${pg}
-	init_name=${rpm_real}-${pg}
+	init_name=${OCTEZ_REALNAME}-${pg}
 	rpm_fullname="${rpm_name}-${pkg_vers}-${rpm_rev}.${rpm_arch}.rpm"
   if [ -f "${common}/${pg}-binaries" ]; then
     binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)

@@ -30,10 +30,6 @@ if ! which dpkg-deb >/dev/null 2>&1; then
 	exit 2
 fi
 
-# Package name
-#
-dpkg_base="octez"
-
 # Revision (set DPKG_REV in the environment)
 #
 dpkg_rev="${DPKG_REV:-1}"
@@ -57,7 +53,7 @@ for control_file in "$myhome"/*control.in; do
 	# Derivative variables
 	#
 	dpkg_name=${OCTEZ_PKGNAME}-${pg}
-	init_name=${dpkg_base}-${pg}
+	init_name=${OCTEZ_REALNAME}-${pg}
 	dpkg_dir="${dpkg_name}_${pkg_vers}-${dpkg_rev}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
   if [ -f "${common}/${pg}-binaries" ]; then
@@ -106,7 +102,7 @@ for control_file in "$myhome"/*control.in; do
 	sed -e "s/@ARCH@/${dpkg_arch}/g" -e "s/@VERSION@/$pkg_vers/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${dpkg_name}/g" \
-		-e "s/@DPKG@/${dpkg_base}/g" \
+		-e "s/@DPKG@/${OCTEZ_REALNAME}/g" \
 		-e "s/@DEPENDS@/${deps}/g" < "$control_file" \
 		> "${staging_dir}/DEBIAN/control"
 

@@ -45,12 +45,18 @@ protocols=$(tr '\n' ' ' < $proto_file | sed -e 's/ $//g')
 
 # Variables
 #
-# Package name and maintainer
-#
+# Package maintainer
 OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
+#
+# Package name used in dpkg or rpm name
 OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
+#
+# Real name used in scripts (usually octez)
+OCTEZ_REALNAME=${OCTEZ_REALNAME:-octez}
+
 export OCTEZ_PKGMAINTAINER
 export OCTEZ_PKGNAME
+export OCTEZ_REALNAME
 
 
 # Expand protocols in configuration and init files
