@@ -118,7 +118,7 @@ getOctezVersion() {
 		exit 1
 	fi
 	_vers_fix=$(echo "$_vers" | sed -e 's/\~//' -e 's/\+//')
-	return $_vers_fix
+	echo "$_vers_fix"
 }
 
 # Build init.d scripts
@@ -151,7 +151,7 @@ fixBinaryList() {
         if [ -f "${_binlist}" ]; then
                 _binaries=$(cat "${_binlist}" 2>/dev/null)
         fi
-	return $_binaries
+	echo $_binaries
 }
 
 # Deal with Zcash parameters
