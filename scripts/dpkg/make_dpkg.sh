@@ -52,12 +52,8 @@ OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
 
 protocols=${protocols:?protocols not specified}
 
-# Get Octez version from the build
-#
-if ! _vers=$(dune exec tezos-version 2>/dev/null); then
-	echo "Cannot get version. Try eval \`opam env\`?"
-	exit 1
-fi
+pkg_vers=getOctezVersion
+
 ### Debian specific
 
 staging_root=_dpkgstage
@@ -79,7 +75,6 @@ dpkg_base="octez"
 #
 dpkg_rev="${DPKG_REV:-1}"
 
-dpkg_vers=$(echo "$_vers" | sed -e 's/\~//' -e 's/\+//')
 
 # Get the local architecture
 #
@@ -90,7 +85,7 @@ dpkg_arch=$DEB_BUILD_ARCH
 #
 for control_file in "$myhome"/*control.in; do
 	pg=$(basename "$control_file" | sed -e 's/-control.in$//g')
-	echo "===> Building package $pg v$dpkg_vers rev $dpkg_rev"
+	echo "===> Building package $pg v$pkg_vers rev $dpkg_rev"
 
 	if [ -f "${common}/${pg}-binaries.in" ]; then
 	    expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
@@ -100,7 +95,7 @@ for control_file in "$myhome"/*control.in; do
 	#
 	dpkg_name=${dpkg_base}-${pg}
 	init_name=${dpkg_real}-${pg}
-	dpkg_dir="${dpkg_name}_${dpkg_vers}-${dpkg_rev}_${dpkg_arch}"
+	dpkg_dir="${dpkg_name}_${pkg_vers}-${dpkg_rev}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
   if [ -f "${common}/${pg}-binaries" ]; then
     binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)
@@ -145,7 +140,7 @@ for control_file in "$myhome"/*control.in; do
 
 	# Edit the control file to contain real values
 	#
-	sed -e "s/@ARCH@/${dpkg_arch}/g" -e "s/@VERSION@/$dpkg_vers/g" \
+	sed -e "s/@ARCH@/${dpkg_arch}/g" -e "s/@VERSION@/$pkg_vers/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${dpkg_name}/g" \
 		-e "s/@DPKG@/${dpkg_base}/g" \

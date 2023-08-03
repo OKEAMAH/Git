@@ -57,12 +57,7 @@ OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
 
 protocols=${protocols:?protocols not specified}
 
-# Get Octez version from the build
-#
-if ! _vers=$(dune exec tezos-version 2>/dev/null); then
-	echo "Cannot get version. Try eval \`opam env\`?"
-	exit 1
-fi
+pkg_vers=getOctezVersion
 
 ### RPM specifc
 
@@ -91,8 +86,6 @@ rpm_real="octez"
 #
 rpm_rev="${RPM_REV:-1}"
 
-rpm_vers=$(echo "$_vers" | sed -e 's/\~//' -e 's/\+//')
-
 # Get the local architecture
 #
 rpm_arch=$(uname -m)
@@ -101,7 +94,7 @@ rpm_arch=$(uname -m)
 #
 for specfile in "$myhome"/*spec.in; do
 	pg=$(basename "$specfile" | sed -e 's/-spec.in$//g')
-	echo "===> Building package $pg v$rpm_vers rev $rpm_rev"
+	echo "===> Building package $pg v$pkg_vers rev $rpm_rev"
 
 	if [ -f "${common}/${pg}-binaries.in" ]; then
 	  expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
@@ -111,7 +104,7 @@ for specfile in "$myhome"/*spec.in; do
 	#
 	rpm_name=${rpm_base}-${pg}
 	init_name=${rpm_real}-${pg}
-	rpm_fullname="${rpm_name}-${rpm_vers}-${rpm_rev}.${rpm_arch}.rpm"
+	rpm_fullname="${rpm_name}-${pkg_vers}-${rpm_rev}.${rpm_arch}.rpm"
   if [ -f "${common}/${pg}-binaries" ]; then
     binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)
   fi
@@ -125,7 +118,7 @@ for specfile in "$myhome"/*spec.in; do
     continue
 	fi
 
-	tar_name=${rpm_name}-${rpm_vers}
+	tar_name=${rpm_name}-${pkg_vers}
 	# Populate the staging directory with control scripts
 	# binaries and configuration as appropriate
 	#
@@ -180,7 +173,7 @@ for specfile in "$myhome"/*spec.in; do
 	# Edit the spec file to contain real values
 	#
 	spec_file="${pg}.spec"
-	sed -e "s/@ARCH@/${rpm_arch}/g" -e "s/@VERSION@/$rpm_vers/g" \
+	sed -e "s/@ARCH@/${rpm_arch}/g" -e "s/@VERSION@/$pkg_vers/g" \
 		-e "s/@REVISION@/${rpm_rev}/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${rpm_name}/g" \
