@@ -101,8 +101,7 @@ let ifft_inplace =
 let commit t = Commit.with_srs1 t.srs_g1
 
 let preprocess_equal (d1, a1) (d2, a2) =
-  Array.for_all2 Scalar.eq (Domain.to_array d1) (Domain.to_array d2)
-  && Array.for_all2 G1_carray.eq a1 a2
+  Domain.equal d1 d2 && Array.for_all2 G1_carray.eq a1 a2
 
 (* Notations
    =========
