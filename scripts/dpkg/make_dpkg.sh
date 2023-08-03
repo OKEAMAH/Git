@@ -48,11 +48,8 @@ for control_file in "$myhome"/*control.in; do
 	
 
 	binaries=fixBinaryList "${common}/${pg}-binaries"
+	
 
-	zcashstuff=""
-	if [ -f "${common}/${pg}-zcash" ]; then
-		zcashstuff=$(cat "${common}/${pg}-zcash" 2>/dev/null)
-	fi
 
 	if [ -f "$dpkg_fullname" ]; then
 		echo "built already - skipping"
@@ -121,14 +118,10 @@ for control_file in "$myhome"/*control.in; do
 		echo "/etc/octez/${pg}.conf" > "${staging_dir}/DEBIAN/conffiles"
 	fi
 
-	# Zcash parameters must ship with the node
+	# Zcash parameters ships with some packages
 	#
-	if [ -n "${zcashstuff}" ]; then
-		mkdir -p "${staging_dir}/usr/share/zcash-params"
-		for shr in ${zcashstuff}; do
-			cp "_opam/share/zcash-params/${shr}" "${staging_dir}/usr/share/zcash-params"
-		done
-	fi
+	zcashParams ${common}/${pg}-zcash \
+		"${staging_dir}/usr/share/zcash-params"
 
 	# Build the package
 	#

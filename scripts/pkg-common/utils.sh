@@ -152,4 +152,21 @@ fixBinaryList($) {
                 _binaries=$(cat "${_binlist}" 2>/dev/null)
         fi
 	return $_binaries
-}	
+}
+
+# Deal with Zcash parameters
+#
+zcashParams() {
+	_pkgzcash=$1
+
+	if [ -f "${_pkgzcash}" ]; then
+		zcashstuff=$(cat "${_pkgcash}" 2>/dev/null)
+		echo "=> Zcash"
+		mkdir -p "${_zcashtgt}"
+		for shr in ${zcashstuff}; do
+                        cp "_opam/share/zcash-params/${shr}" \
+				"${_zcashtgt}"
+                done
+	fi
+}
+
