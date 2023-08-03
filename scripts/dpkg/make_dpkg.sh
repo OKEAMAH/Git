@@ -39,6 +39,7 @@ common=scripts/pkg-common
 
 #shellcheck disable=SC1091
 . ${common}/utils.sh
+protocols=${protocols:?protocols not specified}
 
 warnings
 
@@ -50,7 +51,6 @@ if [ -f "$myhome/maintainer" ]; then
 fi
 OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
 
-protocols=${protocols:?protocols not specified}
 
 pkg_vers=getOctezVersion
 
