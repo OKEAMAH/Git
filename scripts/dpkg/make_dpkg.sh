@@ -17,7 +17,7 @@ common=scripts/pkg-common
 protocols=${protocols:?protocols not specified} # Not used?
 
 warnings
-pkg_vers=getOctezVersion
+pkg_vers=$(getOctezVersion)
 staging_root=_dpkgstage
 
 # Checking prerequisites

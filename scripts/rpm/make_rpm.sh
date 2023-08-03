@@ -16,7 +16,7 @@ common=scripts/pkg-common
 protocols=${protocols:?protocols not specified}
 
 warnings
-pkg_vers=getOctezVersion
+pkg_vers=$(getOctezVersion)
 
 ### RPM specifc
 
