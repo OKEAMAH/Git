@@ -1,5 +1,38 @@
 #!/bin/sh
 
+# Common packaging routines for Octez
+#
+
+# A better way to do this would be to build the package from source
+# but given the various hurdles of Rust and OPAM during the build
+# we construct packages afterwards. Which is not best practice :-)
+#
+# A better strategy would be to extract the version number, build a
+# master spec file, build Octez and then make the packages from the
+# master spec file.
+#
+# Place files in the dpkg directory to declare a package. e.g.
+#
+# baker-control.in      - a template for the Debian control file
+#
+# Place files in the rpm directory to declare packages similarly:
+#
+# baker-spec.in         - a template for the RPM SPEC file
+# cf. https://rpm-packaging-guide.github.io/#binary-rpms
+#
+# These files are shared with the Debian package build in pkg-common
+#
+# baker.conf            - an example configuration file (optional)
+# baker-binaries.in        - the list of binaries to include
+# baker.initd.in           - System V init script (optional)
+#
+# Where Protocol variations are needed use @PROTOCOL@ and @PROTOCOLS@
+#
+# You can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
+# to change from the defaults.
+#
+
+
 # Initialise from active protocol versions
 #
 proto_file="script-inputs/active_protocol_versions_without_number"

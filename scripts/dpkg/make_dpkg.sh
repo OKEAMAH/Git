@@ -3,29 +3,7 @@
 # Debian/Ubuntu package build for Octez
 #
 # (c) Chris Pinnock 2022-3, Supplied under a MIT license.
-
-# Packages
-#
-# A better way to do this would be to build the package from source
-# but given the various hurdles of Rust and OPAM during the build
-# we construct packages afterwards.
-#
-# Similarly this shares a lot of logic with ../rpm/make_rpm.sh.
-# Maybe they could be consolidated.
-#
-# Place files in the dpkg directory to declare a package
-#
-# baker-control.in	- a template for the Debian control file
-# baker.initd.in	- System V init script (optional)
-#
-# These files are shared with the RPM build tool in the pkg-common
-# directory:
-#
-# baker-binaries	- the list of binaries to include
-# baker.conf		- an example configuration file (optional)
-#
-# you can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
-#
+# see ../pkg-common/utils.sh for more detail
 
 set -eu
 
