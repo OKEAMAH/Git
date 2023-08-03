@@ -3,34 +3,7 @@
 # RPM package build for Octez
 #
 # (c) Chris Pinnock 2023, Supplied under a MIT license.
-
-# Packages
-#
-# A better way to do this would be to build the package from source
-# but given the various hurdles of Rust and OPAM during the build
-# we construct packages afterwards. Which is not best practice :-)
-#
-# Similarly this shares a lot of logic with ../dpkg/make_dpkg.sh.
-# Maybe they could be consolidated.
-#
-# A better strategy would be to extract the version number, build a
-# master spec file, build Octez and then make the packages from the
-# master spec file.
-#
-# https://rpm-packaging-guide.github.io/#binary-rpms
-#
-# Files in the rpm directory declare:
-#
-# baker-spec.in		- a template for the RPM SPEC file
-#
-# These files are shared with the Debian package build in pkg-common
-#
-# baker.conf		- an example configuration file (optional)
-# baker-binaries	- the list of binaries to include
-# baker.initd		- System V init script (optional)
-#
-# you can set OCTEZ_PKGMAINTAINER and OCTEZ_PKGNAME in the environment
-#
+# see ../pkg-common/utils.sh for more detail
 
 set -eu
 
@@ -67,7 +40,6 @@ src_dir="${rpmbuild_root}/SOURCES"
 rpm_base=${OCTEZ_PKGNAME}
 rpm_real="octez"
 [ -n "${OCTEZ_PKGNAME}" ] && rpm_base=${OCTEZ_PKGNAME}
-[ -f "$myhome/pkgname" ] && rpm_base=$(cat "$myhome/pkgname")
 
 # Revision (set RPM_REV in the environment)
 #

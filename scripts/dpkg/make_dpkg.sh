@@ -34,7 +34,6 @@ fi
 #
 dpkg_real=${OCTEZ_PKGNAME}
 dpkg_base="octez"
-[ -f "$myhome/pkgname" ] && dpkg_base=$(cat "$myhome/pkgname")
 
 # Revision (set DPKG_REV in the environment)
 #
