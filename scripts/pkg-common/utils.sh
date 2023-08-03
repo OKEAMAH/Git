@@ -124,7 +124,7 @@ getOctezVersion() {
 # Build init.d scripts
 #
 
-initdScripts($$$) {
+initdScripts() {
 	_initin=$1 	# Init script
 	_inittarget=$2	# The target (e.g. octez-node)
 	_stagedir=$3	# The staging area
@@ -141,7 +141,7 @@ initdScripts($$$) {
 
 # Fix up the binary lists
 #
-fixBinaryList($) {
+fixBinaryList() {
 	_binlist=$1
 	_binaries=""
 	if [ -f "${_binlist}.in" ]; then
