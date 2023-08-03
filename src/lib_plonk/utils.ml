@@ -226,3 +226,9 @@ end = struct
     Scalar.div_exn l0_num l0_den
 end
 
+let diff_next_power_of_two x = (1 lsl Z.log2up (Z.of_int x)) - x
+
+(* The input is expected to be a positive integer. *)
+let is_power_of_two n =
+  assert (n >= 0) ;
+  n <> 0 && n land (n - 1) = 0
