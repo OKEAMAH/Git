@@ -313,6 +313,22 @@ pub unsafe trait SmartRollupCore {
     /// - `destination_addr` must point to a mutable slice of bytes with
     ///   `capacity >= max_bytes`
     unsafe fn reveal_metadata(&self, destination_addr: *mut u8, max_bytes: usize) -> i32;
+
+    /// Loads the result of an arbitrary reveal request to memory.
+    /// If the preimage is larger than `max_bytes`, its contents is trimmed.
+    ///
+    /// # Safety
+    /// - `payload_addr` must be a ptr to a slice containing a hash.
+    /// - `payload_len` must be the length of the slice.
+    /// - `destination_addr `must point to a mutable slice of bytes with
+    ///   `capacity >= max_size`.
+    unsafe fn reveal(
+        &self,
+        payload_addr: *const u8,
+        payload_len: usize,
+        destination_addr: *mut u8,
+        destination_len: usize,
+    ) -> i32;
 }
 
 /// Information about message level & id.

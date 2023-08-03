@@ -186,6 +186,15 @@ pub trait Runtime {
         destination: &mut [u8],
     ) -> Result<usize, RuntimeError>;
 
+    /// Reveal a DAL page.
+    fn reveal_dal_page(
+        &self,
+        published_level: i32,
+        slot_index: u8,
+        message_index: i16,
+        destination: &mut [u8],
+    ) -> Result<usize, RuntimeError>;
+
     /// Return the size of value stored at `path`
     fn store_value_size(&self, path: &impl Path) -> Result<usize, RuntimeError>;
 
@@ -578,6 +587,38 @@ where
                                              SDK developers at https://gitlab.com/tezos/tezos");
 
         RollupMetadata::from(destination)
+    }
+
+    fn reveal_dal_page(
+        &self,
+        published_level: i32,
+        slot_index: u8,
+        message_index: i16,
+        destination: &mut [u8],
+    ) -> Result<usize, RuntimeError> {
+        // This will match the encoding declared for a DAL page slot in the Tezos protocol.
+        let payload: &[u8] = &[
+            &[2u8], // tag
+            published_level.to_be_bytes().as_ref(),
+            &[slot_index],
+            message_index.to_be_bytes().as_ref(),
+        ]
+        .concat();
+
+        let res = unsafe {
+            SmartRollupCore::reveal(
+                self,
+                payload.as_ptr(),
+                payload.len(),
+                destination.as_mut_ptr(),
+                destination.len(),
+            )
+        };
+
+        match Error::wrap(res) {
+            Ok(size) => Ok(size),
+            Err(e) => Err(RuntimeError::HostErr(e)),
+        }
     }
 
     fn store_value_size(&self, path: &impl Path) -> Result<usize, RuntimeError> {
