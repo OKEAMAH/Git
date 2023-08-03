@@ -132,7 +132,7 @@ initdScripts() {
 
 	if [ -f "${_initin}" ]; then
                 mkdir -p "${_initd}"
-		expand_PROTOCOL "${_initin}
+		expand_PROTOCOL "${_initin}"
 			> "${_initd}/${_inittarget}"
                 chmod +x "${_initd}/${_inittarget}"
         fi
@@ -158,6 +158,7 @@ fixBinaryList() {
 #
 zcashParams() {
 	_pkgzcash=$1
+	_zcashtgt=$2
 
 	if [ -f "${_pkgzcash}" ]; then
 		zcashstuff=$(cat "${_pkgcash}" 2>/dev/null)
