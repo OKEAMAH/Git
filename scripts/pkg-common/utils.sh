@@ -132,7 +132,7 @@ initdScripts() {
 
 	if [ -f "${_initin}" ]; then
                 mkdir -p "${_initd}"
-		expand_PROTOCOL "${_initin}"
+		expand_PROTOCOL "${_initin}" \
 			> "${_initd}/${_inittarget}"
                 chmod +x "${_initd}/${_inittarget}"
         fi
