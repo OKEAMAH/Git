@@ -42,17 +42,10 @@ set -eu
 myhome=scripts/rpm
 common=scripts/pkg-common
 
-# BETA WARNING
-echo "WARNING: This build script should be considered beta for now"
+#shellcheck disable=SC1091
+. ${common}/utils.sh
 
-# Generic warning about BLST_PORTABLE=yes
-#
-BLST_PORTABLE=${BLST_PORTABLE:-no}
-if [ "$BLST_PORTABLE" != "yes" ]; then
-        echo "WARNING: BLST_PORTABLE is not set to yes in your environment"
-        echo "If the binaries were not made with BLST_PORTABLE=yes then they"
-        echo "might not run on some platforms."
-fi
+warnings
 
 # Maintainer
 #
@@ -62,8 +55,6 @@ if [ -f "$myhome/maintainer" ]; then
 fi
 OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
 
-#shellcheck disable=SC1091
-. ${common}/utils.sh
 protocols=${protocols:?protocols not specified}
 
 # Get Octez version from the build
