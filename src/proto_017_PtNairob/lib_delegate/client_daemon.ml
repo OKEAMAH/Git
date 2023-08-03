@@ -71,18 +71,40 @@ let await_protocol_start (cctxt : #Protocol_client_context.full) ~chain =
   >>= fun () -> Node_rpc.await_protocol_activation cctxt ~chain ()
 
 let may_start_profiler baking_dir =
-  match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
-  | Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode) ->
+  let parse_profiling_env_var () =
+    match Sys.getenv_opt "PROFILING" with
+    | None -> (None, None)
+    | Some var -> (
+        match String.split_on_char ':' var with
+        | [] -> (None, None)
+        | [x] -> (Some (String.lowercase_ascii x), None)
+        | x :: l ->
+            let output_dir = String.concat "" l in
+            if not (Sys.file_exists output_dir && Sys.is_directory output_dir)
+            then
+              Stdlib.failwith
+                "Profiling output is not a directory or does not exist."
+            else (Some (String.lowercase_ascii x), Some output_dir))
+  in
+  match parse_profiling_env_var () with
+  | None, _ -> ()
+  | ( Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode),
+      output_dir ) ->
       let max_lod =
         match mode with
         | "detailed" -> Profiler.Detailed
         | "verbose" -> Profiler.Verbose
         | _ -> Profiler.Terse
       in
+      let output_dir =
+        match output_dir with
+        | None -> baking_dir
+        | Some output_dir -> output_dir
+      in
       let profiler_maker ~name =
         Profiler.instance
           Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
-          Filename.Infix.((baking_dir // name) ^ "_profiling.txt", max_lod)
+          Filename.Infix.((output_dir // name) ^ "_profiling.txt", max_lod)
       in
       Baking_profiler.init profiler_maker
   | _ -> ()

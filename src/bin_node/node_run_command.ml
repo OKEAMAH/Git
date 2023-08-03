@@ -642,18 +642,39 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
   let*! () =
     Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
+  let parse_profiling_env_var () =
+    match Sys.getenv_opt "PROFILING" with
+    | None -> (None, None)
+    | Some var -> (
+        match String.split_on_char ':' var with
+        | [] -> (None, None)
+        | [x] -> (Some (String.lowercase_ascii x), None)
+        | x :: l ->
+            let output_dir = String.concat "" l in
+            if not (Sys.file_exists output_dir && Sys.is_directory output_dir)
+            then
+              Stdlib.failwith
+                "Profiling output is not a directory or does not exist."
+            else (Some (String.lowercase_ascii x), Some output_dir))
+  in
   let () =
-    match Option.map String.lowercase_ascii @@ Sys.getenv_opt "PROFILING" with
-    | Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode)
-      ->
+    match parse_profiling_env_var () with
+    | None, _ -> ()
+    | ( Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode),
+        output_dir ) ->
         let max_lod =
           match mode with
           | "detailed" -> Profiler.Detailed
           | "verbose" -> Profiler.Verbose
           | _ -> Profiler.Terse
         in
+        let output_dir =
+          match output_dir with
+          | None -> config.data_dir
+          | Some output_dir -> output_dir
+        in
         let profiler_maker =
-          Tezos_shell.Profiler_directory.profiler_maker config.data_dir max_lod
+          Tezos_shell.Profiler_directory.profiler_maker output_dir max_lod
         in
         Shell_profiling.activate_all ~profiler_maker
     | _ -> ()
