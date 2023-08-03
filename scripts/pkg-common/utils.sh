@@ -53,7 +53,6 @@ export OCTEZ_PKGMAINTAINER
 export OCTEZ_PKGNAME
 
 
-
 # Expand protocols in configuration and init files
 #
 expand_PROTOCOL() {
@@ -110,4 +109,22 @@ getOctezVersion() {
 	fi
 	_vers_fix=$(echo "$_vers" | sed -e 's/\~//' -e 's/\+//')
 	return $_vers_fix
+}
+
+# Build init.d scripts
+#
+
+initdScripts($$$) {
+	_initin=$1 	# Init script
+	_inittarget=$2	# The target (e.g. octez-node)
+	_stagedir=$3	# The staging area
+       	_initd="${_stagedir}/etc/init.d"
+
+	if [ -f "${_initin}" ]; then
+                mkdir -p "${_initd}"
+		expand_PROTOCOL "${_initin}
+			> "${_initd}/${_inittarget}"
+                chmod +x "${_initd}/${_inittarget}"
+        fi
+
 }	

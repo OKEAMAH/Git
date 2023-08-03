@@ -1,4 +1,3 @@
-#!/bin/sh
 
 # RPM package build for Octez
 #
@@ -37,9 +36,7 @@ src_dir="${rpmbuild_root}/SOURCES"
 
 # Package name
 #
-rpm_base=${OCTEZ_PKGNAME}
 rpm_real="octez"
-[ -n "${OCTEZ_PKGNAME}" ] && rpm_base=${OCTEZ_PKGNAME}
 
 # Revision (set RPM_REV in the environment)
 #
@@ -61,7 +58,7 @@ for specfile in "$myhome"/*spec.in; do
 
 	# Derivative variables
 	#
-	rpm_name=${rpm_base}-${pg}
+	rpm_name=${OCTEZ_PKGNAME}-${pg}
 	init_name=${rpm_real}-${pg}
 	rpm_fullname="${rpm_name}-${pkg_vers}-${rpm_rev}.${rpm_arch}.rpm"
   if [ -f "${common}/${pg}-binaries" ]; then
@@ -96,20 +93,15 @@ for specfile in "$myhome"/*spec.in; do
 		done
 	fi
 
-  if [ "$pg" = "baker" ]; then
-	  mkdir -p "${build_dir}/etc/init.d"
-    expand_PROTOCOL "${common}/vdf.initd.in" > "${build_dir}/etc/init.d/${rpm_real}-vdf"
-		chmod +x "${build_dir}/etc/init.d/${rpm_real}-vdf"
-  fi
 
 	# init.d scripts
 	#
-	if [ -f "${common}/${pg}.initd.in" ]; then
-		echo "=> Init files ${init_name}"
-	  mkdir -p "${build_dir}/etc/init.d"
-    expand_PROTOCOL "${common}/${pg}.initd.in" > "${build_dir}/etc/init.d/${init_name}"
-		chmod +x "${build_dir}/etc/init.d/${init_name}"
+	initdScripts "${common}/${pg}.initd.in" ${init_name} ${build_dir}
+  	if [ "$pg" = "baker" ]; then
+		initdScripts "${common}/vdf.initd.in" octez-vdf \
+			${build_dir}
 	fi
+
 
 	# Configuration files
 	#
@@ -136,7 +128,7 @@ for specfile in "$myhome"/*spec.in; do
 		-e "s/@REVISION@/${rpm_rev}/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${rpm_name}/g" \
-		-e "s/@DPKG@/${rpm_base}/g" \
+		-e "s/@DPKG@/${OCTEZ_PKGNAME}/g" \
 		-e "s/@FAKESRC@/${tar_name}.tar.gz/g" < "$specfile" \
 		> "${spec_dir}/${spec_file}"
 

@@ -32,7 +32,6 @@ fi
 
 # Package name
 #
-dpkg_real=${OCTEZ_PKGNAME}
 dpkg_base="octez"
 
 # Revision (set DPKG_REV in the environment)
@@ -57,8 +56,8 @@ for control_file in "$myhome"/*control.in; do
 
 	# Derivative variables
 	#
-	dpkg_name=${dpkg_base}-${pg}
-	init_name=${dpkg_real}-${pg}
+	dpkg_name=${OCTEZ_PKGNAME}-${pg}
+	init_name=${dpkg_base}-${pg}
 	dpkg_dir="${dpkg_name}_${pkg_vers}-${dpkg_rev}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
   if [ -f "${common}/${pg}-binaries" ]; then
@@ -120,19 +119,13 @@ for control_file in "$myhome"/*control.in; do
 		fi
 	done
 
-  if [ "$pg" = "baker" ]; then
-    mkdir -p "${staging_dir}/etc/init.d"
-    expand_PROTOCOL "${common}/vdf.initd.in" > "${staging_dir}/etc/init.d/${dpkg_real}-vdf"
-    chmod +x "${staging_dir}/etc/init.d/${dpkg_real}-vdf"
-  fi
 
 	# init.d scripts
 	#
-	if [ -f "${common}/${pg}.initd.in" ]; then
-		mkdir -p "${staging_dir}/etc/init.d"
-    expand_PROTOCOL "${common}/${pg}.initd.in" > "${staging_dir}/etc/init.d/${init_name}"
-		chmod +x "${staging_dir}/etc/init.d/${init_name}"
-	fi
+	initdScripts "${common}/${pg}.initd.in" ${init_name} ${staging_dir}
+  	if [ "$pg" = "baker" ]; then
+		initdScripts "${common}/vdf.initd.in" octez-vdf ${staging_dir}
+  	fi
 
 	# Configuration files
 	#
