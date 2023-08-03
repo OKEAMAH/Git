@@ -42,6 +42,7 @@ echo "WARNING: This build script should be considered beta for now"
 
 # Generic warning about BLST_PORTABLE=yes
 #
+BLST_PORTABLE=${BLST_PORTABLE:-no}
 if [ "$BLST_PORTABLE" != "yes" ]; then
 	echo "WARNING: BLST_PORTABLE is not set to yes in your environment"
 	echo "If the binaries were not made with BLST_PORTABLE=yes then they"
