@@ -34,10 +34,6 @@ spec_dir="${rpmbuild_root}/SPECS"
 rpm_dir="${rpmbuild_root}/RPMS"
 src_dir="${rpmbuild_root}/SOURCES"
 
-# Revision (set RPM_REV in the environment)
-#
-rpm_rev="${RPM_REV:-1}"
-
 # Get the local architecture
 #
 rpm_arch=$(uname -m)
@@ -46,7 +42,7 @@ rpm_arch=$(uname -m)
 #
 for specfile in "$myhome"/*spec.in; do
 	pg=$(basename "$specfile" | sed -e 's/-spec.in$//g')
-	echo "===> Building package $pg v$pkg_vers rev $rpm_rev"
+	echo "===> Building package $pg v$pkg_vers rev $OCTEZ_PKGREV"
 
 	if [ -f "${common}/${pg}-binaries.in" ]; then
 	  expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
@@ -56,7 +52,7 @@ for specfile in "$myhome"/*spec.in; do
 	#
 	rpm_name=${OCTEZ_PKGNAME}-${pg}
 	init_name=${OCTEZ_REALNAME}-${pg}
-	rpm_fullname="${rpm_name}-${pkg_vers}-${rpm_rev}.${rpm_arch}.rpm"
+	rpm_fullname="${rpm_name}-${pkg_vers}-${OCTEZ_PKGREV}.${rpm_arch}.rpm"
   if [ -f "${common}/${pg}-binaries" ]; then
     binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)
   fi
@@ -121,7 +117,7 @@ for specfile in "$myhome"/*spec.in; do
 	#
 	spec_file="${pg}.spec"
 	sed -e "s/@ARCH@/${rpm_arch}/g" -e "s/@VERSION@/$pkg_vers/g" \
-		-e "s/@REVISION@/${rpm_rev}/g" \
+		-e "s/@REVISION@/${OCTEZ_PKGREV}/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${rpm_name}/g" \
 		-e "s/@DPKG@/${OCTEZ_PKGNAME}/g" \

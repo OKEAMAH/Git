@@ -30,11 +30,6 @@ if ! which dpkg-deb >/dev/null 2>&1; then
 	exit 2
 fi
 
-# Revision (set DPKG_REV in the environment)
-#
-dpkg_rev="${DPKG_REV:-1}"
-
-
 # Get the local architecture
 #
 eval "$(dpkg-architecture)"
@@ -44,7 +39,7 @@ dpkg_arch=$DEB_BUILD_ARCH
 #
 for control_file in "$myhome"/*control.in; do
 	pg=$(basename "$control_file" | sed -e 's/-control.in$//g')
-	echo "===> Building package $pg v$pkg_vers rev $dpkg_rev"
+	echo "===> Building package $pg v$pkg_vers rev $OCTEZ_PKGREV"
 
 	if [ -f "${common}/${pg}-binaries.in" ]; then
 	    expand_PROTOCOL "${common}/${pg}-binaries.in" > "${common}/${pg}-binaries"
@@ -54,7 +49,7 @@ for control_file in "$myhome"/*control.in; do
 	#
 	dpkg_name=${OCTEZ_PKGNAME}-${pg}
 	init_name=${OCTEZ_REALNAME}-${pg}
-	dpkg_dir="${dpkg_name}_${pkg_vers}-${dpkg_rev}_${dpkg_arch}"
+	dpkg_dir="${dpkg_name}_${pkg_vers}-${OCTEZ_PKGREV}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
   if [ -f "${common}/${pg}-binaries" ]; then
     binaries=$(cat "${common}/${pg}-binaries" 2>/dev/null)

@@ -53,10 +53,14 @@ OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
 #
 # Real name used in scripts (usually octez)
 OCTEZ_REALNAME=${OCTEZ_REALNAME:-octez}
+# 
+# Revision
+OCTEZ_PKGREV=${OCTEZ_PKGREV:-1}
 
 export OCTEZ_PKGMAINTAINER
 export OCTEZ_PKGNAME
 export OCTEZ_REALNAME
+export OCTEZ_PKGREV
 
 
 # Expand protocols in configuration and init files
