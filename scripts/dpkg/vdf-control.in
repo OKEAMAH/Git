@@ -1,6 +1,0 @@
-Package: @PKG@
-Version: @VERSION@
-Architecture: @ARCH@
-Maintainer: @MAINT@
-Description: Startup scripts for the Octez VDF service
-Depends: @DPKG@-baker (>=@VERSION@)
