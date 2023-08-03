@@ -70,6 +70,7 @@ end
 
 module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
   open Utils
+  open Kzg_toolbox
   module ISet = Set.Make (Int)
   module IMap = Map.Make (Int)
 
@@ -163,7 +164,7 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
 
   (* This function is used to aggregate commitments for different proofs *)
   let aggregate_cm cm etas =
-    pippenger1_with_affine_array
+    Commit.with_affine_array_1
       (PC.Commitment.to_map cm |> SMap.values |> Array.of_list)
       etas
 
@@ -185,7 +186,7 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
   (* This function avoid some lines of code duplication *)
   let compute_and_commit f list =
     let m, l = List.map f list |> Array.of_list |> Array.split in
-    (m, pippenger1_with_affine_array l m)
+    (m, Commit.with_affine_array_1 l m)
 
   let setup_prover (n, domain) k (table_arrays, table_polys) pc =
     let domain_k = Domain.build k in
@@ -246,7 +247,7 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
       try G2.(add (Srs_g2.get srs2 n) (negate one))
       with Invalid_argument _ ->
         raise
-          (Utils.SRS_too_short
+          (Commit.SRS_too_short
              (Printf.sprintf
                 "Cq.setup_verifier : SRS_2 of size at least (%d + 1) expected \
                  (size %d received)."
@@ -254,7 +255,7 @@ module Make (PC : Kzg_toolbox_intf.Polynomial_commitment) = struct
                 (Srs_g2.size srs2)))
     in
 
-    let cm_table = List.map (commit2 srs2) table_poly in
+    let cm_table = List.map (Commit.with_srs2 srs2) table_poly in
 
     let srs2_0 = Srs_g2.get srs2 0 in
     let srs2_1 = Srs_g2.get srs2 1 in

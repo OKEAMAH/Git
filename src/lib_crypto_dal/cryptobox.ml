@@ -1129,13 +1129,14 @@ module Inner = struct
       Ok (Polynomials.truncate ~len:t.max_polynomial_length p)
 
   let commit t p =
-    let degree = Polynomials.degree p in
-    let srs_g1_size = Srs_g1.size t.srs.raw.srs_g1 in
-    if degree >= srs_g1_size then
+    try Ok (Plonk.Kzg_toolbox.Commit.with_srs1 t.srs.raw.srs_g1 p)
+    with Plonk.Kzg_toolbox.Commit.SRS_too_short _ ->
       Error
         (`Invalid_degree_strictly_less_than_expected
-          {given = degree; expected = srs_g1_size})
-    else Ok (Srs_g1.pippenger t.srs.raw.srs_g1 p)
+          {
+            given = Polynomials.degree p;
+            expected = Srs_g1.size t.srs.raw.srs_g1;
+          })
 
   let pp_commit_error fmt
       (`Invalid_degree_strictly_less_than_expected {given; expected}) =

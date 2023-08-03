@@ -1,6 +1,37 @@
 open Bls
 open Utils
 
+module Commit = struct
+  exception SRS_too_short of string
+
+  (* This function is used to raise a more helpful error message *)
+  let pippenger pippenger ps ss =
+    try pippenger ?start:None ?len:None ps ss
+    with Invalid_argument s ->
+      raise (Invalid_argument ("Utils.pippenger : " ^ s))
+
+  let with_affine_array_1 g =
+    pippenger G1.pippenger_with_affine_array (G1.to_affine_array g)
+
+  let commit_single pippenger zero srs_size srs p =
+    let p_size = 1 + Poly.degree p in
+    if p_size = 0 then zero
+    else if p_size > srs_size then
+      raise
+        (SRS_too_short
+           (Printf.sprintf
+              "commit : Polynomial degree, %i, exceeds srs length, %i."
+              p_size
+              srs_size))
+    else pippenger srs p
+
+  let with_srs1 srs p =
+    commit_single Srs_g1.pippenger G1.zero (Srs_g1.size srs) srs p
+
+  let with_srs2 srs p =
+    commit_single Srs_g2.pippenger G2.zero (Srs_g2.size srs) srs p
+end
+
 module Polynomial_commitment = struct
   module Public_parameters = struct
     (* Structured Reference String
@@ -47,7 +78,7 @@ module Polynomial_commitment = struct
 
     type prover_aux = unit [@@deriving repr]
 
-    let commit_single srs = commit1 Public_parameters.(srs.srs1)
+    let commit_single srs = Commit.with_srs1 Public_parameters.(srs.srs1)
 
     let commit ?all_keys:_ srs f_map =
       let cmt = SMap.map (commit_single srs) f_map in
@@ -161,14 +192,12 @@ module Polynomial_commitment = struct
 
     let ws = SMap.values w_map in
     let left =
-      pippenger1_with_affine_array
+      Commit.with_affine_array_1
         (Array.of_list @@ (G1.one :: ws) @ cmts)
         (Array.of_list @@ (s :: w_left_exps) @ exponents)
     in
     let right =
-      pippenger1_with_affine_array
-        (Array.of_list ws)
-        (Array.of_list w_right_exps)
+      Commit.with_affine_array_1 (Array.of_list ws) (Array.of_list w_right_exps)
     in
     Public_parameters.[(left, srs.encoding_1); (right, srs.encoding_x)]
     |> Pairing.pairing_check
