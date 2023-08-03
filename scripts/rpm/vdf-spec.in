@@ -1,0 +1,24 @@
+Name:		@PKG@
+Version:	@VERSION@
+Release:	@REVISION@
+Summary:	The Octez VDF daemon
+
+Packager:       @MAINT@
+License:	MIT
+URL:		http://tezos.gitlab.io
+
+Requires:	@DPKG@-baker
+Requires:	bash
+Source0:	@FAKESRC@
+
+%prep
+%setup -q
+
+%install
+tar cpf - . | (cd $RPM_BUILD_ROOT && tar xpf -)
+
+%description
+The Octez Client and Wallet
+
+%files
+%{_sysconfdir}/init.d/octez-*
