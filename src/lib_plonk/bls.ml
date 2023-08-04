@@ -12,11 +12,7 @@ module G1 = struct
   include Bls12_381.G1
 
   let t : t Repr.t =
-    Repr.(
-      map
-        (bytes_of (`Fixed (size_in_bytes / 2)))
-        of_compressed_bytes_exn
-        to_compressed_bytes)
+    Repr.(map bytes of_compressed_bytes_exn to_compressed_bytes)
 end
 
 module G2 = struct
