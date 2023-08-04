@@ -9,11 +9,7 @@ type public_parameters = {
   number_of_shards : int;
 }
 
-type preprocess = Domain.t * G1_carray.t array
-
-let preprocess_encoding : preprocess t =
-  let open Data_encoding in
-  tup2 Domain.encoding (array G1_carray.encoding)
+type preprocess = Domain.t * G1_carray.t array [@@deriving repr]
 
 type shard_proof = G1.t
 

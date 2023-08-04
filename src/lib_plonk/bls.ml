@@ -1,9 +1,11 @@
 module Scalar = Plompiler.Csir.Scalar
 module Scalar_map = Map.Make (Scalar)
+module Domain = Domain
 module Poly = Polynomial
 module Pairing = Bls12_381.Pairing
 module Srs_g1 = Srs.Srs_g1
 module Srs_g2 = Srs.Srs_g2
+module G1_carray = G1_carray
 
 (* Module to operate with polynomials in FFT evaluations form. *)
 module Evaluations = Evaluations_map.Make (Evaluations)
@@ -42,18 +44,6 @@ let to_encoding repr =
     Bytes.unsafe_of_string @@ Repr.(unstage @@ to_bin_string repr) e
   in
   let data_encoding_of_repr repr =
-    Data_encoding.conv (to_bytes repr) (of_bytes repr) Data_encoding.bytes
+    conv (to_bytes repr) (of_bytes repr) Data_encoding.bytes
   in
   data_encoding_of_repr repr
-
-module Domain = struct
-  include Domain
-
-  let encoding = to_encoding Domain.t
-end
-
-module G1_carray = struct
-  include G1_carray
-
-  let encoding = to_encoding G1_carray.t
-end
