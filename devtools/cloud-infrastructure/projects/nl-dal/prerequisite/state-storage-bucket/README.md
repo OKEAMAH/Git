@@ -7,8 +7,8 @@ You only need to run this once at your initial setup.
 
 ```shell
 terraform init
-terraform plan --var project="NL-dal" --var region="europe-west1" --var name="<your-name>"
-terraform apply --var project="NL-dal" --var region="europe-west1" --var name="<your-name>"
+terraform plan --var project="NL-dal" --var region="europe-west1" --var name="<name>"
+terraform apply --var project="NL-dal" --var region="europe-west1" --var name="<name>"
 ```
 
 For example:
