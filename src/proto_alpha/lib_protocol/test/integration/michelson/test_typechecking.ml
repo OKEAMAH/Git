@@ -66,6 +66,7 @@ let sc_originate block contract parameters_ty =
 (* Test for Script_ir_translator.parse_and_unparse_script_unaccounted on a
    script declaring views. *)
 let test_unparse_view () =
+  let open Lwt_result_syntax in
   let dummy_contract =
     "{parameter unit; storage unit; code { CAR; NIL operation; PAIR }; view \
      \"v0\" unit unit { DROP; UNIT }; view \"v1\" nat nat {CAR}}"
@@ -76,8 +77,8 @@ let test_unparse_view () =
   let script =
     Script.{code = lazy_expr contract_expr; storage = lazy_expr storage_expr}
   in
-  Context.init3 () >>=? fun (b, _cs) ->
-  Incremental.begin_construction b >>=? fun v ->
+  let* b, _cs = Context.init3 () in
+  let* v = Incremental.begin_construction b in
   let ctx = Incremental.alpha_ctxt v in
   Script_ir_translator.parse_and_unparse_script_unaccounted
     ctx
@@ -91,31 +92,36 @@ let test_unparse_view () =
   Alcotest.(check bytes) "didn't match" bef aft |> return
 
 let test_context () =
-  Context.init3 ~consensus_threshold:0 () >>=? fun (b, _cs) ->
-  Incremental.begin_construction b >>=? fun v ->
+  let open Lwt_result_syntax in
+  let* b, _cs = Context.init3 ~consensus_threshold:0 () in
+  let* v = Incremental.begin_construction b in
   return (Incremental.alpha_ctxt v)
 
 let test_context_with_nat_nat_big_map ?(sc_rollup_enable = false) () =
-  Context.init_with_constants1
-    {
-      Context.default_test_constants with
-      sc_rollup =
-        {
-          Context.default_test_constants.sc_rollup with
-          enable = sc_rollup_enable;
-        };
-    }
-  >>=? fun (b, source) ->
-  Op.contract_origination_hash (B b) source ~script:Op.dummy_script
-  >>=? fun (operation, originated) ->
-  Block.bake ~operation b >>=? fun b ->
-  Incremental.begin_construction b >>=? fun v ->
+  let open Lwt_result_syntax in
+  let* b, source =
+    Context.init_with_constants1
+      {
+        Context.default_test_constants with
+        sc_rollup =
+          {
+            Context.default_test_constants.sc_rollup with
+            enable = sc_rollup_enable;
+          };
+      }
+  in
+  let* operation, originated =
+    Op.contract_origination_hash (B b) source ~script:Op.dummy_script
+  in
+  let* b = Block.bake ~operation b in
+  let* v = Incremental.begin_construction b in
   let ctxt = Incremental.alpha_ctxt v in
-  wrap_error_lwt @@ Big_map.fresh ~temporary:false ctxt >>=? fun (ctxt, id) ->
+  let* ctxt, id = wrap_error_lwt @@ Big_map.fresh ~temporary:false ctxt in
   let nat_ty = Script_typed_ir.nat_t in
-  wrap_error_lwt @@ Lwt.return
-  @@ Script_ir_unparser.unparse_ty ~loc:() ctxt nat_ty
-  >>=? fun (nat_ty_node, ctxt) ->
+  let* nat_ty_node, ctxt =
+    wrap_error_lwt @@ Lwt.return
+    @@ Script_ir_unparser.unparse_ty ~loc:() ctxt nat_ty
+  in
   let nat_ty_expr = Micheline.strip_locations nat_ty_node in
   let alloc = Big_map.{key_type = nat_ty_expr; value_type = nat_ty_expr} in
   let init = Lazy_storage.Alloc alloc in
@@ -127,9 +133,11 @@ let test_context_with_nat_nat_big_map ?(sc_rollup_enable = false) () =
         (Update {init; updates = []});
     ]
   in
-  wrap_error_lwt
-  @@ Contract.update_script_storage ctxt originated nat_ty_expr (Some diffs)
-  >>=? fun ctxt -> return (ctxt, id)
+  let* ctxt =
+    wrap_error_lwt
+    @@ Contract.update_script_storage ctxt originated nat_ty_expr (Some diffs)
+  in
+  return (ctxt, id)
 
 let read_file filename =
   let ch = open_in filename in
@@ -142,11 +150,15 @@ let path = project_root // Filename.dirname __FILE__
 (** Check that the custom stack overflow exception is triggered when
    it should be. *)
 let test_typecheck_stack_overflow () =
-  test_context () >>=? fun ctxt ->
+  let open Lwt_result_syntax in
+  let* ctxt = test_context () in
   let storage = "Unit" in
   let parameter = "Unit" in
   let script = read_file (path // "contracts/big_interpreter_stack.tz") in
-  Contract_helpers.run_script ctxt script ~storage ~parameter () >>= function
+  let*! result =
+    Contract_helpers.run_script ctxt script ~storage ~parameter ()
+  in
+  match result with
   | Ok _ -> Alcotest.fail "expected an error"
   | Error lst
     when List.mem
@@ -160,14 +172,17 @@ let test_typecheck_stack_overflow () =
 
 (* NOTE: this test fails with an out-of-memory exception. *)
 let _test_unparse_stack_overflow () =
-  test_context () >>=? fun ctxt ->
+  let open Lwt_result_syntax in
+  let* ctxt = test_context () in
   (* Meme *)
   let enorme_et_seq n =
     let rec aux n acc = aux (n - 1) @@ Micheline.Seq (0, [acc]) in
     aux n (Micheline.Int (0, Z.zero))
   in
-  Script_ir_translator.(unparse_code ctxt Readable (enorme_et_seq 10_001))
-  >>= function
+  let*! result =
+    Script_ir_translator.(unparse_code ctxt Readable (enorme_et_seq 10_001))
+  in
+  match result with
   | Ok _ -> Alcotest.fail "expected an error"
   | Error trace ->
       let trace_string =
@@ -198,30 +213,35 @@ let location = function
 
 let test_parse_ty (type exp expc) ctxt node
     (expected : (exp, expc) Script_typed_ir.ty) =
+  let open Result_syntax in
   let legacy = false in
   let allow_lazy_storage = true in
   let allow_operation = true in
   let allow_contract = true in
   let allow_ticket = true in
   Environment.wrap_tzresult
-    ( Script_ir_translator.parse_ty
-        ctxt
-        ~legacy
-        ~allow_lazy_storage
-        ~allow_operation
-        ~allow_contract
-        ~allow_ticket
-        node
-    >>? fun (Script_typed_ir.Ex_ty actual, ctxt) ->
-      Gas_monad.run ctxt
-      @@ Script_ir_translator.ty_eq
-           ~error_details:(Informative (location node))
-           actual
-           expected
-      >>? fun (eq, ctxt) ->
-      eq >|? fun Eq -> ctxt )
+    (let* Script_typed_ir.Ex_ty actual, ctxt =
+       Script_ir_translator.parse_ty
+         ctxt
+         ~legacy
+         ~allow_lazy_storage
+         ~allow_operation
+         ~allow_contract
+         ~allow_ticket
+         node
+     in
+     let* eq, ctxt =
+       Gas_monad.run ctxt
+       @@ Script_ir_translator.ty_eq
+            ~error_details:(Informative (location node))
+            actual
+            expected
+     in
+     let+ Eq = eq in
+     ctxt)
 
 let test_parse_comb_type () =
+  let open Lwt_result_syntax in
   let open Script in
   let open Script_typed_ir in
   let nat_prim = Prim (-1, T_nat, [], []) in
@@ -234,68 +254,79 @@ let test_parse_comb_type () =
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
   pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   (* pair nat nat *)
-  test_parse_ty ctxt pair_nat_nat_prim pair_nat_nat_ty >>?= fun ctxt ->
+  let*? ctxt = test_parse_ty ctxt pair_nat_nat_prim pair_nat_nat_ty in
   (* pair (pair nat nat) nat *)
   pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
-  test_parse_ty
-    ctxt
-    (pair_prim2 pair_nat_nat_prim nat_prim)
-    pair_pair_nat_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty
+      ctxt
+      (pair_prim2 pair_nat_nat_prim nat_prim)
+      pair_pair_nat_nat_nat_ty
+  in
   (* pair nat (pair nat nat) *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
-  test_parse_ty
-    ctxt
-    (pair_prim2 nat_prim pair_nat_nat_prim)
-    pair_nat_pair_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty
+      ctxt
+      (pair_prim2 nat_prim pair_nat_nat_prim)
+      pair_nat_pair_nat_nat_ty
+  in
   (* pair nat nat nat *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_nat_nat_ty) ->
-  test_parse_ty
-    ctxt
-    (pair_prim [nat_prim; nat_prim; nat_prim])
-    pair_nat_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty
+      ctxt
+      (pair_prim [nat_prim; nat_prim; nat_prim])
+      pair_nat_nat_nat_ty
+  in
   (* pair (nat %a) nat *)
   pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_a_nat_ty) ->
-  test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim) pair_nat_a_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim) pair_nat_a_nat_ty
+  in
   (* pair nat (nat %b) *)
   pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_b_ty) ->
-  test_parse_ty ctxt (pair_prim2 nat_prim nat_prim_b) pair_nat_nat_b_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty ctxt (pair_prim2 nat_prim nat_prim_b) pair_nat_nat_b_ty
+  in
   (* pair (nat %a) (nat %b) *)
   pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_a_nat_b_ty) ->
-  test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim_b) pair_nat_a_nat_b_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim_b) pair_nat_a_nat_b_ty
+  in
   (* pair (nat %a) (nat %b) (nat %c) *)
   pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_b_nat_c_ty) ->
   pair_t (-1) nat_ty pair_nat_b_nat_c_ty
   >>??= fun (Ty_ex_c pair_nat_a_nat_b_nat_c_ty) ->
-  test_parse_ty
-    ctxt
-    (pair_prim [nat_prim_a; nat_prim_b; nat_prim_c])
-    pair_nat_a_nat_b_nat_c_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_parse_ty
+      ctxt
+      (pair_prim [nat_prim_a; nat_prim_b; nat_prim_c])
+      pair_nat_a_nat_b_nat_c_ty
+  in
   (* pair (nat %a) (pair %b nat nat) *)
   pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_b_nat_nat_ty) ->
   pair_t (-1) nat_ty pair_b_nat_nat_ty
   >>??= fun (Ty_ex_c pair_nat_a_pair_b_nat_nat_ty) ->
-  test_parse_ty
-    ctxt
-    (pair_prim2 nat_prim_a (Prim (-1, T_pair, [nat_prim; nat_prim], ["%b"])))
-    pair_nat_a_pair_b_nat_nat_ty
-  >>?= fun (_ : context) -> return_unit
+  let*? (_ : context) =
+    test_parse_ty
+      ctxt
+      (pair_prim2 nat_prim_a (Prim (-1, T_pair, [nat_prim; nat_prim], ["%b"])))
+      pair_nat_a_pair_b_nat_nat_ty
+  in
+  return_unit
 
 let test_unparse_ty loc ctxt expected ty =
+  let open Result_syntax in
   Environment.wrap_tzresult
-    ( Script_ir_unparser.unparse_ty ~loc:() ctxt ty >>? fun (actual, ctxt) ->
-      if actual = expected then ok ctxt
-      else Alcotest.failf "Unexpected error: %s" loc )
+    (let* actual, ctxt = Script_ir_unparser.unparse_ty ~loc:() ctxt ty in
+     if actual = expected then return ctxt
+     else Alcotest.failf "Unexpected error: %s" loc)
 
 let test_unparse_comb_type () =
+  let open Lwt_result_syntax in
   let open Script in
   let open Script_typed_ir in
   let nat_prim = Prim ((), T_nat, [], []) in
@@ -305,39 +336,42 @@ let test_unparse_comb_type () =
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
   pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   (* pair nat nat *)
-  test_unparse_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt = test_unparse_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty in
   (* pair (pair nat nat) nat *)
   pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
-  test_unparse_ty
-    __LOC__
-    ctxt
-    (pair_prim2 pair_nat_nat_prim nat_prim)
-    pair_pair_nat_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_unparse_ty
+      __LOC__
+      ctxt
+      (pair_prim2 pair_nat_nat_prim nat_prim)
+      pair_pair_nat_nat_nat_ty
+  in
   (* pair nat nat nat *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_nat_nat_ty) ->
-  test_unparse_ty
-    __LOC__
-    ctxt
-    (pair_prim [nat_prim; nat_prim; nat_prim])
-    pair_nat_nat_nat_ty
-  >>?= fun (_ : context) -> return_unit
+  let*? (_ : context) =
+    test_unparse_ty
+      __LOC__
+      ctxt
+      (pair_prim [nat_prim; nat_prim; nat_prim])
+      pair_nat_nat_nat_ty
+  in
+  return_unit
 
 let test_unparse_comparable_ty loc ctxt expected ty =
+  let open Result_syntax in
   (* unparse_comparable_ty is not exported, the simplest way to call it is to
      call parse_ty on a set type *)
   let open Script_typed_ir in
   Environment.wrap_tzresult
-    ( set_t (-1) ty >>? fun set_ty_ty ->
-      Script_ir_unparser.unparse_ty ~loc:() ctxt set_ty_ty
-      >>? fun (actual, ctxt) ->
-      if actual = Prim ((), T_set, [expected], []) then ok ctxt
-      else Alcotest.failf "Unexpected error: %s" loc )
+    (let* set_ty_ty = set_t (-1) ty in
+     let* actual, ctxt = Script_ir_unparser.unparse_ty ~loc:() ctxt set_ty_ty in
+     if actual = Prim ((), T_set, [expected], []) then return ctxt
+     else Alcotest.failf "Unexpected error: %s" loc)
 
 let test_unparse_comb_comparable_type () =
+  let open Lwt_result_syntax in
   let open Script in
   let open Script_typed_ir in
   let nat_prim = Prim ((), T_nat, [], []) in
@@ -347,42 +381,51 @@ let test_unparse_comb_comparable_type () =
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
   pair_ty nat_ty nat_ty >>??= fun pair_nat_nat_ty ->
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   (* pair nat nat *)
-  test_unparse_comparable_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_unparse_comparable_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
+  in
   (* pair (pair nat nat) nat *)
   pair_ty pair_nat_nat_ty nat_ty >>??= fun pair_pair_nat_nat_nat_ty ->
-  test_unparse_comparable_ty
-    __LOC__
-    ctxt
-    (pair_prim2 pair_nat_nat_prim nat_prim)
-    pair_pair_nat_nat_nat_ty
-  >>?= fun ctxt ->
+  let*? ctxt =
+    test_unparse_comparable_ty
+      __LOC__
+      ctxt
+      (pair_prim2 pair_nat_nat_prim nat_prim)
+      pair_pair_nat_nat_nat_ty
+  in
   (* pair nat nat nat *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun pair_nat_nat_nat_ty ->
-  test_unparse_comparable_ty
-    __LOC__
-    ctxt
-    (pair_prim [nat_prim; nat_prim; nat_prim])
-    pair_nat_nat_nat_ty
-  >>?= fun (_ : context) -> return_unit
+  let*? (_ : context) =
+    test_unparse_comparable_ty
+      __LOC__
+      ctxt
+      (pair_prim [nat_prim; nat_prim; nat_prim])
+      pair_nat_nat_nat_ty
+  in
+  return_unit
 
 let test_parse_data ?(equal = Stdlib.( = )) loc ctxt ty node expected =
+  let open Lwt_result_syntax in
   let elab_conf = Script_ir_translator_config.make ~legacy:false () in
   let allow_forged = true in
   wrap_error_lwt
-    ( Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
-    >>=? fun (actual, ctxt) ->
-      if equal actual expected then return ctxt
-      else Alcotest.failf "Unexpected error: %s" loc )
+    (let* actual, ctxt =
+       Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
+     in
+     if equal actual expected then return ctxt
+     else Alcotest.failf "Unexpected error: %s" loc)
 
 let test_parse_data_fails loc ctxt ty node =
+  let open Lwt_result_syntax in
   let elab_conf = Script_ir_translator_config.make ~legacy:false () in
   let allow_forged = false in
   wrap_error_lwt
-    (Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
-     >>= function
+    (let*! result =
+       Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
+     in
+     match result with
      | Ok _ -> Alcotest.failf "Unexpected typechecking success: %s" loc
      | Error trace ->
          let trace_string =
@@ -404,6 +447,7 @@ let test_parse_data_fails loc ctxt ty node =
              return_unit)
 
 let test_parse_comb_data () =
+  let open Lwt_result_syntax in
   let open Script in
   let open Script_typed_ir in
   let z = Script_int.zero_n in
@@ -416,67 +460,75 @@ let test_parse_comb_data () =
   let pair_z_z_prim = pair_prim2 z_prim z_prim in
   list_t (-1) nat_ty >>??= fun list_nat_ty ->
   big_map_t (-1) nat_ty nat_ty >>??= fun big_map_nat_nat_ty ->
-  test_context_with_nat_nat_big_map () >>=? fun (ctxt, big_map_id) ->
+  let* ctxt, big_map_id = test_context_with_nat_nat_big_map () in
   (* Pair 0 0 *)
-  test_parse_data __LOC__ ctxt pair_nat_nat_ty pair_z_z_prim (z, z)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data __LOC__ ctxt pair_nat_nat_ty pair_z_z_prim (z, z)
+  in
   (* {0; 0} *)
-  test_parse_data
-    __LOC__
-    ctxt
-    pair_nat_nat_ty
-    (Micheline.Seq (-1, [z_prim; z_prim]))
-    (z, z)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      pair_nat_nat_ty
+      (Micheline.Seq (-1, [z_prim; z_prim]))
+      (z, z)
+  in
   (* Pair (Pair 0 0) 0 *)
   pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
-  test_parse_data
-    __LOC__
-    ctxt
-    pair_pair_nat_nat_nat_ty
-    (pair_prim2 pair_z_z_prim z_prim)
-    ((z, z), z)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      pair_pair_nat_nat_nat_ty
+      (pair_prim2 pair_z_z_prim z_prim)
+      ((z, z), z)
+  in
   (* Pair 0 (Pair 0 0) *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
-  test_parse_data
-    __LOC__
-    ctxt
-    pair_nat_pair_nat_nat_ty
-    (pair_prim2 z_prim pair_z_z_prim)
-    (z, (z, z))
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      pair_nat_pair_nat_nat_ty
+      (pair_prim2 z_prim pair_z_z_prim)
+      (z, (z, z))
+  in
   (* Pair 0 0 0 *)
-  test_parse_data
-    __LOC__
-    ctxt
-    pair_nat_pair_nat_nat_ty
-    (pair_prim [z_prim; z_prim; z_prim])
-    (z, (z, z))
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      pair_nat_pair_nat_nat_ty
+      (pair_prim [z_prim; z_prim; z_prim])
+      (z, (z, z))
+  in
   (* {0; 0; 0} *)
-  test_parse_data
-    __LOC__
-    ctxt
-    pair_nat_pair_nat_nat_ty
-    (Micheline.Seq (-1, [z_prim; z_prim; z_prim]))
-    (z, (z, z))
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      pair_nat_pair_nat_nat_ty
+      (Micheline.Seq (-1, [z_prim; z_prim; z_prim]))
+      (z, (z, z))
+  in
   (* Should fail: {0} against pair nat (list nat) *)
   pair_ty nat_ty list_nat_ty >>??= fun (Ty_ex_c pair_nat_list_nat_ty) ->
-  test_parse_data_fails
-    __LOC__
-    ctxt
-    pair_nat_list_nat_ty
-    (Micheline.Seq (-1, [z_prim]))
-  >>=? fun () ->
+  let* () =
+    test_parse_data_fails
+      __LOC__
+      ctxt
+      pair_nat_list_nat_ty
+      (Micheline.Seq (-1, [z_prim]))
+  in
   (* Should fail: {0; 0; 0} against pair nat (list nat) *)
-  test_parse_data_fails
-    __LOC__
-    ctxt
-    pair_nat_list_nat_ty
-    (Micheline.Seq (-1, [z_prim; z_prim; z_prim]))
-  >>=? fun () ->
+  let* () =
+    test_parse_data_fails
+      __LOC__
+      ctxt
+      pair_nat_list_nat_ty
+      (Micheline.Seq (-1, [z_prim; z_prim; z_prim]))
+  in
   (* check Pair 0 (Pair 0 {}) against pair nat (big_map nat nat)
      so that the following test fails for the good reason and not because
      the big map doesn't exist
@@ -515,14 +567,15 @@ let test_parse_comb_data () =
   in
   pair_ty nat_ty big_map_nat_nat_ty
   >>??= fun (Ty_ex_c pair_nat_big_map_nat_nat_ty) ->
-  test_parse_data
-    ~equal
-    __LOC__
-    ctxt
-    pair_nat_big_map_nat_nat_ty
-    (pair_prim2 z_prim (pair_prim2 id_prim (Seq (-1, []))))
-    (Script_int.zero_n, expected_big_map)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_parse_data
+      ~equal
+      __LOC__
+      ctxt
+      pair_nat_big_map_nat_nat_ty
+      (pair_prim2 z_prim (pair_prim2 id_prim (Seq (-1, []))))
+      (Script_int.zero_n, expected_big_map)
+  in
   (* Should fail: Pair 0 0 {} against pair nat (big_map nat nat) *)
   test_parse_data_fails
     __LOC__
@@ -531,67 +584,82 @@ let test_parse_comb_data () =
     (pair_prim [z_prim; id_prim; Seq (-1, [])])
 
 let test_parse_address () =
+  let open Lwt_result_syntax in
   let open Script_typed_ir in
-  test_context_with_nat_nat_big_map ~sc_rollup_enable:true ()
-  >>=? fun (ctxt, _big_map_id) ->
+  let* ctxt, _big_map_id =
+    test_context_with_nat_nat_big_map ~sc_rollup_enable:true ()
+  in
   (* KT1% (empty entrypoint) *)
-  wrap_error_lwt
-    (Lwt.return (Contract.of_b58check "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x"))
-  >>=? fun kt1fake ->
-  test_parse_data
-    __LOC__
-    ctxt
-    address_t
-    (String (-1, "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x%"))
-    {destination = Contract kt1fake; entrypoint = Entrypoint.default}
-  >>=? fun ctxt ->
+  let* kt1fake =
+    wrap_error_lwt
+      (Lwt.return (Contract.of_b58check "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x"))
+  in
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      address_t
+      (String (-1, "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x%"))
+      {destination = Contract kt1fake; entrypoint = Entrypoint.default}
+  in
   (* tz1% (empty entrypoint) *)
-  wrap_error_lwt
-    (Lwt.return (Contract.of_b58check "tz1fakefakefakefakefakefakefakcphLA5"))
-  >>=? fun tz1fake ->
-  test_parse_data
-    __LOC__
-    ctxt
-    address_t
-    (String (-1, "tz1fakefakefakefakefakefakefakcphLA5%"))
-    {destination = Contract tz1fake; entrypoint = Entrypoint.default}
-  >>=? fun ctxt ->
+  let* tz1fake =
+    wrap_error_lwt
+      (Lwt.return (Contract.of_b58check "tz1fakefakefakefakefakefakefakcphLA5"))
+  in
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      address_t
+      (String (-1, "tz1fakefakefakefakefakefakefakcphLA5%"))
+      {destination = Contract tz1fake; entrypoint = Entrypoint.default}
+  in
   (* scr1% (empty entrypoint) *)
-  wrap_error_lwt
-    (Lwt.return
-       (Destination.of_b58check "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG"))
-  >>=? fun scr1 ->
-  test_parse_data
-    __LOC__
-    ctxt
-    address_t
-    (String (-1, "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG"))
-    {destination = scr1; entrypoint = Entrypoint.default}
-  >>=? fun ctxt ->
+  let* scr1 =
+    wrap_error_lwt
+      (Lwt.return
+         (Destination.of_b58check "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG"))
+  in
+  let* ctxt =
+    test_parse_data
+      __LOC__
+      ctxt
+      address_t
+      (String (-1, "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG"))
+      {destination = scr1; entrypoint = Entrypoint.default}
+  in
   (* scr1% (default entrypoint) *)
-  test_parse_data
-    __LOC__
-    ctxt
-    address_t
-    (String (-1, "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG%"))
-    {destination = scr1; entrypoint = Entrypoint.default}
-  >|=? fun (_ctxt : context) -> ()
+  let+ (_ctxt : context) =
+    test_parse_data
+      __LOC__
+      ctxt
+      address_t
+      (String (-1, "sr1JPVatbbPoGp4vb6VfQ1jzEPMrYFcKq6VG%"))
+      {destination = scr1; entrypoint = Entrypoint.default}
+  in
+  ()
 
 let test_unparse_data loc ctxt ty x ~expected_readable ~expected_optimized =
+  let open Lwt_result_syntax in
   wrap_error_lwt
-    ( Script_ir_translator.unparse_data ctxt Script_ir_unparser.Readable ty x
-    >>=? fun (actual_readable, ctxt) ->
-      (if actual_readable = Micheline.strip_locations expected_readable then
+    (let* actual_readable, ctxt =
+       Script_ir_translator.unparse_data ctxt Script_ir_unparser.Readable ty x
+     in
+     let* ctxt =
+       if actual_readable = Micheline.strip_locations expected_readable then
+         return ctxt
+       else Alcotest.failf "Error in readable unparsing: %s" loc
+     in
+     let* actual_optimized, ctxt =
+       Script_ir_translator.unparse_data ctxt Script_ir_unparser.Optimized ty x
+     in
+     if actual_optimized = Micheline.strip_locations expected_optimized then
        return ctxt
-      else Alcotest.failf "Error in readable unparsing: %s" loc)
-      >>=? fun ctxt ->
-      Script_ir_translator.unparse_data ctxt Script_ir_unparser.Optimized ty x
-      >>=? fun (actual_optimized, ctxt) ->
-      if actual_optimized = Micheline.strip_locations expected_optimized then
-        return ctxt
-      else Alcotest.failf "Error in optimized unparsing: %s" loc )
+     else Alcotest.failf "Error in optimized unparsing: %s" loc)
 
 let test_unparse_comb_data () =
+  let open Lwt_result_syntax in
   let open Script in
   let open Script_typed_ir in
   let z = Script_int.zero_n in
@@ -602,47 +670,52 @@ let test_unparse_comb_data () =
   pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_z_z_prim = pair_prim2 z_prim z_prim in
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   (* Pair 0 0 *)
-  test_unparse_data
-    __LOC__
-    ctxt
-    pair_nat_nat_ty
-    (z, z)
-    ~expected_readable:pair_z_z_prim
-    ~expected_optimized:pair_z_z_prim
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_unparse_data
+      __LOC__
+      ctxt
+      pair_nat_nat_ty
+      (z, z)
+      ~expected_readable:pair_z_z_prim
+      ~expected_optimized:pair_z_z_prim
+  in
   (* Pair (Pair 0 0) 0 *)
   pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
-  test_unparse_data
-    __LOC__
-    ctxt
-    pair_pair_nat_nat_nat_ty
-    ((z, z), z)
-    ~expected_readable:(pair_prim2 pair_z_z_prim z_prim)
-    ~expected_optimized:(pair_prim2 pair_z_z_prim z_prim)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_unparse_data
+      __LOC__
+      ctxt
+      pair_pair_nat_nat_nat_ty
+      ((z, z), z)
+      ~expected_readable:(pair_prim2 pair_z_z_prim z_prim)
+      ~expected_optimized:(pair_prim2 pair_z_z_prim z_prim)
+  in
   (* Readable: Pair 0 0 0; Optimized: Pair 0 (Pair 0 0) *)
   pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
-  test_unparse_data
-    __LOC__
-    ctxt
-    pair_nat_pair_nat_nat_ty
-    (z, (z, z))
-    ~expected_readable:(pair_prim [z_prim; z_prim; z_prim])
-    ~expected_optimized:(pair_prim2 z_prim pair_z_z_prim)
-  >>=? fun ctxt ->
+  let* ctxt =
+    test_unparse_data
+      __LOC__
+      ctxt
+      pair_nat_pair_nat_nat_ty
+      (z, (z, z))
+      ~expected_readable:(pair_prim [z_prim; z_prim; z_prim])
+      ~expected_optimized:(pair_prim2 z_prim pair_z_z_prim)
+  in
   (* Readable: Pair 0 0 0 0; Optimized: {0; 0; 0; 0} *)
   pair_ty nat_ty pair_nat_pair_nat_nat_ty
   >>??= fun (Ty_ex_c pair_nat_pair_nat_pair_nat_nat_ty) ->
-  test_unparse_data
-    __LOC__
-    ctxt
-    pair_nat_pair_nat_pair_nat_nat_ty
-    (z, (z, (z, z)))
-    ~expected_readable:(pair_prim [z_prim; z_prim; z_prim; z_prim])
-    ~expected_optimized:(Micheline.Seq (-1, [z_prim; z_prim; z_prim; z_prim]))
-  >>=? fun (_ : context) -> return_unit
+  let* (_ : context) =
+    test_unparse_data
+      __LOC__
+      ctxt
+      pair_nat_pair_nat_pair_nat_nat_ty
+      (z, (z, (z, z)))
+      ~expected_readable:(pair_prim [z_prim; z_prim; z_prim; z_prim])
+      ~expected_optimized:(Micheline.Seq (-1, [z_prim; z_prim; z_prim; z_prim]))
+  in
+  return_unit
 
 (* Generate all the possible syntaxes for pairs *)
 let gen_pairs left right =
@@ -665,6 +738,7 @@ let rec gen_combs leaf arity =
 
 (* Checks the optimality of the Optimized Micheline representation for combs *)
 let test_optimal_comb () =
+  let open Lwt_result_syntax in
   let open Script_typed_ir in
   let leaf_ty = nat_t in
   let leaf_mich = Int ((), Z.zero) in
@@ -677,46 +751,53 @@ let test_optimal_comb () =
   in
   let check_optimal_comb loc ctxt ty v arity =
     wrap_error_lwt
-      ( Script_ir_translator.unparse_data ctxt Script_ir_unparser.Optimized ty v
-      >>=? fun (unparsed, ctxt) ->
-        let unparsed_canonical, unparsed_size =
-          size_of_micheline (Micheline.root unparsed)
-        in
-        List.iter_es (fun other_repr ->
-            let other_repr_canonical, other_repr_size =
-              size_of_micheline other_repr
-            in
-            if other_repr_size < unparsed_size then
-              Alcotest.failf
-                "At %s, for comb of arity %d, representation %a (size %d \
-                 bytes) is shorter than representation %a (size %d bytes) \
-                 returned by unparse_data in Optimized mode"
-                loc
-                arity
-                Michelson_v1_printer.print_expr
-                other_repr_canonical
-                other_repr_size
-                Michelson_v1_printer.print_expr
-                unparsed_canonical
-                unparsed_size
-            else return_unit)
-        @@ gen_combs leaf_mich arity
-        >>=? fun () -> return ctxt )
+      (let* unparsed, ctxt =
+         Script_ir_translator.unparse_data
+           ctxt
+           Script_ir_unparser.Optimized
+           ty
+           v
+       in
+       let unparsed_canonical, unparsed_size =
+         size_of_micheline (Micheline.root unparsed)
+       in
+       let* () =
+         List.iter_es (fun other_repr ->
+             let other_repr_canonical, other_repr_size =
+               size_of_micheline other_repr
+             in
+             if other_repr_size < unparsed_size then
+               Alcotest.failf
+                 "At %s, for comb of arity %d, representation %a (size %d \
+                  bytes) is shorter than representation %a (size %d bytes) \
+                  returned by unparse_data in Optimized mode"
+                 loc
+                 arity
+                 Michelson_v1_printer.print_expr
+                 other_repr_canonical
+                 other_repr_size
+                 Michelson_v1_printer.print_expr
+                 unparsed_canonical
+                 unparsed_size
+             else return_unit)
+         @@ gen_combs leaf_mich arity
+       in
+       return ctxt)
   in
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   pair_ty leaf_ty leaf_ty >>??= fun (Ty_ex_c comb2_ty) ->
   let comb2_v = (leaf_v, leaf_v) in
-  check_optimal_comb __LOC__ ctxt comb2_ty comb2_v 2 >>=? fun ctxt ->
+  let* ctxt = check_optimal_comb __LOC__ ctxt comb2_ty comb2_v 2 in
   pair_ty leaf_ty comb2_ty >>??= fun (Ty_ex_c comb3_ty) ->
   let comb3_v = (leaf_v, comb2_v) in
-  check_optimal_comb __LOC__ ctxt comb3_ty comb3_v 3 >>=? fun ctxt ->
+  let* ctxt = check_optimal_comb __LOC__ ctxt comb3_ty comb3_v 3 in
   pair_ty leaf_ty comb3_ty >>??= fun (Ty_ex_c comb4_ty) ->
   let comb4_v = (leaf_v, comb3_v) in
-  check_optimal_comb __LOC__ ctxt comb4_ty comb4_v 4 >>=? fun ctxt ->
+  let* ctxt = check_optimal_comb __LOC__ ctxt comb4_ty comb4_v 4 in
   pair_ty leaf_ty comb4_ty >>??= fun (Ty_ex_c comb5_ty) ->
   let comb5_v = (leaf_v, comb4_v) in
-  check_optimal_comb __LOC__ ctxt comb5_ty comb5_v 5 >>=? fun (_ : context) ->
+  let* (_ : context) = check_optimal_comb __LOC__ ctxt comb5_ty comb5_v 5 in
   return_unit
 
 (* Check that UNPACK on contract is forbidden.
@@ -724,45 +805,55 @@ let test_optimal_comb () =
    behind this restriction.
 *)
 let test_contract_not_packable () =
+  let open Lwt_result_syntax in
   let elab_conf = Script_ir_translator_config.make ~legacy:false () in
   let contract_unit =
     Prim (0, Script.T_contract, [Prim (0, T_unit, [], [])], [])
   in
-  test_context () >>=? fun ctxt ->
+  let* ctxt = test_context () in
   (* Test that [contract_unit] is parsable *)
-  (match Script_ir_translator.parse_any_ty ctxt ~legacy:false contract_unit with
-  | Ok _ -> return_unit
-  | Error _ -> Alcotest.failf "Could not parse (contract unit)")
-  >>=? fun () ->
+  let* () =
+    match
+      Script_ir_translator.parse_any_ty ctxt ~legacy:false contract_unit
+    with
+    | Ok _ -> return_unit
+    | Error _ -> Alcotest.failf "Could not parse (contract unit)"
+  in
   (* Test that [contract_unit] is not packable *)
-  (match
-     Script_ir_translator.parse_packable_ty ctxt ~legacy:false contract_unit
-   with
-  | Ok _ ->
-      Alcotest.failf
-        "(contract unit) should not be packable, see \
-         https://gitlab.com/tezos/tezos/-/issues/301"
-  | Error _ -> return_unit)
-  >>=? fun () ->
+  let* () =
+    match
+      Script_ir_translator.parse_packable_ty ctxt ~legacy:false contract_unit
+    with
+    | Ok _ ->
+        Alcotest.failf
+          "(contract unit) should not be packable, see \
+           https://gitlab.com/tezos/tezos/-/issues/301"
+    | Error _ -> return_unit
+  in
   (* Test that elaboration of the [UNPACK unit] instruction succeeds *)
-  (Script_ir_translator.parse_instr
-     Script_tc_context.data
-     ctxt
-     ~elab_conf
-     (Prim (0, I_UNPACK, [Prim (0, T_unit, [], [])], []))
-     (Item_t (Script_typed_ir.bytes_t, Bot_t))
-   >>= function
-   | Ok _ -> return_unit
-   | Error _ -> Alcotest.failf "Could not parse UNPACK unit")
-  >>=? fun () ->
+  let* () =
+    let*! result =
+      Script_ir_translator.parse_instr
+        Script_tc_context.data
+        ctxt
+        ~elab_conf
+        (Prim (0, I_UNPACK, [Prim (0, T_unit, [], [])], []))
+        (Item_t (Script_typed_ir.bytes_t, Bot_t))
+    in
+    match result with
+    | Ok _ -> return_unit
+    | Error _ -> Alcotest.failf "Could not parse UNPACK unit"
+  in
   (* Test that elaboration of the [UNPACK (contract unit)] instruction fails *)
-  Script_ir_translator.parse_instr
-    Script_tc_context.data
-    ctxt
-    ~elab_conf
-    (Prim (0, I_UNPACK, [contract_unit], []))
-    (Item_t (Script_typed_ir.bytes_t, Bot_t))
-  >>= function
+  let*! result =
+    Script_ir_translator.parse_instr
+      Script_tc_context.data
+      ctxt
+      ~elab_conf
+      (Prim (0, I_UNPACK, [contract_unit], []))
+      (Item_t (Script_typed_ir.bytes_t, Bot_t))
+  in
+  match result with
   | Ok _ ->
       Alcotest.failf
         "UNPACK (contract unit) should not be allowed, see \
@@ -771,16 +862,19 @@ let test_contract_not_packable () =
 
 (* This test function is used to checks forbidden operations in views. *)
 let test_forbidden_op_in_view op () =
+  let open Lwt_result_syntax in
   let prefix = path // "contracts/forbidden_op_in_view_" in
   let script = read_file (prefix ^ op ^ ".tz") in
   let contract_expr = Expr.from_string script in
-  test_context () >>=? fun ctxt ->
-  Script_ir_translator.typecheck_code
-    ~legacy:false
-    ~show_types:false
-    ctxt
-    contract_expr
-  >>= function
+  let* ctxt = test_context () in
+  let*! result =
+    Script_ir_translator.typecheck_code
+      ~legacy:false
+      ~show_types:false
+      ctxt
+      contract_expr
+  in
+  match result with
   | Ok _ ->
       Alcotest.failf
         "%s should not be allowed in views, see \
@@ -845,18 +939,19 @@ let test_parse_contract_data_for_rollup_with_invalid_type () =
     (( = ) (Script_tc_errors.No_such_entrypoint entrypoint))
 
 let test_contract path ~ok ~ko () =
+  let open Lwt_result_syntax in
   let contract = path in
   let script = read_file contract in
   let contract_expr = Expr.from_string script in
-  test_context () >>=? fun ctxt ->
-  Script_ir_translator.typecheck_code
-    ~legacy:false
-    ~show_types:false
-    ctxt
-    contract_expr
-  >>= function
-  | Ok _ -> ok ()
-  | Error t -> ko t
+  let* ctxt = test_context () in
+  let*! result =
+    Script_ir_translator.typecheck_code
+      ~legacy:false
+      ~show_types:false
+      ctxt
+      contract_expr
+  in
+  match result with Ok _ -> ok () | Error t -> ko t
 
 let test_contract_success path =
   test_contract path ~ok:return ~ko:(fun t ->
