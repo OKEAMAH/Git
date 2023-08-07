@@ -31,7 +31,7 @@
 
     Protocol specific services are for RPCs under [/global/block/] and are
     defined in the protocol specific libraries in
-    [src/proto_*/lib_sc_rollup_layer2/sc_rollup_services.ml].
+    [protocols/proto_*/lib_sc_rollup_layer2/sc_rollup_services.ml].
 *)
 
 (** We distinguish RPC endpoints served by the rollup node into [global] and

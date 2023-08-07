@@ -8,7 +8,7 @@
 //! when either transacting between accounts on the rollup, or withdrawing from the
 //! rollup.
 //!
-//! Mostly equivalent to TORU's [l2_batch](https://gitlab.com/tezos/tezos/-/blob/bbcb6382f1b418ff03283f7f977b32fd681f9099/src/proto_alpha/lib_protocol/tx_rollup_l2_batch.mli), the main differences being:
+//! Mostly equivalent to TORU's [l2_batch](https://gitlab.com/tezos/tezos/-/blob/bbcb6382f1b418ff03283f7f977b32fd681f9099/protocols/proto_alpha/lib_protocol/tx_rollup_l2_batch.mli), the main differences being:
 //! - lack of compact encoding (TODO: [tezos/tezos#3040](https://gitlab.com/tezos/tezos/-/issues/3040))
 //! - replaces uses of `Ticket_hash` + `quantity` with `StringTicket`.  In future, either
 //!   ticket_hash will be reintroduced, or indexes (with the compact encoding) will be encouraged.

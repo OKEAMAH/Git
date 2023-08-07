@@ -142,7 +142,7 @@ main () {
         local_signer="${local_signer:-$bin_dir/../../_build/default/src/bin_signer/main_signer.exe}"
         local_compiler="${local_compiler:-$bin_dir/../../_build/default/src/lib_protocol_compiler/bin/main_native.exe}"
 
-        parameters_file="$bin_dir/../../_build/default/src/proto_alpha/lib_parameters/sandbox-parameters.json"
+        parameters_file="$bin_dir/../../_build/default/protocols/proto_alpha/lib_parameters/sandbox-parameters.json"
 
     else
         # we assume a clean install with octez-(admin-)client in the path
@@ -176,10 +176,10 @@ main () {
     for protocol in $(cat $bin_dir/../../script-inputs/active_protocol_versions); do
         protocol_underscore=$(echo $protocol | tr -- - _)
         protocol_without_number=$(echo $protocol | tr -d "\-[0-9]")
-        local_baker="$bin_dir/../../_build/default/src/proto_$protocol_underscore/bin_baker/main_baker_$protocol_underscore.exe"
-        local_accuser="$bin_dir/../../_build/default/src/proto_$protocol_underscore/bin_accuser/main_accuser_$protocol_underscore.exe"
-        local_sc_rollup_node="$bin_dir/../../_build/default/src/proto_$protocol_underscore/bin_sc_rollup_node/main_sc_rollup_node_$protocol_underscore.exe"
-        local_sc_rollup_client="$bin_dir/../../_build/default/src/proto_$protocol_underscore/bin_sc_rollup_client/main_sc_rollup_client_$protocol_underscore.exe"
+        local_baker="$bin_dir/../../_build/default/protocols/proto_$protocol_underscore/bin_baker/main_baker_$protocol_underscore.exe"
+        local_accuser="$bin_dir/../../_build/default/protocols/proto_$protocol_underscore/bin_accuser/main_accuser_$protocol_underscore.exe"
+        local_sc_rollup_node="$bin_dir/../../_build/default/protocols/proto_$protocol_underscore/bin_sc_rollup_node/main_sc_rollup_node_$protocol_underscore.exe"
+        local_sc_rollup_client="$bin_dir/../../_build/default/protocols/proto_$protocol_underscore/bin_sc_rollup_client/main_sc_rollup_client_$protocol_underscore.exe"
 
         if [ -n "$USE_TLS" ]; then
             baker="$local_baker -base-dir $client_dir -endpoint https://$host:$rpc"

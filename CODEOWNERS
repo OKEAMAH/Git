@@ -36,12 +36,12 @@
 /src/lib_stdlib              @raphael-proust
 /src/lib_stdlib_unix         @raphael-proust
 /src/lib_version             @romain.nl
-/src/proto_*/lib_benchmark   @naih
-/src/proto_*/lib_benchmarks_proto @naih
-/src/proto_*/lib_protocol/sc_rollup_proof*         @sribaroud
-/src/proto_*/lib_protocol/sc_rollup_game*          @sribaroud
-/src/proto_*/lib_protocol/sc_rollup_inbox*         @sribaroud
-/src/proto_*/lib_protocol/sc_rollup_refutation*    @sribaroud
+/protocols/proto_*/lib_benchmark   @naih
+/protocols/proto_*/lib_benchmarks_proto @naih
+/protocols/proto_*/lib_protocol/sc_rollup_proof*         @sribaroud
+/protocols/proto_*/lib_protocol/sc_rollup_game*          @sribaroud
+/protocols/proto_*/lib_protocol/sc_rollup_inbox*         @sribaroud
+/protocols/proto_*/lib_protocol/sc_rollup_refutation*    @sribaroud
 
 /src/lib_aplonk               @MarcBeunardeau
 /src/lib_bls12_381*           @victor-dumitrescu

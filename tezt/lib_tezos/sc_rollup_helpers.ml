@@ -48,8 +48,8 @@ let hex_encode (input : string) : string =
   match Hex.of_string input with `Hex s -> s
 
 let load_kernel_file
-    ?(base = "src/proto_alpha/lib_protocol/test/integration/wasm_kernel") name :
-    string =
+    ?(base = "protocols/proto_alpha/lib_protocol/test/integration/wasm_kernel")
+    name : string =
   let open Tezt.Base in
   let kernel_file = project_root // base // name in
   read_file kernel_file
@@ -98,7 +98,7 @@ end
 *)
 let prepare_installer_kernel_gen ?runner
     ?(base_installee =
-      "src/proto_alpha/lib_protocol/test/integration/wasm_kernel")
+      "protocols/proto_alpha/lib_protocol/test/integration/wasm_kernel")
     ~preimages_dir ?(display_root_hash = false) ?config installee =
   let open Tezt.Base in
   let open Lwt.Syntax in

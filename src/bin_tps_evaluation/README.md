@@ -207,7 +207,7 @@ contracts as part of the stress test command in order to produce a realistic
 stream of transactions and hence, a credible TPS estimation.
 
 To add support for a smart contract edit the
-`src/proto_alpha/lib_client_commands/client_proto_stresstest_contracts.ml`
+`protocols/proto_alpha/lib_client_commands/client_proto_stresstest_contracts.ml`
 file and include the new smart contract in the `all_contracts` list.
 Normally the new smart contract should start working right away, but since
 the functionality is fairly new, more efforts might be required in some

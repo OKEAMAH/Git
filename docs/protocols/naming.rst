@@ -47,7 +47,7 @@ Due to the evolving nature of the in-use protocols, the above absolute protocol
 names are not enough. More naming conventions are introduced for the currently
 in-use and upcoming protocols:
 
-* The protocol in the ``src/proto_alpha`` directory of the ``master`` branch:
+* The protocol in the ``protocols/proto_alpha`` directory of the ``master`` branch:
   "alpha protocol"
 
   - other terms: "protocol under development", "development protocol" (only when

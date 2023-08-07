@@ -80,7 +80,7 @@ update the following variables in :src:`src/bin_openapi/generate.sh`:
 
 ```sh
 protocol_hash=ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK
-protocol_parameters=src/proto_alpha/parameters/sandbox-parameters.json
+protocol_parameters=protocols/proto_alpha/parameters/sandbox-parameters.json
 protocol_name=alpha
 ```
 

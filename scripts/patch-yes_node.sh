@@ -18,7 +18,7 @@ done
 
 patch $dry_run -p 1 < scripts/yes-node.patch
 
-for f in src/proto_*/lib_client_commands/client_proto_stresstest_commands.ml
+for f in protocols/proto_*/lib_client_commands/client_proto_stresstest_commands.ml
 do
   patch $dry_run -p 1 "$f" < scripts/yes-stresstest.patch
 done

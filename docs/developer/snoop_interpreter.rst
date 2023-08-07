@@ -1,7 +1,7 @@
 Snoop and the Michelson Interpreter
 ===================================
 
-In order to evaluate gas costs for the Michelson interpreter, we want to have a collection of benchmarks and models that cover every instruction of the language. This document explains how to modify the files in :src:`src/proto_alpha/lib_benchmarks_proto/` in order to fully integrate a new instruction for ``octez-snoop``.
+In order to evaluate gas costs for the Michelson interpreter, we want to have a collection of benchmarks and models that cover every instruction of the language. This document explains how to modify the files in :src:`protocols/proto_alpha/lib_benchmarks_proto/` in order to fully integrate a new instruction for ``octez-snoop``.
 
 Interpreter Workload
 --------------------

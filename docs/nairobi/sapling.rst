@@ -268,7 +268,7 @@ Shielded tez
 
 An example contract to have a shielded tez with a 1 to 1 conversion to
 mutez is available in the tests of the protocol at
-``src/proto_017_PtNairob/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz``.
+``protocols/proto_017_PtNairob/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz``.
 
 Simple Vote Contract
 ^^^^^^^^^^^^^^^^^^^^
@@ -491,7 +491,7 @@ unshielding.
    # bake a block to include it.
    # { } represents an empty Sapling state.
    octez-client originate contract shielded-tez transferring 0 from bootstrap1 \
-   running src/proto_017_PtNairob/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz \
+   running protocols/proto_017_PtNairob/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz \
    --init '{ }' --burn-cap 3 &
    octez-client bake for bootstrap1
 

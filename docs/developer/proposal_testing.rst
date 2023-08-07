@@ -58,7 +58,7 @@ Adding New Protocol Tests in OCaml
 
 Be sure you first read the :doc:`introduction on the testing ecosystem for Tezos <testing>`.
 In addition to system tests written with :doc:`Tezt <tezt>`,
-unit tests and integration tests for the protocol can be found in :src:`src/proto_alpha/lib_protocol/test`.
+unit tests and integration tests for the protocol can be found in :src:`protocols/proto_alpha/lib_protocol/test`.
 It is strongly recommended to write unit tests and integration tests in addition to the
 system tests.
 To test a new component, create a new file in this directory and add the module in ``main.ml``.
@@ -126,7 +126,7 @@ We start by checking out the latest code for the Alpha protocol::
 
 Now we could tweak our migration by adding any desired feature. For instance, we
 could log the point at which migration takes place by editing the file
-``src/proto_alpha/lib_protocol/init_storage.ml``. This can be done by modifying
+``protocols/proto_alpha/lib_protocol/init_storage.ml``. This can be done by modifying
 the match expression of the function ``prepare_first_block`` in the said file to
 include the following lines::
 
@@ -215,7 +215,7 @@ We can snapshot the protocol by invoking the following::
 
   $ ./scripts/snapshot_alpha.sh d_012
 
-The script creates a new directory ``src/proto_012_<short_hash>`` where
+The script creates a new directory ``protocols/proto_012_<short_hash>`` where
 ``<short_hash>`` is a short hash that coincides with the first eight characters
 of the hash computed by the script and written in the file ``TEZOS_PROTOCOL``.
 
@@ -229,18 +229,18 @@ the snapshot code in the build system. Otherwise proceed directly to Section
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the Alpha protocol was snapshot into
-``src/proto_<version_number>_<short_hash>``, this protocol can now be linked in
+``protocols/proto_<version_number>_<short_hash>``, this protocol can now be linked in
 the build system. Note that linking the protocol is not mandatory; we can always
 inject a protocol that compiles in a node and link it dynamically on the
 fly. However, linking the protocol in the client enables the use of the commands
 that may be present in the folder
-``src/proto_<version_number>_<short_hash>/lib_client``, if any. Otherwise, only
+``protocols/proto_<version_number>_<short_hash>/lib_client``, if any. Otherwise, only
 the commands accessible through the RPCs would be available. Except for some
 specific scenarios in which the commands accessible through the RPCs are enough,
 it is always convenient to link the snapshot protocol in the build system. In
 our example, this can be done by invoking::
 
-  $ ./scripts/link_protocol.sh src/proto_012_*
+  $ ./scripts/link_protocol.sh protocols/proto_012_*
 
 Alternatively, you can snapshot Alpha and link it with one single script:
 ``snapshot_alpha_and_link.sh``. This replaces steps 1 and 2. This script effectively
@@ -286,13 +286,13 @@ desired level. The script ``scripts/user_activated_upgrade.sh`` receives the
 path of the protocol to which we would like to upgrade, and the desired level.
 
 In our example above, where the Alpha protocol was snapshot into
-``src/proto_012_<short_hash>``, we can set the user-activated upgrade such that
+``protocols/proto_012_<short_hash>``, we can set the user-activated upgrade such that
 the migration is triggered at level three by invoking::
 
-  $ ./scripts/user_activated_upgrade.sh src/proto_012_* 3
+  $ ./scripts/user_activated_upgrade.sh protocols/proto_012_* 3
 
 If we had opted for not snapshotting the Alpha protocol, we could pass the path
-``src/proto_alpha`` as the parameter of the command above.
+``protocols/proto_alpha`` as the parameter of the command above.
 
 Now we consider the case when testing the migration on a context imported from
 the snapshot file. In that case, we should recall the level at which the
@@ -305,14 +305,14 @@ level, which has to be strictly bigger than the level at which the snapshot file
 was taken.
 
 In our example, where we the Alpha protocol was snapshot into
-``src/proto_012_<short_hash>``, we can set the user-activated upgrade such that
+``protocols/proto_012_<short_hash>``, we can set the user-activated upgrade such that
 the migration is triggered three levels after the level ``1617344`` at which the
 snapshot was taken by invoking::
 
-  $ ./scripts/user_activated_upgrade.sh src/proto_012_* 1617347
+  $ ./scripts/user_activated_upgrade.sh protocols/proto_012_* 1617347
 
 As before, if we had opted for not snapshotting the Alpha protocol, we could pass
-the path ``src/proto_alpha`` as the parameter of the command above.
+the path ``protocols/proto_alpha`` as the parameter of the command above.
 
 If we are testing the migration on an empty context on the sandbox, then we
 should proceed directly to Section `5. Compile the project`_. Otherwise, the next
@@ -433,8 +433,8 @@ whether the migration testing is manual or automatic. Here we focus on the case
 The next parameter is optional and contains a name in the format
 ``<tag_starting_with_version_letter>_<version_number>``. If some name is passed,
 then the Alpha protocol is snapshot into
-``src/proto_<version_number>_<short_hash>``. If the name is omitted, then the
-Alpha protocol in ``src/proto_alpha`` will be used for the migration testing.
+``protocols/proto_<version_number>_<short_hash>``. If the name is omitted, then the
+Alpha protocol in ``protocols/proto_alpha`` will be used for the migration testing.
 
 Now the script takes the level at which we want to set the user-activated
 upgrade. The script distinguishes whether the migration is on the sandbox or on
@@ -620,7 +620,7 @@ Check out latest code::
   $ git pull
 
 Tweak migration by checking that
-``src/proto_alpha/lib_protocol/init_storage.ml`` includes the following lines::
+``protocols/proto_alpha/lib_protocol/init_storage.ml`` includes the following lines::
 
   | Hangzhou_011 ->
       Logging.log_notice "\nSTITCHING!\n" ;
@@ -638,8 +638,8 @@ system, setting user-activate upgrades, and compiling the project::
 the following fur commands)::
 
   $ ./scripts/snapshot_alpha.sh d_012
-  $ ./scripts/link_protocol.sh src/proto_012_*
-  $ ./scripts/user_activated_upgrade.sh src/proto_012_* 3
+  $ ./scripts/link_protocol.sh protocols/proto_012_*
+  $ ./scripts/user_activated_upgrade.sh protocols/proto_012_* 3
   $ make
 
 Run sandboxed node and client::
@@ -687,7 +687,7 @@ Check out latest code::
   $ git pull
 
 Tweak migration by checking that
-``src/proto_alpha/lib_protocol/init_storage.ml`` includes the
+``protocols/proto_alpha/lib_protocol/init_storage.ml`` includes the
 following lines::
 
   | Hangzhou_011 ->
@@ -709,8 +709,8 @@ compiling the project::
 invoking the following eight commands)::
 
   $ ./scripts/snapshot_alpha.sh d_012
-  $ ./scripts/link_protocol.sh src/proto_012_*
-  $ ./scripts/user_activated_upgrade.sh src/proto_012_* 1617344
+  $ ./scripts/link_protocol.sh protocols/proto_012_*
+  $ ./scripts/user_activated_upgrade.sh protocols/proto_012_* 1617344
   $ ./scripts/patch-yes_node.sh
   $ make
   $ ./octez-node snapshot import ~/mainnet.rolling --data-dir /tmp/octez-node-mainnet
@@ -794,7 +794,7 @@ parameter to the script with a protocol name in the format
 ``<tag_with_version_letter>_<version_number>``. Recall that snapshotting the
 Alpha protocol may be useful for producing a realistic hash of the protocol in
 the file
-``src/proto_<version_number>_<short_hash>/lib_protocol/TEZOS_PROTOCOL``.
+``protocols/proto_<version_number>_<short_hash>/lib_protocol/TEZOS_PROTOCOL``.
 
 When passing ``auto`` as the first parameter, the script
 ``scripts/prepare_migration_test.sh`` also receives a parameter
@@ -818,7 +818,7 @@ command::
 
   $ ./scripts/prepare_migration_test.sh auto d_012 ~/mainnet.rolling
 
-This command snapshots the Alpha protocol into ``src/proto_012_<short_hash>``
+This command snapshots the Alpha protocol into ``protocols/proto_012_<short_hash>``
 and links it in the build system, and then patches the shell in order to obtain
 a yes-node. If the folder ``/tmp/mainnet`` does not exist
 already, then it creates that folder and imports the context from the snapshot
@@ -890,7 +890,7 @@ Check out latest code::
   $ git pull
 
 Tweak migration by checking that
-``src/proto_alpha/lib_protocol/init_storage.ml`` includes the
+``protocols/proto_alpha/lib_protocol/init_storage.ml`` includes the
 following lines::
 
   | Hangzhou_011 ->
@@ -991,7 +991,7 @@ and the functions ``of_b58check`` and ``to_b58check`` of module
 ``Contract_repr``::
 
   # let's borrow some code from the protocol tests
-  $ dune exec -- tztop src/proto_alpha/lib_protocol/test/
+  $ dune exec -- tztop protocols/proto_alpha/lib_protocol/test/
 
   # open Tezos_protocol_alpha.Protocol ;;
 

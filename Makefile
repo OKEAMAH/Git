@@ -2,7 +2,7 @@ PACKAGES_SUBPROJECT:=$(patsubst %.opam,%,$(notdir $(shell find src vendors -name
 PACKAGES:=$(patsubst %.opam,%,$(notdir $(shell find opam -name \*.opam -print)))
 
 define directory_of_version
-src/proto_$(shell echo $1 | tr -- - _)
+protocols/proto_$(shell echo $1 | tr -- - _)
 endef
 
 # Opam is not present in some build environments. We don't strictly need it.
@@ -191,7 +191,7 @@ endif
 	@cp -f $(foreach b, $(OCTEZ_EXECUTABLES), _build/install/default/bin/${b}) $(OCTEZ_BIN_DIR)/
 
 # List protocols, i.e. directories proto_* in src with a TEZOS_PROTOCOL file.
-TEZOS_PROTOCOL_FILES=$(wildcard src/proto_*/lib_protocol/TEZOS_PROTOCOL)
+TEZOS_PROTOCOL_FILES=$(wildcard protocols/proto_*/lib_protocol/TEZOS_PROTOCOL)
 PROTOCOLS=$(patsubst %/lib_protocol/TEZOS_PROTOCOL,%,${TEZOS_PROTOCOL_FILES})
 
 .PHONY: all.pkg
@@ -236,8 +236,8 @@ test-protocol-compile:
 	@dune build --profile=$(PROFILE) $(COVERAGE_OPTIONS) @runtest_compile_protocol
 	@dune build --profile=$(PROFILE) $(COVERAGE_OPTIONS) @runtest_out_of_opam
 
-PROTO_DIRS := $(shell find src/ -maxdepth 1 -type d -path "src/proto_*" 2>/dev/null | LC_COLLATE=C sort)
-NONPROTO_DIRS := $(shell find src/ -maxdepth 1 -mindepth 1 -type d -not -path "src/proto_*" 2>/dev/null | LC_COLLATE=C sort)
+PROTO_DIRS := $(shell find protocols/ -maxdepth 1 -type d -path "protocols/proto_*" 2>/dev/null | LC_COLLATE=C sort)
+NONPROTO_DIRS := $(shell find src/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | LC_COLLATE=C sort)
 
 .PHONY: test-proto-unit
 test-proto-unit:
@@ -270,7 +270,7 @@ test-unit: test-nonproto-unit test-proto-unit
 
 .PHONY: test-unit-alpha
 test-unit-alpha:
-	@dune build --profile=$(PROFILE) @src/proto_alpha/lib_protocol/runtest
+	@dune build --profile=$(PROFILE) @protocols/proto_alpha/lib_protocol/runtest
 
 # TODO: https://gitlab.com/tezos/tezos/-/issues/5377
 # Running the runtest_js targets intermittently hangs.
@@ -342,8 +342,8 @@ EXCLUDE_TEST_DIRS := $(addprefix --exclude-file ,$(addsuffix /,${TEST_DIRS}))
 lint-ometrics:
 	@echo "Running ometrics analysis in your changes"
 	@ometrics check ${EXCLUDE_TEST_DIRS} \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
+        --exclude-file "protocols/proto_alpha/lib_protocol/alpha_context.mli" \
+        --exclude-file "protocols/proto_alpha/lib_protocol/alpha_context.ml" \
         --exclude-file "tezt/tests/" \
         --exclude-entry-re "pp\|pp_.+" \
         --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \
@@ -355,8 +355,8 @@ lint-ometrics-gitlab:
 	@mkdir -p _reports
 	@ometrics check-clone ${OMETRICS_GIT} --branch ${OMETRICS_BRANCH} \
         ${EXCLUDE_TEST_DIRS} \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
+        --exclude-file "protocols/proto_alpha/lib_protocol/alpha_context.mli" \
+        --exclude-file "protocols/proto_alpha/lib_protocol/alpha_context.ml" \
         --exclude-file "tezt/tests/" \
         --exclude-entry-re "pp\|pp_.+" \
         --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \

@@ -34,10 +34,10 @@ Failures are reported as a diff in both cases.
 
 Different output::
 
-    File "src/proto_alpha/lib_client/limit.ml", line 1, characters 0-0:
-    ------ src/proto_alpha/lib_client/limit.ml
-    ++++++ src/proto_alpha/lib_client/limit.ml.corrected
-    File "src/proto_alpha/lib_client/limit.ml", line 57, characters 0-1:
+    File "protocols/proto_alpha/lib_client/limit.ml", line 1, characters 0-0:
+    ------ protocols/proto_alpha/lib_client/limit.ml
+    ++++++ protocols/proto_alpha/lib_client/limit.ml.corrected
+    File "protocols/proto_alpha/lib_client/limit.ml", line 57, characters 0-1:
      |      if eq x y then Result.return_some x
      |      else error_with "Limit.join: error (%s)" where
      |

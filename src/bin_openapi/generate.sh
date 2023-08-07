@@ -17,7 +17,7 @@ tezos_client=./octez-client
 
 # Protocol configuration.
 protocol_hash=PtNairobiyssHuh87hEhfVBGCVrK3WnS8Z2FT4ymB5tAa4r1nQf
-protocol_parameters=src/proto_017_PtNairob/parameters/sandbox-parameters.json
+protocol_parameters=protocols/proto_017_PtNairob/parameters/sandbox-parameters.json
 protocol_name=nairobi
 
 # Secret key to activate the protocol.

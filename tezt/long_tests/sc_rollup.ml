@@ -57,7 +57,7 @@ let read_kernel name : string =
   let open Tezt.Base in
   let kernel_file =
     project_root // Filename.dirname __FILE__
-    // "../../src/proto_alpha/lib_protocol/test/integration/wasm_kernel"
+    // "../../protocols/proto_alpha/lib_protocol/test/integration/wasm_kernel"
     // (name ^ ".wasm")
   in
   hex_encode (read_file kernel_file)

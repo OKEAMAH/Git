@@ -26,7 +26,7 @@ use v1_primitives as prim;
 pub mod v1_primitives {
     //! Encoding of [michelson_v1_primitives].
     //!
-    //! [michelson_v1_primitives]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/src/proto_alpha/lib_protocol/michelson_v1_primitives.ml>
+    //! [michelson_v1_primitives]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/protocols/proto_alpha/lib_protocol/michelson_v1_primitives.ml>
 
     /// `("Pair", D_PAIR)` case tag.
     pub const PAIR_TAG: u8 = 7;

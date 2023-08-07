@@ -368,7 +368,7 @@ any subitems represent the longer description of that commit)::
     - add docstrings
 
 **Beware**: For MRs touching
-``src/proto_alpha/lib_protocol``, see :ref:`protocol MRs <protocol_mr>`.
+``protocols/proto_alpha/lib_protocol``, see :ref:`protocol MRs <protocol_mr>`.
 
 .. _favoring_small_mrs:
 
@@ -559,7 +559,7 @@ created from ``proto_alpha/`` where the development continues.
 These directories are called *protocol snapshots*.
 
 The hash of each active or candidate protocol is computed from the directory
-``src/proto_0*/lib_protocol/``, so every change in these directories
+``protocols/proto_0*/lib_protocol/``, so every change in these directories
 is forbidden.
 However, the protocol snapshots contain other subdirectories than the frozen ``lib_protocol/``, implementing protocol-dependent code. For instance, ``lib_client/`` implements commands in the Octez client that can invoke protocol-dependent functionalities, such as transfers between accounts.
 

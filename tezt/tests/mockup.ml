@@ -1159,7 +1159,8 @@ let test_create_mockup_config_show_init_roundtrip protocols =
              ("consensus_threshold", `Float 0.0);
            ]
     in
-    (* These are the mockup specific protocol parameters as per [src/proto_alpha/lib_client/mockup.ml] *)
+    (* These are the mockup specific protocol parameters as per
+       [protocols/proto_alpha/lib_client/mockup.ml]. *)
     let mockup_constants : JSON.t =
       JSON.annotate ~origin:"mockup_constants"
       @@ `O

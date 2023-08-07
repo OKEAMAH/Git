@@ -58,7 +58,10 @@ let perform_check_definitions snoop proto =
     List.map
       (fun fn ->
         project_root
-        // Printf.sprintf "src/%s/lib_protocol/%s" (Protocol.directory proto) fn)
+        // Printf.sprintf
+             "protocols/%s/lib_protocol/%s"
+             (Protocol.directory proto)
+             fn)
       ["michelson_v1_gas_costs.ml"; "michelson_v1_gas_costs_generated.ml"]
   in
   Snoop.check_definitions ~files snoop

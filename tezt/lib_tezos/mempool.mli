@@ -103,19 +103,19 @@ module Config : sig
   val of_json : JSON.t -> t
 
   (** Default value for the [minimal_fees] field
-      (see src/proto_alpha/lib_plugin/plugin.ml) *)
+      (see protocols/proto_alpha/lib_plugin/plugin.ml) *)
   val default_minimal_fees : int
 
   (** Default value for the [minimal_nanotez_per_gas_unit] field
-      (see src/proto_alpha/lib_plugin/plugin.ml) *)
+      (see protocols/proto_alpha/lib_plugin/plugin.ml) *)
   val default_minimal_nanotez_per_gas_unit : int * int
 
   (** Default value for the [minimal_nanotez_per_byte] field
-      (see src/proto_alpha/lib_plugin/plugin.ml) *)
+      (see protocols/proto_alpha/lib_plugin/plugin.ml) *)
   val default_minimal_nanotez_per_byte : int * int
 
   (** Default value for the [replace_by_fee_factor] field
-      (see src/proto_alpha/lib_plugin/plugin.ml) *)
+      (see protocols/proto_alpha/lib_plugin/plugin.ml) *)
   val default_replace_by_fee_factor : int * int
 
   (** Default value for the [max_operations] field

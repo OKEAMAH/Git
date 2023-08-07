@@ -11,7 +11,7 @@
 //! We have, however, a *specialised* [OutboxMessageTransaction::parameters]. The
 //! communication protocol allows payload to be any michelson `script_expr`.
 //!
-//! [outbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/80b2cccb9c663dde2d86a6c94806fc149b7d1ef3/src/proto_alpha/lib_protocol/sc_rollup_outbox_message_repr.ml>
+//! [outbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/80b2cccb9c663dde2d86a6c94806fc149b7d1ef3/protocols/proto_alpha/lib_protocol/sc_rollup_outbox_message_repr.ml>
 
 use tezos_data_encoding::enc::BinWriter;
 use tezos_data_encoding::encoding::HasEncoding;

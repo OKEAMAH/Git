@@ -39,8 +39,8 @@ if ! ( [[ "$label" =~ ^[a-z]+$ ]] && [[ "$version" =~ ^[0-9][0-9][0-9]$ ]] ); th
     exit 1
 fi
 
-if [ -d src/proto_${version} ] ; then
-    echo "Error: you should remove the directory 'src/proto_${version}'"
+if [ -d protocols/proto_${version} ] ; then
+    echo "Error: you should remove the directory 'protocols/proto_${version}'"
     exit 1
 fi
 
@@ -50,13 +50,13 @@ if [ -d docs/${label} ] ; then
 fi
 
 # create a temporary directory until the hash is known
-# this is equivalent to `cp src/proto_alpha/ src/proto_${version}` but only for versioned files
-echo "Copying src/proto_alpha to src/proto_${version}"
+# this is equivalent to `cp protocols/proto_alpha/ protocols/proto_${version}` but only for versioned files
+echo "Copying protocols/proto_alpha to protocols/proto_${version}"
 mkdir /tmp/tezos_proto_snapshot
-git archive HEAD src/proto_alpha/ | tar -x -C /tmp/tezos_proto_snapshot
+git archive HEAD protocols/proto_alpha/ | tar -x -C /tmp/tezos_proto_snapshot
 # remove the README because it is specific to Alpha
-rm /tmp/tezos_proto_snapshot/src/proto_alpha/README.md
-mv /tmp/tezos_proto_snapshot/src/proto_alpha src/proto_${version}
+rm /tmp/tezos_proto_snapshot/protocols/proto_alpha/README.md
+mv /tmp/tezos_proto_snapshot/protocols/proto_alpha protocols/proto_${version}
 rm -rf /tmp/tezos_proto_snapshot
 
 echo "Copying docs/alpha to docs/${label}"
@@ -71,25 +71,25 @@ rm -rf /tmp/tezos_proto_doc_snapshot
 # if it is not strictly needed anymore.
 echo "Setting current version in raw_context and proxy"
 sed -i.old.old -e 's/let version_value = "alpha_current"/let version_value = "'${current}'"/' \
-    src/proto_${version}/lib_protocol/constants_repr.ml\
-    src/proto_${version}/lib_protocol/raw_context.ml\
-    src/proto_${version}/lib_client/proxy.ml
+    protocols/proto_${version}/lib_protocol/constants_repr.ml\
+    protocols/proto_${version}/lib_protocol/raw_context.ml\
+    protocols/proto_${version}/lib_client/proxy.ml
 
-long_hash=$(./octez-protocol-compiler -hash-only src/proto_${version}/lib_protocol)
+long_hash=$(./octez-protocol-compiler -hash-only protocols/proto_${version}/lib_protocol)
 short_hash=$(echo $long_hash | head -c 8)
 
-if [ -d src/proto_${version}_${short_hash} ] ; then
-    echo "Error: you should remove the directory 'src/proto_${version}_${short_hash}'"
+if [ -d protocols/proto_${version}_${short_hash} ] ; then
+    echo "Error: you should remove the directory 'protocols/proto_${version}_${short_hash}'"
     exit 1
 fi
 
-mv src/proto_${version} src/proto_${version}_${short_hash}
+mv protocols/proto_${version} protocols/proto_${version}_${short_hash}
 
 # fix versioned links (in labels, references, and paths) in docs
 echo "Fixing versioned links in docs"
 cd docs/${label}
 sed -i.old -e s/_alpha:/_${label}:/g \
-       -e s,src/proto_alpha,src/proto_${version}_${short_hash},g \
+       -e s,protocols/proto_alpha,protocols/proto_${version}_${short_hash},g \
        -e s,tezos-protocol-alpha/,tezos-protocol-${version}-${short_hash}/,g \
        -e s,raw_protocol_alpha/,raw_protocol_${version}_${short_hash}/,g \
        -e s/_alpha\>/_${label}\>/g \
@@ -101,7 +101,7 @@ cd ../..
 # generate docs/protocols/042_jeanmichel.rst from docs/protocols/alpha.rst
 echo "Copying+fixing docs/protocols/alpha.rst to docs/protocols/${version}_${label}.rst"
 sed -e s/_alpha:/_${version}_${label}:/g \
-    -e s,src/proto_alpha,src/proto_${version}_${short_hash},g \
+    -e s,protocols/proto_alpha,protocols/proto_${version}_${short_hash},g \
     -e s/_alpha\>/_${version}\>/g \
     -e s/_alpha\`/_${version}\`/g \
     -e s/-alpha.html/-${version}.html/g \
@@ -141,11 +141,11 @@ doc_index="docs/index.rst"
 mv "${doc_index}.tmp" "$doc_index"
 
 # Replace test invocation headers that mention proto_alpha
-find src/proto_${version}_${short_hash} -type f -path \*/test/\*.ml \
+find protocols/proto_${version}_${short_hash} -type f -path \*/test/\*.ml \
      -exec sed -i "s@Invocation:\(.*\)/proto_alpha/\(.*\)@Invocation:\1/proto_${version}_${short_hash}/\2@" \{\} \;
 
 # move daemons to a tmp directory to avoid editing lib_protocol
-cd src/proto_${version}_${short_hash}
+cd protocols/proto_${version}_${short_hash}
 daemons=$(ls | grep -v lib_protocol)
 mkdir tmp
 mv $daemons tmp

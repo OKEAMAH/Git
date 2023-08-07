@@ -367,14 +367,14 @@ developer utilities and old protocols. In particular:
  - bindings, e.g. ``src/lib_sapling/bindings/dune``
  - test frameworks, e.g. ``tezt/lib/dune``
  - test packages, e.g. ``src/*/test/dune``
- - old protocols, e.g. ``src/proto_00*/*/*dune``
+ - old protocols, e.g. ``protocols/proto_00*/*/*dune``
  - helper utilities, e.g.:
 
    - ``src/openapi/dune``, (executable name ``openapi``)
    - ``src/lib_client_base/gen/dune`` (executable name ``bip39_generator``)
    - ``src/lib_protocol_compiler/dune`` (executable name ``replace``)
-   - ``src/proto_alpha/lib_parameters/dune`` (executable name ``gen``)
-   - ``src/proto_011_PtHangz2/lib_parameters/dune`` (executable name ``gen``)
+   - ``protocols/proto_alpha/lib_parameters/dune`` (executable name ``gen``)
+   - ``protocols/proto_011_PtHangz2/lib_parameters/dune`` (executable name ``gen``)
    - ``src/lib_protocol_environment/ppinclude/dune`` (executable name ``ppinclude``)
    - ``src/lib_store/legacy_store/dune`` (executable name ``legacy_store_builder``)
 
@@ -523,7 +523,7 @@ The OCaml package tests (Alcotest & QCheck)
   Protocol tests must be added to :src:`.gitlab/ci/jobs/test/unit.yml` under the
   protocol that they are testing. For example, to run a new protocol test for
   ``proto_XXX_YYYYYYYY``, add the corresponding
-  ``src/proto_XXX_YYYYYYYY/lib_\*.test_proto`` to the ``unit:XXX_YYYYYYYY``
+  ``protocols/proto_XXX_YYYYYYYY/lib_\*.test_proto`` to the ``unit:XXX_YYYYYYYY``
   ``make`` invocation.
 
 Other

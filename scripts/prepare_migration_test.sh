@@ -131,7 +131,7 @@ coincides with <protocol_version> minus one, and the <predecessor_short_hash>
 coincides the the short hash in the name of the folder that contains the
 predecessor of the Alpha protocol in the src directory, i.e., the folder
 
-  ./src/proto_<predecessor_version>_<predecessor_short_hash>
+  ./protocols/proto_<predecessor_version>_<predecessor_short_hash>
 
 #### Migration on a context imported from Mainnet ####
 
@@ -175,7 +175,7 @@ then
     proto_name="$2"
     proto_version=$(echo "$proto_name" | cut -d'_' -f2)
 
-    proto_dir="src/proto_${proto_version}_*/"
+    proto_dir="protocols/proto_${proto_version}_*/"
 
     # strip leading zeros to prevent version being treated as octal
     proto_version=$(echo "$proto_version" | sed 's/^0*//')
@@ -184,7 +184,7 @@ else
     pred_proto_name=$(find src -name "proto_[0-9][0-9][0-9]_*" | awk -F'/' '{print $NF}' | sort -r | head -1)
     pred_proto_version=$(echo "$pred_proto_name" | cut -d'_' -f2)
 
-    proto_dir="src/proto_alpha/"
+    proto_dir="protocols/proto_alpha/"
 fi
 
 # now calls correct scripts and renaming
@@ -232,7 +232,7 @@ then
 
     user_activated_upgrade $proto_dir "$mig_level"
 
-    pred_full_hash=$(first_hash src/proto_"${pred_proto_version}"_*/lib_protocol/TEZOS_PROTOCOL)
+    pred_full_hash=$(first_hash protocols/proto_"${pred_proto_version}"_*/lib_protocol/TEZOS_PROTOCOL)
     pred_short_hash=$(echo "$pred_full_hash" | head -c 8)
 
     # now calls correct scripts and renaming

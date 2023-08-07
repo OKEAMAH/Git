@@ -29,14 +29,14 @@ Runs toplevel with libraries defined in DIR and optional flags and args that fol
 ### Example Usage
 
 ```
-dune exec -- tztop src/proto_alpha/
+dune exec -- tztop protocols/proto_alpha/
 ```
 
 If you're in an environment that doesn't have opam env hooks, 
 
 
 ```
-opam exec -- dune exec -- tztop src/proto_alpha/
+opam exec -- dune exec -- tztop protocols/proto_alpha/
 ```
 
 `tztop` also accepts flags and options accepted originally by the toplevel.
@@ -44,7 +44,7 @@ opam exec -- dune exec -- tztop src/proto_alpha/
 For instance, for stdin redirection:
 
 ```
-echo "#show_module Tezos_protocol_alpha.Protocol" | dune exec -- tztop src/proto_alpha -stdin
+echo "#show_module Tezos_protocol_alpha.Protocol" | dune exec -- tztop protocols/proto_alpha -stdin
 ```
 
 Or, for editor integrations:

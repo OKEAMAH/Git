@@ -4,7 +4,7 @@ Protocol Alpha
 This page documents the changes brought by protocol Alpha with respect
 to Oxford (see :ref:`naming_convention`).
 
-The code can be found in directory :src:`src/proto_alpha` of the ``master``
+The code can be found in directory :src:`protocols/proto_alpha` of the ``master``
 branch of Octez.
 
 .. contents::

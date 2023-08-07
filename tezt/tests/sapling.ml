@@ -34,7 +34,7 @@ open Tezt_tezos
 
 let sapling_contract_path ?(script = "sapling_contract.tz") protocol =
   sf
-    "./src/%s/lib_protocol/test/integration/michelson/contracts/%s"
+    "./protocols/%s/lib_protocol/test/integration/michelson/contracts/%s"
     (Protocol.directory protocol)
     script
 

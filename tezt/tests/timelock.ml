@@ -79,7 +79,7 @@ let originate_contract ?(mockup = true) protocol contract =
   let* contract_address =
     let prg =
       sf
-        "./src/%s/lib_protocol/contracts/%s"
+        "./protocols/%s/lib_protocol/contracts/%s"
         (Protocol.directory protocol)
         contract
     in

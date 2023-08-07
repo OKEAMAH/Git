@@ -171,7 +171,7 @@ genesis protocol and then goes through all previous protocols until it
 finally switches to the current protocol.
 
 Throughout the documentation, "Alpha" refers to the protocol in the
-``src/proto_alpha`` directory of the ``master`` branch, that is, a protocol under development, which serves as a basis to propose replacements
+``protocols/proto_alpha`` directory of the ``master`` branch, that is, a protocol under development, which serves as a basis to propose replacements
 for the currently active protocol. The Alpha protocol is used by
 default in :doc:`sandbox mode <../user/sandbox>` and in the various test
 suites.

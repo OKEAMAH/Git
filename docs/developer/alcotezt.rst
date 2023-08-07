@@ -64,7 +64,7 @@ The ``runtest`` alias can be used to execute all tests, including
 Alcotezts, in a folder and its recursive sub-folders. For example, to
 run all tests of protocol Alpha, run::
 
-  dune build @src/proto_alpha/runtest
+  dune build @protocols/proto_alpha/runtest
 
 On the other hand, there is no convenient way to pass arguments to the
 underlying tests with this method.
@@ -74,7 +74,7 @@ setting the environment variable ``RUNTEZTALIAS`` to ``false``. For
 instance, to run all the unit tests in protocol Alpha exception the
 Alcotezts, you can run::
 
-  RUNTEZTALIAS=false dune build @src/proto_alpha/runtest
+  RUNTEZTALIAS=false dune build @protocols/proto_alpha/runtest
 
 Execution through the Tezt main entrypoint
 ++++++++++++++++++++++++++++++++++++++++++

@@ -9,7 +9,7 @@
 //! In *general*, this module is a re-implementation of the tezos-protocol
 //! [inbox message repr].
 //!
-//! [inbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/src/proto_alpha/lib_protocol/sc_rollup_inbox_message_repr.mli>
+//! [inbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/protocols/proto_alpha/lib_protocol/sc_rollup_inbox_message_repr.mli>
 
 use crate::michelson::Michelson;
 use crate::public_key_hash::PublicKeyHash;

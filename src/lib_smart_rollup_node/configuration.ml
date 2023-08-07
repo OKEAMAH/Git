@@ -135,7 +135,7 @@ let mutez mutez = {Injector_sigs.mutez}
 
 let tez t = mutez Int64.(mul (of_int t) 1_000_000L)
 
-(* Copied from src/proto_alpha/lib_plugin/mempool.ml *)
+(* Copied from protocols/proto_alpha/lib_plugin/mempool.ml *)
 
 let default_minimal_fees = mutez 100L
 

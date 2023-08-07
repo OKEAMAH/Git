@@ -127,7 +127,7 @@ type bootstrap_contract = {
 
     This function first builds a default parameter file from the [base]
     parameter. If [base] is a [string] {!Either.Left}, the string denotes a path
-    to a parameter file like ["src/proto_alpha/parameters/sandbox-parameters.json"],
+    to a parameter file like ["protocols/proto_alpha/parameters/sandbox-parameters.json"],
     which is taken as the base parameters. If [base] is a {!t * constants option} {!Either.Right},
     the default parameters of the given protocol are the base parameters.
 

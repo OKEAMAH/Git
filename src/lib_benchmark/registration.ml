@@ -171,7 +171,7 @@ let register ?(add_timer = true) ((module Bench) : Benchmark.t) =
       | Other_purpose _ -> purpose
       | Generate_code destination ->
           let destination =
-            Filename.concat "src/proto_alpha/lib_protocol"
+            Filename.concat "protocols/proto_alpha/lib_protocol"
             @@ destination ^ "_costs_generated.ml"
           in
           Generate_code destination

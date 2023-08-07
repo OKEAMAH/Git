@@ -16,12 +16,12 @@ fi
 
 set -e
 
-current_hash_genesis=`jq '.hash' < src/proto_genesis/lib_protocol/src/TEZOS_PROTOCOL | tr -d '"'`
+current_hash_genesis=`jq '.hash' < protocols/proto_genesis/lib_protocol/src/TEZOS_PROTOCOL | tr -d '"'`
 echo "Genesis's current hash: $current_hash_genesis"
 genesis_tmpdir=`mktemp -d`
 mkdir $genesis_tmpdir/src
-cp src/proto_genesis/lib_protocol/src/*.ml src/proto_genesis/lib_protocol/src/*.mli $genesis_tmpdir/src/
-grep -v '"hash"' < src/proto_genesis/lib_protocol/src/TEZOS_PROTOCOL > $genesis_tmpdir/src/TEZOS_PROTOCOL
+cp protocols/proto_genesis/lib_protocol/src/*.ml protocols/proto_genesis/lib_protocol/src/*.mli $genesis_tmpdir/src/
+grep -v '"hash"' < protocols/proto_genesis/lib_protocol/src/TEZOS_PROTOCOL > $genesis_tmpdir/src/TEZOS_PROTOCOL
 new_hash_genesis=`./octez-protocol-compiler -hash-only $genesis_tmpdir/tmp $genesis_tmpdir/src`
 echo "Genesis's new hash: $new_hash_genesis"
 if [ "$current_hash_genesis" != "$new_hash_genesis" ]
@@ -32,17 +32,18 @@ else
     echo "Proto Genesis's hash hasn't changed, nothing to do"
 fi
 
-current_hash_alpha=`jq '.hash' < src/proto_alpha/lib_protocol/src/TEZOS_PROTOCOL | tr -d '"'`
+current_hash_alpha=`jq '.hash' < protocols/proto_alpha/lib_protocol/src/TEZOS_PROTOCOL | tr -d '"'`
 echo "Alpha's current hash: $current_hash_alpha"
 alpha_tmpdir=`mktemp -d`
 mkdir $alpha_tmpdir/src
-cp src/proto_alpha/lib_protocol/src/*.ml src/proto_alpha/lib_protocol/src/*.mli $alpha_tmpdir/src/
-grep -v '"hash"' < src/proto_alpha/lib_protocol/src/TEZOS_PROTOCOL > $alpha_tmpdir/src/TEZOS_PROTOCOL
+cp protocols/proto_alpha/lib_protocol/src/*.ml protocols/proto_alpha/lib_protocol/src/*.mli $alpha_tmpdir/src/
+[ "$current_hash_alpha" != "$newlet req_str = _
+grep -v '"hash"' < protocols/proto_alpha/lib_protocol/src/TEZOS_PROTOCOL > $alpha_tmpdir/src/TEZOS_PROTOCOL in
 new_hash_alpha=`./octez-protocol-compiler -hash-only $alpha_tmpdir/tmp $alpha_tmpdir/src`
 echo "Alpha's new hash: $new_hash_alpha"
 if [ "$current_hash_alpha" != "$new_hash_alpha" ]
 then
-    find src/proto_alpha src/bin_client docs -type f -exec sed "s/$current_hash_alpha/$new_hash_alpha/g" -i {} \;
+    find protocols/proto_alpha src/bin_client docs -type f -exec sed "s/$current_hash_alpha/$new_hash_alpha/g" -i {} \;
     git commit -a -m "Update proto Alpha's hash"
 else
     echo "Proto Alpha's hash hasn't changed, nothing to do"

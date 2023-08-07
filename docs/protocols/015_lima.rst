@@ -4,7 +4,7 @@ Protocol Lima
 This page documents the changes brought by protocol Lima with respect
 to Kathmandu (see :ref:`naming_convention`).
 
-The code can be found in the :src:`src/proto_015_PtLimaPt` directory of the
+The code can be found in the :src:`protocols/proto_015_PtLimaPt` directory of the
 ``master`` branch of Tezos.
 
 .. contents::

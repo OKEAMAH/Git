@@ -231,7 +231,7 @@ module Config = struct
     }
 
   (** Default filter configuration for protocol alpha
-      (see src/proto_alpha/lib_plugin/plugin.ml
+      (see protocols/proto_alpha/lib_plugin/plugin.ml
        and src/lib_shell/prevalidator_bounding.ml). *)
 
   let default_minimal_fees = 100

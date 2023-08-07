@@ -25,7 +25,7 @@
 (*****************************************************************************)
 
 (** Smart rollup shared inbox representation, adapted from a subset of
-    [src/proto_alpha/lib_protocol/sc_rollup_inbox_repr.mli]. *)
+    [protocols/proto_alpha/lib_protocol/sc_rollup_inbox_repr.mli]. *)
 
 module Hash = Inbox_hash
 

@@ -4,7 +4,7 @@ Protocol Mumbai
 This page documents the changes brought by protocol Mumbai with respect
 to Lima (see :ref:`naming_convention`).
 
-The code can be found in directory :src:`src/proto_016_PtMumbai` of the ``master``
+The code can be found in directory :src:`protocols/proto_016_PtMumbai` of the ``master``
 branch of Tezos.
 
 .. contents::

@@ -229,7 +229,7 @@ This has no impact within the protocol (where shell errors don’t exist)
 nor within the shell (where protocol errors are automatically wrapped
 inside a shell error). However, it can have an impact in the spaces in
 between. Most typically, this matters in the unit-tests of the protocol
-(``src/proto_alpha/lib_protocol/test/unit/``) where you call some
+(``protocols/proto_alpha/lib_protocol/test/unit/``) where you call some
 protocol functions directly. In this case, you need to wrap the errors
 yourself, using the wrapping functions provided by the environment:
 ``Environment.wrap_tzresult``, ``Environment.wrap_tztrace``, and

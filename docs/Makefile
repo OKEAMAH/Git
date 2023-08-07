@@ -87,7 +87,7 @@ odoc-lite: docexes
 	rm -rf $(TMPDOCDIR)/
 	mkdir -p $(TMPDOCDIR)/
 	rsync --recursive --links --perms \
-		../scripts ../script-inputs ../src ../tezt ../vendors ../dune ../dune-project $(TMPDOCDIR)/
+		../scripts ../script-inputs ../src ../protocols ../tezt ../vendors ../dune ../dune-project $(TMPDOCDIR)/
 	cd $(TMPDOCDIR)/ && ./scripts/remove-old-protocols.sh
 	patch -d $(TMPDOCDIR) -p1 <odoc_protocols.patch
 	@echo "Running odoc in $(TMPDOCDIR), with build directory $(TOPBUILDDIR_ABS) and outputs in $(TMPDOCDIR)/odoc.log"

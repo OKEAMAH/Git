@@ -25,7 +25,7 @@
 (*****************************************************************************)
 
 (** This module is a copy of
-    [src/proto_016_PtMumbai/lib_sc_rollup_node/store.ml], which contains the
+    [protocols/proto_016_PtMumbai/lib_sc_rollup_node/store.ml], which contains the
     store for the Mumbai rollup node. *)
 
 include Store_sigs

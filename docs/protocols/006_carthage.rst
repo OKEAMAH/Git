@@ -195,7 +195,7 @@ In order to regenerate a protocol with the same hash as Carthage you
 can run from this branch::
 
   $ ./scripts/snapshot_alpha.sh carthage_006 from babylon_005
-  $ ls src/proto_006_PtXXX
+  $ ls protocols/proto_006_PtXXX
 
 
 List of Merge Requests

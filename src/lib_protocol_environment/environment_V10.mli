@@ -148,9 +148,9 @@ module type T = sig
       the environment to translate some return values from the protocol's error
       monad into the shell's. They are exported because they can be useful for
       writing tests for the protocol (i.e., for the tests located in
-      [src/proto_*/lib_protocol/test/]) and for writing protocol-specific
+      [protocols/proto_*/lib_protocol/test/]) and for writing protocol-specific
       support libraries and binaries (i.e., for the code in
-      [src/proto_*/lib_{client,delegate,etc.}]). *)
+      [protocols/proto_*/lib_{client,delegate,etc.}]). *)
   type error += Ecoproto_error of Error_monad.error
 
   (** [wrap_tzerror e] is a shell error wrapping the protocol error [e].

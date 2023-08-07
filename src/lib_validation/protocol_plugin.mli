@@ -28,7 +28,7 @@
     validation & mempool plugin).
 
     Implementations for such a plugin can be found in
-    [src/proto_xxx/lib_plugin/mempool.ml]. *)
+    [protocols/proto_xxx/lib_plugin/mempool.ml]. *)
 module type T = sig
   include Registered_protocol.T
 

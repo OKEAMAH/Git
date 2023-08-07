@@ -25,7 +25,7 @@ elif [ "${1:-}" = "--help" ]; then
     usage
 fi
 
-all_protocols=$(find src -maxdepth 1 -type d -regex 'src/proto.*' | \
+all_protocols=$(find protocols -maxdepth 1 -type d -regex 'protocols/proto.*' | \
                 cut -d '_' -f2- | \
                 sed 's/_/-/g')
 
@@ -36,10 +36,10 @@ to_be_removed=$(echo "$all_protocols" | \
 
 for proto in $to_be_removed; do
     if [ -z "$trash_bin" ]; then
-        echo rm -rf src/proto_"${proto}"
-        rm -rf src/proto_"${proto}"
+        echo rm -rf protocols/proto_"${proto}"
+        rm -rf protocols/proto_"${proto}"
     else
-        echo mv src/proto_"${proto}" "$trash_bin"
-        mv src/proto_"${proto}" "$trash_bin"
+        echo mv protocols/proto_"${proto}" "$trash_bin"
+        mv protocols/proto_"${proto}" "$trash_bin"
     fi
 done

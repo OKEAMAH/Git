@@ -3,7 +3,7 @@
 set -e
 
 usage="Usage:
-$ ./scripts/link_protocol.sh src/proto_<new_version>_<new_hash>
+$ ./scripts/link_protocol.sh protocols/proto_<new_version>_<new_hash>
 
 This updates manifest/main.ml to add the new protocol.
 Then, it runs make -C manifest to regenerate the relevant files.

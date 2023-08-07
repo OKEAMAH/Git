@@ -24,7 +24,7 @@ name="$2"
 echo "snapshot_alpha.sh ${name}_${version_number}"
 SILENCE_REMINDER=yes $script_dir/snapshot_alpha.sh ${name}_${version_number}
 
-dir=$(ls -d src/proto_${version_number}_*)
+dir=$(ls -d protocols/proto_${version_number}_*)
 
 if [ -z "$dir" ]; then
   echo "Failed to find where the protocol was snapshotted."
@@ -38,8 +38,8 @@ if [ -z "$short_hash" ]; then
   exit 1
 fi
 
-echo "link_protocol.sh src/proto_${version_number}_${short_hash}"
-$script_dir/link_protocol.sh src/proto_${version_number}_${short_hash}
+echo "link_protocol.sh protocols/proto_${version_number}_${short_hash}"
+$script_dir/link_protocol.sh protocols/proto_${version_number}_${short_hash}
 
 echo "Done. You can now commit everything."
-echo "Don't forget to: git add src/proto_${version_number}_${short_hash} docs/${version_number}"
+echo "Don't forget to: git add protocols/proto_${version_number}_${short_hash} docs/${version_number}"

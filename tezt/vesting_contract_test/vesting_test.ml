@@ -75,7 +75,8 @@ end
 module StateMonad = struct
   include State.Monad (StateRecord) (Lwt)
 
-  let parameter_file = "src/proto_alpha/parameters/sandbox-parameters.json"
+  let parameter_file =
+    "protocols/proto_alpha/parameters/sandbox-parameters.json"
 
   let client = getf StateRecord.get_client
 

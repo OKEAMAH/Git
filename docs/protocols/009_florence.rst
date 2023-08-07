@@ -3,7 +3,7 @@ Protocol Florence
 
 This page contains all the relevant information for protocol 009 Florence.
 
-The code can be found in the ``src/proto_009_PsFLoren`` directory of the
+The code can be found in the ``protocols/proto_009_PsFLoren`` directory of the
 ``master`` branch of Tezos and its full hash is
 ``PsFLorenaUUuikDWvMDr6fGBRG8kt3e3D3fHoXK1j1BFRxeSH4i``.
 

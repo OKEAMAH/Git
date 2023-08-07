@@ -494,9 +494,9 @@ module Full_infrastructure = struct
        The payload of this JSON file corresponds to the hex encoded version of
        the Inferno, Canto I, by Dante Alighieri. The original text is also used
        in the uit tests
-       (see src/proto_alpha/lib_dac/test/test_dac_pages_encoding.ml). Because
-       the unit test and the integration test use pages of different size,
-       the final root hash obtained is different from the one in the unit
+       (see protocols/proto_alpha/lib_dac/test/test_dac_pages_encoding.ml).
+       Because the unit test and the integration test use pages of different
+       size, the final root hash obtained is different from the one in the unit
        tests. *)
     let payload, expected_rh = sample_payload "preimage" in
     let push_promise =

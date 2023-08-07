@@ -300,7 +300,7 @@ run them.
    (in directory :src:`src/lib_store/unix/test/`):
    tests for the on-disk store.
  - :package:`tezos-protocol-alpha`
-   (in directory :src:`src/proto_alpha/lib_protocol/test/`):
+   (in directory :src:`protocols/proto_alpha/lib_protocol/test/`):
    tests of the Alpha protocol (without launching a node).
  - :package-api:`tezos-crypto <octez-libs/Tezos_crypto/index.html>`
    (in directory :src:`src/lib_crypto/test/`):

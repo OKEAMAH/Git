@@ -27,7 +27,7 @@ open Tezt_core.Base
 
 (* Do not modify: it is automatically updated with [scripts/snapshot_alpha.sh]. *)
 let is_proto_test file =
-  match file =~* rex "^src/proto_(\\w+)/" with
+  match file =~* rex "^protocols/proto_(\\w+)/" with
   | None -> []
   | Some "alpha" -> ["alpha"]
   | Some "016_PtMumbai" -> ["mumbai"]

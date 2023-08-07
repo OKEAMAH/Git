@@ -28,7 +28,7 @@ directly implemented as OCaml type checking, so that the correctness of the
 latter entails the correctness of the former.
 
 The (simplified) definition of Michelson expressions type is presented below
-(see the :src:`src/proto_alpha/lib_protocol/script_typed_ir.ml` module for the
+(see the :src:`protocols/proto_alpha/lib_protocol/script_typed_ir.ml` module for the
 actual definition):
 
 .. code-block:: ocaml
@@ -98,7 +98,7 @@ thus making a type look monomorphic from user's perspective:
   type ex_ty = Ex_ty : 'a ty -> ex_ty
 
 This type is defined in
-:src:`src/proto_alpha/lib_protocol/script_ir_translator.mli` As one can see it's
+:src:`protocols/proto_alpha/lib_protocol/script_ir_translator.mli` As one can see it's
 just a wrapper around ``'a ty``. However, its function is to hide the ``'a``
 variable from the user (and the compiler), by including it only on the
 right-hand side. This way it's possible to form a list (or any data structure
@@ -139,7 +139,7 @@ This type is defined in the protocol environment, in ``Equality_witness`` module
 and used throughout the protocol to dynamically check for type equality of
 values. It is not possible to write a general function checking equality of
 types; it's only possible for particular examples. One such example can be found
-in :src:`src/proto_alpha/lib_protocol/script_ir_translator.ml` in function
+in :src:`protocols/proto_alpha/lib_protocol/script_ir_translator.ml` in function
 ``merge_types``. It either produces a witness that two ``'t ty`` values are of
 the same type or ``None`` if that's not the case.
 

@@ -8,7 +8,7 @@
 //! In *general*, this module is a re-implementation of the tezos-protocol
 //! [inbox message repr].
 //!
-//! [inbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/src/proto_alpha/lib_protocol/sc_rollup_inbox_message_repr.mli>
+//! [inbox message repr]: <https://gitlab.com/tezos/tezos/-/blob/9028b797894a5d9db38bc61a20abb793c3778316/protocols/proto_alpha/lib_protocol/sc_rollup_inbox_message_repr.mli>
 
 use crypto::base58::FromBase58CheckError;
 use crypto::hash::ContractTz1Hash;
@@ -59,7 +59,7 @@ mod test {
     };
 
     // Ports of *internal_inbox_message* tests from
-    // <https://gitlab.com/tezos/tezos/-/blob/a7a99d13b19121bfc9353426b545c3fb7f91da28/src/proto_alpha/lib_protocol/test/unit/test_sc_rollup_management_protocol.ml>
+    // <https://gitlab.com/tezos/tezos/-/blob/a7a99d13b19121bfc9353426b545c3fb7f91da28/protocols/proto_alpha/lib_protocol/test/unit/test_sc_rollup_management_protocol.ml>
     //
     // Needed to ensure binary-compatability with messages from Layer 1.
 

@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 (** Code related to the light mode that is protocol-independent.
-    See [src/proto_*/lib_client/light.ml] files for protocol-dependent code. *)
+    See [protocols/proto_*/lib_client/light.ml] files for protocol-dependent code. *)
 
 (** See [mk_sources_config] smart constructor to build values. *)
 type sources_config = private {

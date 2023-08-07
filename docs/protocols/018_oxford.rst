@@ -4,7 +4,7 @@ Protocol Oxford
 This page documents the changes brought by protocol Oxford with respect
 to Nairobi (see :ref:`naming_convention`).
 
-The code can be found in directory :src:`src/proto_018_Proxford` of the ``master``
+The code can be found in directory :src:`protocols/proto_018_Proxford` of the ``master``
 branch of Octez.
 
 .. contents::

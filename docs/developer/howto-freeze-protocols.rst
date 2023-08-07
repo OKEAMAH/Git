@@ -12,7 +12,7 @@ and "current protocol" refers to its successor, N+1. For instance, if
 "protocol" refers to 008, "current protocol" refers to 009.
 
 The various pieces of code to be removed are within directory
-``src/proto_<N>_<Hash>/``, unless indicated otherwise.
+``protocols/proto_<N>_<Hash>/``, unless indicated otherwise.
 
 Update Manifest
 ---------------

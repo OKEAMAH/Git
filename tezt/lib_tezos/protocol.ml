@@ -71,7 +71,7 @@ let default_constants = Constants_sandbox
 
 let parameter_file ?(constants = default_constants) protocol =
   let name = constants_to_string constants in
-  sf "src/%s/parameters/%s-parameters.json" (directory protocol) name
+  sf "protocols/%s/parameters/%s-parameters.json" (directory protocol) name
 
 let daemon_name = function Alpha -> "alpha" | p -> String.sub (hash p) 0 8
 

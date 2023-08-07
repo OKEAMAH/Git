@@ -77,7 +77,7 @@ let () =
         {|
   Tztop expects path to sub-library
 
-    $ dune exec -- tztop src/proto_alpha
+    $ dune exec -- tztop protocols/proto_alpha
 
 |} ;
       exit (-1)

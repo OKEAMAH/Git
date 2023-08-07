@@ -6,7 +6,7 @@
 //!
 //! Port of the *simple encoding* scheme from [entrypoint_repr.ml].
 //!
-//! [entrypoint_repr.ml]: <https://gitlab.com/tezos/tezos/-/blob/80b2cccb9c663dde2d86a6c94806fc149b7d1ef3/src/proto_alpha/lib_protocol/entrypoint_repr.ml>
+//! [entrypoint_repr.ml]: <https://gitlab.com/tezos/tezos/-/blob/80b2cccb9c663dde2d86a6c94806fc149b7d1ef3/protocols/proto_alpha/lib_protocol/entrypoint_repr.ml>
 
 use nom::branch;
 use nom::bytes::complete::{take_while, take_while1};

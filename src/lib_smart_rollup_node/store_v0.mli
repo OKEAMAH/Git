@@ -28,7 +28,7 @@
     i.e. = 16.
 
     This interface is a copy of
-    [src/proto_016_PtMumbai/lib_sc_rollup_node/store.mli], which contains the
+    [protocols/proto_016_PtMumbai/lib_sc_rollup_node/store.mli], which contains the
     layout for the Mumbai rollup node.
 *)
 

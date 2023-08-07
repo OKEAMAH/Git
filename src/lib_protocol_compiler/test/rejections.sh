@@ -13,7 +13,7 @@ Example:
 
     bash src/lib_protocol_compiler/test/rejections.sh \\
          ./tezos-protocol-compiler \\
-         src/proto_demo_noops/lib_protocol/TEZOS_PROTOCOL
+         protocols/proto_demo_noops/lib_protocol/TEZOS_PROTOCOL
 EOF
 }
 say () {

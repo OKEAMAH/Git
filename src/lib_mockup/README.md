@@ -27,7 +27,7 @@ handle mockup states (creation, modification, etc.).
 
 This library defines the interface that is expected to be implemented by
 the protocol. This then allows to register a protocol and support it in
-mockup mode. See for example `src/proto_alpha/lib_client/mockup.ml`.
+mockup mode. See for example `protocols/proto_alpha/lib_client/mockup.ml`.
 
 `mockup_args.ml` handles mockup (dummy) chain ids.
 
@@ -39,9 +39,9 @@ protocols`) are implemented here. Currently, there is only one such command
 vanilla clients, except for the additional `--mode mockup` switch.
 
 Protocol-specific mockup commands are implemented in the respective
-`src/proto_*/lib_client_commands/client_proto_mockup_commands.ml`. For example,
+`protocols/proto_*/lib_client_commands/client_proto_mockup_commands.ml`. For example,
 for protocol `alpha`, this is done in
-`src/proto_alpha/lib_client_commands/client_proto_mockup_commands.ml`.  `create
+`protocols/proto_alpha/lib_client_commands/client_proto_mockup_commands.ml`.  `create
 mockup` is an example of such a command.
 
 All mockup commands are used in

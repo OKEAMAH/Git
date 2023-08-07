@@ -17,6 +17,6 @@ else
 fi
 
 for protocol in "$trash_bin"/*; do
-    echo mv "$protocol" src
-    mv "$protocol" src
+    echo mv "$protocol" protocols
+    mv "$protocol" protocols
 done

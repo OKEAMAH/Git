@@ -23,6 +23,7 @@ COPY --chown=tezos:nogroup script-inputs/experimental-executables tezos/script-i
 COPY --chown=tezos:nogroup dune tezos
 COPY --chown=tezos:nogroup scripts/version.sh tezos/scripts/
 COPY --chown=tezos:nogroup src tezos/src
+COPY --chown=tezos:nogroup protocols tezos/protocols
 COPY --chown=tezos:nogroup tezt tezos/tezt
 COPY --chown=tezos:nogroup opam tezos/opam
 COPY --chown=tezos:nogroup dune tezos/dune
@@ -36,7 +37,7 @@ RUN opam exec -- make -C tezos release OCTEZ_EXECUTABLES="${OCTEZ_EXECUTABLES}" 
 # Gather the parameters of all active protocols in 1 place
 RUN while read -r protocol; do \
     mkdir -p tezos/parameters/"$protocol"-parameters && \
-    cp tezos/src/proto_"$(echo "$protocol" | tr - _)"/parameters/*.json tezos/parameters/"$protocol"-parameters; \
+    cp tezos/protocols/proto_"$(echo "$protocol" | tr - _)"/parameters/*.json tezos/parameters/"$protocol"-parameters; \
     done < tezos/script-inputs/active_protocol_versions
 
 FROM ${RUST_TOOLCHAIN_IMAGE}:${RUST_TOOLCHAIN_IMAGE_VERSION} AS layer2-builder

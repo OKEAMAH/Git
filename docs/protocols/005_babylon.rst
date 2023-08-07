@@ -599,7 +599,7 @@ In order to regenerate a protocol with the same hash as Babylon you
 can run from this branch::
 
   $ ./scripts/snapshot_alpha.sh babylon_005 from athens_004
-  $ ls src/proto_005_PsBabyM1
+  $ ls protocols/proto_005_PsBabyM1
 
 
 Emmy+

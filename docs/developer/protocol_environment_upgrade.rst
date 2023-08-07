@@ -59,9 +59,9 @@ The following steps are roughly the steps taken in the `V6 bootstrap MR <https:/
 
 7. Adapt demo protocols to the new environment:
 
-   * Modify the required environment in ``src/proto_demo_noops/lib_protocol/TEZOS_PROTOCOL`` and ``src/proto_demo_counter/lib_protocol/TEZOS_PROTOCOL``
+   * Modify the required environment in ``protocols/proto_demo_noops/lib_protocol/TEZOS_PROTOCOL`` and ``protocols/proto_demo_counter/lib_protocol/TEZOS_PROTOCOL``
 
-   * Verify they both compile with ``dune build @src/proto_demo_noops/runtest_compile_protocol`` and ``dune build @src/proto_demo_counter/runtest_compile_protocol``
+   * Verify they both compile with ``dune build @protocols/proto_demo_noops/runtest_compile_protocol`` and ``dune build @protocols/proto_demo_counter/runtest_compile_protocol``
 
 8. Commit all those changes and open an MR with your changes.
 
@@ -101,7 +101,7 @@ To activate the environment you will need to change the following files, adding 
 
 Bump environment version in ``src/bin_client/test/proto_test_injection/TEZOS_PROTOCOL`` and in the embedded ``TEZOS_PROTOCOL`` found in ``tezt/tests/voting.ml``.
 
-And finally, bump environment version in ``src/proto_alpha/lib_protocol/TEZOS_PROTOCOL``, and run ``make -C manifest``.
+And finally, bump environment version in ``protocols/proto_alpha/lib_protocol/TEZOS_PROTOCOL``, and run ``make -C manifest``.
 
 For an example, check `the MR in which the environment V6 was activated <https://gitlab.com/tezos/tezos/-/merge_requests/4961>`__.
 

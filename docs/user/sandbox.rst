@@ -116,7 +116,7 @@ Tune protocol Alpha parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``octez-activate-alpha`` alias uses parameters from
-``src/proto_alpha/parameters/sandbox-parameters.json`` to activate protocol
+``protocols/proto_alpha/parameters/sandbox-parameters.json`` to activate protocol
 Alpha. It can be useful to tune these parameters when you need to debug
 something, for example, change the number of blocks per cycle, the time between
 blocks, etc.

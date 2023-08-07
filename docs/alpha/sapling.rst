@@ -268,7 +268,7 @@ Shielded tez
 
 An example contract to have a shielded tez with a 1 to 1 conversion to
 mutez is available in the tests of the protocol at
-``src/proto_alpha/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz``.
+``protocols/proto_alpha/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz``.
 
 Simple Vote Contract
 ^^^^^^^^^^^^^^^^^^^^
@@ -419,9 +419,9 @@ Protocol
 In order to export the Sapling library to the protocol we first need
 to expose it through the environment that sandboxes the protocol.
 The changes under :src:`src/lib_protocol_environment` are simple but very
-relevant as any change of the environment requires a manual update of the
-Tezos node. These changes are part of version V1 of the environment
-while protocols 000 to 006 depends on version V0.
+relevant as any change of the environment requires a manual update of the Tezos
+node. These changes are part of version V1 of the environment while protocols
+000 to 006 depends on version V0.
 
 There are two main changes to Tezos' economic protocol, the storage
 for Sapling and the addition of ``SAPLING_VERIFY_UPDATE`` to the
@@ -491,7 +491,7 @@ unshielding.
    # bake a block to include it.
    # { } represents an empty Sapling state.
    octez-client originate contract shielded-tez transferring 0 from bootstrap1 \
-   running src/proto_alpha/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz \
+   running protocols/proto_alpha/lib_protocol/test/integration/michelson/contracts/sapling_contract.tz \
    --init '{ }' --burn-cap 3 &
    octez-client bake for bootstrap1
 

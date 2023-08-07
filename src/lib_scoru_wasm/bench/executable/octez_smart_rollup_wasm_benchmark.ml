@@ -32,8 +32,8 @@
     Use the dune option  "--profile=release" when launching a subset of benchs
 
     Kernels:
-    -  src/lib_scoru_wasm/test/wasm_kernels/
-    - src/proto_alpha/lib_protocol/test/integration/wasm_kernel/
+    - src/lib_scoru_wasm/test/wasm_kernels/
+    - protocols/proto_alpha/lib_protocol/test/integration/wasm_kernel/
 
 
 *)

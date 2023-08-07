@@ -44,7 +44,7 @@ The most generic API for defining events ``Internal_event.Make`` gives full
 expressive power and structure.
 
 See for instance:
-:src:`src/proto_alpha/lib_delegate/client_baking_blocks.ml` (module
+:src:`protocols/proto_alpha/lib_delegate/client_baking_blocks.ml` (module
 ``Block_seen_event``):
 
 -  one needs to call the functor

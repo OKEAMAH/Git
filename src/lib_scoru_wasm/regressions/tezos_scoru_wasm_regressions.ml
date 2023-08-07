@@ -64,7 +64,7 @@ let rec eval_and_capture_many ?(fail_on_stuck = true) ~bunk
 
 let echo_kernel =
   read_file
-  @@ project_root // "src" // "proto_alpha" // "lib_protocol" // "test"
+  @@ project_root // "protocols" // "proto_alpha" // "lib_protocol" // "test"
      // "integration" // "wasm_kernel" // "echo.wast"
 
 let tx_no_verify_kernel =

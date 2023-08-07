@@ -20,7 +20,7 @@ script:snapshot_alpha_and_link:
     # We only need to run this if protocol Alpha or if the scripts changed.
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
-        - src/proto_alpha/**/*
+        - protocols/proto_alpha/**/*
         - scripts/snapshot_alpha_and_link.sh
         - scripts/snapshot_alpha.sh
         - scripts/user_activated_upgrade.sh

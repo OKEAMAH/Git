@@ -13,12 +13,12 @@ Octez Merge Team Scope
 
 The role of the Octez Merge Team is limited to ensuring the quality
 of what gets merged into Octez, i.e. all of `tezos/tezos
-<https://gitlab.com/tezos/tezos>`_ except :src:`src/proto_alpha/lib_protocol/`.
+<https://gitlab.com/tezos/tezos>`_ except :src:`protocols/proto_alpha/lib_protocol/`.
 By quality, we mean ensuring that the code is as good as it can be, be it
 at the implementation level or the architecture level.
 
 The Octez merge team does not decide what contributions are included in
-the next protocol (``src/proto_alpha/lib_protocol/``). Companies that contribute to
+the next protocol (``protocols/proto_alpha/lib_protocol/``). Companies that contribute to
 `tezos/tezos <https://gitlab.com/tezos/tezos>`_
 reach a consensus to decide what gets in the Alpha protocol,
 i.e. in the proposal of the next upgrade. In particular, other companies

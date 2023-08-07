@@ -3,7 +3,7 @@ Protocol Granada
 
 This page contains all the relevant information for protocol Granada.
 
-The code can be found in the ``src/proto_010_PtGRANAD`` directory of the
+The code can be found in the ``protocols/proto_010_PtGRANAD`` directory of the
 ``master`` branch of Tezos.
 
 This page documents the changes brought by protocol Granada with respect

@@ -58,7 +58,7 @@ __pycache__
 /octez-dac-*
 /octez-binaries
 
-/src/proto_*/parameters/*-parameters.json
+/protocols/proto_*/parameters/*-parameters.json
 
 /scripts/opam-test-all.sh.DONE
 /scripts/create_genesis/src

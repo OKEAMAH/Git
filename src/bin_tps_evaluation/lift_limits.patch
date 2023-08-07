@@ -1,7 +1,7 @@
-diff --git a/src/proto_alpha/lib_protocol/main.ml b/src/proto_alpha/lib_protocol/main.ml
+diff --git a/protocols/proto_alpha/lib_protocol/main.ml b/protocols/proto_alpha/lib_protocol/main.ml
 index b226dc5417..cef4feef6e 100644
---- a/src/proto_alpha/lib_protocol/main.ml
-+++ b/src/proto_alpha/lib_protocol/main.ml
+--- a/protocols/proto_alpha/lib_protocol/main.ml
++++ b/protocols/proto_alpha/lib_protocol/main.ml
 @@ -64,10 +64,9 @@ type operation = Alpha_context.packed_operation = {
  
  let acceptable_pass = Alpha_context.Operation.acceptable_pass

@@ -18,7 +18,7 @@ make lint-tests-pkg
 # The new version of odoc (2.1.0) is stricter than the old version (1.5.3),
 # we temporarily deactivate the odoc checks.
 ## Ensure there are no mli docstring syntax errors in alpha protocol
-#- ODOC_WARN_ERROR=true dune build @src/proto_alpha/lib_protocol/doc
+#- ODOC_WARN_ERROR=true dune build @protocols/proto_alpha/lib_protocol/doc
 # check that the hack-module patch applies cleanly
 git apply devtools/protocol-print/add-hack-module.patch
 

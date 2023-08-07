@@ -4768,7 +4768,7 @@ end = struct
 
     let name_dash t = t.name_dash
 
-    let base_path t = Format.sprintf "src/proto_%s" (name_underscore t)
+    let base_path t = Format.sprintf "protocols/proto_%s" (name_underscore t)
   end
 
   type status = Active | Frozen | Overridden | Not_mainnet
@@ -5281,7 +5281,7 @@ end = struct
              (thanks to [DUNE_SOURCEROOT] and [Filename.dirname __FILE__]),
              so those copies are not actually used. This is needed so that the test
              can be run either with [dune build @runtest],
-             with [dune exec src/proto_alpha/lib_protocol/test/regression/main.exe],
+             with [dune exec protocols/proto_alpha/lib_protocol/test/regression/main.exe],
              or with [dune exec tezt/tests/main.exe -- -f test_logging.ml]. *)
           let _ =
             tezt
@@ -7984,11 +7984,21 @@ let octez_scoru_wasm_regressions =
 let exclude filename =
   let is_proto_ name = String.starts_with ~prefix:"proto_" name in
   match String.split_on_char '/' filename with
-  (* Dune files in src/proto_*/parameters only have a (copy_files) stanza
+  (* Dune files in protocols/proto_*/parameters only have a (copy_files) stanza
      (no library / executable / test). *)
-  | "src" :: maybe_proto :: "parameters" :: _ when is_proto_ maybe_proto -> true
+  | "protocols" :: maybe_proto :: "parameters" :: _ when is_proto_ maybe_proto
+    ->
+      true
   (* This dune file does not contain any targets, only a dirs stanza. *)
-  | ["src"; maybe_proto; "lib_protocol"; "test"; "regression"; "tezt"; "dune"]
+  | [
+   "protocols";
+   maybe_proto;
+   "lib_protocol";
+   "test";
+   "regression";
+   "tezt";
+   "dune";
+  ]
     when is_proto_ maybe_proto ->
       true
   (* The following directory has a very specific structure that would be hard

@@ -301,7 +301,7 @@ to make big map queries faster, which is useful when many queries to siblings ke
 big map are done in burst.
 
 The heuristics for protocol Alpha are implemented in file
-:src:`proxy.ml <src/proto_alpha/lib_client/proxy.ml>`, in function ``split_key`` and associates. For example,
+:src:`proxy.ml <protocols/proto_alpha/lib_client/proxy.ml>`, in function ``split_key`` and associates. For example,
 any request of the form ``big_maps/index/i/contents/tail`` is transformed
 into a request of the form ``big_maps/index/i/contents`` to obtain data for all
 possible values of ``tail`` at once.

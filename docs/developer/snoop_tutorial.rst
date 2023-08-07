@@ -325,7 +325,7 @@ and attesters will spend by running the feature. Here is a typical workflow:
 
 - developers implement the feature;
 - they also implement the corresponding benchmarks (usually in
-  ``src/proto_alpha/lib_benchmarks_proto``);
+  ``protocols/proto_alpha/lib_benchmarks_proto``);
 - they generate the cost function from the benchmarks using Snoop;
 - they copy the resulting, generated code to the appropriate location in the
   protocol (potentially a new file);

@@ -74,12 +74,12 @@ the primitive for different argument types.
 
 When adding a new primitive, it should be mapped to the appropriate namespace in
 ``namespace`` function (in
-:src:`src/proto_alpha/lib_protocol/michelson_v1_primitives.ml`). In case of an
+:src:`protocols/proto_alpha/lib_protocol/michelson_v1_primitives.ml`). In case of an
 instruction, the appropriate namespace is ``Instr_namespace``. It is also necessary to map the primitive
 constructor to the string representing it in Michelson code in
 ``prim_of_string`` and ``string_of_prim`` in the same module.
 
-See :src:`src/proto_alpha/lib_protocol/michelson_v1_primitives.ml` for a
+See :src:`protocols/proto_alpha/lib_protocol/michelson_v1_primitives.ml` for a
 complete list of primitives known to Michelson and their respective textual
 representations.
 
@@ -92,7 +92,7 @@ Michelson types
 Before we talk about internal representations, we need to have a brief look at
 how the interpreter handles types of Michelson expressions internally. Types
 ``ty`` and ``stack_ty`` are both defined in
-:src:`src/proto_alpha/lib_protocol/script_typed_ir.ml`. Type ``ty`` enumerates
+:src:`protocols/proto_alpha/lib_protocol/script_typed_ir.ml`. Type ``ty`` enumerates
 all types known to the Michelson interpreter and is parametrised by the
 underlying OCaml type in which Michelson values are actually stored in memory.
 Thus, when values of the ty type are pattern-matched on, their type parameters
@@ -185,7 +185,7 @@ The translator
 Now that we have chosen a primitive to represent our instruction in the code and
 an internal representation (IR), we need to provide a rule that translates the
 former into the latter. ``parse_instr`` function in
-:src:`src/proto_alpha/lib_protocol/script_ir_translator.ml` is responsible for
+:src:`protocols/proto_alpha/lib_protocol/script_ir_translator.ml` is responsible for
 this. Notice that the function ``parse_instr``, despite what its name suggests,
 matches on pre-parsed Micheline AST. Micheline parser is not a part of the
 protocol and therefore must be run by the client before the script is submitted
@@ -216,7 +216,7 @@ correct), which makes for faster execution. For this reason it is essential that
 each IR contains a value of type ``kinfo`` (or an equivalent thereof), from
 which the translator can obtain the type the stack should have after this
 instruction is executed. Function ``kinfo_of_kinstr`` in
-:src:`src/proto_alpha/lib_protocol/script_typed_ir.ml` is responsible for this
+:src:`protocols/proto_alpha/lib_protocol/script_typed_ir.ml` is responsible for this
 extraction.
 
 An interesting situation occurs with instructions regulating control flow. These
@@ -237,7 +237,7 @@ types and verifies if they're equal. If so, the unified stack type is returned,
 otherwise it results in a type error.
 
 The precise return type of ``parse_instr`` is ``judgement`` defined in
-:src:`src/proto_alpha/lib_protocol/script_ir_translator.ml`::
+:src:`protocols/proto_alpha/lib_protocol/script_ir_translator.ml`::
 
   type ('a, 's, 'b, 'u) cinstr = {
     apply :
@@ -318,7 +318,7 @@ configuration made of a value stack and a continuation stack. Therefore, the int
 script's IR, a storage and an input to the script as arguments, generates the
 initial stack containing the storage content and the input, and then executes
 the script, returning the final content of the stack. It's defined in
-:src:`src/proto_alpha/lib_protocol/script_interpreter.ml` by the ``execute``
+:src:`protocols/proto_alpha/lib_protocol/script_interpreter.ml` by the ``execute``
 function.
 
 The ``execute`` function does some preliminary preparations and then passes control to
@@ -348,7 +348,7 @@ not return an option, but an arbitrary result which should be wrapped in a
 additional action, the types of stacks produced by the two branches would differ
 and the program would be ill-typed. To remedy this and similar problems, the
 interpreter also defines the ``continuation`` type (defined in
-:src:`src/proto_alpha/lib_protocol/script_typed_ir.ml`). Whenever the control is
+:src:`protocols/proto_alpha/lib_protocol/script_typed_ir.ml`). Whenever the control is
 passed over to a sub-program, the ``next`` function can be called to manage the
 flow of control around the sub-program (for instance executing it multiple times
 in case of a loop). Also, each Michelson program ends with a special instruction
@@ -368,7 +368,7 @@ Sometimes adding an instruction may involve adding a new continuation as well.
 However, continuations are completely internal to the interpreter. They neither
 have a representation in the Michelson code nor are they ever involved in
 translation. A continuation is a value of type ``('a, 'b, 'c, 'd) continuation``
-defined in :src:`src/proto_alpha/lib_protocol/script_typed_ir.ml`. Similarly to
+defined in :src:`protocols/proto_alpha/lib_protocol/script_typed_ir.ml`. Similarly to
 an instruction, a new constructor of this type should contain all the
 information required to execute the continuation. For instance ``KCons``
 continuation contains an instruction and a continuation which should be executed
@@ -378,7 +378,7 @@ the continuation is defined, it can be used freely in the interpreter.
 The step constants passed to the function along with the context contain some
 important information about the transaction itself, like the sender and the
 target, the amount transferred and so on. See ``step_constants`` type definition
-in :src:`src/proto_alpha/lib_protocol/script_interpreter.ml` for more details.
+in :src:`protocols/proto_alpha/lib_protocol/script_interpreter.ml` for more details.
 
 .. _add_mich_gas_model:
 
