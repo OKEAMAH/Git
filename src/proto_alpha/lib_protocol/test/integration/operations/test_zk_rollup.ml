@@ -315,10 +315,12 @@ let test_append_external_deposit () =
     of the ticket containing [contents] of type [ty], crafted by [ticketer] and
     owned by [zk_rollup]. *)
 let make_ticket_key ctxt ~ty ~contents ~ticketer zk_rollup =
-  (match ctxt with
-  | Context.B block -> Incremental.begin_construction block
-  | Context.I incr -> return incr)
-  >>=? fun incr ->
+  let open Lwt_result_syntax in
+  let* incr =
+    match ctxt with
+    | Context.B block -> Incremental.begin_construction block
+    | Context.I incr -> return incr
+  in
   let ctxt = Incremental.alpha_ctxt incr in
   Script_ir_translator.parse_comparable_ty ctxt ty
   >>??= fun (Ex_comparable_ty contents_type, ctxt) ->
@@ -435,10 +437,12 @@ struct
   (** Return an operation to originate a contract that will deposit [amount]
       tickets with l2 operation [op] on [zk_rollup] *)
   let init_deposit ~block ~amount ~zk_op ~zk_rollup ~account =
-    init_deposit_contract amount block account
-    >>=? fun (deposit_contract, _script, block) ->
-    deposit_op ~block ~zk_rollup ~zk_op ~account ~deposit_contract
-    >|=? fun op -> (block, op, deposit_contract)
+    let open Lwt_result_syntax in
+    let* deposit_contract, _script, block =
+      init_deposit_contract amount block account
+    in
+    let+ op = deposit_op ~block ~zk_rollup ~zk_op ~account ~deposit_contract in
+    (block, op, deposit_contract)
 end
 
 module Nat_ticket = Make_ticket (struct

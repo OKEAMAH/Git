@@ -73,10 +73,8 @@ let get_happy_path () =
   let* b = Incremental.finalize_block b in
   let assert_unchanged b =
     let* context = get_next_context b in
-    let* _, result_expr =
-      Global_constants_storage.get context hash >|= fun result ->
-      Environment.wrap_tzresult result
-    in
+    let*! result = Global_constants_storage.get context hash in
+    let* _, result_expr = Lwt.return (Environment.wrap_tzresult result) in
     let+ () =
       Test_global_constants.assert_expr_equal __LOC__ expr result_expr
     in
@@ -90,9 +88,11 @@ let get_happy_path () =
     assert_unchanged b
   in
   let* (_ : Block.t) =
-    do_many_transfers b >>=? do_many_transfers >>=? do_many_transfers
+    let* b = do_many_transfers b in
+    let* b = do_many_transfers b in
+    do_many_transfers b
   in
-  Lwt.return_ok ()
+  return_unit
 
 (* Blocks that include a registration of a bad expression should
    fail. *)
@@ -109,8 +109,8 @@ let test_registration_of_bad_expr_fails () =
       ~source:alice
       ~value:(Script_repr.lazy_expr expr)
   in
-  Incremental.add_operation b op
-  >>= assert_proto_error_id __LOC__ "Badly_formed_constant_expression"
+  let*! result = Incremental.add_operation b op in
+  assert_proto_error_id __LOC__ "Badly_formed_constant_expression" result
 
 (* You cannot register the same expression twice. *)
 let test_no_double_register () =
@@ -132,8 +132,8 @@ let test_no_double_register () =
       ~value:(Script_repr.lazy_expr expr)
   in
   let* i = Incremental.begin_construction b in
-  Incremental.add_operation i op
-  >>= assert_proto_error_id __LOC__ "Expression_already_registered"
+  let*! result = Incremental.add_operation i op in
+  assert_proto_error_id __LOC__ "Expression_already_registered" result
 
 let tests =
   [
