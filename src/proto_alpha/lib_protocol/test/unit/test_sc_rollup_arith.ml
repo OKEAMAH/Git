@@ -125,15 +125,21 @@ let test_preboot () =
          pre_boot boot_sector @@ fun _ctxt _state -> return ())
 
 let boot boot_sector f =
-  pre_boot boot_sector @@ fun ctxt state -> eval state >>= f ctxt
+  let open Lwt_result_syntax in
+  pre_boot boot_sector @@ fun ctxt state ->
+  let*! state = eval state in
+  f ctxt state
 
 let test_boot () =
+  let open Lwt_result_syntax in
   let open Sc_rollup_helpers.Arith_pvm in
   boot "" @@ fun _ctxt state ->
-  is_input_state
-    ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
-    state
-  >>= function
+  let*! result =
+    is_input_state
+      ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
+      state
+  in
+  match result with
   | Needs_reveal Reveal_metadata -> return ()
   | Initial | Needs_reveal _ | First_after _ ->
       failwith "After booting, the machine should be waiting for the metadata."
@@ -168,15 +174,18 @@ let test_metadata () =
          state."
 
 let test_input_message () =
+  let open Lwt_result_syntax in
   let open Sc_rollup_helpers.Arith_pvm in
   boot "" @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input "MESSAGE" in
-  set_input input state >>= fun state ->
-  eval state >>= fun state ->
-  is_input_state
-    ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
-    state
-  >>= function
+  let*! state = set_input input state in
+  let*! state = eval state in
+  let*! result =
+    is_input_state
+      ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
+      state
+  in
+  match result with
   | Initial | Needs_reveal _ | First_after _ ->
       failwith
         "After receiving a message, the rollup must not be waiting for input."
@@ -184,41 +193,46 @@ let test_input_message () =
 
 let go ?(is_reveal_enabled = fun ~current_block_level:_ _ -> true) ~max_steps
     target_status state =
+  let open Lwt_result_syntax in
   let rec aux i state =
-    pp state >>= fun pp ->
+    let*! pp = pp state in
     Format.eprintf "%a" pp () ;
     if i > max_steps then
       failwith "Maximum number of steps reached before target status."
     else
-      get_status ~is_reveal_enabled state >>= fun current_status ->
+      let*! current_status = get_status ~is_reveal_enabled state in
       if target_status = current_status then return state
-      else eval state >>= aux (i + 1)
+      else
+        let*! state = eval state in
+        aux (i + 1) state
   in
   aux 0 state
 
 let test_parsing_message ~valid (source, expected_code) =
+  let open Lwt_result_syntax in
   boot "" @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr source in
-  set_input input state >>= fun state ->
-  eval state >>= fun state ->
-  go ~max_steps:10000 Evaluating state >>=? fun state ->
-  get_parsing_result state >>= fun result ->
-  Assert.equal
-    ~loc:__LOC__
-    (Option.equal Bool.equal)
-    "Unexpected parsing result"
-    (fun fmt r ->
-      Format.fprintf
-        fmt
-        (match r with
-        | None -> "No parsing running"
-        | Some true -> "Syntax correct"
-        | Some false -> "Syntax error"))
-    (Some valid)
-    result
-  >>=? fun () ->
+  let*! state = set_input input state in
+  let*! state = eval state in
+  let* state = go ~max_steps:10000 Evaluating state in
+  let*! result = get_parsing_result state in
+  let* () =
+    Assert.equal
+      ~loc:__LOC__
+      (Option.equal Bool.equal)
+      "Unexpected parsing result"
+      (fun fmt r ->
+        Format.fprintf
+          fmt
+          (match r with
+          | None -> "No parsing running"
+          | Some true -> "Syntax correct"
+          | Some false -> "Syntax error"))
+      (Some valid)
+      result
+  in
   if valid then
-    get_code state >>= fun code ->
+    let*! code = get_code state in
     Assert.equal
       ~loc:__LOC__
       (List.equal equal_instruction)
@@ -250,32 +264,37 @@ let syntactically_invalid_messages =
     ["@"; "  @"; "  @  "; "---"; "12 +++ --"; "1a"; "a$"]
 
 let test_parsing_messages () =
-  List.iter_es (test_parsing_message ~valid:true) syntactically_valid_messages
-  >>=? fun () ->
+  let open Lwt_result_syntax in
+  let* () =
+    List.iter_es (test_parsing_message ~valid:true) syntactically_valid_messages
+  in
   List.iter_es
     (test_parsing_message ~valid:false)
     syntactically_invalid_messages
 
 let test_evaluation_message ~valid
     (boot_sector, source, expected_stack, expected_vars) =
+  let open Lwt_result_syntax in
   boot boot_sector @@ fun _ctxt state ->
   let input = Sc_rollup_helpers.make_external_input_repr source in
-  set_input input state >>= fun state ->
-  eval state >>= fun state ->
-  go ~max_steps:10000 Waiting_for_input_message state >>=? fun state ->
+  let*! state = set_input input state in
+  let*! state = eval state in
+  let* state = go ~max_steps:10000 Waiting_for_input_message state in
   if valid then
-    get_stack state >>= fun stack ->
-    Assert.equal
-      ~loc:__LOC__
-      (List.equal Compare.Int.equal)
-      "The stack is not what we expected: "
-      Format.(pp_print_list (fun fmt -> fprintf fmt "%d;@;"))
-      expected_stack
-      stack
-    >>=? fun () ->
+    let*! stack = get_stack state in
+    let* () =
+      Assert.equal
+        ~loc:__LOC__
+        (List.equal Compare.Int.equal)
+        "The stack is not what we expected: "
+        Format.(pp_print_list (fun fmt -> fprintf fmt "%d;@;"))
+        expected_stack
+        stack
+    in
     List.iter_es
       (fun (x, v) ->
-        get_var state x >>= function
+        let*! result = get_var state x in
+        match result with
         | None -> failwith "The variable %s cannot be found." x
         | Some v' ->
             Assert.equal
@@ -287,7 +306,8 @@ let test_evaluation_message ~valid
               v')
       expected_vars
   else
-    get_evaluation_result state >>= function
+    let*! result = get_evaluation_result state in
+    match result with
     | Some true -> failwith "This code should lead to an evaluation error."
     | None -> failwith "We should have reached the evaluation end."
     | Some false -> return ()
@@ -320,8 +340,8 @@ let invalid_messages =
     ["+"; "1 +"; "1 1 + +"; "1 1 + 1 1 + + +"; "a"]
 
 let test_evaluation_messages () =
-  List.iter_es (test_evaluation_message ~valid:true) valid_messages
-  >>=? fun () ->
+  let open Lwt_result_syntax in
+  let* () = List.iter_es (test_evaluation_message ~valid:true) valid_messages in
   List.iter_es (test_evaluation_message ~valid:false) invalid_messages
 
 let boot_then_reveal_metadata sc_rollup_address origination_level
@@ -563,14 +583,14 @@ let dummy_internal_transfer address =
          "tz1RjtZUVeLhADFHDL8UwDZA6vjWWhojpu5w")
   in
   let payload = Bytes.of_string "foo" in
-  let* payload, _ctxt =
+  let*! result =
     Script_ir_translator.unparse_data
       ctxt
       Script_ir_unparser.Optimized
       Bytes_t
       payload
-    >|= Environment.wrap_tzresult
   in
+  let*? payload, _ctxt = Environment.wrap_tzresult result in
   let transfer =
     Inbox_message.Internal
       (Transfer {payload; sender; source; destination = address})
