@@ -103,7 +103,7 @@ module Domain_impl = struct
 
   let inverse d =
     let n = length d in
-    Array.init n (fun i ->
+    Fr_carray.init n (fun i ->
         if i = 0 then Fr.(copy one) else Fr_carray.get d (n - i))
 
   let equal d1 d2 =
@@ -138,7 +138,7 @@ module type Domain_sig = sig
   val subgroup : log:int -> t -> t
 
   (** [inverse d] returns for a domain [wⁱᵢ] its inverse domain [w⁻ⁱᵢ] *)
-  val inverse : t -> scalar array
+  val inverse : t -> t
 
   (* [equal d1 d2] returns true if [d1] is equal to [d2] *)
   val equal : t -> t -> bool
