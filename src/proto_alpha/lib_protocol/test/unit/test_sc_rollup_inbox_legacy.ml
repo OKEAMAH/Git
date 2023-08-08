@@ -126,8 +126,10 @@ let encode_external_message message =
   Bytes.of_string (prefix ^ message)
 
 let check_payload messages external_message =
-  Environment.Context.Tree.find messages ["payload"] >>= function
-  | None -> fail (err "No payload in messages")
+  let open Lwt_result_syntax in
+  let*! payload_opt = Environment.Context.Tree.find messages ["payload"] in
+  match payload_opt with
+  | None -> tzfail (err "No payload in messages")
   | Some payload ->
       let expected_payload = encode_external_message external_message in
       fail_unless

@@ -23,14 +23,16 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let ( >>=?? ) x y =
+let ( let*?* ) x y =
   x >>= function
   | Ok s -> y s
   | Error err -> Lwt.return @@ Error (Environment.wrap_tztrace err)
 
-let ( >|=?? ) m f = m >>=?? fun x -> return (f x)
+let ( let+? ) m f =
+  let*?* x = m in
+  return (f x)
 
-let ( >>??= ) x y =
+let ( let**? ) x y =
   match x with
   | Ok s -> y s
   | Error err -> Lwt.return @@ Error (Environment.wrap_tztrace err)

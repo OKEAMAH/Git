@@ -23,17 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val ( >>=?? ) :
+val ( let*?* ) :
   ('a, Environment.Error_monad.error Environment.Error_monad.trace) result Lwt.t ->
   ('a -> ('b, error trace) result Lwt.t) ->
   ('b, error trace) result Lwt.t
 
-val ( >|=?? ) :
+val ( let+? ) :
   ('a, Environment.Error_monad.error Environment.Error_monad.trace) result Lwt.t ->
   ('a -> 'b) ->
   ('b, error trace) result Lwt.t
 
-val ( >>??= ) :
+val ( let**? ) :
   ('a, Environment.Error_monad.error Environment.Error_monad.trace) result ->
   ('a -> ('b, error trace) result Lwt.t) ->
   ('b, error trace) result Lwt.t

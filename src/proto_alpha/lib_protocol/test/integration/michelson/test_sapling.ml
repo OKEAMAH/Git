@@ -35,7 +35,7 @@ open Protocol
 open Alpha_context
 open Test_tez
 
-let ( >>??= ) x y =
+let ( let**? ) x y =
   match x with
   | Ok s -> y s
   | Error err -> Lwt.return @@ Error (Environment.wrap_tztrace err)
@@ -1335,12 +1335,12 @@ module Interpreter_tests = struct
     let ctx_without_gas = Alpha_context.Gas.set_unlimited ctx in
     let* storage = Alpha_services.Contract.storage Block.rpc_ctxt b dst in
     let storage_lazy_expr = Alpha_context.Script.lazy_expr storage in
-
-    (let memo_size = memo_size_of_int memo_size in
-     let open Script_typed_ir in
-     let state_ty = sapling_state_t ~memo_size in
-     pair_t (-1) state_ty state_ty)
-    >>??= fun (Ty_ex_c tytype) ->
+    let**? (Ty_ex_c tytype) =
+      let memo_size = memo_size_of_int memo_size in
+      let open Script_typed_ir in
+      let state_ty = sapling_state_t ~memo_size in
+      pair_t (-1) state_ty state_ty
+    in
     let* (state_1, state_2), _ctx =
       let*! ctxt =
         Script_ir_translator.parse_storage

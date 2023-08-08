@@ -83,14 +83,15 @@ let test_unparse_view () =
   let* b, _cs = Context.init3 () in
   let* v = Incremental.begin_construction b in
   let ctx = Incremental.alpha_ctxt v in
-  Script_ir_translator.parse_and_unparse_script_unaccounted
-    ctx
-    ~legacy:true
-    ~allow_forged_in_storage:false
-    Readable
-    ~normalize_types:true
-    script
-  >>=?? fun (unparsed_script, _ctx) ->
+  let*?* unparsed_script, _ctx =
+    Script_ir_translator.parse_and_unparse_script_unaccounted
+      ctx
+      ~legacy:true
+      ~allow_forged_in_storage:false
+      Readable
+      ~normalize_types:true
+      script
+  in
   let aft = Data_encoding.force_bytes unparsed_script.code in
   Alcotest.(check bytes) "didn't match" bef aft |> return
 
@@ -256,12 +257,12 @@ let test_parse_comb_type () =
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
-  pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_ty) = pair_ty nat_ty nat_ty in
   let* ctxt = test_context () in
   (* pair nat nat *)
   let*? ctxt = test_parse_ty ctxt pair_nat_nat_prim pair_nat_nat_ty in
   (* pair (pair nat nat) nat *)
-  pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
   let*? ctxt =
     test_parse_ty
       ctxt
@@ -269,7 +270,7 @@ let test_parse_comb_type () =
       pair_pair_nat_nat_nat_ty
   in
   (* pair nat (pair nat nat) *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_pair_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
   let*? ctxt =
     test_parse_ty
       ctxt
@@ -277,7 +278,7 @@ let test_parse_comb_type () =
       pair_nat_pair_nat_nat_ty
   in
   (* pair nat nat nat *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
   let*? ctxt =
     test_parse_ty
       ctxt
@@ -285,24 +286,25 @@ let test_parse_comb_type () =
       pair_nat_nat_nat_ty
   in
   (* pair (nat %a) nat *)
-  pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_a_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_a_nat_ty) = pair_t (-1) nat_ty nat_ty in
   let*? ctxt =
     test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim) pair_nat_a_nat_ty
   in
   (* pair nat (nat %b) *)
-  pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_b_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_b_ty) = pair_t (-1) nat_ty nat_ty in
   let*? ctxt =
     test_parse_ty ctxt (pair_prim2 nat_prim nat_prim_b) pair_nat_nat_b_ty
   in
   (* pair (nat %a) (nat %b) *)
-  pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_a_nat_b_ty) ->
+  let**? (Ty_ex_c pair_nat_a_nat_b_ty) = pair_t (-1) nat_ty nat_ty in
   let*? ctxt =
     test_parse_ty ctxt (pair_prim2 nat_prim_a nat_prim_b) pair_nat_a_nat_b_ty
   in
   (* pair (nat %a) (nat %b) (nat %c) *)
-  pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_b_nat_c_ty) ->
-  pair_t (-1) nat_ty pair_nat_b_nat_c_ty
-  >>??= fun (Ty_ex_c pair_nat_a_nat_b_nat_c_ty) ->
+  let**? (Ty_ex_c pair_nat_b_nat_c_ty) = pair_t (-1) nat_ty nat_ty in
+  let**? (Ty_ex_c pair_nat_a_nat_b_nat_c_ty) =
+    pair_t (-1) nat_ty pair_nat_b_nat_c_ty
+  in
   let*? ctxt =
     test_parse_ty
       ctxt
@@ -310,9 +312,10 @@ let test_parse_comb_type () =
       pair_nat_a_nat_b_nat_c_ty
   in
   (* pair (nat %a) (pair %b nat nat) *)
-  pair_t (-1) nat_ty nat_ty >>??= fun (Ty_ex_c pair_b_nat_nat_ty) ->
-  pair_t (-1) nat_ty pair_b_nat_nat_ty
-  >>??= fun (Ty_ex_c pair_nat_a_pair_b_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_b_nat_nat_ty) = pair_t (-1) nat_ty nat_ty in
+  let**? (Ty_ex_c pair_nat_a_pair_b_nat_nat_ty) =
+    pair_t (-1) nat_ty pair_b_nat_nat_ty
+  in
   let*? (_ : context) =
     test_parse_ty
       ctxt
@@ -338,12 +341,12 @@ let test_unparse_comb_type () =
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
-  pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_ty) = pair_ty nat_ty nat_ty in
   let* ctxt = test_context () in
   (* pair nat nat *)
   let*? ctxt = test_unparse_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty in
   (* pair (pair nat nat) nat *)
-  pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
   let*? ctxt =
     test_unparse_ty
       __LOC__
@@ -352,7 +355,7 @@ let test_unparse_comb_type () =
       pair_pair_nat_nat_nat_ty
   in
   (* pair nat nat nat *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
   let*? (_ : context) =
     test_unparse_ty
       __LOC__
@@ -383,14 +386,14 @@ let test_unparse_comb_comparable_type () =
   let pair_ty ty1 ty2 = comparable_pair_t (-1) ty1 ty2 in
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_nat_nat_prim = pair_prim2 nat_prim nat_prim in
-  pair_ty nat_ty nat_ty >>??= fun pair_nat_nat_ty ->
+  let**? pair_nat_nat_ty = pair_ty nat_ty nat_ty in
   let* ctxt = test_context () in
   (* pair nat nat *)
   let*? ctxt =
     test_unparse_comparable_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
   in
   (* pair (pair nat nat) nat *)
-  pair_ty pair_nat_nat_ty nat_ty >>??= fun pair_pair_nat_nat_nat_ty ->
+  let**? pair_pair_nat_nat_nat_ty = pair_ty pair_nat_nat_ty nat_ty in
   let*? ctxt =
     test_unparse_comparable_ty
       __LOC__
@@ -399,7 +402,7 @@ let test_unparse_comb_comparable_type () =
       pair_pair_nat_nat_nat_ty
   in
   (* pair nat nat nat *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun pair_nat_nat_nat_ty ->
+  let**? pair_nat_nat_nat_ty = pair_ty nat_ty pair_nat_nat_ty in
   let*? (_ : context) =
     test_unparse_comparable_ty
       __LOC__
@@ -458,11 +461,11 @@ let test_parse_comb_data () =
   let nat_ty = nat_t in
   let pair_prim l = Prim (-1, D_Pair, l, []) in
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
-  pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_ty) = pair_ty nat_ty nat_ty in
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_z_z_prim = pair_prim2 z_prim z_prim in
-  list_t (-1) nat_ty >>??= fun list_nat_ty ->
-  big_map_t (-1) nat_ty nat_ty >>??= fun big_map_nat_nat_ty ->
+  let**? list_nat_ty = list_t (-1) nat_ty in
+  let**? big_map_nat_nat_ty = big_map_t (-1) nat_ty nat_ty in
   let* ctxt, big_map_id = test_context_with_nat_nat_big_map () in
   (* Pair 0 0 *)
   let* ctxt =
@@ -478,7 +481,7 @@ let test_parse_comb_data () =
       (z, z)
   in
   (* Pair (Pair 0 0) 0 *)
-  pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
   let* ctxt =
     test_parse_data
       __LOC__
@@ -488,7 +491,7 @@ let test_parse_comb_data () =
       ((z, z), z)
   in
   (* Pair 0 (Pair 0 0) *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_pair_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
   let* ctxt =
     test_parse_data
       __LOC__
@@ -516,7 +519,7 @@ let test_parse_comb_data () =
       (z, (z, z))
   in
   (* Should fail: {0} against pair nat (list nat) *)
-  pair_ty nat_ty list_nat_ty >>??= fun (Ty_ex_c pair_nat_list_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_list_nat_ty) = pair_ty nat_ty list_nat_ty in
   let* () =
     test_parse_data_fails
       __LOC__
@@ -568,8 +571,9 @@ let test_parse_comb_data () =
     && Big_map_overlay.bindings big_map1.diff.map
        = Big_map_overlay.bindings big_map2.diff.map
   in
-  pair_ty nat_ty big_map_nat_nat_ty
-  >>??= fun (Ty_ex_c pair_nat_big_map_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_big_map_nat_nat_ty) =
+    pair_ty nat_ty big_map_nat_nat_ty
+  in
   let* ctxt =
     test_parse_data
       ~equal
@@ -670,7 +674,7 @@ let test_unparse_comb_data () =
   let nat_ty = nat_t in
   let pair_prim l = Prim (-1, D_Pair, l, []) in
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
-  pair_ty nat_ty nat_ty >>??= fun (Ty_ex_c pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_nat_ty) = pair_ty nat_ty nat_ty in
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_z_z_prim = pair_prim2 z_prim z_prim in
   let* ctxt = test_context () in
@@ -685,7 +689,7 @@ let test_unparse_comb_data () =
       ~expected_optimized:pair_z_z_prim
   in
   (* Pair (Pair 0 0) 0 *)
-  pair_ty pair_nat_nat_ty nat_ty >>??= fun (Ty_ex_c pair_pair_nat_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
   let* ctxt =
     test_unparse_data
       __LOC__
@@ -696,7 +700,7 @@ let test_unparse_comb_data () =
       ~expected_optimized:(pair_prim2 pair_z_z_prim z_prim)
   in
   (* Readable: Pair 0 0 0; Optimized: Pair 0 (Pair 0 0) *)
-  pair_ty nat_ty pair_nat_nat_ty >>??= fun (Ty_ex_c pair_nat_pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_pair_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
   let* ctxt =
     test_unparse_data
       __LOC__
@@ -707,8 +711,9 @@ let test_unparse_comb_data () =
       ~expected_optimized:(pair_prim2 z_prim pair_z_z_prim)
   in
   (* Readable: Pair 0 0 0 0; Optimized: {0; 0; 0; 0} *)
-  pair_ty nat_ty pair_nat_pair_nat_nat_ty
-  >>??= fun (Ty_ex_c pair_nat_pair_nat_pair_nat_nat_ty) ->
+  let**? (Ty_ex_c pair_nat_pair_nat_pair_nat_nat_ty) =
+    pair_ty nat_ty pair_nat_pair_nat_nat_ty
+  in
   let* (_ : context) =
     test_unparse_data
       __LOC__
@@ -789,16 +794,16 @@ let test_optimal_comb () =
   in
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
   let* ctxt = test_context () in
-  pair_ty leaf_ty leaf_ty >>??= fun (Ty_ex_c comb2_ty) ->
+  let**? (Ty_ex_c comb2_ty) = pair_ty leaf_ty leaf_ty in
   let comb2_v = (leaf_v, leaf_v) in
   let* ctxt = check_optimal_comb __LOC__ ctxt comb2_ty comb2_v 2 in
-  pair_ty leaf_ty comb2_ty >>??= fun (Ty_ex_c comb3_ty) ->
+  let**? (Ty_ex_c comb3_ty) = pair_ty leaf_ty comb2_ty in
   let comb3_v = (leaf_v, comb2_v) in
   let* ctxt = check_optimal_comb __LOC__ ctxt comb3_ty comb3_v 3 in
-  pair_ty leaf_ty comb3_ty >>??= fun (Ty_ex_c comb4_ty) ->
+  let**? (Ty_ex_c comb4_ty) = pair_ty leaf_ty comb3_ty in
   let comb4_v = (leaf_v, comb3_v) in
   let* ctxt = check_optimal_comb __LOC__ ctxt comb4_ty comb4_v 4 in
-  pair_ty leaf_ty comb4_ty >>??= fun (Ty_ex_c comb5_ty) ->
+  let**? (Ty_ex_c comb5_ty) = pair_ty leaf_ty comb4_ty in
   let comb5_v = (leaf_v, comb4_v) in
   let* (_ : context) = check_optimal_comb __LOC__ ctxt comb5_ty comb5_v 5 in
   return_unit

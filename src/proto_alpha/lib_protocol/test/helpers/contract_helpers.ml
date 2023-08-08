@@ -104,17 +104,19 @@ let run_script ctx ?logger ?(step_constants = default_step_constants)
   let script =
     Script.{code = lazy_expr contract_expr; storage = lazy_expr storage_expr}
   in
-  Script_interpreter.execute
-    ctx
-    Readable
-    step_constants
-    ?logger
-    ~script
-    ~cached_script:None
-    ~entrypoint
-    ~parameter:parameter_expr
-    ~internal
-  >>=?? fun res -> return res
+  let*?* res =
+    Script_interpreter.execute
+      ctx
+      Readable
+      step_constants
+      ?logger
+      ~script
+      ~cached_script:None
+      ~entrypoint
+      ~parameter:parameter_expr
+      ~internal
+  in
+  return res
 
 let originate_contract_from_string_hash ~script ~storage ~source_contract ~baker
     block =

@@ -322,15 +322,19 @@ let make_ticket_key ctxt ~ty ~contents ~ticketer zk_rollup =
     | Context.I incr -> return incr
   in
   let ctxt = Incremental.alpha_ctxt incr in
-  Script_ir_translator.parse_comparable_ty ctxt ty
-  >>??= fun (Ex_comparable_ty contents_type, ctxt) ->
-  Script_ir_translator.parse_comparable_data ctxt contents_type contents
-  >>=?? fun (contents, ctxt) ->
-  Ticket_balance_key.of_ex_token
-    ctxt
-    ~owner:(Zk_rollup zk_rollup)
-    (Ticket_token.Ex_token {ticketer; contents_type; contents})
-  >|=?? fst
+  let**? Ex_comparable_ty contents_type, ctxt =
+    Script_ir_translator.parse_comparable_ty ctxt ty
+  in
+  let*?* contents, ctxt =
+    Script_ir_translator.parse_comparable_data ctxt contents_type contents
+  in
+  let+? result =
+    Ticket_balance_key.of_ex_token
+      ctxt
+      ~owner:(Zk_rollup zk_rollup)
+      (Ticket_token.Ex_token {ticketer; contents_type; contents})
+  in
+  fst result
 
 module Make_ticket (T : sig
   val ty_str : string
@@ -557,8 +561,8 @@ let test_append_errors () =
 
 let assert_ticket_balance ~loc incr token owner expected =
   let ctxt = Incremental.alpha_ctxt incr in
-  Ticket_balance_key.of_ex_token ctxt ~owner token >>=?? fun (key_hash, ctxt) ->
-  Ticket_balance.get_balance ctxt key_hash >>=?? fun (balance, _) ->
+  let*?* key_hash, ctxt = Ticket_balance_key.of_ex_token ctxt ~owner token in
+  let*?* balance, _ = Ticket_balance.get_balance ctxt key_hash in
   match (balance, expected) with
   | Some b, Some e -> Assert.equal_int ~loc (Z.to_int b) e
   | Some b, None ->
