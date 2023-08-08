@@ -29,6 +29,7 @@ open Protocol.Alpha_context
 
 val bake :
   Protocol_client_context.full ->
+  ?count:int ->
   ?minimal_fees:Tez.t ->
   ?minimal_nanotez_per_gas_unit:Q.t ->
   ?minimal_nanotez_per_byte:Q.t ->
