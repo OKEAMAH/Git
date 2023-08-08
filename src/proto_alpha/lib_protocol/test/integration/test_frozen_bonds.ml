@@ -72,6 +72,7 @@ let create_context () =
     Returns the context, the user contract, the user account, and the
     delegate's pkh. *)
 let init_test ~user_is_delegate =
+  let open Lwt_result_syntax in
   create_context () >>=? fun (ctxt, _) ->
   let delegate, delegate_pk, _ = Signature.generate_key () in
   let delegate_contract = Contract.Implicit delegate in
@@ -105,6 +106,7 @@ let init_test ~user_is_delegate =
     7. check that staking balance is unchanged,
     8. check that user's balance is unchanged. *)
 let test_delegate_then_freeze_deposit () =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate:false
   >>=? fun (ctxt, user_contract, user_account, delegate) ->
   (* Fetch user's initial balance before freeze. *)
@@ -159,6 +161,7 @@ let test_delegate_then_freeze_deposit () =
     7. check that staking balance has decreased as expected,
     8. check that the user's balance is unchanged. *)
 let test_freeze_deposit_then_delegate () =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate:false
   >>=? fun (ctxt, user_contract, user_account, delegate) ->
   (* Fetch user's initial balance before freeze. *)
@@ -214,6 +217,7 @@ let test_freeze_deposit_then_delegate () =
     3. punish the user contract,
     4. check that the user contract is unallocated, except if it's a delegate. *)
 let test_allocated_when_frozen_deposits_exists ~user_is_delegate () =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate
   >>=? fun (ctxt, user_contract, user_account, _delegate) ->
   (* Fetch user's initial balance before freeze. *)
@@ -257,6 +261,7 @@ let test_allocated_when_frozen_deposits_exists ~user_is_delegate () =
     5. punish for the other deposit,
     6. check that the stake of the user contract is equal to balance. *)
 let test_total_stake ~user_is_delegate () =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate
   >>=? fun (ctxt, user_contract, user_account, _delegate) ->
   (* Fetch user's initial balance before freeze. *)
@@ -335,6 +340,7 @@ let check_delegated_balance_is ctxt ~loc delegate expected_balance =
     11. check that the delegated balance is null,
     12. check that the user's balance is unchanged. *)
 let test_delegated_balance () =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate:false
   >>=? fun (ctxt, user_contract, user_account, delegate) ->
   let delegate_contract = Contract.Implicit delegate in
@@ -400,6 +406,7 @@ let test_delegated_balance () =
     These rpcs call the functions [Contract.get_frozen_bonds] and
     [Contract.get_balance_and_frozen_bonds] already tested in previous tests. *)
 let test_rpcs () =
+  let open Lwt_result_syntax in
   Context.init1 () >>=? fun (blk, contract) ->
   Context.Contract.frozen_bonds (B blk) contract >>=? fun frozen_bonds ->
   Assert.equal_tez ~loc:__LOC__ frozen_bonds Tez.zero >>=? fun () ->
@@ -410,6 +417,7 @@ let test_rpcs () =
 
 (** A helper to test a particular delegation/freezing scenario *)
 let test_scenario scenario =
+  let open Lwt_result_syntax in
   init_test ~user_is_delegate:false
   >>=? fun (ctxt, user_contract, user_account, delegate1) ->
   let delegate2, delegate_pk2, _ = Signature.generate_key () in
@@ -564,6 +572,7 @@ let test_scenario scenario =
     ~do_slash
 
 let test_delegate_freeze_unfreeze_undelegate () =
+  let open Lwt_result_syntax in
   test_scenario
     (fun
       ctxt
