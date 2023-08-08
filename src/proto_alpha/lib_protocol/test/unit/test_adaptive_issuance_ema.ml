@@ -35,7 +35,10 @@
 open Protocol
 module Votes_EMA = Per_block_votes_repr.Adaptive_issuance_launch_EMA
 
-let ema_of_int32 ema = Votes_EMA.of_int32 ema >|= Environment.wrap_tzresult
+let ema_of_int32 ema =
+  let open Lwt_result_syntax in
+  let*! result = Votes_EMA.of_int32 ema in
+  Lwt.return (Environment.wrap_tzresult result)
 
 let ema_to_int32 = Votes_EMA.to_int32
 

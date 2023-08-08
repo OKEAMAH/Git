@@ -136,9 +136,8 @@ let transaction block ~sender ~recipient ~amount ~parameters =
 
 let all_contracts current_block =
   let open Lwt_result_wrap_syntax in
-  let* ctxt =
-    Incremental.begin_construction current_block >|=? Incremental.alpha_ctxt
-  in
+  let* result = Incremental.begin_construction current_block in
+  let ctxt = Incremental.alpha_ctxt result in
   Lwt.map Result.ok @@ Contract.list ctxt
 
 (* Fetch all added contracts between [before] and [after]. *)

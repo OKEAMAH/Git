@@ -92,12 +92,14 @@ let assert_equal_ticket_diffs ~loc ctxt given expected =
   let* ctxt, tbs1 =
     List.fold_left_map_es
       (fun ctxt ((ticketer, content), delta) ->
-        make_ex_token
-          ctxt
-          ~ticketer
-          ~type_exp:"string"
-          ~content_exp:(Printf.sprintf "%S" content)
-        >|=? fun (token, ctxt) -> (ctxt, (token, Z.of_int delta)))
+        let+ token, ctxt =
+          make_ex_token
+            ctxt
+            ~ticketer
+            ~type_exp:"string"
+            ~content_exp:(Printf.sprintf "%S" content)
+        in
+        (ctxt, (token, Z.of_int delta)))
       ctxt
       expected
   in
@@ -182,15 +184,15 @@ let init () =
 
 (** Initializes one address for operations and one baker. *)
 let init_for_operation () =
-  Context.init2 ~consensus_threshold:0 () >|=? fun (block, (src0, src1)) ->
+  let open Lwt_result_syntax in
+  let+ block, (src0, src1) = Context.init2 ~consensus_threshold:0 () in
   let baker = Context.Contract.pkh src0 in
   (baker, src1, block)
 
 let two_ticketers block =
   let open Lwt_result_syntax in
-  let* ctxt =
-    Incremental.begin_construction block >|=? Incremental.alpha_ctxt
-  in
+  let* result = Incremental.begin_construction block in
+  let ctxt = Incremental.alpha_ctxt result in
   let*! cs = Contract.list ctxt in
   match cs with c1 :: c2 :: _ -> return (c1, c2) | _ -> assert false
 
@@ -335,7 +337,8 @@ let originate_script block ~script ~storage ~sender ~baker ~forges_tickets =
       operation
   in
   let script = (code, storage) in
-  Incremental.finalize_block incr >|=? fun block -> (destination, script, block)
+  let+ block = Incremental.finalize_block incr in
+  (destination, script, block)
 
 let origination_operation ctxt ~sender ~script:(code, storage) ~orig_contract =
   let open Lwt_result_wrap_syntax in

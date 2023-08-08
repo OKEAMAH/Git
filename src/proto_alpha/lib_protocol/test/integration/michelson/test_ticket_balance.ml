@@ -173,9 +173,8 @@ let unit_ticket ~ticketer =
 let new_contracts ~before ~after =
   let open Lwt_result_wrap_syntax in
   let all_contracts current_block =
-    let* ctxt =
-      Incremental.begin_construction current_block >|=? Incremental.alpha_ctxt
-    in
+    let* result = Incremental.begin_construction current_block in
+    let ctxt = Incremental.alpha_ctxt result in
     Lwt.map Result.ok (Contract.list ctxt)
   in
   let* cs1 = all_contracts before in

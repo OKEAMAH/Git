@@ -2104,12 +2104,14 @@ let dumb_proof ~choice =
   let*! arith_state = Arith_pvm.install_boot_sector arith_state "" in
   let input = Sc_rollup_helpers.make_external_input "c4c4" in
   let* pvm_step =
-    Arith_pvm.produce_proof
-      context_arith_pvm
-      ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
-      (Some input)
-      arith_state
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Arith_pvm.produce_proof
+        context_arith_pvm
+        ~is_reveal_enabled:Sc_rollup_helpers.is_reveal_enabled_default
+        (Some input)
+        arith_state
+    in
+    Lwt.return (Environment.wrap_tzresult result)
   in
   let pvm_step =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -2660,12 +2662,14 @@ let input_included ~snapshot ~full_history_inbox (l, n) =
   let history_proof = Sc_rollup.Inbox.old_levels_messages inbox in
   (* Create an inclusion proof of the inbox message at [(l, n)]. *)
   let* proof, _ =
-    Sc_rollup.Inbox.produce_proof
-      ~get_payloads_history:(get_payloads_history payloads_histories)
-      ~get_history:(get_history history)
-      history_proof
-      (l, n)
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Sc_rollup.Inbox.produce_proof
+        ~get_payloads_history:(get_payloads_history payloads_histories)
+        ~get_history:(get_history history)
+        history_proof
+        (l, n)
+    in
+    Lwt.return (Environment.wrap_tzresult result)
   in
   let*? inbox_message_verified =
     Sc_rollup.Inbox.verify_proof (l, n) snapshot proof
@@ -3110,12 +3114,14 @@ let start_refutation_game_op block rollup (p1, p1_pkh) p2_pkh =
     Incremental.alpha_ctxt incr
   in
   let* (p1_point, p2_point), _ctxt =
-    Sc_rollup.Refutation_storage.Internal_for_tests.get_conflict_point
-      ctxt
-      rollup
-      p1_pkh
-      p2_pkh
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Sc_rollup.Refutation_storage.Internal_for_tests.get_conflict_point
+        ctxt
+        rollup
+        p1_pkh
+        p2_pkh
+    in
+    Lwt.return (Environment.wrap_tzresult result)
   in
   let refutation =
     Sc_rollup.Game.Start
@@ -3293,12 +3299,14 @@ let test_conflict_point_on_a_branch () =
       let+ incr = Incremental.begin_construction block in
       Incremental.alpha_ctxt incr
     in
-    Sc_rollup.Refutation_storage.Internal_for_tests.get_conflict_point
-      ctxt
-      rollup
-      pA_pkh
-      pB_pkh
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Sc_rollup.Refutation_storage.Internal_for_tests.get_conflict_point
+        ctxt
+        rollup
+        pA_pkh
+        pB_pkh
+    in
+    Lwt.return (Environment.wrap_tzresult result)
   in
   let pA_hash = hash_commitment pA_commitment in
   let pB_hash = hash_commitment pB_commitment in

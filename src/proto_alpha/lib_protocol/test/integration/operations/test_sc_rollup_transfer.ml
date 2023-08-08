@@ -301,13 +301,15 @@ let test_transfer_works () =
     let ctxt = Incremental.alpha_ctxt inc in
     let payload = Expr.from_string "42" in
     let* ctxt =
-      Sc_rollup.Inbox.add_deposit
-        ctxt
-        ~destination:rollup
-        ~payload
-        ~sender:contract
-        ~source:(Context.Contract.pkh c)
-      >|= Environment.wrap_tzresult
+      let*! result =
+        Sc_rollup.Inbox.add_deposit
+          ctxt
+          ~destination:rollup
+          ~payload
+          ~sender:contract
+          ~source:(Context.Contract.pkh c)
+      in
+      Lwt.return (Environment.wrap_tzresult result)
     in
     let incr = Incremental.set_alpha_ctxt inc ctxt in
     let* block = Incremental.finalize_block incr in
@@ -370,18 +372,22 @@ let test_transfer_non_zero_amount_ticket () =
     let* inc = Incremental.begin_construction b in
     let ctxt = Incremental.alpha_ctxt inc in
     let* ticket_key_for_contract, ctxt =
-      Ticket_balance_key.of_ex_token
-        ctxt
-        ~owner:(Destination.Contract (Originated contract))
-        ticket_token
-      >|= Environment.wrap_tzresult
+      let*! result =
+        Ticket_balance_key.of_ex_token
+          ctxt
+          ~owner:(Destination.Contract (Originated contract))
+          ticket_token
+      in
+      Lwt.return (Environment.wrap_tzresult result)
     in
     let* ticket_key_for_rollup, _ctxt =
-      Ticket_balance_key.of_ex_token
-        ctxt
-        ~owner:(Destination.Sc_rollup rollup)
-        ticket_token
-      >|= Environment.wrap_tzresult
+      let*! result =
+        Ticket_balance_key.of_ex_token
+          ctxt
+          ~owner:(Destination.Sc_rollup rollup)
+          ticket_token
+      in
+      Lwt.return (Environment.wrap_tzresult result)
     in
     return (ticket_key_for_contract, ticket_key_for_rollup, ctxt)
   in

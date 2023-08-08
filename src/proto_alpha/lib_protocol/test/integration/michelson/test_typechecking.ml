@@ -36,7 +36,10 @@ open Alpha_context
 open Micheline
 open Error_monad_operators
 
-let wrap_error_lwt x = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x
+let wrap_error_lwt x =
+  let open Lwt_result_syntax in
+  let*! x in
+  Lwt.return @@ Environment.wrap_tzresult x
 
 let context_init_with_sc_rollup_enabled tup =
   Context.init_with_constants_gen

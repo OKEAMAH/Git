@@ -666,10 +666,8 @@ let dal_attestation_descriptor =
             Incremental.alpha_ctxt incr
           in
           let*? current_level = Context.get_level (B state.block) in
-          let* op =
-            dal_attestation ctxt current_level delegate
-            >|= Environment.wrap_tzresult
-          in
+          let*! result = dal_attestation ctxt current_level delegate in
+          let*? op = Environment.wrap_tzresult result in
           return
             (op
             |> Option.map (fun op ->

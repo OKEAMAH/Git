@@ -37,7 +37,14 @@ let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
 let ( let** ) m f =
   let open Lwt_result_syntax in
-  let* x = m >>= wrap in
+  let*! m in
+  let* x = wrap m in
+  f x
+
+let ( let**! ) m f =
+  let open Lwt_result_syntax in
+  let*! m in
+  let*! x = wrap m in
   f x
 
 let batch_size = 10
@@ -117,12 +124,11 @@ module Raw_context_tests = struct
     let state_length = Array.length state in
     let circuits_info = SMap.of_seq @@ Plonk.SMap.to_seq Operator.circuits in
     let nb_ops = 1 in
-    let* ctx, rollup, _size =
+    let** ctx, rollup, _size =
       Zk_rollup_storage.originate
         ctx
         {public_parameters; state_length; circuits_info; nb_ops}
         ~init_state:state
-      >>= wrap
     in
     return (ctx, rollup, contract)
 
@@ -199,7 +205,7 @@ module Raw_context_tests = struct
             payload = [||];
           }
     in
-    let*! e = Zk_rollup_storage.add_to_pending ctx rollup [wrong_op] >>= wrap in
+    let**! e = Zk_rollup_storage.add_to_pending ctx rollup [wrong_op] in
     let* () =
       Assert.proto_error_with_info ~loc:__LOC__ e "Invalid op code in append"
     in
@@ -208,7 +214,7 @@ module Raw_context_tests = struct
     let* address =
       Zk_rollup_repr.Address.from_nonce (Origination_nonce.incr nonce) |> wrap
     in
-    let*! e = Zk_rollup_storage.add_to_pending ctx address [op] >>= wrap in
+    let**! e = Zk_rollup_storage.add_to_pending ctx address [op] in
     let expected_message = "Storage error (fatal internal error)" in
     Assert.proto_error_with_info ~loc:__LOC__ e expected_message
 
@@ -253,12 +259,12 @@ module Raw_context_tests = struct
     (* Initialise the pending list with 2 operations *)
     let** ctx, _size = Zk_rollup_storage.add_to_pending ctx rollup [op; op] in
     (* Check that retrieving too many ops returns an error *)
-    let*! e = Zk_rollup_storage.get_prefix ctx rollup 3 >>= wrap in
+    let**! e = Zk_rollup_storage.get_prefix ctx rollup 3 in
     let* () =
       Assert.proto_error_with_info ~loc:__LOC__ e "Pending list is too short"
     in
     (* Check that retrieving a negative number of ops returns an error *)
-    let*! e = Zk_rollup_storage.get_prefix ctx rollup (-1) >>= wrap in
+    let**! e = Zk_rollup_storage.get_prefix ctx rollup (-1) in
     let* () =
       Assert.proto_error_with_info
         ~loc:__LOC__
@@ -270,7 +276,7 @@ module Raw_context_tests = struct
     let* address =
       Zk_rollup_repr.Address.from_nonce (Origination_nonce.incr nonce) |> wrap
     in
-    let*! e = Zk_rollup_storage.get_prefix ctx address (-1) >>= wrap in
+    let**! e = Zk_rollup_storage.get_prefix ctx address (-1) in
     Assert.proto_error_with_info
       ~loc:__LOC__
       e
@@ -338,17 +344,15 @@ module Raw_context_tests = struct
     let** ctx, _size = Zk_rollup_storage.add_to_pending ctx rollup [op; op] in
     let** ctx, acc = Storage.Zk_rollup.Account.get ctx rollup in
     (* Processing too many ops *)
-    let*! e =
+    let**! e =
       Zk_rollup_storage.update ctx rollup ~pending_to_drop:3 ~new_account:acc
-      >>= wrap
     in
     let* () =
       Assert.proto_error_with_info ~loc:__LOC__ e "Pending list is too short"
     in
     (* Processing negative number of ops *)
-    let*! e =
+    let**! e =
       Zk_rollup_storage.update ctx rollup ~pending_to_drop:(-3) ~new_account:acc
-      >>= wrap
     in
     let* () =
       Assert.proto_error_with_info
@@ -361,9 +365,8 @@ module Raw_context_tests = struct
     let* address =
       Zk_rollup_repr.Address.from_nonce (Origination_nonce.incr nonce) |> wrap
     in
-    let*! e =
+    let**! e =
       Zk_rollup_storage.update ctx address ~pending_to_drop:1 ~new_account:acc
-      >>= wrap
     in
     Assert.proto_error_with_info
       ~loc:__LOC__
