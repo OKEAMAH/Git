@@ -5,7 +5,7 @@
 // This script runs the benchmarks for the EVM kernel and writes the result to benchmark_result.csv
 
 // Before running this script, run the following commands to build the debugger and the benchmark kernel
-// $ make 
+// $ make
 // $ make -C src/kernel_evm/
 
 // Then run this script using the following command
@@ -18,9 +18,10 @@ var fs = require('fs');
 var readline = require('readline');
 const { spawn } = require('child_process');
 const { execSync } = require('child_process');
+const ext = require(".lib/ext")
 
-const RUN_DEBUGGER_COMMAND = './octez-smart-rollup-wasm-debugger';
-const BENCHMARK_KERNEL_PATH = 'src/kernel_evm/target/wasm32-unknown-unknown/release/kernel_benchmark.wasm'
+const RUN_DEBUGGER_COMMAND = ext.bin_path('./octez-smart-rollup-wasm-debugger');
+const BENCHMARK_KERNEL_PATH = ext.kernel_path('src/kernel_evm/target/wasm32-unknown-unknown/release/kernel_benchmark.wasm')
 
 // Get the gas cost of the transactions from the outbox by running the debugger
 async function get_gas_cost(path) {
@@ -51,7 +52,7 @@ async function get_gas_cost(path) {
         childProcess.on('close', _ => {
             resolve(gas_used);
         });
-        }
+    }
     )
     return transaction_gas_costs;
 }
@@ -59,7 +60,7 @@ async function get_gas_cost(path) {
 // Run the profiler in the debugger and returns the path of the profiler output file
 function run_profiler(path) {
 
-    profiler_output_path = new Promise ((resolve, _) => {
+    profiler_output_path = new Promise((resolve, _) => {
         const args = [BENCHMARK_KERNEL_PATH, "--inputs", path];
 
         const childProcess = spawn(RUN_DEBUGGER_COMMAND, args, {});
@@ -92,9 +93,9 @@ async function get_ticks(path, function_call_keyword) {
     const rl = readline.createInterface({
         input: fileStream,
         crlfDelay: Infinity
-      });
+    });
 
-      for await (const l of rl) {
+    for await (const l of rl) {
         if (l !== "") {
             tokens = l.split(" ");
             calls = tokens[0];
@@ -110,7 +111,7 @@ async function get_ticks(path, function_call_keyword) {
                 previous_row_is_given_function_call = false;
             }
         }
-      }
+    }
 
     return ticks_count_for_transactions;
 }
@@ -126,7 +127,7 @@ async function analyze_profiler_output(path) {
     return [kernel_run_ticks, run_transaction_ticks, signature_verification_ticks, interpreter_init_ticks, interpreter_decode_ticks];
 }
 
-// Run given benchmark 
+// Run given benchmark
 async function run_benchmark(path) {
     gas_costs = await get_gas_cost(path);
     profiler_output_path = await run_profiler(path);
@@ -157,8 +158,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         run_benchmark_result = await run_benchmark("transactions.json");
         gas_costs = run_benchmark_result[0];
         kernel_run_ticks = run_benchmark_result[1];
-        run_transaction_ticks=run_benchmark_result[2];
-        run_signature_verification_ticks=run_benchmark_result[3];
+        run_transaction_ticks = run_benchmark_result[2];
+        run_signature_verification_ticks = run_benchmark_result[3];
         interpreter_init_ticks = run_benchmark_result[4];
         interpreter_decode_ticks = run_benchmark_result[5];
 
@@ -169,14 +170,14 @@ async function run_all_benchmarks(benchmark_scripts) {
         rows.push([benchmark_name, "", kernel_run_ticks[1], "", "", interpreter_init_ticks[1], interpreter_decode_ticks[1]]);
 
         for (var j = 0; j < gas_costs.length; j++) {
-            rows.push([benchmark_name, gas_costs[j], kernel_run_ticks[j+2], run_transaction_ticks[j], run_signature_verification_ticks[j], interpreter_init_ticks[j+2], interpreter_decode_ticks[j+2]]);
+            rows.push([benchmark_name, gas_costs[j], kernel_run_ticks[j + 2], run_transaction_ticks[j], run_signature_verification_ticks[j], interpreter_init_ticks[j + 2], interpreter_decode_ticks[j + 2]]);
         }
 
         // EOL
-        rows.push([benchmark_name, "", kernel_run_ticks[kernel_run_ticks.length - 2], "", "",interpreter_init_ticks[interpreter_init_ticks.length - 2], interpreter_decode_ticks[interpreter_decode_ticks.length - 2]]);
+        rows.push([benchmark_name, "", kernel_run_ticks[kernel_run_ticks.length - 2], "", "", interpreter_init_ticks[interpreter_init_ticks.length - 2], interpreter_decode_ticks[interpreter_decode_ticks.length - 2]]);
 
         // End loop
-        rows.push([benchmark_name, "", kernel_run_ticks[kernel_run_ticks.length - 1], "", "",interpreter_init_ticks[interpreter_init_ticks.length - 1], interpreter_decode_ticks[interpreter_decode_ticks.length - 1]]);
+        rows.push([benchmark_name, "", kernel_run_ticks[kernel_run_ticks.length - 1], "", "", interpreter_init_ticks[interpreter_init_ticks.length - 1], interpreter_decode_ticks[interpreter_decode_ticks.length - 1]]);
     }
 
     console.log("Writing result to benchmark_result.csv");
@@ -185,9 +186,9 @@ async function run_all_benchmarks(benchmark_scripts) {
 
     fs.writeFile('benchmark_result.csv', content, err => {
         if (err) {
-          console.error(err);
+            console.error(err);
         }
-      });
+    });
 
     execSync("rm transactions.json");
 }
