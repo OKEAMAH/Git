@@ -24,7 +24,7 @@
 (package (name octez-distributed-lwt-internal))
 (package (name octez-distributed-plonk))
 (package (name octez-epoxy-tx))
-(package (name octez-evm-chunker)(allow_empty))
+(package (name octez-evm-chunker))
 (package (name octez-evm-proxy))
 (package (name octez-evm-proxy-lib)(allow_empty))
 (package (name octez-evm-upgrade-signer)(allow_empty))

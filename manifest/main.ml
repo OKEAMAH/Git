@@ -7910,8 +7910,8 @@ let _evm_proxy =
     ~bisect_ppx:Yes
 
 let _octez_evm_chunker_exe =
-  private_exe
-    "octez_evm_chunker"
+  public_exe
+    "octez-evm-chunker"
     ~path:"src/bin_evm_proxy/chunker"
     ~synopsis:"EVM kernel transaction chunker"
     ~opam:"octez-evm-chunker"
