@@ -34,3 +34,10 @@ val verify :
   evaluations:scalar array ->
   proof:shard_proof ->
   bool
+
+type prover_public_parameters
+
+val preprocess : Domain.t -> Srs_g1.t -> prover_public_parameters
+
+val build_ct_list :
+  prover_public_parameters -> Domain.t * Domain.t -> Poly.t -> G1_carray.t

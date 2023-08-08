@@ -98,6 +98,47 @@ let test_wrong_proof () =
   in
   assert (not (fst @@ Cq.verify vrf transcript wrong_proof))
 
+let commit = Kzg.Commitment.Single.commit
+
+let test_ka () =
+  (* test for multiple proofs of part 2 of the article *)
+  let i = 2 in
+  let m = 1 lsl i in
+  let domain = Domain.build m in
+  let domain2m = Domain.build (2 * m) in
+  let x = Scalar.random () in
+  let srs = Srs_g1.generate_insecure (m + 1) x in
+  let poly = Poly.init m (fun _i -> Scalar.random ()) in
+  let time = Unix.gettimeofday () in
+  let proofs =
+    Kzg.Kate_amortized.build_ct_list srs (domain, domain2m) poly
+    |> G1_carray.to_array
+  in
+  Printf.printf "\nbuild_ct_list : %f s." (Unix.gettimeofday () -. time) ;
+  let proofk k =
+    let y = Domain.get domain k in
+    if k >= m then failwith "k >= 2^i" ;
+    let z = Poly.evaluate poly y in
+    let num = Poly.(sub poly (constant z)) in
+    let quotient, _rest = Poly.division_xn num 1 (Scalar.negate y) in
+    commit srs quotient
+  in
+  let verif_all proofs_list =
+    let aux y proof =
+      let z = Poly.evaluate poly y in
+      let x_y = G2.mul G2.one Scalar.(x + negate y) in
+      let fx_z = G1.(add (commit srs poly) (negate (mul one z))) in
+      let e1 = Pairing.pairing proof x_y in
+      let e2 = Pairing.pairing fx_z G2.one in
+      assert (GT.eq e1 e2)
+    in
+    Array.iteri (fun i p -> aux (Domain.get domain i) p) proofs_list
+  in
+  let p_list = Array.init m proofk in
+  assert (Array.for_all2 G1.eq p_list proofs) ;
+  verif_all proofs ;
+  print_string "\nAll proofs successfully verified.\n"
+
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
@@ -105,4 +146,5 @@ let tests =
       ("Correctness", test_correctness);
       ("Not in table", test_not_in_table);
       ("Fake proof", test_wrong_proof);
+      ("Kate amortized", test_ka);
     ]

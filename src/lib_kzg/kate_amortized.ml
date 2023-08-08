@@ -355,3 +355,56 @@ let verify t ~commitment ~srs_point ~domain ~root ~evaluations ~proof =
             = e([r_i(τ)]_1-c, g_2) + e(π, [τ^l]_2 - [w^{i * l}]_2). *)
   Pairing.pairing_check
     [(diff_commits, G2.(copy one)); (proof, commit_srs_point_minus_root_pow)]
+
+(* ---- Part 2 of https://github.com/khovratovich/Kate/blob/master/Kate_amortized.pdf ---- *)
+
+type prover_public_parameters = G1_carray.t
+
+let preprocess domain2m srs =
+  let m2 = Domain.length domain2m in
+  let m = m2 / 2 in
+  let padded_srs =
+    G1_carray.init m2 (fun i ->
+        if i >= m then G1.zero else Srs_g1.get srs (m - i - 1))
+  in
+  G1_carray.evaluation_ecfft ~domain:domain2m ~points:padded_srs
+
+(* Complete Toeplitz computation with arranged poly & srs *)
+let build_h pp poly domain2m =
+  let v = Evaluations.evaluation_fft domain2m poly in
+  let u =
+    G1_carray.(
+      init (length pp) (fun i -> G1.mul (get pp i) (Evaluations.get v i)))
+  in
+  let () = G1_carray.interpolation_ecfft_inplace ~domain:domain2m ~points:u in
+  G1_carray.sub u ~off:0 ~len:(Domain.length domain2m / 2)
+
+(* coefs = [f₀, f₁, …, fd-1], where d is degree
+   domain2m = [ω⁰, ω¹, ω², …, ω^(2^m-1)], ω k-th root of unity and 2^m >= 2d
+   domain2m is twice as big as domain
+   srs1 = [[1]₁, [s]₁, [s²]₁, …, [s^(m-1)]₁]
+   no verification in code for sizes
+
+   [build_ct_list srs (domain, domain2m) p] computes for each m-th root of unity ω in [domain], Ct = [(p(X) - p(ω)) / (X - ω)] in time O(mlog(m))
+*)
+let build_ct_list preprocess (domain, domain2m) poly =
+  let m2 = Domain.length domain2m in
+  let m = m2 / 2 in
+  let d = Poly.degree poly in
+  (* Computed following https://alinush.github.io/2020/03/19/multiplying-a-vector-by-a-toeplitz-matrix.html *)
+  let h =
+    (* a = [f_d, 0, …, 0] @ [0, f₁, …, f_{d-1}] ; note that we dump f₀ because we
+       don’t need it for computation ; it’s replaced by a zero to maintain
+       size. The result is an array f size 2m.
+    *)
+    let poly_arranged =
+      let get_or_zero i = if i > d then Scalar.zero else Poly.get poly i in
+      Poly.init m2 (fun i ->
+          if i = 0 then get_or_zero m
+          else if i <= m then Scalar.zero
+          else get_or_zero (i - m))
+    in
+    build_h preprocess poly_arranged domain2m
+  in
+  (* Final evaluation of h to retrieve the proofs *)
+  G1_carray.evaluation_ecfft ~domain ~points:h
