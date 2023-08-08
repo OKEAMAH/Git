@@ -36,7 +36,7 @@ variable "target_size" {
 variable "docker_registry_url" {
   type        = string
   description = "Google docker image registry (artifact registry) URL to authenticate with"
-  default     = "europe-docker.pkg.dev"
+  default     = "europe-west1-docker.pkg.dev"
 }
 
 variable "gcp_creds" {

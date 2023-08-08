@@ -16,7 +16,8 @@ mkdir -p /run/sshd
 /usr/sbin/sshd -D -p 30000 -e
 EOF
 
-docker run \
-  -p 30000-30999:30000-30999 \
-  --name tezos europe-west1-docker.pkg.dev/nl-dal/docker-registry/debian-tezos@sha256:latest \
-  bash -c "$(cat /tmp/start.sh)"
+docker_registry_url="europe-west1-docker.pkg.dev/nl-dal/docker-registry"
+
+docker_image_name="debian-tezos"
+
+docker run -p 30000-30999:30000-30999 --name tezos $docker_registry_url/$docker_image_name:latest
