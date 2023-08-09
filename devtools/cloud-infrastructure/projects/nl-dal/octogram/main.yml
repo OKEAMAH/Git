@@ -1,0 +1,43 @@
+octogram_binary:
+  push: octogram
+
+agents:
+  - name: node
+    address: 34.140.229.153
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+vars:
+  network: sandbox
+  
+stages:
+  - name: Running nodes
+    with_agents: 'node'
+    run_agents: concurrent
+    jobs:
+      - name: Upload octez-node
+        copy:
+          local_path: octez-node
+          remote_path: '.'
+
+      - name: Upload octez-client
+        copy:
+          local_path: octez-client
+          remote_path: '.'
+      
+      - name: Start octez-node
+        tezos.start_node:
+          name: node
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          synchronization_threshold: 0
+          rpc_port: '30001'
+          metrics_port: '30002'
+          net_port: '30003'
+
+      - name: Wait for bootstrapped node
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: self://node
+      
