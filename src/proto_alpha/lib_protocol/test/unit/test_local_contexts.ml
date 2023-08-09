@@ -37,6 +37,8 @@ open Protocol
 open Storage_functors
 module A = Alpha_context
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 let create () =
   let open Lwt_result_syntax in
   let account = Account.new_account () in
@@ -93,7 +95,7 @@ let eq_context ctxt1 ctxt2 =
   let open Lwt_result_syntax in
   let hash ctxt =
     let*! tree = Raw_context.get_tree ctxt [] in
-    let+ root = Lwt.return (Environment.wrap_tzresult tree) in
+    let+ root = wrap tree in
     Raw_context.Tree.hash root
   in
   let* x = hash ctxt1 in
@@ -125,22 +127,22 @@ let test_local_remove_existing () =
     let*! ctxt =
       write_with_local ctxt subdir (fun local -> C.Local.init local value)
     in
-    Lwt.return (Environment.wrap_tzresult ctxt)
+    wrap ctxt
   in
   let* ctxt2 =
     let*! ctxt = C.init ctxt subdir value in
-    Lwt.return (Environment.wrap_tzresult ctxt)
+    wrap ctxt
   in
   let* () = eq_context ctxt1 ctxt2 in
   let ctxt = ctxt2 in
   (* remove_existing *)
   let* ctxt1 =
     let*! ctxt = write_with_local ctxt subdir C.Local.remove_existing in
-    Lwt.return (Environment.wrap_tzresult ctxt)
+    wrap ctxt
   in
   let* ctxt2 =
     let*! ctxt = C.remove_existing ctxt subdir in
-    Lwt.return (Environment.wrap_tzresult ctxt)
+    wrap ctxt
   in
   eq_context ctxt1 ctxt2
 

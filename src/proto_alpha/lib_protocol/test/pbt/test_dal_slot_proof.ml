@@ -118,7 +118,7 @@ struct
     let open Result_syntax in
     if skip_slot then
       (* We cannot check that a page of an unconfirmed slot is confirmed. *)
-      return None
+      return_none
     else
       let* page_info, page_id = mk_page_info slot poly in
       return @@ Some (page_info, page_id)

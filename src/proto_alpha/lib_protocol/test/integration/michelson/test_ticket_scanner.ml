@@ -50,7 +50,7 @@ let assert_fails ~loc ?error m =
         Stdlib.failwith msg
     | _, None ->
         (* Any error is ok. *)
-        return ()
+        return_unit
   in
   match res with
   | Ok _ -> Stdlib.failwith "Expected failure"

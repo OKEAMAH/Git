@@ -170,7 +170,7 @@ let test_typecheck_stack_overflow () =
            (Environment.Ecoproto_error
               Script_tc_errors.Typechecking_too_many_recursive_calls)
            lst ->
-      return ()
+      return_unit
   | Error errs ->
       Alcotest.failf "Unexpected error: %a" Error_monad.pp_print_trace errs
 
@@ -922,7 +922,7 @@ let test_parse_contract_data_for_unit_rollup () =
   let* () =
     Assert.equal_string ~loc:__LOC__ (Entrypoint.to_string entrypoint) "default"
   in
-  return ()
+  return_unit
 
 (** Test that [parse_contract_data] for rollup with invalid type fails. *)
 let test_parse_contract_data_for_rollup_with_invalid_type () =

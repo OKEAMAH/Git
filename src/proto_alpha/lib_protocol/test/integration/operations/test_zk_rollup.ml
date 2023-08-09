@@ -568,7 +568,7 @@ let assert_ticket_balance ~loc incr token owner expected =
   | Some b, None ->
       failwith "%s: Expected no balance but got some %d" loc (Z.to_int b)
   | None, Some b -> failwith "%s: Expected balance %d but got none" loc b
-  | None, None -> return ()
+  | None, None -> return_unit
 
 let test_invalid_deposit () =
   let open Lwt_result_syntax in

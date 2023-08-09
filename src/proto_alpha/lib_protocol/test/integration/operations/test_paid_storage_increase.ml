@@ -98,7 +98,7 @@ let test_balances ~amount =
       (Incremental.alpha_ctxt inc)
       contract_dst
   in
-  let* storage = Lwt.return (Environment.wrap_tzresult storage) in
+  let*? storage = Environment.wrap_tzresult storage in
   let storage_minus_amount = Z.sub storage amount in
   Assert.equal_int
     ~loc:__LOC__

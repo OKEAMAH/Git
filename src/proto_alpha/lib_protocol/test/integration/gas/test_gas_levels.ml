@@ -35,6 +35,8 @@ open Protocol
 open Raw_context
 module S = Saturation_repr
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 (* This value is supposed to be larger than the block gas level limit
    but not saturated. *)
 let opg = max_int / 10000
@@ -59,17 +61,17 @@ let dummy_context () =
       (block.context : Tezos_protocol_environment.Context.t)
       ~adaptive_issuance_enable:false
   in
-  Lwt.return (Environment.wrap_tzresult ctxt)
+  wrap ctxt
 
 let consume_gas_lwt context gas =
   let open Lwt_result_syntax in
-  let*! ctxt = Lwt.return (consume_gas context (S.safe_int gas)) in
-  Lwt.return (Environment.wrap_tzresult ctxt)
+  let ctxt = consume_gas context (S.safe_int gas) in
+  wrap ctxt
 
 let consume_gas_limit_in_block_lwt context gas =
   let open Lwt_result_syntax in
-  let*! ctxt = Lwt.return (consume_gas_limit_in_block context gas) in
-  Lwt.return (Environment.wrap_tzresult ctxt)
+  let ctxt = consume_gas_limit_in_block context gas in
+  wrap ctxt
 
 let test_detect_gas_exhaustion_in_fresh_context () =
   let open Lwt_result_syntax in
@@ -255,7 +257,7 @@ let apply_with_gas header ?(operations = []) (pred : Block.t) =
       in
       (validation.context, result.consumed_gas)
     in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let hash = Block_header.hash header in
   ( {Block.hash; header; operations; context; constants = pred.constants},

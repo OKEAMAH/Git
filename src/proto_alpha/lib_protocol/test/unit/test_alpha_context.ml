@@ -37,6 +37,8 @@ open Alpha_context
                   failure cases. Superficial goal: increase coverage percentage.
 *)
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 (** Creates an Alpha_context without creating a full-fledged block *)
 let create () =
   let account = Account.new_account () in
@@ -90,7 +92,7 @@ module Test_Big_map = struct
       let* alpha_context = create () in
       let* alpha_context, big_map_id =
         let*! result = Big_map.fresh ~temporary:true alpha_context in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let*! result =
         Big_map.mem
@@ -98,7 +100,7 @@ module Test_Big_map = struct
           big_map_id
           (Script_expr_hash.hash_string ["0"; "0"])
       in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     Assert.equal_bool ~loc:__LOC__ is_member false
 
@@ -109,7 +111,7 @@ module Test_Big_map = struct
       let* alpha_context = create () in
       let* alpha_context, big_map_id =
         let*! result = Big_map.fresh ~temporary:true alpha_context in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let*! result =
         Big_map.get_opt
@@ -117,7 +119,7 @@ module Test_Big_map = struct
           big_map_id
           (Script_expr_hash.hash_string ["0"; "0"])
       in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     match value with
     | Some _ ->
@@ -131,10 +133,10 @@ module Test_Big_map = struct
       let* alpha_context = create () in
       let* alpha_context, big_map_id =
         let*! result = Big_map.fresh ~temporary:true alpha_context in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let*! result = Big_map.exists alpha_context big_map_id in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     match value with
     | Some _ ->
@@ -165,7 +167,7 @@ module Test_Big_map = struct
     in
     let* _ctxt, retrieved_key_values =
       let*! result = Big_map.list_key_values ctxt big_map_id in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     let expected_key_hash_values =
       List.map
@@ -216,7 +218,7 @@ module Test_Big_map = struct
         let*! result =
           Big_map.list_key_values ?offset ?length ctxt big_map_id
         in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let expected_key_hash_values =
         (* A negative length is interpreted as 0 *)

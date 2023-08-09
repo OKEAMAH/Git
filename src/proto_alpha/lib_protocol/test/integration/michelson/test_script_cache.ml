@@ -36,6 +36,8 @@ open Alpha_context
 open Contract_helpers
 open Script_ir_translator
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 exception Script_cache_test_error of string
 
 let err x = Exn (Script_cache_test_error x)
@@ -82,7 +84,7 @@ let find ctxt addr =
   let open Lwt_result_syntax in
   let* ctxt, identifier, result =
     let*! result = Script_cache.find ctxt addr in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   match result with
   | None ->
@@ -176,7 +178,7 @@ let test_size_of_int_store_contract () =
     make_block block @! fun ctxt ->
     let* ctxt, _, _ =
       let*! result = Script_cache.find ctxt addr in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     assert_cache_size
       (int_store_contract_size + liquidity_baking_contract_size)
@@ -207,11 +209,11 @@ let test_find_correctly_looks_up () =
     *)
     let* _, _, result =
       let*! result = Script_cache.find ctxt addr in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     let* ctxt, script =
       let*! result = Contract.get_script ctxt addr in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     let*? cond =
       match (result, script) with
@@ -233,7 +235,7 @@ let test_find_correctly_looks_up () =
     let addr = Contract_helpers.fake_KT1 in
     let* _, _, cached_contract =
       let*! result = Script_cache.find ctxt addr in
-      Lwt.return (Environment.wrap_tzresult result)
+      wrap result
     in
     fail_unless
       (cached_contract = None)
@@ -321,7 +323,7 @@ let test_contract_rank_is_lru_rank () =
   let* (), block =
     make_block block @! fun ctxt ->
     let rec check_rank k = function
-      | [] -> return ()
+      | [] -> return_unit
       | addr :: addrs -> (
           match Script_cache.contract_rank ctxt addr with
           | None -> tzfail (err "Contract rank should find a cached contract")

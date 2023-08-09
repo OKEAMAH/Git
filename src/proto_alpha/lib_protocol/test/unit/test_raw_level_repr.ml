@@ -50,7 +50,7 @@ module Test_raw_level_repr = struct
     Bytes.set_int32_ne bytes 0 0l ;
     let* v =
       Data_encoding.Binary.of_bytes encoding bytes |> function
-      | Ok x -> Lwt.return (Ok x)
+      | Ok x -> Lwt.return_some x
       | Error e ->
           failwith
             "Data_encoding.Binary.read shouldn't have failed with \
@@ -78,7 +78,7 @@ module Test_raw_level_repr = struct
     let open Lwt_result_syntax in
     let int32v = 100l in
     let result = Raw_level_repr.of_int32 int32v in
-    let* raw_level = Lwt.return (Environment.wrap_tzresult result) in
+    let*? raw_level = Environment.wrap_tzresult result in
     let* () =
       Assert.equal_int32 ~loc:__LOC__ (Raw_level_repr.to_int32 raw_level) int32v
     in

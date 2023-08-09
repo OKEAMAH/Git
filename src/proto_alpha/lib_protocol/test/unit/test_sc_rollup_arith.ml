@@ -88,18 +88,18 @@ module Arith_Context = struct
     match Context_binary.Tree.kinded_key tree with
     | Some k ->
         let* p = Context_binary.produce_tree_proof index k step in
-        return (Some p)
-    | None -> return None
+        return_some p
+    | None -> return_none
 
   let verify_proof proof step =
     let open Lwt_syntax in
     let* result = Context_binary.verify_tree_proof proof step in
     match result with
-    | Ok v -> return (Some v)
+    | Ok v -> return_some v
     | Error _ ->
         (* We skip the error analysis here since proof verification is not a
            job for the rollup node. *)
-        return None
+        return_none
 end
 
 module FullArithPVM = Sc_rollup_arith.Make (Arith_Context)
@@ -122,7 +122,7 @@ let pre_boot boot_sector f =
 let test_preboot () =
   [""; "1"; "1 2 +"]
   |> List.iter_es (fun boot_sector ->
-         pre_boot boot_sector @@ fun _ctxt _state -> return ())
+         pre_boot boot_sector @@ fun _ctxt _state -> return_unit)
 
 let boot boot_sector f =
   let open Lwt_result_syntax in
@@ -140,7 +140,7 @@ let test_boot () =
       state
   in
   match result with
-  | Needs_reveal Reveal_metadata -> return ()
+  | Needs_reveal Reveal_metadata -> return_unit
   | Initial | Needs_reveal _ | First_after _ ->
       failwith "After booting, the machine should be waiting for the metadata."
   | No_input_required ->
@@ -167,7 +167,7 @@ let test_metadata () =
       state
   in
   match input_request with
-  | Initial -> return ()
+  | Initial -> return_unit
   | Needs_reveal _ | First_after _ | No_input_required ->
       failwith
         "After evaluating the metadata, the machine must be in the [Initial] \
@@ -189,7 +189,7 @@ let test_input_message () =
   | Initial | Needs_reveal _ | First_after _ ->
       failwith
         "After receiving a message, the rollup must not be waiting for input."
-  | No_input_required -> return ()
+  | No_input_required -> return_unit
 
 let go ?(is_reveal_enabled = fun ~current_block_level:_ _ -> true) ~max_steps
     target_status state =
@@ -240,7 +240,7 @@ let test_parsing_message ~valid (source, expected_code) =
       (Format.pp_print_list pp_instruction)
       expected_code
       code
-  else return ()
+  else return_unit
 
 let syntactically_valid_messages =
   List.map
@@ -310,7 +310,7 @@ let test_evaluation_message ~valid
     match result with
     | Some true -> failwith "This code should lead to an evaluation error."
     | None -> failwith "We should have reached the evaluation end."
-    | Some false -> return ()
+    | Some false -> return_unit
 
 let valid_messages =
   [
@@ -469,7 +469,7 @@ let test_output_messages_proofs ~valid ~inbox_level (source, expected_outputs) =
                      source
                      Sc_rollup_PVM_sig.pp_output
                      output)))
-      | Error _ -> return ()
+      | Error _ -> return_unit
   in
   List.iter_es check_output expected_outputs
 
@@ -633,7 +633,7 @@ let test_filter_internal_message () =
         state
     in
     match input_state with
-    | No_input_required -> return ()
+    | No_input_required -> return_unit
     | _ -> failwith "The arith pvm should be processing the internal transfer"
   in
 
@@ -665,10 +665,10 @@ let test_filter_internal_message () =
     match input_state with
     | No_input_required ->
         failwith "The arith pvm should avoid ignored the internal transfer"
-    | _ -> return ()
+    | _ -> return_unit
   in
 
-  return ()
+  return_unit
 
 module Arith_pvm = Sc_rollup_helpers.Arith_pvm
 

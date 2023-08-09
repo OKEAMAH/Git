@@ -64,7 +64,7 @@ let assert_fails ~loc ?error m =
         Stdlib.failwith msg
     | _, None ->
         (* Any error is ok. *)
-        return ()
+        return_unit
   in
   match res with
   | Ok _ -> Stdlib.failwith "Expected failure"
@@ -227,7 +227,7 @@ let originate block ~script ~storage ~sender ~baker ~forges_tickets =
   let* incr =
     Incremental.add_operation
       ?expect_apply_failure:
-        (if forges_tickets then Some (fun _ -> return ()) else None)
+        (if forges_tickets then Some (fun _ -> return_unit) else None)
       incr
       operation
   in
@@ -239,7 +239,7 @@ let two_ticketers block =
   let open Lwt_result_wrap_syntax in
   let* result = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt result in
-  let* cs = Lwt.map Result.ok @@ Contract.list ctxt in
+  let* cs = Lwt.map Result.return @@ Contract.list ctxt in
   match cs with c1 :: c2 :: _ -> return (c1, c2) | _ -> assert false
 
 let one_ticketer block =

@@ -42,6 +42,8 @@ open Michelson_v1_primitives
 open Michelson_v1_printer
 open Test_global_constants
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 (** [get] on a nonexistent global constant
     returns an error. *)
 let test_get_on_nonexistent_fails =
@@ -69,11 +71,11 @@ let test_get_always_returns_registered_expr =
     (fun (context, expr) ->
       let* context, hash, _cost =
         let*! result = Global_constants_storage.register context expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let+ _context, actual_expr =
         let*! result = Global_constants_storage.get context hash in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       qcheck_eq ~pp:print_expr actual_expr expr)
 
@@ -153,7 +155,7 @@ let test_expand_no_constants =
       let expected = Expr.from_string "Pair 1 (Pair 2 3)" in
       let* _, result_expr =
         let*! result = Global_constants_storage.expand context expected in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       assert_expr_equal __LOC__ expected result_expr)
 
@@ -172,11 +174,11 @@ let test_register_and_expand_orthogonal =
       let open Michelson_v1_printer in
       let* context, _hash, _cost =
         let*! result = Global_constants_storage.register context expr1 in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let+ _, expr2_result =
         let*! result = Global_constants_storage.expand context expr2 in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       qcheck_eq ~pp:print_expr expr2 expr2_result)
 
@@ -196,7 +198,7 @@ let test_expand_deep_constants =
           let*! result =
             Global_constants_storage.register context (strip_locations node)
           in
-          Lwt.return (Environment.wrap_tzresult result)
+          wrap result
         in
         if n <= 1 then return (context, node, hash)
         else
@@ -222,7 +224,7 @@ let test_expand_deep_constants =
       in
       let* _, result =
         let*! result = Global_constants_storage.expand context deep_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let seq_n_deep n =
         let rec advance n acc =
@@ -250,7 +252,7 @@ let test_expand_reject_ill_formed =
       let some_expr = Expr.from_string "0" in
       let* context, hash, _ =
         let*! result = Global_constants_storage.register context some_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let hash = Script_expr_hash.to_b58check hash in
       (* check that expansion of the registered constant works *)
@@ -260,7 +262,7 @@ let test_expand_reject_ill_formed =
             context
             (Expr.from_string @@ Format.sprintf "constant \"%s\"" hash)
         in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let* () = assert_expr_equal __LOC__ some_expr result in
       let test expr =
@@ -305,7 +307,7 @@ let test_reject_use_of_inner_constant =
       let some_expr = Expr.from_string "0" in
       let* context, hash, _ =
         let*! result = Global_constants_storage.register context some_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let hash = Script_expr_hash.to_b58check hash in
       (* Next, register the hash itself as a constant. *)
@@ -315,7 +317,7 @@ let test_reject_use_of_inner_constant =
             context
             (strip_locations (Micheline.String (-1, hash)))
         in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let hash = Script_expr_hash.to_b58check hash in
       let*! result =
@@ -337,7 +339,7 @@ let make_expand_test ~stored ~expr ~expected () =
   let stored_expr = Expr.from_string stored in
   let* context, hash, _ =
     let*! result = Global_constants_storage.register context stored_expr in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let expected = Expr.from_string expected in
   let expr_with_constant =
@@ -345,7 +347,7 @@ let make_expand_test ~stored ~expr ~expected () =
   in
   let* _, result_expr =
     let*! result = Global_constants_storage.expand context expr_with_constant in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   assert_expr_equal __LOC__ expected result_expr
 
@@ -394,13 +396,13 @@ let test_expand_pbt =
       assume_expr_not_too_large sub_expr ;
       let* context, _, _ =
         let*! result = Global_constants_storage.register context sub_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let+ _, result_expr =
         let*! result =
           Global_constants_storage.expand context expr_with_constant
         in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       qcheck_eq ~pp:print_expr full_expr result_expr)
 
@@ -415,17 +417,17 @@ let test_expand_is_idempotent =
       assume_expr_not_too_large full_expr ;
       let* context, _, _ =
         let*! result = Global_constants_storage.register context sub_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let* context, result1 =
         let*! result =
           Global_constants_storage.expand context expr_with_constant
         in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       let+ _, result2 =
         let*! result = Global_constants_storage.expand context full_expr in
-        Lwt.return (Environment.wrap_tzresult result)
+        wrap result
       in
       qcheck_eq ~pp:print_expr result1 result2)
 

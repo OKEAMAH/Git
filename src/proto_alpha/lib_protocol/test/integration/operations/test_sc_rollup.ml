@@ -35,6 +35,8 @@
 open Protocol
 open Alpha_context
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 exception Sc_rollup_test_error of string
 
 let err x = Exn (Sc_rollup_test_error x)
@@ -68,7 +70,7 @@ let assert_fails ~loc ?error m =
           Stdlib.failwith msg
       | _, None ->
           (* Any error is ok. *)
-          return ())
+          return_unit)
 
 let assert_equal_z ~loc x y =
   Assert.equal ~loc Z.equal "Compare Z.t" Z.pp_print x y
@@ -710,7 +712,7 @@ let assert_ticket_token_balance ~loc ctxt token owner expected =
   | Some b, None ->
       failwith "%s: Expected no balance but got some %d" loc (Z.to_int b)
   | None, Some b -> failwith "%s: Expected balance %d but got none" loc b
-  | None, None -> return ()
+  | None, None -> return_unit
 
 (** Assert that the computation fails with the given message. *)
 let assert_fails_with ~__LOC__ k expected_err =
@@ -754,7 +756,7 @@ let check_balances_evolution bal_before {liquid; frozen} ~action =
   in
   let* () = Assert.equal_tez ~loc:__LOC__ expected_liquid liquid in
   let* () = Assert.equal_tez ~loc:__LOC__ expected_frozen frozen in
-  return ()
+  return_unit
 
 (* Generates a list of cemented dummy commitments. *)
 let gen_commitments ctxt rollup ~predecessor ~num_commitments =
@@ -1926,7 +1928,7 @@ let test_number_of_parallel_games_bounded () =
       opponents
       opponents_commitments
   in
-  return ()
+  return_unit
 
 (** [test_timeout] test multiple cases of the timeout logic.
 - Test to timeout a player before it's allowed and fails.
@@ -2111,7 +2113,7 @@ let dumb_proof ~choice =
         (Some input)
         arith_state
     in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let pvm_step =
     WithExceptions.Result.get_ok ~loc:__LOC__
@@ -2669,7 +2671,7 @@ let input_included ~snapshot ~full_history_inbox (l, n) =
         history_proof
         (l, n)
     in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let*? inbox_message_verified =
     Sc_rollup.Inbox.verify_proof (l, n) snapshot proof
@@ -3121,7 +3123,7 @@ let start_refutation_game_op block rollup (p1, p1_pkh) p2_pkh =
         p1_pkh
         p2_pkh
     in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let refutation =
     Sc_rollup.Game.Start
@@ -3306,7 +3308,7 @@ let test_conflict_point_on_a_branch () =
         pA_pkh
         pB_pkh
     in
-    Lwt.return (Environment.wrap_tzresult result)
+    wrap result
   in
   let pA_hash = hash_commitment pA_commitment in
   let pB_hash = hash_commitment pB_commitment in

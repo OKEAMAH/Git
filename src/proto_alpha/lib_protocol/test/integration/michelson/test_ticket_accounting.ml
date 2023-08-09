@@ -332,7 +332,7 @@ let originate_script block ~script ~storage ~sender ~baker ~forges_tickets =
   let* incr =
     Incremental.add_operation
       ?expect_apply_failure:
-        (if forges_tickets then Some (fun _ -> return ()) else None)
+        (if forges_tickets then Some (fun _ -> return_unit) else None)
       incr
       operation
   in
@@ -1101,7 +1101,7 @@ let test_update_self_ticket_transfer () =
     in
     assert_balance ~loc:__LOC__ ctxt red_receiver_token_hash (Some 10)
   in
-  return ()
+  return_unit
 
 (** Test that transferring a ticket that does not exceed the budget succeeds. *)
 let test_update_valid_transfer () =
@@ -1156,7 +1156,7 @@ let test_update_valid_transfer () =
      from [self] to [destination]. *)
   let* () = assert_balance ~loc:__LOC__ ctxt red_self_token_hash None in
   let* () = assert_balance ~loc:__LOC__ ctxt red_receiver_token_hash (Some 1) in
-  return ()
+  return_unit
 
 (** Test that transferring a ticket to itself is allowed and does not impact
     the balance. *)
@@ -1214,7 +1214,7 @@ let test_update_transfer_tickets_to_self () =
   (* We started with 10 units. Removed 5 from storage and sent one to [self].
      Therefore we expect 10 - 5 + 1 = 6 units remaining. *)
   let* () = assert_balance ~loc:__LOC__ ctxt red_self_token_hash (Some 6) in
-  return ()
+  return_unit
 
 (** Test that attempting to originate a contract with tickets that exceed the
     budget fails. *)
@@ -1364,7 +1364,7 @@ let test_ticket_token_map_of_list_with_duplicates () =
   let*@ ticket_diffs, ctxt =
     Ticket_token_map.of_list
       ctxt
-      ~merge_overlap:(fun ctxt v1 v2 -> ok (Z.add v1 v2, ctxt))
+      ~merge_overlap:(fun ctxt v1 v2 -> Ok (Z.add v1 v2, ctxt))
       [(red_token, Z.of_int 10); (red_token, Z.of_int 5)]
   in
   let*@ _, ctxt =

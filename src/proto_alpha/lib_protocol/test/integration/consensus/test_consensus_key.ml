@@ -68,7 +68,7 @@ let check_delegate_staking_invariant blk delegate_pkh =
         let* staking_balance =
           Context.Contract.balance_and_frozen_bonds (B blk) pkh
         in
-        let*! t = Lwt.return Tez.(total +? staking_balance) in
+        let t = Tez.(total +? staking_balance) in
         Lwt.return (Environment.wrap_tzresult t))
       self_staking_balance
       delegated_contracts

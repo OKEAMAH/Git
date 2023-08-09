@@ -700,7 +700,7 @@ let test_bad_entrypoint () =
            (Environment.Ecoproto_error
               (Script_tc_errors.No_such_entrypoint entrypoint))
            lst ->
-      return ()
+      return_unit
   | Error errs ->
       Alcotest.failf "Unexpected error: %a" Error_monad.pp_print_trace errs
 
@@ -729,7 +729,7 @@ let test_bad_parameter () =
               (Script_interpreter.Bad_contract_parameter
                  (Contract.Originated Contract_helpers.default_self)))
            lst ->
-      return ()
+      return_unit
   | Error errs ->
       Alcotest.failf "Unexpected error: %a" Error_monad.pp_print_trace errs
 
@@ -743,7 +743,7 @@ let transfer_to_itself_with_no_such_entrypoint () =
     | Environment.Ecoproto_error (Script_tc_errors.No_such_entrypoint _ as e)
       :: _ ->
         Assert.test_error_encodings e ;
-        return ()
+        return_unit
     | _ -> failwith "no such entrypoint should fail"
   in
   let* (_res : Incremental.t) =

@@ -253,7 +253,7 @@ let test_cost_reprs_are_all_positive list () =
       else if S.equal cost S.zero && List.mem ~equal:String.equal cost_name free
       then return_unit
       else
-        fail
+        Lwt_result_syntax.tzfail
           (Exn
              (Failure (Format.asprintf "Gas cost test \"%s\" failed" cost_name))))
     list

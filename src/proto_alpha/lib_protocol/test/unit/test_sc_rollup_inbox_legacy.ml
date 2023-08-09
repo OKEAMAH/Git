@@ -231,7 +231,7 @@ let fail_with_proof_error_msg errors fail_msg =
       errors
   in
   let msg = Option.(msg |> map (fun s -> ": " ^ s) |> value ~default:"") in
-  fail (err (fail_msg ^ msg))
+  Lwt_result_syntax.tzfail (err (fail_msg ^ msg))
 
 (** This helper function initializes inboxes and histories with different
     capacities and populates them. *)
@@ -336,7 +336,7 @@ let test_history_length
       Int64.(default_capacity > of_int len)
       (err default_capacity len ~exact:true)
   in
-  return ()
+  return_unit
 
 (** In this test, we check that for two inboxes of the same content, the entries
     of the history with the lower capacity, taken in the insertion order, is a

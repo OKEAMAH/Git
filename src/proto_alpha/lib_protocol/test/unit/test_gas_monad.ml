@@ -45,7 +45,7 @@ let new_context ~limit =
 
 let assert_gas_exhaustion ~loc ctxt gas_monad =
   match GM.run ctxt gas_monad with
-  | Error _ -> return ()
+  | Error _ -> return_unit
   | _ -> failwith "%s: expected gas-exhaustion error" loc
 
 let assert_equal_gas ~loc g1 g2 =
@@ -195,7 +195,7 @@ let test_syntax_module () =
     (none, nil, t, f, one, two)
   in
   match GM.run ctxt gas_monad with
-  | Ok (Ok (None, [], true, false, 1, 2), _ctxt) -> return ()
+  | Ok (Ok (None, [], true, false, 1, 2), _ctxt) -> return_unit
   | _ -> failwith "Expected `Ok (None, [], true, false, 1, 2)`"
 
 let tests =
