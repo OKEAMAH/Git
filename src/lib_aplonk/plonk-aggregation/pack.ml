@@ -179,6 +179,13 @@ module Pack_impl = struct
   let setup_verifier srs_g1_t = Srs_g1.get srs_g1_t 1
 
   let setup_prover d (srs_g1_t, srs_g2_t) =
+    if d > Srs_g2.size srs_g2_t then
+      raise
+        (Kzg.Commitment.SRS_too_short
+           (Printf.sprintf
+              "aPlonK/Pack: SRS 2 too short (size: %d, expected:%d)"
+              (Srs_g2.size srs_g2_t)
+              d)) ;
     let srs2_t = Srs_g2.to_array ~len:d srs_g2_t in
     let g1_t = setup_verifier srs_g1_t in
     {length = d; srs2_t; g1_t}
