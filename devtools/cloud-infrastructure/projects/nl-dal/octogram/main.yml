@@ -3,7 +3,7 @@ octogram_binary:
 
 agents:
   - name: node
-    address: 34.140.229.153
+    address: 127.0.0.1
     user: root
     port: 30000
     identity: ~/.ssh/tf
@@ -25,7 +25,12 @@ stages:
         copy:
           local_path: octez-client
           remote_path: '.'
-      
+
+      - name: Upload protocol file
+        copy:
+          local_path: 'src/proto_alpha/parameters/sandbox-parameters.json'
+          remote_path: '.'
+          
       - name: Start octez-node
         tezos.start_node:
           name: node
@@ -35,7 +40,13 @@ stages:
           rpc_port: '30001'
           metrics_port: '30002'
           net_port: '30003'
-
+          
+      - name: Activate protocol
+        tezos.activate_protocol:
+          endpoint: self://node
+          path_client: self://./octez-client
+          protocol: alpha
+          
       - name: Wait for bootstrapped node
         tezos.wait_for_bootstrapped:
           path_client: self://./octez-client
