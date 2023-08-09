@@ -296,7 +296,7 @@ module Start_octez_node = struct
              of the Octez node to 0 (`--expected-pow 0`). The default value
              used in network like mainnet, Mondaynet etc. is 26 (see
              `lib_node_config/config_file.ml`). *)
-          Expected_pow 26;
+          Expected_pow 0;
           Synchronisation_threshold sync_threshold;
           Network network;
           Metrics_addr (sf "0.0.0.0:%d" metrics_port);
@@ -387,6 +387,88 @@ module Start_octez_node = struct
     on_new_service res.name Octez_node Metrics res.metrics_port ;
     on_new_service res.name Octez_node P2p res.net_port ;
     on_new_metrics_source res.name Octez_node res.metrics_port
+end
+
+type 'uri activate_protocol = {
+  endpoint : 'uri;
+  path_client : 'uri;
+  protocol : string;
+}
+
+let protocol_of_string = function
+  | "alpha" -> Protocol.Alpha
+  | protocol -> Test.fail "Unrecgonized protocol name: %s" protocol
+
+type (_, _) Remote_procedure.t +=
+  | Active_protocol : 'uri activate_protocol -> (unit, 'uri) Remote_procedure.t
+
+module Activate_protocol = struct
+  let name = "tezos.activate_protocol"
+
+  type 'uri t = 'uri activate_protocol
+
+  type r = unit
+
+  let of_remote_procedure :
+      type a. (a, 'uri) Remote_procedure.t -> 'uri t option = function
+    | Active_protocol args -> Some args
+    | _ -> None
+
+  let to_remote_procedure args = Active_protocol args
+
+  let unify : type a. (a, 'uri) Remote_procedure.t -> (a, r) Remote_procedure.eq
+      = function
+    | Active_protocol _ -> Eq
+    | _ -> Neq
+
+  let encoding uri_encoding =
+    let open Data_encoding in
+    conv
+      (fun {endpoint; path_client; protocol} ->
+        (endpoint, path_client, protocol))
+      (fun (endpoint, path_client, protocol) ->
+        {endpoint; path_client; protocol})
+      (obj3
+         (req "endpoint" uri_encoding)
+         (req "path_client" uri_encoding)
+         (req "protocol" string))
+
+  let r_encoding = Data_encoding.empty
+
+  let tvalue_of_r () = Tnull
+
+  let expand ~self ~run base =
+    let path_client =
+      Remote_procedure.global_uri_of_string ~self ~run base.path_client
+    in
+    let endpoint =
+      Remote_procedure.global_uri_of_string ~self ~run base.endpoint
+    in
+    {base with path_client; endpoint}
+
+  let resolve ~self resolver base =
+    let path_client =
+      Remote_procedure.file_agent_uri ~self ~resolver base.path_client
+    in
+    let endpoint = resolve_octez_rpc_global_uri ~self ~resolver base.endpoint in
+    {base with path_client; endpoint}
+
+  let run state {endpoint; path_client; protocol} =
+    let* path_client =
+      Http_client.local_path_from_agent_uri
+        (Agent_state.http_client state)
+        path_client
+    in
+    let endpoint = octez_endpoint state endpoint in
+    let client = Client.create ~path:path_client ~endpoint () in
+    Account.write Constant.all_secret_keys ~base_dir:(Client.base_dir client) ;
+    let protocol = protocol_of_string protocol in
+    Client.activate_protocol
+      ~protocol
+      ~parameter_file:"sandbox-parameters.json"
+      client
+
+  let on_completion ~on_new_service:_ ~on_new_metrics_source:_ () = ()
 end
 
 type 'uri client_base_args = {path_client : 'uri; endpoint : 'uri}
@@ -1801,6 +1883,7 @@ end
 
 let register_procedures () =
   Remote_procedure.register (module Start_octez_node) ;
+  Remote_procedure.register (module Activate_protocol) ;
   Remote_procedure.register (module Wait_for_bootstrapped) ;
   Remote_procedure.register (module Originate_smart_rollup) ;
   Remote_procedure.register (module Originate_smart_contract) ;

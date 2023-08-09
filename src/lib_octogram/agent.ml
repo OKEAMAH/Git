@@ -84,7 +84,8 @@ let run ~input ~output state =
                            (Remote_procedure.response_encoding proc)
                            res)))
                 output)
-            (fun _ ->
+            (fun exn ->
+              Format.eprintf "EXN: %s@." (Printexc.to_string exn) ;
               Test.fail
                 "Something went wrong with request %d, we need to do something \
                  about that."
