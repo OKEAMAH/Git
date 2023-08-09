@@ -42,6 +42,12 @@ type 'uri start_octez_node = {
   rpc_port : string option;
 }
 
+type 'uri activate_protocol = {
+  endpoint : 'uri;
+  path_client : 'uri;
+  protocol : string;
+}
+
 type 'uri client_base_args = {path_client : 'uri; endpoint : 'uri}
 
 type 'uri wait_for_bootstrapped = 'uri client_base_args
