@@ -157,8 +157,6 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
 
   let batched_wire = String.capitalize_ascii
 
-  let batched_z_name wire = rc_prefix ^ batched_wire wire ^ "_Z"
-
   let suffix str wire = str ^ "_" ^ wire
 
   (* Used for distribution *)
@@ -233,7 +231,8 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
           else if
             Str.(
               string_match
-                (regexp (rc_prefix ^ batched_wire_prefix ^ "\\([0-9]+\\)_Z"))
+                (regexp
+                   (rc_prefix ^ Plompiler.Csir.wire_prefix ^ "\\([0-9]+\\)_Z"))
                 k
                 0)
           then "1." ^ k
@@ -252,13 +251,14 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
         ~nb_wires:2
         ()
 
+    (* Here the Z used is in batched version *)
     let f_map_contribution ~beta ~gamma ~domain ~values:batched_values wire
         permutation =
       let values =
         SMap.of_list
           [
             (batched_wire wire, SMap.find (batched_wire wire) batched_values);
-            (batched_z_name wire, SMap.find (batched_z_name wire) batched_values);
+            (z_name wire, SMap.find (z_name wire) batched_values);
           ]
         |> prefix_for_perm_map
       in
@@ -271,14 +271,14 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
         ~domain
         ()
 
+    (* Here the Z used is in batched version *)
     let prover_identities ?(circuit_prefix = Fun.id) ~beta ~gamma ~domain_size
         wire _ evaluations =
       let evaluations = prefix_for_perm_map evaluations in
       Perm.prover_identities
         ~external_prefix:(external_prefix wire)
         ~circuit_prefix
-        ~wires_names:
-          (List.map prefix_for_perm [batched_wire wire; batched_z_name wire])
+        ~wires_names:(List.map prefix_for_perm [batched_wire wire; z_name wire])
         ~beta
         ~gamma
         ~n:domain_size
@@ -397,7 +397,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
           Evaluations.of_array (Array.length evals - 1, evals)
         in
         let z = Evaluations.interpolation_fft domain evals in
-        ( SMap.of_list [(batched_z_name wire_name, evals)],
+        ( SMap.of_list [(z_name wire_name, evals)],
           SMap.of_list [(z_name wire_name, z)] )
 
     let prover_identities ?(circuit_prefix = Fun.id) ~proof_prefix:prefix
