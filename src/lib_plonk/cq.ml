@@ -223,13 +223,16 @@ module Internal = struct
         table_arrays
     in
 
-    let lagrange =
+    let cms_lagrange =
+      let cms =
+        let srs = Srs_g1.to_array ~len:n srs |> G1_carray.of_array in
+        G1_carray.evaluation_ecfft ~domain ~points:srs
+      in
+      let one_n = Scalar.(one / of_int n) in
       Array.init n (fun i ->
-          Evaluations.init ~degree:(n - 1) n (fun j ->
-              if j = i then Scalar.one else Scalar.zero)
-          |> Evaluations.interpolation_fft domain)
+          G1.mul G1_carray.(if i = 0 then get cms i else get cms (n - i)) one_n)
     in
-    let cms_lagrange = Array.map (commit1 pc) lagrange in
+
     let cms_lagrange_0 =
       let s =
         G1.mul (Srs_g1.get srs (n - 1)) Scalar.(negate (one / of_int n))
