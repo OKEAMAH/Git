@@ -331,11 +331,12 @@ let reveals config request =
   | Reveal_raw_data hash -> reveal_preimage_builtin config 3 hash
   | Reveal_metadata -> Lwt.return (build_metadata config)
   | Request_dal_page _ ->
+      Lwt.return "Hello from the debugger DAL\n"
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/6165
          Support DAL requests in the WASM debugger. *)
-      Stdlib.failwith
-        "The kernel tried to request a DAL page, but this is not yet supported \
-         by the debugger."
+      (* Stdlib.failwith *)
+      (*   "The kernel tried to request a DAL page, but this is not yet supported \ *)
+      (*    by the debugger." *)
 
 let write_debug =
   Tezos_scoru_wasm.Builtins.Printer (fun msg -> Lwt_io.printf "%s%!" msg)
