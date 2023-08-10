@@ -74,7 +74,7 @@ let get_happy_path () =
   let assert_unchanged b =
     let* context = get_next_context b in
     let*! result = Global_constants_storage.get context hash in
-    let* _, result_expr = Lwt.return (Environment.wrap_tzresult result) in
+    let*? _, result_expr = Environment.wrap_tzresult result in
     let+ () =
       Test_global_constants.assert_expr_equal __LOC__ expr result_expr
     in

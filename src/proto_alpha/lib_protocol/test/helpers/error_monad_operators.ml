@@ -24,7 +24,9 @@
 (*****************************************************************************)
 
 let ( let*?* ) x y =
-  x >>= function
+  let open Lwt_result_syntax in
+  let*! result = x in
+  match result with
   | Ok s -> y s
   | Error err -> Lwt.return @@ Error (Environment.wrap_tztrace err)
 

@@ -76,19 +76,25 @@ let begin_validation_and_application ctxt chain_id mode ~predecessor =
 
 let begin_construction ?timestamp ?seed_nonce_hash ?(mempool_mode = false)
     ?(policy = Block.By_round 0) (predecessor : Block.t) =
-  Block.get_next_baker ~policy predecessor
-  >>=? fun (delegate, _consensus_key, round, real_timestamp) ->
-  Account.find delegate >>=? fun delegate ->
-  Round.of_int round |> Environment.wrap_tzresult >>?= fun payload_round ->
+  let open Lwt_result_syntax in
+  let* delegate, _consensus_key, round, real_timestamp =
+    Block.get_next_baker ~policy predecessor
+  in
+  let* delegate = Account.find delegate in
+  let*? payload_round = Round.of_int round |> Environment.wrap_tzresult in
   let timestamp = Option.value ~default:real_timestamp timestamp in
-  (match seed_nonce_hash with
-  | Some _hash -> return seed_nonce_hash
-  | None -> (
-      Plugin.RPC.current_level ~offset:1l Block.rpc_ctxt predecessor
-      >|=? function
-      | {expected_commitment = true; _} -> Some (fst (Proto_Nonce.generate ()))
-      | {expected_commitment = false; _} -> None))
-  >>=? fun seed_nonce_hash ->
+  let* seed_nonce_hash =
+    match seed_nonce_hash with
+    | Some _hash -> return seed_nonce_hash
+    | None -> (
+        let+ level =
+          Plugin.RPC.current_level ~offset:1l Block.rpc_ctxt predecessor
+        in
+        match level with
+        | {expected_commitment = true; _} ->
+            Some (fst (Proto_Nonce.generate ()))
+        | {expected_commitment = false; _} -> None)
+  in
   let shell : Block_header.shell_header =
     {
       predecessor = predecessor.hash;
@@ -101,12 +107,13 @@ let begin_construction ?timestamp ?seed_nonce_hash ?(mempool_mode = false)
       operations_hash = Operation_list_list_hash.zero;
     }
   in
-  Block.Forge.contents
-    ?seed_nonce_hash
-    ~payload_hash:Block_payload_hash.zero
-    ~payload_round
-    shell
-  >>=? fun contents ->
+  let* contents =
+    Block.Forge.contents
+      ?seed_nonce_hash
+      ~payload_hash:Block_payload_hash.zero
+      ~payload_round
+      shell
+  in
   let mode =
     if mempool_mode then
       Partial_construction {predecessor_hash = predecessor.hash; timestamp}
@@ -120,25 +127,28 @@ let begin_construction ?timestamp ?seed_nonce_hash ?(mempool_mode = false)
   let header =
     {Block_header.shell; protocol_data = {contents; signature = Signature.zero}}
   in
-  begin_validation_and_application
-    predecessor.context
-    Chain_id.zero
-    mode
-    ~predecessor:predecessor.header.shell
-  >|= fun state ->
-  Environment.wrap_tzresult state >|? fun state ->
-  {
-    predecessor;
-    state;
-    rev_operations = [];
-    rev_tickets = [];
-    header;
-    delegate;
-    constants = predecessor.constants;
-  }
+  let*! state =
+    begin_validation_and_application
+      predecessor.context
+      Chain_id.zero
+      mode
+      ~predecessor:predecessor.header.shell
+  in
+  let*? state = Environment.wrap_tzresult state in
+  return
+    {
+      predecessor;
+      state;
+      rev_operations = [];
+      rev_tickets = [];
+      header;
+      delegate;
+      constants = predecessor.constants;
+    }
 
 let detect_script_failure :
     type kind. kind Apply_results.operation_metadata -> _ =
+  let open Result_syntax in
   let rec detect_script_failure :
       type kind. kind Apply_results.contents_result_list -> _ =
     let open Apply_results in
@@ -151,15 +161,15 @@ let detect_script_failure :
       let detect_script_failure (type kind)
           (result : (kind, _, _) operation_result) =
         match result with
-        | Applied _ -> Ok ()
+        | Applied _ -> return_unit
         | Skipped _ -> assert false
         | Backtracked (_, None) ->
             (* there must be another error for this to happen *)
-            Ok ()
+            return_unit
         | Backtracked (_, Some errs) -> Error (Environment.wrap_tztrace errs)
         | Failed (_, errs) -> Error (Environment.wrap_tztrace errs)
       in
-      detect_script_failure operation_result >>? fun () ->
+      let* () = detect_script_failure operation_result in
       List.iter_e
         (fun (Internal_operation_result (_, r)) -> detect_script_failure r)
         internal_operation_results
@@ -167,9 +177,9 @@ let detect_script_failure :
     function
     | Single_result (Manager_operation_result _ as res) ->
         detect_script_failure_single res
-    | Single_result _ -> Ok ()
+    | Single_result _ -> return_unit
     | Cons_result (res, rest) ->
-        detect_script_failure_single res >>? fun () ->
+        let* () = detect_script_failure_single res in
         detect_script_failure rest
   in
   fun {contents} -> detect_script_failure contents

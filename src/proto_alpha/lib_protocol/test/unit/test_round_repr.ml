@@ -349,7 +349,7 @@ let round_of_timestamp_perf (duration0_int64, dipr) =
       let time = sum /. float_of_int repeats in
       assert (time < 0.01) ;
       loop (Int64.pred i))
-    else Ok ()
+    else return_unit
   in
   let _ = Environment.wrap_tzresult (loop 1000L) in
   Lwt_result_syntax.return_unit
@@ -386,7 +386,7 @@ let timestamp_of_round_perf (duration0_int64, dipr) =
       let time = t1 -. t0 in
       assert (time < 0.01) ;
       loop (Int32.pred i))
-    else Ok ()
+    else return_unit
   in
   let _ = Environment.wrap_tzresult (loop 1000l) in
   Lwt_result_syntax.return_unit

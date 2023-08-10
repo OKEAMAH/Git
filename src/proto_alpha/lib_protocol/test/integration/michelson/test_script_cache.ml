@@ -217,7 +217,7 @@ let test_find_correctly_looks_up () =
     in
     let*? cond =
       match (result, script) with
-      | None, _ -> Ok false
+      | None, _ -> Result_syntax.return_false
       | Some _, None ->
           (* because we assume that get_script correctly behaves. *)
           assert false

@@ -330,7 +330,7 @@ let test_find_existing =
       ctxt
       kvs
   in
-  Ok true
+  return_true
 
 (** Test that find returns [None] for non-existing keys. *)
 let test_find_non_existing =

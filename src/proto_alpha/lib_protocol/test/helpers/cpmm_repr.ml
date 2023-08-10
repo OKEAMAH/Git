@@ -127,11 +127,16 @@ module Storage = struct
         raise (Invalid_storage_expr msg)
 
   let get (ctxt : Context.t) ~(contract : Contract.t) : t tzresult Lwt.t =
+    let open Lwt_result_syntax in
     match contract with
     | Implicit _ ->
         invalid_arg "Cpmm_repr.Storage.get called on implicit account"
     | Originated c ->
-        Context.Contract.storage ctxt c >|=? Micheline.root >|=? of_expr_exn
+        let+ result =
+          let+ expr = Context.Contract.storage ctxt c in
+          Micheline.root expr
+        in
+        of_expr_exn result
 
   let of_tuple (tokenPool, xtzPool, lqtTotal, tokenAddress, lqtAddress) =
     {tokenPool; xtzPool; lqtTotal; tokenAddress; lqtAddress}

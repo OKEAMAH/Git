@@ -30,7 +30,8 @@ open Error_monad_operators
 (** Initializes 2 addresses to do only operations plus one that will be
     used to bake. *)
 let init () =
-  Context.init3 ~consensus_threshold:0 () >|=? fun (b, (src0, src1, src2)) ->
+  let open Lwt_result_syntax in
+  let+ b, (src0, src1, src2) = Context.init3 ~consensus_threshold:0 () in
   let baker =
     match src0 with Implicit v -> v | Originated _ -> assert false
   in
@@ -50,16 +51,21 @@ let load_script ~storage file =
 
 (** Returns a block in which the contract is originated. *)
 let originate_contract_hash file storage src b baker =
+  let open Lwt_result_syntax in
   let script = load_script ~storage file in
-  Op.contract_origination_hash (B b) src ~fee:(Test_tez.of_int 10) ~script
-  >>=? fun (operation, dst) ->
-  Incremental.begin_construction ~policy:Block.(By_account baker) b
-  >>=? fun incr ->
-  Incremental.add_operation incr operation >>=? fun incr ->
-  Incremental.finalize_block incr >|=? fun b -> (dst, b)
+  let* operation, dst =
+    Op.contract_origination_hash (B b) src ~fee:(Test_tez.of_int 10) ~script
+  in
+  let* incr =
+    Incremental.begin_construction ~policy:Block.(By_account baker) b
+  in
+  let* incr = Incremental.add_operation incr operation in
+  let+ b = Incremental.finalize_block incr in
+  (dst, b)
 
 let originate_contract file storage src b baker =
-  originate_contract_hash file storage src b baker >|=? fun (dst, b) ->
+  let open Lwt_result_syntax in
+  let+ dst, b = originate_contract_hash file storage src b baker in
   (Contract.Originated dst, b)
 
 let fake_KT1 =
@@ -120,28 +126,35 @@ let run_script ctx ?logger ?(step_constants = default_step_constants)
 
 let originate_contract_from_string_hash ~script ~storage ~source_contract ~baker
     block =
+  let open Lwt_result_syntax in
   let code = Expr.toplevel_from_string script in
   let storage = Expr.from_string storage in
   let script =
     Alpha_context.Script.{code = lazy_expr code; storage = lazy_expr storage}
   in
-  Op.contract_origination_hash
-    (B block)
-    source_contract
-    ~fee:(Test_tez.of_int 10)
-    ~script
-  >>=? fun (operation, dst) ->
-  Incremental.begin_construction ~policy:Block.(By_account baker) block
-  >>=? fun incr ->
-  Incremental.add_operation incr operation >>=? fun incr ->
-  Incremental.finalize_block incr >|=? fun b -> (dst, script, b)
+  let* operation, dst =
+    Op.contract_origination_hash
+      (B block)
+      source_contract
+      ~fee:(Test_tez.of_int 10)
+      ~script
+  in
+  let* incr =
+    Incremental.begin_construction ~policy:Block.(By_account baker) block
+  in
+  let* incr = Incremental.add_operation incr operation in
+  let+ b = Incremental.finalize_block incr in
+  (dst, script, b)
 
 let originate_contract_from_string ~script ~storage ~source_contract ~baker
     block =
-  originate_contract_from_string_hash
-    ~script
-    ~storage
-    ~source_contract
-    ~baker
-    block
-  >|=? fun (dst, script, b) -> (Contract.Originated dst, script, b)
+  let open Lwt_result_syntax in
+  let+ dst, script, b =
+    originate_contract_from_string_hash
+      ~script
+      ~storage
+      ~source_contract
+      ~baker
+      block
+  in
+  (Contract.Originated dst, script, b)

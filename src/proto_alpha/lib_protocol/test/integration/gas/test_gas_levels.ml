@@ -64,12 +64,10 @@ let dummy_context () =
   wrap ctxt
 
 let consume_gas_lwt context gas =
-  let open Lwt_result_syntax in
   let ctxt = consume_gas context (S.safe_int gas) in
   wrap ctxt
 
 let consume_gas_limit_in_block_lwt context gas =
-  let open Lwt_result_syntax in
   let ctxt = consume_gas_limit_in_block context gas in
   wrap ctxt
 

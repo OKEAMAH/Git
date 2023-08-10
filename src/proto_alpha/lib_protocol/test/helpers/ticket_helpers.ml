@@ -24,10 +24,13 @@
 open Protocol
 open Alpha_context
 
+let wrap e = Lwt.return (Environment.wrap_tzresult e)
+
 let assert_balance ctxt ~loc key expected =
   let open Lwt_result_syntax in
   let* balance, _ =
-    Ticket_balance.get_balance ctxt key >|= Environment.wrap_tzresult
+    let*! result = Ticket_balance.get_balance ctxt key in
+    wrap result
   in
   match (balance, expected) with
   | Some b, Some eb -> Assert.equal_int ~loc (Z.to_int b) eb
@@ -49,11 +52,15 @@ let string_ticket_token ticketer content =
 let adjust_ticket_token_balance alpha_ctxt owner ticket_token ~delta =
   let open Lwt_result_syntax in
   let* ticket_token_hash, ctxt =
-    Ticket_balance_key.of_ex_token alpha_ctxt ~owner ticket_token
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Ticket_balance_key.of_ex_token alpha_ctxt ~owner ticket_token
+    in
+    wrap result
   in
   let* _, alpha_ctxt =
-    Ticket_balance.adjust_balance ctxt ticket_token_hash ~delta
-    >|= Environment.wrap_tzresult
+    let*! result =
+      Ticket_balance.adjust_balance ctxt ticket_token_hash ~delta
+    in
+    wrap result
   in
   return (ticket_token_hash, alpha_ctxt)
