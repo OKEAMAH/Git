@@ -27,4 +27,12 @@ const ressource = function (filepath) {
     }
 }
 
-module.exports = { bin, ressource }
+const output = function () {
+    if (process.env.OUTPUT) {
+        return process.env.OUTPUT
+    } else {
+        return "."
+    }
+
+}
+module.exports = { bin, ressource, output }
