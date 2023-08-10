@@ -119,6 +119,7 @@ let migrate_staking_balance_for_o ctxt =
     let staked_frozen = Tez_repr.zero in
     return (Stake_repr.Full.make ~own_frozen ~staked_frozen ~delegated)
   in
+  Profiler.aggregate_s "Migrate  Staking balance for O"@@ fun () ->
   Storage.Stake.Staking_balance_up_to_Nairobi.fold
     ctxt
     ~order:`Undefined
@@ -137,6 +138,7 @@ let clear_staking_balance_snapshots_for_o ctxt =
   let*! ctxt =
     Storage.Stake.Staking_balance_up_to_Nairobi.Snapshot.clear ctxt
   in
+  Profiler.aggregate_s "Clear  Staking balance snapshot for O"@@ fun () ->
   Storage.Stake.Last_snapshot.update ctxt 0
 
 (** Converts {Storage.Stake.Total_active_stake} and
@@ -167,6 +169,7 @@ let migrate_stake_distribution_for_o ctxt =
         let stake = convert stake in
         Storage.Stake.Total_active_stake.update ctxt cycle stake)
   in
+  Profiler.aggregate_s "Migrate stake distribution for O"@@ fun () ->
   Storage.Stake.Selected_distribution_for_cycle_up_to_Nairobi.fold
     ctxt
     ~order:`Undefined
@@ -194,23 +197,26 @@ let initialize_total_supply_for_o chain_id ctxt =
   else
     (* If not on mainnet, iterate over all accounts and get an accurate total supply *)
     let* total_supply =
-      Storage.Contract.fold
-        ctxt
-        ~order:`Undefined
-        ~f:(fun contract acc ->
-          let* full_balance =
-            Contract_storage.For_RPC.get_full_balance ctxt contract
-          in
-          match full_balance with
-          | Ok full_balance ->
-              return @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
-          | _ -> return acc)
-        ~init:Tez_repr.zero
+      Profiler.aggregate_s "init storage total_supply testnet " (fun () ->
+          Storage.Contract.fold
+            ctxt
+            ~order:`Undefined
+            ~f:(fun contract acc ->
+              let* full_balance =
+                Contract_storage.For_RPC.get_full_balance ctxt contract
+              in
+              match full_balance with
+              | Ok full_balance ->
+                  return
+                  @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
+              | _ -> return acc)
+            ~init:Tez_repr.zero)
     in
     Storage.Contract.Total_supply.add ctxt total_supply
 
 let migrate_pending_consensus_keys_for_o ctxt =
   let open Lwt_result_syntax in
+  Profiler.aggregate_s "Migrate pending consensus key for O"@@ fun () ->
   Storage.Delegates.fold
     ctxt
     ~order:`Undefined
@@ -234,100 +240,101 @@ let migrate_pending_consensus_keys_for_o ctxt =
 
 let prepare_first_block chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
-  Raw_context.prepare_first_block ~level ~timestamp chain_id ctxt
-  >>=? fun (previous_protocol, ctxt) ->
-  let parametric = Raw_context.constants ctxt in
-  ( Raw_context.Cache.set_cache_layout
-      ctxt
-      (Constants_repr.cache_layout parametric)
-  >|= fun ctxt -> Raw_context.Cache.clear ctxt )
-  >>= fun ctxt ->
-  (match previous_protocol with
-  | Genesis param ->
-      (* This is the genesis protocol: initialise the state *)
-      Raw_level_repr.of_int32 level >>?= fun level ->
-      Storage.Tenderbake.First_level_of_protocol.init ctxt level
-      >>=? fun ctxt ->
-      Storage.Tenderbake.Forbidden_delegates.init
+  Profiler.aggregate_s "Prepare first block for O"@@ fun () ->
+  ( Raw_context.prepare_first_block ~level ~timestamp chain_id ctxt
+    >>=? fun (previous_protocol, ctxt) ->
+    let parametric = Raw_context.constants ctxt in
+    ( Raw_context.Cache.set_cache_layout
         ctxt
-        Signature.Public_key_hash.Set.empty
-      >>=? fun ctxt ->
-      Storage.Contract.Total_supply.add ctxt Tez_repr.zero >>= fun ctxt ->
-      Storage.Block_round.init ctxt Round_repr.zero >>=? fun ctxt ->
-      let init_commitment (ctxt, balance_updates)
-          Commitment_repr.{blinded_public_key_hash; amount} =
-        Token.transfer
-          ctxt
-          `Initial_commitments
-          (`Collected_commitments blinded_public_key_hash)
-          amount
-        >>=? fun (ctxt, new_balance_updates) ->
-        return (ctxt, new_balance_updates @ balance_updates)
-      in
-      List.fold_left_es init_commitment (ctxt, []) param.commitments
-      >>=? fun (ctxt, commitments_balance_updates) ->
-      Storage.Stake.Last_snapshot.init ctxt 0 >>=? fun ctxt ->
-      Seed_storage.init ?initial_seed:param.constants.initial_seed ctxt
-      >>=? fun ctxt ->
-      Contract_storage.init ctxt >>=? fun ctxt ->
-      Bootstrap_storage.init
-        ctxt
-        ~typecheck_smart_contract
-        ~typecheck_smart_rollup
-        ?no_reward_cycles:param.no_reward_cycles
-        param.bootstrap_accounts
-        param.bootstrap_contracts
-        param.bootstrap_smart_rollups
-      >>=? fun (ctxt, bootstrap_balance_updates) ->
-      Delegate_cycles.init_first_cycles ctxt >>=? fun ctxt ->
-      Vote_storage.init
-        ctxt
-        ~start_position:(Level_storage.current ctxt).level_position
-      >>=? fun ctxt ->
-      Vote_storage.update_listings ctxt >>=? fun ctxt ->
-      (* Must be called after other originations since it unsets the origination nonce. *)
-      Liquidity_baking_migration.init ctxt ~typecheck:typecheck_smart_contract
-      >>=? fun (ctxt, operation_results) ->
-      Storage.Pending_migration.Operation_results.init ctxt operation_results
-      >>=? fun ctxt ->
-      Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt >>=? fun ctxt ->
-      Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
-      return (ctxt, commitments_balance_updates @ bootstrap_balance_updates)
-  | Nairobi_017
-  (* Please update [next_protocol] and [previous_protocol] in
-     [tezt/lib_tezos/protocol.ml] when you update this value. *) ->
-      (* TODO (#2704): possibly handle attestations for migration block (in bakers);
-         if that is done, do not set Storage.Tenderbake.First_level_of_protocol.
-         /!\ this storage is also use to add the smart rollup
-             inbox migration message. see `sc_rollup_inbox_storage`. *)
-      Raw_level_repr.of_int32 level >>?= fun level ->
-      Storage.Tenderbake.First_level_of_protocol.update ctxt level
-      >>=? fun ctxt ->
-      Storage.Tenderbake.Endorsement_branch.find ctxt >>=? fun opt ->
-      Storage.Tenderbake.Endorsement_branch.remove ctxt >>= fun ctxt ->
-      Storage.Tenderbake.Attestation_branch.add_or_remove ctxt opt
-      >>= fun ctxt ->
-      Storage.Tenderbake.Forbidden_delegates.init
-        ctxt
-        Signature.Public_key_hash.Set.empty
-      >>=? fun ctxt ->
-      migrate_staking_balance_for_o ctxt >>=? fun ctxt ->
-      clear_staking_balance_snapshots_for_o ctxt >>=? fun ctxt ->
-      migrate_stake_distribution_for_o ctxt >>=? fun ctxt ->
-      initialize_total_supply_for_o chain_id ctxt >>= fun ctxt ->
-      Remove_zero_amount_ticket_migration_for_o.remove_zero_ticket_entries ctxt
-      >>= fun ctxt ->
-      Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
-      migrate_pending_consensus_keys_for_o ctxt >>= fun ctxt ->
-      (* Migration of refutation games needs to be kept for each protocol. *)
-      Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
-      >>=? fun ctxt -> return (ctxt, []))
-  >>=? fun (ctxt, balance_updates) ->
-  List.fold_left_es patch_script ctxt Legacy_script_patches.addresses_to_patch
-  >>=? fun ctxt ->
-  Receipt_repr.group_balance_updates balance_updates >>?= fun balance_updates ->
-  Storage.Pending_migration.Balance_updates.add ctxt balance_updates
-  >>= fun ctxt -> return ctxt
+        (Constants_repr.cache_layout parametric)
+      >|= fun ctxt -> Raw_context.Cache.clear ctxt )
+    >>= fun ctxt ->
+    (match previous_protocol with
+     | Genesis param ->
+       (* This is the genesis protocol: initialise the state *)
+       Raw_level_repr.of_int32 level >>?= fun level ->
+       Storage.Tenderbake.First_level_of_protocol.init ctxt level
+       >>=? fun ctxt ->
+       Storage.Tenderbake.Forbidden_delegates.init
+         ctxt
+         Signature.Public_key_hash.Set.empty
+       >>=? fun ctxt ->
+       Storage.Contract.Total_supply.add ctxt Tez_repr.zero >>= fun ctxt ->
+       Storage.Block_round.init ctxt Round_repr.zero >>=? fun ctxt ->
+       let init_commitment (ctxt, balance_updates)
+           Commitment_repr.{blinded_public_key_hash; amount} =
+         Token.transfer
+           ctxt
+           `Initial_commitments
+           (`Collected_commitments blinded_public_key_hash)
+           amount
+         >>=? fun (ctxt, new_balance_updates) ->
+         return (ctxt, new_balance_updates @ balance_updates)
+       in
+       List.fold_left_es init_commitment (ctxt, []) param.commitments
+       >>=? fun (ctxt, commitments_balance_updates) ->
+       Storage.Stake.Last_snapshot.init ctxt 0 >>=? fun ctxt ->
+       Seed_storage.init ?initial_seed:param.constants.initial_seed ctxt
+       >>=? fun ctxt ->
+       Contract_storage.init ctxt >>=? fun ctxt ->
+       Bootstrap_storage.init
+         ctxt
+         ~typecheck_smart_contract
+         ~typecheck_smart_rollup
+         ?no_reward_cycles:param.no_reward_cycles
+         param.bootstrap_accounts
+         param.bootstrap_contracts
+         param.bootstrap_smart_rollups
+       >>=? fun (ctxt, bootstrap_balance_updates) ->
+       Delegate_cycles.init_first_cycles ctxt >>=? fun ctxt ->
+       Vote_storage.init
+         ctxt
+         ~start_position:(Level_storage.current ctxt).level_position
+       >>=? fun ctxt ->
+       Vote_storage.update_listings ctxt >>=? fun ctxt ->
+       (* Must be called after other originations since it unsets the origination nonce. *)
+       Liquidity_baking_migration.init ctxt ~typecheck:typecheck_smart_contract
+       >>=? fun (ctxt, operation_results) ->
+       Storage.Pending_migration.Operation_results.init ctxt operation_results
+       >>=? fun ctxt ->
+       Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt >>=? fun ctxt ->
+       Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
+       return (ctxt, commitments_balance_updates @ bootstrap_balance_updates)
+     | Nairobi_017
+       (* Please update [next_protocol] and [previous_protocol] in
+          [tezt/lib_tezos/protocol.ml] when you update this value. *) ->
+       (* TODO (#2704): possibly handle attestations for migration block (in bakers);
+          if that is done, do not set Storage.Tenderbake.First_level_of_protocol.
+          /!\ this storage is also use to add the smart rollup
+              inbox migration message. see `sc_rollup_inbox_storage`. *)
+       Raw_level_repr.of_int32 level >>?= fun level ->
+       Storage.Tenderbake.First_level_of_protocol.update ctxt level
+       >>=? fun ctxt ->
+       Storage.Tenderbake.Endorsement_branch.find ctxt >>=? fun opt ->
+       Storage.Tenderbake.Endorsement_branch.remove ctxt >>= fun ctxt ->
+       Storage.Tenderbake.Attestation_branch.add_or_remove ctxt opt
+       >>= fun ctxt ->
+       Storage.Tenderbake.Forbidden_delegates.init
+         ctxt
+         Signature.Public_key_hash.Set.empty
+       >>=? fun ctxt ->
+       migrate_staking_balance_for_o ctxt >>=? fun ctxt ->
+       clear_staking_balance_snapshots_for_o ctxt >>=? fun ctxt ->
+       migrate_stake_distribution_for_o ctxt >>=? fun ctxt ->
+       initialize_total_supply_for_o chain_id ctxt >>= fun ctxt ->
+       Remove_zero_amount_ticket_migration_for_o.remove_zero_ticket_entries ctxt
+       >>= fun ctxt ->
+       Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
+       migrate_pending_consensus_keys_for_o ctxt >>= fun ctxt ->
+       (* Migration of refutation games needs to be kept for each protocol. *)
+       Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
+       >>=? fun ctxt -> return (ctxt, []))
+    >>=? fun (ctxt, balance_updates) ->
+    List.fold_left_es patch_script ctxt Legacy_script_patches.addresses_to_patch
+    >>=? fun ctxt ->
+    Receipt_repr.group_balance_updates balance_updates >>?= fun balance_updates ->
+    Storage.Pending_migration.Balance_updates.add ctxt balance_updates
+    >>= fun ctxt -> return ctxt)
 
 let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
   Raw_context.prepare
