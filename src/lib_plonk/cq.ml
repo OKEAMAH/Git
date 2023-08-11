@@ -289,13 +289,6 @@ module Internal = struct
             Array.(append t (init (n - len_t) (Fun.const t.(0)))))
           table
     in
-    if wire_size > n then
-      raise
-        (Invalid_argument
-           (Printf.sprintf
-              "Wire (size = %d) greater than table (size = %d)."
-              wire_size
-              n)) ;
     let domain = Domain.build n in
     let table_polys = List.map (Evaluations.interpolation_fft2 domain) table in
     let pc_prv, pc_vrf, _ = PC.Public_parameters.setup 0 (srs, srs) in
