@@ -1,0 +1,1 @@
+docker run --name evm-benchmark -d --mount type=bind,src="/home/ubuntu/benchmark/output",target="/home/node/output" -e OUTPUT="/home/node/output" evm-benchmark
