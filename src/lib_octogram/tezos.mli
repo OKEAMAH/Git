@@ -21,6 +21,7 @@ type 'uri activate_protocol = {
   endpoint : 'uri;
   path_client : 'uri;
   protocol : string;
+  parameter_file : 'uri;
 }
 
 type 'uri client_base_args = {path_client : 'uri; endpoint : 'uri}

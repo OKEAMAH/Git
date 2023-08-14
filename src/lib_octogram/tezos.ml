@@ -485,14 +485,15 @@ module Activate_protocol = struct
   let encoding uri_encoding =
     let open Data_encoding in
     conv
-      (fun {endpoint; path_client; protocol} ->
-        (endpoint, path_client, protocol))
-      (fun (endpoint, path_client, protocol) ->
-        {endpoint; path_client; protocol})
-      (obj3
+      (fun {endpoint; path_client; protocol; parameter_file} ->
+        (endpoint, path_client, protocol, parameter_file))
+      (fun (endpoint, path_client, protocol, parameter_file) ->
+        {endpoint; path_client; protocol; parameter_file})
+      (obj4
          (req "endpoint" uri_encoding)
          (req "path_client" uri_encoding)
-         (req "protocol" string))
+         (req "protocol" string)
+         (req "parameter_file" uri_encoding))
 
   let r_encoding = Data_encoding.empty
 
@@ -505,29 +506,37 @@ module Activate_protocol = struct
     let endpoint =
       Remote_procedure.global_uri_of_string ~self ~run base.endpoint
     in
-    {base with path_client; endpoint}
+    let parameter_file =
+      Remote_procedure.global_uri_of_string ~self ~run base.parameter_file
+    in
+    {base with path_client; endpoint; parameter_file}
 
   let resolve ~self resolver base =
     let path_client =
       Remote_procedure.file_agent_uri ~self ~resolver base.path_client
     in
     let endpoint = resolve_octez_rpc_global_uri ~self ~resolver base.endpoint in
-    {base with path_client; endpoint}
+    let parameter_file =
+      resolve_octez_rpc_global_uri ~self ~resolver base.parameter_file
+    in
+    {base with path_client; endpoint; parameter_file}
 
-  let run state {endpoint; path_client; protocol} =
+  let run state {endpoint; path_client; protocol; parameter_file} =
     let* path_client =
       Http_client.local_path_from_agent_uri
         (Agent_state.http_client state)
         path_client
     in
+    let* parameter_file =
+      Http_client.local_path_from_agent_uri
+        (Agent_state.http_client state)
+        parameter_file
+    in
     let endpoint = octez_endpoint state endpoint in
     let client = Client.create ~path:path_client ~endpoint () in
     Account.write Constant.all_secret_keys ~base_dir:(Client.base_dir client) ;
     let protocol = protocol_of_string protocol in
-    Client.activate_protocol
-      ~protocol
-      ~parameter_file:"sandbox-parameters.json"
-      client
+    Client.activate_protocol ~protocol ~parameter_file client
 
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ () = ()
 end
@@ -1944,6 +1953,7 @@ end
 
 let register_procedures () =
   Remote_procedure.register (module Start_octez_node) ;
+  Remote_procedure.register (module Generate_protocol_file) ;
   Remote_procedure.register (module Activate_protocol) ;
   Remote_procedure.register (module Wait_for_bootstrapped) ;
   Remote_procedure.register (module Originate_smart_rollup) ;
