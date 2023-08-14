@@ -4721,6 +4721,8 @@ end = struct
 
     val base_path : t -> string
 
+    val proto_base_path : t -> string
+
     val short_hash : t -> string
   end = struct
     type t = {
@@ -4769,6 +4771,9 @@ end = struct
     let name_dash t = t.name_dash
 
     let base_path t = Format.sprintf "src/proto_%s" (name_underscore t)
+
+    let proto_base_path t =
+      Format.sprintf "protocols/proto_%s" (name_underscore t)
   end
 
   type status = Active | Frozen | Overridden | Not_mainnet
@@ -4923,7 +4928,7 @@ end = struct
         ?benchmark_type_inference ?octez_sc_rollup ~main ~name () =
       let name_dash = Name.name_dash name in
       let number = Name.number name in
-      let path = Name.base_path name in
+      let path = Name.proto_base_path name in
       let _integration_consensus =
         tezt
           [
@@ -4947,7 +4952,7 @@ end = struct
             else "test_preendorsement");
             "test_seed";
           ]
-          ~path:(path // "lib_protocol/test/integration/consensus")
+          ~path:(path // "test/integration/consensus")
           ~with_macos_security_framework:true
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~deps:
@@ -4965,7 +4970,7 @@ end = struct
       let _integration_gas =
         tezt
           ["test_gas_costs"; "test_gas_levels"]
-          ~path:(path // "lib_protocol/test/integration/gas")
+          ~path:(path // "test/integration/gas")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~deps:
@@ -5007,7 +5012,7 @@ end = struct
         in
         tezt
           modules
-          ~path:(path // "lib_protocol/test/integration/michelson")
+          ~path:(path // "test/integration/michelson")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~dep_globs:
@@ -5061,7 +5066,7 @@ end = struct
         in
         tezt
           modules
-          ~path:(path // "lib_protocol/test/integration/operations")
+          ~path:(path // "test/integration/operations")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~dep_globs:(conditional_list [("contracts/*", N.(number >= 013))])
@@ -5093,7 +5098,7 @@ end = struct
             "valid_operations_generators";
             "validate_helpers";
           ]
-          ~path:(path // "lib_protocol/test/integration/validate")
+          ~path:(path // "test/integration/validate")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~deps:
@@ -5126,7 +5131,7 @@ end = struct
         in
         tezt
           modules
-          ~path:(path // "lib_protocol/test/integration")
+          ~path:(path // "test/integration")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~deps:
@@ -5177,7 +5182,7 @@ end = struct
         tezt
           (List.map snd list)
           ~synopsis:"Tezos/Protocol: tests for economic-protocol definition"
-          ~path:(path // "lib_protocol/test/pbt")
+          ~path:(path // "test/pbt")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~deps:
@@ -5246,7 +5251,7 @@ end = struct
         in
         tezt
           modules
-          ~path:(path // "lib_protocol/test/unit")
+          ~path:(path // "test/unit")
           ~opam:(sf "tezos-protocol-%s-tests" name_dash)
           ~with_macos_security_framework:true
           ~deps:
@@ -5286,7 +5291,7 @@ end = struct
           let _ =
             tezt
               ["test_logging"]
-              ~path:(path // "lib_protocol/test/regression")
+              ~path:(path // "test/regression")
               ~with_macos_security_framework:true
               ~opam:(sf "tezos-protocol-%s-tests" name_dash)
               ~deps:
@@ -5309,8 +5314,8 @@ end = struct
       let name_underscore = Name.name_underscore name in
       let name_dash = Name.name_dash name in
       let number = Name.number name in
-      let path = Name.base_path name in
-      let dirname = path // "lib_protocol" in
+      let path = Name.proto_base_path name in
+      let dirname = path in
       let tezos_protocol_filename = dirname // "TEZOS_PROTOCOL" in
       let tezos_protocol = Tezos_protocol.of_file_exn tezos_protocol_filename in
       let modules_as_deps =
@@ -5355,7 +5360,7 @@ end = struct
         public_lib
           (sf "tezos-protocol-%s.environment" name_dash)
           ~internal_name:(sf "tezos_protocol_environment_%s" name_underscore)
-          ~path:(path // "lib_protocol")
+          ~path
           ~opam:(sf "tezos-protocol-%s" name_dash)
           ~modules:[sf "Tezos_protocol_environment_%s" name_underscore]
           ~linkall:true
@@ -5383,7 +5388,7 @@ include Tezos_protocol_environment.V%d.Make(Name)()
         public_lib
           (sf "tezos-protocol-%s.raw" name_dash)
           ~internal_name:(sf "tezos_raw_protocol_%s" name_underscore)
-          ~path:(path // "lib_protocol")
+          ~path
           ~opam:(sf "tezos-protocol-%s" name_dash)
           ~linkall:true
           ~modules:tezos_protocol.modules
@@ -5402,7 +5407,7 @@ include Tezos_protocol_environment.V%d.Make(Name)()
       let main =
         public_lib
           (sf "tezos-protocol-%s" name_dash)
-          ~path:(path // "lib_protocol")
+          ~path
           ~synopsis:
             (match number with
             | V _ as number when N.(number <= 003) ->
@@ -5493,7 +5498,7 @@ module Protocol = Protocol
       let lifted =
         public_lib
           (sf "tezos-protocol-%s.lifted" name_dash)
-          ~path:(path // "lib_protocol")
+          ~path
           ~opam:(sf "tezos-protocol-%s" name_dash)
           ~modules:["Lifted_protocol"]
           ~flags:(Flags.standard ~nopervasives:true ~disable_warnings ())
@@ -5523,7 +5528,7 @@ let hash = Protocol.hash
       let _functor =
         private_lib
           (sf "tezos_protocol_%s_functor" name_underscore)
-          ~path:(path // "lib_protocol")
+          ~path
           ~opam:""
           ~synopsis:
             (match number with
@@ -5574,7 +5579,7 @@ let hash = Protocol.hash
         public_lib
           (sf "tezos-embedded-protocol-%s" name_dash)
           ~internal_name:(sf "tezos_embedded_protocol_%s" name_underscore)
-          ~path:(path // "lib_protocol")
+          ~path
           ~synopsis:
             (match number with
             | V _ as number when N.(number <= 003) ->
@@ -5695,6 +5700,7 @@ let hash = Protocol.hash
     let name_underscore = Name.name_underscore name in
     let number = Name.number name in
     let path = Name.base_path name in
+    let proto_path = Name.proto_base_path name in
     let active =
       match status with
       | Frozen | Overridden | Not_mainnet -> false
@@ -5868,9 +5874,7 @@ let hash = Protocol.hash
       let name = sf "tezos-%s-test-helpers" name_dash in
       public_lib
         name
-        ~path:
-          (if active then path // "lib_protocol/test/helpers"
-          else path // "lib_protocol")
+        ~path:(if active then proto_path // "test/helpers" else proto_path)
         ~opam:name
         ~internal_name:(sf "tezos_%s_test_helpers" name_underscore)
         ~synopsis:"Tezos/Protocol: protocol testing framework"
@@ -7988,7 +7992,7 @@ let exclude filename =
      (no library / executable / test). *)
   | "src" :: maybe_proto :: "parameters" :: _ when is_proto_ maybe_proto -> true
   (* This dune file does not contain any targets, only a dirs stanza. *)
-  | ["src"; maybe_proto; "lib_protocol"; "test"; "regression"; "tezt"; "dune"]
+  | ["protocols"; maybe_proto; "test"; "regression"; "tezt"; "dune"]
     when is_proto_ maybe_proto ->
       true
   (* The following directory has a very specific structure that would be hard
