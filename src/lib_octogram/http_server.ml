@@ -49,7 +49,7 @@ let wait http =
   | Running {process; _} -> Process.wait process
 
 let create ?runner ?name ?python_path ?color ?event_pipe ?port ~directory () =
-  let path = Option.value ~default:"python" python_path in
+  let path = Option.value ~default:"python3" python_path in
   let port = match port with Some port -> port | None -> Port.fresh () in
   let http =
     create
@@ -66,7 +66,7 @@ let run ?event_level ?event_sections_levels http =
   if http.status <> Not_running then
     Test.fail "HTTP server %s is already running" http.name ;
 
-  let* () = Helpers.exec ~can_fail:true "pkill" ["-9"; "python"] in
+  let* () = Helpers.exec ~can_fail:true "pkill" ["-9"; "python3"] in
 
   run
     ?runner:http.persistent_state.runner
