@@ -744,4 +744,3 @@ Developer Tools
 ~~~~~~~~~~~~~~~
 
 Some tools to make protocol development more convenient can be found in the :src:`src/tooling/` folder.
-In particular, it contains ``tztop``, a REPL (interactive read-eval-print loop) based on ``utop``.

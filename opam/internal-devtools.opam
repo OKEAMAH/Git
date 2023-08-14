@@ -12,14 +12,6 @@ depends: [
   "ocaml" { >= "4.14" }
   "num"
   "re" { >= "1.9.0" }
-  "octez-protocol-compiler"
-  "octez-libs"
-]
-depopts: [
-  "utop"
-]
-conflicts: [
-  "utop" { < "2.8" }
 ]
 build: [
   ["rm" "-r" "vendors" "contrib"]

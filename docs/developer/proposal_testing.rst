@@ -986,12 +986,12 @@ and keys. Notice how the hashes of public keys are not stored as is, but instead
 they are encrypted using the more efficient base58 format.
 
 In this case, in order to inspect the low level representation in bytes, which
-we would often need to, we have to convert hashes of public keys using ``tztop`` (utop adapted for protocol development)
+we would often need to, we have to convert hashes of public keys using ``utop``
 and the functions ``of_b58check`` and ``to_b58check`` of module
 ``Contract_repr``::
 
   # let's borrow some code from the protocol tests
-  $ dune exec -- tztop src/proto_alpha/lib_protocol/test/
+  $ dune utop src/proto_alpha/lib_protocol/test/
 
   # open Tezos_protocol_alpha.Protocol ;;
 

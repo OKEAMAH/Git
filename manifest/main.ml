@@ -99,9 +99,6 @@ let compiler_libs_common = external_lib "compiler-libs.common" V.True ~opam:""
 
 let compiler_libs_optcomp = external_lib "compiler-libs.optcomp" V.True ~opam:""
 
-let compiler_libs_toplevel =
-  external_lib "compiler-libs.toplevel" V.True ~opam:""
-
 let conf_libev = opam_only "conf-libev" V.True
 
 let conf_rust = opam_only "conf-rust" V.True
@@ -326,8 +323,6 @@ let unix = external_lib ~opam:"base-unix" "unix" V.True
 
 let uri = external_lib ~js_compatible:true "uri" V.(at_least "3.1.0")
 
-let utop = external_lib "utop" V.(at_least "2.8")
-
 let uutf = external_lib ~js_compatible:true "uutf" V.True
 
 let vdf =
@@ -369,6 +364,7 @@ let () =
       external_lib "ocaml-lsp-server" V.(at_least "1.16.2");
       external_lib "merge-fmt" V.True;
       external_lib "js_of_ocaml-lwt" V.(at_least "5.2.0");
+      external_lib "utop" V.(at_least "2.8");
     ]
 
 (* INTERNAL LIBS *)
@@ -7499,35 +7495,6 @@ let _octez_snoop =
           :: G [S "deps" :: [S "main_snoop.exe"]]
           :: [S "package" :: [S "octez-snoop"]];
         ]
-
-(* We use Dune's select statement and keep uTop optional *)
-(* Keeping uTop optional lets `make build` succeed, *)
-(* which uses tezos/opam-repository to resolve dependencies, *)
-(* on the CI. This prevents having to add dev-dependency to *)
-(* tezos/opam-repository unnecessarily *)
-(* We set [~static] to false because we don't release this as a static binary. *)
-let _tztop =
-  public_exe
-    "tztop"
-    ~path:"devtools/tztop"
-    ~internal_name:"tztop_main"
-    ~opam:"internal-devtools"
-    ~modes:[Byte]
-    ~bisect_ppx:No
-    ~static:false
-    ~profile:"octez-dev-deps"
-    ~deps:
-      [
-        (* The following deps come from the original dune file. *)
-        octez_protocol_compiler_lib;
-        octez_base;
-        compiler_libs_toplevel;
-        select
-          ~package:utop
-          ~source_if_present:"tztop.utop.ml"
-          ~source_if_absent:"tztop.vanilla.ml"
-          ~target:"tztop.ml";
-      ]
 
 let _octez_signer =
   public_exe
