@@ -8,29 +8,54 @@ agents:
     port: 30000
     identity: ~/.ssh/tf
 
+  - name: localhost
+    address: 127.0.0.1
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+    
 vars:
   network: sandbox
+  bootstrap_basename: bootstrap
+  
   
 stages:
+  - name: Initialize protocol file
+    with_agents: 'localhost'
+    run_agents: concurrent
+    jobs:
+      - name: Upload protocol file
+        copy:
+          local_path: 'src/proto_alpha/parameters/{{ vars.network }}-parameters.json'          
+          remote_path: '.'
+                    
+      - name: Generate protocol file
+        tezos.generate_protocol_file:
+          protocol_file: '{{ vars.network }}-parameters.json'
+        vars_updates:
+          protocol_filename: '{{ res.protocol_filename }}'
+
+      - name: Start HTTP server
+        builtins.start_http_server:
+          http_port: '30999'
+
   - name: Running nodes
     with_agents: 'node'
     run_agents: concurrent
     jobs:
+      - name: Push file
+        builtins.prefetch: 'localhost://sandbox-parameters.json'
+
       - name: Upload octez-node
         copy:
           local_path: octez-node
           remote_path: '.'
-
+ 
       - name: Upload octez-client
         copy:
           local_path: octez-client
           remote_path: '.'
-
-      - name: Upload protocol file
-        copy:
-          local_path: 'src/proto_alpha/parameters/sandbox-parameters.json'
-          remote_path: '.'
-          
+        
       - name: Start octez-node
         tezos.start_node:
           name: node
@@ -46,6 +71,7 @@ stages:
           endpoint: self://node
           path_client: self://./octez-client
           protocol: alpha
+          parameter_file: 'sandbox-parameters.json'
           
       - name: Wait for bootstrapped node
         tezos.wait_for_bootstrapped:
