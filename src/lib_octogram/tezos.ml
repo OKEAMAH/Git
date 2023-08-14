@@ -415,10 +415,71 @@ module Start_octez_node = struct
     on_new_metrics_source res.name Octez_node res.metrics_port
 end
 
+type generate_protocol_file = {protocol_file : string}
+
+type (_, _) Remote_procedure.t +=
+  | Generate_protocol_file :
+      generate_protocol_file
+      -> (string, 'uri) Remote_procedure.t
+
+module Generate_protocol_file = struct
+  let name = "tezos.generate_protocol_file"
+
+  type 'uri t = generate_protocol_file
+
+  type r = string
+
+  let of_remote_procedure :
+      type a. (a, 'uri) Remote_procedure.t -> 'uri t option = function
+    | Generate_protocol_file args -> Some args
+    | _ -> None
+
+  let to_remote_procedure args = Generate_protocol_file args
+
+  let encoding _uri_encoding =
+    let open Data_encoding in
+    conv
+      (fun {protocol_file} -> protocol_file)
+      (fun protocol_file -> {protocol_file})
+      (obj1 (req "protocol_file" string))
+
+  let r_encoding =
+    let open Data_encoding in
+    obj1 (req "protocol_filename" string)
+
+  let tvalue_of_r filename = Tobj [("protocol_filename", Tstr filename)]
+
+  let expand ~self:_ ~run {protocol_file} = {protocol_file = run protocol_file}
+
+  let resolve ~self:_ _resolver base = base
+
+  let unify : type a. (a, 'uri) Remote_procedure.t -> (a, r) Remote_procedure.eq
+      = function
+    | Generate_protocol_file _ -> Eq
+    | _ -> Neq
+
+  let run _state {protocol_file} =
+    let open Protocol in
+    let basename = Filename.basename protocol_file in
+    Log.info "CWD: %s@." @@ Sys.getcwd () ;
+    let* file =
+      write_parameter_file
+        ~output_file:basename
+        ~base:(Either.Left protocol_file)
+        []
+    in
+    Log.info "FILE EXISTS: %b@." @@ Sys.file_exists "sandboxparameters.json" ;
+    let* _ = Process.run_and_read_stdout "ls" [] in
+    return file
+
+  let on_completion ~on_new_service:_ ~on_new_metrics_source:_ _filename = ()
+end
+
 type 'uri activate_protocol = {
   endpoint : 'uri;
   path_client : 'uri;
   protocol : string;
+  parameter_file : 'uri;
 }
 
 let protocol_of_string = function
