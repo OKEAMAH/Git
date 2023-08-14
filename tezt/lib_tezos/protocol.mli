@@ -148,6 +148,7 @@ val write_parameter_file :
   ?additional_bootstrap_accounts:(Account.key * int option * bool) list ->
   ?bootstrap_smart_rollups:bootstrap_smart_rollup list ->
   ?bootstrap_contracts:bootstrap_contract list ->
+  ?output_file:string ->
   base:(string, t * constants option) Either.t ->
   parameter_overrides ->
   string Lwt.t
