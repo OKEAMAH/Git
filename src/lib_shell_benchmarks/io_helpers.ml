@@ -101,6 +101,9 @@ let initialize_key rng_state context path storage_size =
   let bytes = Base_samplers.uniform_bytes rng_state ~nbytes:storage_size in
   Tezos_protocol_environment.Context.add context path bytes
 
+(* Jun: commit the context with some updates then reopens it.
+   I think this clears the cache in Irmin but does not clear
+   the disk cache of the OS *)
 let commit_and_reload base_dir index context =
   let open Lwt_syntax in
   let* context_hash = commit context in

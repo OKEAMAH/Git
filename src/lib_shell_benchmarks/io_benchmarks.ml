@@ -51,6 +51,7 @@ let write_model ~name =
 
 module Helpers = struct
   (* Samples keys in an alphabet of [card] elements. *)
+  (* Jun: Build a file name like ["key123"] *)
   let sample_key ~card =
     assert (card > 0) ;
     let i = string_of_int (Random.int card) in
@@ -63,6 +64,7 @@ module Helpers = struct
       let i = Random.int card in
       "key" ^ suffixes.(i)
 
+  (* Jun: Make a random path like ["key123/key45/key678"] *)
   let random_key rng_state ~card ~depth =
     let depth = Base_samplers.sample_in_interval rng_state ~range:depth in
     let rec loop depth acc =
@@ -74,9 +76,12 @@ module Helpers = struct
     loop depth []
 
   (* Initializes a context by setting random bytes for each key in the
-     given [key_set]. *)
+     given [key_set].  Committ+reloading happens for every [commit_batch_size]
+     file creation.
+  *)
   let random_contents rng_state base_dir index context key_set commit_batch_size
-      =
+    =
+    Format.eprintf "random_contents at %s@." base_dir;
     let open Lwt_syntax in
     let* index, context, _ =
       Key_map.fold_lwt
@@ -97,6 +102,9 @@ module Helpers = struct
     in
     Io_helpers.commit_and_reload base_dir index context
 
+  (* Jun: build [insertions+1] paths which do not collide each other.
+     [x/y/z] and [x/y] collide.  They are all bound to [1000].
+  *)
   let random_key_set rng_state ~depth ~key_card ~insertions =
     let rec loop remaining acc =
       if remaining = 0 then acc
@@ -109,6 +117,7 @@ module Helpers = struct
             let acc = Key_map.insert key size acc in
             loop (remaining - 1) acc
     in
+    (* Jun: at least 1 file *)
     let initial =
       let key = random_key rng_state ~card:key_card ~depth in
       let size = 1000 in
@@ -116,6 +125,9 @@ module Helpers = struct
     in
     loop insertions initial
 
+  (* Jun: Build a context carrying files specified by [keys].  Each file size
+     is specified by the [int] bound in [keys].
+  *)
   let prepare_random_context rng_state base_dir commit_batch_size keys =
     let context_hash =
       Io_helpers.assert_ok ~msg:"Io_helpers.prepare_empty_context"
@@ -265,19 +277,27 @@ module Context_size_dependent_read_bench : Benchmark.Simple = struct
   include Context_size_dependent_shared
 
   let create_benchmark ~rng_state cfg =
+    (* [100, 65536]  by default *)
     let insertions =
       Base_samplers.sample_in_interval rng_state ~range:cfg.insertions
     in
+    (* [insertions+1] file name paths, all bount to [1000] *)
     let keys =
       Helpers.random_key_set
         rng_state
-        ~depth:cfg.depth
-        ~key_card:cfg.key_card
+        ~depth:cfg.depth (* [10, 1000]
+                            If it is the depth of directory, 1000 is not realistic. *)
+        ~key_card:cfg.key_card (* 16 by default *)
         ~insertions
     in
+    (* Yet another path which does not collide with any of [keys],
+       bound with [cfg.storange_chunks * cfg.storage_chunk_bytes]
+       (= [10,1000] * 1000 by default)
+    *)
     let random_key, value_size = sample_accessed_key rng_state cfg keys in
     let keys = Key_map.insert random_key value_size keys in
     Format.eprintf "preparing bench: insertions = %d@." insertions ;
+    (* Find [random_key] in [context] *)
     let closure context =
       match
         Lwt_main.run
@@ -304,6 +324,10 @@ module Context_size_dependent_read_bench : Benchmark.Simple = struct
         Filename.temp_file ?temp_dir:cfg.temp_dir (Namespace.basename name) ""
       in
       Io_helpers.prepare_base_dir base_dir ;
+      (* Jun: Build the context with [keys].  It tries to clear the Irmin cache
+         periodically, but not the disk cache of OS.  At most 65536 files of
+         1000 byte contents, I am afraid all the data are still on the disk cache.
+      *)
       let context, index =
         Helpers.prepare_random_context
           rng_state
