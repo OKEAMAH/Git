@@ -52,3 +52,4 @@ RUN make -C evm_kernel -f kernels.mk build-deps \
 FROM without-evm-artifacts as with-evm-artifacts
 COPY --from=layer2-builder --chown=tezos:nogroup /home/tezos/evm_kernel/evm_installer.wasm evm_kernel
 COPY --from=layer2-builder --chown=tezos:nogroup /home/tezos/evm_kernel/_evm_installer_preimages/ evm_kernel/_evm_installer_preimages
+COPY --from=layer2-builder --chown=tezos:nogroup /home/tezos/evm_kernel/smart-rollup-installer evm_kernel/smart-rollup-installer
