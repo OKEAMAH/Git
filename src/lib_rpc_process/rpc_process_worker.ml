@@ -136,7 +136,7 @@ let shutdown t =
   | None -> return_unit
   | Some process ->
       let* () = Event.(emit shutting_down_rpc_process) () in
-      process#kill 9 ;
+      process#terminate ;
       return_unit
 
 let stop t =
@@ -219,23 +219,31 @@ let watch_dog run_server =
     | None ->
         let* new_server = may_start (Time.System.epoch, 0.5) run_server in
         loop new_server
-    | Some process ->
-        let*! _, status =
-          Lwt.choose [Lwt_unix.waitpid [] process#pid; t.stop]
+    | Some process -> (
+        let wait_pid_t =
+          let*! _, status = Lwt_unix.waitpid [] process#pid in
+          (* Sleep is necessary here to avoid waitpid to be faster than
+             the Lwt_exit stack. It avoids the clean_up_starts to be
+             pending while the node is properly shutting down. *)
+          let*! () = Lwt_unix.sleep 1. in
+          Lwt.return (`Wait_pid status)
         in
-        (* Sleep is necessary here to avoid waitpid to be faster than
-           the Lwt_exit stack. It avoids the clean_up_starts to be
-           pending while the node is properly shutting down. *)
-        let*! () = Lwt_unix.sleep 1. in
-        if Lwt.is_sleeping Lwt_exit.clean_up_starts then (
-          t.server <- None ;
-          let*! () =
-            Event.(emit rpc_process_exited_abnormally) (process#pid, status)
-          in
-          let* new_server = may_start (Time.System.epoch, 0.5) run_server in
-          loop new_server)
-        else (* Quit. *)
-          return_unit
+        let stop_t =
+          let*! _ = t.stop in
+          Lwt.return `Stopped
+        in
+        let*! res = Lwt.choose [wait_pid_t; stop_t] in
+        match res with
+        | `Stopped -> return_unit
+        | `Wait_pid _ when not (Lwt.is_sleeping Lwt_exit.clean_up_starts) ->
+            return_unit
+        | `Wait_pid status ->
+            t.server <- None ;
+            let*! () =
+              Event.(emit rpc_process_exited_abnormally) (process#pid, status)
+            in
+            let* new_server = may_start (Time.System.epoch, 0.5) run_server in
+            loop new_server)
   in
   loop
 
