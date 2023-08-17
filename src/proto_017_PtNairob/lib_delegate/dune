@@ -22,6 +22,7 @@
   octez-libs.tezos-context
   octez-libs.tezos-context.memory
   octez-libs.rpc-http-client-unix
+  octez-libs.rpc-http-client
   octez-shell-libs.context-ops
   octez-libs.rpc
   octez-libs.rpc-http
@@ -44,6 +45,7 @@
   -open Tezos_stdlib_unix
   -open Tezos_shell_context
   -open Tezos_context
+  -open Tezos_rpc_http_client
   -open Tezos_context_ops
   -open Tezos_rpc_http)
  (modules (:standard \ Baking_commands Baking_commands_registration)))
