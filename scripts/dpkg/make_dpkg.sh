@@ -107,7 +107,6 @@ for control_file in "$myhome"/*control.in; do
 	sed -e "s/@ARCH@/${dpkg_arch}/g" -e "s/@VERSION@/$pkg_vers/g" \
 		-e "s/@MAINT@/${OCTEZ_PKGMAINTAINER}/g" \
 		-e "s/@PKG@/${dpkg_name}/g" \
-		-e "s/@DPKG@/${OCTEZ_REALNAME}/g" \
 		-e "s/@DEPENDS@/${deps}/g" < "$control_file" \
 		> "${staging_dir}/DEBIAN/control"
 
