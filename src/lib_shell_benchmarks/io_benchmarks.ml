@@ -23,6 +23,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
 open Benchmarks_shell
 module Context = Tezos_protocol_environment.Context
 module Shell_monad = Tezos_error_monad.Error_monad
@@ -56,22 +57,9 @@ module Helpers = struct
     let i = string_of_int (Random.int card) in
     "key" ^ i
 
-  let make_key_sampler ~card =
-    assert (card > 0) ;
-    let suffixes = Array.init card string_of_int in
-    fun () ->
-      let i = Random.int card in
-      "key" ^ suffixes.(i)
-
   let random_key rng_state ~card ~depth =
     let depth = Base_samplers.sample_in_interval rng_state ~range:depth in
-    let rec loop depth acc =
-      if depth = 0 then List.rev acc
-      else
-        let key = sample_key ~card in
-        loop (depth - 1) (key :: acc)
-    in
-    loop depth []
+    Stdlib.List.init depth (fun _ -> sample_key ~card)
 
   (* Initializes a context by setting random bytes for each key in the
      given [key_set]. *)
@@ -148,6 +136,15 @@ module Context_size_dependent_shared = struct
     temp_dir : string option;
   }
 
+  (* This config creates:
+     - 1 target file of at most 1MB
+     - At most 65536 files of 1KB
+
+     - Files are scattered in directories of depth 10 to 1000
+     - Commit for each 10_000 file additions
+
+     In total, 66.5MB of max file contents. Produces a context file of 2GB.
+  *)
   let default_config =
     {
       depth = {min = 10; max = 1000};
@@ -501,6 +498,17 @@ module Irmin_pack_shared = struct
          (req "commit_batch_size" int)
          (opt "temp_dir" string))
 
+  (* This config creates:
+     - 1 big directory with [256, 8192] items
+       - 1 of the item of the big directory is the target file of at most 50KB
+       - The other files in the big directory have 1KB each.
+     - and at most 65536 files of 1KB each
+
+     - Files and the big directory are scattered in directories of depth 3 to 30.
+     - Commit for each 10_000 file additions
+
+     In total, out 73.85MB of file contents. Produces a context file around 2.2GB.
+  *)
   let default_config =
     {
       depth = {min = 3; max = 30};
@@ -537,10 +545,10 @@ module Irmin_pack_shared = struct
           rng_state
           ~range:{min = 256; max = cfg.irmin_pack_max_width}
       in
-      let directories =
+      let files_under_big_directory =
         Array.init dir_width (fun i -> prefix @ [irmin_pack_key i])
       in
-      (prefix, directories)
+      (prefix, files_under_big_directory)
 end
 
 module Irmin_pack_read_bench : Benchmark.Simple = struct
@@ -552,26 +560,25 @@ module Irmin_pack_read_bench : Benchmark.Simple = struct
         "Irmin_pack_read_bench: irmin_pack_max_width < 256, invalid \
          configuration"
     else
-      let _prefix, directories =
+      let _prefix, files_under_big_directory =
         sample_irmin_directory rng_state ~cfg ~key_set
       in
-      let dir_width = Array.length directories in
+      let dir_width = Array.length files_under_big_directory in
       let target_index = Random.int dir_width in
-      let target_key = directories.(target_index) in
+      let target_key = files_under_big_directory.(target_index) in
       let value_size =
         Base_samplers.sample_in_interval rng_state ~range:cfg.storage_chunks
         * cfg.storage_chunk_bytes
       in
       let key_set =
         let acc = ref key_set in
-        for index = 0 to Array.length directories - 1 do
-          let key = directories.(index) in
-          if index = target_index then acc := Key_map.insert key value_size !acc
-          else acc := Key_map.insert key cfg.default_storage_bytes !acc
-        done ;
+        Array.iteri (fun index key ->
+            if index = target_index then acc := Key_map.insert key value_size !acc
+            else acc := Key_map.insert key cfg.default_storage_bytes !acc)
+          files_under_big_directory;
         !acc
       in
-      (target_key, value_size, key_set, directories)
+      (target_key, value_size, key_set, files_under_big_directory)
 
   let name = ns "IRMIN_PACK_READ"
 

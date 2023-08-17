@@ -23,10 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Helpers for loading contexts, saving contexts, writing to contexts, etc.
-    Also contains the [Key_map] module, heavily used for preparing benchmarks
-    and computing statistics. *)
-
 let assert_ok ~msg = function
   | Ok x -> x
   | Error errs ->
@@ -96,7 +92,6 @@ let prepare_base_dir base_dir =
   Unix.unlink base_dir ;
   Unix.mkdir base_dir 0o700
 
-(* This function updates the context with random bytes at a given depth. *)
 let initialize_key rng_state context path storage_size =
   let bytes = Base_samplers.uniform_bytes rng_state ~nbytes:storage_size in
   Tezos_protocol_environment.Context.add context path bytes
@@ -107,8 +102,6 @@ let commit_and_reload base_dir index context =
   let* () = Tezos_context.Context.close index in
   load_context_from_disk_lwt base_dir context_hash
 
-(** Maps from string lists to bytes. No balancing. A key cannot be a prefix
-    or a suffix to another key. *)
 module Key_map = struct
   module String_map = String.Map
 
