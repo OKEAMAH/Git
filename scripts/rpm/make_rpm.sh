@@ -88,8 +88,12 @@ for specfile in "$myhome"/*spec.in; do
 		echo "=> Populating directory with binaries"
 		mkdir -p "${build_dir}/usr/bin"
 		for bin in ${binaries}; do
-			echo "${bin}"
-			install -s -t "${build_dir}/usr/bin" "${bin}"
+			if [ -f "${bin}" ]; then
+				echo "${bin}"
+				install -s -t "${build_dir}/usr/bin" "${bin}"
+			else
+				echo "WARN: ${bin} not found - skipping"
+			fi
 		done
 	fi
 

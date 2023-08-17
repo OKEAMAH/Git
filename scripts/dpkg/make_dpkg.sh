@@ -82,8 +82,12 @@ for control_file in "$myhome"/*control.in; do
 		echo "=> Populating directory with binaries"
 		mkdir -p "${staging_dir}/usr/bin"
 		for bin in ${binaries}; do
-			echo "${bin}"
-			install -s -t "${staging_dir}/usr/bin" "${bin}"
+			if [ -f "${bin}" ]; then
+				echo "Installing ${bin}"
+				install -s -t "${staging_dir}/usr/bin" "${bin}"
+			else
+				echo "WARN: ${bin} not found - skipping"
+			fi
 		done
 
 		# Shared libraries
