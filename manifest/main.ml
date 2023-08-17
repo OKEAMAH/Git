@@ -3511,7 +3511,7 @@ let octez_rpc_http_client =
         octez_rpc;
         octez_rpc_http |> open_;
       ]
-    ~modules:["RPC_client"]
+    ~modules:["RPC_client"; "RPC_profiler"]
 
 let octez_rpc_http_client_unix =
   octez_lib
@@ -6130,6 +6130,7 @@ let hash = Protocol.hash
             octez_context |> open_;
             octez_context_memory |> if_ N.(number >= 012);
             octez_rpc_http_client_unix |> if_ N.(number >= 011);
+            octez_rpc_http_client |> if_ N.(number >= 011) |> open_;
             octez_context_ops |> if_ N.(number >= 011) |> open_;
             octez_rpc;
             octez_rpc_http |> open_;
