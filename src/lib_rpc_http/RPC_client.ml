@@ -23,6 +23,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** Profiler for RPC client.
+    Here, we want every [call_service] to be profiled. *)
+module Profiler =
+  (val Tezos_base.Profiler.wrap RPC_profiler.rpc_client_profiler)
+
 module type S = sig
   module type LOGGER = sig
     type request
@@ -436,6 +441,13 @@ module Make (Client : Resto_cohttp_client.Client.CALL) = struct
       (service : (_, _, p, q, i, o) Tezos_rpc.Service.t) ~on_chunk ~on_close
       (params : p) (query : q) (body : i) : (unit -> unit) tzresult Lwt.t =
     let open Lwt_syntax in
+    let service_path =
+      let open Client.Service.Internal in
+      let {path; _} = to_service service in
+      from_path path |> Resto.Path.to_string
+    in
+    Profiler.span_s ["Call_streamed_service"; Uri.to_string base ^ service_path]
+    @@ fun () ->
     let* ans =
       Client.call_streamed_service
         accept
@@ -455,6 +467,13 @@ module Make (Client : Resto_cohttp_client.Client.CALL) = struct
       (service : (_, _, p, q, i, o) Tezos_rpc.Service.t) (params : p)
       (query : q) (body : i) : o tzresult Lwt.t =
     let open Lwt_syntax in
+    let service_path =
+      let open Client.Service.Internal in
+      let {path; _} = to_service service in
+      from_path path |> Resto.Path.to_string
+    in
+    Profiler.span_s ["Call_service"; Uri.to_string base ^ service_path]
+    @@ fun () ->
     let* ans =
       Client.call_service
         ?logger
