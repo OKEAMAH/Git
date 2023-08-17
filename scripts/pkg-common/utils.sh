@@ -167,7 +167,7 @@ zcashParams() {
 		echo "=> Zcash"
 		mkdir -p "${_zcashtgt}"
 		for shr in ${zcashstuff}; do
-                        cp "${shr}" \
+                        cp "${zcashdir}/${shr}" \
 				"${_zcashtgt}"
                 done
 	fi
