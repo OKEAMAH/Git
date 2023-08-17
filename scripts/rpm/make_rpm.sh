@@ -10,6 +10,7 @@ set -eu
 #
 myhome=scripts/rpm
 common=scripts/pkg-common
+dieonwarn=${dieonwarn:-1}
 
 #shellcheck disable=SC1091
 . ${common}/utils.sh
@@ -92,7 +93,8 @@ for specfile in "$myhome"/*spec.in; do
 				echo "${bin}"
 				install -s -t "${build_dir}/usr/bin" "${bin}"
 			else
-				echo "WARN: ${bin} not found - skipping"
+				echo "WARN: ${bin} not found"
+                                [ "$dieonwarn" = "1" ] && exit 1
 			fi
 		done
 	fi

@@ -11,6 +11,7 @@ set -eu
 #
 myhome=scripts/dpkg
 common=scripts/pkg-common
+dieonwarn=${dieonwarn:-1}
 
 #shellcheck disable=SC1091
 . ${common}/utils.sh
@@ -18,14 +19,6 @@ protocols=${protocols:?protocols not specified} # Not used?
 
 warnings
 pkg_vers=$(getOctezVersion)
-
-# Generic warning about BLST_PORTABLE=yes
-#
-if [ "$BLST_PORTABLE" != "yes" ]; then
-	echo "WARNING: BLST_PORTABLE is not set to yes in your environment"
-	echo "If the binaries were not made with BLST_PORTABLE=yes then they"
-	echo "might not run on some platforms."
-fi
 
 # Maintainer
 #
@@ -86,7 +79,8 @@ for control_file in "$myhome"/*control.in; do
 				echo "Installing ${bin}"
 				install -s -t "${staging_dir}/usr/bin" "${bin}"
 			else
-				echo "WARN: ${bin} not found - skipping"
+				echo "WARN: ${bin} not found"
+				[ "$dieonwarn" = "1" ] && exit 1
 			fi
 		done
 
