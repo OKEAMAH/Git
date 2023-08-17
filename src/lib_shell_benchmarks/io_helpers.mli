@@ -107,3 +107,10 @@ val set_infos : string -> Unix.stats -> unit
 val iter_dir : (string -> unit) -> string -> unit
 
 val copy_rec : string -> string -> unit
+
+(** Split a absolute path name.
+
+   For example, [split_absolute_pat "/a/b/c" = Some ["a"; "b"; "c"]].
+   It returns [None] for illigal paths such as ["a/b/c"], ["/a/../b"] and ["/a/b/."].
+*)
+val split_absolute_path : string -> string list option

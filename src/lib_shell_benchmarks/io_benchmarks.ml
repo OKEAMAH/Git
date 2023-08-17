@@ -889,13 +889,13 @@ let () = Registration.register_simple (module Irmin_pack_write_bench)
 module Read_random_key_bench : Benchmark.Simple_with_num = struct
   type config = {
     existing_context : string * Context_hash.t;
-    subdirectory : string list;
+    subdirectory : string;
   }
 
   let default_config =
     {
       existing_context = ("/no/such/directory", Context_hash.zero);
-      subdirectory = ["no"; "such"; "key"];
+      subdirectory = "/no/such/key";
     }
 
   let config_encoding =
@@ -905,7 +905,7 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
       (fun (existing_context, subdirectory) -> {existing_context; subdirectory})
       (obj2
          (req "existing_context" (tup2 string Context_hash.encoding))
-         (req "subdirectory" (list string)))
+         (req "subdirectory" string))
 
   let name = ns "READ_RANDOM_KEY"
 
@@ -984,7 +984,9 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
     let base_dir, context_hash = config.existing_context in
     let tree =
       Io_helpers.with_context ~base_dir ~context_hash (fun context ->
-          Io_stats.load_tree context config.subdirectory)
+          Io_stats.load_tree context
+          @@ Option.value_f ~default:(fun () -> invalid_arg "invalid subdirectory in config")
+          @@ Io_helpers.split_absolute_path config.subdirectory)
     in
     let keys = Array.of_seq (Io_helpers.Key_map.to_seq tree) in
     List.repeat bench_num (make_bench rng_state config keys)
@@ -1001,7 +1003,7 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
     storage_chunks : range;
     max_written_keys : int;
     temp_dir : string option;
-    subdirectory : string list;
+    subdirectory : string;
   }
 
   let default_config =
@@ -1011,7 +1013,7 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
       storage_chunks = {min = 1; max = 1000};
       max_written_keys = 10_000;
       temp_dir = None;
-      subdirectory = ["no"; "such"; "key"];
+      subdirectory = "/no/such/key";
     }
 
   let config_encoding =
@@ -1052,7 +1054,7 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
          (req "storage_chunks" range_encoding)
          (req "max_written_keys" int)
          (req "temp_dir" (option string))
-         (req "subdirectory" (list string)))
+         (req "subdirectory" string))
 
   let name = ns "WRITE_RANDOM_KEYS"
 
@@ -1172,7 +1174,9 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
     let base_dir, context_hash = config.existing_context in
     let tree =
       Io_helpers.with_context ~base_dir ~context_hash (fun context ->
-          Io_stats.load_tree context config.subdirectory)
+          Io_stats.load_tree context
+          @@ Option.value_f ~default:(fun () -> invalid_arg "invalid subdirectory in config")
+          @@ Io_helpers.split_absolute_path config.subdirectory)
     in
     let keys = Io_helpers.Key_map.to_seq tree in
     List.repeat bench_num (make_bench rng_state config keys)
