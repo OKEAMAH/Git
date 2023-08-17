@@ -498,7 +498,12 @@ let may_synchronise_context synchronisation_state chain_store =
 let reset_profilers block =
   let profilers =
     Shell_profiling.
-      [p2p_reader_profiler; requester_profiler; chain_validator_profiler]
+      [
+        p2p_reader_profiler;
+        requester_profiler;
+        chain_validator_profiler;
+        rpc_server_profiler;
+      ]
   in
   List.iter
     (fun profiler ->
