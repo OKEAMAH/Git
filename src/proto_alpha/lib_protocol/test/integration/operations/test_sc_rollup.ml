@@ -183,6 +183,7 @@ let context_init ?commitment_period_in_blocks
           Context.default_test_constants.sc_rollup with
           enable = true;
           arith_pvm_enable = true;
+          private_enable = true;
           challenge_window_in_blocks = sc_rollup_challenge_window_in_blocks;
           commitment_period_in_blocks =
             Option.value
@@ -235,13 +236,14 @@ let test_disable_arith_pvm_feature_flag () =
   return_unit
 
 (** Initializes the context and originates a SCORU. *)
-let sc_originate ?boot_sector ?parameters_ty block contract =
+let sc_originate ?boot_sector ?parameters_ty ?whitelist block contract =
   let open Lwt_result_syntax in
   let kind = Sc_rollup.Kind.Example_arith in
   let* operation, rollup =
     Sc_rollup_helpers.origination_op
       ?boot_sector
       ?parameters_ty
+      ?whitelist
       (B block)
       contract
       kind
@@ -499,8 +501,27 @@ let verify_execute_outbox_message_operations ctxt rollup ~loc ~operations
     operations_data
     transactions_data
 
-(* Helper function to create output used for executing outbox messages. *)
-let make_output ~outbox_level ~message_index transactions =
+let verify_whitelist ~loc ~expected_whitelist rollup ctxt =
+  let open Lwt_result_syntax in
+  let* found_whitelist = Context.Sc_rollup.whitelist ctxt rollup in
+  let sort_whitelist =
+    Option.map (List.sort Signature.Public_key_hash.compare)
+  in
+  let found_sorted = sort_whitelist found_whitelist in
+  let expected_sorted = sort_whitelist expected_whitelist in
+  Assert.(assert_equal_list_opt ~loc Signature.Public_key_hash.equal)
+    "whitelist"
+    Signature.Public_key_hash.pp
+    expected_sorted
+    found_sorted
+
+(* Helper functions to create output used for executing outbox messages. *)
+let make_output ~outbox_level ~message_index message =
+  let outbox_level = Raw_level.of_int32_exn (Int32.of_int outbox_level) in
+  let message_index = Z.of_int message_index in
+  Sc_rollup.{outbox_level; message_index; message}
+
+let make_transaction_output ~outbox_level ~message_index transactions =
   let transactions =
     List.map
       (fun (destination, entrypoint, parameters) ->
@@ -511,9 +532,12 @@ let make_output ~outbox_level ~message_index transactions =
   let message =
     Sc_rollup.Outbox.Message.Atomic_transaction_batch {transactions}
   in
-  let outbox_level = Raw_level.of_int32_exn (Int32.of_int outbox_level) in
-  let message_index = Z.of_int message_index in
-  Sc_rollup.{outbox_level; message_index; message}
+  make_output ~outbox_level ~message_index message
+
+let make_whitelist_update_output ~outbox_level ~message_index
+    (whitelist_opt : Sc_rollup.Whitelist.t option) =
+  make_output ~outbox_level ~message_index
+  @@ Sc_rollup.Outbox.Message.Whitelist_update whitelist_opt
 
 let string_ticket_token ticketer content =
   let open Lwt_result_syntax in
@@ -639,7 +663,7 @@ let execute_outbox_message_without_proof_validation block rollup
     ~cemented_commitment outbox_message =
   let open Lwt_result_wrap_syntax in
   let* incr = Incremental.begin_construction block in
-  let*@ res, ctxt =
+  let*@ res, alpha_ctxt =
     Sc_rollup_operations.Internal_for_tests.execute_outbox_message
       (Incremental.alpha_ctxt incr)
       ~validate_and_decode_output_proof:
@@ -649,7 +673,7 @@ let execute_outbox_message_without_proof_validation block rollup
       ~cemented_commitment
       ~output_proof:"Not used"
   in
-  let incr = Incremental.set_alpha_ctxt incr ctxt in
+  let incr = Incremental.set_alpha_ctxt incr alpha_ctxt in
   let* block = Incremental.finalize_block incr in
   return (res, block)
 
@@ -693,6 +717,19 @@ let assert_fails_with ~__LOC__ k expected_err =
   let open Lwt_result_syntax in
   let*! res = k in
   Assert.proto_error ~loc:__LOC__ res (( = ) expected_err)
+
+let verify_can_publish_commit ~__LOC__ ~succeed rollup account block =
+  let open Lwt_result_syntax in
+  let* dummy_commitment = dummy_commitment (B block) rollup in
+  let block_res = publish_commitment account rollup block dummy_commitment in
+  if succeed then
+    let* _block = block_res in
+    return_unit
+  else
+    assert_fails_with
+      ~__LOC__
+      block_res
+      Sc_rollup_errors.Sc_rollup_staker_not_in_whitelist
 
 type balances = {liquid : Tez.t; frozen : Tez.t}
 
@@ -1071,7 +1108,9 @@ let test_single_transaction_batch () =
         {|Pair 42 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1)|} );
     ]
   in
-  let output = make_output ~outbox_level:0 ~message_index:0 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:0 transactions
+  in
   (* Set up the balance so that the self contract owns one ticket. *)
   let* _ticket_hash, block =
     adjust_ticket_token_balance_of_rollup block rollup red_token ~delta:Z.one
@@ -1144,7 +1183,9 @@ let test_older_cemented_commitment () =
           {|Pair 42 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 1)|} );
       ]
     in
-    let output = make_output ~outbox_level:0 ~message_index:0 transactions in
+    let output =
+      make_transaction_output ~outbox_level:0 ~message_index:0 transactions
+    in
     let* Sc_rollup_operations.{operations; _}, block =
       execute_outbox_message_without_proof_validation
         block
@@ -1269,7 +1310,9 @@ let test_multi_transaction_batch () =
     ]
   in
   (* Create an atomic batch message. *)
-  let output = make_output ~outbox_level:0 ~message_index:0 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:0 transactions
+  in
   (* Set up the balance so that the rollup owns 10 units of red tokens. *)
   let* _ticket_hash, block =
     adjust_ticket_token_balance_of_rollup
@@ -1333,7 +1376,9 @@ let test_transaction_with_invalid_type () =
   in
   let transactions = [(mutez_receiver, Entrypoint.default, "12")] in
   (* Create an atomic batch message. *)
-  let output = make_output ~outbox_level:0 ~message_index:1 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:1 transactions
+  in
   assert_fails
     ~loc:__LOC__
     ~error:Sc_rollup_operations.Sc_rollup_invalid_parameters_type
@@ -1367,7 +1412,9 @@ let test_execute_message_twice () =
   in
   (* Create an atomic batch message. *)
   let transactions = [(string_receiver, Entrypoint.default, {|"Hello"|})] in
-  let output = make_output ~outbox_level:0 ~message_index:1 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:1 transactions
+  in
   (* Execute the message once - should succeed. *)
   let* Sc_rollup_operations.{operations; _}, block =
     execute_outbox_message_without_proof_validation
@@ -1427,7 +1474,9 @@ let test_execute_message_twice_different_cemented_commitments () =
   in
   (* Create an atomic batch message. *)
   let transactions = [(string_receiver, Entrypoint.default, {|"Hello"|})] in
-  let output = make_output ~outbox_level:0 ~message_index:1 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:1 transactions
+  in
   (* Execute the message once - should succeed. *)
   let* Sc_rollup_operations.{operations; _}, block =
     execute_outbox_message_without_proof_validation
@@ -1484,7 +1533,9 @@ let test_zero_amount_ticket () =
         {|Pair 42 (Pair "KT1ThEdxfUcWUwqsdergy3QnbCWGHSUHeHJq" "red" 0)|} );
     ]
   in
-  let output = make_output ~outbox_level:0 ~message_index:0 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:0 transactions
+  in
   let*! result =
     execute_outbox_message_without_proof_validation
       block
@@ -1554,7 +1605,9 @@ let test_execute_message_override_applied_messages_slot () =
   let execute_message incr ~outbox_level ~message_index
       ~cemented_commitment_hash =
     let transactions = [(string_receiver, Entrypoint.default, {|"Hello"|})] in
-    let output = make_output ~outbox_level ~message_index transactions in
+    let output =
+      make_transaction_output ~outbox_level ~message_index transactions
+    in
     let* ( Sc_rollup_operations.
              {operations = _; ticket_receipt = _; paid_storage_size_diff},
            incr ) =
@@ -1710,7 +1763,9 @@ let test_insufficient_ticket_balances () =
     ]
   in
   (* Create an atomic batch message. *)
-  let output = make_output ~outbox_level:0 ~message_index:0 transactions in
+  let output =
+    make_transaction_output ~outbox_level:0 ~message_index:0 transactions
+  in
   (* Set up the balance so that the rollup owns 7 units of red tokens.
      This is insufficient wrt the set of transactions above.
   *)
@@ -3415,6 +3470,159 @@ let test_private_rollup_publish_fails_with_non_whitelisted_staker () =
   in
   return_unit
 
+let test_private_rollup_whitelist_cannot_contain_key_duplication () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2) = context_init Context.T2 in
+  let account2_pkh = Account.pkh_of_contract_exn account2 in
+  let originate_with_whitelist ~whitelist block =
+    sc_originate ?whitelist block account1
+  in
+  let whitelist = Some [account2_pkh; account2_pkh] in
+  let block_rollup_res = originate_with_whitelist ~whitelist block in
+  assert_fails_with
+    ~__LOC__
+    block_rollup_res
+    Sc_rollup_errors.Sc_rollup_duplicated_key_in_whitelist
+
+let update_whitelist ?(message_index = 0)
+    ~(genesis_info : Sc_rollup.Commitment.genesis_info) block rollup
+    updated_whitelist =
+  let open Lwt_result_syntax in
+  let output =
+    make_whitelist_update_output
+      ~outbox_level:0
+      ~message_index
+      updated_whitelist
+  in
+  let* _res, block =
+    execute_outbox_message_without_proof_validation
+      block
+      rollup
+      ~cemented_commitment:genesis_info.commitment_hash
+      output
+  in
+  return block
+
+let verify_whitelist ~__LOC__ block rollup expected_whitelist =
+  verify_whitelist ~loc:__LOC__ rollup (B block) ~expected_whitelist
+
+let verify_can_publish_commit_accounts block rollup accounts =
+  Tezos_base.TzPervasives.List.iter_es
+    (fun (account, succeed) ->
+      verify_can_publish_commit ~__LOC__ ~succeed rollup account block)
+    accounts
+
+let test_check_initial_whitelist () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2, account3) = context_init Context.T3 in
+  let account1_pkh = Account.pkh_of_contract_exn account1 in
+  let whitelist = Some [account1_pkh] in
+  let* block, rollup = sc_originate ?whitelist block account1 in
+  (* check initial whitelist *)
+  let* () = verify_whitelist ~__LOC__ block rollup whitelist in
+  verify_can_publish_commit_accounts
+    block
+    rollup
+    [(account1, true); (account2, false); (account3, false)]
+
+let test_whitelist_update_duplicated_keys () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2) = context_init Context.T2 in
+  let account1_pkh = Account.pkh_of_contract_exn account1 in
+  let account2_pkh = Account.pkh_of_contract_exn account2 in
+  let whitelist = Some [account1_pkh] in
+  let* block, rollup = sc_originate ?whitelist block account1 in
+  let* genesis_info = Context.Sc_rollup.genesis_info (B block) rollup in
+  (* replace whitelist with twice the same keys fails *)
+  let updated_whitelist = Some [account2_pkh; account2_pkh] in
+  let block_rollup_res =
+    update_whitelist ~genesis_info block rollup updated_whitelist
+  in
+  assert_fails_with
+    ~__LOC__
+    block_rollup_res
+    Sc_rollup_errors.Sc_rollup_duplicated_key_in_whitelist
+
+let test_whitelist_update_empty_list () =
+  let open Lwt_result_syntax in
+  let* block, account = context_init Context.T1 in
+  let account_pkh = Account.pkh_of_contract_exn account in
+  let whitelist = Some [account_pkh] in
+  let* block, rollup = sc_originate ?whitelist block account in
+  let* genesis_info = Context.Sc_rollup.genesis_info (B block) rollup in
+  (* update to empty list fails *)
+  let updated_whitelist = Some [] in
+  let block_res =
+    update_whitelist ~genesis_info block rollup updated_whitelist
+  in
+  assert_fails_with
+    ~__LOC__
+    block_res
+    Sc_rollup_errors.Sc_rollup_empty_whitelist
+
+let test_whitelist_update_two_keys () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2, account3) = context_init Context.T3 in
+  let account1_pkh = Account.pkh_of_contract_exn account1 in
+  let account2_pkh = Account.pkh_of_contract_exn account2 in
+  let account3_pkh = Account.pkh_of_contract_exn account3 in
+  let whitelist = Some [account1_pkh] in
+  let* block, rollup = sc_originate ?whitelist block account1 in
+  let* genesis_info = Context.Sc_rollup.genesis_info (B block) rollup in
+
+  (* replace whitelist with two keys succeed *)
+  let updated_whitelist = Some [account2_pkh; account3_pkh] in
+  let* block = update_whitelist ~genesis_info block rollup updated_whitelist in
+  let* () = verify_whitelist ~__LOC__ block rollup updated_whitelist in
+  verify_can_publish_commit_accounts
+    block
+    rollup
+    [(account1, false); (account2, true); (account3, true)]
+
+let test_whitelist_update_make_rollup_public () =
+  let open Lwt_result_syntax in
+  let* block, (account1, account2, account3) = context_init Context.T3 in
+  let account1_pkh = Account.pkh_of_contract_exn account1 in
+  let account2_pkh = Account.pkh_of_contract_exn account2 in
+  let account3_pkh = Account.pkh_of_contract_exn account3 in
+  let whitelist = Some [account1_pkh] in
+  let* block, rollup = sc_originate ?whitelist block account1 in
+  let* genesis_info = Context.Sc_rollup.genesis_info (B block) rollup in
+
+  let* block =
+    (* replace whitelist with two keys succeed *)
+    let updated_whitelist = Some [account2_pkh; account3_pkh] in
+    let* block =
+      update_whitelist ~genesis_info block rollup updated_whitelist
+    in
+    let* () = verify_whitelist ~__LOC__ block rollup updated_whitelist in
+    let* () =
+      verify_can_publish_commit_accounts
+        block
+        rollup
+        [(account1, false); (account2, true); (account3, true)]
+    in
+    return block
+  in
+  (* second update succeed and make the rollup public *)
+  let updated_whitelist = None in
+  let* block =
+    update_whitelist
+      ~genesis_info
+      ~message_index:1
+      block
+      rollup
+      updated_whitelist
+  in
+  let* () = verify_whitelist ~__LOC__ block rollup updated_whitelist in
+  let* () =
+    verify_can_publish_commit_accounts
+      block
+      rollup
+      [(account1, true); (account2, true); (account3, true)]
+  in
+  return_unit
+
 let tests =
   [
     Tztest.tztest
@@ -3572,6 +3780,27 @@ let tests =
       "Submit a commitment with a non-whitelisted staker"
       `Quick
       test_private_rollup_publish_fails_with_non_whitelisted_staker;
+    Tztest.tztest
+      "Originate a rollup with duplicated key in the whitelist fails"
+      `Quick
+      test_private_rollup_whitelist_cannot_contain_key_duplication;
+    Tztest.tztest "Check initial whitelist" `Quick test_check_initial_whitelist;
+    Tztest.tztest
+      "Update the whitelist with duplicated keys"
+      `Quick
+      test_whitelist_update_duplicated_keys;
+    Tztest.tztest
+      "Update the whitelist with an empty list"
+      `Quick
+      test_whitelist_update_empty_list;
+    Tztest.tztest
+      "Update the whitelist with two distinct keys"
+      `Quick
+      test_whitelist_update_two_keys;
+    Tztest.tztest
+      "Update the whitelist to make the rollup public"
+      `Quick
+      test_whitelist_update_make_rollup_public;
   ]
 
 let () =

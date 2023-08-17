@@ -89,6 +89,8 @@ module Dune = struct
     names : string list;
   }
 
+  let dand s1 s2 = S "and" :: s1 :: s2
+
   (* Test whether an s-expression is empty. *)
   let rec is_empty = function
     | E -> true
@@ -378,7 +380,7 @@ module Dune = struct
 
   let ocamlyacc name = [S "ocamlyacc"; S name]
 
-  let pps ?(args = Stdlib.List.[]) name = S "pps" :: S name :: of_atom_list args
+  let pps names = S "pps" :: of_atom_list names
 
   let staged_pps names =
     let s_exprs = Stdlib.List.map (fun n -> S n) names in
@@ -1098,7 +1100,7 @@ module Target = struct
     with_macos_security_framework : bool;
   }
 
-  and preprocessor = PPS of t * string list | Staged_PPS of t list
+  and preprocessor = PPS of t list | Staged_PPS of t list
 
   and inline_tests = Inline_tests_backend of t
 
@@ -1127,9 +1129,20 @@ module Target = struct
     | External _ -> None
     | Opam_only _ -> None
 
-  let pps ?(args = []) = function
+  let pps = function
     | None -> invalid_arg "Manifest.Target.pps cannot be given no_target"
-    | Some target -> PPS (target, args)
+    | Some target -> PPS [target]
+
+  let ppses targets =
+    let targets =
+      List.map
+        (function
+          | None ->
+              invalid_arg "Manifest.Target.ppses cannot be given no_target"
+          | Some target -> target)
+        targets
+    in
+    PPS targets
 
   let staged_pps targets =
     Staged_PPS (Stdlib.List.concat_map Option.to_list targets)
@@ -1368,7 +1381,7 @@ module Target = struct
       | Some (Inline_tests_backend target) -> (
           match kind with
           | Public_library _ | Private_library _ ->
-              (PPS (target, []) :: preprocess, true)
+              (PPS [target] :: preprocess, true)
           | Public_executable _ | Private_executable _ | Test_executable _ ->
               invalid_arg
                 "Target.internal: cannot specify `inline_tests` for \
@@ -1732,13 +1745,29 @@ module Target = struct
     | head :: tail -> Private_executable (head, tail)
 
   let test ?(alias = "runtest") ?dep_files ?dep_globs ?dep_globs_rec ?locks
-      ?enabled_if ?(lib_deps = []) =
+      ?enabled_if ?(dune_with_test = Always) ?(lib_deps = []) =
     (match (alias, enabled_if, locks) with
     | "", Some _, _ | "", _, Some _ ->
         invalid_arg
           "Target.tests: cannot specify enabled_if or locks without alias"
     | _ -> ()) ;
-    let runtest_alias = if alias = "" then None else Some alias in
+    (* Ensures that there is an alias in case there is test constraint *)
+    let runtest_alias =
+      if alias = "" then
+        match dune_with_test with Always -> None | _ -> Some "runtest"
+      else Some alias
+    in
+    let enabled_if =
+      match dune_with_test with
+      | Always -> enabled_if
+      | Only_on_64_arch -> (
+          let enabled_if_dune_with_test = Dune.(S "%{arch_sixtyfour}") in
+          match enabled_if with
+          | Some enabled_if ->
+              Some Dune.(dand enabled_if_dune_with_test [enabled_if])
+          | None -> Some enabled_if_dune_with_test)
+      | Never -> Some Dune.(S "false")
+    in
     internal ?dep_files ?dep_globs ?dep_globs_rec @@ fun test_name ->
     Test_executable
       {names = (test_name, []); runtest_alias; locks; enabled_if; lib_deps}
@@ -1855,8 +1884,7 @@ module Target = struct
 
   let all_internal_deps internal =
     let extract_targets = function
-      | PPS (target, _) -> [target]
-      | Staged_PPS targets -> targets
+      | PPS targets | Staged_PPS targets -> targets
     in
     List.concat_map extract_targets internal.preprocess
     @ internal.deps @ internal.opam_only_deps
@@ -1885,6 +1913,7 @@ type tezt_target = {
   modes : Dune.mode list option;
   synopsis : string option;
   opam_with_test : with_test option;
+  dune_with_test : with_test option;
   with_macos_security_framework : bool;
   flags : Flags.t option;
   dune : Dune.s_expr;
@@ -1897,8 +1926,9 @@ let tezt_targets_by_path : tezt_target String_map.t ref = ref String_map.empty
 
 let tezt ~opam ~path ?js_compatible ?modes ?(lib_deps = []) ?(exe_deps = [])
     ?(js_deps = []) ?(dep_globs = []) ?(dep_globs_rec = []) ?(dep_files = [])
-    ?synopsis ?opam_with_test ?(with_macos_security_framework = false) ?flags
-    ?(dune = Dune.[]) ?(preprocess = []) ?(preprocessor_deps = []) modules =
+    ?synopsis ?opam_with_test ?dune_with_test
+    ?(with_macos_security_framework = false) ?flags ?(dune = Dune.[])
+    ?(preprocess = []) ?(preprocessor_deps = []) modules =
   if String_map.mem path !tezt_targets_by_path then
     invalid_arg
       ("cannot call Manifest.tezt twice for the same directory: " ^ path) ;
@@ -1934,6 +1964,7 @@ let tezt ~opam ~path ?js_compatible ?modes ?(lib_deps = []) ?(exe_deps = [])
       modes;
       synopsis;
       opam_with_test;
+      dune_with_test;
       with_macos_security_framework;
       flags;
       dune;
@@ -1958,6 +1989,7 @@ let register_tezt_targets ~make_tezt_exe =
         modes;
         synopsis;
         opam_with_test;
+        dune_with_test;
         with_macos_security_framework;
         flags;
         tezt_local_test_lib;
@@ -1995,6 +2027,7 @@ let register_tezt_targets ~make_tezt_exe =
           ~dep_files
           ~modules:[exe_name]
           ?opam_with_test
+          ?dune_with_test
           ~preprocess
           ~preprocessor_deps
           ?flags
@@ -2185,8 +2218,8 @@ let generate_dune (internal : Target.internal) =
             ^ String.concat ", " (hd :: tl))
     in
     let make_preprocessors = function
-      | (PPS (target, args) : Target.preprocessor) ->
-          Dune.pps ~args @@ get_target_name target
+      | (PPS targets : Target.preprocessor) ->
+          Dune.pps @@ List.map get_target_name targets
       | Staged_PPS targets ->
           Dune.staged_pps @@ List.map get_target_name targets
     in

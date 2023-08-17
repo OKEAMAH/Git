@@ -18,6 +18,23 @@ protocols=${protocols:?protocols not specified} # Not used?
 
 warnings
 pkg_vers=$(getOctezVersion)
+
+# Generic warning about BLST_PORTABLE=yes
+#
+if [ "$BLST_PORTABLE" != "yes" ]; then
+	echo "WARNING: BLST_PORTABLE is not set to yes in your environment"
+	echo "If the binaries were not made with BLST_PORTABLE=yes then they"
+	echo "might not run on some platforms."
+fi
+
+# Maintainer
+#
+OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
+if [ -f "$myhome/maintainer" ]; then
+	OCTEZ_PKGMAINTAINER=$(cat "$myhome/maintainer")
+fi
+OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
+
 staging_root=_dpkgstage
 
 # Checking prerequisites
@@ -45,6 +62,7 @@ for control_file in "$myhome"/*control.in; do
 	dpkg_dir="${dpkg_name}_${pkg_vers}-${OCTEZ_PKGREV}_${dpkg_arch}"
 	dpkg_fullname="${dpkg_dir}.deb"
 	
+
 	binaries=$(fixBinaryList "${common}/${pg}-binaries")
 
 	if [ -f "$dpkg_fullname" ]; then
@@ -101,9 +119,9 @@ for control_file in "$myhome"/*control.in; do
 
 	# init.d scripts
 	#
-	initdScripts "${common}/${pg}.initd.in" ${init_name} ${staging_dir}
+	initdScripts "${common}/${pg}.initd.in" "${init_name}" "${staging_dir}"
   	if [ "$pg" = "baker" ]; then
-		initdScripts "${common}/vdf.initd.in" octez-vdf ${staging_dir}
+		initdScripts "${common}/vdf.initd.in" octez-vdf "${staging_dir}"
   	fi
 
 	# Configuration files
@@ -116,7 +134,7 @@ for control_file in "$myhome"/*control.in; do
 
 	# Zcash parameters ships with some packages
 	#
-	zcashParams ${common}/${pg}-zcash \
+	zcashParams "${common}/${pg}-zcash" \
 		"${staging_dir}/usr/share/zcash-params"
 
 	# Build the package

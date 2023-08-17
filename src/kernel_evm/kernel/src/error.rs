@@ -7,7 +7,7 @@ use core::str::Utf8Error;
 use evm_execution::{DurableStorageError, EthereumError};
 use primitive_types::U256;
 use rlp::DecoderError;
-use tezos_ethereum::signatures::SigError;
+use tezos_ethereum::tx_common::SigError;
 use tezos_smart_rollup_host::path::PathError;
 use tezos_smart_rollup_host::runtime::RuntimeError;
 use thiserror::Error;
@@ -50,6 +50,8 @@ pub enum UpgradeProcessError {
     InvalidUpgradeNonce,
     #[error("Internal upgrade error: {0}")]
     InternalUpgrade(&'static str),
+    #[error("Fallback mechanism was triggered")]
+    Fallback,
     #[error("Missing dictator key")]
     NoDictator,
 }

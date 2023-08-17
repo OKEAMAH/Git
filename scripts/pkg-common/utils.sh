@@ -65,14 +65,13 @@ export OCTEZ_PKGNAME
 export OCTEZ_REALNAME
 export OCTEZ_PKGREV
 
-
 # Expand protocols in configuration and init files
 #
 expand_PROTOCOL() {
     file="$1"
-
     protocols_formatted=""
     protocols_list=""
+
     for i in $protocols; do
 
 	if [ "$protocols_list" = "" ]; then 
@@ -140,7 +139,7 @@ initdScripts() {
                 chmod +x "${_initd}/${_inittarget}"
         fi
 
-}	
+}
 
 # Fix up the binary lists
 #
@@ -154,7 +153,7 @@ fixBinaryList() {
         if [ -f "${_binlist}" ]; then
                 _binaries=$(cat "${_binlist}" 2>/dev/null)
         fi
-	echo $_binaries
+	echo "$_binaries"
 }
 
 # Deal with Zcash parameters
@@ -168,7 +167,7 @@ zcashParams() {
 		echo "=> Zcash"
 		mkdir -p "${_zcashtgt}"
 		for shr in ${zcashstuff}; do
-                        cp "${zcashdir}/${shr}" \
+                        cp "${shr}" \
 				"${_zcashtgt}"
                 done
 	fi

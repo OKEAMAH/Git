@@ -231,6 +231,9 @@ Node
 
 - Removed Mumbai mempool plugin. (MR :gl:`!9696`)
 
+- Operations posting invalid WASM proofs are now discarded earlier by the
+  Nairobi mempool plugin. (MR :gl:`!`)
+
 Client
 ------
 - Adding client commands to generate, open and verify a time-lock.
@@ -244,6 +247,12 @@ Client
 
 - Add ``attest for`` and ``preattest for`` commands. ``endorse for`` and
   ``preendorse for`` are now deprecated. (MR :gl:`!9494`)
+
+- **Breaking change** Removed read-write commands specific to Mumbai (MR :gl:`!9695`)
+
+- Added new client commands related to the new staking mechanisms:
+  ``stake``, ``unstake``, ``finalize unstake``, ``set delegate parameters``,
+  ``get full balance`` and ``get staked balance``. (MR :gl:`!9642`)
 
 Baker
 -----
@@ -339,6 +348,9 @@ Smart Rollup WASM Debugger
 - Added option ``--no-reboot`` to the ``profile`` command to profile a single
   ``kernel_run``.
 - Improved profiling output for consecutive kernel runs.
+- Allow serialized messages in inputs: ``{ "serialized": "01..." }``, instead
+  of only external and internal transfers. This allows to inject arbitrary
+  messages in the rollup. (MR :gl:`!9613`)
 
 Data Availability Committee (DAC)
 ----------------------------------

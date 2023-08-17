@@ -18,6 +18,22 @@ protocols=${protocols:?protocols not specified}
 warnings
 pkg_vers=$(getOctezVersion)
 
+# Generic warning about BLST_PORTABLE=yes
+#
+if [ "$BLST_PORTABLE" != "yes" ]; then
+        echo "WARNING: BLST_PORTABLE is not set to yes in your environment"
+        echo "If the binaries were not made with BLST_PORTABLE=yes then they"
+        echo "might not run on some platforms."
+fi
+
+# Maintainer
+#
+OCTEZ_PKGMAINTAINER=${OCTEZ_PKGMAINTAINER:-package@nomadic-labs.com}
+if [ -f "$myhome/maintainer" ]; then
+  OCTEZ_PKGMAINTAINER=$(cat "$myhome/maintainer")
+fi
+OCTEZ_PKGNAME=${OCTEZ_PKGNAME:-octez}
+
 ### RPM specifc
 
 # Checking prerequisites
@@ -80,10 +96,10 @@ for specfile in "$myhome"/*spec.in; do
 
 	# init.d scripts
 	#
-	initdScripts "${common}/${pg}.initd.in" ${init_name} ${build_dir}
+	initdScripts "${common}/${pg}.initd.in" "${init_name}" "${build_dir}"
   	if [ "$pg" = "baker" ]; then
 		initdScripts "${common}/vdf.initd.in" octez-vdf \
-			${build_dir}
+			"${build_dir}"
 	fi
 
 
@@ -97,7 +113,7 @@ for specfile in "$myhome"/*spec.in; do
 
 	# Zcash parameters must ship with the node
 	#
-	zcashParams ${common}/${pg}-zcash "${build_dir}/usr/share/zcash-params"
+	zcashParams "${common}/${pg}-zcash" "${build_dir}/usr/share/zcash-params"
 
 	# Edit the spec file to contain real values
 	#
