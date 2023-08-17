@@ -16,8 +16,7 @@ agents:
     
 vars:
   network: sandbox
-  bootstrap_basename: bootstrap
-  
+  bootstrap_bakers: 20
   
 stages:
   - name: Initialize protocol file
