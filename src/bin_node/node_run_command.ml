@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (* Copyright (c) 2019-2021 Nomadic Labs, <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2023 Marigold, <contact@nmarigold.dev>                      *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -29,6 +30,9 @@ type error += Non_private_sandbox of P2p_addr.t
 type error += RPC_Port_already_in_use of P2p_point.Id.t list
 
 type error += Invalid_sandbox_file of string
+
+(** Profiler for RPC server. *)
+module Profiler = (val Profiler.wrap Shell_profiling.rpc_server_profiler)
 
 let () =
   register_error_kind
@@ -420,7 +424,11 @@ let launch_rpc_server ~mode (config : Config_file.t) dir (addr, port) =
     if path = "/metrics" then
       let*! response = Metrics_server.callback conn req body in
       Lwt.return (`Response response)
-    else Tezos_rpc_http_server.RPC_server.resto_callback server conn req body
+    else
+      (* Every call on endpoints which is not in [/metrics]
+         path will be logged inside the RPC report. *)
+      Profiler.span_s [path] @@ fun () ->
+      Tezos_rpc_http_server.RPC_server.resto_callback server conn req body
   in
   let update_metrics uri meth =
     Prometheus.Summary.(time (labels rpc_metrics [uri; meth]) Sys.time)
