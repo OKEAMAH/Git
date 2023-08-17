@@ -23,6 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** Profiler for RPC client.
+    Here, we want every [call_service] to be profiled. *)
+module Profiler = (val Profiler.wrap Shell_profiling.rpc_server_profiler)
+
 module type S = sig
   module type LOGGER = sig
     type request
@@ -455,6 +459,7 @@ module Make (Client : Resto_cohttp_client.Client.CALL) = struct
       (service : (_, _, p, q, i, o) Tezos_rpc.Service.t) (params : p)
       (query : q) (body : i) : o tzresult Lwt.t =
     let open Lwt_syntax in
+    Profiler.span_s [Uri.to_string base] @@ fun () ->
     let* ans =
       Client.call_service
         ?logger

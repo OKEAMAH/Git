@@ -3538,6 +3538,8 @@ let octez_rpc_http_client =
         resto_cohttp_client;
         octez_rpc;
         octez_rpc_http |> open_;
+        octez_base_unix |> open_;
+        octez_shell_services |> open_;
       ]
     ~modules:["RPC_client"]
 

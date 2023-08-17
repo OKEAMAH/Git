@@ -23,11 +23,15 @@
   octez-libs.tezos-base
   resto-cohttp-client
   octez-libs.tezos-rpc
-  octez-libs.tezos-rpc-http)
+  octez-libs.tezos-rpc-http
+  octez-libs.tezos-base.unix
+  octez-libs.tezos-shell-services)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives
-  -open Tezos_rpc_http)
+  -open Tezos_rpc_http
+  -open Tezos_base_unix
+  -open Tezos_shell_services)
  (modules RPC_client))
 
 (library
