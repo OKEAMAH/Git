@@ -172,6 +172,8 @@ end
 module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
   module PP = PP
 
+  let base = 1 lsl 1
+
   exception Too_many_checks of string
 
   exception Out_of_range
@@ -195,9 +197,9 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
 
   type public_parameters = Poly.t SMap.t
 
-  let zero, one, two = Scalar.(zero, one, one + one)
+  let zero, one, sbase = Scalar.(zero, one, of_int base)
 
-  let mone, mtwo = Scalar.(negate one, negate two)
+  let mone, mbase = Scalar.(negate one, negate sbase)
 
   module Lookup = struct
     let prefix = rc_prefix ^ "Lookup_"
@@ -229,7 +231,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
               let () = rc_idx := !rc_idx + 1 in
               let () = sum_n := !sum_n + bounds.(!rc_idx) in
               ith i
-            else Scalar.(ith i + (mtwo * ith (Int.add i 1))))
+            else Scalar.(ith i + (mbase * ith (Int.add i 1))))
       in
       (Evaluations.interpolation_fft domain evals, evals)
 
@@ -437,7 +439,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       let rec aux gwi = function
         | 1 -> gwi
         | i ->
-            let q = Z.(div (List.hd gwi) (one + one)) in
+            let q = Z.(div (List.hd gwi) (Z.of_int base)) in
             aux (q :: gwi) (i - 1)
       in
       let res = aux [x] up in
@@ -481,7 +483,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       let idrcb_evaluation = Evaluations.create z_evaluation_len in
       let idrc_evaluation = Evaluations.create z_evaluation_len in
       (* Z × (1-Z) × Lnin1 *)
-      (* Z × Lnin1 + (Z - 2Zg) × Pnin1 *)
+      (* Z × Lnin1 + (Z - B×Zg) × Pnin1 *)
       let identity_rc =
         (* Z × Lnin1 *)
         let identity_rca =
@@ -495,7 +497,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
             ~evaluations:[z_evaluation; lnin1_evaluation]
             ()
         in
-        (* (Z - 2Zg) × Pnin1 *)
+        (* (Z - B×Zg) × Pnin1 *)
         let identity_rcb =
           let pnin1_evaluation =
             Evaluations.find_evaluation
@@ -505,7 +507,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
           let z_min_BZg_evaluation =
             Evaluations.linear_c
               ~res:tmp_evaluation
-              ~linear_coeffs:[one; mtwo]
+              ~linear_coeffs:[one; mbase]
               ~composition_gx:([0; 1], n)
               ~evaluations:[z_evaluation; z_evaluation]
               ()
@@ -536,7 +538,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
         let pnin1 = get_answer answers X (circuit_prefix (suffix pnin1 wire)) in
         let look = get_answer answers X (prefix (Lookup.wire wire)) in
         let identity_rc =
-          Scalar.((z * lnin1) + ((z + (mtwo * zg)) * pnin1) + negate look)
+          Scalar.((z * lnin1) + ((z + (mbase * zg)) * pnin1) + negate look)
         in
         SMap.of_list [(prefix (rc_prefix ^ wire), identity_rc)]
 
@@ -545,9 +547,9 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       let* one_m_z = Num.custom ~ql:mone ~qc:one z z in
       let* id_a = Num.mul_list (to_list [z; one_m_z; lnin1]) in
       let* id_b =
-        let* z_m_2zg = Num.add z ~qr:mtwo zg in
-        let* one_m_z_p_2zg = Num.add one_m_z ~qr:two zg in
-        Num.mul_list (to_list [z_m_2zg; one_m_z_p_2zg; pnin1])
+        let* z_m_Bzg = Num.add z ~qr:mbase zg in
+        let* one_m_z_p_Bzg = Num.add one_m_z ~qr:sbase zg in
+        Num.mul_list (to_list [z_m_Bzg; one_m_z_p_Bzg; pnin1])
       in
       let wire = "w" ^ string_of_int w in
       ret
@@ -571,7 +573,7 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
     SMap.map (Permutation.build_permutation_wire ~size_domain) range_checks
 
   let setup ~srs ~n =
-    Cq.setup ~srs ~wire_size:n ~table:[Array.init 2 Scalar.of_int]
+    Cq.setup ~srs ~wire_size:n ~table:[Array.init base Scalar.of_int]
 
   let preprocessing ~range_checks ~permutations ~domain =
     let rc = SMap.mapi (RangeChecks.preprocessing ~domain) range_checks in
