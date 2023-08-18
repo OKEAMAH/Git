@@ -23,12 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This file contains all helper functions to
-    activate or deactivate a dedicated profiler.
-    So far, only the RPC profiler is declared and enabled,
-    but one can simply add a new profiler with corresponding
-    helper functions. *)
-
 open Tezos_base.Profiler
 
 type profiler_name =

@@ -175,6 +175,9 @@ type instance = (module INSTANCE)
 
 let ids = ref 0
 
+let file_format (type a) (module D : DRIVER with type config = a) =
+  D.file_format
+
 let instance (type a) (module D : DRIVER with type config = a) (config : a) =
   let state = D.create config in
   let module I = struct

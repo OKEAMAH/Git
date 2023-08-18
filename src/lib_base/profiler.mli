@@ -148,6 +148,8 @@ type 'a driver = (module DRIVER with type config = 'a)
 
 type instance
 
+val file_format : 'a driver -> file_format option
+
 val instance : 'a driver -> 'a -> instance
 
 val time : instance -> time
