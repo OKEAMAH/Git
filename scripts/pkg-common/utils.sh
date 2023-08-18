@@ -82,6 +82,7 @@ expand_PROTOCOL() {
 
        	if [ "$i" != "alpha" ]; then
 		# Alpha is handled in an experimental package
+		#shellcheck disable=SC1003
 		protocols_formatted=$protocols_formatted'\'"1${i}"'\'"2\n"
 	fi
 
