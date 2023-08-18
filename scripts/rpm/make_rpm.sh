@@ -1,3 +1,4 @@
+#!/bin/sh
 
 # RPM package build for Octez
 #
