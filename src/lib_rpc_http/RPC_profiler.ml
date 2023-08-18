@@ -27,7 +27,27 @@ open Profiler
 
 let rpc_client_profiler = unplugged ()
 
+type profiler_name = Rpc_client
+
+let profiler_name_to_string profiler_name =
+  match profiler_name with Rpc_client -> "rpc_client"
+
+let profiler_maker data_dir ~name max_lod profiler_driver file_format =
+  match file_format with
+  | Profiler.Plain_text ->
+      Profiler.instance
+        profiler_driver
+        Filename.Infix.
+          ( (data_dir // profiler_name_to_string name) ^ "_profiling.txt",
+            max_lod )
+  | Profiler.Json ->
+      Profiler.instance
+        profiler_driver
+        Filename.Infix.
+          ( (data_dir // profiler_name_to_string name) ^ "_profiling.json",
+            max_lod )
+
 let init profiler_maker =
-  plug rpc_client_profiler (profiler_maker ~name:"rpc_client")
+  plug rpc_client_profiler (profiler_maker ~name:Rpc_client)
 
 include (val wrap rpc_client_profiler)

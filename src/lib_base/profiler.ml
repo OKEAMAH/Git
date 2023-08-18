@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -123,6 +124,8 @@ let report_encoding =
            (req "recorded" (recorded_encoding report_encoding))))
 
 type (_, _) kind = ..
+
+type file_format = Plain_text | Json
 
 module type DRIVER = sig
   type config

@@ -23,8 +23,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type profiler_name
+
 (** Unplug RPC client profiler. *)
 val rpc_client_profiler : Profiler.profiler
 
+(** Start to log the for the provided [Profiler.driver] file format,
+    inside the specified [data_dir],
+    with the specified [profiler_name],
+    and the provided [max_lod]. *)
+val profiler_maker :
+  string ->
+  name:profiler_name ->
+  'a ->
+  (string * 'a) Profiler.driver ->
+  Profiler.file_format ->
+  Profiler.instance
+
 (** Plug the RPC client profiler given its name and Profiler instance. *)
-val init : (name:string -> Profiler.instance) -> unit
+val init : (name:profiler_name -> Profiler.instance) -> unit

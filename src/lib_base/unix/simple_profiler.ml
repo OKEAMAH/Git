@@ -318,8 +318,6 @@ type auto_writer_state = {
 type (_, _) Profiler.kind +=
   | Auto_write_to_file : (string * lod, auto_writer_state) Profiler.kind
 
-type file_format = Plain_text | Json
-
 let make_driver ~file_format =
   (module struct
     type nonrec state = auto_writer_state

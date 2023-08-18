@@ -1,3 +1,11 @@
+(*****************************************************************************)
+(*                                                                           *)
+(* SPDX-License-Identifier: MIT                                              *)
+(* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
+(*                                                                           *)
+(*****************************************************************************)
+
 module S = struct
   let profiler_names = Shell_profiling.all_profilers
 
@@ -35,7 +43,14 @@ module S = struct
     Resto.Arg.make
       ~name:"profiler name"
       ~destruct:(fun s ->
-        if List.mem_assoc ~equal:String.equal s Shell_profiling.all_profilers
+        if
+          List.mem_assoc
+            ~equal:String.equal
+            s
+            (List.map
+               (fun (name, profiler) ->
+                 (Shell_profiling.profiler_name_to_string name, profiler))
+               Shell_profiling.all_profilers)
         then Ok s
         else Error (Printf.sprintf "no profiler named '%s' found" s))
       ~construct:Fun.id

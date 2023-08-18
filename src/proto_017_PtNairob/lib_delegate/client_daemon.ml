@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -101,13 +102,33 @@ let may_start_profiler baking_dir =
         | None -> baking_dir
         | Some output_dir -> output_dir
       in
-      let profiler_maker ~name =
-        Profiler.instance
-          Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
-          Filename.Infix.((output_dir // name) ^ "_profiling.txt", max_lod)
+      let file_format =
+        match Sys.getenv_opt "PROFILING_FORMAT" with
+        | None -> Tezos_base.Profiler.Plain_text
+        | Some var -> (
+            match var with
+            | "txt" -> Tezos_base.Profiler.Plain_text
+            | "json" -> Tezos_base.Profiler.Json
+            | _ -> Tezos_base.Profiler.Plain_text)
       in
-      Baking_profiler.init profiler_maker ;
-      RPC_profiler.init profiler_maker
+      let baking_profiler_maker ~name =
+        Baking_profiler.profiler_maker
+          output_dir
+          ~name
+          max_lod
+          Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
+          file_format
+      in
+      let rpc_profiler_maker ~name =
+        RPC_profiler.profiler_maker
+          output_dir
+          ~name
+          max_lod
+          Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
+          file_format
+      in
+      Baking_profiler.init baking_profiler_maker ;
+      RPC_profiler.init rpc_profiler_maker
   | _ -> ()
 
 module Baker = struct

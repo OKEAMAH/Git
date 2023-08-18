@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -494,44 +495,28 @@ let run ?verbosity ~singleprocess ~strict ~operation_metadata_size_limit
   let*! () =
     Tezos_base_unix.Internal_event_unix.init ~config:internal_events ()
   in
-  (let parse_profiling_env_var () =
-     match Sys.getenv_opt "PROFILING" with
-     | None -> (None, None)
-     | Some var -> (
-         match String.split_on_char ':' var with
-         | [] -> (None, None)
-         | [x] -> (Some (String.lowercase_ascii x), None)
-         | x :: l ->
-             let output_dir = String.concat "" l in
-             if not (Sys.file_exists output_dir && Sys.is_directory output_dir)
-             then
-               Stdlib.failwith
-                 "Profiling output is not a directory or does not exist."
-             else (Some (String.lowercase_ascii x), Some output_dir))
-   in
-   match parse_profiling_env_var () with
-   | None, _ -> ()
-   | ( Some (("true" | "on" | "yes" | "terse" | "detailed" | "verbose") as mode),
-       output_dir ) ->
-       let max_lod =
-         match mode with
-         | "detailed" -> Profiler.Detailed
-         | "verbose" -> Profiler.Verbose
-         | _ -> Profiler.Terse
-       in
-       let output_dir =
-         match output_dir with
-         | None -> config.data_dir
-         | Some output_dir -> output_dir
-       in
-       let instance =
-         Profiler.instance
-           Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
-           Filename.Infix.(output_dir // "node_profiling.txt", max_lod)
-       in
-       Tezos_base.Profiler.(plug main) instance ;
-       Tezos_protocol_environment.Environment_profiler.plug instance
-   | _ -> ()) ;
+  let profiling_env_var = Node_profiler.parse_profiling_env_var () in
+  let () =
+    let profiler_options =
+      Node_profiler.get_profiler_options profiling_env_var config
+    in
+    match profiler_options with
+    | Some (max_lod, output_dir, file_format) ->
+        let instance =
+          match file_format with
+          | Profiler.Plain_text ->
+              Profiler.instance
+                Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
+                Filename.Infix.(output_dir // "node_profiling.txt", max_lod)
+          | Profiler.Json ->
+              Profiler.instance
+                Tezos_base_unix.Simple_profiler.auto_write_to_json_file
+                Filename.Infix.(output_dir // "node_profiling.json", max_lod)
+        in
+        Tezos_base.Profiler.(plug main) instance ;
+        Tezos_protocol_environment.Environment_profiler.plug instance
+    | _ -> ()
+  in
   Updater.init (Data_version.protocol_dir config.data_dir) ;
   Lwt_exit.(
     wrap_and_exit

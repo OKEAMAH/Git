@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -91,6 +92,8 @@ and report = {
 val report_encoding : report Data_encoding.t
 
 type (_, _) kind = ..
+
+type file_format = Plain_text | Json
 
 module type DRIVER = sig
   (** Parameters to launch an instance of the driver. *)
