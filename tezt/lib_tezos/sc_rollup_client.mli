@@ -190,6 +190,13 @@ val outbox_proof_batch :
   transaction list ->
   outbox_proof option Lwt.t
 
+val outbox_proof_opt :
+  ?hooks:Process_hooks.t ->
+  t ->
+  message_index:int ->
+  outbox_level:int ->
+  outbox_proof option Lwt.t
+
 (** [encode_json_outbox_msg outbox_msg_json] returns the encoding of
     an outbox message. *)
 val encode_json_outbox_msg :

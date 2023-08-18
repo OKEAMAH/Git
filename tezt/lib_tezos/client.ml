@@ -2518,6 +2518,42 @@ module Sc_rollup = struct
     in
     let parse process = Process.check process in
     {value = process; run = parse}
+
+  (*let extract_zku_address client_output =
+    client_output =~* rex ".*?(epx1\\w{33}.*)"
+
+  let wait_for_operation_inclusion ?(expect_failure = false) client ~src ~alias
+      ~public_parameters_file ~init_state_file ~circuits_info_file ~nb_ops
+      ~gas_cap ~burn_cap ~storage_limit =
+    let* client_output =
+      spawn_command
+        client
+        (["--wait"; "none"]
+        @ [
+            "wait";
+            "epoxy";
+            alias;
+            "from";
+            src;
+            "public_parameters";
+            "file:" ^ public_parameters_file;
+            "init_state";
+            "file:" ^ init_state_file;
+            "circuits_info";
+            "file:" ^ circuits_info_file;
+            "nb_ops";
+            string_of_int nb_ops;
+            "-G";
+            string_of_int gas_cap;
+            "--burn-cap";
+            string_of_int burn_cap;
+            "-S";
+            string_of_int storage_limit;
+          ])
+      |> Process.check_and_read_stdout ~expect_failure
+    in
+    let address = extract_zku_address client_output in
+    Lwt.return address*)
 end
 
 module Zk_rollup = struct

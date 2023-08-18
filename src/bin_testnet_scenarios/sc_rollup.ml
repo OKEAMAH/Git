@@ -25,7 +25,7 @@
 
 let originate_new_rollup ?(alias = "rollup")
     ?(boot_sector = Constant.wasm_echo_kernel_boot_sector)
-    ?(parameters_ty = "bytes") ~src client =
+    ?(parameters_ty = "bytes") ?whitelist ~src client =
   let* rollup =
     Client.Sc_rollup.originate
       client
@@ -36,6 +36,7 @@ let originate_new_rollup ?(alias = "rollup")
       ~parameters_ty
       ~boot_sector
       ~burn_cap:(Tez.of_int 2)
+      ?whitelist
   in
   Log.info "Rollup %s originated" rollup ;
   return rollup
@@ -104,6 +105,7 @@ let rejection_with_proof ~(testnet : unit -> Testnet.t) () =
   let* rollup_address =
     originate_new_rollup ~src:honest_operator.alias client
   in
+
   let level = Node.get_level node in
   let fault_level = level + 5 in
   Log.info
@@ -146,9 +148,113 @@ let rejection_with_proof ~(testnet : unit -> Testnet.t) () =
      result? *)
   unit
 
+let send_message_client ?hooks ?(src = Constant.bootstrap2.alias) client msg =
+  Client.Sc_rollup.send_message ?hooks ~src ~msg client
+
+let send_message = send_message_client
+
+let to_text_messages_arg msgs =
+  let json = Ezjsonm.list Ezjsonm.string msgs in
+  "text:" ^ Ezjsonm.to_string ~minify:true json
+
+let to_hex_messages_arg msgs =
+  let json = Ezjsonm.list Ezjsonm.string msgs in
+  "hex:" ^ Ezjsonm.to_string ~minify:true json
+
+let send_text_messages ?(format = `Raw) ?hooks ?src client msgs =
+  match format with
+  | `Raw -> send_message ?hooks ?src client (to_text_messages_arg msgs)
+  | `Hex -> send_message ?hooks ?src client (to_hex_messages_arg msgs)
+
+let private_rollup ~(testnet : unit -> Testnet.t) () =
+  let testnet = testnet () in
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* client, node = Helpers.setup_octez_node ~testnet () in
+  let* honest_operator = Client.gen_and_show_keys client in
+  let* dishonest_operator = Client.gen_and_show_keys client in
+  let* () =
+    Lwt.join
+      [
+        Helpers.wait_for_funded_key node client min_balance honest_operator;
+        Helpers.wait_for_funded_key node client min_balance dishonest_operator;
+      ]
+  in
+  let* rollup_address =
+    originate_new_rollup
+      ~src:honest_operator.alias
+      ~whitelist:[honest_operator.public_key_hash]
+      client
+  in
+  let _level = Node.get_level node in
+  let* rollup_node =
+    setup_l2_node
+      ~name:"honest-node"
+      ~operator:honest_operator.alias
+      client
+      node
+      rollup_address
+  in
+  let commitment_period = 20 in
+  let challenge_window = 40 in
+
+  let rollup_client =
+    Sc_rollup_client.create ~protocol:Protocol.Alpha rollup_node
+  in
+  let*! payload =
+    Sc_rollup_client.encode_json_outbox_msg rollup_client
+    @@ `O
+         [
+           ( "whitelist",
+             `A
+               [
+                 `String dishonest_operator.public_key_hash;
+                 `String honest_operator.public_key_hash;
+               ] );
+         ]
+  in
+
+  let outbox_level = Node.get_level node in
+  let* () =
+    send_text_messages ~src:honest_operator.alias ~format:`Hex client [payload]
+  in
+
+  let blocks_to_wait =
+    outbox_level + 3 + (2 * commitment_period) + challenge_window
+  in
+
+  let* _ = Node.wait_for_level node blocks_to_wait in
+
+  let rec loop outbox_level =
+    let* res =
+      Sc_rollup_client.outbox_proof_opt
+        rollup_client
+        ~message_index:0
+        ~outbox_level
+    in
+    match res with Some res -> return res | None -> loop (outbox_level + 1)
+  in
+  let* {commitment_hash; proof} = loop outbox_level in
+
+  let*! () =
+    Client.Sc_rollup.execute_outbox_message
+      ~burn_cap:(Tez.of_int 10)
+      ~fee:(Tez.of_mutez_int 1379)
+      ~rollup:rollup_address
+      ~src:honest_operator.alias
+      ~commitment_hash
+      ~proof
+      client
+  in
+  unit
+
 let register ~testnet =
   Test.register
     ~__FILE__
     ~title:"Rejection with proof"
     ~tags:["rejection"]
-    (rejection_with_proof ~testnet)
+    (rejection_with_proof ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"Private rollup"
+    ~tags:["private_rollup"]
+    (private_rollup ~testnet)

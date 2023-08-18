@@ -206,6 +206,38 @@ let outbox_proof ?hooks ?expected_error sc_client ~message_index ~outbox_level
       let* () = Process.check_error ~msg process in
       return None
 
+let outbox_proof_opt ?hooks sc_rollup ~message_index ~outbox_level =
+  let*? process =
+    spawn_command
+      ?hooks
+      sc_rollup
+      (List.concat
+         [
+           [
+             "get";
+             "proof";
+             "for";
+             "message";
+             string_of_int message_index;
+             "of";
+             "outbox";
+             "at";
+             "level";
+             string_of_int outbox_level;
+           ];
+         ])
+  in
+  let* _ = Process.wait process in
+  let* out = Lwt_io.read (Process.stdout process) in
+  let* err = Lwt_io.read (Process.stderr process) in
+  if Base.(err =~ rex ".*No message at index.*") then return None
+  else
+    let open JSON in
+    let json = parse ~origin:"outbox_proof" out in
+    let commitment_hash = json |-> "commitment_hash" |> as_string in
+    let proof = json |-> "proof" |> as_string in
+    return (Some {commitment_hash; proof})
+
 let outbox_proof_batch ?hooks ?expected_error sc_client ~message_index
     ~outbox_level batch =
   outbox_proof

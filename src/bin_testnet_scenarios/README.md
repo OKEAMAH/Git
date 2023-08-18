@@ -33,7 +33,7 @@ data-dir you can provide the path:
 ```
 {
   "protocol": "alpha",
-  "network": "https://teztnets.xyz/mondaynet-2023-MM-DD",
+  "network": "https://rpc.dailynet-2023-08-16.teztnets.xyz/chains/main/chain_id",
   "data-dir": /home/.octez-node-mondaynet"
 }
 ```
