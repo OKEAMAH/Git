@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -173,6 +174,9 @@ end
 type instance = (module INSTANCE)
 
 let ids = ref 0
+
+let file_format (type a) (module D : DRIVER with type config = a) =
+  D.file_format
 
 let instance (type a) (module D : DRIVER with type config = a) (config : a) =
   let state = D.create config in

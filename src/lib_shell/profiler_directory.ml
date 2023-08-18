@@ -22,12 +22,6 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-
-let profiler_maker data_dir ~name max_lod file_format =
-  Tezos_base.Profiler.instance
-    file_format
-    Filename.Infix.((data_dir // name) ^ "_profiling.txt", max_lod)
-
 let build_rpc_directory data_dir =
   let open Lwt_result_syntax in
   let register endpoint f directory =
@@ -50,3 +44,15 @@ let build_rpc_directory data_dir =
   |> register deactivate (fun ((), name) () () ->
          Shell_profiling.deactivate name ;
          return_unit)
+
+let profiler_maker data_dir ~name max_lod profiler_driver =
+  match Tezos_base.Profiler.file_format profiler_driver with
+  | Some Tezos_base.Profiler.Plain_text ->
+      Tezos_base.Profiler.instance
+        profiler_driver
+        Filename.Infix.((data_dir // name) ^ "_profiling.txt", max_lod)
+  | Some Tezos_base.Profiler.Json ->
+      Tezos_base.Profiler.instance
+        profiler_driver
+        Filename.Infix.((data_dir // name) ^ "_profiling.json", max_lod)
+  | _ -> Stdlib.failwith "impossible"
