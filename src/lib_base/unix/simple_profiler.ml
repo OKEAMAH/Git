@@ -276,6 +276,8 @@ module Headless = struct
 
   let kind = Headless
 
+  let file_format = None
+
   let create lod = ref (empty lod)
 
   let stamp state lod id = state := stamp !state lod id
@@ -319,7 +321,7 @@ type auto_writer_state = {
 type (_, _) Profiler.kind +=
   | Auto_write_to_file : (string * lod, auto_writer_state) Profiler.kind
 
-let make_driver ~file_format =
+let make_driver ?(file_format = Plain_text) () =
   (module struct
     type nonrec state = auto_writer_state
 

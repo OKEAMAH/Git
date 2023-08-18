@@ -105,6 +105,9 @@ module type DRIVER = sig
   (** A typed kind for downcasting. *)
   val kind : (config, state) kind
 
+  (** If needed, export to .txt or .json. *)
+  val file_format : file_format option
+
   (** Create an instance from a config. *)
   val create : config -> state
 

@@ -134,6 +134,8 @@ module type DRIVER = sig
 
   val kind : (config, state) kind
 
+  val file_format : file_format option
+
   val create : config -> state
 
   val time : state -> time
