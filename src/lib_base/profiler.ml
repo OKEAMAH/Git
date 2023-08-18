@@ -124,12 +124,16 @@ let report_encoding =
 
 type (_, _) kind = ..
 
+type file_format = Plain_text | Json
+
 module type DRIVER = sig
   type config
 
   type state
 
   val kind : (config, state) kind
+
+  val file_format : file_format option
 
   val create : config -> state
 

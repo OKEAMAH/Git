@@ -92,6 +92,8 @@ val report_encoding : report Data_encoding.t
 
 type (_, _) kind = ..
 
+type file_format = Plain_text | Json
+
 module type DRIVER = sig
   (** Parameters to launch an instance of the driver. *)
   type config
@@ -101,6 +103,9 @@ module type DRIVER = sig
 
   (** A typed kind for downcasting. *)
   val kind : (config, state) kind
+
+  (** If needed, export to .txt or .json. *)
+  val file_format : file_format option
 
   (** Create an instance from a config. *)
   val create : config -> state

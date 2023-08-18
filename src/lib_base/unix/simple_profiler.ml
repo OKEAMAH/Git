@@ -276,6 +276,8 @@ module Headless = struct
 
   let kind = Headless
 
+  let file_format = None
+
   let create lod = ref (empty lod)
 
   let stamp state lod id = state := stamp !state lod id
@@ -364,7 +366,7 @@ let make_driver ~file_format =
     let may_write ({time = t0; output; _} as state) =
       match report state with
       | None -> ()
-      | Some report ->
+      | Some report -> (
           let ppf =
             match output with
             | Open (_, _, ppf) -> ppf
