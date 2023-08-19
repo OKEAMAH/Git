@@ -562,7 +562,12 @@ module Activate_protocol = struct
     let client = Client.create ~path:path_client ~endpoint () in
     Account.write Constant.all_secret_keys ~base_dir:(Client.base_dir client) ;
     let protocol = protocol_of_string protocol in
-    Client.activate_protocol ~protocol ~parameter_file client
+    let timestamp = Tezos_base.Time.System.Span.of_seconds_exn 5. in
+    Client.activate_protocol
+      ~timestamp:(Ago timestamp)
+      ~protocol
+      ~parameter_file
+      client
 
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ () = ()
 end
@@ -1977,6 +1982,176 @@ module Dac_post_file = struct
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ _res = ()
 end
 
+(* XXX *)
+
+let expand_foreign_endpoint run Foreign_endpoint.{scheme; host; port} =
+  Foreign_endpoint.{scheme = run scheme; host = run host; port}
+
+type 'uri start_octez_baker = {
+  name : string option;
+  protocol : string;
+  node_data_dir : 'uri;
+  wallet_base_dir : 'uri;
+  node_rpc_endpoint : Foreign_endpoint.t;
+  dal_node_rpc_endpoint : Foreign_endpoint.t option;
+  delegates : string list;
+}
+
+type (_, _) Remote_procedure.t +=
+  | Start_octez_baker :
+      'uri start_octez_baker
+      -> (unit, 'uri) Remote_procedure.t
+
+module Start_octez_baker = struct
+  let name = "tezos.start_baker"
+
+  type 'uri t = 'uri start_octez_baker
+
+  type r = unit
+
+  let of_remote_procedure :
+      type a. (a, 'uri) Remote_procedure.t -> 'uri t option = function
+    | Start_octez_baker args -> Some args
+    | _ -> None
+
+  let to_remote_procedure args = Start_octez_baker args
+
+  let unify : type a. (a, 'uri) Remote_procedure.t -> (a, r) Remote_procedure.eq
+      = function
+    | Start_octez_baker _ -> Eq
+    | _ -> Neq
+
+  let encoding uri_encoding =
+    let open Data_encoding in
+    conv
+      (fun {
+             name;
+             protocol;
+             node_data_dir;
+             wallet_base_dir;
+             node_rpc_endpoint;
+             dal_node_rpc_endpoint;
+             delegates;
+           } ->
+        ( name,
+          protocol,
+          node_data_dir,
+          wallet_base_dir,
+          node_rpc_endpoint,
+          dal_node_rpc_endpoint,
+          delegates ))
+      (fun ( name,
+             protocol,
+             node_data_dir,
+             wallet_base_dir,
+             node_rpc_endpoint,
+             dal_node_rpc_endpoint,
+             delegates ) ->
+        {
+          name;
+          protocol;
+          node_data_dir;
+          wallet_base_dir;
+          node_rpc_endpoint;
+          dal_node_rpc_endpoint;
+          delegates;
+        })
+      (obj7
+         (opt "name" string)
+         (dft "protocol" string "alpha")
+         (req "node_data_dir" uri_encoding)
+         (req "wallet_base_dir" uri_encoding)
+         (req "node_rpc_endpoint" Foreign_endpoint.encoding)
+         (opt "dal_node_rpc_endpoint" Foreign_endpoint.encoding)
+         (dft "delegates" (list string) []))
+
+  let r_encoding = Data_encoding.empty
+
+  let tvalue_of_r (() : r) = Tnull
+
+  let expand ~self ~run
+      {
+        name;
+        protocol;
+        node_data_dir;
+        wallet_base_dir;
+        node_rpc_endpoint;
+        dal_node_rpc_endpoint;
+        delegates;
+      } =
+    let uri_run uri = Remote_procedure.global_uri_of_string ~self ~run uri in
+    {
+      name = Option.map run name;
+      protocol = run protocol;
+      node_data_dir = uri_run node_data_dir;
+      wallet_base_dir = uri_run wallet_base_dir;
+      node_rpc_endpoint = expand_foreign_endpoint run node_rpc_endpoint;
+      dal_node_rpc_endpoint =
+        Option.map (expand_foreign_endpoint run) dal_node_rpc_endpoint;
+      delegates = List.map run delegates;
+    }
+
+  let resolve ~self resolver
+      {
+        name;
+        protocol;
+        node_data_dir;
+        wallet_base_dir;
+        node_rpc_endpoint;
+        dal_node_rpc_endpoint;
+        delegates;
+      } =
+    let node_data_dir =
+      Remote_procedure.file_agent_uri ~self ~resolver node_data_dir
+    in
+    let wallet_base_dir = Remote_procedure.file_agent_uri ~self ~resolver in
+    let coordinator =
+      resolve_dac_rpc_global_uri ~self ~resolver args.coordinator
+    in
+    {args with dac_client_path; file_path; coordinator}
+      {
+        name;
+        protocol;
+        node_data_dir;
+        wallet_base_dir;
+        node_rpc_endpoint;
+        dal_node_rpc_endpoint;
+        delegates;
+      }
+
+  let run _state
+      {name = _; node_name; protocol; node_rpc_addr; node_rpc_port; delegates} =
+    let node_rpc_port = int_of_string node_rpc_port in
+    let node_rpc_addr = Option.value node_rpc_addr ~default:"127.0.0.1" in
+    let l1_node =
+      (* We only need the node's context to start a baker, so the path is not
+         relevant. *)
+      Node.create
+        ?name:node_name
+        ~rpc_host:node_rpc_addr
+        ~rpc_port:node_rpc_port
+        ~path:""
+        []
+    in
+    let protocol =
+      Protocol.of_string_opt protocol |> function
+      | Some p -> p
+      | None -> failwith (Format.sprintf "Unknown protocol name %S" protocol)
+    in
+    let base_dir =
+      (* XXX Currently, we only use l1_client to initialize secret keys and provide it
+         to create a baker, bu this will evolve in the future. *)
+      let l1_client = Client.create () in
+      Account.write
+        Constant.all_secret_keys
+        ~base_dir:(Client.base_dir l1_client) ;
+      Client.base_dir l1_client
+    in
+    Baker.create ~protocol l1_node ~base_dir ~delegates |> Baker.run
+
+  let on_completion ~on_new_service:_ ~on_new_metrics_source:_ (() : r) = ()
+end
+
 let register_procedures () =
   Remote_procedure.register (module Start_octez_node) ;
   Remote_procedure.register (module Generate_protocol_file) ;
@@ -1988,4 +2163,5 @@ let register_procedures () =
   Remote_procedure.register (module Prepare_kernel_installer) ;
   Remote_procedure.register (module Smart_rollups_add_messages) ;
   Remote_procedure.register (module Start_dac_node) ;
-  Remote_procedure.register (module Dac_post_file)
+  Remote_procedure.register (module Dac_post_file) ;
+  Remote_procedure.register (module Start_octez_baker)

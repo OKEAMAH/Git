@@ -32,6 +32,14 @@ val rpc_host : t -> string
 val rpc_port : t -> int
 
 val rpc_scheme : t -> string
+
 (** Encode the given foreign endpoint as a string value. *)
 val as_string : t -> string
 
+
+(** Decode the given string as an endpoint. The assumed default scheme is "http"
+    if not provided in the given string. *)
+val of_string : string -> t
+
+(** A data encoding for values of type {!t}*)
+val encoding : t Data_encoding.t

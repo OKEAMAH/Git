@@ -43,6 +43,10 @@ val default_constants : constants
 (** Get the name of a protocol, capitalized (e.g. ["Edo"]). *)
 val name : t -> string
 
+(** Get the protocol of a name, if recognized (e.g. [Alpha] from strings "Alpha"
+    or "alpha" ). *)
+val of_string_opt : string -> t option
+
 (** Get the number of a protocol, e.g. 012 for Ithaca.
 
     The number for [Alpha] is the number it will have once snapshotted.

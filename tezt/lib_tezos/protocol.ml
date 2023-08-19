@@ -44,6 +44,21 @@ let name = function
   | Nairobi -> "Nairobi"
   | Oxford -> "Oxford"
 
+let of_string_opt = function
+  | "alpha" | "Alpha" -> Some Alpha
+  | "nairobi" | "Nairobi" -> Some Nairobi
+  | "Oxford" | "oxford" -> Some Oxford
+  | _ -> None
+
+(* This static check should be updated each time type {!t} above evolves. It
+   ensures that the function {!of_string_opt} above is updated alongside
+   function {!name}. *)
+let () =
+  assert (
+    List.for_all
+      (fun p -> Option.equal ( == ) (Some p) (name p |> of_string_opt))
+      [Nairobi; Oxford; Alpha])
+
 let number = function Nairobi -> 017 | Oxford -> 018 | Alpha -> 019
 
 let directory = function

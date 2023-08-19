@@ -13,12 +13,12 @@ agents:
     user: root
     port: 30000
     identity: ~/.ssh/id_rsa
-    
+
 vars:
   network: sandbox
   bootstrap_basename: bootstrap
-  
-  
+
+
 stages:
   - name: Initialize protocol file
     with_agents: 'localhost'
@@ -26,9 +26,9 @@ stages:
     jobs:
       - name: Upload protocol file
         copy:
-          local_path: 'src/proto_alpha/parameters/{{ vars.network }}-parameters.json'          
+          local_path: 'src/proto_alpha/parameters/{{ vars.network }}-parameters.json'
           remote_path: '.'
-                    
+
       - name: Generate protocol file
         tezos.generate_protocol_file:
           protocol_file: '{{ vars.network }}-parameters.json'
@@ -50,12 +50,17 @@ stages:
         copy:
           local_path: octez-node
           remote_path: '.'
- 
+
       - name: Upload octez-client
         copy:
           local_path: octez-client
           remote_path: '.'
-        
+
+      - name: Upload octez-baker-alpha
+        copy:
+          local_path: octez-baker-alpha
+          remote_path: '.'
+
       - name: Start octez-node
         tezos.start_node:
           name: node
@@ -65,16 +70,30 @@ stages:
           rpc_port: '30001'
           metrics_port: '30002'
           net_port: '30003'
-          
+
       - name: Activate protocol
         tezos.activate_protocol:
           endpoint: self://node
           path_client: self://./octez-client
           protocol: alpha
           parameter_file: 'self://sandbox-parameters.json'
-          
+
       - name: Wait for bootstrapped node
         tezos.wait_for_bootstrapped:
           path_client: self://./octez-client
           endpoint: self://node
-      
+
+      - name: Start octez-baker-alpha
+        tezos.start_baker:
+          name: baker
+          protocol: alpha
+          node_data_dir : self://...
+          wallet_base_dir : self://...
+          node_rpc_endpoint : http://127.0.0.1:30001
+          dal_node_rpc_endpoint : http://127.0.0.1:30002
+          delegates:
+           - bootstrap1
+           - bootstrap2
+           - bootstrap3
+           - bootstrap4
+           - bootstrap5

@@ -30,6 +30,26 @@ let rpc_host {host; _} = host
 let rpc_port {port; _} = port
 
 let rpc_scheme {scheme; _} = scheme
+
 let as_string {scheme; host; port} =
   Printf.sprintf "%s://%s:%d" scheme host port
   
+
+let of_string s =
+  let mk scheme host port =
+    try
+      let port = int_of_string port in
+      {scheme; host; port}
+    with _ -> Test.fail "Bad port %s in endpoint %s" port s
+  in
+  match String.split_on_char ':' s with
+  | [scheme; "//"; host; port] -> mk scheme host port
+  | [host; port] -> mk "http" host port
+  | _ -> Test.fail "Bad endpoint %s" s
+
+let encoding =
+  let open Data_encoding in
+  conv
+    (fun {scheme; host; port} -> (scheme, host, port))
+    (fun (scheme, host, port) -> {scheme; host; port})
+    (obj3 (dft "scheme" string "http") (req "host" string) (req "port" uint16))
