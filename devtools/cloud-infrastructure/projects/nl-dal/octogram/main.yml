@@ -6,13 +6,13 @@ agents:
     address: 127.0.0.1
     user: root
     port: 30000
-    identity: ~/.ssh/tf
+    identity: ~/.ssh/id_rsa
 
   - name: localhost
     address: 127.0.0.1
     user: root
     port: 30000
-    identity: ~/.ssh/tf
+    identity: ~/.ssh/id_rsa
     
 vars:
   network: sandbox
