@@ -71,7 +71,7 @@ stages:
           endpoint: self://node
           path_client: self://./octez-client
           protocol: alpha
-          parameter_file: 'sandbox-parameters.json'
+          parameter_file: 'self://sandbox-parameters.json'
           
       - name: Wait for bootstrapped node
         tezos.wait_for_bootstrapped:
