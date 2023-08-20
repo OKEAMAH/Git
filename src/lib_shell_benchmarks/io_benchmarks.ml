@@ -916,10 +916,7 @@ module Read_random_key_bench : Benchmark.Simple_with_num = struct
 
   let default_config =
     {
-      existing_context =
-        ( "/home/hsaito/Git/tezos/tezos-mainet-2250000/context",
-          Context_hash.of_b58check_exn
-            "CoVbMJMgycg4AFwk33FDaPzaEN152KKz1NYqaqaQ6T1657STa6Wk" );
+      existing_context = ( "/no/such/file", Context_hash.zero );
       subdirectory = ["contracts"; "index"];
     }
 
@@ -1047,10 +1044,7 @@ module Write_random_keys_bench : Benchmark.Simple_with_num = struct
 
   let default_config =
     {
-      existing_context =
-        ( "/home/hsaito/Git/tezos/tezos-mainet-2250000/context",
-          Context_hash.of_b58check_exn
-            "CoVbMJMgycg4AFwk33FDaPzaEN152KKz1NYqaqaQ6T1657STa6Wk" );
+      existing_context = ( "/no/such/file", Context_hash.zero );
       storage_chunk_bytes = 1000;
       storage_chunks = {min = 1; max = 1000};
       max_written_keys = 10_000;
