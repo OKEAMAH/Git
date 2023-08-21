@@ -32,4 +32,4 @@ val headless : Profiler.lod Profiler.driver
     ends. *)
 val auto_write_to_txt_file : (string * Profiler.lod) Profiler.driver
 
-val auto_write_to_json_file : (string * Profiler.lod) Profiler.driver
+val auto_write_to_json_file : unit -> (string * Profiler.lod) Profiler.driver
