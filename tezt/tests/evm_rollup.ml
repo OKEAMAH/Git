@@ -2141,8 +2141,8 @@ type storage_migration_results = {
      on master.
    - everytime a new path/rpc/object is stored in the kernel, a new sanity check
      MUST be generated. *)
-let gen_kernel_migration_test ~dictator ~scenario_prior ~scenario_after
-    ~protocol =
+let gen_kernel_migration_test ~deposit_admin ~dictator ~scenario_prior
+    ~scenario_after ~protocol =
   let current_kernel_base_installee = "src/kernel_evm/kernel/tests/resources" in
   let current_kernel_installee = "ghostnet_evm_kernel" in
   let* evm_setup =
@@ -2153,7 +2153,7 @@ let gen_kernel_migration_test ~dictator ~scenario_prior ~scenario_after
           base_installee = current_kernel_base_installee;
           installee = current_kernel_installee;
         }
-      ~deposit_admin:None
+      ~deposit_admin
       protocol
   in
   (* Load the EVM rollup's storage and sanity check results. *)
@@ -2210,10 +2210,72 @@ let test_kernel_migration =
       evm_setup
   in
   gen_kernel_migration_test
+    ~deposit_admin:None
     ~dictator:sender
     ~scenario_prior
     ~scenario_after
     ~protocol
+
+let test_deposit_before_and_after_migration =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "migration"; "deposit"]
+    ~title:"Deposit before and after migration"
+  @@ fun protocol ->
+  let dictator = Eth_account.bootstrap_accounts.(0) in
+  let admin = Constant.bootstrap5 in
+  let receiver = "0x119811f34EF4491014Fbc3C969C426d37067D6A4" in
+  let amount_cmutez = 50_000_000 in
+  let amount_ctez = 50 in
+
+  let scenario_prior
+      ~evm_setup:{deposit_addresses; sc_rollup_node; node; client; endpoint; _}
+      =
+    let {fa12; bridge} =
+      match deposit_addresses with Some x -> x | None -> assert false
+    in
+    let* () =
+      deposit
+        ~amount_cmutez
+        ~fa12
+        ~bridge
+        ~admin:admin.public_key_hash
+        ~receiver
+        ~sc_rollup_node
+        ~node
+        client
+    in
+    check_balance ~receiver ~endpoint amount_ctez
+  in
+  let scenario_after
+      ~evm_setup:{deposit_addresses; sc_rollup_node; node; client; endpoint; _}
+      ~sanity_check:_ =
+    let {fa12; bridge} =
+      match deposit_addresses with Some x -> x | None -> assert false
+    in
+    let* () =
+      deposit
+        ~amount_cmutez
+        ~fa12
+        ~bridge
+        ~admin:admin.public_key_hash
+        ~receiver
+        ~sc_rollup_node
+        ~node
+        client
+    in
+    check_balance ~receiver ~endpoint (amount_ctez * 2)
+  in
+  gen_kernel_migration_test
+    ~deposit_admin:(Some admin)
+    ~dictator
+    ~scenario_prior
+    ~scenario_after
+    ~protocol
+
+let register_evm_migration ~protocols =
+  test_kernel_migration protocols ;
+  test_deposit_before_and_after_migration protocols
 
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
@@ -2251,7 +2313,8 @@ let register_evm_proxy_server ~protocols =
   test_kernel_upgrade_wrong_rollup_address protocols ;
   test_kernel_upgrade_no_dictator protocols ;
   test_kernel_upgrade_failing_migration protocols ;
-  test_rpc_sendRawTransaction protocols ;
-  test_kernel_migration protocols
+  test_rpc_sendRawTransaction protocols
 
-let register ~protocols = register_evm_proxy_server ~protocols
+let register ~protocols =
+  register_evm_proxy_server ~protocols ;
+  register_evm_migration ~protocols
