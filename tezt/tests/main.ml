@@ -225,6 +225,17 @@ let register_protocol_specific_because_regression_tests () =
   (* This can be safely removed after Nairobi is frozen *)
   Timelock_disabled.register ~protocols:[Nairobi]
 
+exception Foo
+
+let () =
+  Test.register ~__FILE__ ~title:"foo" ~tags:["foo"] @@ fun () ->
+  let _ = Tezt.Process.run "timeout" ["10"; "yes"] in
+  let* () = unit in
+  Lwt.try_bind
+    (fun () -> raise Foo)
+    (fun () -> unit)
+    (fun _exn -> Test.fail "coucou")
+
 let () =
   register_protocol_independent_tests () ;
   register_protocol_migration_tests () ;

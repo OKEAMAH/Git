@@ -60,37 +60,28 @@ let rec try_read_line ~input state k =
 let run ~input ~output state =
   Log.info "Ready %s..." (Agent_state.home_dir state) ;
   let rec run () =
-    try_read_line ~input state @@ fun req_str ->
-    let* _ =
-      Lwt.both
-        (if Agent_builtins.agent_should_continue state then run ()
-        else return ())
-      @@
+    if not @@ Agent_builtins.agent_should_continue state then unit
+    else
+      try_read_line ~input state @@ fun req_str ->
       match Helpers.of_json_string request_encoding req_str with
       | {proc_id; procedure = Packed proc} ->
           Log.debug ">>[%d]" proc_id ;
-          Lwt.try_bind
-            (fun () -> Remote_procedure.run state proc)
-            (fun res ->
-              Lwt_io.atomic
-                (fun output ->
-                  Lwt_io.write_line
-                    output
-                    Format.(
-                      sprintf
-                        "<<[%d]: %s"
-                        proc_id
-                        (Helpers.to_json_string
-                           (Remote_procedure.response_encoding proc)
-                           res)))
-                output)
-            (fun exn ->
-              Format.eprintf "EXN: %s@." (Printexc.to_string exn) ;
-              Test.fail
-                "Something went wrong with request %d, we need to do something \
-                 about that."
-                proc_id)
-    in
-    unit
+          let p =
+            let* res = Remote_procedure.run state proc in
+            Lwt_io.atomic
+              (fun output ->
+                Lwt_io.write_line
+                  output
+                  Format.(
+                    sprintf
+                      "<<[%d]: %s"
+                      proc_id
+                      (Helpers.to_json_string
+                         (Remote_procedure.response_encoding proc)
+                         res)))
+              output
+          in
+          let* _ = Tezt.Base.lwt_both_fail_early p (run ()) in
+          unit
   in
   run ()
