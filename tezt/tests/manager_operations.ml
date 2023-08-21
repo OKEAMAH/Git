@@ -320,25 +320,26 @@ module Memchecks = struct
         string_of_classification c
 
   let mempool_get_operations ?classification (mempool : Mempool.t) =
+    let map = List.map (fun (op : Mempool.operation) -> op.hash) in
     match classification with
     | None ->
         List.concat
           [
-            mempool.validated;
-            mempool.refused;
-            mempool.branch_refused;
-            mempool.branch_delayed;
-            mempool.outdated;
-            mempool.unprocessed;
+            map mempool.validated;
+            map mempool.refused;
+            map mempool.branch_refused;
+            map mempool.branch_delayed;
+            map mempool.outdated;
+            map mempool.unprocessed;
           ]
     | Some c -> (
         match c with
-        | `Validated -> mempool.validated
-        | `Refused -> mempool.refused
-        | `Branch_refused -> mempool.branch_refused
-        | `Branch_delayed -> mempool.branch_delayed
-        | `Outdated -> mempool.outdated
-        | `Unprocessed -> mempool.unprocessed)
+        | `Validated -> map mempool.validated
+        | `Refused -> map mempool.refused
+        | `Branch_refused -> map mempool.branch_refused
+        | `Branch_delayed -> map mempool.branch_delayed
+        | `Outdated -> map mempool.outdated
+        | `Unprocessed -> map mempool.unprocessed)
 
   let check_operation_is_in_mempool ~__LOC__ classification ?(explain = "")
       mempool oph =

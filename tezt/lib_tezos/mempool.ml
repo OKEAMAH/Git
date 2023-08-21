@@ -23,13 +23,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type operation = {
+  hash : string;
+  protocol : string option;
+  branch : string;
+  contents : JSON.t list;
+  signature : string option;
+  errors : JSON.t list option;
+}
+
+let operation_typ : operation Check.typ =
+  let open Check in
+  convert (fun op -> op.hash) string
+
 type t = {
-  validated : string list;
-  branch_delayed : string list;
-  branch_refused : string list;
-  refused : string list;
-  outdated : string list;
-  unprocessed : string list;
+  validated : operation list;
+  branch_delayed : operation list;
+  branch_refused : operation list;
+  refused : operation list;
+  outdated : operation list;
+  unprocessed : operation list;
 }
 
 (* A comparable type for mempool where classification and ordering
@@ -45,7 +58,7 @@ let typ : t Check.typ =
         @ sort mempool.branch_refused
         @ sort mempool.refused @ sort mempool.outdated
         @ sort mempool.unprocessed))
-    (list string)
+    (list operation_typ)
 
 (* A comparable type for mempool where ordering does not matter. *)
 let classified_typ : t Check.typ =
@@ -61,7 +74,7 @@ let classified_typ : t Check.typ =
         sort mempool.outdated;
         sort mempool.unprocessed;
       ])
-    (list (list string))
+    (list (list operation_typ))
 
 let empty =
   {
@@ -74,10 +87,13 @@ let empty =
   }
 
 let symmetric_diff left right =
+  let in_list op1 l =
+    List.exists (fun op2 -> String.equal op1.hash op2.hash) l
+  in
   let diff left right =
     List.(
-      filter (fun op -> not (mem op right)) left
-      @ filter (fun op -> not (mem op left)) right)
+      filter (fun op -> not (in_list op right)) left
+      @ filter (fun op -> not (in_list op left)) right)
   in
   {
     validated = diff left.validated right.validated;
@@ -90,15 +106,30 @@ let symmetric_diff left right =
 
 let of_json mempool_json =
   let get_hash op = JSON.(op |-> "hash" |> as_string) in
-  let get_hashes classification =
-    List.map get_hash JSON.(mempool_json |-> classification |> as_list)
+  let get_protocol op = JSON.(op |-> "protocol" |> as_string_opt) in
+  let get_branch op = JSON.(op |-> "branch" |> as_string) in
+  let get_contents op = JSON.(op |-> "contents" |> as_list) in
+  let get_signature op = JSON.(op |-> "signature" |> as_string_opt) in
+  let get_errors op = JSON.(op |-> "error" |> as_list_opt) in
+  let get_operation op =
+    {
+      hash = get_hash op;
+      protocol = get_protocol op;
+      branch = get_branch op;
+      contents = get_contents op;
+      signature = get_signature op;
+      errors = get_errors op;
+    }
   in
-  let validated = get_hashes "validated" in
-  let branch_delayed = get_hashes "branch_delayed" in
-  let branch_refused = get_hashes "branch_refused" in
-  let refused = get_hashes "refused" in
-  let outdated = get_hashes "outdated" in
-  let unprocessed = get_hashes "unprocessed" in
+  let get_operations classification =
+    List.map get_operation JSON.(mempool_json |-> classification |> as_list)
+  in
+  let validated = get_operations "validated" in
+  let branch_delayed = get_operations "branch_delayed" in
+  let branch_refused = get_operations "branch_refused" in
+  let refused = get_operations "refused" in
+  let outdated = get_operations "outdated" in
+  let unprocessed = get_operations "unprocessed" in
   {validated; branch_delayed; branch_refused; refused; outdated; unprocessed}
 
 let get_mempool ?endpoint ?hooks ?chain ?(validated = true)
@@ -129,6 +160,70 @@ let check_mempool ?(validated = []) ?(branch_delayed = [])
     (expected_mempool = mempool)
       classified_typ
       ~error_msg:"Expected mempool %L, got %R")
+
+type hashes = {
+  validated : string list;
+  branch_delayed : string list;
+  branch_refused : string list;
+  refused : string list;
+  outdated : string list;
+  unprocessed : string list;
+}
+
+(* A comparable type for mempool where ordering does not matter. *)
+let classified_hashes_typ : hashes Check.typ =
+  let open Check in
+  let sort = List.sort compare in
+  convert
+    (fun mempool ->
+      [
+        sort mempool.validated;
+        sort mempool.branch_delayed;
+        sort mempool.branch_refused;
+        sort mempool.refused;
+        sort mempool.outdated;
+        sort mempool.unprocessed;
+      ])
+    (list (list string))
+
+let check_hashes ?(validated = []) ?(branch_delayed = []) ?(branch_refused = [])
+    ?(refused = []) ?(outdated = []) ?(unprocessed = []) ?error_msg
+    (mempool : t) =
+  let map l = List.map (fun op -> op.hash) l in
+  let expected_mempool =
+    {validated; branch_delayed; branch_refused; refused; outdated; unprocessed}
+  in
+  let mempool : hashes =
+    {
+      validated = map mempool.validated;
+      branch_delayed = map mempool.branch_delayed;
+      branch_refused = map mempool.branch_refused;
+      refused = map mempool.refused;
+      outdated = map mempool.outdated;
+      unprocessed = map mempool.unprocessed;
+    }
+  in
+  let error_msg =
+    match error_msg with
+    | Some msg -> msg
+    | None -> "Expected mempool %L, got %R"
+  in
+  Check.((expected_mempool = mempool) classified_hashes_typ ~error_msg)
+
+let is_in_mempool ?(validated = []) ?(branch_delayed = [])
+    ?(branch_refused = []) ?(refused = []) ?(outdated = []) ?(unprocessed = [])
+    (mempool : t) =
+  let is_in expected mempool =
+    List.for_all
+      (fun hash -> List.exists (fun op -> String.equal op.hash hash) mempool)
+      expected
+  in
+  is_in validated mempool.validated
+  && is_in branch_delayed mempool.branch_delayed
+  && is_in branch_refused mempool.branch_refused
+  && is_in refused mempool.refused
+  && is_in outdated mempool.outdated
+  && is_in unprocessed mempool.unprocessed
 
 module Config = struct
   type t = {

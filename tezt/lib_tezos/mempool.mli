@@ -23,14 +23,23 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type operation = {
+  hash : string;
+  protocol : string option;
+  branch : string;
+  contents : JSON.t list;
+  signature : string option;
+  errors : JSON.t list option;
+}
+
 (** The mempool type description. *)
 type t = {
-  validated : string list;
-  branch_delayed : string list;
-  branch_refused : string list;
-  refused : string list;
-  outdated : string list;
-  unprocessed : string list;
+  validated : operation list;
+  branch_delayed : operation list;
+  branch_refused : operation list;
+  refused : operation list;
+  outdated : operation list;
+  unprocessed : operation list;
 }
 
 (** A comparable type for mempool where classification and ordering
@@ -69,6 +78,31 @@ val get_mempool :
     arguments default to the empty list. This is useful when we expect a
     sparse mempool. *)
 val check_mempool :
+  ?validated:operation list ->
+  ?branch_delayed:operation list ->
+  ?branch_refused:operation list ->
+  ?refused:operation list ->
+  ?outdated:operation list ->
+  ?unprocessed:operation list ->
+  t ->
+  unit
+
+(** Check that each field of [t] contains the same operation hash list as the
+    argument of the same name. Ordening does not matter. Omitted arguments
+    default to the empty list. This is useful when we expect a sparse
+    mempool. *)
+val check_hashes :
+  ?validated:string list ->
+  ?branch_delayed:string list ->
+  ?branch_refused:string list ->
+  ?refused:string list ->
+  ?outdated:string list ->
+  ?unprocessed:string list ->
+  ?error_msg:string ->
+  t ->
+  unit
+
+val is_in_mempool :
   ?validated:string list ->
   ?branch_delayed:string list ->
   ?branch_refused:string list ->
@@ -76,7 +110,7 @@ val check_mempool :
   ?outdated:string list ->
   ?unprocessed:string list ->
   t ->
-  unit
+  bool
 
 (** Mempool filter configuration. *)
 module Config : sig

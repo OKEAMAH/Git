@@ -126,7 +126,7 @@ let test_ignore_node_mempool =
   in
   let* () = Client.bake_for_and_wait ~ignore_node_mempool:true client in
   let* mempool = Mempool.get_mempool client in
-  Mempool.check_mempool ~validated:[oph] mempool ;
+  Mempool.check_hashes ~validated:[oph] mempool ;
   let* balance1 = Client.get_balance_for ~account:sender.alias client in
   Check.(
     (balance1 = balance0)
@@ -138,7 +138,7 @@ let test_ignore_node_mempool =
      next block *)
   let* () = Client.bake_for_and_wait ~ignore_node_mempool:false client in
   let* mempool = Mempool.get_mempool client in
-  Mempool.check_mempool ~validated:[] mempool ;
+  Mempool.check_hashes ~validated:[] mempool ;
   let* balance2 = Client.get_balance_for ~account:sender.alias client in
   Check.(
     (balance2 = Tez.(balance0 - amount - fee))

@@ -111,7 +111,7 @@ module Revamped = struct
       ?outdated ?unprocessed client =
     let* mempool = Mempool.get_mempool client in
     return
-      (Mempool.check_mempool
+      (Mempool.check_hashes
          ?validated
          ?branch_delayed
          ?branch_refused
@@ -206,14 +206,12 @@ module Revamped = struct
       Mempool.symmetric_diff mempool_after_empty_block mempool_with_attestation
     in
     (* [mempool_diff] should contain only the validated attestation. *)
-    let mempool_expected =
-      let open Mempool in
-      try {empty with validated = [List.hd mempool_diff.validated]}
-      with Not_found ->
-        {empty with validated = ["<validated field was empty>"]}
+    let validated =
+      try [(List.hd mempool_diff.validated).hash]
+      with Not_found -> ["<validated field was empty>"]
     in
     let error_msg = "attestation is not validated: expected %L, got %R" in
-    Check.((mempool_expected = mempool_diff) Mempool.typ ~error_msg) ;
+    Mempool.check_hashes ~validated ~error_msg mempool_diff ;
 
     log_step 8 "Bake with an empty mempool twice." ;
     let* () =
@@ -318,17 +316,13 @@ module Revamped = struct
 
     log_step 7 "Check that the operation %s is branch_refused." oph2 ;
     let* mempool_after_second_injection = Mempool.get_mempool client1 in
-    let expected_mempool_after_second_injection =
-      let open Mempool in
-      {empty with branch_refused = [oph2]}
-    in
     let error_msg =
       "expected mempool from node1 after injection was %L got %R"
     in
-    Check.(
-      (expected_mempool_after_second_injection = mempool_after_second_injection)
-        Mempool.classified_typ
-        ~error_msg) ;
+    Mempool.check_hashes
+      ~branch_refused:[oph2]
+      ~error_msg
+      mempool_after_second_injection ;
 
     log_step 8 "Bake on node1 (head increment)." ;
     let bake_waiter1 = wait_for_operations_not_flushed_event node1 in
@@ -354,10 +348,10 @@ module Revamped = struct
     let error_msg =
       "expected mempool from node1 after head increment was %L got %R"
     in
-    Check.(
-      (expected_mempool_after_second_injection = mempool_after_head_increment)
-        Mempool.classified_typ
-        ~error_msg) ;
+    Mempool.check_hashes
+      ~branch_refused:[oph2]
+      ~error_msg
+      mempool_after_head_increment ;
 
     log_step
       11
@@ -394,16 +388,12 @@ module Revamped = struct
        outdated."
       oph2 ;
     let* mempool = Mempool.get_mempool client1 in
-    let expected_mempool =
-      let open Mempool in
-      let outdated =
-        try [List.hd mempool.outdated]
-        with Not_found -> ["<outdated field was empty>"]
-      in
-      {empty with branch_refused = [oph2]; outdated}
+    let outdated =
+      try [(List.hd mempool.outdated).hash]
+      with Not_found -> ["<outdated field was empty>"]
     in
     let error_msg = "expected mempool from node1 was %L got %R" in
-    Check.((expected_mempool = mempool) Mempool.classified_typ ~error_msg) ;
+    Mempool.check_hashes ~branch_refused:[oph2] ~outdated ~error_msg mempool ;
     unit
 
   (** This test bans an operation and checks that a branch_delayed operation
@@ -458,11 +448,7 @@ module Revamped = struct
 
     log_step 7 "Check that the node's mempool contains %s as validated." oph2 ;
     let* mempool = Mempool.get_mempool client in
-    let expected_mempool = {Mempool.empty with validated = [oph2]} in
-    Check.(
-      (expected_mempool = mempool)
-        Mempool.classified_typ
-        ~error_msg:"mempool expected to be %L, got %R") ;
+    Mempool.check_hashes ~validated:[oph2] mempool ;
     unit
 
   (** This test checks the one operation per manager per block restriction on
@@ -697,10 +683,9 @@ module Revamped = struct
        flush."
       oph1 ;
     let* mempool = Mempool.get_mempool client in
-    Check.(
-      (List.mem oph1 mempool.branch_delayed = true)
-        bool
-        ~error_msg:(sf "%s should be in branch_delayed" oph1)) ;
+    Check.is_true
+      (Mempool.is_in_mempool ~branch_delayed:[oph1] mempool)
+      ~error_msg:(sf "%s should be in branch_delayed" oph1) ;
 
     log_step
       8
@@ -709,18 +694,16 @@ module Revamped = struct
       oph2
       oph3 ;
     let* mempool = Mempool.get_mempool client in
-    Check.(
-      (((List.mem oph2 mempool.branch_delayed && List.mem oph3 mempool.validated)
-       || List.mem oph3 mempool.branch_delayed
-          && List.mem oph2 mempool.validated)
-      = true)
-        bool
-        ~error_msg:
-          (sf
-             "validated should contain either %s or %s and branch_delayed \
-              should contain the other one"
-             oph2
-             oph3)) ;
+    Check.is_true
+      (Mempool.is_in_mempool ~branch_delayed:[oph2] ~validated:[oph3] mempool
+      || Mempool.is_in_mempool ~branch_delayed:[oph3] ~validated:[oph3] mempool
+      )
+      ~error_msg:
+        (sf
+           "validated should contain either %s or %s and branch_delayed should \
+            contain the other one"
+           oph2
+           oph3) ;
     unit
 
   (** Test the one-operation-per-manager-per-block restriction (1M)
@@ -1106,17 +1089,10 @@ module Revamped = struct
       string_of_classification ;
     let* _ = bake_for ~empty:true ~protocol ~wait_for_flush:true node client in
     let* mempool = Mempool.get_mempool client in
-    let expected_mempool =
-      match classification with
-      | `Branch_delayed -> {Mempool.empty with branch_delayed = [oph1]}
-      | `Branch_refused -> {Mempool.empty with branch_refused = [oph1]}
-      | `Refused -> {Mempool.empty with refused = [oph1]}
-    in
-    Check.(
-      (mempool = expected_mempool)
-        Mempool.classified_typ
-        ~error_msg:"mempool expected to be %L, got %R") ;
-
+    (match classification with
+    | `Branch_delayed -> Mempool.check_hashes ~branch_delayed:[oph1] mempool
+    | `Branch_refused -> Mempool.check_hashes ~branch_refused:[oph1] mempool
+    | `Refused -> Mempool.check_hashes ~refused:[oph1] mempool) ;
     log_step 4 "Forge and force inject an operation." ;
     let* counter_json =
       RPC.Client.call client
@@ -1899,9 +1875,10 @@ module Revamped = struct
       Operation.(inject_operations [List.nth ops 2; List.nth ops 3] client)
     in
     let injected_ops = List.map (fun (`OpHash op) -> op) injected_ops in
-    let* () =
-      check_mempool ~validated:(injected_ops @ mempool.validated) client
+    let validated =
+      List.map (fun (op : Mempool.operation) -> op.hash) mempool.validated
     in
+    let* () = check_mempool ~validated:(injected_ops @ validated) client in
 
     log_step
       5
@@ -1914,7 +1891,7 @@ module Revamped = struct
     in
     let injected_ops2 = List.map (fun (`OpHash op) -> op) injected_ops2 in
     check_mempool
-      ~validated:((List.nth injected_ops2 1 :: injected_ops) @ mempool.validated)
+      ~validated:((List.nth injected_ops2 1 :: injected_ops) @ validated)
       ~branch_refused:[List.nth injected_ops2 0]
       client
 
@@ -1956,7 +1933,7 @@ module Revamped = struct
       @@ RPC.get_chain_mempool_pending_operations ~version:"2" ()
     in
     let mempool = Mempool.of_json mempool_json in
-    Mempool.check_mempool ~validated:[oph] mempool ;
+    Mempool.check_hashes ~validated:[oph] mempool ;
     Log.info
       "The mempool contains exactly one [validated] operation with the correct \
        hash." ;
