@@ -28,6 +28,7 @@ module Parameters = struct
     runner : Runner.t option;
     http_port : int;
     directory : string;
+    mutable pending_ready : unit option Lwt.u list;
   }
 
   type session_state = {mutable ready : bool}
@@ -48,6 +49,44 @@ let wait http =
       Test.fail "%s is not running, cannot wait for it to terminate" (name http)
   | Running {process; _} -> Process.wait process
 
+let wait_for_promise ?timeout ?where agent name promise =
+  let promise = Lwt.map Result.ok promise in
+  let* result =
+    match timeout with
+    | None -> promise
+    | Some timeout ->
+        Lwt.pick
+          [
+            promise;
+            (let* () = Lwt_unix.sleep timeout in
+             Lwt.return_error ());
+          ]
+  in
+  match result with
+  | Ok (Some x) -> return x
+  | Ok None ->
+      raise (Terminated_before_event {daemon = agent.name; event = name; where})
+  | Error () ->
+      Format.ksprintf
+        failwith
+        "Timeout waiting for event %s of %s"
+        name
+        agent.name
+
+let trigger_ready agent value =
+  let pending = agent.persistent_state.pending_ready in
+  agent.persistent_state.pending_ready <- [] ;
+  List.iter (fun pending -> Lwt.wakeup_later pending value) pending
+
+let set_ready agent =
+  (match agent.status with
+  | Not_running -> ()
+  | Running status -> status.session_state.ready <- true) ;
+  trigger_ready agent (Some ())
+
+let handle_raw_stderr http line =
+  if line =~ rex {|^Server HTTP on .* port .*|} then set_ready http
+
 let create ?runner ?name ?python_path ?color ?event_pipe ?port ~directory () =
   let path = Option.value ~default:"python" python_path in
   let port = match port with Some port -> port | None -> Port.fresh () in
@@ -58,8 +97,9 @@ let create ?runner ?name ?python_path ?color ?event_pipe ?port ~directory () =
       ?runner
       ?color
       ?event_pipe
-      {runner; http_port = port; directory}
+      {runner; pending_ready = []; http_port = port; directory}
   in
+  on_stderr http (handle_raw_stderr http) ;
   http
 
 let run ?event_level ?event_sections_levels http =
@@ -72,6 +112,7 @@ let run ?event_level ?event_sections_levels http =
     ?runner:http.persistent_state.runner
     ?event_level
     ?event_sections_levels
+    ~capture_stderr:true
     http
     {ready = false}
     [
@@ -84,12 +125,14 @@ let run ?event_level ?event_sections_levels http =
       string_of_int http.persistent_state.http_port;
     ]
 
-let wait_for_ready _http =
-  (* The HTTP server is ready very quickly, and for some reason it does not
-     print its ready line on the standard output when started from the standard output.
-
-     Just in case, we wait a bit. *)
-  Lwt_unix.sleep 0.5
+let wait_for_ready http =
+  match http.status with
+  | Running {session_state = {ready = true; _}; _} -> unit
+  | Not_running | Running {session_state = {ready = false; _}; _} ->
+      let promise, resolver = Lwt.task () in
+      http.persistent_state.pending_ready <-
+        resolver :: http.persistent_state.pending_ready ;
+      wait_for_promise http "HTTP server is ready" promise
 
 let kill http =
   match http.status with
