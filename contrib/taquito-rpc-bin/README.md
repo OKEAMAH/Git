@@ -1,19 +1,19 @@
-# Taquito RPC package
-*Documentation can be found [here](https://tezostaquito.io/docs/rpc_package)*  
+# Taquito RPC-bin package
+
+*This package is intended to become an alternative to Taquito RPC package, which queries the node in text-mode, using Json as a format for the data, whereas this present package uses binary mode, which reduces the load on the node and the quantity of data transiting on the network.
+*Documentation can be found [here](https://tezostaquito.io/docs/rpc_package)*
 *TypeDoc style documentation is available on-line [here](https://tezostaquito.io/typedoc/modules/_taquito_rpc.html)*
 
-`@taquito/rpc` is an npm package that provides low-level methods and types to invoke RPC calls from a Nomadic Tezos RPC node.
+`@taquito/rpc-bin` is an npm package that provides low-level methods and types to invoke RPC calls in binary mode from a Nomadic Tezos RPC node, and is intended to be an alternative to `@taquito/rpc`.
 
 ## General Information
 
-The RPC package can be used to query the RPC API of your chosen node. Methods in the RPC package map one-to-one to the corresponding Tezos RPC API endpoints. All responses from the RPC are returns with TypeScript types.
-
-The higher-level `@taquito/taquito` package builds on this RPC package.
+The RPC-bin package can be used to query the RPC API of your chosen node in binary mode. Methods in the RPC package map one-to-one to the corresponding Tezos RPC API endpoints. All responses from the RPC are returns with TypeScript types.
 
 ## Install
 
 ```
-npm i --save @taquito/rpc
+npm i --save @taquito/rpc-bin
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ npm i --save @taquito/rpc
 The constructor of the `RpcClient` takes an RPC URL as a parameter and an optional chain (default is main).
 
 ```ts
-import { RpcClient } from '@taquito/rpc';
+import { RpcClient } from '@taquito/rpc-bin';
 
 const client = new RpcClient('https://YOUR_PREFERRED_RPC_URL');
 

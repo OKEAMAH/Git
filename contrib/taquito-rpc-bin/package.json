@@ -1,15 +1,15 @@
 {
-  "name": "@taquito/rpc",
+  "name": "@taquito/rpc-bin",
   "version": "17.2.0",
-  "description": "Provides low level methods, and types to invoke RPC calls from a Nomadic Tezos RPC node",
+  "description": "Provides low level methods, and types to invoke RPC calls from a Nomadic Tezos RPC node in binary mode",
   "keywords": [
     "tezos",
     "blockchain",
     "rpc"
   ],
-  "main": "dist/taquito-rpc.umd.js",
-  "module": "dist/taquito-rpc.es6.js",
-  "typings": "dist/types/taquito-rpc.d.ts",
+  "main": "dist/taquito-rpc-bin.umd.js",
+  "module": "dist/taquito-rpc-bin.es6.js",
+  "typings": "dist/types/taquito-rpc-bin.d.ts",
   "files": [
     "signature.json",
     "dist"
