@@ -7,6 +7,7 @@
   tezt
   octez-libs.tezt-tezos
   tezos-client-base-unix
+  octez-node-config
   octez-libs.tezos-base
   octez-libs.tezos-base.unix
   octez-libs.tezos-stdlib-unix

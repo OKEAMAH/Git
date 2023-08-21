@@ -37,6 +37,8 @@
 
 open Tezt
 open Tezt_tezos
+open Tezos_crypto
+module Node_config = Octez_node_config.Config_file
 
 let ensure_dir_exists dir =
   Lwt.catch
@@ -58,6 +60,46 @@ let baker_alias n = Printf.sprintf "baker_%d" n
 let number_of_bakers =
   Sys.getenv_opt bakers |> Option.map int_of_string
   |> Option.value ~default:default_number_of_bakers
+
+let home = Sys.getenv "HOME"
+
+let data_dir =
+  Sys.getenv_opt "OCTEZ_NODE_DIR"
+  |> Option.value ~default:(home ^ "/.testnet-node")
+
+let network_name =
+  Sys.getenv_opt "NETWORK" |> Option.value ~default:"TEZOS_SKYNET"
+
+let current_time () =
+  let command = Lwt_process.shell "date -u +%FT%TZ" in
+  let* output = Lwt_process.pread_line command in
+  match Tezos_base.Time.Protocol.of_notation output with
+  | None -> Test.fail "Cannot parse date output:%s" output
+  | Some time -> return (time, output)
+
+let genesis ?time protocol () =
+  let rec go ?time () =
+    let prefix = "BLockGenesisGenesisGenesisGenesisGenesis" in
+    let* time, time_as_string =
+      time
+      |> Option.map (fun t ->
+             return (t, Tezos_base.Time.Protocol.to_notation t))
+      |> Option.value ~default:(current_time ())
+    in
+    let suffix = String.sub Digest.(to_hex (string time_as_string)) 0 5 in
+    match Base58.raw_decode (prefix ^ suffix ^ "crcCRC") with
+    | None -> go ()
+    | Some p ->
+        let p = String.sub p 0 (String.length p - 4) in
+        (* TODO: Check whether conversion to base58 and back is necessary *)
+        let b58_block_hash = Base58.safe_encode p in
+        let block_hash =
+          Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
+        in
+        return (block_hash, time)
+  in
+  let* block, time = go ?time () in
+  return Tezos_base.Genesis.{block; time; protocol}
 
 let default_gen_keys_dir =
   let base_dir = Filename.temp_file ~temp_dir:"/tmp" "" "" in
@@ -82,6 +124,21 @@ let generate_baker_accounts n client =
   let* () = generate_baker_account (n - 1) in
   Lwt_io.printf "\n\n"
 
+let save_config (Node_config.{data_dir; _} as configuration) =
+  let file = Filename.concat data_dir "config.json" in
+  let* () = ensure_dir_exists data_dir in
+  let* res =
+    Lwt_utils_unix.with_atomic_open_out file @@ fun chan ->
+    let json =
+      Data_encoding.Json.construct Node_config.encoding configuration
+    in
+    let content = Data_encoding.Json.to_string json in
+    Lwt_utils_unix.write_string chan content
+  in
+  match res with
+  | Ok () -> Lwt.return_unit
+  | Error _e -> Test.fail "Cannot save configuration file"
+
 (* These tests can be run locally to generate the data needed to run a
    stresstest. *)
 module Local = struct
@@ -104,7 +161,63 @@ module Local = struct
     let* () = generate_baker_accounts n client in
     Lwt.return_unit
 
-  let generate_network_configuration () = Test.fail "Not implemented"
+  let generate_network_configuration network_name data_dir () =
+    let config_file_path = Filename.concat data_dir "config.json" in
+    let* () =
+      Lwt_io.printf
+        "Configuration for %s will be written in %s\n\n."
+        network_name
+        config_file_path
+    in
+    let protocol_hash =
+      Tezos_crypto.Hashed.Protocol_hash.of_b58check_exn
+        "Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P"
+    in
+    let* genesis = genesis protocol_hash () in
+    let chain_name =
+      Tezos_base.Distributed_db_version.Name.of_string network_name
+    in
+    let sandboxed_chain_name =
+      Tezos_base.Distributed_db_version.Name.of_string @@ network_name
+      ^ "_SANDBOXED"
+    in
+    let client_dir = Client_config.default_base_dir in
+    let client = Client.create ~base_dir:client_dir () in
+    let baker0 = baker_alias 0 in
+    let* {public_key = genesis_pubkey; _} =
+      Client.show_address ~alias:baker0 client
+    in
+    let blockchain_network : Node_config.blockchain_network =
+      Node_config.
+        {
+          alias = None;
+          genesis;
+          chain_name;
+          sandboxed_chain_name;
+          old_chain_name = None;
+          incompatible_chain_name = None;
+          user_activated_upgrades = [];
+          user_activated_protocol_overrides = [];
+          default_bootstrap_peers = [];
+          dal_config =
+            {
+              activated = false;
+              use_mock_srs_for_testing = None;
+              bootstrap_peers = [];
+            };
+          genesis_parameters =
+            Some
+              {
+                context_key = "sandbox_parameter";
+                values = `O [("genesis_pubkey", `String genesis_pubkey)];
+              };
+        }
+    in
+    let node_configuration =
+      Node_config.{default_config with blockchain_network; data_dir}
+    in
+    let* () = save_config node_configuration in
+    Lwt.return_unit
 
   let generate_manager_operations () = Test.fail "Not implemented"
 end
@@ -126,7 +239,7 @@ let () =
     ~__FILE__
     ~title:"Generate Network Configuration"
     ~tags:["generate_network_configuration"]
-    Local.generate_network_configuration ;
+    (Local.generate_network_configuration network_name data_dir) ;
   register
     ~__FILE__
     ~title:"Generate manager operations"
