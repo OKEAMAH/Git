@@ -84,7 +84,12 @@ let run ~input ~output state =
                            (Remote_procedure.response_encoding proc)
                            res)))
                 output)
-            (fun _ ->
+            (fun _exn ->
+              (* It seems that [Test.fail] does not close properly the
+                 processes. This is why we kill them explicitely. It
+                 is not clear why [Test.fail] is not enough. This
+                 should be investigated. *)
+              let* () = Remote_procedure.run state Agent_builtins.Quit in
               Test.fail
                 "Something went wrong with request %d, we need to do something \
                  about that."
