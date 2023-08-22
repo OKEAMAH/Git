@@ -83,7 +83,12 @@ let stake_value_pp fmt value =
   in
   Format.fprintf fmt "%s" s
 
-type 'state t = {state : 'state; staker : string; baker : string}
+type 'state t = {
+  state : 'state;
+  staker : string;
+  baker : string;
+  current_level : Tezos_raw_protocol_alpha.Alpha_context.Raw_level.t;
+}
 
 type ('state, _, _) action =
   | Do (* arbitrary action *) :
@@ -372,6 +377,176 @@ module Abstract = struct
         if String.equal src.name delegate.name then
           update_balance ~f:(apply_self_stake amount) src info
         else update_balance_2 ~f:(apply_stake amount) src delegate info
+
+  let run_action :
+      type input output.
+      (abstract t, input, output) action -> input -> output tzresult Lwt.t =
+   fun action input ->
+    let open Lwt_result_syntax in
+    match action with
+    | Do f -> f input
+    | Noop -> return input
+    | Set_delegate_params (delegate_name, params) ->
+        let delegate = find_account delegate_name input.state in
+        (* TODO: This is inacurate, we should store parameter changes per cycle *)
+        let state =
+          update_account
+            delegate_name
+            {delegate with parameters = params}
+            input.state
+        in
+        return {input with state}
+    | Add_account name ->
+        let name = resolve_name name input in
+        (* TODO : this doesn't work, non detetrministic account add, wouldn't
+           be sharable with contrete state.
+           Probably account management should be moved at XP state level.
+        *)
+        let new_account = Account.new_account () in
+        let pkh = new_account.pkh in
+        let contract = Protocol.Alpha_context.Contract.Implicit pkh in
+        let account_info =
+          {
+            name;
+            pkh;
+            contract;
+            delegate = None;
+            parameters = default_params;
+            balance = initial_bbd;
+          }
+        in
+        let state = update_account name account_info input.state in
+        let state = {state with accounts = name :: state.accounts} in
+        return {input with state}
+    | Reveal _ -> return input
+    | Transfer (src_name, dst_name, amount) ->
+        let src_name = resolve_name src_name input in
+        let dst_name = resolve_name dst_name input in
+        let src = find_account src_name input.state in
+        let dst = find_account dst_name input.state in
+        let* state =
+          update_balance_2 ~f:(apply_transfer amount) src dst input.state
+        in
+        return {input with state}
+    | Set_delegate (src_name, delegate_name) ->
+        let src_name = resolve_name src_name input in
+        let src = find_account src_name input.state in
+        let* state = apply_unstake_info src Max_tez input.state in
+        let state =
+          update_account src_name {src with delegate = Some delegate_name} state
+        in
+        return {input with state}
+    | Unset_delegate src_name ->
+        let src_name = resolve_name src_name input in
+        let src = find_account src_name input.state in
+        let* state = apply_unstake_info src Max_tez input.state in
+        let state = update_account src_name {src with delegate = None} state in
+        return {input with state}
+    | Stake (src_name, stake_value) ->
+        let src_name = resolve_name src_name input in
+        let src = find_account src_name input.state in
+        let amount =
+          match stake_value with
+          | None -> Tez.zero
+          | All -> src.balance.liquid
+          | Half -> Tez.div_exn src.balance.liquid 2
+          | Max_tez -> Tez.max_mutez
+          | Amount a -> a
+        in
+        let* state = apply_stake_info src amount input.state in
+        return {input with state}
+    | Unstake (src_name, unstake_value) ->
+        let src_name = resolve_name src_name input in
+        let src = find_account src_name input.state in
+        let* state = apply_unstake_info src unstake_value input.state in
+        return {input with state}
+    | Finalize_unstake src_name ->
+        let src_name = resolve_name src_name input in
+        let src = find_account src_name input.state in
+        let* state = update_balance ~f:apply_finalize src input.state in
+        return {input with state}
+    | Next_block ->
+        let {state; baker; current_level; _} = input in
+        let* state = apply_rewards_info current_level ~baker state in
+        return {input with state}
+    | Next_cycle ->
+        let* state = apply_end_cycle_info input.state in
+        return {input with state}
+    | End_test -> return_unit
+    | Begin_test (constants, delegates_name_list, activate_ai) ->
+        let bootstrap = "__bootstrap__" in
+        let delegates_name_list = bootstrap :: delegates_name_list in
+        (* Override threshold value if activate *)
+        let constants =
+          if activate_ai then
+            {
+              constants with
+              adaptive_issuance =
+                {constants.adaptive_issuance with launch_ema_threshold = 0l};
+            }
+          else constants
+        in
+        let n = List.length delegates_name_list in
+        let init_staked = Tez.of_mutez 200_000_000_000L in
+        let* accounts_info =
+          List.fold_left2_es
+            ~when_different_lengths:[Inconsistent_number_of_bootstrap_accounts]
+            (fun accounts_info name contract ->
+              let balance =
+                {initial_bbd with liquid = Account.default_initial_balance}
+              in
+              let* balance = apply_self_stake init_staked balance in
+              let pkh = Context.Contract.pkh contract in
+              let account =
+                {
+                  name;
+                  pkh;
+                  contract;
+                  balance;
+                  delegate = Some name;
+                  parameters = default_params;
+                }
+              in
+              let {pool_tez; pool_pseudo; staked; _} = account.balance in
+              let total_staked = tez_of_staked staked ~pool_tez ~pool_pseudo in
+              let* total_balance =
+                total_balance_of_breakdown
+                  account.balance
+                  ~pool_tez
+                  ~pool_pseudo
+              in
+              Log.debug "Initial balance for %s:\n%a" name balance_pp balance ;
+              Log.debug "Initial stake: %a" Tez.pp total_staked ;
+              Log.debug "Initial total balance: %a" Tez.pp total_balance ;
+              return (String.Map.add name account accounts_info))
+            String.Map.empty
+            delegates_name_list
+            (* TODO make acount list available in state *)
+            (assert false)
+        in
+        let baker = bootstrap in
+        (* TODO make initial total supply available in state *)
+        let* total_supply = assert false in
+        let init_level = _ in
+        let state =
+          {
+            state =
+              {
+                accounts = delegates_name_list;
+                accounts_info;
+                total_supply;
+                constants;
+                unstake_requests = [];
+                activate_ai;
+                last_level_rewards = init_level;
+                snapshot_balances = [];
+              };
+            staker = "";
+            baker;
+            current_level = init_level;
+          }
+        in
+        return state
 end
 
 open Abstract
