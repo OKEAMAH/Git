@@ -28,9 +28,10 @@
    Invocation:
      dune exec devtools/testnet_experiment_tools/testnet_experiment_tools.exe
    Requirements:
-     GEN_KEYS_DIR - sets the directory to output generated keys.
-                    Defaults to /tmp/<unique dir>
-     BAKERS       - sets the number of baker keys to generate. Defaults to 10.
+     OUTPUT_DIR - sets the directory to output generated outputs.
+                  Defaults to /tmp/<unique_dir>
+     BAKERS     - sets the number of baker keys to generate.
+                  Defaults to 10.
    Description: This file contains scripts to generate config information
                 towards bootstrapping an experimental test network.
 *)
@@ -39,6 +40,40 @@ open Tezt
 open Tezt_tezos
 open Tezos_crypto
 module Node_config = Octez_node_config.Config_file
+
+(* 1. Default values and constants *)
+
+(* 1.1. Generate baker accounts *)
+
+let default_number_of_bakers = 10
+
+let bakers = "BAKERS"
+
+let baker_alias n = Printf.sprintf "baker_%d" n
+
+let output_dir_name = "OUTPUT_DIR"
+
+let default_output_dir =
+  let base_dir = Filename.temp_file ~temp_dir:"/tmp" "" "" in
+  let _ = Lwt_unix.unlink base_dir in
+  let _ = Lwt_unix.mkdir base_dir 0o700 in
+  base_dir
+
+(* 1.2. Generate network configuration parameters *)
+
+let network_name_default = "TEZOS_SKYNET"
+
+let network_name =
+  Sys.getenv_opt "NETWORK" |> Option.value ~default:network_name_default
+
+let genesis_prefix = "BLockGenesisGenesisGenesisGenesisGenesis"
+
+(* 2. Output directory *)
+
+let output_dir =
+  Sys.getenv_opt output_dir_name |> Option.value ~default:default_output_dir
+
+(* 3. Helper functions *)
 
 let ensure_dir_exists dir =
   Lwt.catch
@@ -51,53 +86,10 @@ let ensure_dir_exists dir =
         dir
         (Printexc.to_string exn))
 
-let default_number_of_bakers = 10
-
-let bakers = "BAKERS"
-
-let baker_alias n = Printf.sprintf "baker_%d" n
-
+(* 3.1. Generate baker accounts *)
 let number_of_bakers =
   Sys.getenv_opt bakers |> Option.map int_of_string
   |> Option.value ~default:default_number_of_bakers
-
-let home_dir = Sys.getenv "HOME"
-
-let data_dir =
-  Sys.getenv_opt "OCTEZ_NODE_DIR"
-  |> Option.value ~default:(home_dir ^ "/.testnet-node")
-
-let network_name_default = "TEZOS_SKYNET"
-
-let network_name =
-  Sys.getenv_opt "NETWORK" |> Option.value ~default:network_name_default
-
-let genesis_prefix = "BLockGenesisGenesisGenesisGenesisGenesis"
-
-let rec genesis () =
-  let* time = Lwt_process.pread_line (Lwt_process.shell "date -u +%FT%TZ") in
-  let suffix = String.sub Digest.(to_hex (string time)) 0 5 in
-  match Base58.raw_decode (genesis_prefix ^ suffix ^ "crcCRC") with
-  | None -> genesis ()
-  | Some p ->
-      let p = String.sub p 0 (String.length p - 4) in
-      (* TODO: Check whether conversion to base58 and back is necessary *)
-      let b58_block_hash = Base58.safe_encode p in
-      let block =
-        Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
-      in
-      return (block, Tezos_base.Time.Protocol.of_notation_exn time)
-
-let default_gen_keys_dir =
-  let base_dir = Filename.temp_file ~temp_dir:"/tmp" "" "" in
-  let _ = Lwt_unix.unlink base_dir in
-  let _ = Lwt_unix.mkdir base_dir 0o700 in
-  base_dir
-
-let gen_keys_dir_name = "GEN_KEYS_DIR"
-
-let gen_keys_dir =
-  Sys.getenv_opt gen_keys_dir_name |> Option.value ~default:default_gen_keys_dir
 
 let generate_baker_accounts n client =
   let rec generate_baker_account i =
@@ -110,6 +102,21 @@ let generate_baker_accounts n client =
   let* () = Lwt_io.printf "Generating accounts" in
   let* () = generate_baker_account (n - 1) in
   Lwt_io.printf "\n\n"
+
+(* 3.2. Generate network configuration parameters *)
+
+let rec genesis () =
+  let* time = Lwt_process.pread_line (Lwt_process.shell "date -u +%FT%TZ") in
+  let suffix = String.sub Digest.(to_hex (string time)) 0 5 in
+  match Base58.raw_decode (genesis_prefix ^ suffix ^ "crcCRC") with
+  | None -> genesis ()
+  | Some p ->
+      let p = String.sub p 0 (String.length p - 4) in
+      let b58_block_hash = Base58.safe_encode p in
+      let block =
+        Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
+      in
+      return (block, Tezos_base.Time.Protocol.of_notation_exn time)
 
 let save_config (Node_config.{data_dir; _} as configuration) =
   let file = Filename.concat data_dir "config.json" in
@@ -136,12 +143,11 @@ let save_config (Node_config.{data_dir; _} as configuration) =
    stresstest. *)
 module Local = struct
   let generate_baker_accounts n () =
-    let client_dir = gen_keys_dir in
     let* () =
       Lwt_io.printf
         "Keys will be saved in %s. You can change this by setting the \
-         GEN_KEYS_DIR environment variable\n\n"
-        client_dir
+         OUTPUT_DIR environment variable\n\n"
+        output_dir
     in
     let* () =
       Lwt_io.printf
@@ -149,8 +155,8 @@ module Local = struct
          the BAKERS environment variable.\n\n"
         number_of_bakers
     in
-    let client = Client.create ~base_dir:client_dir () in
-    let* () = ensure_dir_exists client_dir in
+    let client = Client.create ~base_dir:output_dir () in
+    let* () = ensure_dir_exists output_dir in
     let* () = generate_baker_accounts n client in
     Lwt.return_unit
 
@@ -168,11 +174,10 @@ module Local = struct
       Tezos_base.Distributed_db_version.Name.of_string @@ network_name
       ^ "_SANDBOXED"
     in
-    let client_dir = Client_config.default_base_dir in
-    let client = Client.create ~base_dir:client_dir () in
-    let baker0 = baker_alias 0 in
+    let client = Client.create ~base_dir:output_dir () in
+    let baker_0 = baker_alias 0 in
     let* {public_key = genesis_pubkey; _} =
-      Client.show_address ~alias:baker0 client
+      Client.show_address ~alias:baker_0 client
     in
     let blockchain_network : Node_config.blockchain_network =
       Node_config.
@@ -226,7 +231,7 @@ let () =
     ~__FILE__
     ~title:"Generate Network Configuration"
     ~tags:["generate_network_configuration"]
-    (Local.generate_network_configuration network_name data_dir) ;
+    (Local.generate_network_configuration network_name output_dir) ;
   register
     ~__FILE__
     ~title:"Generate manager operations"
