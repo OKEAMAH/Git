@@ -98,7 +98,7 @@ type account_info = {
 type accounts_info = account_info String.Map.t
 
 (** Information on the accounts and the expected state of the context.*)
-type info = {
+type abstract = {
   accounts : string list;
   accounts_info : accounts_info;
   total_supply : Tez.t;
@@ -107,13 +107,9 @@ type info = {
     (* src, amount, cycles before final *)
     (string * Tez.t * int) list;
   activate_ai : bool;
-  staker : string;
-  baker : string;
   last_level_rewards : Protocol.Alpha_context.Raw_level.t;
   snapshot_balances : (string * balance_breakdown) list;
 }
-
-type abstract = info
 
 let find_account account info =
   match String.Map.find account info.accounts_info with
@@ -224,8 +220,8 @@ let update_balance_2 ~f account1 account2 info =
 (** {3 abstract operations definition*)
 
 (* Must be applied every block if testing when ai activated and rewards != 0 *)
-let apply_rewards_info current_level (info : abstract) : abstract tzresult Lwt.t
-    =
+let apply_rewards_info current_level ~baker (info : abstract) :
+    abstract tzresult Lwt.t =
   let open Lwt_result_syntax in
   let {last_level_rewards; total_supply; constants; _} = info in
   (* We assume one block per minute *)
@@ -238,7 +234,7 @@ let apply_rewards_info current_level (info : abstract) : abstract tzresult Lwt.t
       Protocol.Alpha_context.Raw_level.diff current_level last_level_rewards
       |> Int32.to_int
     in
-    let ({parameters; _} as baker) = find_account info.baker info in
+    let ({parameters; _} as baker) = find_account baker info in
     let delta_rewards = Tez.mul_exn rewards_per_block delta_time in
     let to_liquid =
       Tez.(
@@ -326,11 +322,12 @@ let apply_stake_info src amount info =
 
 (** {2  Threaded context for the tests.}
 
-Contains the concrete ([Block.t]) and abstract ([info]) states. *)
+Contains the concrete ([Block.t]) and [abstract] states and some information
+regarding the ongoing test. *)
 
-type t = Block.t * info
+type t = {block : Block.t; info : abstract; staker : string; baker : string}
 
-let check_all_balances (block, info) =
+let check_all_balances {block; info; _} =
   let open Lwt_result_syntax in
   let {accounts_info; total_supply; _} = info in
   let* () =
@@ -356,11 +353,11 @@ let check_all_balances (block, info) =
   let* actual_total_supply = Context.get_total_supply (B block) in
   Assert.equal_tez ~loc:__LOC__ actual_total_supply total_supply
 
-let apply_rewards (block, info) =
+let apply_rewards ({block; info; baker; _} as input) =
   let open Lwt_result_syntax in
   let*? current_level = Context.get_level (B block) in
-  let* info = apply_rewards_info current_level info in
-  let input = (block, info) in
+  let* info = apply_rewards_info current_level ~baker info in
+  let input = {input with info} in
   let* () = check_all_balances input in
   return input
 
@@ -389,17 +386,17 @@ type ('input, 'output) action =
       -> (unit, t) action
 
 let set_staker staker : (t, t) action =
-  Do (fun (block, info) -> return (block, {info with staker}))
+  Do (fun state -> return {state with staker})
 
 let with_staker = "#staker#" (* Special staker/unstaker value *)
 
-let resolve_name s (_, info) =
-  if String.equal s with_staker then info.staker else s
+let resolve_name s {staker; _} =
+  if String.equal s with_staker then staker else s
 
 let set_baker baker : (t, t) action =
-  Do (fun (block, info) -> return (block, {info with baker}))
+  Do (fun state -> return {state with baker})
 
-let bake ?operation (block, info) =
+let bake ?operation ({block; info; baker; _} as input) =
   let open Lwt_result_syntax in
   Log.info
     ~color:time_color
@@ -412,9 +409,9 @@ let bake ?operation (block, info) =
     else Per_block_vote_pass
   in
   let baker =
-    try find_account info.baker info
+    try find_account baker info
     with _ ->
-      Log.info "Invalid baker: %s not found. Aborting" info.baker ;
+      Log.info "Invalid baker: %s not found. Aborting" baker ;
       assert false
   in
   let policy = Block.By_account baker.pkh in
@@ -422,17 +419,17 @@ let bake ?operation (block, info) =
   let new_current_cycle = Block.current_cycle block in
   let* input =
     if Protocol.Alpha_context.Cycle.(current_cycle = new_current_cycle) then
-      return (block, info)
+      return {input with block}
     else
       let* info = apply_end_cycle_info info in
-      return (block, info)
+      return {input with block; info}
   in
   apply_rewards input
 
-let bake_until_cycle_end_slow ((init_block, _) as init_input) =
+let bake_until_cycle_end_slow ({block = init_block; _} as init_input) =
   let open Lwt_result_syntax in
   let current_cycle = Block.current_cycle init_block in
-  let rec step ((old_block, _) as old_input) =
+  let rec step ({block = old_block; _} as old_input) =
     let step_cycle = Block.current_cycle old_block in
     if Protocol.Alpha_context.Cycle.(step_cycle > current_cycle) then
       return old_input
@@ -526,22 +523,26 @@ let run_action :
       in
       let baker = bootstrap in
       let* total_supply = Context.get_total_supply (B block) in
-      let info =
+      let state =
         {
-          accounts = delegates_name_list;
-          accounts_info;
-          total_supply;
-          constants;
-          unstake_requests = [];
-          activate_ai;
+          block;
+          info =
+            {
+              accounts = delegates_name_list;
+              accounts_info;
+              total_supply;
+              constants;
+              unstake_requests = [];
+              activate_ai;
+              last_level_rewards = init_level;
+              snapshot_balances = [];
+            };
           staker = "";
           baker;
-          last_level_rewards = init_level;
-          snapshot_balances = [];
         }
       in
-      let* () = check_all_balances (block, info) in
-      return (block, info)
+      let* () = check_all_balances state in
+      return state
   | End_test ->
       Log.info ~color:begin_end_color "-- End test --" ;
       return_unit
@@ -550,17 +551,19 @@ let run_action :
       bake input
   | Next_cycle ->
       Log.info ~color:action_color "[Next cycle]" ;
-      let block, ({constants; activate_ai; _} as info) = input in
+      let {block; info = {constants; activate_ai; _} as info; baker; _} =
+        input
+      in
       if
         Tez.(constants.issuance_weights.base_total_issued_per_minute = zero)
         || not activate_ai
       then
         (* Apply rewards in info only after the while cycle ends *)
-        let baker = find_account info.baker info in
+        let baker = find_account baker info in
         let policy = Block.By_account baker.pkh in
         let* block = Block.bake_until_cycle_end ~policy block in
         let* info = apply_end_cycle_info info in
-        apply_rewards (block, info)
+        apply_rewards {input with block; info}
       else
         (* Apply rewards in info every block *)
         bake_until_cycle_end_slow input
@@ -570,7 +573,7 @@ let run_action :
         ~color:action_color
         "[Set delegate parameters for \"%s\"]"
         delegate_name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let delegate = find_account delegate_name info in
       let* operation =
         set_delegate_parameters
@@ -579,15 +582,18 @@ let run_action :
           ~limit_of_staking_over_baking:params.limit_of_staking_over_baking
           ~edge_of_baking_over_staking_billionth:params.baking_over_staking_edge
       in
-      let* block, info = bake ~operation (block, info) in
+      let* output = bake ~operation input in
       let info =
-        update_account delegate_name {delegate with parameters = params} info
+        update_account
+          delegate_name
+          {delegate with parameters = params}
+          output.info
       in
-      return (block, info)
+      return {output with info}
   | Add_account name ->
       let name = resolve_name name input in
       Log.info ~color:action_color "[Add account \"%s\"]" name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let new_account = Account.new_account () in
       let pkh = new_account.pkh in
       let contract = Protocol.Alpha_context.Contract.Implicit pkh in
@@ -603,17 +609,17 @@ let run_action :
       in
       let info = update_account name account_info info in
       let info = {info with accounts = name :: info.accounts} in
-      return (block, info)
+      return {input with block; info}
   | Reveal name ->
       let name = resolve_name name input in
       Log.info ~color:action_color "[Reveal \"%s\"]" name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let account = find_account name info in
       let* acc = Account.find account.pkh in
       let* operation =
         Op.revelation ~fee:Protocol.Alpha_context.Tez.zero (B block) acc.pk
       in
-      bake ~operation (block, info)
+      bake ~operation input
   | Transfer (src_name, dst_name, amount) ->
       let src_name = resolve_name src_name input in
       let dst_name = resolve_name dst_name input in
@@ -624,15 +630,15 @@ let run_action :
         dst_name
         Tez.pp
         amount ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let dst = find_account dst_name info in
       let* operation =
         Op.transaction ~fee:Tez.zero (B block) src.contract dst.contract amount
       in
       let* info = update_balance_2 ~f:(apply_transfer amount) src dst info in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with info} in
+      return output
   | Set_delegate (src_name, delegate_name) ->
       let src_name = resolve_name src_name input in
       Log.info
@@ -640,7 +646,7 @@ let run_action :
         "[Set delegate \"%s\" for \"%s\"]"
         delegate_name
         src_name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let delegate = find_account delegate_name info in
       let* operation =
@@ -650,20 +656,20 @@ let run_action :
       let info =
         update_account src_name {src with delegate = Some delegate_name} info
       in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with block; info} in
+      return output
   | Unset_delegate src_name ->
       let src_name = resolve_name src_name input in
       Log.info ~color:action_color "[Unset delegate of \"%s\"]" src_name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let* operation =
         Op.delegation ~fee:Tez.zero (B block) src.contract None
       in
       let* info = apply_unstake_info src Max_tez info in
       let info = update_account src_name {src with delegate = None} info in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with block; info} in
+      return output
   | Stake (src_name, stake_value) ->
       let src_name = resolve_name src_name input in
       Log.info
@@ -672,7 +678,7 @@ let run_action :
         src_name
         stake_value_pp
         stake_value ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let amount =
         match stake_value with
@@ -684,8 +690,8 @@ let run_action :
       in
       let* operation = stake (B block) src.contract amount in
       let* info = apply_stake_info src amount info in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with block; info} in
+      return output
   | Unstake (src_name, unstake_value) ->
       let src_name = resolve_name src_name input in
 
@@ -695,22 +701,22 @@ let run_action :
         src_name
         stake_value_pp
         unstake_value ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let amount = unstake_value_to_tez src unstake_value info in
       let* operation = unstake (B block) src.contract amount in
       let* info = apply_unstake_info src unstake_value info in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with block; info} in
+      return output
   | Finalize_unstake src_name ->
       let src_name = resolve_name src_name input in
       Log.info ~color:action_color "[Finalize_unstake for \"%s\"]" src_name ;
-      let block, info = input in
+      let {block; info; _} = input in
       let src = find_account src_name info in
       let* operation = finalize_unstake (B block) src.contract in
       let* info = update_balance ~f:apply_finalize src info in
-      let* block, info = bake ~operation (block, info) in
-      return (block, info)
+      let* output = bake ~operation {input with block; info} in
+      return output
 
 type ('input, 'output) scenarios =
   | Action : ('input, 'output) action -> ('input, 'output) scenarios
@@ -836,7 +842,7 @@ let init_scenario ?reward_per_block () =
   let constants = init_constants ?reward_per_block () in
   (* TODO LATER:
      if rewards != 0, info is incorrect -> reset info balances after wait *)
-  let wait_ai_activation (block, info) =
+  let wait_ai_activation ({block; info; _} as input) =
     Log.info ~color:time_color "Fast forward to AI activation" ;
     let* block =
       if info.activate_ai then
@@ -846,7 +852,7 @@ let init_scenario ?reward_per_block () =
       else assert false
     in
     Log.info ~color:event_color "AI activated" ;
-    return (block, info)
+    return {input with block; info}
   in
   (Tag "AI activated"
    --> Begin_test (constants, ["delegate"], true)
