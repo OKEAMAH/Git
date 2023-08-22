@@ -361,31 +361,37 @@ let apply_rewards ({block; info; baker; _} as input) =
   let* () = check_all_balances input in
   return input
 
-type ('input, 'output) action =
+type ('state, _, _) action =
   | Do (* arbitrary action *) :
       ('input -> 'output tzresult Lwt.t)
-      -> ('input, 'output) action
-  | Noop : ('input, 'input) action
-  | Set_delegate_params : (string * staking_parameters) -> (t, t) action
-  | Add_account : (* name of new account *) string -> (t, t) action
-  | Reveal : string -> (t, t) action
+      -> ('state, 'input, 'output) action
+  | Noop : ('state, 'input, 'input) action
+  | Set_delegate_params :
+      (string * staking_parameters)
+      -> ('state, 'state, 'state) action
+  | Add_account :
+      (* name of new account *) string
+      -> ('state, 'state, 'state) action
+  | Reveal : string -> ('state, 'state, 'state) action
   | Transfer :
       (* src, dest, amount *) (string * string * Tez.t)
-      -> (t, t) action
-  | Set_delegate : (* src, dest *) (string * string) -> (t, t) action
-  | Unset_delegate : string -> (t, t) action
-  | Stake : (string * stake_value) -> (t, t) action
-  | Unstake : (string * stake_value) -> (t, t) action
-  | Finalize_unstake : string -> (t, t) action
-  | Next_block : (t, t) action
-  | Next_cycle : (t, t) action
-  | End_test : (t, unit) action
+      -> ('state, 'state, 'state) action
+  | Set_delegate :
+      (* src, dest *) (string * string)
+      -> ('state, 'state, 'state) action
+  | Unset_delegate : string -> ('state, 'state, 'state) action
+  | Stake : (string * stake_value) -> ('state, 'state, 'state) action
+  | Unstake : (string * stake_value) -> ('state, 'state, 'state) action
+  | Finalize_unstake : string -> ('state, 'state, 'state) action
+  | Next_block : ('state, 'state, 'state) action
+  | Next_cycle : ('state, 'state, 'state) action
+  | End_test : ('state, 'state, unit) action
   | Begin_test :
       (* parametrs, list of names for delegates, activate_ai flag *)
       (Protocol.Alpha_context.Constants.Parametric.t * string list * bool)
-      -> (unit, t) action
+      -> ('state, unit, 'state) action
 
-let set_staker staker : (t, t) action =
+let set_staker staker : (t, t, t) action =
   Do (fun state -> return {state with staker})
 
 let with_staker = "#staker#" (* Special staker/unstaker value *)
@@ -393,7 +399,7 @@ let with_staker = "#staker#" (* Special staker/unstaker value *)
 let resolve_name s {staker; _} =
   if String.equal s with_staker then staker else s
 
-let set_baker baker : (t, t) action =
+let set_baker baker : (t, t, t) action =
   Do (fun state -> return {state with baker})
 
 let bake ?operation ({block; info; baker; _} as input) =
@@ -463,8 +469,8 @@ let check_snapshot_balances =
       return input)
 
 let run_action :
-    type input output. (input, output) action -> input -> output tzresult Lwt.t
-    =
+    type input output.
+    (t, input, output) action -> input -> output tzresult Lwt.t =
  fun action input ->
   let open Lwt_result_syntax in
   match action with
@@ -719,7 +725,7 @@ let run_action :
       return output
 
 type ('input, 'output) scenarios =
-  | Action : ('input, 'output) action -> ('input, 'output) scenarios
+  | Action : (t, 'input, 'output) action -> ('input, 'output) scenarios
   | Empty : ('t, 't) scenarios
   | Concat : (('a, 'b) scenarios * ('b, 'c) scenarios) -> ('a, 'c) scenarios
   | Branch : (('a, 'b) scenarios * ('a, 'b) scenarios) -> ('a, 'b) scenarios
@@ -730,7 +736,7 @@ type ('input, 'output) scenarios =
 type ('input, 'output) single_scenario =
   | End : ('t, 't) single_scenario
   | Cons :
-      (('input, 't) action * ('t, 'output) single_scenario)
+      ((t, 'input, 't) action * ('t, 'output) single_scenario)
       -> ('input, 'output) single_scenario
 
 let rec cat_ss :
