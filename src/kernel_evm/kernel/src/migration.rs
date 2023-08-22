@@ -4,7 +4,9 @@
 
 use crate::error::Error;
 use crate::error::UpgradeProcessError::Fallback;
-use crate::storage::{read_storage_version, store_storage_version, STORAGE_VERSION};
+use crate::storage::{
+    read_storage_version, store_storage_version, BRIDGE, OLD_BRIDGE, STORAGE_VERSION,
+};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 // The workflow for migration is the following:
@@ -18,6 +20,12 @@ fn migration<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     let current_version = read_storage_version(host)?;
     if STORAGE_VERSION == current_version + 1 {
         // MIGRATION CODE - START
+
+        // Migrate the bridge path only if it exists.
+        if host.store_read(&OLD_BRIDGE, 0, 0).is_ok() {
+            host.store_move(&OLD_BRIDGE, &BRIDGE)?;
+        }
+
         // MIGRATION CODE - END
         store_storage_version(host, STORAGE_VERSION)?
     }

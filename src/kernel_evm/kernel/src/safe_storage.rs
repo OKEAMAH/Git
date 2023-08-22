@@ -109,6 +109,7 @@ impl<Host: Runtime> Runtime for SafeStorage<&mut Host> {
     ) -> Result<(), RuntimeError> {
         let from_path = safe_path(from_path)?;
         let to_path = safe_path(to_path)?;
+
         self.0.store_move(&from_path, &to_path)
     }
 

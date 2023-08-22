@@ -251,16 +251,19 @@ let setup_deposit_contracts ~admin client protocol =
 
 let default_bootstrap_account_balance = Wei.of_eth_int 9999
 
-let make_config ?bootstrap_accounts ?ticketer ?dictator () =
+let make_config ~ghostnet ?bootstrap_accounts ?bridge ?dictator () =
   let open Sc_rollup_helpers.Installer_kernel_config in
-  let ticketer =
+  let bridge =
     Option.fold
-      ~some:(fun ticketer ->
-        let value = Hex.(of_string ticketer |> show) in
-        let to_ = Durable_storage_path.ticketer in
+      ~some:(fun bridge ->
+        let value = Hex.(of_string bridge |> show) in
+        let to_ =
+          if ghostnet then Durable_storage_path.ticketer
+          else Durable_storage_path.bridge
+        in
         [Set {value; to_}])
       ~none:[]
-      ticketer
+      bridge
   in
   let bootstrap_accounts =
     Option.fold
@@ -285,13 +288,13 @@ let make_config ?bootstrap_accounts ?ticketer ?dictator () =
       ~none:[]
       dictator
   in
-  match ticketer @ bootstrap_accounts @ dictator with
+  match bridge @ bootstrap_accounts @ dictator with
   | [] -> None
   | res -> Some res
 
 type kernel_installee = {base_installee : string; installee : string}
 
-let setup_evm_kernel ?config ?kernel_installee
+let setup_evm_kernel ?(ghostnet = false) ?config ?kernel_installee
     ?(originator_key = Constant.bootstrap1.public_key_hash)
     ?(rollup_operator_key = Constant.bootstrap1.public_key_hash)
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts) ?dictator
@@ -309,10 +312,8 @@ let setup_evm_kernel ?config ?kernel_installee
     match config with
     | Some config -> Some config
     | None ->
-        let ticketer =
-          Option.map (fun {bridge; _} -> bridge) deposit_addresses
-        in
-        make_config ~bootstrap_accounts ?ticketer ?dictator ()
+        let bridge = Option.map (fun {bridge; _} -> bridge) deposit_addresses in
+        make_config ~ghostnet ~bootstrap_accounts ?bridge ?dictator ()
   in
   let sc_rollup_node =
     Sc_rollup_node.create
@@ -385,10 +386,11 @@ let setup_evm_kernel ?config ?kernel_installee
       deposit_addresses;
     }
 
-let setup_past_genesis ?dictator ?kernel_installee ?originator_key
+let setup_past_genesis ?ghostnet ?dictator ?kernel_installee ?originator_key
     ?rollup_operator_key ~deposit_admin protocol =
   let* ({node; client; sc_rollup_node; _} as full_setup) =
     setup_evm_kernel
+      ?ghostnet
       ?kernel_installee
       ?originator_key
       ?rollup_operator_key
@@ -2154,6 +2156,7 @@ let gen_kernel_migration_test ~deposit_admin ~dictator ~scenario_prior
   let current_kernel_installee = "ghostnet_evm_kernel" in
   let* evm_setup =
     setup_past_genesis
+      ~ghostnet:true
       ~dictator:dictator.Eth_account.public_key
       ~kernel_installee:
         {

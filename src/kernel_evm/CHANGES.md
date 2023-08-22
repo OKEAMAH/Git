@@ -17,6 +17,10 @@
 ### Breaking changes
 
 - External Messages must now be framed using `ExternalMessageFrame` (adds an additional prefix byte). (!9687)
+- Changed the path where we store the smart contract emitting the tickets,
+  previously `/evm/ticketer`, moved to `/evm/bridge`. New EVM rollups originated
+  need to set the bridge contract at `/evm/bridge` instead of the previous one
+  to support deposits and withdrawals. (!9873)
 
 ### Internal
 

@@ -36,9 +36,10 @@ const SMART_ROLLUP_ADDRESS: RefPath =
 
 const KERNEL_VERSION_PATH: RefPath = RefPath::assert_from(b"/kernel_version");
 
-const TICKETER: RefPath = RefPath::assert_from(b"/ticketer");
-// Size of the ticketer contract, it is encoded in base58.
-const TICKETER_SIZE: usize = 36;
+pub const OLD_BRIDGE: RefPath = RefPath::assert_from(b"/ticketer");
+pub const BRIDGE: RefPath = RefPath::assert_from(b"/bridge");
+// Size of the bridge contract, it is encoded in base58.
+const BRIDGE_SIZE: usize = 36;
 
 const DICTATOR_KEY: RefPath = RefPath::assert_from(b"/dictator_key");
 // Size of the dictator public key in full length.
@@ -700,10 +701,10 @@ pub fn index_account(
     }
 }
 
-/// Reads the ticketer address set by the installer, if any, encoded in b58.
-pub fn read_ticketer<Host: Runtime>(host: &mut Host) -> Option<ContractKt1Hash> {
+/// Reads the bridge address set by the installer, if any, encoded in b58.
+pub fn read_bridge<Host: Runtime>(host: &mut Host) -> Option<ContractKt1Hash> {
     let mut buffer = [0; 36];
-    store_read_slice(host, &TICKETER, &mut buffer, 36).ok()?;
+    store_read_slice(host, &BRIDGE, &mut buffer, 36).ok()?;
     let kt1_b58 = String::from_utf8(buffer.to_vec()).ok()?;
     ContractKt1Hash::from_b58check(&kt1_b58).ok()
 }

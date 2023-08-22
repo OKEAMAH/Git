@@ -48,4 +48,6 @@ let dictator = evm "/dictator_key"
 
 let ticketer = evm "/ticketer"
 
+let bridge = evm "/bridge"
+
 let kernel_boot_wasm = kernel "/boot.wasm"

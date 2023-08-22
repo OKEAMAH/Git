@@ -8,10 +8,9 @@ use anyhow::Context;
 use evm_execution::Config;
 use primitive_types::U256;
 use storage::{
-    read_chain_id, read_kernel_version, read_last_info_per_level_timestamp,
-    read_last_info_per_level_timestamp_stats, read_ticketer, store_chain_id,
-    store_kernel_upgrade_nonce, store_kernel_version, STORAGE_VERSION,
-    STORAGE_VERSION_PATH,
+    read_bridge, read_chain_id, read_kernel_version, read_last_info_per_level_timestamp,
+    read_last_info_per_level_timestamp_stats, store_chain_id, store_kernel_upgrade_nonce,
+    store_kernel_version, STORAGE_VERSION, STORAGE_VERSION_PATH,
 };
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -79,20 +78,20 @@ pub fn stage_one<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     chain_id: U256,
-    ticketer: Option<ContractKt1Hash>,
+    bridge: Option<ContractKt1Hash>,
 ) -> Result<Queue, Error> {
     log!(host, Info, "Entering stage one.");
-    match &ticketer {
-        Some(ref ticketer) => log!(host, Info, "Ticketer is {}.", ticketer),
+    match &bridge {
+        Some(ref bridge) => log!(host, Info, "Bridge is {}.", bridge),
         None => log!(
             host,
             Info,
-            "Ticketer not specified, the kernel ignores internal transfers."
+            "Bridge not specified, the kernel ignores internal transfers."
         ),
     }
     // TODO: https://gitlab.com/tezos/tezos/-/issues/5873
     // if rebooted, don't fetch inbox
-    let queue = fetch(host, smart_rollup_address, chain_id, ticketer)?;
+    let queue = fetch(host, smart_rollup_address, chain_id, bridge)?;
 
     for (i, queue_elt) in queue.proposals.iter().enumerate() {
         match queue_elt {
@@ -222,9 +221,9 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
         let smart_rollup_address = retrieve_smart_rollup_address(host)
             .context("Failed to retrieve smart rollup address")?;
         let chain_id = retrieve_chain_id(host).context("Failed to retrieve chain id")?;
-        let ticketer = read_ticketer(host);
+        let bridge = read_bridge(host);
 
-        stage_one(host, smart_rollup_address, chain_id, ticketer)
+        stage_one(host, smart_rollup_address, chain_id, bridge)
             .context("Failed during stage 1")?
     };
 

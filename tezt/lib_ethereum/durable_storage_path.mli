@@ -47,8 +47,13 @@ val storage : string -> ?key:string -> unit -> path
 (** [dictator] is the path to the dictator key. *)
 val dictator : path
 
-(** [ticketer] is the path to the ticketer contract. *)
+(** [ticketer] is the path to the ticketer contract. Used on the ghosnet
+    rollup on the version [4c111dcae061bea6c3616429a0ea1262ce6c174f], removed
+    from next version. *)
 val ticketer : path
+
+(** [bridge] is the path to the bridge contract. *)
+val bridge : path
 
 (** [kernel_boot_wasm] is the path to the kernel `boot.wasm`. *)
 val kernel_boot_wasm : path

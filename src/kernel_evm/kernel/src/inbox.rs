@@ -167,7 +167,7 @@ pub struct InboxContent {
 pub fn read_input<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-    ticketer: &Option<ContractKt1Hash>,
+    bridge: &Option<ContractKt1Hash>,
 ) -> Result<InputResult, Error> {
     let input = host.read_input()?;
 
@@ -176,7 +176,7 @@ pub fn read_input<Host: Runtime>(
             host,
             input,
             smart_rollup_address,
-            ticketer,
+            bridge,
         )),
         None => Ok(InputResult::NoInput),
     }
@@ -283,14 +283,14 @@ fn handle_deposit<Host: Runtime>(
 pub fn read_inbox<Host: Runtime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
-    ticketer: Option<ContractKt1Hash>,
+    bridge: Option<ContractKt1Hash>,
 ) -> Result<InboxContent, Error> {
     let mut res = InboxContent {
         kernel_upgrade: None,
         transactions: vec![],
     };
     loop {
-        match read_input(host, smart_rollup_address, &ticketer)? {
+        match read_input(host, smart_rollup_address, &bridge)? {
             InputResult::NoInput => {
                 return Ok(res);
             }

@@ -205,7 +205,7 @@ impl InputResult {
         host: &mut Host,
         transfer: Transfer<RollupType>,
         smart_rollup_address: &[u8],
-        ticketer: &ContractKt1Hash,
+        bridge: &ContractKt1Hash,
     ) -> Self {
         if transfer.destination.hash().0 != smart_rollup_address {
             log!(
@@ -219,9 +219,9 @@ impl InputResult {
         let ticket = transfer.payload.0 .1;
 
         match &ticket.creator().0 {
-            Contract::Originated(kt1) if kt1 == ticketer => (),
+            Contract::Originated(kt1) if kt1 == bridge => (),
             _ => {
-                log!(host, Info, "Deposit ignored because of different ticketer");
+                log!(host, Info, "Deposit ignored because of different bridge");
                 return InputResult::Unparsable;
             }
         };
