@@ -61,14 +61,16 @@ let number_of_bakers =
   Sys.getenv_opt bakers |> Option.map int_of_string
   |> Option.value ~default:default_number_of_bakers
 
-let home = Sys.getenv "HOME"
+let home_dir = Sys.getenv "HOME"
 
 let data_dir =
   Sys.getenv_opt "OCTEZ_NODE_DIR"
-  |> Option.value ~default:(home ^ "/.testnet-node")
+  |> Option.value ~default:(home_dir ^ "/.testnet-node")
+
+let network_name_default = "TEZOS_SKYNET"
 
 let network_name =
-  Sys.getenv_opt "NETWORK" |> Option.value ~default:"TEZOS_SKYNET"
+  Sys.getenv_opt "NETWORK" |> Option.value ~default:network_name_default
 
 let current_time () =
   let command = Lwt_process.shell "date -u +%FT%TZ" in
@@ -91,7 +93,6 @@ let genesis ?time protocol () =
     | None -> go ()
     | Some p ->
         let p = String.sub p 0 (String.length p - 4) in
-        (* TODO: Check whether conversion to base58 and back is necessary *)
         let b58_block_hash = Base58.safe_encode p in
         let block_hash =
           Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
