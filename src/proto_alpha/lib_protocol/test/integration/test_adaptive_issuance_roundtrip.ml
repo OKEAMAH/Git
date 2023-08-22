@@ -119,241 +119,249 @@ type ('state, _, _) action =
     several accounts and on AI status and parameters.
 
 *)
+module Abstract = struct
+  (** Information on the expected state of an account .*)
+  type account_info = {
+    name : string;
+    pkh : Signature.Public_key_hash.t;
+    contract : Protocol.Alpha_context.Contract.t;
+    delegate : string option;
+    parameters : staking_parameters;
+    balance : balance_breakdown;
+  }
 
-(** Information on the expected state of an account .*)
-type account_info = {
-  name : string;
-  pkh : Signature.Public_key_hash.t;
-  contract : Protocol.Alpha_context.Contract.t;
-  delegate : string option;
-  parameters : staking_parameters;
-  balance : balance_breakdown;
-}
+  type accounts_info = account_info String.Map.t
 
-type accounts_info = account_info String.Map.t
+  (** Information on the accounts and the expected state of the context.*)
+  type abstract = {
+    accounts : string list;
+    accounts_info : accounts_info;
+    total_supply : Tez.t;
+    constants : Protocol.Alpha_context.Constants.Parametric.t;
+    unstake_requests :
+      (* src, amount, cycles before final *)
+      (string * Tez.t * int) list;
+    activate_ai : bool;
+    last_level_rewards : Protocol.Alpha_context.Raw_level.t;
+    snapshot_balances : (string * balance_breakdown) list;
+  }
 
-(** Information on the accounts and the expected state of the context.*)
-type abstract = {
-  accounts : string list;
-  accounts_info : accounts_info;
-  total_supply : Tez.t;
-  constants : Protocol.Alpha_context.Constants.Parametric.t;
-  unstake_requests :
-    (* src, amount, cycles before final *)
-    (string * Tez.t * int) list;
-  activate_ai : bool;
-  last_level_rewards : Protocol.Alpha_context.Raw_level.t;
-  snapshot_balances : (string * balance_breakdown) list;
-}
+  let find_account account info =
+    match String.Map.find account info.accounts_info with
+    | None -> assert false
+    | Some r -> r
 
-let find_account account info =
-  match String.Map.find account info.accounts_info with
-  | None -> assert false
-  | Some r -> r
+  let update_account account value info =
+    let accounts_info = String.Map.add account value info.accounts_info in
+    {info with accounts_info}
 
-let update_account account value info =
-  let accounts_info = String.Map.add account value info.accounts_info in
-  {info with accounts_info}
-
-let get_total_staked_and_balance account info =
-  let open Lwt_result_syntax in
-  let pool_tez, pool_pseudo =
-    match account.delegate with
-    | None -> (Tez.zero, Q.one)
-    | Some string ->
-        let {balance = delegate_balance; _} = find_account string info in
-        (delegate_balance.pool_tez, delegate_balance.pool_pseudo)
-  in
-  let total_staked =
-    tez_of_staked account.balance.staked ~pool_tez ~pool_pseudo
-  in
-  let* total_balance =
-    total_balance_of_breakdown account.balance ~pool_tez ~pool_pseudo
-  in
-  return (total_staked, total_balance)
-
-let log_debug_balance account info =
-  let open Lwt_result_syntax in
-  let* total_staked, total_balance =
-    get_total_staked_and_balance account info
-  in
-  Log.debug
-    "Balance of %s:\n%aTez staked: %a\nTotal balance: %a\n"
-    account.name
-    balance_pp
-    account.balance
-    Tez.pp
-    total_staked
-    Tez.pp
-    total_balance ;
-  return_unit
-
-let log_debug_rpc_balance account block =
-  let open Lwt_result_syntax in
-  let* balance, total_staked, total_balance =
-    get_balance_breakdown (B block) account.contract
-  in
-  Log.debug
-    "RPC balance of %s:\n%aTez staked: %a\nTotal balance: %a\n"
-    account.name
-    balance_pp
-    balance
-    Tez.pp
-    total_staked
-    Tez.pp
-    total_balance ;
-  return_unit
-
-let log_debug_balance_update (account_before, info_before)
-    (account_after, info_after) =
-  let open Lwt_result_syntax in
-  let* total_staked_bef, total_balance_bef =
-    get_total_staked_and_balance account_before info_before
-  in
-
-  let* total_staked_aft, total_balance_aft =
-    get_total_staked_and_balance account_after info_after
-  in
-  Log.debug
-    "Balance update of %s:\n%aTez staked: %a -> %a\nTotal balance: %a -> %a\n"
-    account_before.name
-    balance_update_pp
-    (account_before.balance, account_after.balance)
-    Tez.pp
-    total_staked_bef
-    Tez.pp
-    total_staked_aft
-    Tez.pp
-    total_balance_bef
-    Tez.pp
-    total_balance_aft ;
-  return_unit
-
-let update_balance ~f account info =
-  let open Lwt_result_syntax in
-  let* balance = f account.balance in
-  let new_account = {account with balance} in
-  let new_info = update_account account.name new_account info in
-  let* () = log_debug_balance_update (account, info) (new_account, new_info) in
-  return new_info
-
-let update_balance_2 ~f account1 account2 info =
-  let open Lwt_result_syntax in
-  let* balance1, balance2 = f (account1.balance, account2.balance) in
-  let new_account1 = {account1 with balance = balance1} in
-  let new_account2 = {account2 with balance = balance2} in
-  let new_info = update_account account1.name new_account1 info in
-  let new_info = update_account account2.name new_account2 new_info in
-  let* () =
-    log_debug_balance_update (account1, info) (new_account1, new_info)
-  in
-  let* () =
-    log_debug_balance_update (account2, info) (new_account2, new_info)
-  in
-  return new_info
-
-(** {3 abstract operations definition*)
-
-(* Must be applied every block if testing when ai activated and rewards != 0 *)
-let apply_rewards_info current_level ~baker (info : abstract) :
-    abstract tzresult Lwt.t =
-  let open Lwt_result_syntax in
-  let {last_level_rewards; total_supply; constants; _} = info in
-  (* We assume one block per minute *)
-  let rewards_per_block =
-    constants.issuance_weights.base_total_issued_per_minute
-  in
-  if Tez.(rewards_per_block = zero) then return info
-  else
-    let delta_time =
-      Protocol.Alpha_context.Raw_level.diff current_level last_level_rewards
-      |> Int32.to_int
+  let get_total_staked_and_balance account info =
+    let open Lwt_result_syntax in
+    let pool_tez, pool_pseudo =
+      match account.delegate with
+      | None -> (Tez.zero, Q.one)
+      | Some string ->
+          let {balance = delegate_balance; _} = find_account string info in
+          (delegate_balance.pool_tez, delegate_balance.pool_pseudo)
     in
-    let ({parameters; _} as baker) = find_account baker info in
-    let delta_rewards = Tez.mul_exn rewards_per_block delta_time in
-    let to_liquid =
-      Tez.(
-        div_exn
-          (mul_exn delta_rewards parameters.baking_over_staking_edge)
-          1_000_000_000)
+    let total_staked =
+      tez_of_staked account.balance.staked ~pool_tez ~pool_pseudo
     in
-    let* to_frozen = Tez.(delta_rewards - to_liquid) in
-    let* info = update_balance ~f:(add_liquid_rewards to_liquid) baker info in
-    let* info = update_balance ~f:(add_frozen_rewards to_frozen) baker info in
-    let* total_supply = Tez.(total_supply + delta_rewards) in
-    return {info with last_level_rewards = current_level; total_supply}
+    let* total_balance =
+      total_balance_of_breakdown account.balance ~pool_tez ~pool_pseudo
+    in
+    return (total_staked, total_balance)
 
-let apply_end_cycle_info info =
-  let open Lwt_result_syntax in
-  let* info, unstake_requests =
-    List.fold_left_es
-      (fun (info, remaining_requests) (name, amount, cd) ->
-        if cd > 0 then
-          return (info, (name, amount, cd - 1) :: remaining_requests)
-        else
-          let src = find_account name info in
-          let* info = update_balance ~f:(apply_unslashable amount) src info in
-          return (info, remaining_requests))
-      (info, [])
-      info.unstake_requests
-  in
-  return {info with unstake_requests}
+  let log_debug_balance account info =
+    let open Lwt_result_syntax in
+    let* total_staked, total_balance =
+      get_total_staked_and_balance account info
+    in
+    Log.debug
+      "Balance of %s:\n%aTez staked: %a\nTotal balance: %a\n"
+      account.name
+      balance_pp
+      account.balance
+      Tez.pp
+      total_staked
+      Tez.pp
+      total_balance ;
+    return_unit
 
-let unstake_value_to_tez src unstake_value info =
-  match src.delegate with
-  | None -> (
-      match unstake_value with
-      | Amount a -> a
-      | Max_tez -> Tez.max_mutez
-      | _ -> Tez.zero)
-  | Some delegate_name -> (
-      let delegate = find_account delegate_name info in
-      let pool_tez = delegate.balance.pool_tez in
-      let pool_pseudo = delegate.balance.pool_pseudo in
-      match unstake_value with
-      | None -> Tez.zero
-      | All -> tez_of_staked src.balance.staked ~pool_tez ~pool_pseudo
-      | Half ->
-          tez_of_staked (Q.div_2exp src.balance.staked 1) ~pool_tez ~pool_pseudo
-      | Max_tez -> Tez.max_mutez
-      | Amount a -> a)
+  let log_debug_rpc_balance account block =
+    let open Lwt_result_syntax in
+    let* balance, total_staked, total_balance =
+      get_balance_breakdown (B block) account.contract
+    in
+    Log.debug
+      "RPC balance of %s:\n%aTez staked: %a\nTotal balance: %a\n"
+      account.name
+      balance_pp
+      balance
+      Tez.pp
+      total_staked
+      Tez.pp
+      total_balance ;
+    return_unit
 
-let apply_unstake_info src unstake_value info =
-  let open Lwt_result_syntax in
-  match src.delegate with
-  | None -> return info
-  | Some delegate_name ->
-      let amount = unstake_value_to_tez src unstake_value info in
-      if Tez.(amount = zero) then return info
-      else
+  let log_debug_balance_update (account_before, info_before)
+      (account_after, info_after) =
+    let open Lwt_result_syntax in
+    let* total_staked_bef, total_balance_bef =
+      get_total_staked_and_balance account_before info_before
+    in
+
+    let* total_staked_aft, total_balance_aft =
+      get_total_staked_and_balance account_after info_after
+    in
+    Log.debug
+      "Balance update of %s:\n%aTez staked: %a -> %a\nTotal balance: %a -> %a\n"
+      account_before.name
+      balance_update_pp
+      (account_before.balance, account_after.balance)
+      Tez.pp
+      total_staked_bef
+      Tez.pp
+      total_staked_aft
+      Tez.pp
+      total_balance_bef
+      Tez.pp
+      total_balance_aft ;
+    return_unit
+
+  let update_balance ~f account info =
+    let open Lwt_result_syntax in
+    let* balance = f account.balance in
+    let new_account = {account with balance} in
+    let new_info = update_account account.name new_account info in
+    let* () =
+      log_debug_balance_update (account, info) (new_account, new_info)
+    in
+    return new_info
+
+  let update_balance_2 ~f account1 account2 info =
+    let open Lwt_result_syntax in
+    let* balance1, balance2 = f (account1.balance, account2.balance) in
+    let new_account1 = {account1 with balance = balance1} in
+    let new_account2 = {account2 with balance = balance2} in
+    let new_info = update_account account1.name new_account1 info in
+    let new_info = update_account account2.name new_account2 new_info in
+    let* () =
+      log_debug_balance_update (account1, info) (new_account1, new_info)
+    in
+    let* () =
+      log_debug_balance_update (account2, info) (new_account2, new_info)
+    in
+    return new_info
+
+  (** {3 abstract operations definition*)
+
+  (* Must be applied every block if testing when ai activated and rewards != 0 *)
+  let apply_rewards_info current_level ~baker (info : abstract) :
+      abstract tzresult Lwt.t =
+    let open Lwt_result_syntax in
+    let {last_level_rewards; total_supply; constants; _} = info in
+    (* We assume one block per minute *)
+    let rewards_per_block =
+      constants.issuance_weights.base_total_issued_per_minute
+    in
+    if Tez.(rewards_per_block = zero) then return info
+    else
+      let delta_time =
+        Protocol.Alpha_context.Raw_level.diff current_level last_level_rewards
+        |> Int32.to_int
+      in
+      let ({parameters; _} as baker) = find_account baker info in
+      let delta_rewards = Tez.mul_exn rewards_per_block delta_time in
+      let to_liquid =
+        Tez.(
+          div_exn
+            (mul_exn delta_rewards parameters.baking_over_staking_edge)
+            1_000_000_000)
+      in
+      let* to_frozen = Tez.(delta_rewards - to_liquid) in
+      let* info = update_balance ~f:(add_liquid_rewards to_liquid) baker info in
+      let* info = update_balance ~f:(add_frozen_rewards to_frozen) baker info in
+      let* total_supply = Tez.(total_supply + delta_rewards) in
+      return {info with last_level_rewards = current_level; total_supply}
+
+  let apply_end_cycle_info info =
+    let open Lwt_result_syntax in
+    let* info, unstake_requests =
+      List.fold_left_es
+        (fun (info, remaining_requests) (name, amount, cd) ->
+          if cd > 0 then
+            return (info, (name, amount, cd - 1) :: remaining_requests)
+          else
+            let src = find_account name info in
+            let* info = update_balance ~f:(apply_unslashable amount) src info in
+            return (info, remaining_requests))
+        (info, [])
+        info.unstake_requests
+    in
+    return {info with unstake_requests}
+
+  let unstake_value_to_tez src unstake_value info =
+    match src.delegate with
+    | None -> (
+        match unstake_value with
+        | Amount a -> a
+        | Max_tez -> Tez.max_mutez
+        | _ -> Tez.zero)
+    | Some delegate_name -> (
         let delegate = find_account delegate_name info in
-        let old_unstaked = src.balance.unstaked_frozen in
-        let* ({constants; _} as info) =
-          if String.equal src.name delegate.name then
-            update_balance ~f:(apply_self_unstake amount) src info
-          else update_balance_2 ~f:(apply_unstake amount) src delegate info
-        in
-        let new_src = find_account src.name info in
-        let cd =
-          constants.preserved_cycles + constants.max_slashing_period - 1
-        in
-        let* actual_amount =
-          Tez.(new_src.balance.unstaked_frozen - old_unstaked)
-        in
-        let unstake_requests =
-          (src.name, actual_amount, cd) :: info.unstake_requests
-        in
-        return {info with unstake_requests}
+        let pool_tez = delegate.balance.pool_tez in
+        let pool_pseudo = delegate.balance.pool_pseudo in
+        match unstake_value with
+        | None -> Tez.zero
+        | All -> tez_of_staked src.balance.staked ~pool_tez ~pool_pseudo
+        | Half ->
+            tez_of_staked
+              (Q.div_2exp src.balance.staked 1)
+              ~pool_tez
+              ~pool_pseudo
+        | Max_tez -> Tez.max_mutez
+        | Amount a -> a)
 
-let apply_stake_info src amount info =
-  let open Lwt_result_syntax in
-  match src.delegate with
-  | None -> return info
-  | Some delegate_name ->
-      let delegate = find_account delegate_name info in
-      if String.equal src.name delegate.name then
-        update_balance ~f:(apply_self_stake amount) src info
-      else update_balance_2 ~f:(apply_stake amount) src delegate info
+  let apply_unstake_info src unstake_value info =
+    let open Lwt_result_syntax in
+    match src.delegate with
+    | None -> return info
+    | Some delegate_name ->
+        let amount = unstake_value_to_tez src unstake_value info in
+        if Tez.(amount = zero) then return info
+        else
+          let delegate = find_account delegate_name info in
+          let old_unstaked = src.balance.unstaked_frozen in
+          let* ({constants; _} as info) =
+            if String.equal src.name delegate.name then
+              update_balance ~f:(apply_self_unstake amount) src info
+            else update_balance_2 ~f:(apply_unstake amount) src delegate info
+          in
+          let new_src = find_account src.name info in
+          let cd =
+            constants.preserved_cycles + constants.max_slashing_period - 1
+          in
+          let* actual_amount =
+            Tez.(new_src.balance.unstaked_frozen - old_unstaked)
+          in
+          let unstake_requests =
+            (src.name, actual_amount, cd) :: info.unstake_requests
+          in
+          return {info with unstake_requests}
+
+  let apply_stake_info src amount info =
+    let open Lwt_result_syntax in
+    match src.delegate with
+    | None -> return info
+    | Some delegate_name ->
+        let delegate = find_account delegate_name info in
+        if String.equal src.name delegate.name then
+          update_balance ~f:(apply_self_stake amount) src info
+        else update_balance_2 ~f:(apply_stake amount) src delegate info
+end
+
+open Abstract
 
 (** {2  Threaded context for the tests.}
 
