@@ -83,6 +83,8 @@ let stake_value_pp fmt value =
   in
   Format.fprintf fmt "%s" s
 
+type 'state t = {state : 'state; staker : string; baker : string}
+
 type ('state, _, _) action =
   | Do (* arbitrary action *) :
       ('input -> 'output tzresult Lwt.t)
@@ -112,6 +114,17 @@ type ('state, _, _) action =
       (* parametrs, list of names for delegates, activate_ai flag *)
       (Protocol.Alpha_context.Constants.Parametric.t * string list * bool)
       -> ('state, unit, 'state) action
+
+let set_staker staker : ('a t, 'a t, 'a t) action =
+  Do (fun state -> return {state with staker})
+
+let with_staker = "#staker#" (* Special staker/unstaker value *)
+
+let resolve_name s {staker; _} =
+  if String.equal s with_staker then staker else s
+
+let set_baker baker : ('a t, 'a t, 'a t) action =
+  Do (fun state -> return {state with baker})
 
 (** {2 Context abstraction}
 
@@ -403,17 +416,6 @@ let apply_rewards ({block; info; baker; _} as input) =
   let input = {input with info} in
   let* () = check_all_balances input in
   return input
-
-let set_staker staker : (t, t, t) action =
-  Do (fun state -> return {state with staker})
-
-let with_staker = "#staker#" (* Special staker/unstaker value *)
-
-let resolve_name s {staker; _} =
-  if String.equal s with_staker then staker else s
-
-let set_baker baker : (t, t, t) action =
-  Do (fun state -> return {state with baker})
 
 let bake ?operation ({block; info; baker; _} as input) =
   let open Lwt_result_syntax in
