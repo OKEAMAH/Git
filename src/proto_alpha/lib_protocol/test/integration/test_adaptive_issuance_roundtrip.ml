@@ -54,11 +54,9 @@ let default_params =
     baking_over_staking_edge = 1_000_000_000;
   }
 
-(** {2 Context abstraction}
+(** {2 Action on abstract and concrete state}
 
-    The [info] type is an abstraction of the state that records information on
-    several accounts and on AI status and parameters.
-
+Those action should be computable on any kind of state
 *)
 
 let initial_bbd : balance_breakdown =
@@ -84,6 +82,43 @@ let stake_value_pp fmt value =
     | Amount a -> Format.asprintf "%aꜩ" Tez.pp a
   in
   Format.fprintf fmt "%s" s
+
+type ('state, _, _) action =
+  | Do (* arbitrary action *) :
+      ('input -> 'output tzresult Lwt.t)
+      -> ('state, 'input, 'output) action
+  | Noop : ('state, 'input, 'input) action
+  | Set_delegate_params :
+      (string * staking_parameters)
+      -> ('state, 'state, 'state) action
+  | Add_account :
+      (* name of new account *) string
+      -> ('state, 'state, 'state) action
+  | Reveal : string -> ('state, 'state, 'state) action
+  | Transfer :
+      (* src, dest, amount *) (string * string * Tez.t)
+      -> ('state, 'state, 'state) action
+  | Set_delegate :
+      (* src, dest *) (string * string)
+      -> ('state, 'state, 'state) action
+  | Unset_delegate : string -> ('state, 'state, 'state) action
+  | Stake : (string * stake_value) -> ('state, 'state, 'state) action
+  | Unstake : (string * stake_value) -> ('state, 'state, 'state) action
+  | Finalize_unstake : string -> ('state, 'state, 'state) action
+  | Next_block : ('state, 'state, 'state) action
+  | Next_cycle : ('state, 'state, 'state) action
+  | End_test : ('state, 'state, unit) action
+  | Begin_test :
+      (* parametrs, list of names for delegates, activate_ai flag *)
+      (Protocol.Alpha_context.Constants.Parametric.t * string list * bool)
+      -> ('state, unit, 'state) action
+
+(** {2 Context abstraction}
+
+    The [info] type is an abstraction of the state that records information on
+    several accounts and on AI status and parameters.
+
+*)
 
 (** Information on the expected state of an account .*)
 type account_info = {
@@ -360,36 +395,6 @@ let apply_rewards ({block; info; baker; _} as input) =
   let input = {input with info} in
   let* () = check_all_balances input in
   return input
-
-type ('state, _, _) action =
-  | Do (* arbitrary action *) :
-      ('input -> 'output tzresult Lwt.t)
-      -> ('state, 'input, 'output) action
-  | Noop : ('state, 'input, 'input) action
-  | Set_delegate_params :
-      (string * staking_parameters)
-      -> ('state, 'state, 'state) action
-  | Add_account :
-      (* name of new account *) string
-      -> ('state, 'state, 'state) action
-  | Reveal : string -> ('state, 'state, 'state) action
-  | Transfer :
-      (* src, dest, amount *) (string * string * Tez.t)
-      -> ('state, 'state, 'state) action
-  | Set_delegate :
-      (* src, dest *) (string * string)
-      -> ('state, 'state, 'state) action
-  | Unset_delegate : string -> ('state, 'state, 'state) action
-  | Stake : (string * stake_value) -> ('state, 'state, 'state) action
-  | Unstake : (string * stake_value) -> ('state, 'state, 'state) action
-  | Finalize_unstake : string -> ('state, 'state, 'state) action
-  | Next_block : ('state, 'state, 'state) action
-  | Next_cycle : ('state, 'state, 'state) action
-  | End_test : ('state, 'state, unit) action
-  | Begin_test :
-      (* parametrs, list of names for delegates, activate_ai flag *)
-      (Protocol.Alpha_context.Constants.Parametric.t * string list * bool)
-      -> ('state, unit, 'state) action
 
 let set_staker staker : (t, t, t) action =
   Do (fun state -> return {state with staker})
