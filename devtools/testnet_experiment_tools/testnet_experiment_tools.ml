@@ -72,35 +72,21 @@ let network_name_default = "TEZOS_SKYNET"
 let network_name =
   Sys.getenv_opt "NETWORK" |> Option.value ~default:network_name_default
 
-let current_time () =
-  let command = Lwt_process.shell "date -u +%FT%TZ" in
-  let* output = Lwt_process.pread_line command in
-  match Tezos_base.Time.Protocol.of_notation output with
-  | None -> Test.fail "Cannot parse date output:%s" output
-  | Some time -> return (time, output)
+let genesis_prefix = "BLockGenesisGenesisGenesisGenesisGenesis"
 
-let genesis ?time protocol () =
-  let rec go ?time () =
-    let prefix = "BLockGenesisGenesisGenesisGenesisGenesis" in
-    let* time, time_as_string =
-      time
-      |> Option.map (fun t ->
-             return (t, Tezos_base.Time.Protocol.to_notation t))
-      |> Option.value ~default:(current_time ())
-    in
-    let suffix = String.sub Digest.(to_hex (string time_as_string)) 0 5 in
-    match Base58.raw_decode (prefix ^ suffix ^ "crcCRC") with
-    | None -> go ()
-    | Some p ->
-        let p = String.sub p 0 (String.length p - 4) in
-        let b58_block_hash = Base58.safe_encode p in
-        let block_hash =
-          Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
-        in
-        return (block_hash, time)
-  in
-  let* block, time = go ?time () in
-  return Tezos_base.Genesis.{block; time; protocol}
+let rec genesis () =
+  let* time = Lwt_process.pread_line (Lwt_process.shell "date -u +%FT%TZ") in
+  let suffix = String.sub Digest.(to_hex (string time)) 0 5 in
+  match Base58.raw_decode (genesis_prefix ^ suffix ^ "crcCRC") with
+  | None -> genesis ()
+  | Some p ->
+      let p = String.sub p 0 (String.length p - 4) in
+      (* TODO: Check whether conversion to base58 and back is necessary *)
+      let b58_block_hash = Base58.safe_encode p in
+      let block =
+        Tezos_crypto.Hashed.Block_hash.of_b58check_exn b58_block_hash
+      in
+      return (block, Tezos_base.Time.Protocol.of_notation_exn time)
 
 let default_gen_keys_dir =
   let base_dir = Filename.temp_file ~temp_dir:"/tmp" "" "" in
@@ -170,11 +156,12 @@ module Local = struct
         network_name
         config_file_path
     in
-    let protocol_hash =
+    let protocol =
       Tezos_crypto.Hashed.Protocol_hash.of_b58check_exn
         "Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P"
     in
-    let* genesis = genesis protocol_hash () in
+    let* block, time = genesis () in
+    let genesis = Tezos_base.Genesis.{block; time; protocol} in
     let chain_name =
       Tezos_base.Distributed_db_version.Name.of_string network_name
     in
