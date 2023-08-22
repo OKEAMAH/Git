@@ -83,15 +83,14 @@ stages:
           path_client: self://./octez-client
           endpoint: self://node
 
-      - name: Start octez-baker-alpha
-        tezos.start_baker:
-          protocol: alpha
-          wallet_base_dir: self://wallet.todo
-          node_data_dir: self://data_dir.todo
-          node_uri: http://127.0.0.1:30001
-          delegates:
-           - bootstrap1
-           - bootstrap2
-           - bootstrap3
-           - bootstrap4
+      - name: Start octez-baker-alpha                                                                                                                                                         |
+        tezos.start_baker:                                                                                                                                                                    |
+          protocol: alpha                                                                                                                                                                     |
+          wallet_base_dir: self:///root/.octogram/node/2023-08-22T12:56:57-00:00/tezt-458/1/client1                                                                                           |
+          node_uri: self://node                                                                                                                                                               |
+          delegates:                                                                                                                                                                          |
+           - bootstrap1                                                                                                                                                                       |
+           - bootstrap2                                                                                                                                                                       |
+           - bootstrap3                                                                                                                                                                       |
+           - bootstrap4                                                                                                                                                                       |
            - bootstrap5
