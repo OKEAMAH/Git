@@ -1982,19 +1982,20 @@ module Dac_post_file = struct
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ _res = ()
 end
 
-(* XXX *)
-
-let expand_foreign_endpoint run Foreign_endpoint.{scheme; host; port} =
-  Foreign_endpoint.{scheme = run scheme; host = run host; port}
-
 type 'uri start_octez_baker = {
-  name : string option;
   protocol : string;
-  node_data_dir : 'uri;
-  wallet_base_dir : 'uri;
-  node_rpc_endpoint : Foreign_endpoint.t;
-  dal_node_rpc_endpoint : Foreign_endpoint.t option;
+      (** The baker's protocol. One of those in {!Protocol.t}. *)
+  wallet_base_dir : 'uri;  (** The --base-dir of the baker. *)
+  node_uri : 'uri;
+      (** An URI to a Layer 1 node (either "Owrned/Managed" or "Remote". *)
+  node_data_dir : 'uri option;
+      (** A path to the --data-dir of the Layer 1 node. Only set if the node_uri
+          is "Remote".  Otherwise, this path is already provided by the
+          [node_uri]. *)
   delegates : string list;
+      (** A list of delegates handled by this baker agent. The baker will handle
+          all the delegates in the wallet found in [wallet_base_dir] if no
+          delegate is given. *)
 }
 
 type (_, _) Remote_procedure.t +=
@@ -2024,45 +2025,15 @@ module Start_octez_baker = struct
   let encoding uri_encoding =
     let open Data_encoding in
     conv
-      (fun {
-             name;
-             protocol;
-             node_data_dir;
-             wallet_base_dir;
-             node_rpc_endpoint;
-             dal_node_rpc_endpoint;
-             delegates;
-           } ->
-        ( name,
-          protocol,
-          node_data_dir,
-          wallet_base_dir,
-          node_rpc_endpoint,
-          dal_node_rpc_endpoint,
-          delegates ))
-      (fun ( name,
-             protocol,
-             node_data_dir,
-             wallet_base_dir,
-             node_rpc_endpoint,
-             dal_node_rpc_endpoint,
-             delegates ) ->
-        {
-          name;
-          protocol;
-          node_data_dir;
-          wallet_base_dir;
-          node_rpc_endpoint;
-          dal_node_rpc_endpoint;
-          delegates;
-        })
-      (obj7
-         (opt "name" string)
+      (fun {protocol; wallet_base_dir; node_uri; node_data_dir; delegates} ->
+        (protocol, wallet_base_dir, node_uri, node_data_dir, delegates))
+      (fun (protocol, wallet_base_dir, node_uri, node_data_dir, delegates) ->
+        {protocol; wallet_base_dir; node_uri; node_data_dir; delegates})
+      (obj5
          (dft "protocol" string "alpha")
-         (req "node_data_dir" uri_encoding)
          (req "wallet_base_dir" uri_encoding)
-         (req "node_rpc_endpoint" Foreign_endpoint.encoding)
-         (opt "dal_node_rpc_endpoint" Foreign_endpoint.encoding)
+         (req "node_uri" uri_encoding)
+         (opt "node_data_dir" uri_encoding)
          (dft "delegates" (list string) []))
 
   let r_encoding = Data_encoding.empty
@@ -2070,75 +2041,65 @@ module Start_octez_baker = struct
   let tvalue_of_r (() : r) = Tnull
 
   let expand ~self ~run
-      {
-        name;
-        protocol;
-        node_data_dir;
-        wallet_base_dir;
-        node_rpc_endpoint;
-        dal_node_rpc_endpoint;
-        delegates;
-      } =
-    let uri_run uri = Remote_procedure.global_uri_of_string ~self ~run uri in
+      {protocol; wallet_base_dir; node_uri; node_data_dir; delegates} =
+    let uri_run = Remote_procedure.global_uri_of_string ~self ~run in
     {
-      name = Option.map run name;
       protocol = run protocol;
-      node_data_dir = uri_run node_data_dir;
       wallet_base_dir = uri_run wallet_base_dir;
-      node_rpc_endpoint = expand_foreign_endpoint run node_rpc_endpoint;
-      dal_node_rpc_endpoint =
-        Option.map (expand_foreign_endpoint run) dal_node_rpc_endpoint;
+      node_uri = uri_run node_uri;
+      node_data_dir = Option.map uri_run node_data_dir;
       delegates = List.map run delegates;
     }
 
   let resolve ~self resolver
-      {
-        name;
-        protocol;
-        node_data_dir;
-        wallet_base_dir;
-        node_rpc_endpoint;
-        dal_node_rpc_endpoint;
-        delegates;
-      } =
-    let node_data_dir =
-      Remote_procedure.file_agent_uri ~self ~resolver node_data_dir
-    in
-    let wallet_base_dir = Remote_procedure.file_agent_uri ~self ~resolver in
-    let coordinator =
-      resolve_dac_rpc_global_uri ~self ~resolver args.coordinator
-    in
-    {args with dac_client_path; file_path; coordinator}
-      {
-        name;
-        protocol;
-        node_data_dir;
-        wallet_base_dir;
-        node_rpc_endpoint;
-        dal_node_rpc_endpoint;
-        delegates;
-      }
+      {protocol; wallet_base_dir; node_uri; node_data_dir; delegates} =
+    let file_agent_uri = Remote_procedure.file_agent_uri in
+    {
+      protocol;
+      wallet_base_dir = file_agent_uri ~self ~resolver wallet_base_dir;
+      node_data_dir = Option.map (file_agent_uri ~self ~resolver) node_data_dir;
+      node_uri = resolve_octez_rpc_global_uri ~self ~resolver node_uri;
+      delegates;
+    }
 
-  let run _state
-      {name = _; node_name; protocol; node_rpc_addr; node_rpc_port; delegates} =
-    let node_rpc_port = int_of_string node_rpc_port in
-    let node_rpc_addr = Option.value node_rpc_addr ~default:"127.0.0.1" in
-    let l1_node =
-      (* We only need the node's context to start a baker, so the path is not
-         relevant. *)
-      Node.create
-        ?name:node_name
-        ~rpc_host:node_rpc_addr
-        ~rpc_port:node_rpc_port
-        ~path:""
-        []
+  let get_octez_node_params node_data_dir endpoint =
+    match (node_data_dir, endpoint) with
+    | Some node_data_dir, Client.Foreign_endpoint fe -> (node_data_dir, fe)
+    | None, Client.Node node ->
+        (Node.data_dir node, Node.as_foreign_rpc_endpoint node)
+    | _, Client.Proxy_server _ ->
+        Test.fail "Proxy_server not supported as a Node endpoint for baking"
+    | Some _, Client.Node _ ->
+        Test.fail
+          "Should not provide both a node data dir and an Owned/local node"
+    | None, Client.Foreign_endpoint _ ->
+        Test.fail
+          "Should provide a node data dir for node given as foreign endpoint"
+
+  let run state {protocol; wallet_base_dir; node_uri; node_data_dir; delegates}
+      =
+    let client = Agent_state.http_client state in
+    let* base_dir =
+      Http_client.local_path_from_agent_uri client wallet_base_dir
+    in
+    let* node_data_dir =
+      match node_data_dir with
+      | None -> Lwt.return_none
+      | Some node_data_dir ->
+          let* node_data_dir =
+            Http_client.local_path_from_agent_uri client node_data_dir
+          in
+          Lwt.return_some node_data_dir
+    in
+    let node_data_dir, node_rpc_endpoint =
+      octez_endpoint state node_uri |> get_octez_node_params node_data_dir
     in
     let protocol =
       Protocol.of_string_opt protocol |> function
       | Some p -> p
-      | None -> failwith (Format.sprintf "Unknown protocol name %S" protocol)
+      | None -> Test.fail "Unknown protocol name %S" protocol
     in
-    let base_dir =
+    let _base_dir =
       (* XXX Currently, we only use l1_client to initialize secret keys and provide it
          to create a baker, bu this will evolve in the future. *)
       let l1_client = Client.create () in
@@ -2147,7 +2108,14 @@ module Start_octez_baker = struct
         ~base_dir:(Client.base_dir l1_client) ;
       Client.base_dir l1_client
     in
-    Baker.create ~protocol l1_node ~base_dir ~delegates |> Baker.run
+    Baker.create_from_uris
+      ~protocol
+      ~base_dir
+      ~node_data_dir
+      ~node_rpc_endpoint
+      ~delegates
+      ()
+    |> Baker.run
 
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ (() : r) = ()
 end

@@ -85,12 +85,10 @@ stages:
 
       - name: Start octez-baker-alpha
         tezos.start_baker:
-          name: baker
           protocol: alpha
-          node_data_dir : self://...
-          wallet_base_dir : self://...
-          node_rpc_endpoint : http://127.0.0.1:30001
-          dal_node_rpc_endpoint : http://127.0.0.1:30002
+          wallet_base_dir: self://wallet.todo
+          node_data_dir: self://data_dir.todo
+          node_uri: http://127.0.0.1:30001
           delegates:
            - bootstrap1
            - bootstrap2
