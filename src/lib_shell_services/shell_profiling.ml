@@ -103,13 +103,15 @@ let may_start_block =
         last_block := Some b
 
 let activate_all ~profiler_maker =
-  List.iter (fun (name, p) -> plug p (profiler_maker ~name)) all_profilers
+  List.iter
+    (fun (profiler_name, p) -> plug p (profiler_maker ~profiler_name))
+    all_profilers
 
 let deactivate_all () =
   List.iter (fun (_name, p) -> close_and_unplug_all p) all_profilers
 
-let activate ~profiler_maker name =
-  List.assoc ~equal:( = ) name all_profilers |> function
+let activate ~profiler_maker profiler_name =
+  List.assoc ~equal:( = ) profiler_name all_profilers |> function
   | None ->
       Format.ksprintf
         invalid_arg

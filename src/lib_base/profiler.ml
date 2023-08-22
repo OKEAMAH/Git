@@ -134,8 +134,6 @@ module type DRIVER = sig
 
   val kind : (config, state) kind
 
-  val file_format : file_format option
-
   val create : config -> state
 
   val time : state -> time
@@ -174,9 +172,6 @@ end
 type instance = (module INSTANCE)
 
 let ids = ref 0
-
-let file_format (type a) (module D : DRIVER with type config = a) =
-  D.file_format
 
 let instance (type a) (module D : DRIVER with type config = a) (config : a) =
   let state = D.create config in

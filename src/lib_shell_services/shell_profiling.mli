@@ -75,14 +75,14 @@ val profiler_name_of_string : string -> profiler_name
 
 (** [plug] all profilers of the previous list. *)
 val activate_all :
-  profiler_maker:(name:profiler_name -> Profiler.instance) -> unit
+  profiler_maker:(profiler_name:profiler_name -> Profiler.instance) -> unit
 
 (** [close_and_unplug_all] all profilers of the previous list. *)
 val deactivate_all : unit -> unit
 
 (** [plug] Profiler based on provided name. *)
 val activate :
-  profiler_maker:(name:profiler_name -> Profiler.instance) ->
+  profiler_maker:(profiler_name:profiler_name -> Profiler.instance) ->
   profiler_name ->
   unit
 
