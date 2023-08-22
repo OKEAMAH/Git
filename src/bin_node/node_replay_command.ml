@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -526,7 +527,7 @@ let run ?verbosity ~singleprocess ~strict ~operation_metadata_size_limit
        in
        let instance =
          Profiler.instance
-           Tezos_base_unix.Simple_profiler.auto_write_to_file
+           (snd Tezos_base_unix.Simple_profiler.auto_write_to_txt_file)
            Filename.Infix.(output_dir // "node_profiling.txt", max_lod)
        in
        Tezos_base.Profiler.(plug main) instance ;

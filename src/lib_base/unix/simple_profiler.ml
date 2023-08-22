@@ -276,8 +276,6 @@ module Headless = struct
 
   let kind = Headless
 
-  let file_format = None
-
   let create lod = ref (empty lod)
 
   let stamp state lod id = state := stamp !state lod id
@@ -320,8 +318,6 @@ type auto_writer_state = {
 
 type (_, _) Profiler.kind +=
   | Auto_write_to_file : (string * lod, auto_writer_state) Profiler.kind
-
-type file_format = Plain_text | Json
 
 let make_driver ~file_format =
   (module struct
@@ -366,7 +362,7 @@ let make_driver ~file_format =
     let may_write ({time = t0; output; _} as state) =
       match report state with
       | None -> ()
-      | Some report -> (
+      | Some report ->
           let ppf =
             match output with
             | Open (_, _, ppf) -> ppf
@@ -407,6 +403,6 @@ let make_driver ~file_format =
   end : DRIVER
     with type config = string * lod)
 
-let auto_write_to_txt_file = make_driver ~file_format:Plain_text
+let auto_write_to_txt_file = (Plain_text, make_driver ~file_format:Plain_text)
 
-let auto_write_to_json_file = make_driver ~file_format:Json
+let auto_write_to_json_file = (Json, make_driver ~file_format:Json)

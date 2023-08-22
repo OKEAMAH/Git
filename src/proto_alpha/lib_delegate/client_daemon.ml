@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -88,9 +89,11 @@ let may_start_profiler baking_dir =
         | Some output_dir -> output_dir
       in
       let profiler_maker ~name =
-        Profiler.instance
-          Tezos_base_unix.Simple_profiler.auto_write_to_file
-          Filename.Infix.((output_dir // name) ^ "_profiling.txt", max_lod)
+        Shell_profiling.profiler_maker
+          output_dir
+          ~name:(Shell_profiling.profiler_name_of_string name)
+          max_lod
+          Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
       in
       Baking_profiler.init profiler_maker
   | _ -> ()
