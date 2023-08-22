@@ -113,6 +113,12 @@ let generate_baker_accounts n client =
 
 let save_config (Node_config.{data_dir; _} as configuration) =
   let file = Filename.concat data_dir "config.json" in
+  let* () =
+    Lwt_io.printf
+      "Configuration for %s will be written in %s\n\n."
+      network_name
+      file
+  in
   let* () = ensure_dir_exists data_dir in
   let* res =
     Lwt_utils_unix.with_atomic_open_out file @@ fun chan ->
@@ -149,13 +155,6 @@ module Local = struct
     Lwt.return_unit
 
   let generate_network_configuration network_name data_dir () =
-    let config_file_path = Filename.concat data_dir "config.json" in
-    let* () =
-      Lwt_io.printf
-        "Configuration for %s will be written in %s\n\n."
-        network_name
-        config_file_path
-    in
     let protocol =
       Tezos_crypto.Hashed.Protocol_hash.of_b58check_exn
         "Ps9mPmXaRzmzk35gbAYNCAw6UXdE2qoABTHbN2oEEc1qM7CwT9P"
