@@ -54,7 +54,14 @@ let default_params =
     baking_over_staking_edge = 1_000_000_000;
   }
 
-let initial_bbd =
+(** {2 Context abstraction}
+
+    The [info] type is an abstraction of the state that records information on
+    several accounts and on AI status and parameters.
+
+*)
+
+let initial_bbd : balance_breakdown =
   {
     liquid = Tez.zero;
     bonds = Tez.zero;
@@ -78,6 +85,7 @@ let stake_value_pp fmt value =
   in
   Format.fprintf fmt "%s" s
 
+(** Information on the expected state of an account .*)
 type account_info = {
   name : string;
   pkh : Signature.Public_key_hash.t;
@@ -89,6 +97,7 @@ type account_info = {
 
 type accounts_info = account_info String.Map.t
 
+(** Information on the accounts and the expected state of the context.*)
 type info = {
   accounts : string list;
   accounts_info : accounts_info;
@@ -210,8 +219,10 @@ let update_balance_2 ~f account1 account2 info =
   in
   return new_info
 
-(* Threaded context for the tests. Contains the block, as well as various
-   informations on the state of the current test. *)
+(** {2  Threaded context for the tests.}
+
+Contains the concrete ([Block.t]) and abstract ([info]) states. *)
+
 type t = Block.t * info
 
 (* Must be applied every block if testing when ai activated and rewards != 0 *)
