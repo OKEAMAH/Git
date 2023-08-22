@@ -281,18 +281,25 @@ let run_recipe ~keep_alive (recipe : Recipe.t) =
            initialization" ;
         return None
   in
-
   let state = Orchestrator_state.initial_state ?prometheus recipe.vars in
-  Log.info ~color "[orchestrator] Starting the agents" ;
-  let* () =
-    initialize_agents
-      ~octogram_binary:recipe.octogram_binary
-      ~state
-      recipe.agents
+  let t, u = Lwt.task () in
+  let () =
+    Sys.set_signal Sys.sigint
+    @@ Sys.Signal_handle
+         (fun _ ->
+           Format.eprintf "COUCOU@." ;
+           match Lwt.state t with Lwt.Sleep -> Lwt.wakeup u () | _ -> ())
   in
-  Log.info ~color "[orchestrator] Starting stages execution" ;
-  let* () = run_stages ~state recipe.stages in
-  let* () =
+  Log.info ~color "[orchestrator] Starting the agents" ;
+  let p =
+    let* () =
+      initialize_agents
+        ~octogram_binary:recipe.octogram_binary
+        ~state
+        recipe.agents
+    in
+    Log.info ~color "[orchestrator] Starting stages execution" ;
+    let* () = run_stages ~state recipe.stages in
     if keep_alive then (
       Log.info
         ~color
@@ -301,6 +308,7 @@ let run_recipe ~keep_alive (recipe : Recipe.t) =
       unit)
     else unit
   in
+  let* () = Lwt.pick [t; p] in
   let* () = terminate_agents ~state in
   let* () = terminate_prometheus ~state in
   unit
