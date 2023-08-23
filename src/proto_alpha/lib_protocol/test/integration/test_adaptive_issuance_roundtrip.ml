@@ -87,6 +87,7 @@ type 'state t = {
   state : 'state;
   staker : string;
   baker : string;
+  current_cycle : Tezos_raw_protocol_alpha.Alpha_context.Cycle.t;
   current_level : Tezos_raw_protocol_alpha.Alpha_context.Raw_level.t;
 }
 
@@ -144,7 +145,9 @@ module Abstract = struct
     pkh : Signature.Public_key_hash.t;
     contract : Protocol.Alpha_context.Contract.t;
     delegate : string option;
-    parameters : staking_parameters;
+    parameters :
+      (staking_parameters * Protocol.Alpha_context.Raw_level.t)
+      Protocol.Alpha_context.Cycle.Map.t;
     balance : balance_breakdown;
   }
 
@@ -272,10 +275,30 @@ module Abstract = struct
     in
     return new_info
 
-  (** {3 abstract operations definition*)
+  let set_parameters params ~current_level ~current_cycle parameters =
+    Protocol.Alpha_context.Cycle.(
+      Map.update
+        (add current_cycle 5)
+        (function
+          | None -> Some (params, current_level)
+          | Some (old_param, old_level) ->
+              if Protocol.Alpha_context.Raw_level.(current_level > old_level)
+              then Some (params, current_level)
+              else Some (old_param, old_level))
+        parameters)
+
+  let get_parameters ~current_cycle parameters =
+    let open Protocol.Alpha_context in
+    match Cycle.Map.find current_cycle parameters with
+    | None -> (default_params, Raw_level.root)
+    | Some p -> p
+
+  let default_parameters = Protocol.Alpha_context.Cycle.Map.empty
 
   (* Must be applied every block if testing when ai activated and rewards != 0 *)
-  let apply_rewards_info current_level ~baker (info : abstract) :
+
+  (** {3 abstract operations definition*)
+  let apply_rewards_info current_level current_cycle ~baker (info : abstract) :
       abstract tzresult Lwt.t =
     let open Lwt_result_syntax in
     let {last_level_rewards; total_supply; constants; _} = info in
@@ -290,6 +313,8 @@ module Abstract = struct
         |> Int32.to_int
       in
       let ({parameters; _} as baker) = find_account baker info in
+      let parameters, _ = get_parameters ~current_cycle parameters in
+
       let delta_rewards = Tez.mul_exn rewards_per_block delta_time in
       let to_liquid =
         Tez.(
@@ -388,12 +413,18 @@ module Abstract = struct
     | Noop -> return input
     | Set_delegate_params (delegate_name, params) ->
         let delegate = find_account delegate_name input.state in
-        (* TODO: This is inacurate, we should store parameter changes per cycle *)
+
+        (* TODO: This is inacurate, we should store parameter changes per
+           cycle *)
+        let parameters =
+          set_parameters
+            params
+            ~current_level:input.current_level
+            ~current_cycle:input.current_cycle
+            delegate.parameters
+        in
         let state =
-          update_account
-            delegate_name
-            {delegate with parameters = params}
-            input.state
+          update_account delegate_name {delegate with parameters} input.state
         in
         return {input with state}
     | Add_account name ->
@@ -411,7 +442,7 @@ module Abstract = struct
             pkh;
             contract;
             delegate = None;
-            parameters = default_params;
+            parameters = default_parameters;
             balance = initial_bbd;
           }
         in
@@ -466,8 +497,10 @@ module Abstract = struct
         let* state = update_balance ~f:apply_finalize src input.state in
         return {input with state}
     | Next_block ->
-        let {state; baker; current_level; _} = input in
-        let* state = apply_rewards_info current_level ~baker state in
+        let {state; baker; current_level; current_cycle; _} = input in
+        let* state =
+          apply_rewards_info current_level current_cycle ~baker state
+        in
         return {input with state}
     | Next_cycle ->
         let* state = apply_end_cycle_info input.state in
@@ -635,28 +668,30 @@ let bake_until_cycle_end_slow ({block = init_block; _} as init_input) =
   in
   step init_input
 
-let snapshot_balances names_list =
-  Do
-    (fun (block, info) ->
-      let snapshot_balances =
-        List.map
-          (fun name -> (name, (find_account name info).balance))
-          names_list
-      in
-      return (block, {info with snapshot_balances}))
+(* Unused  *)
 
-let check_snapshot_balances =
-  Do
-    (fun ((_, info) as input) ->
-      let open Lwt_result_syntax in
-      let* () =
-        List.iter_es
-          (fun (name, old_balance) ->
-            let new_balance = (find_account name info).balance in
-            assert_balance_equal ~loc:__LOC__ old_balance new_balance)
-          info.snapshot_balances
-      in
-      return input)
+(* let snapshot_balances names_list = *)
+(*   Do *)
+(*     (fun (block, info) -> *)
+(*       let snapshot_balances = *)
+(*         List.map *)
+(*           (fun name -> (name, (find_account name info).balance)) *)
+(*           names_list *)
+(*       in *)
+(*       return (block, {info with snapshot_balances})) *)
+
+(* let check_snapshot_balances = *)
+(*   Do *)
+(*     (fun ((_, info) as input) -> *)
+(*       let open Lwt_result_syntax in *)
+(*       let* () = *)
+(*         List.iter_es *)
+(*           (fun (name, old_balance) -> *)
+(*             let new_balance = (find_account name info).balance in *)
+(*             assert_balance_equal ~loc:__LOC__ old_balance new_balance) *)
+(*           info.snapshot_balances *)
+(*       in *)
+(*       return input) *)
 
 let run_action :
     type input output.
