@@ -56,6 +56,8 @@ module Pp_impl : S with type 'a repr = printed and type size = string = struct
 
   type size = string
 
+  let size_ty = Ty.string
+
   let false_ fmtr _c = Format.pp_print_bool fmtr false
 
   let true_ fmtr _c = Format.pp_print_bool fmtr true
@@ -115,7 +117,7 @@ module Pp_impl : S with type 'a repr = printed and type size = string = struct
     unprotect_in_context [Lam_body; If_cond] (fun fmtr () ->
         Format.fprintf fmtr "@[<h>%a@] = @[<h>%a@]" x Arg_app y Arg_app)
 
-  let lam ~name f =
+  let lam ~name _ty f =
     unprotect_in_context [Lam_body] (fun fmtr () ->
         Format.fprintf
           fmtr

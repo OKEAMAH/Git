@@ -315,7 +315,8 @@ let linear ~name ~coeff =
 
       let arity = arity_1
 
-      let model = lam ~name:"size" @@ fun size -> free ~name:coeff * size
+      let model =
+        lam ~name:"size" X.size_ty @@ fun size -> free ~name:coeff * size
     end
   end in
   (module M : Model_impl with type arg_type = int * unit)
@@ -336,7 +337,7 @@ let affine ~name ~intercept ~coeff =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         free ~name:intercept + (free ~name:coeff * size)
     end
   end in
@@ -358,7 +359,7 @@ let affine_offset ~name ~intercept ~coeff ~offset =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         free ~name:intercept + (free ~name:coeff * sat_sub size (int offset))
     end
   end in
@@ -380,7 +381,8 @@ let quadratic ~name ~coeff =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size -> free ~name:coeff * (size * size)
+        lam ~name:"size" X.size_ty @@ fun size ->
+        free ~name:coeff * (size * size)
     end
   end in
   (module M : Model_impl with type arg_type = int * unit)
@@ -401,7 +403,7 @@ let nlogn ~name ~intercept ~coeff =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         free ~name:intercept + (free ~name:coeff * (size * log2 (int 1 + size)))
     end
   end in
@@ -423,7 +425,7 @@ let nsqrtn_const ~name ~intercept ~coeff =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         free ~name:intercept + (free ~name:coeff * (size * sqrt size))
     end
   end in
@@ -445,7 +447,8 @@ let logn ~name ~coeff =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size -> free ~name:coeff * log2 (int 1 + size)
+        lam ~name:"size" X.size_ty @@ fun size ->
+        free ~name:coeff * log2 (int 1 + size)
     end
   end in
   (module M : Model_impl with type arg_type = int * unit)
@@ -466,8 +469,8 @@ let linear_sum ~name ~intercept ~coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept + (free ~name:coeff * (size1 + size2))
     end
   end in
@@ -489,8 +492,8 @@ let linear_max ~name ~intercept ~coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept + (free ~name:coeff * max size1 size2)
     end
   end in
@@ -512,8 +515,8 @@ let linear_min ~name ~intercept ~coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept + (free ~name:coeff * min size1 size2)
     end
   end in
@@ -535,8 +538,8 @@ let linear_min_offset ~name ~intercept ~coeff ~offset =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept
         + (free ~name:coeff * sat_sub (min size1 size2) (int offset))
     end
@@ -559,8 +562,8 @@ let linear_mul ~name ~intercept ~coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept + (free ~name:coeff * (size1 * size2))
     end
   end in
@@ -582,8 +585,8 @@ let bilinear ~name ~coeff1 ~coeff2 =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         (free ~name:coeff1 * size1) + (free ~name:coeff2 * size2)
     end
   end in
@@ -605,8 +608,8 @@ let bilinear_affine ~name ~intercept ~coeff1 ~coeff2 =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept
         + (free ~name:coeff1 * size1)
         + (free ~name:coeff2 * size2)
@@ -630,8 +633,8 @@ let nlogm ~name ~intercept ~coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept
         + (free ~name:coeff * (size1 * log2 (int 1 + size2)))
     end
@@ -654,8 +657,8 @@ let n_plus_logm ~name ~intercept ~linear_coeff ~log_coeff =
       let arity = arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         free ~name:intercept
         + (free ~name:linear_coeff * size1)
         + (free ~name:log_coeff * log2 (int 1 + size2))
@@ -679,9 +682,9 @@ let trilinear ~name ~coeff1 ~coeff2 ~coeff3 =
       let arity = arity_3
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
-        lam ~name:"size3" @@ fun size3 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
+        lam ~name:"size3" X.size_ty @@ fun size3 ->
         (free ~name:coeff1 * size1)
         + (free ~name:coeff2 * size2)
         + (free ~name:coeff3 * size3)
@@ -707,7 +710,7 @@ let breakdown ~name ~coeff1 ~coeff2 ~break =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         (free ~name:coeff1 * min (int break) size)
         + (free ~name:coeff2 * sat_sub size (int break))
     end
@@ -731,7 +734,7 @@ let breakdown2 ~name ~coeff1 ~coeff2 ~coeff3 ~break1 ~break2 =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         (free ~name:coeff1 * min (int break1) size)
         + (free ~name:coeff2 * sat_sub (min (int break2) size) (int break1))
         + (free ~name:coeff3 * sat_sub size (int break2))
@@ -756,7 +759,7 @@ let breakdown2_const ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2 =
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         (free ~name:coeff1 * min (int break1) size)
         + (free ~name:coeff2 * sat_sub (min (int break2) size) (int break1))
         + (free ~name:coeff3 * sat_sub size (int break2))
@@ -783,7 +786,7 @@ let breakdown2_const_offset ~name ~coeff1 ~coeff2 ~coeff3 ~const ~break1 ~break2
       let arity = arity_1
 
       let model =
-        lam ~name:"size" @@ fun size ->
+        lam ~name:"size" X.size_ty @@ fun size ->
         let_ ~name:"size" (sat_sub size (int offset)) @@ fun size ->
         (free ~name:coeff1 * min (int break1) size)
         + (free ~name:coeff2 * sat_sub (min (int break2) size) (int break1))
@@ -848,7 +851,7 @@ module Synthesize
           let (Succ_arity arity1) = arity1 in
           let (Succ_arity arity2) = arity2 in
           let open C in
-          lam ~name:(Costlang.Arg_names.arg_name args) @@ fun arg ->
+          lam ~name:(Costlang.Arg_names.arg_name args) C.size_ty @@ fun arg ->
           synthesize
             arg_arity
             (Costlang.Arg_names.unwrap_size args)

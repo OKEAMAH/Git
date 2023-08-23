@@ -73,6 +73,8 @@ module Codegen : Costlang.S with type 'a repr = Parsetree.expression = struct
 
   type size = int
 
+  let size_ty = Costlang.Ty.int
+
   open Codegen_helpers
   open Ast_helper
 
@@ -113,7 +115,7 @@ module Codegen : Costlang.S with type 'a repr = Parsetree.expression = struct
 
   let shift_right i bits = call ["lsr"] [i; Exp.constant (Const.int bits)]
 
-  let lam ~name f =
+  let lam ~name _ty f =
     let patt = pvar name in
     let var = ident name in
     Exp.fun_ Nolabel None patt (f var)
@@ -477,8 +479,8 @@ let codegen_models models sol transform ~exclusions =
 let%expect_test "basic_printing" =
   let open Codegen in
   let term =
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y ->
+    lam ~name:"x" size_ty @@ fun x ->
+    lam ~name:"y" size_ty @@ fun y ->
     let_ ~name:"tmp1" (int 42) @@ fun tmp1 ->
     let_ ~name:"tmp2" (int 43) @@ fun tmp2 -> x + y + tmp1 + tmp2
   in
@@ -495,8 +497,8 @@ let%expect_test "basic_printing" =
 let%expect_test "anonymous_int_literals" =
   let open Codegen in
   let term =
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y -> x + y + int 42 + int 43
+    lam ~name:"x" size_ty @@ fun x ->
+    lam ~name:"y" size_ty @@ fun y -> x + y + int 42 + int 43
   in
   let item = generate_let_binding ~takes_saturation_reprs:false "name" term in
   Format.printf "%a" Pprintast.structure_item item ;
@@ -509,10 +511,10 @@ let%expect_test "anonymous_int_literals" =
 let%expect_test "let_bound_lambda" =
   let open Codegen in
   let term =
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y ->
-    let_ ~name:"incr" (lam ~name:"x" (fun x -> x + int 1)) @@ fun incr ->
-    app incr x + app incr y
+    lam ~name:"x" size_ty @@ fun x ->
+    lam ~name:"y" size_ty @@ fun y ->
+    let_ ~name:"incr" (lam ~name:"x" size_ty (fun x -> x + int 1))
+    @@ fun incr -> app incr x + app incr y
   in
   let item = generate_let_binding ~takes_saturation_reprs:false "name" term in
   Format.printf "%a" Pprintast.structure_item item ;
@@ -526,9 +528,9 @@ let%expect_test "let_bound_lambda" =
 let%expect_test "ill_typed_higher_order" =
   let open Codegen in
   let term =
-    lam ~name:"incr" @@ fun incr ->
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y -> app incr x + app incr y
+    lam ~name:"incr" size_ty @@ fun incr ->
+    lam ~name:"x" size_ty @@ fun x ->
+    lam ~name:"y" size_ty @@ fun y -> app incr x + app incr y
   in
   let item = generate_let_binding ~takes_saturation_reprs:false "name" term in
   Format.printf "%a" Pprintast.structure_item item ;
@@ -541,8 +543,8 @@ let%expect_test "ill_typed_higher_order" =
 let%expect_test "if_conditional_operator" =
   let open Codegen in
   let term =
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y -> if_ (lt x y) y x
+    lam ~name:"x" size_ty @@ fun x ->
+    lam ~name:"y" size_ty @@ fun y -> if_ (lt x y) y x
   in
   let item = generate_let_binding ~takes_saturation_reprs:false "name" term in
   Format.printf "%a" Pprintast.structure_item item ;
@@ -553,7 +555,7 @@ let%expect_test "if_conditional_operator" =
 
 let%expect_test "module_generation" =
   let open Codegen in
-  let term = lam ~name:"x" @@ fun x -> x in
+  let term = lam ~name:"x" size_ty @@ fun x -> x in
   let module_ =
     make_toplevel_module
       [
@@ -591,8 +593,8 @@ let%expect_test "module_generation" =
 let%expect_test "takes_saturation_reprs" =
   let open Codegen in
   let term =
-    lam ~name:"x" @@ fun x ->
-    lam ~name:"y" @@ fun y ->
+    lam ~name:"x" Costlang.Ty.num @@ fun x ->
+    lam ~name:"y" Costlang.Ty.num @@ fun y ->
     let_ ~name:"tmp1" (int 42) @@ fun tmp1 ->
     let_ ~name:"tmp2" (int 43) @@ fun tmp2 -> x + y + tmp1 + tmp2
   in
