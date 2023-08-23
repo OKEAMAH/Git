@@ -1644,20 +1644,28 @@ let make_plonk_runtest_invocation ~package =
              ]);
     ]
 
+let octez_kzg =
+  octez_lib
+    "octez-kzg"
+    ~internal_name:"kzg"
+    ~path:"src/lib_kzg"
+    ~synopsis:"Toolbox for KZG polynomial commitment"
+    ~deps:
+      [
+        repr;
+        data_encoding |> open_;
+        octez_bls12_381_polynomial |> open_;
+        octez_crypto;
+      ]
+    ~preprocess:[pps ppx_repr]
+
 let octez_plonk =
   octez_lib
     "octez-plonk"
     ~internal_name:"plonk"
     ~path:"src/lib_plonk"
-    ~deps:
-      [
-        repr;
-        hacl_star;
-        data_encoding;
-        octez_bls12_381_polynomial |> open_;
-        octez_plompiler |> open_;
-        str;
-      ]
+    ~synopsis:"Plonk zero-knowledge proving system"
+    ~deps:[octez_kzg; octez_plompiler |> open_; str]
     ~preprocess:[pps ppx_repr]
 
 let octez_plonk_aggregation =
@@ -1912,9 +1920,9 @@ let octez_crypto_dal =
         octez_error_monad |> open_;
         data_encoding |> open_;
         octez_dal_config |> open_;
-        octez_crypto;
         octez_bls12_381_polynomial;
         lwt_unix;
+        octez_kzg;
       ]
 
 let _octez_crypto_dal_tests =

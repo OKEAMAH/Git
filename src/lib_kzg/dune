@@ -2,14 +2,16 @@
 ; Edit file manifest/main.ml instead.
 
 (library
- (name plonk)
- (public_name octez-libs.octez-plonk)
+ (name kzg)
+ (public_name octez-libs.octez-kzg)
  (instrumentation (backend bisect_ppx))
  (libraries
-  octez-libs.octez-kzg
-  octez-libs.octez-plompiler
-  str)
+  repr
+  data-encoding
+  octez-libs.octez-bls12-381-polynomial
+  octez-libs.tezos-crypto)
  (preprocess (pps ppx_repr))
  (flags
   (:standard)
-  -open Plompiler))
+  -open Data_encoding
+  -open Octez_bls12_381_polynomial))

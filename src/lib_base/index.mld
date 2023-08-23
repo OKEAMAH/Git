@@ -15,11 +15,12 @@ It contains the following libraries:
 - {{!module-Distributed_plonk}Distributed_plonk}
 - {{!module-Distribution}Distribution}
 - {{!module-Epoxy_tx}Epoxy_tx}
+- {{!module-Kzg}Kzg}: Toolbox for KZG polynomial commitment
 - {{!module-Mec}Mec}
 - {{!module-Octez_bls12_381_polynomial}Octez_bls12_381_polynomial}: Polynomials over BLS12-381 finite field - Temporary vendored version of Octez
 - {{!module-Octez_srs_extraction}Octez_srs_extraction}
 - {{!module-Plompiler}Plompiler}
-- {{!module-Plonk}Plonk}
+- {{!module-Plonk}Plonk}: Plonk zero-knowledge proving system
 - {{!module-Plonk_test}Plonk_test}
 - {{!module-Polynomial}Polynomial}: Polynomials over finite fields
 - {{!module-Tezos_base}Tezos_base}: Meta-package and pervasive type definitions for Tezos
