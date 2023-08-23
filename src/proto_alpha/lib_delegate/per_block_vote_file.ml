@@ -63,6 +63,8 @@ type error += Block_vote_file_missing_liquidity_baking_toggle_vote of string
 
 type error += Missing_vote_on_startup
 
+type error += Duplicate_adaptive_issuance_vote
+
 let () =
   register_error_kind
     `Permanent
@@ -167,7 +169,22 @@ let () =
          current working directory or in the baker directory.")
     Data_encoding.empty
     (function Missing_vote_on_startup -> Some () | _ -> None)
-    (fun () -> Missing_vote_on_startup)
+    (fun () -> Missing_vote_on_startup) ;
+  register_error_kind
+    `Permanent
+    ~id:"per_block_vote_file.duplicate_adaptive_issuance_vote"
+    ~title:"Duplicate adaptive issuance vote"
+    ~description:
+      "Both an CLI argument and a vote file were provided for adaptive \
+       issuance."
+    ~pp:(fun fmt () ->
+      Format.fprintf
+        fmt
+        "For the adaptive issuance vote for 'bake for' please use either a \
+         vote file or an CLI argument but not both.")
+    Data_encoding.empty
+    (function Duplicate_adaptive_issuance_vote -> Some () | _ -> None)
+    (fun () -> Duplicate_adaptive_issuance_vote)
 
 let check_file_exists file =
   let open Lwt_result_syntax in
@@ -215,13 +232,16 @@ let read_per_block_votes_no_fail ~default ~per_block_vote_file =
   | Ok {liquidity_baking_toggle_vote; adaptive_issuance_vote_opt = None} ->
       return {default with liquidity_baking_vote = liquidity_baking_toggle_vote}
 
-let load_per_block_votes_config ~default_liquidity_baking_vote
-    ~default_adaptive_issuance_vote ~per_block_vote_file :
+let load_per_block_votes_config ?(daemon = true) ~default_liquidity_baking_vote
+    ~default_adaptive_issuance_vote ~per_block_vote_file () :
     Baking_configuration.per_block_votes_config tzresult Lwt.t =
   let open Lwt_result_syntax in
-  (* If a vote file is given, it takes priority. Otherwise, we expect
-     per-block vote arguments to be passed. *)
-  let default_adaptive_issuance_vote =
+  (* For the baker daemon, if a vote file is given, it takes priority. If no
+     vote file is given, we expect per-block vote arguments to be passed.
+
+     For the `bake for` case, at most one vote can be provided priority. It is
+     allowed to provide no vote file and no argument. *)
+  let adaptive_issuance_vote =
     (* Unlike the vote for liquidity baking, the vote for adaptive
        issuance is not mandatory. *)
     match default_adaptive_issuance_vote with
@@ -230,13 +250,22 @@ let load_per_block_votes_config ~default_liquidity_baking_vote
   in
   let* config =
     match (per_block_vote_file, default_liquidity_baking_vote) with
-    | None, None -> tzfail Missing_vote_on_startup
+    | None, None ->
+        if daemon then tzfail Missing_vote_on_startup
+        else
+          return
+            {
+              Baking_configuration.vote_file = None;
+              liquidity_baking_vote =
+                Protocol.Alpha_context.Per_block_votes.Per_block_vote_pass;
+              adaptive_issuance_vote;
+            }
     | None, Some liquidity_baking_vote ->
         return
           {
             Baking_configuration.vote_file = None;
             liquidity_baking_vote;
-            adaptive_issuance_vote = default_adaptive_issuance_vote;
+            adaptive_issuance_vote;
           }
     | Some per_block_vote_file, _ -> (
         let*! (res : _ tzresult) = read_per_block_votes ~per_block_vote_file in
@@ -247,9 +276,20 @@ let load_per_block_votes_config ~default_liquidity_baking_vote
               adaptive_issuance_vote_opt;
             } ->
             let adaptive_issuance_vote =
-              Option.value
-                ~default:default_adaptive_issuance_vote
-                adaptive_issuance_vote_opt
+              if daemon then
+                Option.value
+                  ~default:adaptive_issuance_vote
+                  adaptive_issuance_vote_opt
+              else adaptive_issuance_vote
+            in
+            let* () =
+              if not daemon then
+                match
+                  (adaptive_issuance_vote_opt, default_adaptive_issuance_vote)
+                with
+                | Some _, Some _ -> tzfail Duplicate_adaptive_issuance_vote
+                | _ -> return_unit
+              else return_unit
             in
             return
               {
