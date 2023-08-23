@@ -423,9 +423,13 @@ let codegen (Model.Model model) (sol : solution)
            let subst = subst
          end))
     in
-    let module X = Transform (Codegen) in
+    let module X = Transform (Ast.To_ast) in
     let module M = M.Def (X) in
-    let expr = X.prj M.model in
+    let expr =
+      Ast.Ast.(
+        to_expression @@ cse @@ optimize_affine @@ subst_let @@ at_least_10
+        @@ X.prj M.model)
+    in
     let fun_name = function_name model_name in
     generate_let_binding ~takes_saturation_reprs fun_name expr
   in
