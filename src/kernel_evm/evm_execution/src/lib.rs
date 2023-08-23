@@ -303,6 +303,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: config.gas_transaction_call,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -363,6 +364,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: config.gas_transaction_call,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
@@ -417,6 +419,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -642,6 +645,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -692,6 +696,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 21000,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
@@ -832,6 +837,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 21006,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
@@ -887,6 +893,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 6,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -936,6 +943,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -988,6 +996,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 0,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -1042,6 +1051,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 21000,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
@@ -1224,6 +1234,7 @@ mod test {
         // _all_ the gas.
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 86653,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -1308,6 +1319,7 @@ mod test {
         // expect to spend _all_ the gas.
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 86653,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -1423,6 +1435,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 22348,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![log_record1, log_record2],
@@ -1522,6 +1535,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 21911,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![log_record1],
@@ -1610,6 +1624,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 51124,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],
@@ -1723,6 +1738,7 @@ mod test {
 
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: all_the_gas,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],
@@ -1805,6 +1821,7 @@ mod test {
         // Assert
         let expected_result = Ok(Some(ExecutionOutcome {
             gas_used: 21017,
+            gas_refund: 0,
             is_success: true,
             new_address: None,
             logs: vec![],

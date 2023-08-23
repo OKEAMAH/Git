@@ -45,6 +45,11 @@ const MAXIMUM_TRANSACTION_DEPTH: usize = 1024_usize;
 pub struct ExecutionOutcome {
     /// How much gas was used for processing an entire transaction.
     pub gas_used: u64,
+    /// How much gas to refund after transaction - from freeing up storage. Not counting
+    /// unused gas in current transaction unless some durable storage was first written to
+    /// and then freed up in the same transaction.
+    #[allow(dead_code)]
+    pub gas_refund: u64,
     /// Whether the transaction succeeded or not.
     ///  - In case of transfer-, whether the funds were transferred
     ///  - In case of call-, whether toplevel call returned or stopped (success), or
@@ -901,6 +906,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
             Ok(ExecutionOutcome {
                 gas_used,
+                gas_refund: 0,
                 is_success: true,
                 new_address,
                 logs: last_layer.logs,
@@ -963,6 +969,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         Ok(ExecutionOutcome {
             gas_used,
+            gas_refund: 0,
             is_success: false,
             new_address: None,
             logs: vec![],

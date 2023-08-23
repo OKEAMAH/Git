@@ -58,6 +58,8 @@
 - Nested transactions give unused gas back to parent transaction after completion. (!9877)
 - Make it possible for any precompiled contract to generate withdrawals. (!9910)
 - A precompiled contract for withdrawing funds at address 0x00...20. (!10022)
+- Refactor `TransactionCommon` and transactions' signatures modules. (!9590)
+- Field for storing gas refunds in transaction outcomes (!9889)
 
 ## Version 4c111dcae061bea6c3616429a0ea1262ce6c174f
 

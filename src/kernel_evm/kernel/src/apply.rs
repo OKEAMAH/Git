@@ -283,6 +283,7 @@ fn apply_deposit<Host: Runtime>(
 
     let execution_outcome = ExecutionOutcome {
         gas_used,
+        gas_refund: 0,
         is_success,
         new_address: None,
         logs: vec![],
