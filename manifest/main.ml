@@ -7248,7 +7248,7 @@ let _testnet_experiment_tools =
         Protocol.(client_exn alpha);
         Protocol.(main alpha) |> open_;
       ]
-    ~modules:["testnet_experiment_tools"]
+    ~modules:["testnet_experiment_tools"; "format_network_configuration"]
 
 let simdal_lib =
   private_lib

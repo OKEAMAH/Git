@@ -160,6 +160,9 @@ module Local = struct
     let* () = generate_baker_accounts n client in
     Lwt.return_unit
 
+  let format_network_configuration output_dir () =
+    Format_network_configuration.format_network_configuration output_dir
+
   let generate_network_configuration network_name data_dir () =
     let protocol =
       Tezos_crypto.Hashed.Protocol_hash.of_b58check_exn
@@ -232,6 +235,11 @@ let () =
     ~title:"Generate Network Configuration"
     ~tags:["generate_network_configuration"]
     (Local.generate_network_configuration network_name output_dir) ;
+  register
+    ~__FILE__
+    ~title:"Format Network Configuration"
+    ~tags:["format_network_configuration"]
+    (Local.format_network_configuration output_dir) ;
   register
     ~__FILE__
     ~title:"Generate manager operations"
