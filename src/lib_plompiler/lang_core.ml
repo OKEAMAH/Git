@@ -433,6 +433,9 @@ module type COMMON = sig
       "rotate_right" ^ [nb_bits] ^ "_" ^ [i].
     *)
     val rotate_right_lookup : scalar repr -> scalar repr -> int -> scalar repr t
+
+    val add_with_carry_lookup :
+      bool repr -> scalar repr -> scalar repr -> (bool * scalar) repr t
   end
 
   (** Addition on ECC curves. *)

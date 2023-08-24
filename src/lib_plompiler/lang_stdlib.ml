@@ -90,6 +90,9 @@ module type Limb_list = sig
       More precisely, if we interpret the [b] as an integer,
       [shift_right b n = b / 2^n] *)
   val shift_right : tl repr -> int -> tl repr t
+
+  (** [add a b] computes the addition of [a] and [b]. *)
+  val add : ?ignore_carry:bool -> tl repr -> tl repr -> tl repr t
 end
 
 (** The {!LIB} module type extends the core language defined in {!Lang_core.COMMON}
@@ -215,9 +218,6 @@ module type LIB = sig
 
     (** [concat bs] returns the concatenation of the bitlists in [bs]. *)
     val concat : tl repr array -> tl repr
-
-    (** [add b1 b2] computes the addition of [b1] and [b2]. *)
-    val add : ?ignore_carry:bool -> tl repr -> tl repr -> tl repr t
 
     (** [rotate_left bl n] shifts the bits left by n positions,
       so that each bit is more significant.
@@ -944,6 +944,21 @@ module Lib (C : COMMON) = struct
     let rotate_right a i = rotate_or_shift_right ~is_shift:false a i
 
     let shift_right a i = rotate_or_shift_right ~is_shift:true a i
+
+    let add ?(ignore_carry = true) (a : tl repr) (b : tl repr) : tl repr t =
+      assert (ignore_carry = true) ;
+      let* c_in = Bool.constant false in
+      let* _carry, res =
+        fold2M
+          (fun (c_in, res) a b ->
+            let* p = LimbN.add_with_carry_lookup c_in a b in
+            let c_out, s = of_pair p in
+            ret (c_out, s :: res))
+          (c_in, [])
+          (of_list a)
+          (of_list b)
+      in
+      ret @@ to_list @@ List.rev res
   end
 
   let add2 p1 p2 =

@@ -27,7 +27,7 @@ open Kzg.Bls
 open Kzg.Utils
 open Identities
 
-let nb_plookup_wires = 3
+let nb_plookup_wires = 5
 
 module Plookup_gate_impl (PP : Polynomial_protocol.S) = struct
   module PP = PP
