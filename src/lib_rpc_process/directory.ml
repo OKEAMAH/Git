@@ -24,12 +24,26 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let monitor_head dir (store : Store.t option ref)
-    (head_watcher : Store.Block.t Lwt_watcher.input) =
+let monitor_applied_blocks watcher =
+  let stream, stopper = watcher in
+  let shutdown () = Lwt_watcher.shutdown stopper in
+  let next () = Lwt_stream.get stream in
+  Tezos_rpc.Answer.return_stream {next; shutdown}
+
+let monitor_dir dir (store : Store.t option ref)
+    (head_watcher : Store.Block.t Lwt_watcher.input) block_watcher =
   let dir = ref dir in
   let gen_register1 s f =
     dir := Tezos_rpc.Directory.gen_register !dir s (fun ((), a) p q -> f a p q)
   in
+  let gen_register0 s f =
+    dir := Tezos_rpc.Directory.gen_register !dir s (fun () p q -> f p q)
+  in
+  gen_register0
+    Tezos_shell_services.Monitor_services.S.applied_blocks
+    (fun _q () ->
+      let block_stream = Lwt_watcher.create_stream block_watcher in
+      monitor_applied_blocks block_stream) ;
   gen_register1 Tezos_shell_services.Monitor_services.S.heads (fun chain q () ->
       let open Lwt_syntax in
       let* store =
@@ -42,7 +56,7 @@ let monitor_head dir (store : Store.t option ref)
   !dir
 
 let build_rpc_directory node_version config dynamic_store
-    ~(head_watcher : Store.Block.t Lwt_watcher.input) =
+    ~(head_watcher : Store.Block.t Lwt_watcher.input) ~applied_blocks_watcher =
   let static_dir = Tezos_shell.Version_directory.rpc_directory node_version in
   let static_dir =
     Tezos_shell.Config_directory.build_rpc_directory_for_rpc_process
@@ -57,7 +71,9 @@ let build_rpc_directory node_version config dynamic_store
     Tezos_rpc.Directory.register0 static_dir Services.config (fun () () ->
         Lwt.return_ok config)
   in
-  let static_dir = monitor_head static_dir dynamic_store head_watcher in
+  let static_dir =
+    monitor_dir static_dir dynamic_store head_watcher applied_blocks_watcher
+  in
   Tezos_rpc.Directory.register_dynamic_directory
     static_dir
     (Tezos_rpc.Path.subst1 Tezos_shell_services.Chain_services.path)

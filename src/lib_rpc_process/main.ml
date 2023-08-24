@@ -67,7 +67,7 @@ let sanitize_cors_headers ~default headers =
   |> String.Set.elements
 
 let launch_rpc_server dynamic_store (params : Parameters.t) (addr, port)
-    head_watcher =
+    head_watcher applied_blocks_watcher =
   let open Lwt_result_syntax in
   let media_types = params.config.rpc.media_type in
   let*! acl_policy =
@@ -107,6 +107,7 @@ let launch_rpc_server dynamic_store (params : Parameters.t) (addr, port)
       params.config
       dynamic_store
       ~head_watcher
+      ~applied_blocks_watcher
   in
   let server =
     RPC_server.init_server
@@ -130,7 +131,7 @@ let launch_rpc_server dynamic_store (params : Parameters.t) (addr, port)
           tzfail (RPC_Process_Port_already_in_use [(addr, port)])
       | exn -> fail_with_exn exn)
 
-let init_rpc dynamic_store parameters stream =
+let init_rpc dynamic_store parameters head_stream applied_blocks_stream =
   let open Lwt_result_syntax in
   let* server =
     let* p2p_point =
@@ -143,7 +144,13 @@ let init_rpc dynamic_store parameters stream =
           assert false
     in
     match p2p_point with
-    | [point] -> launch_rpc_server dynamic_store parameters point stream
+    | [point] ->
+        launch_rpc_server
+          dynamic_store
+          parameters
+          point
+          head_stream
+          applied_blocks_stream
     | _ ->
         (* Same as above: only one p2p_point is expected here. *)
         assert false
@@ -191,11 +198,18 @@ let run socket_dir =
      sources from the store when a protocol injected and compiled. *)
   Updater.init (Data_version.protocol_dir parameters.data_dir) ;
   let head_watcher = Lwt_watcher.create_input () in
+  let applied_blocks_watcher = Lwt_watcher.create_input () in
   let dynamic_store : Store.t option ref = ref None in
-  let* _head_daemon_stream, _stopper =
-    Head_daemon.init dynamic_store parameters head_watcher
+  let* _applied_blocks_stream, _head_daemon_stream =
+    Head_daemon.init
+      dynamic_store
+      parameters
+      head_watcher
+      applied_blocks_watcher
   in
-  let* () = init_rpc dynamic_store parameters head_watcher in
+  let* () =
+    init_rpc dynamic_store parameters head_watcher applied_blocks_watcher
+  in
   (* Send the config ack as synchronisation barrier for the init_rpc
      phase. *)
   let* () = Socket.send init_socket_fd Data_encoding.unit () in

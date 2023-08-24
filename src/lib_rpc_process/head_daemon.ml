@@ -121,8 +121,43 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   in
   return_unit
 
+let handle_applied_block (dynamic_store : Store.t option ref) last_status
+    parameters watcher _stopper block =
+  let open Lwt_result_syntax in
+  let* () =
+    match !dynamic_store with
+    | Some store ->
+        let* store, current_status, cleanups =
+          Store.sync ~last_status:!last_status store
+        in
+        last_status := current_status ;
+        dynamic_store := Some store ;
+        Lwt_watcher.notify watcher block ;
+        let*! () = cleanups () in
+        return_unit
+    | None ->
+        let* store =
+          Store.init
+            ?history_mode:parameters.history_mode
+            ~store_dir:(Data_version.store_dir parameters.data_dir)
+            ~context_dir:(Data_version.context_dir parameters.data_dir)
+            ~allow_testchains:false
+            ~readonly:true
+            parameters.genesis
+        in
+        dynamic_store := Some store ;
+        return_unit
+  in
+  return_unit
+
 let init (dynamic_store : Store.t option ref) parameters
-    (stream : Store.Block.t Lwt_watcher.input) =
+    (head_stream : Store.Block.t Lwt_watcher.input)
+    (applied_blocks_stream :
+      (Chain_id.t
+      * Block_hash.t
+      * Block_header.t
+      * Tezos_base.Operation.t list list)
+      Lwt_watcher.input) =
   let open Lwt_result_syntax in
   let ctx =
     Forward_handler.build_socket_redirection_ctx parameters.rpc_comm_socket_path
@@ -165,6 +200,22 @@ let init (dynamic_store : Store.t option ref) parameters
       parameters.genesis
   in
   dynamic_store := Some store ;
-  Daemon.make_stream_daemon
-    (handle_new_head dynamic_store (ref initial_status) parameters stream)
-    (Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+  let* d_ab =
+    Daemon.make_stream_daemon
+      (handle_applied_block
+         dynamic_store
+         (ref initial_status)
+         parameters
+         applied_blocks_stream)
+      (Tezos_shell_services.Monitor_services.applied_blocks rpc_ctxt ())
+  in
+  let* d_h =
+    Daemon.make_stream_daemon
+      (handle_new_head
+         dynamic_store
+         (ref initial_status)
+         parameters
+         head_stream)
+      (Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+  in
+  return (d_ab, d_h)

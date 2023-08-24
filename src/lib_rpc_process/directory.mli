@@ -33,4 +33,10 @@ val build_rpc_directory :
   Octez_node_config.Config_file.t ->
   Store.t option ref ->
   head_watcher:Store.Block.t Lwt_watcher.input ->
+  applied_blocks_watcher:
+    (Chain_id.t
+    * Block_hash.t
+    * Block_header.t
+    * Tezos_base.Operation.t list list)
+    Lwt_watcher.input ->
   unit Tezos_rpc.Directory.t
