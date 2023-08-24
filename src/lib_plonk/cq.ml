@@ -199,6 +199,7 @@ module Internal = struct
     res
 
   let setup_prover (n, domain) k (table_arrays, table_polys) pc =
+    let srs = PC.Public_parameters.get_commit_parameters pc in
     let domain_k = Domain.build k in
     let domain_2k = Domain.build (2 * k) in
 
@@ -230,16 +231,20 @@ module Internal = struct
     in
     let cms_lagrange = Array.map (commit1 pc) lagrange in
     let cms_lagrange_0 =
-      Array.map (fun p -> commit1 pc @@ open_at_0 p) lagrange
+      let s =
+        G1.mul (Srs_g1.get srs (n - 1)) Scalar.(negate (one / of_int n))
+      in
+      Array.mapi
+        (fun i l ->
+          (* [L₀_i] = g^(-i)×[L_i] - (1/N)×[x^(N-1)] *)
+          let g = if i = 0 then Scalar.one else Domain.get domain (n - i) in
+          G1.(add (mul l g) s))
+        cms_lagrange
     in
 
     let q =
       let domain2n = Domain.build (2 * n) in
-      let ka_pp =
-        Kzg.Kate_amortized.preprocess
-          domain2n
-          (PC.Public_parameters.get_commit_parameters pc)
-      in
+      let ka_pp = Kzg.Kate_amortized.preprocess domain2n srs in
       List.map (compute_q (n, domain, domain2n) ka_pp) table_polys
     in
 
