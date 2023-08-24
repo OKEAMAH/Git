@@ -45,11 +45,11 @@ open Kzg.Utils
 module type Cq_sig = sig
   exception Entry_not_in_table
 
-  type prover_public_parameters
+  type prover_public_parameters [@@deriving repr]
 
-  type verifier_public_parameters
+  type verifier_public_parameters [@@deriving repr]
 
-  type proof
+  type proof [@@deriving repr]
 
   val setup :
     srs:Srs_g1.t * Srs_g2.t ->
@@ -70,7 +70,6 @@ end
 module Internal = struct
   open Utils
   module PC = Kzg.Polynomial_commitment
-  module ISet = Set.Make (Int)
   module IMap = Map.Make (Int)
 
   exception Entry_not_in_table
@@ -96,6 +95,7 @@ module Internal = struct
     (* prover public parameters for commitment *)
     pc : PC.Public_parameters.prover;
   }
+  [@@deriving repr]
 
   type verifier_public_parameters = {
     (* size of the table (= N in the paper) *)
@@ -115,6 +115,7 @@ module Internal = struct
     (* verifier public parameters for commitment *)
     pc : PC.Public_parameters.verifier;
   }
+  [@@deriving repr]
 
   type proof = {
     (* commitments *)
@@ -135,6 +136,7 @@ module Internal = struct
     pc : PC.proof;
     cm_a0 : G1.t;
   }
+  [@@deriving repr]
 
   (* Wires polynomial *)
   let f_name = "f"

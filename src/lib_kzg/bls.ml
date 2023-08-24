@@ -28,7 +28,31 @@ module Scalar = struct
   let encoding = conv to_bytes of_bytes_exn (Fixed.bytes size_in_bytes)
 end
 
-module Scalar_map = Map.Make (Scalar)
+module Scalar_map = struct
+  module M = Map.Make (Scalar)
+  include M
+
+  let t (inner : 'a Repr.t) : 'a t Repr.t =
+    let module M = Repr.Of_map (struct
+      include M
+
+      let key_t = Scalar.t
+    end) in
+    M.t inner
+end
+
+module ISet = struct
+  module S = Set.Make (Int)
+  include S
+
+  let t : t Repr.t =
+    let module S = Repr.Of_set (struct
+      include S
+
+      let elt_t = Repr.int
+    end) in
+    S.t
+end
 
 module G1 = struct
   include Bls12_381.G1
