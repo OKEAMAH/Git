@@ -434,8 +434,9 @@ module type COMMON = sig
     *)
     val rotate_right_lookup : scalar repr -> scalar repr -> int -> scalar repr t
 
-    val add_with_carry_lookup :
-      bool repr -> scalar repr -> scalar repr -> (bool * scalar) repr t
+    val add_with_carry_lo_lookup : scalar repr -> scalar repr -> scalar repr t
+
+    val add_with_carry_hi_lookup : scalar repr -> scalar repr -> scalar repr t
   end
 
   (** Addition on ECC curves. *)

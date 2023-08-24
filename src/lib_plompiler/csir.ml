@@ -238,32 +238,26 @@ let table_rotate_right4_3 =
   Table.of_list
   @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 3)
 
-(* c_in + a + b = d + c_out * 2^nb_bits, where
-   a, b, d < 2^nb_bits and c_in, c_out < 2 *)
-let add_with_carry ~nb_bits c_in a b =
-  let r = a + b + c_in in
+let add_with_carry_lo ~nb_bits a b =
+  let r = a + b in
   let mask = (1 lsl nb_bits) - 1 in
-  let d = Int.logand r mask in
-  let c_out = r lsr nb_bits in
-  (c_out, d)
+  Int.logand r mask
 
-let generate_lookup_table_add_with_carry ~nb_bits =
-  let n = 1 lsl nb_bits in
-  let x = List.init n (fun i -> Array.init n (fun _j -> i)) |> Array.concat in
-  let y = List.init n (fun _i -> Array.init n (fun j -> j)) |> Array.concat in
-  let c_out0, d0 = Array.map2 (add_with_carry ~nb_bits 0) x y |> Array.split in
-  let c_out1, d1 = Array.map2 (add_with_carry ~nb_bits 1) x y |> Array.split in
+let add_with_carry_hi ~nb_bits a b =
+  let r = a + b in
+  r lsr nb_bits
 
-  let len = Array.length x in
-  let c_in = Array.init (2 * len) (fun i -> if i < len then 0 else 1) in
-  let x = Array.append x x in
-  let y = Array.append y y in
-  let d = Array.append d0 d1 in
-  let c_out = Array.append c_out0 c_out1 in
-  List.map (Array.map Scalar.of_int) [c_in; x; y; c_out; d]
+let table_add_with_carry_lo4 =
+  (* a + b -> (a + b) % 2^nb_bits *)
+  let nb_bits = 4 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_lo ~nb_bits)
 
-let table_add_with_carry4 =
-  Table.of_list @@ generate_lookup_table_add_with_carry ~nb_bits:4
+let table_add_with_carry_hi4 =
+  (* a + b -> (a + b) / 2^nb_bits *)
+  let nb_bits = 4 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_hi ~nb_bits)
 
 module Tables = Map.Make (String)
 
@@ -278,7 +272,8 @@ let table_registry =
   let t = Tables.add "rotate_right4_1" table_rotate_right4_1 t in
   let t = Tables.add "rotate_right4_2" table_rotate_right4_2 t in
   let t = Tables.add "rotate_right4_3" table_rotate_right4_3 t in
-  let t = Tables.add "add_with_carry4" table_add_with_carry4 t in
+  let t = Tables.add "add_with_carry_lo4" table_add_with_carry_lo4 t in
+  let t = Tables.add "add_with_carry_hi4" table_add_with_carry_hi4 t in
   t
 
 module CS = struct

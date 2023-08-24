@@ -356,19 +356,19 @@ struct
             (Z.to_int (S.to_z r))
             i)
 
-  let add_with_carry_lookup :
-      bool repr -> scalar repr -> scalar repr -> (bool * scalar) repr t =
-   fun (B c_in) (S (X l)) (S (X r)) ->
-    let c_out, d =
-      Csir.add_with_carry
-        ~nb_bits
-        (if c_in then 1 else 0)
-        (Z.to_int (S.to_z l))
-        (Z.to_int (S.to_z r))
-    in
-    let d = to_s @@ S.of_int d in
-    let c_out = B (if c_out = 0 then false else true) in
-    ret @@ pair c_out d
+  let add_with_carry_lo_lookup (S (X l)) (S (X r)) =
+    ret @@ to_s @@ S.of_int
+    @@ Csir.add_with_carry_lo
+         ~nb_bits
+         (Z.to_int (S.to_z l))
+         (Z.to_int (S.to_z r))
+
+  let add_with_carry_hi_lookup (S (X l)) (S (X r)) =
+    ret @@ to_s @@ S.of_int
+    @@ Csir.add_with_carry_hi
+         ~nb_bits
+         (Z.to_int (S.to_z l))
+         (Z.to_int (S.to_z r))
 end
 
 let point x y = P (S (X x), S (X y))

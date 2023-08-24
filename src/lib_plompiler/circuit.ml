@@ -954,17 +954,23 @@ struct
       ("rotate_right lookup" ^ nb_bits_i)
     >* ret @@ Scalar o
 
-  let add_with_carry_lookup :
-      bool repr -> scalar repr -> scalar repr -> (bool * scalar) repr t =
-   fun (Bool c_in) (Scalar l) (Scalar r) ->
+  let add_with_carry_lo_lookup (Scalar l) (Scalar r) =
     let* (Scalar o) = fresh Dummy.scalar in
-    let* (Bool c_out) = fresh Dummy.bool in
     let nb_bits = Int.to_string nb_bits in
     append_lookup
-      ~wires:[Input c_in; Input l; Input r; Output c_out; Output o]
-      ~table:("add_with_carry" ^ nb_bits)
-      ("add_with_carry lookup" ^ nb_bits)
-    >* ret @@ pair (Bool c_out) (Scalar o)
+      ~wires:[Input l; Input r; Output o]
+      ~table:("add_with_carry_lo" ^ nb_bits)
+      ("add_with_carry_lo lookup" ^ nb_bits)
+    >* ret @@ Scalar o
+
+  let add_with_carry_hi_lookup (Scalar l) (Scalar r) =
+    let* (Scalar o) = fresh Dummy.scalar in
+    let nb_bits = Int.to_string nb_bits in
+    append_lookup
+      ~wires:[Input l; Input r; Output o]
+      ~table:("add_with_carry_hi" ^ nb_bits)
+      ("add_with_carry_hi lookup" ^ nb_bits)
+    >* ret @@ Scalar o
 end
 
 let hd (List l) = match l with [] -> assert false | x :: _ -> ret x

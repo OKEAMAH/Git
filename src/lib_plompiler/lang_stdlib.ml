@@ -947,13 +947,21 @@ module Lib (C : COMMON) = struct
 
     let add ?(ignore_carry = true) (a : tl repr) (b : tl repr) : tl repr t =
       assert (ignore_carry = true) ;
-      let* c_in = Bool.constant false in
+      let* c_in = Num.zero in
       let* _carry, res =
         fold2M
           (fun (c_in, res) a b ->
-            let* p = LimbN.add_with_carry_lookup c_in a b in
-            let c_out, s = of_pair p in
-            ret (c_out, s :: res))
+            (* a + b = c1 * 2^n + t1 *)
+            let* t1 = LimbN.add_with_carry_lo_lookup a b in
+            let* c1 = LimbN.add_with_carry_hi_lookup a b in
+            (* t1 + c_in = c2 * 2^n + d *)
+            let* d = LimbN.add_with_carry_lo_lookup t1 c_in in
+            let* c2 = LimbN.add_with_carry_hi_lookup t1 c_in in
+            (* c_out = c1 + c2 *)
+            let* c_out = LimbN.add_with_carry_lo_lookup c1 c2 in
+            (* c_out * 2^n + d = (c1 + c2) * 2^n + d =
+               c1 * 2^n + t1 + c_in = a + b + c_in *)
+            ret (c_out, d :: res))
           (c_in, [])
           (of_list a)
           (of_list b)
