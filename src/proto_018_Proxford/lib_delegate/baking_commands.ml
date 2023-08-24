@@ -247,6 +247,22 @@ let block_count_arg =
     ~default:"1"
   @@ Client_proto_args.positive_int_parameter ()
 
+let lookup_default_vote_file_path (cctxt : Protocol_client_context.full) =
+  let open Lwt_syntax in
+  let default_filename = Per_block_vote_file.default_vote_json_filename in
+  let file_exists path =
+    Lwt.catch (fun () -> Lwt_unix.file_exists path) (fun _ -> return_false)
+  in
+  let when_s pred x g =
+    let* b = pred x in
+    if b then return_some x else g ()
+  in
+  (* Check in current working directory *)
+  when_s file_exists default_filename @@ fun () ->
+  (* Check in the baker directory *)
+  let base_dir_file = Filename.Infix.(cctxt#get_base_dir // default_filename) in
+  when_s file_exists base_dir_file @@ fun () -> return_none
+
 let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
     =
   let open Lwt_result_syntax in
@@ -403,6 +419,19 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
            pkhs
            cctxt ->
         let* delegates = get_delegates cctxt pkhs in
+        (* We do something similar as for the baker. *)
+        let*! per_block_vote_file =
+          (* We look into default locations. *)
+          lookup_default_vote_file_path cctxt
+        in
+        let* votes =
+          Per_block_vote_file.load_per_block_votes_config
+            ~daemon:false
+            ~default_liquidity_baking_vote:None
+            ~default_adaptive_issuance_vote:adaptive_issuance_vote
+            ~per_block_vote_file
+            ()
+        in
         Baking_lib.bake
           cctxt
           ~minimal_nanotez_per_gas_unit
@@ -416,14 +445,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
           ?context_path
           ?dal_node_endpoint
           ~count:block_count
-          ?votes:
-            (Option.map
-               (fun adaptive_issuance_vote ->
-                 {
-                   Baking_configuration.default_votes_config with
-                   adaptive_issuance_vote;
-                 })
-               adaptive_issuance_vote)
+          ~votes
           delegates);
     command
       ~group
@@ -524,22 +546,6 @@ let per_block_vote_file_arg =
          if file_exists then return file
          else tzfail (Per_block_vote_file.Block_vote_file_not_found file)))
 
-let lookup_default_vote_file_path (cctxt : Protocol_client_context.full) =
-  let open Lwt_syntax in
-  let default_filename = Per_block_vote_file.default_vote_json_filename in
-  let file_exists path =
-    Lwt.catch (fun () -> Lwt_unix.file_exists path) (fun _ -> return_false)
-  in
-  let when_s pred x g =
-    let* b = pred x in
-    if b then return_some x else g ()
-  in
-  (* Check in current working directory *)
-  when_s file_exists default_filename @@ fun () ->
-  (* Check in the baker directory *)
-  let base_dir_file = Filename.Infix.(cctxt#get_base_dir // default_filename) in
-  when_s file_exists base_dir_file @@ fun () -> return_none
-
 type baking_mode = Local of {local_data_dir_path : string} | Remote
 
 let baker_args =
@@ -585,6 +591,7 @@ let run_baker
       ~default_liquidity_baking_vote:liquidity_baking_vote
       ~default_adaptive_issuance_vote:adaptive_issuance_vote
       ~per_block_vote_file
+      ()
   in
   let* delegates = get_delegates cctxt sources in
   let context_path =

@@ -72,16 +72,20 @@ val read_per_block_votes_no_fail :
   per_block_vote_file:string ->
   Per_block_votes.per_block_votes Lwt.t
 
-(** Load a configuration of per-block votes. Liquidity baking toggle
-    vote is mandatory, it has to come from either the per-block vote
-    file [per_block_vote_file] or from
-    [default_liquidity_baking_vote]. If a vote cannot be determined
-    from those values, this function fails. Adaptive issuance feature
-    vote is optional. Priority is given to the values in the
-    [per_block_vote_file] file for all votes at the time of the block
-    (the file is freshly read each time). *)
+(** Load a configuration of per-block votes. Liquidity baking toggle vote is
+    mandatory if [daemon] is [true] (which is the default value), it has to come
+    from either the per-block vote file [per_block_vote_file] or from
+    [default_liquidity_baking_vote]. If a vote cannot be determined from those
+    values, this function fails. Adaptive issuance feature vote is optional. If
+    [daemon] is [true], priority is given to the values in the
+    [per_block_vote_file] file for all votes at the time of the block (the file
+    is freshly read each time). If [daemon] is false, the priority is as before
+    for the liquidity baking vote; for adaptive issuance an error is returned if
+    a vote is provided both as the CLI argument and in the vote file.  *)
 val load_per_block_votes_config :
+  ?daemon:bool ->
   default_liquidity_baking_vote:Per_block_votes.per_block_vote option ->
   default_adaptive_issuance_vote:Per_block_votes.per_block_vote option ->
   per_block_vote_file:string option ->
+  unit ->
   Baking_configuration.per_block_votes_config tzresult Lwt.t
