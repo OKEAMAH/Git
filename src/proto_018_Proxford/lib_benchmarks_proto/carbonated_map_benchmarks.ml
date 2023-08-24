@@ -230,7 +230,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
 
           let model =
             let open L in
-            lam ~name:"size" @@ fun size ->
+            lam ~name:"size" L.size_ty @@ fun size ->
             let compare_cost =
               log2 size * free ~name:(compare_var CS.type_name)
             in

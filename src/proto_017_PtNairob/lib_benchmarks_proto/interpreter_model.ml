@@ -107,8 +107,8 @@ let division_cost name =
       let arity = Model.arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         (* Note that [q] is guaranteed to be non-negative because we use
            saturated subtraction. When [size1 < size2], the model evaluates to
            [const] as expected. *)
@@ -138,8 +138,8 @@ let addlogadd name =
       let arity = Model.arity_2
 
       let model =
-        lam ~name:"size1" @@ fun size1 ->
-        lam ~name:"size2" @@ fun size2 ->
+        lam ~name:"size1" X.size_ty @@ fun size1 ->
+        lam ~name:"size2" X.size_ty @@ fun size2 ->
         let_ ~name:"a" (size1 + size2) @@ fun a ->
         (free ~name:coeff * (a * log2 (int 1 + a))) + free ~name:const
     end
@@ -246,8 +246,8 @@ module Models = struct
         let arity = Model.arity_2
 
         let model =
-          lam ~name:"size1" @@ fun size1 ->
-          lam ~name:"size2" @@ fun size2 ->
+          lam ~name:"size1" X.size_ty @@ fun size1 ->
+          lam ~name:"size2" X.size_ty @@ fun size2 ->
           free ~name:(fv (sf "%s_const" name))
           + (free ~name:(fv (sf "%s_log_time_coeff" name)) * size1)
           + (free ~name:(fv (sf "%s_plaintext_coeff" name)) * size2)
@@ -278,8 +278,8 @@ module Models = struct
         let arity = Model.arity_2
 
         let model =
-          lam ~name:"size_xs" @@ fun size_xs ->
-          lam ~name:"size_ys" @@ fun size_ys ->
+          lam ~name:"size_xs" X.size_ty @@ fun size_xs ->
+          lam ~name:"size_ys" X.size_ty @@ fun size_ys ->
           if_
             (eq size_xs (int 0))
             (free ~name:(fv (sf "%s_const" name))
@@ -305,7 +305,7 @@ module Models = struct
         let arity = Model.arity_1
 
         let model =
-          lam ~name:"size" @@ fun size ->
+          lam ~name:"size" X.size_ty @@ fun size ->
           if_
             (eq size (int 0))
             (free ~name:(fv (sf "%s_%s" name case_0)))
@@ -335,10 +335,10 @@ module Models = struct
         let arity = Model.Succ_arity Model.arity_3
 
         let model =
-          lam ~name:"content_size_x" @@ fun content_size_x ->
-          lam ~name:"content_size_y" @@ fun content_size_y ->
-          lam ~name:"amount_size_x" @@ fun amount_size_x ->
-          lam ~name:"amount_size_y" @@ fun amount_size_y ->
+          lam ~name:"content_size_x" X.size_ty @@ fun content_size_x ->
+          lam ~name:"content_size_y" X.size_ty @@ fun content_size_y ->
+          lam ~name:"amount_size_x" X.size_ty @@ fun amount_size_x ->
+          lam ~name:"amount_size_y" X.size_ty @@ fun amount_size_y ->
           free ~name:(fv (sf "%s_const" name))
           + free ~name:(fv (sf "%s_compare_coeff" name))
             * min content_size_x content_size_y
@@ -374,8 +374,8 @@ module Models = struct
         let arity = Model.arity_2
 
         let model =
-          lam ~name:"size1" @@ fun size1 ->
-          lam ~name:"size2" @@ fun size2 ->
+          lam ~name:"size1" X.size_ty @@ fun size1 ->
+          lam ~name:"size2" X.size_ty @@ fun size2 ->
           (* Note that [q] is guaranteed to be non-negative because we use
              saturated subtraction. When [size1 < size2], the model evaluates to
              [const] as expected. *)

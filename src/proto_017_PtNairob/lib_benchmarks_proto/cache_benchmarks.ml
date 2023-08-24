@@ -162,7 +162,7 @@ module Cache_update_benchmark : Benchmark.S = struct
           let arity = arity_1
 
           let model =
-            lam ~name:"size" @@ fun size ->
+            lam ~name:"size" X.size_ty @@ fun size ->
             free ~name:intercept + (free ~name:coeff * log2 (int 1 + size))
         end
       end in
