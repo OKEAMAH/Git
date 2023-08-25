@@ -37,19 +37,23 @@ let inject_block cctxt ?(force = false) ~chain signed_block_header operations =
   let signed_shell_header_bytes =
     Data_encoding.Binary.to_bytes_exn Block_header.encoding signed_block_header
   in
-  Shell_services.Injection.block
-    ~async:true
-    cctxt
-    ~chain
-    ~force
-    signed_shell_header_bytes
-    operations
+  ignore (cctxt, force, chain, operations, signed_shell_header_bytes) ;
+  return Block_hash.zero
+(* Shell_services.Injection.block *)
+(*   ~async:true *)
+(*   cctxt *)
+(*   ~chain *)
+(*   ~force *)
+(*   signed_shell_header_bytes *)
+(*   operations *)
 
 let inject_operation cctxt ~chain operation =
   let encoded_op =
     Data_encoding.Binary.to_bytes_exn Operation.encoding operation
   in
-  Shell_services.Injection.operation cctxt ~async:true ~chain encoded_op
+  (* Shell_services.Injection.operation cctxt ~async:true ~chain encoded_op *)
+  ignore (cctxt, chain, encoded_op) ;
+  return Operation_hash.zero
 
 let preapply_block cctxt ~chain ~head ~timestamp ~protocol_data operations =
   Block_services.Helpers.Preapply.block
