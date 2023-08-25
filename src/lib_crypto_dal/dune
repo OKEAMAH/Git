@@ -8,11 +8,13 @@
  (libraries
   octez-libs.stdlib
   octez-libs.error-monad
+  repr
   data-encoding
   octez-libs.crypto-dal.dal-config
   octez-libs.bls12-381-polynomial
   lwt.unix
   octez-libs.kzg)
+  (preprocess (pps ppx_repr))
  (flags
   (:standard)
   -open Tezos_stdlib
