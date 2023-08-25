@@ -327,6 +327,22 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         }
     }
 
+    /// Add withdrawals to the current transaction layer
+    fn add_withdrawals(
+        &mut self,
+        withdrawals: &mut Vec<Withdrawal>,
+    ) -> Result<(), EthereumError> {
+        match self.transaction_data.last_mut() {
+            Some(layer) => {
+                layer.withdrawals.try_reserve_exact(withdrawals.len())?;
+                layer.withdrawals.append(withdrawals);
+
+                Ok(())
+            }
+            None => Err(EthereumError::InconsistentTransactionStack(0, false, false)),
+        }
+    }
+
     /// Execute a SputnikVM runtime with this handler
     fn execute(
         &mut self,
