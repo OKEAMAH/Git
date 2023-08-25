@@ -35,6 +35,8 @@ module type Commitment = sig
 
   val empty_prover_aux : prover_aux
 
+  val filter : (string -> bool) -> t -> t
+
   val of_list : public_parameters -> name:string -> G1.t list -> t * prover_aux
 
   val to_map : t -> G1.t SMap.t

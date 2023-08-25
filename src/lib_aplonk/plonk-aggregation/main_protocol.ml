@@ -204,7 +204,7 @@ module Make_impl (Super_PP : Polynomial_protocol.S) = struct
     let pp = update_prv_pp_transcript_with_pi pp cms_pi in
     let ( ( pp_proof,
             Super_PP.{answers; batch; alpha; x; r; cms_answers; t_answers} ),
-          (perm_and_plook, wires_cm, rd) ) =
+          (perm_and_plook, wires_cm, rd, cq) ) =
       Prover.prove_parameters
         ~pp_prove:
           (Super_PP.prove_super_aggregation
@@ -216,7 +216,7 @@ module Make_impl (Super_PP : Polynomial_protocol.S) = struct
     let ids_batch =
       compute_ids_batch pp rd alpha x public_inputs_map answers cms_answers
     in
-    ( {perm_and_plook; wires_cm; pp_proof},
+    ( {perm_and_plook; wires_cm; pp_proof; cq},
       {
         answers;
         batch;
@@ -236,7 +236,7 @@ module Make_impl (Super_PP : Polynomial_protocol.S) = struct
       =
     (* add the PI in the transcript *)
     let transcript = update_transcript_with_pi pp.transcript cms_pi in
-    let transcript, _, rd, commitments, eval_points =
+    let transcript, _, rd, commitments, eval_points, _ =
       (* Note that we don’t care about inputs here, because verify_parameters
          only cares about input_coms & identities that we don’t have here *)
       Verifier.verify_parameters

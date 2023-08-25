@@ -47,6 +47,8 @@ struct
 
   exception Rest_not_null of string
 
+  exception Out_of_range
+
   module Input_commitment = Main_Pack.Input_commitment
 
   type scalar = Scalar.t [@@deriving repr]

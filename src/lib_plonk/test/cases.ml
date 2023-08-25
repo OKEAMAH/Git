@@ -6,7 +6,7 @@ let ( ! ) = List.map Scalar.of_int
 
 let ( !! ) l = List.map Scalar.of_int l |> Array.of_list
 
-type outcome = Valid | Proof_error | Lookup_error
+type outcome = Valid | Proof_error | Lookup_error | Range_error
 
 type case = {
   name : string;
@@ -452,7 +452,7 @@ module Range_Checks = struct
         ~range_checks:(SMap.of_list [("w0", [(1, 2); (3, 4); (4, 2)])])
         ()
     in
-    {name; circuit; witness; outcome = Proof_error}
+    {name; circuit; witness; outcome = Range_error}
 
   let basic =
     let circuit =

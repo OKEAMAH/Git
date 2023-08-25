@@ -37,6 +37,7 @@ module type S = sig
     perm_and_plook : PP.PC.Commitment.t;
     wires_cm : PP.PC.Commitment.t;
     pp_proof : PP.proof;
+    cq : Plonk.Cq.proof option;
   }
 
   include Plonk.Main_protocol_intf.S with type proof := proof

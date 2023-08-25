@@ -40,18 +40,25 @@
 *)
 
 open Kzg.Bls
-open Utils
+open Kzg.Utils
 open Identities
 module L = Plompiler.LibCircuit
 
 type s_repr = L.scalar L.repr
 
 module type S = sig
+  exception Out_of_range
+
   module PP : Polynomial_protocol.S
 
   val z_names : string -> string list
 
   val shared_z_names : string -> string list
+
+  val setup :
+    srs:Srs_g1.t * Srs_g2.t ->
+    n:int ->
+    Cq.prover_public_parameters * Cq.verifier_public_parameters
 
   val build_permutations :
     size_domain:int -> range_checks:(int * int) list SMap.t -> int array SMap.t
@@ -79,6 +86,13 @@ module type S = sig
     domain:Domain.t ->
     values:Evaluations.t SMap.t ->
     Poly.t SMap.t
+
+  (* Build the lookup polynomials related to the range-checks polynomial *)
+  val f_map_contribution_3 :
+    range_checks:(int * int) list SMap.t ->
+    domain:Domain.t ->
+    non_batched:Evaluations.t SMap.t ->
+    Evaluations.t SMap.t * Poly.t SMap.t
 
   (* Builds the pure range check identities *)
   val prover_identities_1 :
@@ -140,12 +154,27 @@ module type S = sig
     delta:s_repr ->
     x:s_repr ->
     (string * s_repr) list L.t
+
+  val prove :
+    Cq.prover_public_parameters option ->
+    Transcript.t ->
+    Evaluations.t SMap.t list SMap.t ->
+    Cq.proof option * Transcript.t
+
+  val verify :
+    Cq.verifier_public_parameters option ->
+    Transcript.t ->
+    Cq.proof option ->
+    PP.PC.Commitment.t ->
+    bool * Transcript.t
 end
 
 module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
   module PP = PP
 
   exception Too_many_checks of string
+
+  exception Out_of_range
 
   let lnin1 = "Lnin1"
 
@@ -169,6 +198,47 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
   let zero, one, two = Scalar.(zero, one, one + one)
 
   let mone, mtwo = Scalar.(negate one, negate two)
+
+  module Lookup = struct
+    let prefix = rc_prefix ^ "Lookup_"
+
+    let wire w = prefix ^ w
+
+    let is_wire k =
+      Str.(
+        string_match
+          (regexp
+             ("\\(.*\\)" ^ prefix ^ Plompiler.Csir.wire_prefix ^ "\\([0-9]+\\)"))
+          k
+          0)
+
+    (* Returns the polynomial to lookup in polynomial & evaluations forms *)
+    let build_wire ~range_checks ~z_evals ~domain =
+      let bounds = Array.of_list (List.map snd range_checks) in
+      let d = Domain.length domain in
+      let ith = Evaluations.get z_evals in
+      let evals =
+        let sum_bounds = Array.fold_left ( + ) 0 bounds in
+        (* the first element is the sum of upperbounds until an index represented
+           by the second element *)
+        let sum_n = ref bounds.(0) in
+        let rc_idx = ref 0 in
+        Evaluations.init d ~degree:(d - 1) (fun i ->
+            if i >= sum_bounds - 1 then ith i
+            else if i = !sum_n - 1 then
+              let () = rc_idx := !rc_idx + 1 in
+              let () = sum_n := !sum_n + bounds.(!rc_idx) in
+              ith i
+            else Scalar.(ith i + (mtwo * ith (Int.add i 1))))
+      in
+      (Evaluations.interpolation_fft domain evals, evals)
+
+    let f_map_contribution ~domain ~z_evals wire_name range_checks =
+      let z_evals = SMap.find (z_name wire_name) z_evals in
+      let plook_poly, plook_eval = build_wire ~range_checks ~z_evals ~domain in
+      ( SMap.singleton (wire wire_name) plook_eval,
+        SMap.singleton (wire wire_name) plook_poly )
+  end
 
   module Permutation = struct
     (* Build the permutation such that (n₀ + … + n_{j - 1}) <-> N + i_j for ni = upperbounds,
@@ -407,63 +477,54 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       in
       let z_evaluation_len = Evaluations.length z_evaluation in
       let tmp_evaluation = Evaluations.create z_evaluation_len in
-      let tmp2_evaluation = Evaluations.create z_evaluation_len in
       let idrca_evaluation = Evaluations.create z_evaluation_len in
       let idrcb_evaluation = Evaluations.create z_evaluation_len in
+      let idrc_evaluation = Evaluations.create z_evaluation_len in
       (* Z × (1-Z) × Lnin1 *)
-      let identity_rca =
-        let lnin1_evaluation =
-          Evaluations.find_evaluation
-            evaluations
-            (circuit_prefix (suffix lnin1 wire))
-        in
-        let one_m_z_evaluation =
-          Evaluations.linear_c
-            ~res:tmp_evaluation
-            ~linear_coeffs:[mone]
-            ~evaluations:[z_evaluation]
-            ~add_constant:one
+      (* Z × Lnin1 + (Z - 2Zg) × Pnin1 *)
+      let identity_rc =
+        (* Z × Lnin1 *)
+        let identity_rca =
+          let lnin1_evaluation =
+            Evaluations.find_evaluation
+              evaluations
+              (circuit_prefix (suffix lnin1 wire))
+          in
+          Evaluations.mul_c
+            ~res:idrca_evaluation
+            ~evaluations:[z_evaluation; lnin1_evaluation]
             ()
         in
-        Evaluations.mul_c
-          ~res:idrca_evaluation
-          ~evaluations:[z_evaluation; one_m_z_evaluation; lnin1_evaluation]
+        (* (Z - 2Zg) × Pnin1 *)
+        let identity_rcb =
+          let pnin1_evaluation =
+            Evaluations.find_evaluation
+              evaluations
+              (circuit_prefix (suffix pnin1 wire))
+          in
+          let z_min_BZg_evaluation =
+            Evaluations.linear_c
+              ~res:tmp_evaluation
+              ~linear_coeffs:[one; mtwo]
+              ~composition_gx:([0; 1], n)
+              ~evaluations:[z_evaluation; z_evaluation]
+              ()
+          in
+          Evaluations.mul_c
+            ~res:idrcb_evaluation
+            ~evaluations:[z_min_BZg_evaluation; pnin1_evaluation]
+            ()
+        in
+        let lookup_wire_evaluation =
+          Evaluations.find_evaluation evaluations (prefix (Lookup.wire wire))
+        in
+        Evaluations.linear_c
+          ~res:idrc_evaluation
+          ~linear_coeffs:[one; one; mone]
+          ~evaluations:[identity_rca; identity_rcb; lookup_wire_evaluation]
           ()
       in
-      (* (Z - 2Zg) × (1 - Z + 2Zg) × Pnin1 *)
-      let identity_rcb =
-        let pnin1_evaluation =
-          Evaluations.find_evaluation
-            evaluations
-            (circuit_prefix (suffix pnin1 wire))
-        in
-        let z_min_2Zg_evaluation =
-          Evaluations.linear_c
-            ~res:tmp_evaluation
-            ~linear_coeffs:[one; mtwo]
-            ~composition_gx:([0; 1], n)
-            ~evaluations:[z_evaluation; z_evaluation]
-            ()
-        in
-        let one_m_Z_p_2Zg_evaluation =
-          Evaluations.linear_c
-            ~res:tmp2_evaluation
-            ~linear_coeffs:[mone]
-            ~evaluations:[z_min_2Zg_evaluation]
-            ~add_constant:one
-            ()
-        in
-        Evaluations.mul_c
-          ~res:idrcb_evaluation
-          ~evaluations:
-            [z_min_2Zg_evaluation; one_m_Z_p_2Zg_evaluation; pnin1_evaluation]
-          ()
-      in
-      SMap.of_list
-        [
-          (prefix (rc_prefix ^ wire) ^ ".a", identity_rca);
-          (prefix (rc_prefix ^ wire) ^ ".b", identity_rcb);
-        ]
+      SMap.of_list [(prefix (rc_prefix ^ wire), identity_rc)]
 
     let verifier_identities ?(circuit_prefix = Fun.id) ~proof_prefix:prefix wire
         rc _x answers =
@@ -473,15 +534,11 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
         let zg = get_answer answers GX (prefix (z_name wire)) in
         let lnin1 = get_answer answers X (circuit_prefix (suffix lnin1 wire)) in
         let pnin1 = get_answer answers X (circuit_prefix (suffix pnin1 wire)) in
-        let identity_rca = Scalar.(z * (one + negate z) * lnin1) in
-        let identity_rcb =
-          Scalar.((z + (mtwo * zg)) * (one + negate z + (two * zg)) * pnin1)
+        let look = get_answer answers X (prefix (Lookup.wire wire)) in
+        let identity_rc =
+          Scalar.((z * lnin1) + ((z + (mtwo * zg)) * pnin1) + negate look)
         in
-        SMap.of_list
-          [
-            (prefix (rc_prefix ^ wire) ^ ".a", identity_rca);
-            (prefix (rc_prefix ^ wire) ^ ".b", identity_rcb);
-          ]
+        SMap.of_list [(prefix (rc_prefix ^ wire), identity_rc)]
 
     let cs_unitary ~prefix ~lnin1 ~pnin1 ~z ~zg w =
       let open L in
@@ -513,6 +570,9 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
   let build_permutations ~size_domain ~range_checks =
     SMap.map (Permutation.build_permutation_wire ~size_domain) range_checks
 
+  let setup ~srs ~n =
+    Cq.setup ~srs ~wire_size:n ~table:[Array.init 2 Scalar.of_int]
+
   let preprocessing ~range_checks ~permutations ~domain =
     let rc = SMap.mapi (RangeChecks.preprocessing ~domain) range_checks in
     let perm = SMap.mapi (Permutation.preprocessing ~domain) permutations in
@@ -531,6 +591,16 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
       (Permutation.f_map_contribution ~beta ~gamma ~domain ~values)
       permutations
     |> SMap.values |> SMap.union_disjoint_list
+
+  let f_map_contribution_3 ~range_checks ~domain ~non_batched =
+    let look_eval, f_look =
+      SMap.mapi
+        (Lookup.f_map_contribution ~domain ~z_evals:non_batched)
+        range_checks
+      |> SMap.to_pair
+    in
+    ( SMap.(union_disjoint_list (values look_eval)),
+      SMap.(union_disjoint_list (values f_look)) )
 
   let prover_identities_1 ?(circuit_prefix = Fun.id) ~proof_prefix ~domain_size
       ~range_checks () =
@@ -619,6 +689,41 @@ module Range_check_gate_impl (PP : Polynomial_protocol.S) = struct
         rc_index
     in
     ret (List.flatten (rc @ perm))
+
+  let prove pp transcript evaluations =
+    match pp with
+    | None -> (None, transcript)
+    | Some pp -> (
+        try
+          let cq, transcript =
+            (* converts evaluations =
+               {c1 -> [{a -> …, b -> …} ; {a -> …, b -> …}] ; c2 -> [{d -> …}] ; …}
+               into a list of singletons
+               [{c1~0~a -> …} ; {c1~0~b -> …} ; {c1~1~a -> …} ; {c1~1~b -> …} ; {c2~0~d -> …}]
+               and plug it into profve *)
+            SMap.map
+              (List.map (fun m ->
+                   SMap.filter (fun name _ -> Lookup.is_wire name) m))
+              evaluations
+            |> SMap.Aggregation.gather_maps |> SMap.to_seq |> List.of_seq
+            |> List.map (fun (k, e) -> SMap.singleton k e)
+            |> Cq.prove pp transcript
+          in
+          (Some cq, transcript)
+        with Cq.Entry_not_in_table -> raise Out_of_range)
+
+  let verify pp transcript proof main_cms =
+    match (pp, proof) with
+    | None, None -> (true, transcript)
+    | Some pp, Some proof ->
+        let cm_control =
+          let cm_look = PP.PC.Commitment.filter Lookup.is_wire main_cms in
+          Transcript.expand PP.PC.Commitment.t cm_look Transcript.empty
+        in
+        Cq.verify ~cm_control pp transcript proof
+    | _ ->
+        (* pp & proof are supposed to be consistant *)
+        assert false
 end
 
 module Range_check_gate (PP : Polynomial_protocol.S) : S with module PP = PP =

@@ -119,6 +119,8 @@ struct
       let p_a = PC.Commitment.recombine_prover_aux (List.map snd l) in
       (cm, p_a)
 
+    let filter _ _ = failwith "not implemented yet"
+
     let of_list pp ~name l =
       let pc_cm = PC.Commitment.(of_list pp.pc ~name l) in
       (Pack.commit pp.pack (Array.of_list l), pc_cm)

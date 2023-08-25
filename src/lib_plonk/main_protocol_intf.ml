@@ -34,6 +34,10 @@ module type S = sig
       assignment of the circuit when using Plookup. *)
   exception Entry_not_in_table of string
 
+  (* Raised by the prover when some provided input are out of the desired range
+     when using range-check protocol *)
+  exception Out_of_range
+
   module Input_commitment : Input_commitment.S
 
   type scalar = Scalar.t [@@deriving repr]

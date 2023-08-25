@@ -103,6 +103,8 @@ let empty = SMap.empty
 
 let empty_prover_aux = ()
 
+let filter f = SMap.filter (fun k _ -> f k)
+
 let of_list _ ~name l =
   let n = List.length l in
   ( SMap.(

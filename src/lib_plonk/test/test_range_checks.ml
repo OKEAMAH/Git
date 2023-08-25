@@ -38,7 +38,7 @@ module External_Kzg_pack = External (Aggregation.Polynomial_commitment)
 (* TODO zk tests *)
 let tests =
   let tests_kzg = External_Kzg.tests_quick "KZG" in
-  let tests_kzg_pack = External_Kzg_pack.tests_quick "KZG_Pack" in
+  (* let tests_kzg_pack = External_Kzg_pack.tests_quick "KZG_Pack" in *)
   List.map
     (fun (n, f) -> Alcotest.test_case n `Quick (f ~zero_knowledge:false))
-    (tests_kzg @ tests_kzg_pack)
+    tests_kzg (* @ tests_kzg_pack *)

@@ -64,7 +64,11 @@ module type Cq_sig = sig
     proof * Transcript.t
 
   val verify :
-    verifier_public_parameters -> Transcript.t -> proof -> bool * Transcript.t
+    ?cm_control:Transcript.t ->
+    verifier_public_parameters ->
+    Transcript.t ->
+    proof ->
+    bool * Transcript.t
 end
 
 module Internal = struct
@@ -662,7 +666,7 @@ module Internal = struct
       },
       transcript )
 
-  let verify pp transcript proof =
+  let verify ?cm_control pp transcript proof =
     let transcript = Transcript.expand PC.Commitment.t proof.cm_f transcript in
     (* α will be used to aggregate wires & table’s columns *)
     let alpha, transcript = Fr_generation.random_fr transcript in
@@ -750,7 +754,25 @@ module Internal = struct
           ]
     in
 
-    (f_agg_verif && kzg_verif && check_a && check_b0 && check_a0, transcript)
+    let cm_control =
+      match cm_control with
+      | None -> true
+      | Some b ->
+          (* This removes the prefix added by the prover *)
+          let cm_f_without_prefix =
+            PC.Commitment.rename
+              (fun k ->
+                let idx_prefix = String.index k SMap.Aggregation.sep.[0] in
+                String.sub k (idx_prefix + 1) (String.length k - idx_prefix - 1))
+              proof.cm_f
+          in
+          Transcript.equal
+            b
+            Transcript.(expand PC.Commitment.t cm_f_without_prefix empty)
+    in
+
+    ( cm_control && f_agg_verif && kzg_verif && check_a && check_b0 && check_a0,
+      transcript )
 end
 
 include (Internal : Cq_sig)

@@ -300,7 +300,7 @@ module Make_common (MP : Distribution.Main_protocol.S) = struct
     let* pp_proof, _transcript, (perm_and_plook, wires_cm, _, _, _) =
       distributed_prover ~workers ~pp_prove:pp_distributed_prove_main pp ~inputs
     in
-    return {perm_and_plook; wires_cm; pp_proof}
+    return {perm_and_plook; wires_cm; pp_proof; cq = None}
 end
 
 module PC_Kzg = Distribution.Polynomial_commitment.Kzg_impl
@@ -432,7 +432,7 @@ module Super_impl (PI : Aplonk.Pi_parameters.S) = struct
       compute_ids_batch pp rd alpha x public_inputs_map answers cms_answers
     in
     return
-      ( {perm_and_plook; wires_cm; pp_proof},
+      ( {perm_and_plook; wires_cm; pp_proof; cq = None},
         {
           answers;
           batch;

@@ -391,6 +391,9 @@ module Make (Main : Plonk.Main_protocol.S) = struct
         | Main.Entry_not_in_table _ ->
             if outcome = Lookup_error then ()
             else raise (Invalid_argument "Proving error: incorrect lookup")
+        | Main.Out_of_range ->
+            if outcome = Range_error then ()
+            else raise (Invalid_argument "Proving error: incorrect range")
         | e -> raise e)
 
   (* generator must be n-th root of unity

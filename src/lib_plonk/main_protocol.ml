@@ -105,6 +105,8 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
 
   exception Rest_not_null = Poly.Rest_not_null
 
+  exception Out_of_range = RangeCheck.Out_of_range
+
   type scalar = Scalar.t [@@deriving repr]
 
   type circuit_map = (Circuit.t * int) SMap.t
@@ -113,6 +115,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
     perm_and_plook : Commitment.t;
     wires_cm : Commitment.t;
     pp_proof : PP.proof;
+    cq : Cq.proof option;
   }
   [@@deriving repr]
 
@@ -204,6 +207,8 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
        - eval_points : used for the PC query ; note that the input commitments
                        are not here, their eval_points have to be added at
                        proof/verification time
+       - cq : Cq’s prover public parameters used for range-checks, for all
+              circuits
     *)
     type common_prover_pp = {
       n : int;
@@ -215,6 +220,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
       zk : bool;
       nb_of_t_chunks : int;
       eval_points : eval_point list list;
+      cq : Cq.prover_public_parameters option;
     }
     [@@deriving repr]
 
@@ -472,6 +478,30 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
         batched_wires
       |> SMap.Aggregation.smap_of_smap_smap
 
+    (* TODO handle zk *)
+    let build_f_map_rc3 ?shifts_map pp wires_list_map =
+      let rc_look_evals, rc_look_map =
+        SMap.mapi
+          (fun name w_list ->
+            let circuit_pp = SMap.find name pp.circuits_map in
+            if SMap.is_empty circuit_pp.range_checks then ([], [])
+            else
+              List.map
+                (fun non_batched ->
+                  RangeCheck.f_map_contribution_3
+                    ~range_checks:circuit_pp.range_checks
+                    ~domain:pp.common_pp.domain
+                    ~non_batched)
+                w_list
+              |> List.split)
+          wires_list_map
+        |> SMap.filter (fun _ x -> x <> ([], []))
+        |> SMap.to_pair
+      in
+      let rc_look_map, _rc_look_blinds = blind ~pp rc_look_map in
+      let all_rc_z = SMap.Aggregation.gather_maps ?shifts_map rc_look_map in
+      (rc_look_evals, all_rc_z)
+
     (* For each circuit, computes Plookup-specific polynomials *)
     let build_f_map_plook ?shifts_map pp rd wires_list_map =
       SMap.mapi
@@ -689,12 +719,18 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
           ()
       in
 
+      let rc_look_z, f_map_rc3 = build_f_map_rc3 pp wires_list_map in
+
+      let cq, transcript =
+        RangeCheck.prove pp.common_pp.cq transcript rc_look_z
+      in
+
       (* The new batched_wires is used for the RC shared perm argument *)
       let f_map_contributions =
         let f_map_perm = build_f_map_perm pp rd batched_wires in
         let f_map_plook = build_f_map_plook pp rd wires_list_map in
         let f_map_rc2 = build_f_map_rc_2 pp rd batched_wires in
-        SMap.union_disjoint_list [f_map_perm; f_map_plook; f_map_rc2]
+        SMap.union_disjoint_list [f_map_perm; f_map_plook; f_map_rc2; f_map_rc3]
       in
 
       let input_com_secrets = format_input_com inputs_map in
@@ -764,7 +800,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
           ~nb_of_t_chunks:pp.common_pp.nb_of_t_chunks
       in
 
-      (pp_proof, (cm_perm_plook_rc, cm_wires, rd))
+      (pp_proof, (cm_perm_plook_rc, cm_wires, rd, cq))
   end
 
   module Verifier = struct
@@ -775,6 +811,9 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
        - eval_points : used for the PC query ; note that the input commitments
                        are not here, their eval_points have to be added at
                        proof/verification time
+       - cq : Cq’s verifier public parameters used for range-checks ; it’s the
+              same for every circuit, and set to None if no circuit has
+              range-checks
     *)
     type common_verifier_pp = {
       n : int;
@@ -782,6 +821,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
       pp_public_parameters : PP.verifier_public_parameters;
       cm_g : Commitment.t;
       eval_points : eval_point list list;
+      cq : Cq.verifier_public_parameters option;
     }
     [@@deriving repr]
 
@@ -808,6 +848,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
         ultra = prover_pp.ultra;
         input_com_sizes = prover_pp.input_com_sizes;
         range_checks = SMap.map (fun l -> l <> []) prover_pp.range_checks;
+        (* we should not need cq when calling this function *)
       }
 
     let build_identities circuits_map (n, generator) rd public_inputs_map =
@@ -920,6 +961,9 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
       (* Get the same randomness for all proofs *)
       (* Step 1a : compute beta & gamma *)
       let rd, transcript = build_gates_randomness transcript in
+      let cq, transcript =
+        RangeCheck.verify common_pp.cq transcript proof.cq proof.perm_and_plook
+      in
       (* Step 3 : compute verifier’s identities *)
       let identities =
         build_identities
@@ -939,7 +983,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
       let transcript =
         Transcript.expand Commitment.t proof.perm_and_plook transcript
       in
-      (transcript, identities, rd, commitments, eval_points)
+      (transcript, identities, rd, commitments, eval_points, cq)
   end
 
   type prover_public_parameters = Prover.public_parameters = {
@@ -1285,6 +1329,17 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
       in
       let cm_g, g_prover_aux = PP.PC.commit pp_prover g_map in
       let eval_points = eval_points pp_prv in
+      let cq_prv, cq_vrf =
+        if
+          SMap.exists
+            (fun _ (Circuit.{range_checks; _}, _) ->
+              SMap.exists (fun _ l -> l <> []) range_checks)
+            circuits_map
+        then
+          let cq_prv, cq_vrf = RangeCheck.setup ~srs:(fst srs) ~n in
+          (Some cq_prv, Some cq_vrf)
+        else (None, None)
+      in
       let common_prv =
         Prover.
           {
@@ -1297,6 +1352,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
             zk = zero_knowledge;
             nb_of_t_chunks;
             eval_points;
+            cq = cq_prv;
           }
       in
       let common_vrf =
@@ -1307,6 +1363,7 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
             pp_public_parameters = pp_verifier;
             cm_g;
             eval_points;
+            cq = cq_vrf;
           }
       in
       ( ({common_pp = common_prv; circuits_map = pp_prv; transcript}
@@ -1381,35 +1438,38 @@ module Make_impl (PP : Polynomial_protocol.S) = struct
             pp.transcript;
       }
     in
-    let pp_proof, (perm_and_plook, wires_cm, _) =
+    let pp_proof, (perm_and_plook, wires_cm, _, cq) =
       Prover.prove_parameters
         ~pp_prove:PP.prove
         (filter_prv_pp_circuits pp inputs)
         ~inputs_map:inputs
     in
-    {perm_and_plook; wires_cm; pp_proof}
+    {perm_and_plook; wires_cm; pp_proof; cq}
 
   let verify pp ~inputs proof =
     check_circuit_name pp.circuits_map ;
     let circuits_map = SMap.sub_map inputs pp.circuits_map in
     (* add the verifier inputs to the transcript *)
     let transcript = Transcript.expand verifier_inputs_t inputs pp.transcript in
-    let transcript, identities, _, commitments, eval_points =
+    let transcript, identities, _, commitments, eval_points, cq =
       Verifier.verify_parameters
         ((pp.common_pp, circuits_map), transcript)
         inputs
         proof
     in
-    PP.verify
-      pp.common_pp.pp_public_parameters
-      transcript
-      ~n:pp.common_pp.n
-      ~generator:pp.common_pp.generator
-      ~commitments
-      ~identities
-      ~eval_points
-      proof.pp_proof
-    |> fst
+    let pp =
+      PP.verify
+        pp.common_pp.pp_public_parameters
+        transcript
+        ~n:pp.common_pp.n
+        ~generator:pp.common_pp.generator
+        ~commitments
+        ~identities
+        ~eval_points
+        proof.pp_proof
+      |> fst
+    in
+    cq && pp
 
   let scalar_encoding =
     Data_encoding.(
