@@ -35,7 +35,7 @@ let generate_table n = Array.init n (fun _ -> Scalar.random ())
 
 let table_size = 5 + (1 lsl Random.int 5)
 
-let wire_size = 1 lsl Random.int 5
+let wire_size = 1 lsl (1 + Random.int 5)
 
 let nb_wires = 3 + Random.int 4
 

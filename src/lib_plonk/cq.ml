@@ -92,7 +92,8 @@ module Internal = struct
     cms_lagrange_0 : G1.t array;
     (* N kzg commitments for Qi = (Li × (T - ti)) / X^N - 1 *)
     q : G1.t array list;
-    (* prover public parameters for commitment *)
+    (* prover public parameters for commitment ; for security, this must
+       contain all the elements generated for SRS₁ by the trusted setup *)
     pc : PC.Public_parameters.prover;
   }
   [@@deriving repr]
@@ -106,8 +107,9 @@ module Internal = struct
     srs2_0 : G2.t;
     (* sencond element of the SRS_2 *)
     srs2_1 : G2.t;
-    (* (N-1-k+2) of the SRS_2 *)
-    srs2_N_1_k_2 : G2.t;
+    (* (d-k+2) of the SRS_2 ; IMPORTANT NOTE FOR SECURITY : d must be the
+       highest degree handlable with SRS₂ (= SRS size - 1) *)
+    srs2_d_k_2 : G2.t;
     (* commitment of the table *)
     cm_table : G2.t list;
     (* commitment of the polynomial X^N - 1 *)
@@ -255,17 +257,20 @@ module Internal = struct
 
     {n; domain_k; domain_2k; table; q; cms_lagrange; cms_lagrange_0; pc}
 
-  let setup_verifier (_srs1, srs2) n k table_poly pc =
+  let setup_verifier (srs1, srs2) n k table_poly pc =
     (* cm (X^n - 1) *)
-    let cm_zv =
-      try G2.(add (Srs_g2.get srs2 n) (negate one))
+    let cm_zv, srs2_d_k_2 =
+      let d = Srs_g1.size srs1 - 1 in
+      try
+        ( G2.(add (Srs_g2.get srs2 n) (negate one)),
+          Srs_g2.(get srs2 (d - (k - 2))) )
       with Invalid_argument _ ->
         raise
           (Kzg.Commitment.SRS_too_short
              (Printf.sprintf
                 "Cq.setup_verifier : SRS_2 of size at least (%d + 1) expected \
                  (size %d received)."
-                n
+                (d + 1)
                 (Srs_g2.size srs2)))
     in
 
@@ -273,9 +278,8 @@ module Internal = struct
 
     let srs2_0 = Srs_g2.get srs2 0 in
     let srs2_1 = Srs_g2.get srs2 1 in
-    let srs2_N_1_k_2 = Srs_g2.get srs2 (n - 1 - (k - 2)) in
 
-    {n; k; srs2_0; srs2_1; srs2_N_1_k_2; cm_table; cm_zv; pc}
+    {n; k; srs2_0; srs2_1; srs2_d_k_2; cm_table; cm_zv; pc}
 
   let setup ~srs ~wire_size ~table =
     let len_t = Array.length (List.hd table) in
@@ -386,10 +390,11 @@ module Internal = struct
     if Poly.is_zero r then q else raise Entry_not_in_table
 
   let compute_p (pp : prover_public_parameters) transcript k b0 =
+    let srs = PC.Public_parameters.get_commit_parameters pp.pc in
     Kzg.Degree_check.prove_multi
-      ~max_commit:(pp.n - 1)
+      ~max_commit:(Srs_g1.size srs - 1)
       ~max_degree:(k - 2)
-      (PC.Public_parameters.get_commit_parameters pp.pc)
+      srs
       transcript
       b0
 
@@ -620,10 +625,11 @@ module Internal = struct
 
     (* 2.10 *)
     let cm_p, transcript =
+      let srs = PC.Public_parameters.get_commit_parameters pp.pc in
       Kzg.Degree_check.prove_multi
-        ~max_commit:(pp.n - 1)
+        ~max_commit:(Srs_g1.size srs - 1)
         ~max_degree:(k - 2)
-        (PC.Public_parameters.get_commit_parameters pp.pc)
+        srs
         transcript
         cm_b0
         b0
@@ -691,7 +697,7 @@ module Internal = struct
        added again in Degree_check *)
     let check_b0, transcript =
       Kzg.Degree_check.verify_multi
-        {srs_0 = pp.srs2_0; srs_n_d = pp.srs2_N_1_k_2}
+        {srs_0 = pp.srs2_0; srs_n_d = pp.srs2_d_k_2}
         transcript
         proof.cm_b0
         proof.cm_p
