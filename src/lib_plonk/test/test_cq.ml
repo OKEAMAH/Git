@@ -48,14 +48,17 @@ let wires () =
   let indexes = Array.init wire_size (fun _ -> Random.int table_size) in
   List.init nb_wires (fun i ->
       ( "w" ^ string_of_int i,
-        Array.init wire_size (fun j -> (List.nth table i).(indexes.(j))) ))
+        Evaluations.init ~degree:(wire_size - 1) wire_size (fun j ->
+            (List.nth table i).(indexes.(j))) ))
   |> Kzg.SMap.of_list
 
 let f_map = List.init nb_proofs (fun _ -> wires ())
 
 let f_map_not_in_table =
   Kzg.SMap.map
-    (fun _ -> Array.init wire_size (fun _ -> Scalar.random ()))
+    (fun _ ->
+      Evaluations.init ~degree:(wire_size - 1) wire_size (fun _ ->
+          Scalar.random ()))
     (List.hd f_map)
   :: List.tl f_map
 
@@ -86,12 +89,7 @@ let test_wrong_proof () =
       PC.commit
         Cq.(prv.pc)
         (Kzg.SMap.map
-           (fun f ->
-             Kzg.Bls.(
-               Evaluations.(
-                 interpolation_fft
-                   (Domain.build wire_size)
-                   (of_array (wire_size - 1, f)))))
+           Evaluations.(interpolation_fft (Domain.build wire_size))
            (List.hd f_map_not_in_table))
     in
     Cq.{proof_f with cm_f}

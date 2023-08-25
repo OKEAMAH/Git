@@ -60,7 +60,7 @@ module type Cq_sig = sig
   val prove :
     prover_public_parameters ->
     Transcript.t ->
-    S.t array SMap.t list ->
+    Evaluations.t SMap.t list ->
     proof * Transcript.t
 
   val verify :
@@ -317,7 +317,7 @@ module Internal = struct
                for all the values of the line *)
             List.fold_left2
               (fun (acc, first) f t ->
-                match Scalar_map.find_opt f.(i) t with
+                match Scalar_map.find_opt (Evaluations.get f i) t with
                 | None -> raise Entry_not_in_table
                 | Some idx ->
                     ((if first then idx else ISet.inter acc idx), false))
@@ -533,7 +533,7 @@ module Internal = struct
 
   (* each f must be a power of two & of the same size *)
   let prove pp transcript f_map_list =
-    let k = Array.length (snd @@ SMap.choose (List.hd f_map_list)) in
+    let k = Evaluations.length (snd @@ SMap.choose (List.hd f_map_list)) in
     (* n = nb_proofs *)
     let n = List.length f_map_list in
     (* The map of all wires polynomials *)
@@ -541,11 +541,7 @@ module Internal = struct
       SMap.union_disjoint_list
       @@ List.mapi
            (fun i f_map ->
-             SMap.map
-               (fun f ->
-                 Evaluations.(
-                   interpolation_fft pp.domain_k (of_array (k - 1, f))))
-               f_map
+             SMap.map (Evaluations.interpolation_fft pp.domain_k) f_map
              |> SMap.Aggregation.prefix_map ~n ~i "")
            f_map_list
     in
@@ -561,7 +557,7 @@ module Internal = struct
               fst
               @@ SMap.fold
                    (fun _ f (acc, j) ->
-                     (Scalar.(acc + (alphas.(j) * f.(i))), j + 1))
+                     (Scalar.(acc + (alphas.(j) * Evaluations.get f i)), j + 1))
                    f_map
                    (Scalar.zero, 0)))
         f_map_list
