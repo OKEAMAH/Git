@@ -17,6 +17,9 @@ val preprocess_equal : preprocess -> preprocess -> bool
 
 val commit : public_parameters -> Poly.t -> Commitment.Single.t
 
+val interpolation_poly :
+  root:scalar -> domain:Domain.t -> evaluations:scalar array -> Poly.t
+
 val preprocess_multiple_multi_reveals : public_parameters -> preprocess
 
 val multiple_multi_reveals :
@@ -25,12 +28,21 @@ val multiple_multi_reveals :
   coefficients:scalar array ->
   shard_proof array
 
-val verify :
+val verify_page :
   public_parameters ->
   commitment:Commitment.Single.t ->
   srs_point:G2.t ->
   domain:Domain.t ->
   root:scalar ->
   evaluations:scalar array ->
+  proof:shard_proof ->
+  bool
+
+val verify_shard :
+  commitment:Commitment.Single.t ->
+  commitment_remainder:Commitment.Single.t ->
+  srs_point:G2.t ->
+  domain:Domain.t ->
+  root:scalar ->
   proof:shard_proof ->
   bool

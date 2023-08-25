@@ -192,11 +192,25 @@ module Inner = struct
 
   type commitment = Commitment.t
 
-  type shard_proof = Commitment_proof.t
+  type page_proof = Commitment_proof.t
 
   type commitment_proof = Commitment_proof.t
 
-  type page_proof = Commitment_proof.t
+  (* We use an SMap bc of the KZG interface, but the map
+     will only conatin one element*)
+  type shard_proof_fst_round = {
+    quotient : Commitment_proof.t;
+    remainder : Commitment_proof.t Kzg.SMap.t;
+  }
+  [@@deriving repr]
+
+  (* We use an SMap bc of the KZG interface, but the map
+     will only conatin one element*)
+  type shard_proof = {
+    fst_round : shard_proof_fst_round;
+    eval_proof : Commitment_proof.t Kzg.SMap.t;
+  }
+  [@@deriving repr]
 
   type page = bytes
 
@@ -215,7 +229,22 @@ module Inner = struct
 
     let share_encoding = array Scalar.encoding
 
-    let shard_proof_encoding = Commitment_proof.encoding
+    let shard_proof_encoding =
+      let to_encoding repr =
+        let of_string repr bs =
+          Stdlib.Result.map_error (fun (`Msg msg) -> msg)
+          @@ Repr.(unstage @@ of_bin_string repr) bs
+        in
+        let to_string repr e = Repr.(unstage @@ to_bin_string repr) e in
+        let data_encoding_of_repr repr =
+          Data_encoding.conv_with_guard
+            (to_string repr)
+            (of_string repr)
+            (Data_encoding.string' Hex)
+        in
+        data_encoding_of_repr repr
+      in
+      to_encoding shard_proof_t
 
     let shard_encoding =
       conv
@@ -292,6 +321,8 @@ module Inner = struct
        polynomial. *)
     srs : srs;
     kate_amortized : Kate_amortized.public_parameters;
+    kzg_prover : Kzg.Polynomial_commitment.Public_parameters.prover;
+    kzg_verifier : Kzg.Polynomial_commitment.Public_parameters.verifier;
   }
 
   let is_power_of_two = Kzg.Utils.is_power_of_two
@@ -492,6 +523,13 @@ module Inner = struct
         kate_amortized_srs_g2_pages = Srs_g2.get raw.srs_g2 page_length_domain;
       }
     in
+    (* KZG's setup ignore it's first argument (0) and the snd srs (Srs.generate_insecure 1 1)*)
+    let kzg_prover, kzg_verifier, _transcipt =
+      Kzg.Polynomial_commitment.Public_parameters.setup
+        0
+        ((raw.srs_g1, raw.srs_g2), Srs.generate_insecure 1 1)
+    in
+
     return
       {
         redundancy_factor;
@@ -518,6 +556,8 @@ module Inner = struct
             srs_g1 = srs.raw.srs_g1;
             number_of_shards;
           };
+        kzg_prover;
+        kzg_verifier;
       }
 
   let parameters
@@ -1073,13 +1113,69 @@ module Inner = struct
     let p_length = Poly.degree polynomial + 1 in
     let p = Poly.to_dense_coefficients polynomial in
     Array.blit p 0 coefficients 0 p_length ;
-    Kate_amortized.multiple_multi_reveals
-      t.kate_amortized
-      ~preprocess:precomputation
-      ~coefficients
+    let quotients =
+      Kate_amortized.multiple_multi_reveals
+        t.kate_amortized
+        ~preprocess:precomputation
+        ~coefficients
+    in
+    let shards = shards_from_polynomial t polynomial in
+    let shards_array =
+      Seq.fold_left (fun acc elt -> elt :: acc) [] shards |> Array.of_list
+    in
+    Array.sort
+      (fun {index = shard_index_1; share = _} {index = shard_index_2; share = _} ->
+        shard_index_1 - shard_index_2)
+      shards_array ;
+    let domain = Domain.build t.shard_length in
+    let remainder_proofs =
+      Array.map
+        (fun {index = shard_index; share = evaluations} ->
+          let root =
+            Domain.get t.domain_erasure_encoded_polynomial_length shard_index
+          in
+          let remainder =
+            Kate_amortized.interpolation_poly ~root ~domain ~evaluations
+          in
+          ( Kzg.Polynomial_commitment.commit
+              t.kzg_prover
+              (Kzg.SMap.singleton "remainder" remainder)
+            |> fst,
+            remainder ))
+        shards_array
+    in
+    Array.map2
+      (fun quotient (commit_remainder, remainder) ->
+        let fst_round = {quotient; remainder = commit_remainder} in
+        let transcript =
+          Kzg.Utils.Transcript.expand
+            shard_proof_fst_round_t
+            fst_round
+            Kzg.Utils.Transcript.empty
+        in
+        let challenge_point, transcript =
+          Kzg.Utils.Fr_generation.random_fr transcript
+        in
+        let eval = Poly.evaluate remainder challenge_point in
+        let eval_proof, _transcript =
+          Kzg.Polynomial_commitment.prove
+            t.kzg_prover
+            transcript
+            [Kzg.SMap.singleton "remainder" remainder]
+            [()]
+            [Kzg.SMap.singleton "challenge" challenge_point]
+            [
+              Kzg.SMap.singleton
+                "challenge"
+                (Kzg.SMap.singleton "remainder" eval);
+            ]
+        in
+        {fst_round; eval_proof})
+      quotients
+      remainder_proofs
 
   let verify_shard (t : t) commitment {index = shard_index; share = evaluations}
-      proof =
+      ({fst_round = {quotient; remainder}; eval_proof} : shard_proof) =
     if shard_index < 0 || shard_index >= t.number_of_shards then
       Error
         (`Shard_index_out_of_range
@@ -1100,15 +1196,42 @@ module Inner = struct
         in
         let domain = Domain.build t.shard_length in
         let srs_point = t.srs.kate_amortized_srs_g2_shards in
+        (* Compute r_i(x). *)
+        let remainder_poly =
+          Kate_amortized.interpolation_poly ~root ~domain ~evaluations
+        in
+        let transcript =
+          Kzg.Utils.Transcript.expand
+            shard_proof_fst_round_t
+            {quotient; remainder}
+            Kzg.Utils.Transcript.empty
+        in
+        let challenge_point, transcript =
+          Kzg.Utils.Fr_generation.random_fr transcript
+        in
+        let eval = Poly.evaluate remainder_poly challenge_point in
+        let kzg_ok, _transcript =
+          Kzg.Polynomial_commitment.verify
+            t.kzg_verifier
+            transcript
+            [remainder]
+            [Kzg.SMap.singleton "challenge" challenge_point]
+            [
+              Kzg.SMap.singleton
+                "challenge"
+                (Kzg.SMap.singleton "remainder" eval);
+            ]
+            eval_proof
+        in
         if
-          Kate_amortized.verify
-            t.kate_amortized
+          Kate_amortized.verify_shard
             ~commitment
+            ~commitment_remainder:(Kzg.SMap.choose remainder |> snd)
             ~srs_point
             ~domain
             ~root
-            ~evaluations
-            ~proof
+            ~proof:quotient
+          && kzg_ok
         then Ok ()
         else Error `Invalid_shard
 
@@ -1166,7 +1289,7 @@ module Inner = struct
         in
         let root = Domain.get t.domain_polynomial_length page_index in
         if
-          Kate_amortized.verify
+          Kate_amortized.verify_page
             t.kate_amortized
             ~commitment
             ~srs_point:t.srs.kate_amortized_srs_g2_pages
@@ -1227,8 +1350,10 @@ module Internal_for_tests = struct
 
   let alter_page_proof (proof : page_proof) = Commitment_proof.alter_proof proof
 
-  let alter_shard_proof (proof : shard_proof) =
-    Commitment_proof.alter_proof proof
+  let alter_shard_proof
+      ({fst_round = {quotient; remainder}; eval_proof} : shard_proof) =
+    let quotient = Commitment_proof.alter_proof quotient in
+    {fst_round = {quotient; remainder}; eval_proof}
 
   let alter_commitment_proof (proof : commitment_proof) =
     Commitment_proof.alter_proof proof
@@ -1246,7 +1371,15 @@ module Internal_for_tests = struct
 
   let dummy_page_proof ~state () = Commitment_proof.random ~state ()
 
-  let dummy_shard_proof ~state () = Commitment_proof.random ~state ()
+  let dummy_shard_proof ~state () =
+    {
+      fst_round =
+        {
+          quotient = Commitment_proof.random ~state ();
+          remainder = Kzg.SMap.singleton "" (Commitment_proof.random ~state ());
+        };
+      eval_proof = Kzg.SMap.singleton "" (Commitment_proof.random ~state ());
+    }
 
   let make_dummy_shard ~state ~index ~length =
     {index; share = Array.init length (fun _ -> Scalar.(random ~state ()))}

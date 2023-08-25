@@ -6,6 +6,7 @@
  (public_name octez-libs.tezos-crypto-dal)
  (instrumentation (backend bisect_ppx))
  (libraries
+  repr
   octez-libs.tezos-stdlib
   octez-libs.tezos-error-monad
   data-encoding
@@ -13,6 +14,7 @@
   octez-libs.octez-bls12-381-polynomial
   lwt.unix
   octez-libs.octez-kzg)
+  (preprocess (pps ppx_repr))
  (flags
   (:standard)
   -open Tezos_stdlib
