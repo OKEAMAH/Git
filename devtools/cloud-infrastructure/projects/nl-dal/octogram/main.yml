@@ -16,6 +16,14 @@ agents:
 
 vars:
   network: sandbox
+  bootstrap_accounts: 20
+  number_of_shards: 2048
+  page_size: 4096
+  slot_size: 65536
+  redundancy_factor: 2
+  attestation_lag: 4
+  attestation_threshold: 5
+  blocks_per_epoch: 1
   
 stages:
   - name: Initialize protocol file
@@ -38,6 +46,18 @@ stages:
       - name: Push file
         builtins.prefetch: 'localhost://sandbox-parameters.json'
 
+      - name: Protocol file
+        tezos.protocol_file:
+          basefile: 'localhost://sandbox-parameters.json'
+          bootstrap_accounts: '{{ vars.bootstrap_accounts }}'
+          dal:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+            attestation_lag: '{{ vars.attestation_lag }}'
+            attestation_threshold: '{{ vars.attestation_threshold }}'
+        
       - name: Upload octez-node
         run_items: concurrent
         copy:

@@ -415,6 +415,172 @@ module Start_octez_node = struct
     on_new_metrics_source res.name Octez_node res.metrics_port
 end
 
+(* We use string instead of numbers to allow pattern substituion. *)
+type dal_cryptobox_parameters = {
+  number_of_shards : string;
+  page_size : string;
+  slot_size : string;
+  redundancy_factor : string;
+}
+
+let dal_cryptobox_parameters_encoding =
+  let open Data_encoding in
+  conv
+    (fun {number_of_shards; page_size; slot_size; redundancy_factor} ->
+      (number_of_shards, page_size, slot_size, redundancy_factor))
+    (fun (number_of_shards, page_size, slot_size, redundancy_factor) ->
+      {number_of_shards; page_size; slot_size; redundancy_factor})
+    (obj4
+       (req "number_of_shards" string)
+       (req "page_size" string)
+       (req "slot_size" string)
+       (req "redundancy_factor" string))
+
+type dal_parameters = {
+  cryptobox : dal_cryptobox_parameters;
+  attestation_lag : string;
+  attestation_threshold : string;
+}
+
+(* This encoding should be compatible with the network parameters. *)
+let dal_parameters_encoding =
+  let open Data_encoding in
+  conv
+    (fun {cryptobox; attestation_lag; attestation_threshold} ->
+      (cryptobox, (attestation_lag, attestation_threshold)))
+    (fun (cryptobox, (attestation_lag, attestation_threshold)) ->
+      {cryptobox; attestation_lag; attestation_threshold})
+    (merge_objs
+       dal_cryptobox_parameters_encoding
+       (obj2
+          (req "attestation_lag" string)
+          (req "attestation_threshold" string)))
+
+type 'uri generate_protocol_file = {
+  basefile : 'uri;
+  base_dir : 'uri option; (* Directory containing bootstrap keys. *)
+  dal : dal_parameters;
+  tez : (string * int) list;
+}
+
+type (_, _) Remote_procedure.t +=
+  | Generate_protocol_file :
+      'uri generate_protocol_file
+      -> (string, 'uri) Remote_procedure.t
+
+module Generate_protocol_file = struct
+  let name = "tezos.generate_protocol_file"
+
+  type 'uri t = 'uri generate_protocol_file
+
+  type r = string
+
+  let of_remote_procedure :
+      type a. (a, 'uri) Remote_procedure.t -> 'uri t option = function
+    | Generate_protocol_file args -> Some args
+    | _ -> None
+
+  let to_remote_procedure args = Generate_protocol_file args
+
+  let unify : type a. (a, 'uri) Remote_procedure.t -> (a, r) Remote_procedure.eq
+      = function
+    | Generate_protocol_file _ -> Eq
+    | _ -> Neq
+
+  let encoding uri_encoding =
+    let open Data_encoding in
+    conv
+      (fun {basefile; base_dir; dal; tez} -> (basefile, base_dir, dal, tez))
+      (fun (basefile, base_dir, dal, tez) -> {basefile; base_dir; dal; tez})
+      (obj4
+         (req "basefile" uri_encoding)
+         (opt "base_dir" uri_encoding)
+         (req "dal" dal_parameters_encoding)
+         (dft "tez" (list (tup2 string int31)) []))
+
+  let r_encoding =
+    let open Data_encoding in
+    obj1 (req "filename" string)
+
+  let tvalue_of_r filename = Tstr filename
+
+  let expand ~self ~run base =
+    let basefile =
+      Remote_procedure.global_uri_of_string ~self ~run base.basefile
+    in
+    let base_dir =
+      base.base_dir
+      |> Option.map (Remote_procedure.global_uri_of_string ~self ~run)
+    in
+    {base with basefile; base_dir}
+
+  let resolve ~self resolver base =
+    let basefile =
+      Remote_procedure.file_agent_uri ~self ~resolver base.basefile
+    in
+    let base_dir =
+      base.base_dir |> Option.map (resolve_octez_rpc_global_uri ~self ~resolver)
+    in
+    {base with basefile; base_dir}
+
+  let run state {basefile; base_dir; dal; tez} =
+    (* Taken from Protocol.ml *)
+    let default_balance = 4000000000000 in
+    let* basefile =
+      Http_client.local_path_from_agent_uri
+        (Agent_state.http_client state)
+        basefile
+    in
+    let* base_dir =
+      match base_dir with
+      | None -> return None
+      | Some base_dir ->
+          let* base_dir =
+            Http_client.local_path_from_agent_uri
+              (Agent_state.http_client state)
+              base_dir
+          in
+          return (Some base_dir)
+    in
+    let client = Client.create ?base_dir () in
+    let* aliases =
+      let* output = Client.list_known_addresses client in
+      List.map fst output |> return
+    in
+    let* accounts =
+      Lwt_list.map_p (fun alias -> Client.show_address ~alias client) aliases
+    in
+    let bootstrap_accounts_override =
+      let json_accounts : JSON.u list =
+        accounts
+        |> List.map (fun (account : Account.key) ->
+               let balance =
+                 Option.value
+                   ~default:default_balance
+                   (List.assoc_opt account.alias tez)
+               in
+               `A [`String account.public_key; `String (string_of_int balance)])
+      in
+      let key = ["bootstrap_accounts"] in
+      let path = key in
+      (path, `A json_accounts)
+    in
+    let dal_overrides : string list * JSON.u =
+      let value = Data_encoding.Json.construct dal_parameters_encoding dal in
+      let key = ["dal_parametric"] in
+      let path = key in
+      (path, value)
+    in
+    let overrides =
+      (* Use of explicit subtyping here. *)
+      ([bootstrap_accounts_override; dal_overrides]
+        :> Protocol.parameter_overrides)
+    in
+    Protocol.write_parameter_file ~base:(Either.Left basefile) overrides
+
+  let on_completion ~on_new_service:_ ~on_new_metrics_source:_ _ = ()
+end
+
 type 'uri activate_protocol = {
   endpoint : 'uri;
   path_client : 'uri;
@@ -1925,6 +2091,7 @@ end
 
 let register_procedures () =
   Remote_procedure.register (module Start_octez_node) ;
+  Remote_procedure.register (module Generate_protocol_file) ;
   Remote_procedure.register (module Activate_protocol) ;
   Remote_procedure.register (module Wait_for_bootstrapped) ;
   Remote_procedure.register (module Originate_smart_rollup) ;
