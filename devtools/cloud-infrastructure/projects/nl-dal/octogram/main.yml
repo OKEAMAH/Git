@@ -45,20 +45,8 @@ stages:
     jobs:
       - name: Push file
         builtins.prefetch: 'localhost://sandbox-parameters.json'
-
-      - name: Protocol file
-        tezos.protocol_file:
-          basefile: 'localhost://sandbox-parameters.json'
-          bootstrap_accounts: '{{ vars.bootstrap_accounts }}'
-          dal:
-            number_of_shards: '{{ vars.number_of_shards }}'
-            page_size: '{{ vars.page_size }}'
-            slot_size: '{{ vars.slot_size }}'
-            redundancy_factor: '{{ vars.redundancy_factor }}'
-            attestation_lag: '{{ vars.attestation_lag }}'
-            attestation_threshold: '{{ vars.attestation_threshold }}'
         
-      - name: Upload octez-node
+      - name: Upload binaries
         run_items: concurrent
         copy:
           local_path: '{{ item }}'
@@ -66,11 +54,17 @@ stages:
         with_items:
           - octez-node
           - octez-client
- 
-      - name: Upload octez-client
-        copy:
-          local_path: octez-client
-          remote_path: '.'
+
+      - name: Protocol file
+        tezos.generate_protocol_file:
+          basefile: 'localhost://sandbox-parameters.json'
+          dal:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+            attestation_lag: '{{ vars.attestation_lag }}'
+            attestation_threshold: '{{ vars.attestation_threshold }}'
         
       - name: Start octez-node
         tezos.start_node:
