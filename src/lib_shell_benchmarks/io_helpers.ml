@@ -300,3 +300,17 @@ let rec copy_rec source dest =
         source ;
       set_infos dest infos
   | _ -> prerr_endline ("Can't cope with special file " ^ source)
+
+let split_absolute_path s =
+  (* Must start with / *)
+  match String.split_on_char '/' s with
+  | "" :: ss ->
+      let ss =
+        (* remove the last / *)
+        match List.rev ss with "" :: ss -> List.rev ss | _ -> ss
+      in
+      (* Must not contain ., .., // *)
+      if List.exists (function "." | ".." | "" -> true | _ -> false) ss then
+        None
+      else Some ss
+  | _ -> None
