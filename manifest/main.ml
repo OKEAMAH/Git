@@ -4113,6 +4113,7 @@ let octez_shell_benchmarks =
         octez_crypto;
         octez_context;
         octez_shell_context;
+        octez_store;
         octez_micheline;
       ]
     ~linkall:true
