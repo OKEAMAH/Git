@@ -466,8 +466,15 @@ let perform_benchmark (type c t) (options : options)
     List.fold_left
       (fun workload_data benchmark_fun ->
         progress () ;
-        set_gc_increment () ;
-        Gc.compact () ;
+        let bench = benchmark_fun () in
+        (match bench with
+        | Generator.Calculated _ ->
+            (* Calculated already gets its measures.
+               No need to perform GC. *)
+            ()
+        | _ ->
+            set_gc_increment () ;
+            Gc.compact ()) ;
         let measure_plain_benchmark workload closure =
           let measures =
             compute_empirical_timing_distribution
