@@ -23,50 +23,30 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+use super::{Type, TypeExt};
 
-use lalrpop_util::lalrpop_mod;
-
-lalrpop_mod!(pub syntax);
-
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
+impl<Ext: TypeExt> Type<Ext> {
+    pub fn is_comparable(&self) -> bool {
+        use Type::*;
+        match self {
+            Address(_) => true,
+            Bool(_) => true,
+            Bytes(_) => true,
+            ChainId(_) => true,
+            Int(_) => true,
+            Key(_) => true,
+            KeyHash(_) => true,
+            Mutez(_) => true,
+            Nat(_) => true,
+            Never(_) => true,
+            Option(_, ty) => ty.is_comparable(),
+            Or(_, l, r) => l.is_comparable() && r.is_comparable(),
+            Pair(_, l, r) => l.is_comparable() && r.is_comparable(),
+            Signature(_) => true,
+            String(_) => true,
+            Timestamp(_) => true,
+            Unit(_) => true,
+            _ => false,
+        }
     }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
-
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
-    }
-    dbg!(stk);
-    Ok(())
 }

@@ -23,50 +23,46 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+use ascii::AsciiString;
+use num_bigint::BigInt;
 
-use lalrpop_util::lalrpop_mod;
+use crate::ast::instr::{Instr, InstrExt};
 
-lalrpop_mod!(pub syntax);
-
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
+super::macros::ttg_extend!(
+    @derive(Debug, Clone, PartialEq, Eq)
+    pub enum UValue<Ext: UValueExt + InstrExt> {
+        Int(BigInt),
+        String(AsciiString),
+        Bytes(Vec<u8>),
+        Unit(),
+        True(),
+        False(),
+        Pair(Box<Self>, Box<Self>),
+        Left(Box<Self>),
+        Right(Box<Self>),
+        Some(Box<Self>),
+        None(),
+        Seq(Vec<Self>),
+        LambdaRec(Vec<Instr<Ext>>),
+        Instr(Instr<Ext>),
+        Ext(),
     }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
+);
 
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
+impl<Ext: UValueExt + InstrExt> UValue<Ext> {
+    pub fn new_pair(meta: <Ext as UValueExt>::Pair, l: Self, r: Self) -> Self {
+        Self::Pair(meta, Box::new(l), Box::new(r))
     }
-    dbg!(stk);
-    Ok(())
+
+    pub fn new_left(meta: Ext::Left, ty: Self) -> Self {
+        Self::Left(meta, Box::new(ty))
+    }
+
+    pub fn new_right(meta: Ext::Right, ty: Self) -> Self {
+        Self::Right(meta, Box::new(ty))
+    }
+
+    pub fn new_some(meta: Ext::Some, ty: Self) -> Self {
+        Self::Some(meta, Box::new(ty))
+    }
 }

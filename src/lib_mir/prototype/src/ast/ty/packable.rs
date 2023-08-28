@@ -23,50 +23,43 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+use super::{Type, TypeExt};
 
-use lalrpop_util::lalrpop_mod;
-
-lalrpop_mod!(pub syntax);
-
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
+impl<Ext: TypeExt> Type<Ext> {
+    pub fn is_packable(&self) -> bool {
+        use Type::*;
+        match self {
+            Address(_) => true,
+            Bls12381Fr(_) => true,
+            Bls12381G1(_) => true,
+            Bls12381G2(_) => true,
+            Bool(_) => true,
+            Bytes(_) => true,
+            ChainId(_) => true,
+            Contract(_, _) => true,
+            Int(_) => true,
+            Key(_) => true,
+            KeyHash(_) => true,
+            Lambda(_, _, _) => true,
+            List(_, ty) => ty.is_packable(),
+            Map(_, _, ty) => ty.is_packable(),
+            Mutez(_) => true,
+            Nat(_) => true,
+            Never(_) => true,
+            Option(_, ty) => ty.is_packable(),
+            Or(_, ty1, ty2) => ty1.is_packable() && ty2.is_packable(),
+            Pair(_, ty1, ty2) => ty1.is_packable() && ty2.is_packable(),
+            SaplingTransaction(_, _) => true,
+            Set(_, ty) => ty.is_packable(),
+            Signature(_) => true,
+            String(_) => true,
+            Timestamp(_) => true,
+            Unit(_) => true,
+            Operation(..) => false,
+            Ticket(..) => false,
+            BigMap(..) => false,
+            SaplingState(..) => false,
+            Ext(..) => false,
+        }
     }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
-
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
-    }
-    dbg!(stk);
-    Ok(())
 }

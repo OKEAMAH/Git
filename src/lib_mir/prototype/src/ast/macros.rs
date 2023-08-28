@@ -23,50 +23,33 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+macro_rules! ttg_extend {
+    ( $(#[$($ann:tt)*])*
+      $(@derive($($traits:ident),* $(,)*))?
+      $pub:vis $enum:ident $mainTy:ident <$extname:ident: $ext:tt $(+ $exts:tt)*> {
+        $($name:ident ( $($ty:ty),* $(,)*)),* $(,)*
+      } $(; $($extra:tt)*)?) => {
+      $(#[$($ann)*])*
+      $(#[derive_where::derive_where($($traits),*)])?
+      $pub $enum $mainTy<$extname: $ext $(+ $exts)*> {
+        $(
+          $name(<$extname as $ext>::$name, $($ty),*)
+        ),*
+      }
 
-use lalrpop_util::lalrpop_mod;
-
-lalrpop_mod!(pub syntax);
-
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
-    }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
-
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
-    }
-    dbg!(stk);
-    Ok(())
+      use std::fmt::Debug;
+      $crate::ast::macros::ttg_extend!(@trait $pub $ext; $($name)*; {$($(+ $traits)*)?}; $($($extra)*)?);
+    };
+    (@trait $pub:vis $ext:ident; $($name:ident)* ; $traits:tt; $($extra:tt)*) => {
+      $pub trait $ext
+      {
+        $($crate::ast::macros::ttg_extend!(@type $name; $traits);)*
+        $($extra)*
+      }
+    };
+    (@type $name:ident; { $(+ $($traits:tt)+)? }) => {
+      type $name$(: $($traits)*)?;
+    };
 }
+
+pub(crate) use ttg_extend;

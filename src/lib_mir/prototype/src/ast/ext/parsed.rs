@@ -23,50 +23,90 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+use crate::ast::{InstrExt, Type, TypeExt, UValue, UValueExt, Void};
 
-use lalrpop_util::lalrpop_mod;
+pub enum Parsed {}
 
-lalrpop_mod!(pub syntax);
+impl UValueExt for Parsed {
+    type Int = ();
+    type String = ();
+    type Bytes = ();
+    type Unit = ();
+    type True = ();
+    type False = ();
+    type Pair = ();
+    type Left = ();
+    type Right = ();
+    type Some = ();
+    type None = ();
+    type Seq = ();
+    type LambdaRec = ();
+    type Instr = ();
+    type Ext = Void;
+}
 
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
-    }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
+impl InstrExt for Parsed {
+    type Car = ();
+    type Cdr = ();
+    type Pair = ();
+    type Push = (Type<Parsed>, Box<UValue<Parsed>>);
+    type Nil = Type<Parsed>;
+    type Add = ();
+    type Drop = ();
+    type DropN = ();
+    type Dup = ();
+    type DupN = ();
+    type Dip = ();
+    type DipN = ();
+    type Swap = ();
+    type Compare = ();
+    type PairN = ();
+    type Unpair = ();
+    type UnpairN = ();
+    type Dig = ();
+    type Dug = ();
+    type Failwith = ();
+    type Never = ();
+    type If = ();
+    type Nest = ();
+    type Unit = ();
+    type Loop = ();
+    type Gt = ();
+    type Le = ();
+    type Int = ();
+    type Mul = ();
+}
 
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
-    }
-    dbg!(stk);
-    Ok(())
+impl TypeExt for Parsed {
+    type Key = ();
+    type Unit = ();
+    type Signature = ();
+    type ChainId = ();
+    type Option = ();
+    type List = ();
+    type Set = ();
+    type Operation = ();
+    type Contract = ();
+    type Ticket = ();
+    type Pair = ();
+    type Or = ();
+    type Lambda = ();
+    type Map = ();
+    type BigMap = ();
+    type Int = ();
+    type Nat = ();
+    type String = ();
+    type Bytes = ();
+    type Mutez = ();
+    type Bool = ();
+    type KeyHash = ();
+    type Bls12381Fr = ();
+    type Bls12381G1 = ();
+    type Bls12381G2 = ();
+    type Timestamp = ();
+    type Address = ();
+    type SaplingState = ();
+    type SaplingTransaction = ();
+    type Never = ();
+    type Ext = Void;
 }

@@ -23,50 +23,37 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod ast;
-mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
-
-use lalrpop_util::lalrpop_mod;
-
-lalrpop_mod!(pub syntax);
-
-fn main() -> Result<(), typecheck::TcError> {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() != 3 {
-        println!("Usage: {} <type> <value>", args[0]);
-        println!("Code is accepted at standard input");
-        return Ok(());
+super::macros::ttg_extend!(
+    @derive(Debug, Clone, PartialEq, Eq)
+    pub enum Instr<Ext: InstrExt> {
+        Car(),
+        Cdr(),
+        Pair(),
+        Push(),
+        Nil(),
+        Add(),
+        Drop(),
+        DropN(usize),
+        Dup(),
+        DupN(usize),
+        Dip(Vec<Self>),
+        DipN(usize, Vec<Self>),
+        Swap(),
+        Compare(),
+        PairN(usize),
+        Unpair(),
+        UnpairN(usize),
+        Dig(usize),
+        Dug(usize),
+        Failwith(),
+        Never(),
+        If(Vec<Self>, Vec<Self>),
+        Nest(Vec<Self>),
+        Unit(),
+        Loop(Vec<Self>),
+        Gt(),
+        Le(),
+        Int(),
+        Mul(),
     }
-    let stdin: String = std::io::stdin().lines().flatten().collect();
-
-    let parse_time = std::time::Instant::now();
-    let code = syntax::InstrSeqParser::new().parse(&stdin).unwrap();
-    let vty = syntax::NakedTypeParser::new().parse(&args[1]).unwrap();
-    let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
-    dbg!(parse_time.elapsed());
-
-    let mut ty_stk = stk![vty.clone()];
-
-    let tc_time = std::time::Instant::now();
-    let tc_code = typecheck(code, &mut ty_stk)?;
-    dbg!(tc_time.elapsed());
-
-    dbg!(ty_stk);
-
-    let tc_val_time = std::time::Instant::now();
-    let tc_val = typecheck_value(val, &vty)?;
-    dbg!(tc_val_time.elapsed());
-
-    let mut stk = stk![tc_val];
-    let int_time = std::time::Instant::now();
-    let int_res = interpret::interpret(&tc_code, &mut stk);
-    dbg!(int_time.elapsed());
-
-    #[allow(unused_must_use)]
-    {
-        dbg!(int_res);
-    }
-    dbg!(stk);
-    Ok(())
-}
+);
