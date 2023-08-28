@@ -60,6 +60,7 @@ tezt:
   # Temporarily allow corrupted coverage files.
   allow_failure:
     exit_codes: 64
+  retry: 0
 
 # # these are tezt tests as above, but run using the static binaries
 # tezt:static-binaries:
