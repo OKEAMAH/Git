@@ -48,7 +48,7 @@ fn interpret_one(
     inp: &mut Stack<TValue<Typechecked>>,
 ) -> Result<(), RuntimeError> {
     use Instr::*;
-    super::macros::match_instr!(; unreachable!(); i; inp: TValue<Typechecked>;
+    super::macros::match_instr!(; unreachable!(); i; (); inp: TValue<Typechecked>;
       simp Car(_) [1] => { [TValue::Pair(_, tvalue::Pair(l, _))] => [*l] },
       simp Cdr(_) [1] => { [TValue::Pair(_, tvalue::Pair(_, r))] => [*r] },
       simp Pair(_) [2] => { [l, r] => [TValue::new_pair_tc(l, r)] },

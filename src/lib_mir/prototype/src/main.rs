@@ -25,7 +25,7 @@
 
 mod ast;
 mod interpreter;
-use interpreter::{interpret, stack::stk, typecheck, typecheck_value};
+use interpreter::{interpret, stack::stk, stack::FStack, typecheck, typecheck_value};
 
 use lalrpop_util::lalrpop_mod;
 
@@ -46,7 +46,7 @@ fn main() -> Result<(), typecheck::TcError> {
     let val = syntax::NakedValueParser::new().parse(&args[2]).unwrap();
     dbg!(parse_time.elapsed());
 
-    let mut ty_stk = stk![vty.clone()];
+    let mut ty_stk = FStack::Ok(stk![vty.clone()]);
 
     let tc_time = std::time::Instant::now();
     let tc_code = typecheck(code, &mut ty_stk)?;

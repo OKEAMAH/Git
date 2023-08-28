@@ -25,43 +25,43 @@
 
 macro_rules! match_instr {
 
-    (@simp_body $id:ident; $args:tt; $inp:expr; copy; $tail:tt) => {
+    (@simp_body $id:ident; $args:tt; $finp:expr; $inp:expr; copy; $tail:tt) => {
         {
             let res = $id$args;
-            $crate::interpreter::macros::match_instr!(@simp_body_cont $inp; $tail; res)
+            $crate::interpreter::macros::match_instr!(@simp_body_cont $finp; $inp; $tail; res)
         }
     };
-    (@simp_body $id:ident; $args:tt; $inp:expr; $attr:tt; $tail:tt) => {
+    (@simp_body $id:ident; $args:tt; $finp:expr; $inp:expr; $attr:tt; $tail:tt) => {
         {
             let res = $id$attr;
-            $crate::interpreter::macros::match_instr!(@simp_body_cont $inp; $tail; res)
+            $crate::interpreter::macros::match_instr!(@simp_body_cont $finp; $inp; $tail; res)
         }
     };
-    (@simp_body $id:ident; $args:tt; $inp:expr ; $tail:block) => {
+    (@simp_body $id:ident; $args:tt; $finp:expr; $inp:expr ; $tail:block) => {
       {
         let (res, arr) = $tail;
-        $crate::interpreter::macros::match_instr!(@simp_body_cont $inp; arr; res);
+        $crate::interpreter::macros::match_instr!(@simp_body_cont $finp; $inp; arr; res);
       }
     };
-    (@simp_body $id:ident; $args:tt; $inp:expr ; $tail:tt) => {
+    (@simp_body $id:ident; $args:tt; $finp:expr; $inp:expr ; $tail:tt) => {
         {
-            $crate::interpreter::macros::match_instr!(@simp_body_cont $inp; $tail;);
+            $crate::interpreter::macros::match_instr!(@simp_body_cont $finp; $inp; $tail;);
         }
     };
-    (@simp_body_cont $inp:expr; [!]; $($res:expr)?) => {
+    (@simp_body_cont $finp:expr; $inp:expr; [!]; $($res:expr)?) => {
         {
-            $inp.fail();
+            $finp.fail();
             $(Ok($res))?
         }
     };
-    (@simp_body_cont $inp:expr; $new_stk:expr; $($res:expr)?) => {
+    (@simp_body_cont $finp:expr; $inp:expr; $new_stk:expr; $($res:expr)?) => {
         {
             let it = $new_stk.into_iter().rev();
             $inp.extend(it);
             $(Ok($res))?
         }
     };
-    (@helper { $no_overload:expr; $item_ty:ty; $inp:expr; $sz:literal }
+    (@helper { $no_overload:expr; $item_ty:ty; $finp:expr; $inp:expr; $sz:literal }
       simp $id:ident $args:tt => { $( $stk:pat $(if $cond:expr)? =>
         $tail1:tt $([$($tail2:tt)*])? ),* $(,)*
       }
@@ -73,7 +73,7 @@ macro_rules! match_instr {
           match bx {
             $(
               $stk $(if $cond)? =>
-                match_instr!(@simp_body $id; $args; $inp; $tail1 $(; [$($tail2)*])?),
+                match_instr!(@simp_body $id; $args; $finp; $inp; $tail1 $(; [$($tail2)*])?),
             )*
             _ => $no_overload,
           }
@@ -86,7 +86,7 @@ macro_rules! match_instr {
       { $blk; Ok($id$args) }
     };
     (@helper {$($_:tt)*} raw $id:ident $args:tt => $blk:block) => { $blk };
-    (@one_instr $no_stk_err:expr; $no_overload:expr; $i:ident; $inp:ident: $item_ty:ty; $($kind:ident $id:ident $args:tt [$sz:expr] $(if $cond:expr)? => $($blk:tt);*),* $(,)*) => {
+    (@one_instr $no_stk_err:expr; $no_overload:expr; $i:ident; $finp:expr; $inp:ident: $item_ty:ty; $($kind:ident $id:ident $args:tt [$sz:expr] $(if $cond:expr)? => $($blk:tt);*),* $(,)*) => {
         match $i {
           $(
             $id$args $(if $cond)? => {
@@ -94,7 +94,7 @@ macro_rules! match_instr {
               if $sz as usize > $inp.len() {
                 $no_stk_err;
               }
-              match_instr!(@helper {$no_overload; $item_ty; $inp; $sz} $kind $id $args => $($blk);*)
+              match_instr!(@helper {$no_overload; $item_ty; $finp; $inp; $sz} $kind $id $args => $($blk);*)
             }
           ),*
         }

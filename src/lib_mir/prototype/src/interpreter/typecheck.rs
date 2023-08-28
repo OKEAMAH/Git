@@ -26,17 +26,18 @@
 use num_bigint::BigInt;
 use num_bigint::TryFromBigIntError;
 
-use super::stack::{stk, Stack};
+use super::stack::{stk, FStack, Stack};
 use crate::ast::tvalue::comparable::ComparableError;
 use crate::ast::{
     ext::typechecked::TValueMeta, tvalue, tvalue::Or, Instr, InstrExt, Parsed, TValue, Type,
     Typechecked, UValue, UValueExt,
 };
 use crate::interpreter::interpret::{add, mul};
+use crate::interpreter::stack::FailedStackAccess;
 
 pub fn typecheck(
     code: Vec<Instr<Parsed>>,
-    inp: &mut Stack<Type<Parsed>>,
+    inp: &mut FStack<Type<Parsed>>,
 ) -> Result<Vec<Instr<Typechecked>>, TcError> {
     code.into_iter()
         .map(|instr| typecheck_one(instr, inp))
@@ -64,13 +65,12 @@ pub enum BadInstr {
 
 fn typecheck_one(
     i: Instr<Parsed>,
-    inp: &mut Stack<Type<Parsed>>,
+    finp: &mut FStack<Type<Parsed>>,
 ) -> Result<Instr<Typechecked>, TcError> {
     use Instr::*;
-    if inp.is_failed() {
-        Err(TcError::DeadCode)?
-    }
+    let inp = finp.access_mut().ok_or(TcError::DeadCode)?;
     super::macros::match_instr!(TcError::NotEnoughItemsOnStack; Err(TcError::NoMatchingOverload); i;
+      finp;
       inp: Type<Parsed>;
       simp Car(meta) [1] => { [Type::Pair((), l, _)] => copy [*l] },
       simp Cdr(meta) [1] => { [Type::Pair((), _, r)] => copy [*r] },
@@ -107,11 +107,13 @@ fn typecheck_one(
         inp.push(inp.get(n).unwrap().clone());
       },
       raw Dip(meta, instrs) [1] => {
-        let tc_instrs = inp.protect(1, |inp1| typecheck(instrs, inp1))?;
+        let tc_instrs = finp.protect(1, |finp1| typecheck(instrs, finp1))
+          .map_err(|FailedStackAccess| TcError::DeadCode)??;
         Ok(Dip(meta, tc_instrs))
       },
       raw DipN(meta, n, instrs) [n] => {
-        let tc_instrs = inp.protect(n, |inp1| typecheck(instrs, inp1))?;
+        let tc_instrs = finp.protect(n, |finp1| typecheck(instrs, finp1))
+          .map_err(|FailedStackAccess| TcError::DeadCode)??;
         Ok(DipN(meta, n, tc_instrs))
       },
       raw PairN(_, 0) [0] => { Err(TcError::BadInstr(BadInstr::Pair0)) },
@@ -146,16 +148,18 @@ fn typecheck_one(
           Type::Bool(_) => (),
           _ => Err(TcError::NoMatchingOverload)?,
         }
-        let mut inp_copy = inp.clone();
-        let b_true_tc = typecheck(b_true, &mut inp_copy)?;
-        let b_false_tc = typecheck(b_false, inp)?;
-        if inp.is_ok() && inp_copy.is_ok() && inp != &inp_copy {
-          Err(TcError::TypeMismatch)?;
+        let mut finp_copy = finp.clone();
+        let b_true_tc = typecheck(b_true, &mut finp_copy)?;
+        let b_false_tc = typecheck(b_false, finp)?;
+        match (finp, finp_copy) {
+          (FStack::Ok(i), FStack::Ok(i_copy)) if *i != i_copy =>
+            Err(TcError::TypeMismatch)?,
+          _ => {}
         }
         Ok(If(meta, b_true_tc, b_false_tc))
       },
       raw Nest(meta, content) [0] => {
-        Ok(Nest(meta, typecheck(content, inp)?))
+        Ok(Nest(meta, typecheck(content, finp)?))
       },
       raw Loop(meta, body) [1] => {
         // this may look strange, but typing rules are as thus:
@@ -170,10 +174,11 @@ fn typecheck_one(
           Type::Bool(..) => (),
           _ => Err(TcError::NoMatchingOverload)?,
         };
-        let body_tc = typecheck(body, inp)?;
-        if &inp_copy != inp {
-          Err(TcError::TypeMismatch)?;
-        }
+        let body_tc = typecheck(body, finp)?;
+        let inp = match finp {
+          FStack::Ok(inp) if &inp_copy == inp => inp,
+          _ => { Err(TcError::TypeMismatch)? }
+        };
         inp.pop(); // pops the bool left on the stack after typechecking body
         Ok(Loop(meta, body_tc))
       }
@@ -295,10 +300,11 @@ pub fn typecheck_value(
         },
         Lambda(_, arg, res) => {
             Seq(_, elts) => {
-                let mut tystk = stk![arg.as_ref().clone()];
+                let mut tystk = FStack::Ok(stk![arg.as_ref().clone()]);
                 let tc_body = typecheck(to_instr_seq(elts)?, &mut tystk)?;
-                if !tystk.is_failed() && (tystk.len() != 1 || tystk.top().unwrap() != &**res) {
-                    Err(TcError::ValueError)?;
+                match tystk {
+                  FStack::Ok(st) if st.len() != 1 || st.top().unwrap() != &**res => Err(TcError::ValueError)?,
+                  _ => {}
                 }
                 TValue::Lambda((), tc_body)
             },
