@@ -8,7 +8,7 @@ In particular, it can run code from `../test/fixtures/`, although it can't parse
 `tzt` files. In order to run those, assuming you have Rust toolchain installed, you can do something like this:
 
 ```bash
-pcregrep -o1 --multiline 'code\s*{((?:\n|.)*?)}\s*;\ninput' ../test/fixtures/factorial.tzt | cargo run int 30
+pcregrep -o1 --multiline 'code\s*{((?:\n|.)*?)}\s*;\ninput' ../test/fixtures/factorial.tzt | cargo run nat 30
 ```
 
 The code to run is accepted at stdin, and input type and value are accepted as
