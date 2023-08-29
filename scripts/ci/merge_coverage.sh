@@ -16,7 +16,6 @@ elif bisect-ppx-report merge --coverage-path "$BISECT_FILE" "$COVERAGE_MERGED".c
     echo "Merged coverage files to ${BISECT_FILE}/${COVERAGE_MERGED}"
 else
     # Merge was not successful, meaning that coverage was corrupted
-    rm "$BISECT_FILE"*.coverage || true
     echo "Corrupted coverage files were found, please report this in https://gitlab.com/tezos/tezos/-/issues/1529";
     if [ "${SLACK_COVERAGE_TOKEN:-}" != "" ]; then
         scripts/send_slack_alert_coverage.sh "$SLACK_COVERAGE_TOKEN" "$SLACK_COVERAGE_CHANNEL";
