@@ -107,11 +107,11 @@ fn typecheck_one(
         inp.push(inp.get(n).unwrap().clone());
       },
       raw Dip(meta, instrs) [1] => {
-        let tc_instrs = inp.protect(1, |inp1| typecheck(instrs, inp1))?;
+        let tc_instrs = inp.protect(1, |inp1| typecheck(instrs, inp1)).ok_or(TcError::DeadCode)??;
         Ok(Dip(meta, tc_instrs))
       },
       raw DipN(meta, n, instrs) [n] => {
-        let tc_instrs = inp.protect(n, |inp1| typecheck(instrs, inp1))?;
+        let tc_instrs = inp.protect(n, |inp1| typecheck(instrs, inp1)).ok_or(TcError::DeadCode)??;
         Ok(DipN(meta, n, tc_instrs))
       },
       raw PairN(_, 0) [0] => { Err(TcError::BadInstr(BadInstr::Pair0)) },

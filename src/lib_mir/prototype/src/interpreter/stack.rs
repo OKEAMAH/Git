@@ -154,20 +154,20 @@ impl<T> Stack<T> {
         self.access_mut().drain(len - size..)
     }
 
-    pub fn protect<R, F: FnOnce(&mut Self) -> R>(&mut self, depth: usize, f: F) -> R {
+    pub fn protect<R, F: FnOnce(&mut Self) -> R>(&mut self, depth: usize, f: F) -> Option<R> {
         debug_assert!(depth < self.len());
         if depth == 1 {
             // small optimization that avoids unnecessary allocations
             let protected = self.pop().unwrap();
             let res = f(self);
-            self.push(protected);
-            res
+            self.try_access_mut()?.push(protected);
+            Some(res)
         } else {
             let len = self.len();
             let mut protected = self.access_mut().split_off(len - depth);
             let res = f(self);
-            self.access_mut().append(&mut protected);
-            res
+            self.try_access_mut()?.append(&mut protected);
+            Some(res)
         }
     }
 

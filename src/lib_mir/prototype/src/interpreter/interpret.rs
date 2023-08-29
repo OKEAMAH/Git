@@ -73,10 +73,10 @@ fn interpret_one(
         inp.push(inp.get(*n).unwrap().clone());
       },
       raw Dip(_, instrs) [1] => {
-        inp.protect(1, |inp1| interpret(instrs, inp1))?
+        inp.protect(1, |inp1| interpret(instrs, inp1)).unwrap()?
       },
       raw DipN(_, n, instrs) [*n] => {
-        inp.protect(*n, |inp1| interpret(instrs, inp1))?
+        inp.protect(*n, |inp1| interpret(instrs, inp1)).unwrap()?
       },
       raw PairN(_, n) [*n] => {
         let res = inp.drain_top(*n).reduce(|acc, e| TValue::new_pair_tc(e, acc)).unwrap();
