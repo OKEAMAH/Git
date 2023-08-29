@@ -63,7 +63,7 @@ pub PairValArgs: UValue<Parsed> = {
 
 pub PrimValue: UValue<Parsed> = {
     Int                    => UValue::Int((), <>),
-    r#""[^"]+""#           => UValue::String((), AsciiString::from_str(&<>[1..<>.len()-1]).unwrap()),
+    r#""[^"]*""#           => UValue::String((), AsciiString::from_str(&<>[1..<>.len()-1]).unwrap()),
     r"0x([0-9a-fA-F]{2})*" => UValue::Bytes((), hex::decode(&(<>[2..])).unwrap()),
     r"Unit"                => UValue::Unit(()),
     r"True"                => UValue::True(()),
