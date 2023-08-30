@@ -2599,6 +2599,141 @@ module Revamped = struct
     let* () = synchronize_mempool client_3 node_3 in
     let* () = check_mempool ~validated:[oph_future1; oph_future2] client_3 in
     unit
+
+  let test_mempool_config_operation_filtering =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"mempool config operation filtering"
+      ~tags:
+        [
+          "node";
+          "mempool";
+          "config";
+          "filter";
+          "operation";
+          "arrival";
+          "validated";
+          "refused";
+        ]
+    @@ fun protocol ->
+    Log.info
+      "Aim: test that modifying the mempool configuration via the RPC [POST \
+       /chains/<chain>/mempool/filter] correctly impacts the classification of \
+       the operations that arrive from a peer." ;
+    log_step 1 "Start two nodes, connect them, and activate the protocol." ;
+    let nodes_args = Node.[Connections 1; Synchronisation_threshold 0] in
+    let* _node1, client1 =
+      Client.init_with_protocol ~nodes_args ~protocol `Client ()
+    in
+    let* node2, client2 = Client.init_with_node ~nodes_args `Client () in
+    let* () = Client.Admin.connect_address client1 ~peer:node2 in
+    let* (_ : int) = Node.wait_for_level node2 1 in
+    let fee1 = 1000 and fee2 = 101 in
+    log_step
+      2
+      "Inject two transfers op1 and op2 with respective fees %d and %d (in \
+       mutez) in node2."
+      fee1
+      fee2 ;
+    let inject_transfer_node2 source ~fee =
+      Operation.Manager.inject_single_transfer ~source ~fee client2
+    in
+    let* (`OpHash oph1) = inject_transfer_node2 Constant.bootstrap1 ~fee:fee1 in
+    let* (`OpHash oph2) = inject_transfer_node2 Constant.bootstrap2 ~fee:fee2 in
+    log_step
+      3
+      "Check that both operations are validated in node2's mempool. Indeed, \
+       minimal fee checks are skipped by local injection." ;
+    let* () = check_mempool ~validated:[oph1; oph2] client2 in
+    log_step
+      4
+      "Check that in the mempool of node1, op1 is validated whereas op2 is \
+       refused. Indeed, node1 has the default filter config: minimum 100 mutez \
+       PLUS 100 nanotez per gas unit PLUS 1000 nanotez per byte." ;
+    let* () = check_mempool ~validated:[oph1] ~refused:[oph2] client1 in
+    log_step
+      5
+      "Set minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte to 0 in \
+       node1." ;
+    let* () =
+      Mempool.Config.set_filter
+        ~log:true
+        ~minimal_nanotez_per_gas_unit:(0, 1)
+        ~minimal_nanotez_per_byte:(0, 1)
+        client1
+    in
+    let fee3 = 100 and fee4 = 99 in
+    log_step
+      6
+      "Inject new transfers op3 and op4 with respective fees %d and %d in \
+       node2."
+      fee3
+      fee4 ;
+    let* (`OpHash oph3) = inject_transfer_node2 Constant.bootstrap3 ~fee:fee3 in
+    let* (`OpHash oph4) = inject_transfer_node2 Constant.bootstrap4 ~fee:fee4 in
+    log_step
+      7
+      "Check that op3 is validated in the mempool of node1, while op4 is \
+       refused. Note that op2 would now be valid, but it has already been \
+       refused so it will never be reclassified." ;
+    let* () =
+      check_mempool ~validated:[oph1; oph3] ~refused:[oph2; oph4] client1
+    in
+    log_step
+      8
+      "In node2, set minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte \
+       to 0 but minimal_fees to 101." ;
+    let* () =
+      Mempool.Config.set_filter
+        ~log:true
+        ~minimal_fees:101
+        ~minimal_nanotez_per_gas_unit:(0, 1)
+        ~minimal_nanotez_per_byte:(0, 1)
+        client2
+    in
+    log_step
+      9
+      "Bake from node2. Since the baker filters operations to include in block \
+       independently from the mempool configuration, only op1 is included in \
+       the new block, and therefore is removed from the mempool. Moreover, \
+       operations are filtered again when the mempool gets flushed, so op3 and \
+       op4 become refused, and the only validated operation left in node2 is \
+       op2." ;
+    let* (_level : int) = bake_for ~wait_for_flush:true node2 client2 in
+    let* () = check_mempool ~validated:[oph2] ~refused:[oph3; oph4] client2 in
+    log_step
+      10
+      "Meanwhile in node1, op1 is removed from the mempool, op2 and op4 are \
+       still refused, and op3 is again classified as validated." ;
+    let* () = check_mempool ~validated:[oph3] ~refused:[oph2; oph4] client1 in
+    log_step
+      11
+      "Set minimal_fees to 10 in the mempool configuration of node1, while \
+       keeping minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte at 0." ;
+    let* () =
+      Mempool.Config.set_filter
+        ~log:true
+        ~minimal_fees:10
+        ~minimal_nanotez_per_gas_unit:(0, 1)
+        ~minimal_nanotez_per_byte:(0, 1)
+        client1
+    in
+    let fee5 = 10 and fee6 = 0 in
+    log_step
+      12
+      "Inject operations op5 and op6 with respective fees %d and %d in node2, \
+       and check that both are validated in node2."
+      fee5
+      fee6 ;
+    let* (`OpHash oph5) = inject_transfer_node2 Constant.bootstrap5 ~fee:fee5 in
+    (* op1 from source bootstrap1 has been included in a block, so we
+       can safely use the same source again. *)
+    let* (`OpHash oph6) = inject_transfer_node2 Constant.bootstrap1 ~fee:fee6 in
+    let* () =
+      check_mempool ~validated:[oph2; oph5; oph6] ~refused:[oph3; oph4] client2
+    in
+    log_step 13 "Check that node1 validates op5 but refuses op6." ;
+    check_mempool ~validated:[oph3; oph5] ~refused:[oph2; oph4; oph6] client1
 end
 
 let check_operation_is_in_applied_mempool ops oph =
@@ -3836,141 +3971,6 @@ let test_get_post_mempool_filter =
   check_equal default (of_json output) ;
   check_get_filter_all_variations ~log:true default client1
 
-let test_mempool_config_operation_filtering =
-  let open Revamped in
-  Protocol.register_test
-    ~__FILE__
-    ~title:"mempool config operation filtering"
-    ~tags:
-      [
-        "node";
-        "mempool";
-        "config";
-        "filter";
-        "operation";
-        "arrival";
-        "validated";
-        "refused";
-      ]
-  @@ fun protocol ->
-  Log.info
-    "Aim: test that modifying the mempool configuration via the RPC [POST \
-     /chains/<chain>/mempool/filter] correctly impacts the classification of \
-     the operations that arrive from a peer." ;
-  log_step 1 "Start two nodes, connect them, and activate the protocol." ;
-  let nodes_args = Node.[Connections 1; Synchronisation_threshold 0] in
-  let* _node1, client1 =
-    Client.init_with_protocol ~nodes_args ~protocol `Client ()
-  in
-  let* node2, client2 = Client.init_with_node ~nodes_args `Client () in
-  let* () = Client.Admin.connect_address client1 ~peer:node2 in
-  let* (_ : int) = Node.wait_for_level node2 1 in
-  let fee1 = 1000 and fee2 = 101 in
-  log_step
-    2
-    "Inject two transfers op1 and op2 with respective fees %d and %d (in \
-     mutez) in node2."
-    fee1
-    fee2 ;
-  let inject_transfer_node2 source ~fee =
-    Operation.Manager.inject_single_transfer ~source ~fee client2
-  in
-  let* (`OpHash oph1) = inject_transfer_node2 Constant.bootstrap1 ~fee:fee1 in
-  let* (`OpHash oph2) = inject_transfer_node2 Constant.bootstrap2 ~fee:fee2 in
-  log_step
-    3
-    "Check that both operations are validated in node2's mempool. Indeed, \
-     minimal fee checks are skipped by local injection." ;
-  let* () = check_mempool ~validated:[oph1; oph2] client2 in
-  log_step
-    4
-    "Check that in the mempool of node1, op1 is validated whereas op2 is \
-     refused. Indeed, node1 has the default filter config: minimum 100 mutez \
-     PLUS 100 nanotez per gas unit PLUS 1000 nanotez per byte." ;
-  let* () = check_mempool ~validated:[oph1] ~refused:[oph2] client1 in
-  log_step
-    5
-    "Set minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte to 0 in \
-     node1." ;
-  let* () =
-    Mempool.Config.set_filter
-      ~log:true
-      ~minimal_nanotez_per_gas_unit:(0, 1)
-      ~minimal_nanotez_per_byte:(0, 1)
-      client1
-  in
-  let fee3 = 100 and fee4 = 99 in
-  log_step
-    6
-    "Inject new transfers op3 and op4 with respective fees %d and %d in node2."
-    fee3
-    fee4 ;
-  let* (`OpHash oph3) = inject_transfer_node2 Constant.bootstrap3 ~fee:fee3 in
-  let* (`OpHash oph4) = inject_transfer_node2 Constant.bootstrap4 ~fee:fee4 in
-  log_step
-    7
-    "Check that op3 is validated in the mempool of node1, while op4 is \
-     refused. Note that op2 would now be valid, but it has already been \
-     refused so it will never be reclassified." ;
-  let* () =
-    check_mempool ~validated:[oph1; oph3] ~refused:[oph2; oph4] client1
-  in
-  log_step
-    8
-    "In node2, set minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte \
-     to 0 but minimal_fees to 101." ;
-  let* () =
-    Mempool.Config.set_filter
-      ~log:true
-      ~minimal_fees:101
-      ~minimal_nanotez_per_gas_unit:(0, 1)
-      ~minimal_nanotez_per_byte:(0, 1)
-      client2
-  in
-  log_step
-    9
-    "Bake from node2. Since the baker filters operations to include in block \
-     independently from the mempool configuration, only op1 is included in the \
-     new block, and therefore is removed from the mempool. Moreover, \
-     operations are filtered again when the mempool gets flushed, so op3 and \
-     op4 become refused, and the only validated operation left in node2 is \
-     op2." ;
-  let* (_level : int) = bake_for ~wait_for_flush:true node2 client2 in
-  let* () = check_mempool ~validated:[oph2] ~refused:[oph3; oph4] client2 in
-  log_step
-    10
-    "Meanwhile in node1, op1 is removed from the mempool, op2 and op4 are \
-     still refused, and op3 is again classified as validated." ;
-  let* () = check_mempool ~validated:[oph3] ~refused:[oph2; oph4] client1 in
-  log_step
-    11
-    "Set minimal_fees to 10 in the mempool configuration of node1, while \
-     keeping minimal_nanotez_per_gas_unit and minimal_nanotez_per_byte at 0." ;
-  let* () =
-    Mempool.Config.set_filter
-      ~log:true
-      ~minimal_fees:10
-      ~minimal_nanotez_per_gas_unit:(0, 1)
-      ~minimal_nanotez_per_byte:(0, 1)
-      client1
-  in
-  let fee5 = 10 and fee6 = 0 in
-  log_step
-    12
-    "Inject operations op5 and op6 with respective fees %d and %d in node2, \
-     and check that both are validated in node2."
-    fee5
-    fee6 ;
-  let* (`OpHash oph5) = inject_transfer_node2 Constant.bootstrap5 ~fee:fee5 in
-  (* op1 from source bootstrap1 has been included in a block, so we
-     can safely use the same source again. *)
-  let* (`OpHash oph6) = inject_transfer_node2 Constant.bootstrap1 ~fee:fee6 in
-  let* () =
-    check_mempool ~validated:[oph2; oph5; oph6] ~refused:[oph3; oph4] client2
-  in
-  log_step 13 "Check that node1 validates op5 but refuses op6." ;
-  check_mempool ~validated:[oph3; oph5] ~refused:[oph2; oph4; oph6] client1
-
 let test_request_operations_peer =
   let step1_msg = "Step 1: Connect and initialise two nodes " in
   let step2_msg = "Step 2: Disconnect nodes " in
@@ -4057,7 +4057,7 @@ let register ~protocols =
   Revamped.test_inject_manager_batch protocols ;
   Revamped.mempool_disabled protocols ;
   Revamped.propagation_future_attestation protocols ;
-  test_mempool_config_operation_filtering protocols ;
+  Revamped.test_mempool_config_operation_filtering protocols ;
   forge_pre_filtered_operation protocols ;
   refetch_failed_operation protocols ;
   ban_operation_and_check_applied protocols ;
