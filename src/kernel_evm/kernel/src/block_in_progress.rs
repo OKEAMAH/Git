@@ -20,7 +20,7 @@ use tezos_ethereum::transaction::{
     TransactionObject, TransactionReceipt, TransactionStatus, TransactionType,
     TRANSACTION_HASH_SIZE,
 };
-use tezos_ethereum::{rlp_helpers::*, Bloom, Input};
+use tezos_ethereum::{rlp_helpers::*, Bloom};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -259,38 +259,26 @@ impl BlockInProgress {
         } = self;
 
         match execution_outcome {
-            Some(outcome) => {
-                let mut bloom = Bloom::default();
-                // According to
-                // https://github.com/ethereum/go-ethereum/blob/41ee96fdfee5924004e8fbf9bbc8aef783893917/core/types/bloom9.go#L119
-                for log in outcome.logs.iter() {
-                    bloom.accrue(Input::Raw(log.address.as_bytes()));
-                    for topic in log.topics.iter() {
-                        bloom.accrue(Input::Raw(topic.as_bytes()));
-                    }
-                }
-
-                TransactionReceipt {
-                    hash,
-                    index,
-                    block_hash,
-                    block_number,
-                    from,
-                    to,
-                    cumulative_gas_used: cumulative_gas,
-                    effective_gas_price,
-                    gas_used: U256::from(outcome.gas_used),
-                    contract_address: outcome.new_address,
-                    logs: outcome.logs,
-                    logs_bloom: bloom,
-                    type_: TransactionType::Legacy,
-                    status: if outcome.is_success {
-                        TransactionStatus::Success
-                    } else {
-                        TransactionStatus::Failure
-                    },
-                }
-            }
+            Some(outcome) => TransactionReceipt {
+                hash,
+                index,
+                block_hash,
+                block_number,
+                from,
+                to,
+                cumulative_gas_used: cumulative_gas,
+                effective_gas_price,
+                gas_used: U256::from(outcome.gas_used),
+                contract_address: outcome.new_address,
+                logs_bloom: TransactionReceipt::logs_to_bloom(&outcome.logs),
+                logs: outcome.logs,
+                type_: TransactionType::Legacy,
+                status: if outcome.is_success {
+                    TransactionStatus::Success
+                } else {
+                    TransactionStatus::Failure
+                },
+            },
             None => TransactionReceipt {
                 hash,
                 index,

@@ -52,7 +52,7 @@ impl IndexableStorage {
     }
 
     fn store_index<Host: Runtime>(
-        &mut self,
+        &self,
         host: &mut Host,
         index: u64,
         value_repr: &[u8],
@@ -70,6 +70,24 @@ impl IndexableStorage {
         let length = read_u64(host, &path).unwrap_or(0);
         store_u64(host, &path, length + 1)?;
         Ok(length)
+    }
+
+    pub fn read_length<Host: Runtime>(
+        &mut self,
+        host: &Host,
+    ) -> Result<u64, StorageError> {
+        let path = concat(&self.path, &LENGTH)?;
+        let length = read_u64(host, &path).unwrap_or(0);
+        Ok(length)
+    }
+
+    pub fn read_value<Host: Runtime>(
+        &self,
+        host: &Host,
+        index: u64,
+    ) -> Result<Vec<u8>, StorageError> {
+        let key_path = self.value_path(index)?;
+        host.store_read_all(&key_path).map_err(StorageError::from)
     }
 
     /// Push a value at index `length`, and increments the length.

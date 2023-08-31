@@ -6,7 +6,7 @@ use crate::{
     rlp_helpers::*,
     tx_signature::{rlp_append_opt, rlp_decode_opt, TxSignature},
 };
-use ethbloom::Bloom;
+use ethbloom::{Bloom, Input};
 use ethereum::Log;
 use primitive_types::{H160, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
@@ -114,52 +114,108 @@ pub struct TransactionReceipt {
     pub status: TransactionStatus,
 }
 
+impl TransactionReceipt {
+    pub fn logs_to_bloom(logs: &[Log]) -> Bloom {
+        let mut bloom = Bloom::default();
+        // According to
+        // https://github.com/ethereum/go-ethereum/blob/41ee96fdfee5924004e8fbf9bbc8aef783893917/core/types/bloom9.go#L119
+        for log in logs {
+            bloom.accrue(Input::Raw(log.address.as_bytes()));
+            for topic in log.topics.iter() {
+                bloom.accrue(Input::Raw(topic.as_bytes()));
+            }
+        }
+        bloom
+    }
+
+    // Decode previous version of the receipt,
+    // only actually used in the migration code
+    pub fn rlp_decode_deprecated(bytes: &[u8]) -> Result<Self, DecoderError> {
+        let decoder = Rlp::new(bytes);
+        if !decoder.is_list() {
+            return Err(DecoderError::RlpExpectedToBeList);
+        }
+        if Ok(12) != decoder.item_count() {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let mut it = decoder.iter();
+        let hash: TransactionHash = decode_transaction_hash(&next(&mut it)?)?;
+        let index: u32 = decode_field(&next(&mut it)?, "index")?;
+        let block_hash: H256 = decode_field(&next(&mut it)?, "block_hash")?;
+        let block_number: U256 = decode_field_u256_le(&next(&mut it)?, "block_number")?;
+        let from: H160 = decode_field(&next(&mut it)?, "from")?;
+        let to: Option<H160> = decode_option(&next(&mut it)?, "to")?;
+        let cumulative_gas_used: U256 =
+            decode_field_u256_le(&next(&mut it)?, "cumulative_gas_used")?;
+        let effective_gas_price: U256 =
+            decode_field_u256_le(&next(&mut it)?, "effective_gas_price")?;
+        let gas_used: U256 = decode_field_u256_le(&next(&mut it)?, "gas_used")?;
+        let contract_address: Option<H160> =
+            decode_option(&next(&mut it)?, "contract_address")?;
+        let type_: TransactionType = decode_transaction_type(&next(&mut it)?)?;
+        let status: TransactionStatus = decode_transaction_status(&next(&mut it)?)?;
+        Ok(Self {
+            hash,
+            index,
+            block_hash,
+            block_number,
+            from,
+            to,
+            cumulative_gas_used,
+            effective_gas_price,
+            gas_used,
+            contract_address,
+            logs: vec![],
+            logs_bloom: Bloom::default(),
+            type_,
+            status,
+        })
+    }
+}
+
 impl Decodable for TransactionReceipt {
     fn decode(decoder: &Rlp<'_>) -> Result<Self, DecoderError> {
-        if decoder.is_list() {
-            if Ok(14) == decoder.item_count() {
-                let mut it = decoder.iter();
-                let hash: TransactionHash = decode_transaction_hash(&next(&mut it)?)?;
-                let index: u32 = decode_field(&next(&mut it)?, "index")?;
-                let block_hash: H256 = decode_field(&next(&mut it)?, "block_hash")?;
-                let block_number: U256 =
-                    decode_field_u256_le(&next(&mut it)?, "block_number")?;
-                let from: H160 = decode_field(&next(&mut it)?, "from")?;
-                let to: Option<H160> = decode_option(&next(&mut it)?, "to")?;
-                let cumulative_gas_used: U256 =
-                    decode_field_u256_le(&next(&mut it)?, "cumulative_gas_used")?;
-                let effective_gas_price: U256 =
-                    decode_field_u256_le(&next(&mut it)?, "effective_gas_price")?;
-                let gas_used: U256 = decode_field_u256_le(&next(&mut it)?, "gas_used")?;
-                let contract_address: Option<H160> =
-                    decode_option(&next(&mut it)?, "contract_address")?;
-                let logs = decode_list(&next(&mut it)?, "logs")?;
-                let logs_bloom = decode_field(&next(&mut it)?, "logs_bloom")?;
-                let type_: TransactionType = decode_transaction_type(&next(&mut it)?)?;
-                let status: TransactionStatus =
-                    decode_transaction_status(&next(&mut it)?)?;
-                Ok(Self {
-                    hash,
-                    index,
-                    block_hash,
-                    block_number,
-                    from,
-                    to,
-                    cumulative_gas_used,
-                    effective_gas_price,
-                    gas_used,
-                    contract_address,
-                    logs,
-                    logs_bloom,
-                    type_,
-                    status,
-                })
-            } else {
-                Err(DecoderError::RlpIncorrectListLen)
-            }
-        } else {
-            Err(DecoderError::RlpExpectedToBeList)
+        if !decoder.is_list() {
+            return Err(DecoderError::RlpExpectedToBeList);
         }
+        if Ok(14) != decoder.item_count() {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+
+        let mut it = decoder.iter();
+        let hash: TransactionHash = decode_transaction_hash(&next(&mut it)?)?;
+        let index: u32 = decode_field(&next(&mut it)?, "index")?;
+        let block_hash: H256 = decode_field(&next(&mut it)?, "block_hash")?;
+        let block_number: U256 = decode_field_u256_le(&next(&mut it)?, "block_number")?;
+        let from: H160 = decode_field(&next(&mut it)?, "from")?;
+        let to: Option<H160> = decode_option(&next(&mut it)?, "to")?;
+        let cumulative_gas_used: U256 =
+            decode_field_u256_le(&next(&mut it)?, "cumulative_gas_used")?;
+        let effective_gas_price: U256 =
+            decode_field_u256_le(&next(&mut it)?, "effective_gas_price")?;
+        let gas_used: U256 = decode_field_u256_le(&next(&mut it)?, "gas_used")?;
+        let contract_address: Option<H160> =
+            decode_option(&next(&mut it)?, "contract_address")?;
+        let logs = decode_list(&next(&mut it)?, "logs")?;
+        let logs_bloom = decode_field(&next(&mut it)?, "logs_bloom")?;
+        let type_: TransactionType = decode_transaction_type(&next(&mut it)?)?;
+        let status: TransactionStatus = decode_transaction_status(&next(&mut it)?)?;
+        Ok(Self {
+            hash,
+            index,
+            block_hash,
+            block_number,
+            from,
+            to,
+            cumulative_gas_used,
+            effective_gas_price,
+            gas_used,
+            contract_address,
+            logs,
+            logs_bloom,
+            type_,
+            status,
+        })
     }
 }
 
@@ -309,8 +365,6 @@ impl TransactionObject {
 
 #[cfg(test)]
 mod test {
-    use ethbloom::Input;
-
     use super::*;
 
     fn address_of_str(s: &str) -> H160 {
@@ -325,20 +379,8 @@ mod test {
         assert_eq!(v, v2, "Roundtrip failed on {:?}", v)
     }
 
-    #[test]
-    fn test_receipt_encoding_rountrip() {
-        let address = address_of_str("ef2d6d194084c2de36e0dabfce45d046b37d1106");
-        let topic = H256::from_slice(
-            &hex::decode(
-                "02c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc",
-            )
-            .expect("Valid hex"),
-        );
-        let mut bloom = Bloom::default();
-        bloom.accrue(Input::Raw(address.as_bytes()));
-        bloom.accrue(Input::Raw(topic.as_bytes()));
-
-        let v = TransactionReceipt {
+    fn tx_receipt(logs: Vec<Log>) -> TransactionReceipt {
+        TransactionReceipt {
             hash: [0; TRANSACTION_HASH_SIZE],
             index: 15u32,
             block_hash: H256::default(),
@@ -352,14 +394,28 @@ mod test {
                 "4335353535353535353535353535353535353543",
             )),
             type_: TransactionType::Legacy,
-            logs: vec![Log {
-                address,
-                topics: vec![topic],
-                data: vec![0, 1, 2, 3],
-            }],
-            logs_bloom: bloom,
+            logs_bloom: TransactionReceipt::logs_to_bloom(&logs),
+            logs,
             status: TransactionStatus::Success,
-        };
+        }
+    }
+
+    #[test]
+    fn test_receipt_encoding_rountrip() {
+        let address = address_of_str("ef2d6d194084c2de36e0dabfce45d046b37d1106");
+        let topic = H256::from_slice(
+            &hex::decode(
+                "02c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc",
+            )
+            .expect("Valid hex"),
+        );
+        let logs = vec![Log {
+            address,
+            topics: vec![topic],
+            data: vec![0, 1, 2, 3],
+        }];
+
+        let v = tx_receipt(logs);
         receipt_encoding_roundtrip(v.clone());
 
         let v1 = TransactionReceipt {
@@ -374,6 +430,16 @@ mod test {
             ..v
         };
         receipt_encoding_roundtrip(v2);
+    }
+
+    #[test]
+    fn test_receipt_decoding_deprecated() {
+        let deprecated_encoding = "f90108a000000000000000000000000000000000000000000000000000000000000000000fa00000000000000000000000000000000000000000000000000000000000000000a02a00000000000000000000000000000000000000000000000000000000000000943535353535353535353535353535353535353535943635353535353535353535353535353535353536a09345a54a00000000000000000000000000000000000000000000000000000000a04124d40200000000000000000000000000000000000000000000000000000000a08c6a491c000000000000000000000000000000000000000000000000000000009443353535353535353535353535353535353535438001";
+        let raw_bytes = hex::decode(deprecated_encoding).expect("Should be valid hex");
+        assert_eq!(
+            Ok(tx_receipt(vec![])),
+            TransactionReceipt::rlp_decode_deprecated(&raw_bytes)
+        );
     }
 
     fn object_encoding_roundtrip(v: TransactionObject) {

@@ -28,7 +28,9 @@ use tezos_ethereum::wei::Wei;
 
 use primitive_types::{H160, H256, U256};
 
-pub const STORAGE_VERSION: u64 = 0;
+// This version incorporate the following changes:
+// - Change of the transaction receipt encoding format: supporting logs and bloom
+pub const STORAGE_VERSION: u64 = 1;
 pub const STORAGE_VERSION_PATH: RefPath = RefPath::assert_from(b"/storage_version");
 
 const SMART_ROLLUP_ADDRESS: RefPath =
