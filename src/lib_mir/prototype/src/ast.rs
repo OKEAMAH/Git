@@ -29,11 +29,9 @@ mod macros;
 pub mod tvalue;
 pub mod ty;
 pub mod uvalue;
-pub mod void;
 
 pub use ext::{Parsed, Typechecked};
 pub use instr::{Instr, InstrExt};
 pub use tvalue::{TValue, TValueExt};
 pub use ty::{Type, TypeExt};
 pub use uvalue::{UValue, UValueExt};
-pub use void::Void;

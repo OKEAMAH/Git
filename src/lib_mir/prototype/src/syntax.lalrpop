@@ -23,7 +23,6 @@
 //                                                                            //
 //****************************************************************************//
 
-use ascii::AsciiString;
 use num_bigint::{BigInt, BigUint, Sign};
 use std::str::FromStr;
 
@@ -38,92 +37,35 @@ match {
 
 pub NakedValue: UValue<Parsed> = {
     PrimValue => <>,
-    CompValue => <>,
     "(" <NakedValue> ")" => <>,
 }
 
 pub ParValue: UValue<Parsed> = {
     PrimValue => <>,
-    "(" <CompValue> ")" => <>,
     "(" <ParValue> ")" => <>,
-}
-
-pub CompValue: UValue<Parsed> = {
-    r"Pair" <ParValue> <PairValArgs> => UValue::new_pair((), <>),
-    r"Left" <ParValue>               => UValue::new_left((), <>),
-    r"Right" <ParValue>              => UValue::new_right((), <>),
-    r"Some" <ParValue>               => UValue::new_some((), <>),
-    Instr                            => UValue::Instr((), <>),
-}
-
-pub PairValArgs: UValue<Parsed> = {
-    ParValue => <>,
-    <ParValue> <PairValArgs> => UValue::new_pair((), <>),
 }
 
 pub PrimValue: UValue<Parsed> = {
     Int                    => UValue::Int((), <>),
-    r#""[^"]*""#           => UValue::String((), AsciiString::from_str(&<>[1..<>.len()-1]).unwrap()),
-    r"0x([0-9a-fA-F]{2})*" => UValue::Bytes((), hex::decode(&(<>[2..])).unwrap()),
-    r"Unit"                => UValue::Unit(()),
-    r"True"                => UValue::True(()),
-    r"False"               => UValue::False(()),
-    r"None"                => UValue::None(()),
-    "{" <SeqValue> "}"     => UValue::Seq((), <>),
+    "True"                 => UValue::True(()),
+    "False"                => UValue::False(()),
 }
 
 pub SeqValue = Seq<NakedValue>;
 
 pub PrimType: Type<Parsed> = {
-    r"key"                        => Type::Key(()),
-    r"unit"                       => Type::Unit(()),
-    r"signature"                  => Type::Signature(()),
-    r"chain_id"                   => Type::ChainId(()),
-    r"operation"                  => Type::Operation(()),
     r"int"                        => Type::Int(()),
     r"nat"                        => Type::Nat(()),
-    r"string"                     => Type::String(()),
-    r"bytes"                      => Type::Bytes(()),
-    r"mutez"                      => Type::Mutez(()),
     r"bool"                       => Type::Bool(()),
-    r"key_hash"                   => Type::KeyHash(()),
-    r"bls_12381_fr"               => Type::Bls12381Fr(()),
-    r"bls_12381_g1"               => Type::Bls12381G1(()),
-    r"bls_12381_g2"               => Type::Bls12381G2(()),
-    r"timestamp"                  => Type::Timestamp(()),
-    r"address"                    => Type::Address(()),
-    r"sapling_state" <UInt>       => Type::SaplingState((), <>),
-    r"sapling_transaction" <UInt> => Type::SaplingTransaction((), <>),
-    r"never"                      => Type::Never(()),
-}
-
-pub CompType: Type<Parsed> = {
-    r"option"   <ParType>            => Type::new_option((), <>),
-    r"list"     <ParType>            => Type::new_list((), <>),
-    r"set"      <ParType>            => Type::new_set((), <>),
-    r"contract" <ParType>            => Type::new_contract((), <>),
-    r"ticket"   <ParType>            => Type::new_ticket((), <>),
-    r"pair"     <ParType> <PairArgs> => Type::new_pair((), <>),
-    r"or"       <ParType> <ParType>  => Type::new_or((), <>),
-    r"lambda"   <ParType> <ParType>  => Type::new_lambda((), <>),
-    r"map"      <ParType> <ParType>  => Type::new_map((), <>),
-    r"big_map"  <ParType> <ParType>  => Type::new_big_map((), <>),
-}
-
-pub PairArgs: Type<Parsed> = {
-    ParType => <>,
-    <ParType> <PairArgs> => Type::new_pair((), <>)
 }
 
 pub ParType: Type<Parsed> = {
     PrimType => <>,
-    "(" <CompType> ")" => <>,
     "(" <ParType> ")" => <>,
 }
 
 pub NakedType: Type<Parsed> = {
     PrimType => <>,
-    CompType => <>,
     "(" <NakedType> ")" => <>,
 }
 
@@ -149,12 +91,8 @@ pub InstrNest: Instr<Parsed> = {
 }
 
 pub Instr: Instr<Parsed> = {
-    "CAR"                    => Instr::Car(()),
-    "CDR"                    => Instr::Cdr(()),
-    "PAIR"                   => Instr::Pair(()),
     "PUSH" <ty: ParType> <v: ParValue>
                              => Instr::Push((ty, Box::new(v))),
-    "NIL" <ParType>          => Instr::Nil(<>),
     "ADD"                    => Instr::Add(()),
     "DUP"                    => Instr::Dup(()),
     "DUP" <USize>            => Instr::DupN((), <>),
@@ -163,16 +101,7 @@ pub Instr: Instr<Parsed> = {
     "DIP" <BIS>              => Instr::Dip((), <>),
     "DIP" <USize> <BIS>      => Instr::DipN((), <>),
     "SWAP"                   => Instr::Swap(()),
-    "COMPARE"                => Instr::Compare(()),
-    "PAIR" <USize>           => Instr::PairN((), <>),
-    "UNPAIR"                 => Instr::Unpair(()),
-    "UNPAIR" <USize>         => Instr::UnpairN((), <>),
-    "DIG" <USize>            => Instr::Dig((), <>),
-    "DUG" <USize>            => Instr::Dug((), <>),
-    "FAILWITH"               => Instr::Failwith(()),
-    "NEVER"                  => Instr::Never(()),
     "IF" <BIS> <BIS>         => Instr::If((), <>),
-    "UNIT"                   => Instr::Unit(()),
     "LOOP" <BIS>             => Instr::Loop((), <>),
     "GT"                     => Instr::Gt(()),
     "LE"                     => Instr::Le(()),

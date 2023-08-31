@@ -28,11 +28,7 @@ use crate::ast::{InstrExt, TValue, TValueExt};
 pub enum Typechecked {}
 
 impl InstrExt for Typechecked {
-    type Car = ();
-    type Cdr = ();
-    type Pair = ();
     type Push = TValue<Typechecked>;
-    type Nil = ();
     type Add = fn(TValue<Typechecked>, TValue<Typechecked>) -> TValue<Typechecked>;
     type Drop = ();
     type DropN = ();
@@ -41,17 +37,8 @@ impl InstrExt for Typechecked {
     type Dip = ();
     type DipN = ();
     type Swap = ();
-    type Compare = ();
-    type PairN = ();
-    type Unpair = ();
-    type UnpairN = ();
-    type Dig = ();
-    type Dug = ();
-    type Failwith = ();
-    type Never = ();
     type If = ();
     type Nest = ();
-    type Unit = ();
     type Loop = ();
     type Gt = ();
     type Le = ();
@@ -60,39 +47,7 @@ impl InstrExt for Typechecked {
 }
 
 impl TValueExt for Typechecked {
-    type Key = ();
-    type Unit = ();
-    type Signature = ();
-    type ChainId = ();
-    type Option = TValueMeta;
-    type List = ();
-    type Set = ();
-    type Operation = ();
-    type Contract = ();
-    type Ticket = ();
-    type Pair = TValueMeta;
-    type Or = TValueMeta;
-    type Lambda = ();
-    type Map = ();
-    type BigMap = ();
     type Int = ();
     type Nat = ();
-    type String = ();
-    type Bytes = ();
-    type Mutez = ();
     type Bool = ();
-    type KeyHash = ();
-    type Bls12381Fr = ();
-    type Bls12381G1 = ();
-    type Bls12381G2 = ();
-    type Timestamp = ();
-    type Address = ();
-    type SaplingState = ();
-    type SaplingTransaction = ();
-    type Never = ();
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub struct TValueMeta {
-    pub comparable: bool,
 }

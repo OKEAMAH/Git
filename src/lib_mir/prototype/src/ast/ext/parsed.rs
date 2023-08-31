@@ -23,34 +23,18 @@
 /*                                                                            */
 /******************************************************************************/
 
-use crate::ast::{InstrExt, Type, TypeExt, UValue, UValueExt, Void};
+use crate::ast::{InstrExt, Type, TypeExt, UValue, UValueExt};
 
 pub enum Parsed {}
 
 impl UValueExt for Parsed {
     type Int = ();
-    type String = ();
-    type Bytes = ();
-    type Unit = ();
     type True = ();
     type False = ();
-    type Pair = ();
-    type Left = ();
-    type Right = ();
-    type Some = ();
-    type None = ();
-    type Seq = ();
-    type LambdaRec = ();
-    type Instr = ();
-    type Ext = Void;
 }
 
 impl InstrExt for Parsed {
-    type Car = ();
-    type Cdr = ();
-    type Pair = ();
     type Push = (Type<Parsed>, Box<UValue<Parsed>>);
-    type Nil = Type<Parsed>;
     type Add = ();
     type Drop = ();
     type DropN = ();
@@ -59,17 +43,8 @@ impl InstrExt for Parsed {
     type Dip = ();
     type DipN = ();
     type Swap = ();
-    type Compare = ();
-    type PairN = ();
-    type Unpair = ();
-    type UnpairN = ();
-    type Dig = ();
-    type Dug = ();
-    type Failwith = ();
-    type Never = ();
     type If = ();
     type Nest = ();
-    type Unit = ();
     type Loop = ();
     type Gt = ();
     type Le = ();
@@ -78,35 +53,7 @@ impl InstrExt for Parsed {
 }
 
 impl TypeExt for Parsed {
-    type Key = ();
-    type Unit = ();
-    type Signature = ();
-    type ChainId = ();
-    type Option = ();
-    type List = ();
-    type Set = ();
-    type Operation = ();
-    type Contract = ();
-    type Ticket = ();
-    type Pair = ();
-    type Or = ();
-    type Lambda = ();
-    type Map = ();
-    type BigMap = ();
     type Int = ();
     type Nat = ();
-    type String = ();
-    type Bytes = ();
-    type Mutez = ();
     type Bool = ();
-    type KeyHash = ();
-    type Bls12381Fr = ();
-    type Bls12381G1 = ();
-    type Bls12381G2 = ();
-    type Timestamp = ();
-    type Address = ();
-    type SaplingState = ();
-    type SaplingTransaction = ();
-    type Never = ();
-    type Ext = Void;
 }

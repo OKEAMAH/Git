@@ -26,7 +26,7 @@
 use num_bigint::BigInt;
 
 use super::stack::Stack;
-use crate::ast::{tvalue, Instr, TValue, Typechecked};
+use crate::ast::{Instr, TValue, Typechecked};
 
 pub fn interpret(
     code: &Vec<Instr<Typechecked>>,
@@ -39,8 +39,16 @@ pub fn interpret(
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RuntimeError {
-    Failed(TValue<Typechecked>),
+pub enum RuntimeError {}
+
+macro_rules! unsafe_match {
+    ($pat:pat = $expr:expr => $($rest:tt)*) => {
+        if let $pat = $expr {
+            $($rest)*
+        } else {
+            unreachable!();
+        }
+    }
 }
 
 fn interpret_one(
@@ -49,20 +57,12 @@ fn interpret_one(
 ) -> Result<(), RuntimeError> {
     use Instr::*;
     super::macros::match_instr!(; unreachable!(); i; inp: TValue<Typechecked>;
-      simp Car(_) [1] => { [TValue::Pair(_, tvalue::Pair(l, _))] => [*l] },
-      simp Cdr(_) [1] => { [TValue::Pair(_, tvalue::Pair(_, r))] => [*r] },
-      simp Pair(_) [2] => { [l, r] => [TValue::new_pair_tc(l, r)] },
-      simp Unpair(_) [1] => { [TValue::Pair(_, tvalue::Pair(l, r))] => [*l, *r] },
       simp Push(val) [0] => { [] => [val.clone()] },
-      simp Nil(_) [0] => { [] => [TValue::new_list_tc(vec![])] },
       simp Add(func) [2] => { [l, r] => [func(l, r)] },
       simp Mul(func) [2] => { [l, r] => [func(l, r)] },
       simp Int(_) [1] => { [TValue::Nat((), val)] => [TValue::Int((), val.into())] },
       simp Drop(_) [1] => { [_] => [] },
       simp Swap(_) [2] => { [l, r] => [r, l] },
-      simp Compare(_) [2] => {
-        [l, r] => [compare_impl(&l, &r)]
-      },
       simp Gt(_) [1] => { [TValue::Int(_, val)] => [TValue::Bool((), val > 0.into())] },
       simp Le(_) [1] => { [TValue::Int(_, val)] => [TValue::Bool((), val <= 0.into())] },
       raw DropN(_, n) [*n] => {
@@ -78,41 +78,11 @@ fn interpret_one(
       raw DipN(_, n, instrs) [*n] => {
         inp.protect(*n, |inp1| interpret(instrs, inp1)).unwrap()?
       },
-      raw PairN(_, n) [*n] => {
-        let res = inp.drain_top(*n).reduce(|acc, e| TValue::new_pair_tc(e, acc)).unwrap();
-        inp.push(res);
-      },
-      raw UnpairN(_, n) [1] => {
-        let pair = inp.pop().unwrap();
-        inp.reserve(*n);
-        fill_unpair_n(n - 1, inp, pair)?;
-      },
-      raw Dig(_, 0) [0] => { }, // nop
-      raw Dig(_, n) [*n] => {
-        let elt = inp.remove(*n);
-        inp.push(elt);
-      },
-      raw Dug(_, 0) [0] => { }, // nop
-      raw Dug(_, n) [*n] => {
-        let elt = inp.pop().unwrap();
-        inp.insert(*n, elt);
-      },
-      raw Failwith(_) [1] => {
-        Err(RuntimeError::Failed(inp.pop().unwrap()))?
-      },
-      raw Never(..) [1] => {
-        unreachable!();
-      },
-      simp Unit(..) [0] => { [] => [TValue::Unit(())] },
       raw If(_, b_true, b_false) [1] => {
-        if let TValue::Bool(_, b) = inp.pop().unwrap() {
-          if b {
-            interpret(b_true, inp)?;
-          } else {
-            interpret(b_false, inp)?;
-          }
+        if unsafe_match!(TValue::Bool(_, b) = inp.pop().unwrap() => b) {
+          interpret(b_true, inp)?;
         } else {
-          unreachable!();
+          interpret(b_false, inp)?;
         }
       },
       raw Nest(_, content) [0] => {
@@ -125,46 +95,6 @@ fn interpret_one(
       }
     );
     Ok(())
-}
-
-fn compare_impl(one: &TValue<Typechecked>, other: &TValue<Typechecked>) -> TValue<Typechecked> {
-    use std::cmp::Ordering::*;
-    use tvalue::Comparable;
-    let cmp_one = Comparable::try_from(one).expect(&format!("{:?} is comparable", one));
-    let cmp_other = other
-        .try_into()
-        .expect(&format!("{:?} is comparable", other));
-    match cmp_one.cmp(&cmp_other) {
-        Equal => TValue::Int((), 0.into()),
-        Less => TValue::Int((), (-1).into()),
-        Greater => TValue::Int((), 1.into()),
-    }
-}
-
-fn fill_unpair_n(
-    n: usize,
-    inp: &mut Stack<TValue<Typechecked>>,
-    pair: TValue<Typechecked>,
-) -> Result<(), RuntimeError> {
-    if n == 0 {
-        inp.push(pair);
-    } else if let TValue::Pair(_, tvalue::Pair(el, rest)) = pair {
-        fill_unpair_n(n - 1, inp, *rest)?;
-        inp.push(*el);
-    } else {
-        unreachable!();
-    }
-    Ok(())
-}
-
-macro_rules! unsafe_match {
-    ($pat:pat = $expr:expr => $($rest:tt)*) => {
-        if let $pat = $expr {
-            $($rest)*
-        } else {
-            unreachable!();
-        }
-    }
 }
 
 pub mod add {
