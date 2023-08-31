@@ -56,6 +56,8 @@ type argument =
   | Cors_origin of string
   | Disable_mempool
   | Version
+  | RPC_addr of string
+  | RPC_addr_local of string
 
 let make_argument = function
   | Network x -> ["--network"; x]
@@ -85,6 +87,8 @@ let make_argument = function
   | Cors_origin cors_origin -> ["--cors-origin"; cors_origin]
   | Disable_mempool -> ["--disable-mempool"]
   | Version -> ["--version"]
+  | RPC_addr addr -> ["--rpc-addr"; addr]
+  | RPC_addr_local addr -> ["--local-rpc-addr"; addr]
 
 let make_arguments arguments = List.flatten (List.map make_argument arguments)
 
@@ -128,6 +132,8 @@ let is_redundant = function
   | Metrics_addr _, _
   | Cors_origin _, _
   | Disable_mempool, _
+  | RPC_addr _, _
+  | RPC_addr_local _, _
   | Version, _ ->
       false
 

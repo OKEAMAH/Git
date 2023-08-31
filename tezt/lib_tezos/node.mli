@@ -84,6 +84,8 @@ type argument =
   | Cors_origin of string  (** [--cors-origin] *)
   | Disable_mempool  (** [--disable-mempool] *)
   | Version  (** [--version] *)
+  | RPC_addr of string  (** [--rpc-addr] *)
+  | RPC_addr_local of string  (** [--local-rpc-addr] *)
 
 (** A TLS configuration for the node: paths to a [.crt] and a [.key] file.
 
