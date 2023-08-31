@@ -6,6 +6,8 @@ use crate::{
     rlp_helpers::*,
     tx_signature::{rlp_append_opt, rlp_decode_opt, TxSignature},
 };
+use ethbloom::Bloom;
+use ethereum::Log;
 use primitive_types::{H160, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
@@ -102,9 +104,11 @@ pub struct TransactionReceipt {
     pub gas_used: U256,
     /// The contract address created, if the transaction was a contract creation, otherwise null.
     pub contract_address: Option<H160>,
-    // The two following fields can be ignored for now
-    // pub logs : unit,
-    // pub logs_bloom : unit,
+    /// The logs emitted during contract execution
+    pub logs: Vec<Log>,
+    /// The bloom filter corresponding to the logs.
+    /// It basically contains all addresses and topics from log objects.
+    pub logs_bloom: Bloom,
     pub type_: TransactionType,
     /// Transaction status
     pub status: TransactionStatus,
@@ -113,7 +117,7 @@ pub struct TransactionReceipt {
 impl Decodable for TransactionReceipt {
     fn decode(decoder: &Rlp<'_>) -> Result<Self, DecoderError> {
         if decoder.is_list() {
-            if Ok(12) == decoder.item_count() {
+            if Ok(14) == decoder.item_count() {
                 let mut it = decoder.iter();
                 let hash: TransactionHash = decode_transaction_hash(&next(&mut it)?)?;
                 let index: u32 = decode_field(&next(&mut it)?, "index")?;
@@ -129,6 +133,8 @@ impl Decodable for TransactionReceipt {
                 let gas_used: U256 = decode_field_u256_le(&next(&mut it)?, "gas_used")?;
                 let contract_address: Option<H160> =
                     decode_option(&next(&mut it)?, "contract_address")?;
+                let logs = decode_list(&next(&mut it)?, "logs")?;
+                let logs_bloom = decode_field(&next(&mut it)?, "logs_bloom")?;
                 let type_: TransactionType = decode_transaction_type(&next(&mut it)?)?;
                 let status: TransactionStatus =
                     decode_transaction_status(&next(&mut it)?)?;
@@ -143,6 +149,8 @@ impl Decodable for TransactionReceipt {
                     effective_gas_price,
                     gas_used,
                     contract_address,
+                    logs,
+                    logs_bloom,
                     type_,
                     status,
                 })
@@ -174,6 +182,8 @@ impl Encodable for TransactionReceipt {
             Some(address) => stream.append(address),
             None => stream.append_empty_data(),
         };
+        stream.append_list(&self.logs);
+        stream.append(&self.logs_bloom);
         stream.append::<u8>(&self.type_.into());
         stream.append::<u8>(&self.status.into());
     }
@@ -299,6 +309,8 @@ impl TransactionObject {
 
 #[cfg(test)]
 mod test {
+    use ethbloom::Input;
+
     use super::*;
 
     fn address_of_str(s: &str) -> H160 {
@@ -315,6 +327,17 @@ mod test {
 
     #[test]
     fn test_receipt_encoding_rountrip() {
+        let address = address_of_str("ef2d6d194084c2de36e0dabfce45d046b37d1106");
+        let topic = H256::from_slice(
+            &hex::decode(
+                "02c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc",
+            )
+            .expect("Valid hex"),
+        );
+        let mut bloom = Bloom::default();
+        bloom.accrue(Input::Raw(address.as_bytes()));
+        bloom.accrue(Input::Raw(topic.as_bytes()));
+
         let v = TransactionReceipt {
             hash: [0; TRANSACTION_HASH_SIZE],
             index: 15u32,
@@ -329,11 +352,20 @@ mod test {
                 "4335353535353535353535353535353535353543",
             )),
             type_: TransactionType::Legacy,
+            logs: vec![Log {
+                address,
+                topics: vec![topic],
+                data: vec![0, 1, 2, 3],
+            }],
+            logs_bloom: bloom,
             status: TransactionStatus::Success,
         };
         receipt_encoding_roundtrip(v.clone());
 
-        let v1 = TransactionReceipt { to: None, ..v };
+        let v1 = TransactionReceipt {
+            to: None,
+            ..v.clone()
+        };
         receipt_encoding_roundtrip(v1);
 
         let v2 = TransactionReceipt {
