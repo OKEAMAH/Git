@@ -440,7 +440,7 @@ let launch_rpc_server ~mode (config : Config_file.t) node (addr, port) =
       let*! response = Metrics_server.callback conn req body in
       Lwt.return (`Response response)
     else
-      (* Every calls on endpoints which is not in [/metrics]
+      (* Every call on endpoints which is not in [/metrics]
          path will be logged inside the RPC report. *)
       Profiler.span_s [path] @@ fun () ->
       Tezos_rpc_http_server.RPC_server.resto_callback server conn req body
