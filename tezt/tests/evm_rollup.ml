@@ -2441,6 +2441,20 @@ let register_evm_migration ~protocols =
   test_kernel_migration protocols ;
   test_deposit_before_and_after_migration protocols
 
+let benchmark_scripts_path = "src/kernel_evm/benchmarks/scripts"
+
+let test_test =
+  Protocol.register_test ~__FILE__ ~tags:["try"] ~title:"test test"
+  @@ fun _protocol ->
+  let process =
+    Process.spawn
+      "node"
+      [benchmark_scripts_path ^ "/benchmarks/bench_storage_1.js"]
+  in
+  let* stdout = Process.check_and_read_stdout process in
+  print_string stdout ;
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -2479,7 +2493,8 @@ let register_evm_proxy_server ~protocols =
   test_kernel_upgrade_failing_migration protocols ;
   test_check_kernel_upgrade_nonce protocols ;
   test_rpc_sendRawTransaction protocols ;
-  test_deposit_dailynet protocols
+  test_deposit_dailynet protocols ;
+  test_test protocols
 
 let register ~protocols =
   register_evm_proxy_server ~protocols ;
