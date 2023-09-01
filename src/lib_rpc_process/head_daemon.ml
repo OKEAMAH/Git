@@ -103,23 +103,32 @@ let init_store ~allow_testchains ~readonly parameters =
   in
   return store
 
-let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
-    (watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper
-    (block_hash, (header : Tezos_base.Block_header.t)) =
+(* <<<<<<< HEAD *)
+(* let handle_new_head (dynamic_store : Store.t option ref) last_status parameters *)
+(*     (watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper *)
+(*     (block_hash, (header : Tezos_base.Block_header.t)) = *)
+(* ||||||| parent of 6780c0f347 (rpc_process: simplify and extend monitoring) *)
+(* let handle_new_head (dynamic_store : Store.t option ref) last_status parameters *)
+(*     (watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper *)
+(*     (block_hash, (header : Tezos_base.Block_header.t)) = *)
+(* ======= *)
+
+let handle_notify on_notify extract_block_hash
+    (dynamic_store : Store.t option ref) last_status parameters watcher _stopper
+    notified_value =
   let open Lwt_result_syntax in
-  let block_level = header.shell.level in
-  let*! () = Events.(emit new_head) block_level in
   let* () =
     match !dynamic_store with
     | Some store ->
+        let block_hash = extract_block_hash notified_value in
         let* store, current_status, cleanups =
           Store.sync ~last_status:!last_status ~trigger_hash:block_hash store
         in
         last_status := current_status ;
         dynamic_store := Some store ;
-        Lwt_watcher.notify watcher (block_hash, header) ;
+        Lwt_watcher.notify watcher notified_value ;
         let*! () = cleanups () in
-        let*! () = Events.(emit synchronized) (block_level, block_hash) in
+        let*! () = on_notify notified_value in
         return_unit
     | None ->
         let* store =
@@ -131,7 +140,13 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   return_unit
 
 let init (dynamic_store : Store.t option ref) parameters
-    (stream : (Block_hash.t * Block_header.t) Lwt_watcher.input) =
+    (head_stream : (Block_hash.t * Block_header.t) Lwt_watcher.input)
+    (applied_blocks_stream :
+      (Chain_id.t
+      * Block_hash.t
+      * Block_header.t
+      * Tezos_base.Operation.t list list)
+      Lwt_watcher.input) =
   let open Lwt_result_syntax in
   let ctx =
     Forward_handler.build_socket_redirection_ctx parameters.rpc_comm_socket_path
@@ -164,7 +179,32 @@ let init (dynamic_store : Store.t option ref) parameters
   let* stored_status = Stored_data.load status_file in
   let*! initial_status = Stored_data.get stored_status in
   let* store = init_store ~allow_testchains:false ~readonly:true parameters in
+  let last_block_ref = ref None in
+  let get_last_block () = !last_block_ref in
   dynamic_store := Some store ;
-  Daemon.make_stream_daemon
-    (handle_new_head dynamic_store (ref initial_status) parameters stream)
-    (Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+  let* d_ab =
+    Daemon.make_stream_daemon
+      (handle_notify
+         (fun _ -> Lwt.return_unit)
+         (fun (_, bh, _, _) -> bh)
+         dynamic_store
+         (ref initial_status)
+         parameters
+         applied_blocks_stream)
+      (Tezos_shell_services.Monitor_services.applied_blocks rpc_ctxt ())
+  in
+  let* d_h =
+    Daemon.make_stream_daemon
+      (handle_notify
+         (fun (bh, (header : Block_header.t)) ->
+           let block_level = header.shell.level in
+           last_block_ref := Some (bh, header) ;
+           Events.(emit synchronized) (block_level, bh))
+         (fun (bh, _) -> bh)
+         dynamic_store
+         (ref initial_status)
+         parameters
+         head_stream)
+      (Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+  in
+  return (d_ab, d_h, get_last_block)

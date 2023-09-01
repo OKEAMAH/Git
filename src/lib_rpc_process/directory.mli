@@ -10,8 +10,15 @@
     forwarded to the node.
 *)
 val build_rpc_directory :
+  (unit -> (Block_hash.t * Block_header.t) option) ->
   Tezos_version.Node_version.t ->
   Octez_node_config.Config_file.t ->
   Store.t option ref ->
   head_watcher:(Block_hash.t * Block_header.t) Lwt_watcher.input ->
+  applied_blocks_watcher:
+    (Chain_id.t
+    * Block_hash.t
+    * Block_header.t
+    * Tezos_base.Operation.t list list)
+    Lwt_watcher.input ->
   unit Tezos_rpc.Directory.t
