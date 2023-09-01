@@ -446,7 +446,7 @@ module Block = struct
 
   let store_block chain_store ~block_header ~operations validation_result =
     let open Lwt_result_syntax in
-    Profiler.record_s"store_block" @@ fun () ->
+    Profiler.record_s "store_block" @@ fun () ->
     let {
       Block_validation.validation_store =
         {
@@ -1401,7 +1401,7 @@ module Chain = struct
 
   let set_head chain_store new_head =
     let open Lwt_result_syntax in
-    Profiler.record_s"set_head" @@ fun () ->
+    Profiler.record_s "set_head" @@ fun () ->
     Shared.update_with chain_store.chain_state (fun chain_state ->
         (* The merge cannot finish until we release the lock on the
            chain state so its status cannot change while this
@@ -1437,7 +1437,7 @@ module Chain = struct
         (* Check that its predecessor exists and has metadata *)
         let predecessor = Block.predecessor new_head in
         let* new_head_metadata =
-          Profiler.record_s"get_pred_block" @@ fun () ->
+          Profiler.record_s "get_pred_block" @@ fun () ->
           trace
             Bad_head_invariant
             (let* pred_block = Block.read_block chain_store predecessor in
@@ -1450,7 +1450,7 @@ module Chain = struct
         let*! target = Stored_data.get chain_state.target_data in
         let new_head_lafl = Block.last_allowed_fork_level new_head_metadata in
         let* () =
-          Profiler.record_s"may_split_context" @@ fun () ->
+          Profiler.record_s "may_split_context" @@ fun () ->
           may_split_context chain_store new_head_lafl previous_head
         in
         let*! cementing_highwatermark =
@@ -1587,16 +1587,16 @@ module Chain = struct
         (* Update values on disk but not the cementing highwatermark
            which will be updated by the merge finalizer. *)
         let* () =
-          Profiler.record_s"write_new_head" @@ fun () ->
+          Profiler.record_s "write_new_head" @@ fun () ->
           Stored_data.write chain_state.current_head_data new_head_descr
         in
         let* () =
-          Profiler.record_s"write_new_target" @@ fun () ->
+          Profiler.record_s "write_new_target" @@ fun () ->
           Stored_data.write chain_state.target_data new_target
         in
         (* Update live_data *)
         let*! live_blocks, live_operations =
-          Profiler.record_s"compute_live_blocks" @@ fun () ->
+          Profiler.record_s "compute_live_blocks" @@ fun () ->
           locked_compute_live_blocks
             ~update_cache:true
             chain_store
