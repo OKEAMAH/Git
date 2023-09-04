@@ -687,6 +687,8 @@ let wait_for_disconnections node disconnections =
   let* () = wait_for_ready node in
   waiter
 
+let tbl = Hashtbl.create 1_000
+
 let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
     ?event_pipe ?net_addr ?net_port ?advertised_net_port
     ?(rpc_host = "localhost") ?rpc_port ?rpc_tls ?(allow_all_rpc = true)
@@ -701,6 +703,20 @@ let create ?runner ?(path = Constant.tezos_node) ?name ?color ?data_dir
   let rpc_port =
     match rpc_port with None -> Port.fresh () | Some port -> port
   in
+  let rpc_opt = Hashtbl.find_opt tbl rpc_port in
+  (match rpc_opt with
+  | Some v ->
+      Format.printf "ERROR: rpc port %d was already bound to %s@." rpc_port v ;
+      assert false
+  | None -> ()) ;
+  Hashtbl.add tbl rpc_port (name ^ "rpc") ;
+  let net_opt = Hashtbl.find_opt tbl net_port in
+  (match net_opt with
+  | Some v ->
+      Format.printf "ERROR: net port %d was already bound to %s@." net_port v ;
+      assert false
+  | None -> ()) ;
+  Hashtbl.add tbl net_port (name ^ "net") ;
   let arguments = add_default_arguments arguments in
   let default_expected_pow =
     list_find_map (function Expected_pow x -> Some x | _ -> None) arguments
@@ -839,6 +855,8 @@ let do_runlike_command ?(on_terminate = fun _ -> ()) ?event_level
     let pending = node.persistent_state.pending_identity in
     node.persistent_state.pending_identity <- [] ;
     List.iter (fun pending -> Lwt.wakeup_later pending None) pending ;
+    Hashtbl.remove tbl (rpc_port node) ;
+    Hashtbl.remove tbl (net_port node) ;
     unit
   in
   run

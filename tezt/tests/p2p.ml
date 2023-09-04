@@ -360,6 +360,14 @@ module Maintenance = struct
     let* () =
       Client.Admin.connect_address target_client ~peer:(List.hd nodes)
     in
+    let* () = Client.activate_protocol ~protocol:Protocol.Alpha target_client in
+    let* () =
+      Lwt_list.iter_p
+        (fun n ->
+          let* (_ : int) = Node.wait_for_level n 1 in
+          unit)
+        nodes
+    in
     Log.info "Target is connected to the network." ;
     let* () = wait_connections target_node min_target in
     Log.info "Enough connections has been established." ;
