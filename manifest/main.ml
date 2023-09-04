@@ -6928,6 +6928,7 @@ let octez_store_tests =
         Protocol.(parameters_exn alpha |> open_);
         Protocol.(plugin_exn alpha) |> open_;
         alcotezt;
+        tezt_lib;
         octez_test_helpers |> open_;
       ]
 

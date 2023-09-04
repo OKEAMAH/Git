@@ -23,6 +23,7 @@
   tezos-protocol-alpha.parameters
   octez-protocol-alpha-libs.tezos-protocol-plugin
   octez-alcotezt
+  tezt
   octez-libs.tezos-test-helpers)
  (library_flags (:standard -linkall))
  (flags
