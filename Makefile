@@ -285,7 +285,8 @@ build-tezt:
 .PHONY: build-simulation-scenario
 build-simulation-scenario:
 	@dune build devtools/testnet_experiment_tools/
-	@cp -f _build/default/devtools/testnet_experiment_tools/simulation_scenario.exe ./simulation-scenario
+        @mkdir -p $(OCTEZ_BIN_DIR)/
+	@cp -f _build/default/devtools/testnet_experiment_tools/simulation_scenario.exe $(OCTEZ_BIN_DIR)/simulation-scenario
 
 .PHONY: test-tezt
 test-tezt:
