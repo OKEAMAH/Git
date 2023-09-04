@@ -650,7 +650,7 @@ let test_scenario_f1 () =
             ] );
         ];
       timeout = 30;
-      debug = true;
+      debug = false;
     }
   in
   run
