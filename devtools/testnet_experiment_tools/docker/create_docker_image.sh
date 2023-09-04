@@ -9,6 +9,7 @@ devtools_docker_dir="$(cd "$(dirname "$0")" && echo "$(pwd -P)/")"
 echo "devtools docker dir: $(pwd - P)"
 
 dockerfile="$devtools_docker_dir"/Dockerfile
+dockerfile_aux="$devtools_docker_dir"/Dockerfile_aux
 
 testnet_experiments_dir="$(cd "$(dirname "$devtools_docker_dir")" && echo "$(pwd -P)/")"
 echo "testnet experiments dir: $testnet_experiments_dir"
@@ -66,6 +67,7 @@ echo "### Successfully built docker image: $build_image_name:$image_version"
 
 docker build \
   -t "${image_name}debug:$image_version" \
+  -f "$dockerfile_aux" \
   --build-arg "BASE_IMAGE=$build_deps_image_name" \
   --build-arg "BASE_IMAGE_VERSION=runtime-dependencies--$build_deps_image_version" \
   --build-arg "BASE_IMAGE_VERSION_NON_MIN=runtime-build-dependencies--$build_deps_image_version" \
@@ -79,6 +81,7 @@ echo "### Successfully built docker image: ${image_name}debug:$image_version"
 
 docker build \
   -t "${image_name}bare:$image_version" \
+  -f "$dockerfile_aux" \
   --build-arg "BASE_IMAGE=$build_deps_image_name" \
   --build-arg "BASE_IMAGE_VERSION=runtime-dependencies--$build_deps_image_version" \
   --build-arg "BASE_IMAGE_VERSION_NON_MIN=runtime-build-dependencies--$build_deps_image_version" \
@@ -93,6 +96,7 @@ echo "### Successfully built docker image: ${image_name}bare:$image_version"
 
 docker build \
   -t "${image_name%?}:$image_version" \
+  -f "$dockerfile_aux" \
   --build-arg "BASE_IMAGE=$build_deps_image_name" \
   --build-arg "BASE_IMAGE_VERSION=runtime-dependencies--$build_deps_image_version" \
   --build-arg "BASE_IMAGE_VERSION_NON_MIN=runtime-build-dependencies--$build_deps_image_version" \
