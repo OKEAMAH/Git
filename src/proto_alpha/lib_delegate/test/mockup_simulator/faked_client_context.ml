@@ -26,7 +26,10 @@
 open Tezos_client_base
 
 let logger =
-  let log _channel msg = Lwt_fmt.printf "%s@." msg in
+  let log _channel msg =
+    Tezt.Log.debug "%s" msg ;
+    Lwt.return_unit
+  in
   new Client_context.simple_printer log
 
 class dummy_prompter : Client_context.prompter =
