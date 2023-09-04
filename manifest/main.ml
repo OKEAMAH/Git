@@ -7087,6 +7087,17 @@ let _benchmark_tools_purge_disk_cache =
     ~static:false
     ~bisect_ppx:No
 
+let _benchmark_tools_occupy_memory =
+  public_exe
+    "occupy_memory"
+    ~path:"devtools/benchmarks-tools/occupy_memory"
+    ~synopsis:"Internal dev tools"
+    ~internal_name:"occupy_memory"
+    ~opam:"internal-devtools"
+    ~deps:[]
+    ~static:false
+    ~bisect_ppx:No
+
 let remove_if_exists fname = if Sys.file_exists fname then Sys.remove fname
 
 let get_contracts_lib =
