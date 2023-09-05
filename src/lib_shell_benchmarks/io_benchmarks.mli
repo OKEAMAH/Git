@@ -116,3 +116,17 @@ module Write_random_keys_bench : sig
 
   include Benchmark.Simple_with_num with type config := config
 end
+
+module Shared : sig
+  type config = {
+    existing_context : string * Context_hash.t;
+    subdirectory : string;
+    memoryAvailable : float;
+        (** Restrict MemoryAvailable to this amount, in GiB *)
+    runs : int;  (** How many random IOs are performed *)
+  }
+end
+
+module Read_bench : Benchmark.Simple_with_num with type config := Shared.config
+
+module Write_bench : Benchmark.Simple_with_num with type config := Shared.config

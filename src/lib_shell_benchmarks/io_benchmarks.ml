@@ -52,6 +52,13 @@ let write_model ~name =
     ~coeff1:(fv name "keys_written")
     ~coeff2:(fv name "storage_bytes_write")
 
+let write_model2 ~name =
+  Model.bilinear_affine
+    ~name:(ns2 name "write_model")
+    ~intercept:(fv name "write_latency")
+    ~coeff1:(fv name "depth")
+    ~coeff2:(fv name "storage_bytes_write")
+
 module Helpers = struct
   (* Samples keys in an alphabet of [card] elements. *)
   let sample_key ~card =
@@ -1199,3 +1206,421 @@ module Write_random_keys_bench = struct
 end
 
 let () = Registration.register_simple_with_num (module Write_random_keys_bench)
+
+(* To avoid long time (≒ 20mins) to traverse the tree, we have a cache file
+   [<base_dir>/<context_hash>.txt] lodable in 3mins *)
+let build_key_list base_dir context_hash =
+  let open Lwt.Syntax in
+  let fn_cache =
+    Filename.concat
+      base_dir
+      (Format.asprintf "%a.txt" Context_hash.pp context_hash)
+  in
+  if Sys.file_exists fn_cache then Lwt.return fn_cache
+  else
+    let oc = open_out fn_cache in
+    Format.eprintf "Loading the trees of %a@." Context_hash.pp context_hash ;
+    let+ () =
+      Io_stats.fold_tree base_dir context_hash [] () @@ fun () key tree ->
+      let+ o = Context.Tree.to_value tree in
+      match o with
+      | Some bytes ->
+          let len = Bytes.length bytes in
+          output_string
+            oc
+            (Printf.sprintf "%s %d\n" (String.concat "/" key) len)
+      | None -> ()
+    in
+    output_string oc "END OF LIST\n" ;
+    close_out oc ;
+    fn_cache
+
+let fold_tree base_dir context_hash init f =
+  let fn_cache = Lwt_main.run @@ build_key_list base_dir context_hash in
+  Format.eprintf
+    "Loading the cached trees of %a at %s@."
+    Context_hash.pp
+    context_hash
+    fn_cache ;
+  let tbl = Stdlib.Hashtbl.create 1024 in
+  let ic = open_in fn_cache in
+  let rec loop acc =
+    match input_line ic with
+    | "END OF LIST" ->
+        close_in ic ;
+        acc
+    | l -> (
+        match String.split ' ' ~limit:2 l with
+        | [k; n] ->
+            let ks =
+              let ks = String.split '/' k in
+              (* hashcons for shorter strings *)
+              List.map
+                (fun k ->
+                  if String.length k > 12 then k
+                  else
+                    match Stdlib.Hashtbl.find_opt tbl k with
+                    | Some k -> k
+                    | None ->
+                        Stdlib.Hashtbl.add tbl k k ;
+                        k)
+                ks
+            in
+            loop (f acc (ks, int_of_string n))
+        | _ -> Stdlib.failwith (Printf.sprintf "Broken file list: %s" fn_cache))
+  in
+  loop init
+
+(* Get 10_000_000+ random keys from the context.
+   The files over 4096 bytes (= 1 disk block) are always listed. *)
+let get_sample_keys ~rng base_dir context_hash =
+  let depths_tbl = Stdlib.Hashtbl.create 101 in
+  let blocks_tbl = Stdlib.Hashtbl.create 101 in
+  let nkeys =
+    fold_tree base_dir context_hash 0 (fun nkeys (key, size) ->
+        let depth = List.length key in
+        let n =
+          Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt depths_tbl depth
+        in
+        Stdlib.Hashtbl.replace depths_tbl depth (n + 1) ;
+
+        let blocks = (size + 4095) / 4096 in
+        let n =
+          Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt blocks_tbl blocks
+        in
+        Stdlib.Hashtbl.replace blocks_tbl blocks (n + 1) ;
+
+        nkeys + 1)
+  in
+  Format.eprintf "Got %d keys@." nkeys ;
+
+  List.iter (fun (depth, n) -> Format.eprintf "Depth %d: %d@." depth n)
+  @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
+  @@ List.of_seq
+  @@ Stdlib.Hashtbl.to_seq depths_tbl ;
+
+  List.iter (fun (blocks, n) -> Format.eprintf "Blocks %d: %d@." blocks n)
+  @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
+  @@ List.of_seq
+  @@ Stdlib.Hashtbl.to_seq blocks_tbl ;
+
+  let nsamples = 1_000_000 in
+
+  let normals, rares =
+    let normals, rares =
+      fold_tree base_dir context_hash ([], []) (fun (acc, rares) (key, size) ->
+          let depth = List.length key in
+          if
+            size > 4096 (* Big files are rare, so we keep all of them. *)
+            || depth <= 3 (* Shallow files are rare, so we keep all of them. *)
+          then (acc, (key, size) :: rares)
+          else if Random.State.int rng nkeys < nsamples then
+            ((key, size) :: acc, rares)
+          else (acc, rares))
+    in
+    (Array.of_list normals, Array.of_list rares)
+  in
+  Format.eprintf
+    "Got %d normal keys and %d rare)keys after filtering@."
+    (Array.length normals)
+    (Array.length rares) ;
+  (normals, rares)
+
+module Shared = struct
+  let purpose = purpose
+
+  let tags = ["io"]
+
+  let group = Benchmark.Group "io"
+
+  type config = {
+    existing_context : string * Context_hash.t;
+    subdirectory : string;
+    memoryAvailable : float;
+    runs : int;
+  }
+
+  let default_config =
+    {
+      existing_context = ("/no/such/directory", Context_hash.zero);
+      subdirectory = "/no/such/key";
+      memoryAvailable = 4.4;
+      runs = 0;
+    }
+
+  let config_encoding =
+    let open Data_encoding in
+    conv
+      (fun {existing_context; subdirectory; memoryAvailable; runs} ->
+        (existing_context, subdirectory, memoryAvailable, runs))
+      (fun (existing_context, subdirectory, memoryAvailable, runs) ->
+        {existing_context; subdirectory; memoryAvailable; runs})
+      (obj4
+         (req "existing_context" (tup2 string Context_hash.encoding))
+         (req "subdirectory" string)
+         (req "memoryAvailable" float)
+         (req "runs" int31))
+
+  type workload = Key of {depth : int; storage_bytes : int}
+
+  let workload_encoding =
+    let open Data_encoding in
+    conv
+      (function Key {depth; storage_bytes} -> (depth, storage_bytes))
+      (fun (depth, storage_bytes) -> Key {depth; storage_bytes})
+      (tup2 int31 int31)
+
+  let workload_to_vector = function
+    | Key {depth; storage_bytes} ->
+        let keys =
+          [
+            ("depth", float_of_int depth);
+            ("storage_bytes", float_of_int storage_bytes);
+          ]
+        in
+        Sparse_vec.String.of_list keys
+
+  (* Load the measurements and build the data for [Measure] *)
+  let recover_measurements fn =
+    (* Recover the measurements *)
+    let tbl = Stdlib.Hashtbl.create 1023 in
+
+    let ic = open_in_bin fn in
+    let rec loop () =
+      match input_value ic with
+      | exception End_of_file -> close_in ic
+      | key, value_size, nsecs ->
+          let depth = List.length key in
+          let n = (value_size + 255) / 256 * 256 in
+          (match Stdlib.Hashtbl.find_opt tbl (depth, n) with
+          | None -> Stdlib.Hashtbl.replace tbl (depth, n) [nsecs]
+          | Some nsecs_list ->
+              Stdlib.Hashtbl.replace tbl (depth, n) (nsecs :: nsecs_list)) ;
+          loop ()
+    in
+    loop () ;
+
+    (* medians *)
+    let median xs =
+      let a = Array.of_list xs in
+      Array.sort Float.compare a ;
+      a.(Array.length a / 2)
+    in
+
+    Stdlib.Hashtbl.fold
+      (fun (depth, n) nsecs_list acc ->
+        let median = median nsecs_list in
+        let workload = Key {depth; storage_bytes = n} in
+        (fun () ->
+          Generator.Calculated {workload; measure = (fun () -> median)})
+        :: acc)
+      tbl
+      []
+end
+
+module Read_bench = struct
+  include Shared
+
+  let default_config = {default_config with runs = 200_000}
+
+  let name = ns "READ"
+
+  let info = "Benchmarking random read accesses"
+
+  let module_filename = __FILE__
+
+  let model =
+    Model.make
+      ~conv:(function
+        | Key {depth; storage_bytes} ->
+            (* Shift depth so that it starts from 0 *)
+            (depth - 1, (storage_bytes, ())))
+      ~model:(read_model ~name:"random_read")
+
+  (* - Use existing context.  Mainnet context just before a GC is preferable.
+     - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
+     - Random accesses to the context to use 3.5 GiB of the available memory for the disk cache.
+     - Random accesses for the benchmark
+
+     It ignores [bench_num].
+  *)
+  let create_benchmarks ~rng_state ~bench_num:_ config =
+    let base_dir, context_hash = config.existing_context in
+
+    (* We sample keys in the context ,since we cannot carry the all *)
+    let normal_keys, rare_keys =
+      get_sample_keys ~rng:rng_state base_dir context_hash
+    in
+    let n_normal_keys = Array.length normal_keys in
+    let n_rare_keys = Array.length rare_keys in
+
+    (* Actual benchmarks.  During benchmarking, we avoid new allocations
+       as possible: the obtained measurements are stored in a temp file. *)
+    let fn = Filename.temp_file "snoop_io_" ".data" in
+    let oc = open_out_bin fn in
+
+    (* Dummies must be kept until the end of the benchmark *)
+    Io_helpers.with_memory_restriction
+      config.memoryAvailable
+      (fun restrict_memory ->
+        restrict_memory () ;
+        Io_helpers.purge_disk_cache () ;
+        Io_helpers.with_context ~base_dir ~context_hash (fun context ->
+            Io_helpers.fill_disk_cache
+              ~rng:rng_state
+              ~restrict_memory
+              context
+              [normal_keys; rare_keys]) ;
+        restrict_memory () ;
+        Lwt_main.run
+          (let open Lwt.Syntax in
+          let* context, index =
+            Io_helpers.load_context_from_disk_lwt base_dir context_hash
+          in
+          let* () =
+            let rec loop n =
+              if n <= 0 then Lwt.return_unit
+              else
+                (* We need flush even for reading.
+                   Otherwise the tree on memory grows forever *)
+                let* context = Io_helpers.flush context in
+                let key, value_size =
+                  match Random.State.int rng_state 2 with
+                  | 0 ->
+                      let i = Random.State.int rng_state n_normal_keys in
+                      normal_keys.(i)
+                  | _ ->
+                      let i = Random.State.int rng_state n_rare_keys in
+                      rare_keys.(i)
+                in
+                let* nsecs, _ =
+                  (* Using [Lwt_main.run] here slows down the benchmark *)
+                  Measure.Time.measure_lwt (fun () -> Context.find context key)
+                in
+                (* Format.eprintf "bench %.12g secs@." (nsecs /. 1_000_000_000.0) ; *)
+                output_value oc (key, value_size, nsecs) ;
+                if n mod 10000 = 0 then restrict_memory () ;
+                loop (n - 1)
+            in
+            loop config.runs
+          in
+          Tezos_context.Context.close index)) ;
+    close_out oc ;
+    recover_measurements fn
+end
+
+let () = Registration.register_simple_with_num (module Read_bench)
+
+module Write_bench = struct
+  include Shared
+
+  let default_config = {default_config with runs = 5_000}
+
+  let name = ns "WRITE"
+
+  let info = "Benchmarking random write accesses"
+
+  let module_filename = __FILE__
+
+  let model =
+    Model.make
+      ~conv:(function
+        | Key {depth; storage_bytes} ->
+            (* Shift depth so that it starts from 0 *)
+            (depth - 1, (storage_bytes, ())))
+      ~model:(write_model2 ~name:"random_write")
+
+  (* - Use existing context.  Mainnet context just before a GC is preferable.
+     - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
+     - Random accesses to the context to use 3.5 GiB of the available memory for the disk cache.
+     - Random accesses for the benchmark
+
+     It ignores [bench_num].
+  *)
+  let create_benchmarks ~rng_state ~bench_num:_ config =
+    let open Lwt.Syntax in
+    let source_base_dir, context_hash = config.existing_context in
+
+    (* Copy the context dir *)
+    let base_dir = source_base_dir ^ ".tmp" in
+    let () =
+      Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir
+    in
+    Format.eprintf "Copying the data directory to %s@." base_dir ;
+    Io_helpers.copy_rec source_base_dir base_dir ;
+
+    let normal_keys, rare_keys =
+      get_sample_keys ~rng:rng_state base_dir context_hash
+    in
+    let n_normal_keys = Array.length normal_keys in
+    let n_rare_keys = Array.length rare_keys in
+
+    (* Actual benchmarks.  During benchmarking, we avoid new allocations
+       as possible: the obtained measurements are stored in a temp file. *)
+    let fn = Filename.temp_file "snoop_io_" ".data" in
+    let oc = open_out_bin fn in
+
+    Io_helpers.with_memory_restriction
+      config.memoryAvailable
+      (fun restrict_memory ->
+        restrict_memory () ;
+        Io_helpers.purge_disk_cache () ;
+        Io_helpers.with_context ~base_dir ~context_hash (fun context ->
+            Io_helpers.fill_disk_cache
+              ~rng:rng_state
+              ~restrict_memory
+              context
+              [normal_keys; rare_keys]) ;
+        restrict_memory () ;
+        Lwt_main.run
+          (let* index = Tezos_context.Context.init ~readonly:false base_dir in
+           let rec loop context_hash n =
+             if n <= 0 then Lwt.return_unit
+             else
+               let* context =
+                 let+ context =
+                   Tezos_context.Context.checkout index context_hash
+                 in
+                 match context with
+                 | None -> assert false
+                 | Some context ->
+                     Tezos_shell_context.Shell_context.wrap_disk_context context
+               in
+               let key, _value_size =
+                 match Random.State.int rng_state 2 with
+                 | 0 ->
+                     let i = Random.State.int rng_state n_normal_keys in
+                     normal_keys.(i)
+                 | _ ->
+                     let i = Random.State.int rng_state n_rare_keys in
+                     rare_keys.(i)
+               in
+               let random_bytes =
+                 (* The biggest file we have is 368640B *)
+                 Base_samplers.uniform_bytes rng_state ~nbytes:(4096 * 1000)
+               in
+               let value_size = Bytes.length random_bytes in
+
+               let* nsecs, context_hash =
+                 (* Using [Lwt_main.run] here slows down the benchmark *)
+                 Measure.Time.measure_lwt (fun () ->
+                     let* context = Context.add context key random_bytes in
+                     let* context_hash = Io_helpers.commit context in
+                     (* We need to call [flush] to finish the disk writing.
+                        It is a sort of the worst case: in a real node,
+                        it is rare to flush just after 1 write.
+                     *)
+                     let+ _context = Io_helpers.flush context in
+                     context_hash)
+               in
+               output_value oc (key, value_size, nsecs) ;
+               if n mod 100 = 0 then restrict_memory () ;
+               loop context_hash (n - 1)
+           in
+           let* () = loop context_hash config.runs in
+           Tezos_context.Context.close index)) ;
+    close_out oc ;
+    recover_measurements fn
+end
+
+let () = Registration.register_simple_with_num (module Write_bench)

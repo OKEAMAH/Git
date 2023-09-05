@@ -43,6 +43,11 @@ val load_context_from_disk :
   Context_hash.t ->
   Tezos_protocol_environment.Context.t * Tezos_context.Context.index
 
+val load_context_from_disk_lwt :
+  string ->
+  Context_hash.t ->
+  (Tezos_protocol_environment.Context.t * Tezos_context.Context.index) Lwt.t
+
 val with_context :
   base_dir:string ->
   context_hash:Context_hash.t ->
