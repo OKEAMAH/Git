@@ -500,10 +500,14 @@ let fill_disk_cache ~rng ~restrict_memory context keys_list =
     restrict_memory () ;
     let meminfo = Meminfo.get () in
     match cond with
-    | `End_in 0 -> Lwt.return_unit
+    | `End_in 0 ->
+        Format.eprintf "Filled the disk cache: (%d KiB cached)@."
+          meminfo.cached ;
+        Lwt.return_unit
     | `End_in m -> loop context (`End_in (m - 1)) (n + 1)
-    | `Caching _ when n >= 20 ->
-        Format.eprintf "Filling the disk cache: enough tried@." ;
+    | `Caching _ when n >= 30 ->
+        Format.eprintf "Filling the disk cache: enough tried (%d KiB cached)@."
+          meminfo.cached ;
         Lwt.return_unit
     | `Caching _
       when meminfo.memAvailable - meminfo.buffers - meminfo.cached
