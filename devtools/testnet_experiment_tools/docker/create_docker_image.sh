@@ -66,20 +66,6 @@ docker build \
 echo "### Successfully built docker image: $build_image_name:$image_version"
 
 docker build \
-  -t "${image_name}debug:$image_version" \
-  -f "$dockerfile_aux" \
-  --build-arg "BASE_IMAGE=$build_deps_image_name" \
-  --build-arg "BASE_IMAGE_VERSION=runtime-dependencies--$build_deps_image_version" \
-  --build-arg "BASE_IMAGE_VERSION_NON_MIN=runtime-build-dependencies--$build_deps_image_version" \
-  --build-arg "BUILD_IMAGE=${build_image_name}" \
-  --build-arg "BUILD_IMAGE_VERSION=${image_version}" \
-  --build-arg "COMMIT_SHORT_SHA=${commit_short_sha}" \
-  --target=debug \
-  "$src_dir"
-
-echo "### Successfully built docker image: ${image_name}debug:$image_version"
-
-docker build \
   -t "${image_name}bare:$image_version" \
   -f "$dockerfile_aux" \
   --build-arg "BASE_IMAGE=$build_deps_image_name" \
@@ -94,16 +80,3 @@ docker build \
 
 echo "### Successfully built docker image: ${image_name}bare:$image_version"
 
-docker build \
-  -t "${image_name%?}:$image_version" \
-  -f "$dockerfile_aux" \
-  --build-arg "BASE_IMAGE=$build_deps_image_name" \
-  --build-arg "BASE_IMAGE_VERSION=runtime-dependencies--$build_deps_image_version" \
-  --build-arg "BASE_IMAGE_VERSION_NON_MIN=runtime-build-dependencies--$build_deps_image_version" \
-  --build-arg "BUILD_IMAGE=${build_image_name}" \
-  --build-arg "BUILD_IMAGE_VERSION=${image_version}" \
-  --build-arg "COMMIT_SHORT_SHA=${commit_short_sha}" \
-  --target=minimal \
-  "$src_dir"
-
-echo "### Successfully built docker image: ${image_name%?}:$image_version"
