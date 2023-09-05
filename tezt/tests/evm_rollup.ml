@@ -2171,6 +2171,17 @@ type storage_migration_results = {
   config_result : config_result;
 }
 
+let get_storage_version ~sc_rollup_client =
+  let*! upgrade_nonce_result =
+    Sc_rollup_client.inspect_durable_state_value
+      ~hooks
+      sc_rollup_client
+      ~pvm_kind
+      ~operation:Sc_rollup_client.Value
+      ~key:"/evm/storage_version"
+  in
+  return @@ int_of_string @@ Option.value ~default:"0" upgrade_nonce_result
+
 (* This is the test generator that will trigger the sanity checks for migration
    tests.
    Note that:
@@ -2203,6 +2214,9 @@ let gen_kernel_migration_test ?(admin = Constant.bootstrap5) ~scenario_prior
   let* sanity_check =
     scenario_prior ~evm_setup:{evm_setup with evm_proxy_server; endpoint}
   in
+  let* storage_version_prior =
+    get_storage_version ~sc_rollup_client:evm_setup.sc_rollup_client
+  in
   (* Upgrade the kernel. *)
   let next_kernel_base_installee = "./" in
   let next_kernel_installee = "evm_kernel" in
@@ -2215,7 +2229,12 @@ let gen_kernel_migration_test ?(admin = Constant.bootstrap5) ~scenario_prior
       protocol
   in
   (* Check the values after the upgrade with [sanity_check] results. *)
-  scenario_after ~evm_setup ~sanity_check
+  let* _ = scenario_after ~evm_setup ~sanity_check in
+  let* storage_version_after =
+    get_storage_version ~sc_rollup_client:evm_setup.sc_rollup_client
+  in
+  assert (storage_version_after = storage_version_prior + 1) ;
+  unit
 
 let test_kernel_migration =
   Protocol.register_test
