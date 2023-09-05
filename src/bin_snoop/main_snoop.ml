@@ -944,6 +944,46 @@ module Auto_build = struct
     Config.(save_config dest (build [(ns, json)])) ;
     Some dest
 
+  (* Assumes the data files are found in [_snoop/tezos_node] *)
+  let make_io_read_benchmark_config dest ns =
+    let open Tezos_shell_benchmarks.Io_benchmarks.Read_bench in
+    let data_dir = "_snoop/tezos-node" in
+    let context_hash = get_head_context_hash data_dir in
+    Format.eprintf
+      "Using _snoop/tezos-node/context %a@."
+      Context_hash.pp
+      context_hash ;
+    let config =
+      {
+        default_config with
+        existing_context = ("_snoop/tezos-node/context", context_hash);
+        subdirectory = "/";
+      }
+    in
+    let json = Data_encoding.Json.construct config_encoding config in
+    Config.(save_config dest (build [(ns, json)])) ;
+    Some dest
+
+  (* Assumes the data files are found in [_snoop/tezos_node] *)
+  let make_io_write_benchmark_config dest ns =
+    let open Tezos_shell_benchmarks.Io_benchmarks.Write_bench in
+    let data_dir = "_snoop/tezos-node" in
+    let context_hash = get_head_context_hash data_dir in
+    Format.eprintf
+      "Using _snoop/tezos-node/context %a@."
+      Context_hash.pp
+      context_hash ;
+    let config =
+      {
+        default_config with
+        existing_context = ("_snoop/tezos-node/context", context_hash);
+        subdirectory = "/";
+      }
+    in
+    let json = Data_encoding.Json.construct config_encoding config in
+    Config.(save_config dest (build [(ns, json)])) ;
+    Some dest
+
   (* Benchmark specific config overrides *)
   let override_measure_options ~outdir ~bench_name measure_options =
     let open Measure in
@@ -978,6 +1018,8 @@ module Auto_build = struct
           make_io_read_random_key_benchmark_config dest bench_name
       | ["."; "io"; "WRITE_RANDOM_KEYS"] ->
           make_io_write_random_keys_benchmark_config dest bench_name
+      | ["."; "io"; "READ"] -> make_io_read_benchmark_config dest bench_name
+      | ["."; "io"; "WRITE"] -> make_io_write_benchmark_config dest bench_name
       | _ -> None
     in
     (* override [bench_number] and [nsamples] for intercept and TIMER_LATENCY *)
