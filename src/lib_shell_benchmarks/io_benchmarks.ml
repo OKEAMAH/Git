@@ -1271,7 +1271,7 @@ let fold_tree base_dir context_hash init f =
   in
   loop init
 
-(* Get 10_000_000+ random keys from the context.
+(* Get 1_000_000+ random keys from the context.
    The files over 4096 bytes (= 1 disk block) are always listed. *)
 let get_sample_keys ~rng base_dir context_hash =
   let depths_tbl = Stdlib.Hashtbl.create 101 in
