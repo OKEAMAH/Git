@@ -988,6 +988,37 @@ module Auto_build = struct
     Config.(save_config dest (build [(ns, json)])) ;
     Some dest
 
+  (* Assumes the data files are found in [_snoop/tezos_node] *)
+  let make_io_benchmark_config default_config dest ns =
+    let open Tezos_shell_benchmarks.Io_benchmarks.Shared in
+    let tezos_data_dir = "_snoop/tezos-node" in
+    let cache_dir = "_snoop/cache" in
+    let level, block_hash, context_hash =
+      get_head_context_hash tezos_data_dir
+    in
+    Format.eprintf
+      "Using %s/context level:%ld %a %a@."
+      tezos_data_dir
+      level
+      Block_hash.pp
+      block_hash
+      Context_hash.pp
+      context_hash ;
+    let config =
+      {default_config with tezos_data_dir; cache_dir; context_hash}
+    in
+    let json = Data_encoding.Json.construct config_encoding config in
+    Config.(save_config dest (build [(ns, json)])) ;
+    Some dest
+
+  let make_io_read_benchmark_config =
+    make_io_benchmark_config
+      Tezos_shell_benchmarks.Io_benchmarks.Read_bench.default_config
+
+  let make_io_write_benchmark_config =
+    make_io_benchmark_config
+      Tezos_shell_benchmarks.Io_benchmarks.Write_bench.default_config
+
   (* Benchmark specific config overrides *)
   let override_measure_options ~outdir ~bench_name measure_options =
     let open Measure in
@@ -1023,6 +1054,8 @@ module Auto_build = struct
           make_io_read_random_key_benchmark_config dest bench_name
       | ["."; "io"; "WRITE_RANDOM_KEYS"] ->
           make_io_write_random_keys_benchmark_config dest bench_name
+      | ["."; "io"; "READ"] -> make_io_read_benchmark_config dest bench_name
+      | ["."; "io"; "WRITE"] -> make_io_write_benchmark_config dest bench_name
       | _ -> None
     in
     (* override [nsamples] for "alloc"s *)
@@ -1210,6 +1243,7 @@ module Auto_build = struct
         lasso_positive = true;
         report = ReportToFile report_file;
         display = {infer_opts.Cmdline.display with save_directory = outdir};
+        plot = true;
       }
     in
     let solution =
