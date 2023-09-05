@@ -982,6 +982,10 @@ module Auto_build = struct
     in
     (* override [bench_number] and [nsamples] for intercept and TIMER_LATENCY *)
     let bench_number, nsamples =
+      (* Currently, IO benchmarks reloads the context and purges the disk cache only
+         once for each benchmark.  [nsamples] must be 1 otherwise the second and later
+         samples are executed with the caches available.
+      *)
       match Namespace.to_list bench_name with
       | "." :: "io" :: _ ->
           (* Currently, IO benchmarks reloads the context and purges the disk cache only
