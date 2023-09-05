@@ -79,7 +79,6 @@ _coverage_report
 target
 
 evm_kernel.wasm
-evm_kernel_unstripped.wasm
 sequenced_kernel.wasm
 
 # Terraform
