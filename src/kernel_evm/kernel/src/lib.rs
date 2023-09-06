@@ -11,7 +11,7 @@ use storage::{
     read_admin, read_chain_id, read_kernel_version, read_last_info_per_level_timestamp,
     read_last_info_per_level_timestamp_stats, read_ticketer, store_chain_id,
     store_kernel_upgrade_nonce, store_kernel_version, STORAGE_VERSION,
-    STORAGE_VERSION_PATH,
+    STORAGE_VERSION_PATH_INIT,
 };
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
@@ -23,7 +23,7 @@ use tezos_evm_logging::{log, Level::*};
 
 use crate::inbox::KernelUpgrade;
 use crate::migration::storage_migration;
-use crate::safe_storage::{safe_path, SafeStorage, TMP_PATH};
+use crate::safe_storage::{SafeStorage, TMP_PATH};
 
 use crate::blueprint::{fetch, Queue};
 use crate::error::Error;
@@ -260,11 +260,12 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
     let evm_subkeys = host
         .store_count_subkeys(&EVM_PATH)
         .expect("The kernel failed to read the number of /evm subkeys");
-    if evm_subkeys == 0 {
+    if evm_subkeys == 0 && host.store_read(&STORAGE_VERSION_PATH_INIT, 0, 0).is_err() {
         // If `evm_subkeys == 0`, this is the very first run of `kernel_loop`.
         // We start by initializing the storage version.
-        let safe_storage_version_path = safe_path(&STORAGE_VERSION_PATH).unwrap();
-        host.store_write_all(&safe_storage_version_path, &STORAGE_VERSION.to_le_bytes())
+        host.store_write(&EVM_PATH, "Un festival de GADT".as_bytes(), 0)
+            .unwrap();
+        host.store_write_all(&STORAGE_VERSION_PATH_INIT, &STORAGE_VERSION.to_le_bytes())
             .unwrap();
     }
 
