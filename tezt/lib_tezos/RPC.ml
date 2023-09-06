@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Functori  <contact@functori.com>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -1336,6 +1337,13 @@ let get_chain_block_context_total_frozen_stake ?(chain = "main")
   make
     GET
     ["chains"; chain; "blocks"; block; "context"; "total_frozen_stake"]
+    Fun.id
+
+let get_chain_block_context_total_active_stake ?(chain = "main")
+    ?(block = "head") ?(cycle = "0") () =
+  make
+    GET
+    ["chains"; chain; "blocks"; block; "context"; "total_active_stake"; cycle]
     Fun.id
 
 let get_chain_block_context_issuance_current_yearly_rate ?(chain = "main")

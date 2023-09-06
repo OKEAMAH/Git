@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Functori  <contact@functori.com>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -1077,6 +1078,14 @@ val get_chain_block_context_total_supply :
     [block] defaults to ["head"]. *)
 val get_chain_block_context_total_frozen_stake :
   ?chain:string -> ?block:string -> unit -> JSON.t t
+
+(** RPC: [GET /chains/<chain>/blocks/<block>/context/total_active_stake/<cycle>]
+
+    [chain] defaults to ["main"].
+    [block] defaults to ["head"].
+    [cycle] defaults to ["0"]. *)
+val get_chain_block_context_total_active_stake :
+  ?chain:string -> ?block:string -> ?cycle:string -> unit -> JSON.t t
 
 (** RPC: [GET /chains/<chain>/blocks/<block>/context/issuance/current_yearly_rate]
 
