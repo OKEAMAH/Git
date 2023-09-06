@@ -28,8 +28,6 @@ let id = "tez"
 
 let name = "mutez"
 
-open Compare.Int64
-
 type repr = Z.t (* invariant: positive and fits on int64 *)
 
 type t = Tez_tag of repr [@@ocaml.unboxed]
@@ -45,7 +43,8 @@ type error +=
 
 (* `Temporary *)
 
-let of_mutez t = if t < 0L then None else Some (Tez_tag (Z.of_int64 t))
+let of_mutez t =
+  if Compare.Int64.(t < 0L) then None else Some (Tez_tag (Z.of_int64 t))
 
 let of_mutez_exn x =
   match of_mutez x with None -> invalid_arg "Tez.of_mutez" | Some v -> v
@@ -134,35 +133,38 @@ let ( -? ) tez1 tez2 =
   let open Result_syntax in
   let t1 = to_mutez tez1 in
   let t2 = to_mutez tez2 in
-  if t2 <= t1 then return (Tez_tag (Z.of_int64 (Int64.sub t1 t2)))
+  if Compare.Int64.(t2 <= t1) then
+    return (Tez_tag (Z.of_int64 (Int64.sub t1 t2)))
   else tzfail (Subtraction_underflow (tez1, tez2))
 
 let sub_opt tez1 tez2 =
   let t1 = to_mutez tez1 in
   let t2 = to_mutez tez2 in
-  if t2 <= t1 then Some (Tez_tag (Z.of_int64 (Int64.sub t1 t2))) else None
+  if Compare.Int64.(t2 <= t1) then Some (Tez_tag (Z.of_int64 (Int64.sub t1 t2)))
+  else None
 
 let ( +? ) tez1 tez2 =
   let open Result_syntax in
   let t1 = to_mutez tez1 in
   let t2 = to_mutez tez2 in
   let t = Int64.add t1 t2 in
-  if t < t1 then tzfail (Addition_overflow (tez1, tez2))
+  if Compare.Int64.(t < t1) then tzfail (Addition_overflow (tez1, tez2))
   else return (Tez_tag (Z.of_int64 t))
 
 let ( *? ) tez m =
   let open Result_syntax in
   let t = to_mutez tez in
-  if m < 0L then tzfail (Negative_multiplicator (tez, Z.of_int64 m))
-  else if m = 0L then return (Tez_tag Z.zero)
-  else if t > Int64.(div max_int m) then
+  if Compare.Int64.(m < 0L) then
+    tzfail (Negative_multiplicator (tez, Z.of_int64 m))
+  else if Compare.Int64.(m = 0L) then return (Tez_tag Z.zero)
+  else if Compare.Int64.(t > Int64.(div max_int m)) then
     tzfail (Multiplication_overflow (tez, Z.of_int64 m))
   else return (Tez_tag (Z.of_int64 (Int64.mul t m)))
 
 let ( /? ) tez d =
   let open Result_syntax in
   let t = to_mutez tez in
-  if d <= 0L then tzfail (Invalid_divisor (tez, Z.of_int64 d))
+  if Compare.Int64.(d <= 0L) then tzfail (Invalid_divisor (tez, Z.of_int64 d))
   else return (Tez_tag (Z.of_int64 (Int64.div t d)))
 
 let div2 tez = Tez_tag (Z.of_int64 (Int64.div (to_mutez tez) 2L))
