@@ -50,6 +50,8 @@ let ticketer = evm "/ticketer"
 
 let kernel_boot_wasm = kernel "/boot.wasm"
 
+let storage_version = evm "/storage_version"
+
 module Legacy = struct
   let dictator = evm "/dictator_key"
 end

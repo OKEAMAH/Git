@@ -266,8 +266,8 @@ let setup_l1_contracts ~admin client protocol =
 
 let default_bootstrap_account_balance = Wei.of_eth_int 9999
 
-let make_config ?bootstrap_accounts ?ticketer ?administrator ?legacy_dictator ()
-    =
+let make_config ?set_storage_version ?bootstrap_accounts ?ticketer
+    ?administrator ?legacy_dictator () =
   let open Sc_rollup_helpers.Installer_kernel_config in
   let ticketer =
     Option.fold
@@ -277,6 +277,14 @@ let make_config ?bootstrap_accounts ?ticketer ?administrator ?legacy_dictator ()
         [Set {value; to_}])
       ~none:[]
       ticketer
+  in
+  let storage_version =
+    match set_storage_version with
+    | Some false -> []
+    | _ ->
+        let value = "0100000000000000" in
+        let to_ = Durable_storage_path.storage_version in
+        [Set {value; to_}]
   in
   let bootstrap_accounts =
     Option.fold
@@ -311,13 +319,13 @@ let make_config ?bootstrap_accounts ?ticketer ?administrator ?legacy_dictator ()
     in
     Option.fold ~some:(fun (to_, value) -> [Set {value; to_}]) ~none:[] r
   in
-  match ticketer @ bootstrap_accounts @ administrator with
+  match ticketer @ bootstrap_accounts @ administrator @ storage_version with
   | [] -> None
   | res -> Some (`Config res)
 
 type kernel_installee = {base_installee : string; installee : string}
 
-let setup_evm_kernel ?config ?kernel_installee
+let setup_evm_kernel ?config ?kernel_installee ?set_storage_version
     ?(originator_key = Constant.bootstrap1.public_key_hash)
     ?(rollup_operator_key = Constant.bootstrap1.public_key_hash)
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
@@ -344,6 +352,7 @@ let setup_evm_kernel ?config ?kernel_installee
         make_config
           ~bootstrap_accounts
           ?ticketer
+          ?set_storage_version
           ?administrator
           ?legacy_dictator
           ()
@@ -417,10 +426,12 @@ let setup_evm_kernel ?config ?kernel_installee
       l1_contracts;
     }
 
-let setup_past_genesis ?with_administrator ?kernel_installee ?originator_key
-    ?rollup_operator_key ~admin ?legacy_dictator protocol =
+let setup_past_genesis ?set_storage_version ?with_administrator
+    ?kernel_installee ?originator_key ?rollup_operator_key ~admin
+    ?legacy_dictator protocol =
   let* ({node; client; sc_rollup_node; _} as full_setup) =
     setup_evm_kernel
+      ?set_storage_version
       ?kernel_installee
       ?originator_key
       ?rollup_operator_key
@@ -2186,6 +2197,7 @@ let gen_kernel_migration_test ?(admin = Constant.bootstrap5) ~scenario_prior
   let legacy_dictator = Eth_account.bootstrap_accounts.(0) in
   let* evm_setup =
     setup_past_genesis
+      ~set_storage_version:false
       ~kernel_installee:
         {
           base_installee = current_kernel_base_installee;

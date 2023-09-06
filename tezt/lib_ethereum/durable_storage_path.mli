@@ -53,6 +53,9 @@ val ticketer : path
 (** [kernel_boot_wasm] is the path to the kernel `boot.wasm`. *)
 val kernel_boot_wasm : path
 
+(** [storage_version] is the path to storage version. *)
+val storage_version : path
+
 module Legacy : sig
   (** [dictator] is the path to the dictator key. *)
   val dictator : path
