@@ -61,6 +61,7 @@
 - Produce outbox messages withdrawing funds. (!10063)
 - Refactor `TransactionCommon` and transactions' signatures modules. (!9590)
 - Make it possible for any precompiled contract to generate withdrawals. (!9910)
+- A precompiled contract for withdrawing funds at address 0x00...20. (!10022)
 
 ## Version 4c111dcae061bea6c3616429a0ea1262ce6c174f
 
