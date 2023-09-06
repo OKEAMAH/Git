@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -51,6 +52,9 @@ val encoding : t Data_encoding.t
 
 (** Returns only the frozen part of a stake *)
 val get_frozen : t -> Tez_repr.t
+
+(** Returns only the delegated part of a stake *)
+val get_delegated : t -> Tez_repr.t
 
 val ( +? ) : t -> t -> t tzresult
 

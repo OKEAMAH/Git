@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -85,6 +86,8 @@ type t = {frozen : Tez_repr.t; delegated : Tez_repr.t}
 let make ~frozen ~delegated = {frozen; delegated}
 
 let get_frozen {frozen; _} = frozen
+
+let get_delegated {delegated; _} = delegated
 
 let encoding =
   let open Data_encoding in
