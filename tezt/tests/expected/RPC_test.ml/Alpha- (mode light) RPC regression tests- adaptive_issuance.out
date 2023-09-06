@@ -22,6 +22,9 @@
 ./octez-client --mode light rpc get /chains/main/blocks/head/context/total_frozen_stake
 "1000000000000"
 
+./octez-client --mode light rpc get /chains/main/blocks/head/context/total_active_stake/0
+"20000000000000"
+
 ./octez-client --mode light rpc get /chains/main/blocks/head/context/issuance/current_yearly_rate
 "223.400"
 
