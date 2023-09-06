@@ -207,7 +207,7 @@ let mul_percentage ~rounding =
 
 let encoding =
   let open Data_encoding in
-  let decode t = Z.of_int64 (to_mutez t) in
+  let decode = to_z in
   let encode i = Tez_tag i in
   Data_encoding.def name (check_size 10 (conv decode encode n))
 
