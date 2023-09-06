@@ -3,9 +3,17 @@ name = "mir"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "sandbox"
+path = "src/main.rs"
+
 [build-dependencies]
 lalrpop = "0.20.0"
 
 [dependencies]
 lalrpop = "0.20.0"
 lalrpop-util = "0.20.0"
+tezos-smart-rollup = "0.2.1"
