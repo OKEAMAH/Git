@@ -42,6 +42,9 @@ val total_supply : 'a #RPC_context.simple -> 'a -> Tez.t shell_tzresult Lwt.t
 val total_frozen_stake :
   'a #RPC_context.simple -> 'a -> Tez.t shell_tzresult Lwt.t
 
+val total_active_stake :
+  'a #RPC_context.simple -> 'a -> Cycle.t -> Tez.t shell_tzresult Lwt.t
+
 val current_yearly_rate :
   'a #RPC_context.simple -> 'a -> string shell_tzresult Lwt.t
 

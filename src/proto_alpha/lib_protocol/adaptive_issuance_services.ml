@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Functori, <contact@functori.com>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -105,6 +106,15 @@ module S = struct
       ~query:RPC_query.empty
       ~output:Tez.encoding
       RPC_path.(context_path / "total_frozen_stake")
+
+  let total_active_stake =
+    RPC_service.get_service
+      ~description:
+        "Returns the total active stake (in mutez) on the chain for a given \
+         cycle"
+      ~query:RPC_query.empty
+      ~output:Tez.encoding
+      RPC_path.(context_path / "total_active_stake" /: Cycle.rpc_arg)
 
   let current_yearly_rate =
     RPC_service.get_service
@@ -254,6 +264,8 @@ let register () =
   register0 ~chunked:false S.total_frozen_stake (fun ctxt () () ->
       let cycle = (Level.current ctxt).cycle in
       Stake_distribution.get_total_frozen_stake ctxt cycle) ;
+  register1 ~chunked:false S.total_active_stake (fun ctxt cycle () () ->
+      Stake_distribution.get_total_active_stake ctxt cycle) ;
   register0 ~chunked:false S.current_yearly_rate (fun ctxt () () ->
       current_yearly_rate_value ~formatter:q_to_float_string ctxt) ;
   register0 ~chunked:false S.current_yearly_rate_exact (fun ctxt () () ->
@@ -271,6 +283,9 @@ let total_supply ctxt block =
 
 let total_frozen_stake ctxt block =
   RPC_context.make_call0 S.total_frozen_stake ctxt block () ()
+
+let total_active_stake ctxt block cycle =
+  RPC_context.make_call1 S.total_active_stake ctxt block cycle () ()
 
 let current_yearly_rate ctxt block =
   RPC_context.make_call0 S.current_yearly_rate ctxt block () ()
