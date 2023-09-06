@@ -45,6 +45,13 @@ type error +=
 
 (* `Temporary *)
 
+let of_mutez t = if t < 0L then None else Some (Tez_tag t)
+
+let of_mutez_exn x =
+  match of_mutez x with None -> invalid_arg "Tez.of_mutez" | Some v -> v
+
+let to_mutez (Tez_tag t) = t
+
 let zero = Tez_tag 0L
 
 (* all other constant are defined from the value of one micro tez *)
@@ -189,13 +196,6 @@ let mul_percentage ~rounding =
     let div' = match rounding with `Down -> Z.div | `Up -> Z.cdiv in
     Tez_tag
       Z.(to_int64 (div' (mul (of_int64 t) (of_int (percentage :> int))) z100))
-
-let of_mutez t = if t < 0L then None else Some (Tez_tag t)
-
-let of_mutez_exn x =
-  match of_mutez x with None -> invalid_arg "Tez.of_mutez" | Some v -> v
-
-let to_mutez (Tez_tag t) = t
 
 let encoding =
   let open Data_encoding in
