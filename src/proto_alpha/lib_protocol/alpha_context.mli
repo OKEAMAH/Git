@@ -5,6 +5,7 @@
 (* Copyright (c) 2019-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
 (* Copyright (c) 2022 DaiLambda, Inc. <contact@dailambda,jp>                 *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -4676,6 +4677,8 @@ module Stake_distribution : sig
   val load_sampler_for_cycle : context -> Cycle.t -> context tzresult Lwt.t
 
   val get_total_frozen_stake : context -> Cycle.t -> Tez.t tzresult Lwt.t
+
+  val get_total_active_stake : context -> Cycle.t -> Tez.t tzresult Lwt.t
 
   module For_RPC : sig
     val delegate_baking_power_for_cycle :

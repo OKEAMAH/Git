@@ -4,6 +4,7 @@
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (* Copyright (c) 2019-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (* Copyright (c) 2021-2022 Trili Tech, <contact@trili.tech>                  *)
+(* Copyright (c) 2023 Functori <contact@functori.com>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -548,6 +549,14 @@ module Stake_distribution = struct
     let open Lwt_result_syntax in
     let* total_stake = Stake_storage.get_total_active_stake ctxt cycle in
     return (Stake_repr.get_frozen total_stake)
+
+  let get_total_active_stake ctxt cycle =
+    let open Lwt_result_syntax in
+    let* total_active_stake = Stake_storage.get_total_active_stake ctxt cycle in
+    let frozen = Stake_repr.get_frozen total_active_stake in
+    let delegate = Stake_repr.get_delegated total_active_stake in
+    let*? total_active_stake_tez = Tez_repr.(frozen +? delegate) in
+    return total_active_stake_tez
 
   module For_RPC = Delegate_sampler.For_RPC
 end
