@@ -180,11 +180,11 @@ let div_exn t d =
 
 let mul_ratio_z ~rounding tez ~num ~den =
   let open Result_syntax in
-  let t = to_mutez tez in
+  let t = to_z tez in
   if Z.(lt num zero) then tzfail (Negative_multiplicator (tez, num))
   else if Z.(leq den zero) then tzfail (Invalid_divisor (tez, den))
   else
-    let numerator = Z.(mul (of_int64 t) num) in
+    let numerator = Z.(mul t num) in
     let z =
       match rounding with
       | `Down -> Z.div numerator den
