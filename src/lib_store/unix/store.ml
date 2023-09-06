@@ -2515,6 +2515,7 @@ let check_history_mode_consistency chain_dir history_mode =
 let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
     ?block_cache_limit ~store_dir ~context_dir ~allow_testchains genesis =
   let open Lwt_result_syntax in
+  let*! () = Store_events.(emit init_store) readonly in
   let patch_context =
     Option.map
       (fun f ctxt ->
@@ -2594,6 +2595,7 @@ let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
     Lwt.return @@ float_of_int @@ Block_hash.Map.cardinal invalid_blocks
   in
   Store_metrics.set_invalid_blocks_collector invalid_blocks_collector ;
+  let*! () = Store_events.(emit end_init_store) () in
   return store
 
 let sync ?last_status (store : store) =
