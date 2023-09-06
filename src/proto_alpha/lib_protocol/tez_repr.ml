@@ -168,7 +168,9 @@ let ( /? ) tez d =
   if Compare.Int64.(d <= 0L) then tzfail (Invalid_divisor (tez, Z.of_int64 d))
   else return (Tez_tag (Z.of_int64 (Int64.div t d)))
 
-let div2 tez = Tez_tag (Z.of_int64 (Int64.div (to_mutez tez) 2L))
+let z2 = Z.of_int 2
+
+let div2 tez = Tez_tag (Z.div (to_z tez) z2)
 
 let mul_exn t m =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> invalid_arg "mul_exn"
