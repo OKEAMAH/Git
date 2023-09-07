@@ -23,20 +23,22 @@
 /*                                                                            */
 /******************************************************************************/
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Type {
     Nat,
     Int,
+    Bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Value {
     NumberValue(i32),
+    BooleanValue(bool)
 }
 
 pub type InstructionBlock = Vec<Instruction>;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Instruction {
     Add,
     Dip(InstructionBlock),
@@ -52,3 +54,5 @@ pub enum Instruction {
     Push(Type, Value),
     Swap,
 }
+
+pub type AST = Vec<Instruction>;
