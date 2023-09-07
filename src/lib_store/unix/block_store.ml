@@ -1701,9 +1701,8 @@ let load ?block_cache_limit chain_dir ~genesis_block ~readonly =
   let* () = fail_unless (Status.is_idle status) Cannot_load_degraded_store in
   return block_store
 
-let sync ?last_status block_store =
+let sync ~last_status block_store =
   let open Lwt_result_syntax in
-  let last_status = Option.value last_status ~default:Status.mk_idle_status in
   let chain_dir = block_store.chain_dir in
   let readonly = true in
   let* stored_status =
@@ -1722,7 +1721,7 @@ let sync ?last_status block_store =
       (fun () ->
         let*! () = lock block_store.lockfile in
         match (last_status, current_status) with
-        | Idle x, Idle y when x = y -> return (block_store, no_cleanup)
+        | Status.Idle x, Idle y when x = y -> return (block_store, no_cleanup)
         | Merging x, Merging y when x = y -> return (block_store, no_cleanup)
         | Idle _, Idle _ | Merging _, Idle _ ->
             let*! ro_floating_block_store =
