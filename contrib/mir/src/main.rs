@@ -22,6 +22,8 @@
 /* DEALINGS IN THE SOFTWARE.                                                  */
 /*                                                                            */
 /******************************************************************************/
+
+mod ast;
 mod parser;
 mod syntax;
 
@@ -42,7 +44,8 @@ mod tests {
             DIP { DROP 2 } }
           { DIP { DROP } } }";
 
-        assert!(parser::parse(&src));
+        // use built in pretty printer to validate the expected AST.
+        assert_eq!(format!("{:#?}", parser::parse(&src).unwrap()), EXPECTATION);
     }
 
     #[test]
@@ -56,6 +59,83 @@ mod tests {
             DIP { DROP 2 } }
           { DIP { DROP } } }";
 
-        assert!(!parser::parse(&src));
+        assert!(Option::is_none(&parser::parse(&src)));
     }
+    const EXPECTATION: &str = "[
+    Int,
+    Push(
+        Int,
+        NumberValue(
+            0,
+        ),
+    ),
+    DupN(
+        2,
+    ),
+    Gt,
+    If(
+        [
+            Dip(
+                [
+                    Push(
+                        Int,
+                        NumberValue(
+                            -1,
+                        ),
+                    ),
+                    Add,
+                ],
+            ),
+            Push(
+                Int,
+                NumberValue(
+                    1,
+                ),
+            ),
+            DupN(
+                3,
+            ),
+            Gt,
+            Loop(
+                [
+                    Swap,
+                    DupN(
+                        2,
+                    ),
+                    Add,
+                    DipN(
+                        2,
+                        [
+                            Push(
+                                Int,
+                                NumberValue(
+                                    -1,
+                                ),
+                            ),
+                            Add,
+                        ],
+                    ),
+                    DupN(
+                        3,
+                    ),
+                    Gt,
+                ],
+            ),
+            Dip(
+                [
+                    DropN(
+                        2,
+                    ),
+                ],
+            ),
+        ],
+        [
+            Dip(
+                [
+                    Drop,
+                ],
+            ),
+        ],
+    ),
+]";
 }
