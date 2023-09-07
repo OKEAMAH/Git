@@ -1223,7 +1223,7 @@ deploy in our rollup. For instance, our “noop” kernel weighs
 kernel (down to 115 bytes in our case).
 
 Please note that the compilation from rust to WASM is not
-deterministic and running this command will result in different output
+deterministic and running this command will result in different outputs
 if run in different environments. To have deterministic builds
 compilation should always be run in the same environment.
 
