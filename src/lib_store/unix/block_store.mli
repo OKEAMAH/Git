@@ -350,7 +350,7 @@ val load :
     block_store to close former resources and avoid leaks.
 *)
 val sync :
-  ?last_status:Naming.block_store_status ->
+  last_status:Naming.block_store_status ->
   t ->
   (t * Naming.block_store_status * (unit -> unit Lwt.t)) tzresult Lwt.t
 

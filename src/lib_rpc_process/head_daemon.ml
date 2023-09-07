@@ -113,7 +113,7 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
     match !dynamic_store with
     | Some store ->
         let* store, current_status, cleanups =
-          Store.sync ~last_status:!last_status store
+          Store.sync ~last_status:!last_status ~trigger_hash:block_hash store
         in
         last_status := current_status ;
         dynamic_store := Some store ;

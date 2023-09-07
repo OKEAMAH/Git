@@ -225,6 +225,7 @@ val init :
 
 val sync :
   ?last_status:Naming.block_store_status ->
+  trigger_hash:Block_hash.t ->
   t ->
   (t * Naming.block_store_status * (unit -> unit Lwt.t)) tzresult Lwt.t
 

@@ -262,6 +262,30 @@ let start_store_sync =
     ~msg:"starting store sync"
     ()
 
+let store_already_sync =
+  declare_0
+    ~section
+    ~level:Info
+    ~name:"store_already_sync"
+    ~msg:"store already in sync"
+    ()
+
+let store_quick_sync =
+  declare_0
+    ~section
+    ~level:Info
+    ~name:"store_quick_sync"
+    ~msg:"store quick sync"
+    ()
+
+let store_full_sync =
+  declare_0
+    ~section
+    ~level:Info
+    ~name:"store_full_sync"
+    ~msg:"store full sync"
+    ()
+
 let end_store_sync =
   declare_1
     ~section
