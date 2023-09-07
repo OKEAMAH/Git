@@ -41,10 +41,11 @@ tezos-smart-rollup-debug.workspace = true
 tezos-smart-rollup-encoding.workspace = true
 tezos-smart-rollup-installer-config.workspace = true
 
+tezos_data_encoding.workspace = true
+
 [dev-dependencies]
 tezos-smart-rollup-mock.workspace = true
 tezos-smart-rollup-panic-hook.workspace = true
-tezos_data_encoding.workspace = true
 
 [features]
 default = ["panic-hook"]
