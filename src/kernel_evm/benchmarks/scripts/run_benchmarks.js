@@ -204,17 +204,19 @@ async function run_all_benchmarks(benchmark_scripts) {
     execSync("rm transactions.json");
 }
 
-benchmark_scripts = [
-    "benchmarks/bench_storage_1.js",
-    "benchmarks/bench_storage_2.js",
-    "benchmarks/bench_transfers_1.js",
-    "benchmarks/bench_transfers_2.js",
-    "benchmarks/bench_transfers_3.js",
-    "benchmarks/bench_keccak.js",
-    "benchmarks/bench_verifySignature.js",
-    "benchmarks/bench_erc20tok.js",
-    "benchmarks/bench_loop_progressive.js",
-    "benchmarks/bench_loop_expensive.js",
-]
+function build_benchmarks_list(directory) {
+    var candidates = [];
+    let full_path = path.format({ dir: __dirname, base: directory });
+    let files = fs.readdirSync(full_path);
+    for (const i in files) {
+        let candidate = files[i];
+        if (candidate.startsWith("bench_") && candidate.endsWith(".js")) {
+            let candidate_with_directory = path.format({dir: directory, base: candidate})
+            candidates.push(candidate_with_directory);
+        }
+    };
+    return candidates;
+}
 
+let benchmark_scripts = build_benchmarks_list("benchmarks");
 run_all_benchmarks(benchmark_scripts);
