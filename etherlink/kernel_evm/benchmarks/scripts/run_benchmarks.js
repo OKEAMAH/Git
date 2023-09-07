@@ -16,7 +16,7 @@
 
 var fs = require("fs");
 var readline = require("readline");
-const { spawn } = require("child_process");
+const { spawn } = require("node-pty");
 const { execSync } = require("child_process");
 const external = require("./lib/external");
 const path = require("node:path");
@@ -90,7 +90,18 @@ function push_profiler_sections(output, opcodes, precompiles) {
   return opcodes;
 }
 
-function run_profiler(path, logs) {
+async function executeCommand(command, childProcess) {
+  await new Promise((resolve) => {
+    childProcess.onData((data) => {
+      if (data.includes(">")) {
+        resolve();
+      }
+    });
+  });
+  childProcess.write(`${command}\n`);
+}
+
+async function run_profiler(path, logs) {
   profiler_result = new Promise((resolve, _) => {
     var gas_used = [];
 
@@ -121,15 +132,9 @@ function run_profiler(path, logs) {
 
     let precompiles = [];
 
-    childProcess.stdin.write("load inputs\n");
+    executeCommand("load inputs; step kernel_run; profile; stop", childProcess);
 
-    childProcess.stdin.write("step kernel_run\n");
-
-    childProcess.stdin.write("profile\n");
-
-    childProcess.stdin.end();
-
-    childProcess.stdout.on("data", (data) => {
+    childProcess.onData((data) => {
       const output = data.toString();
       if (!output.includes("__wasm_debugger__::Section"))
         fs.appendFileSync(logs, output);
@@ -177,7 +182,7 @@ function run_profiler(path, logs) {
       push_profiler_sections(output, opcodes, precompiles);
       if (output.includes("Kernel was rebooted.")) nb_reboots++;
     });
-    childProcess.on("close", (_) => {
+    childProcess.onExit((_) => {
       if (profiler_output_path == "") {
         console.log(new Error("Profiler output path not found"));
       }
@@ -260,8 +265,8 @@ function run_profiler(path, logs) {
         estimated_ticks,
         estimated_ticks_per_tx,
         tx_size,
-        block_in_progress_store,
-        block_in_progress_read,
+        queue_store,
+        queue_read,
         receipt_size,
         opcodes,
         bloom_size,
@@ -431,7 +436,6 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         gas_costs[gas_cost_index] > 21000
           ? sputnik_runtime_ticks[run_time_index++]
           : 0;
-
       rows.push({
         gas_cost: gas_costs[gas_cost_index],
         run_transaction_ticks: run_transaction_ticks[j],
