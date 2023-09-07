@@ -1,0 +1,374 @@
+octogram_binary:
+  push: octogram
+
+agents:
+
+  # HTTP server agent
+  - name: http_server
+    address: %%ADDR_1%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  # boot nodes' agent
+  - name: boot_
+    address: %%ADDR_2%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  #  6 Attestors' agents
+  # The names of agents are similar to the baking keys to easily write the
+  # scenario below
+  - name: delegate_0
+    address: %%ADDR_3%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: delegate_1
+    address: %%ADDR_4%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: delegate_2
+    address: %%ADDR_5%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: delegate_3
+    address: %%ADDR_6%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: delegate_4
+    address: %%ADDR_7%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: delegate_5
+    address: %%ADDR_8%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  # Agents for slots producers.
+  # We name them 0, 1, ..., 5 beucase indices are needed to itentify the slot
+  # indices in the scenario below
+  - name: '0'
+    address: %%ADDR_9%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: '1'
+    address: %%ADDR_10%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: '2'
+    address: %%ADDR_11%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: '3'
+    address: %%ADDR_12%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: '4'
+    address: %%ADDR_13%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: '5'
+    address: %%ADDR_14%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+
+vars:
+  network: sandbox
+  aliases_prefix: delegate_
+  keys_base_dir: fresh_wallet
+
+  ## These are sandbox parameters' values
+  page_size: 128
+  slot_size: 32768
+  number_of_shards: 64
+  number_of_slots: 16
+  redundancy_factor: 8
+  attestation_lag: 3
+  attestation_threshold: 50
+  blocks_per_epoch: 2
+  minimal_block_delay : 5 # changed from 1 to 5
+  consensus_threshold: 171 # not patchable via job currently
+
+  boot_nodes_address: %%ADDR_2%%
+
+  l1_node_rpc_port: 30001
+  l1_node_metric_port: 30002
+  l1_node_net_port: 30003
+
+  dal_node_rpc_port: 30011
+  dal_node_metric_port: 30012
+  dal_node_net_port: 30013
+
+  output_parameters_file_name: "octogram-network-parameters.json"
+stages:
+  ## Stage 1: Prepare things on HTTP server
+  - name: Prepare things on HTTP server
+    with_agents: 'http_server'
+    run_agents: concurrent
+    jobs:
+      - name: Upload needed items to HTTP server
+        run_items: concurrent
+        copy:
+          local_path: '{{ item }}'
+          remote_path: '.'
+        with_items:
+          - 'src/proto_alpha/parameters/{{ vars.network }}-parameters.json'
+          - octez-client
+          - octez-node
+          - octez-baker-alpha
+          - octez-dal-node
+
+      - name: Generate keys
+        tezos.generate_keys:
+          base_dir: 'self://{{ vars.keys_base_dir }}'
+          kind:
+             fresh:
+               count: 6
+               path_client: 'self://./octez-client'
+               alias_prefix: '{{ vars.aliases_prefix }}'
+
+      - name: Compress generated keys
+        builtins.tar:
+          contents: '{{ vars.keys_base_dir }}'
+          archive: 'self://{{ vars.keys_base_dir }}.tar.gz'
+          action: create
+
+      - name: Generate protocol parameters file
+        tezos.generate_protocol_parameters_file:
+          # generates the file 'parameters.json' in the agent's home dir
+          # use output_file_name: <other_file_name> to change that
+          base_file: 'self://{{ vars.network }}-parameters.json'
+          output_file_name: '{{ vars.output_parameters_file_name }}'
+          wallet: 'self://{{ vars.keys_base_dir }}'
+          pk_revealed_accounts_prefix: '{{ vars.aliases_prefix }}'
+          minimal_block_delay: '{{ vars.minimal_block_delay }}'
+          dal:
+            feature_enable: 'true'
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+            attestation_lag: '{{ vars.attestation_lag }}'
+            attestation_threshold: '{{ vars.attestation_threshold }}'
+            number_of_slots: '{{ vars.number_of_slots }}'
+            blocks_per_epoch: '{{ vars.blocks_per_epoch }}'
+
+      - name: Start HTTP server
+        builtins.start_http_server:
+          http_port: '30999'
+
+
+  ## Stage 2: Pull files from HTTP server to every agent
+  - name: Pull data from remote http servers (over-approximation)
+    with_agents: '(boot_|attestor_|0|1|2|3|4|5)'
+    run_agents: concurrent
+    jobs:
+      - name: Pull all binaries to all agents
+        builtins.prefetch: 'http_server://{{ item }}'
+        run_items: concurrent
+        with_items:
+          - octez-client
+          - octez-node
+          - octez-baker-alpha
+          - octez-dal-node
+
+      - name: Pull and uncompress generated keys on every agent
+        builtins.tar:
+          contents: '__{{ agent.name }}__wallet__'
+          archive: 'http_server://{{ vars.keys_base_dir }}.tar.gz'
+          action: extract
+
+
+  # Stage 3: Start boot nodes and activate the L1 protocol
+  - name: Start boot nodes and activate the L1 protocol
+    with_agents: 'boot_'
+    jobs:
+      - name: Pull protocol parameters file
+        builtins.prefetch: 'http_server://{{ vars.output_parameters_file_name }}'
+
+      - name: Start the boot octez-node
+        tezos.start_node:
+          name: '__{{ agent.name }}__octez-node'
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          synchronization_threshold: 0
+          rpc_port: '{{ vars.l1_node_rpc_port }}'
+          metrics_port: '{{ vars.l1_node_metric_port }}'
+          net_port: '{{ vars.l1_node_net_port }}'
+          dal_cryptobox_parameters:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+
+      - name: Activate protocol
+        tezos.activate_protocol:
+          endpoint: 'self://__{{ agent.name }}__octez-node'
+          path_client: self://./octez-client
+          protocol: alpha
+          parameter_file: 'self://{{ vars.output_parameters_file_name }}'
+
+      - name: Wait for bootstrapped boot L1 node
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: 'self://__{{ agent.name }}__octez-node'
+
+      - name: Start the boot octez-dal-node
+        tezos.start_dal_node:
+          name: '__{{ agent.name }}__octez-dal-node'
+          path_node: self://./octez-dal-node
+          rpc_port: '{{ vars.dal_node_rpc_port }}'
+          metrics_port: '{{ vars.dal_node_metric_port }}'
+          net_port: '{{ vars.dal_node_net_port }}'
+          l1_node_uri: 'self://__{{ agent.name }}__octez-node'
+          bootstrap_profile: true
+
+
+  ## Stage 4: Start attestors L1 and DAL nodes
+  - name: Start attestors L1 and DAL nodes
+    with_agents: '(delegate_)'
+    run_agents: concurrent
+    jobs:
+      - name: Start octez-node
+        tezos.start_node:
+          name: '__{{ agent.name }}__octez-node'
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          rpc_port: '{{ vars.l1_node_rpc_port }}'
+          metrics_port: '{{ vars.l1_node_metric_port }}'
+          net_port: '{{ vars.l1_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.l1_node_net_port }}'
+          synchronization_threshold: 0
+          dal_cryptobox_parameters:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+
+      - name: Wait for bootstrapped nodes
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: 'self://__{{ agent.name }}__octez-node'
+
+      - name: Start octez-dal-node
+        tezos.start_dal_node:
+          name: '__{{ agent.name }}__octez-dal-node'
+          path_node: self://./octez-dal-node
+          l1_node_uri: 'self://__{{ agent.name }}__octez-node'
+          rpc_port: '{{ vars.dal_node_rpc_port }}'
+          metrics_port: '{{ vars.dal_node_metric_port }}'
+          net_port: '{{ vars.dal_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.dal_node_net_port }}'
+          bootstrap_profile: false
+          attestor_profiles:
+             # we run one DAL node per attestor
+             - '{{ agent.name }}'
+          path_client: self://./octez-client
+          base_dir: 'self://__{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+
+
+  ## Stage 5: Start slot producer L1 and DAL nodes
+  - name: Start slot producer L1 and DAL nodes
+    with_agents: '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Start octez-node for slots producer
+        tezos.start_node:
+          name: '__slot_producer_{{ agent.name }}__octez-node'
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          synchronization_threshold: 0
+          rpc_port: '{{ vars.l1_node_rpc_port }}'
+          metrics_port: '{{ vars.l1_node_metric_port }}'
+          net_port: '{{ vars.l1_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.l1_node_net_port }}'
+          dal_cryptobox_parameters:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+
+      - name: Wait for bootstrapped node
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: 'self://__slot_producer_{{ agent.name }}__octez-node'
+
+      - name: Start octez-dal-node for slots producer
+        tezos.start_dal_node:
+          name: '__slot_producer_{{ agent.name }}__octez-dal-node'
+          path_node: self://./octez-dal-node
+          l1_node_uri: 'self://__slot_producer_{{ agent.name }}__octez-node'
+          rpc_port: '{{ vars.dal_node_rpc_port }}'
+          metrics_port: '{{ vars.dal_node_metric_port }}'
+          net_port: '{{ vars.dal_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.dal_node_net_port }}'
+          bootstrap_profile: false
+          producer_profiles:
+            - '{{ agent.name }}' # 1, 2, 3, 4 ou 5
+          path_client: self://./octez-client
+          base_dir: 'self://__{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+
+
+  # Stage 6: Start attestors' bakers
+  - name: Start attestors' bakers
+    with_agents: '(delegate_)'
+    run_agents: concurrent
+    jobs:
+      - name: Start octez-baker-alpha
+        tezos.start_baker:
+          name: '__{{ agent.name }}__octez-baker'
+          protocol: alpha
+          base_dir: 'self://__{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+          node_uri: 'self://__{{ agent.name }}__octez-node'
+          dal_node_uri: 'self://__{{ agent.name }}__octez-dal-node'
+          delegates:
+           - '{{ agent.name }}'
+
+  # Stage 7: Run DAL slots publishers
+  - name: Run DAL slots publishers
+    with_agents: '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Publish a DAL slot
+        run_items: sequential
+        tezos.publish_dal_slot:
+          slot_info:
+            slot_index: '{{ agent.name }}'
+            slot_size: '{{ vars.slot_size }}'
+            payload: 'slot content for level {{ item }} for index/agent {{ agent.name }}'
+          target_published_level: '{{ item }}'
+          l1_node_uri: 'self://__slot_producer_{{ agent.name }}__octez-node'
+          dal_node_uri: 'self://__slot_producer_{{ agent.name }}__octez-dal-node'
+          path_client: self://./octez-client
+          base_dir: 'self://__{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+          source: 'delegate_{{ agent.name }}'
+        with_items:
+         - '5..204' # We inject slots during 200 levels
