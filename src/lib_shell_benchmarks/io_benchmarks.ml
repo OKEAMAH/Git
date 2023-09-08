@@ -1344,7 +1344,7 @@ module Shared = struct
     {
       existing_context = ("/no/such/directory", Context_hash.zero);
       subdirectory = "/no/such/key";
-      memoryAvailable = 4.4;
+      memoryAvailable = 6.0;
       runs = 0;
     }
 
