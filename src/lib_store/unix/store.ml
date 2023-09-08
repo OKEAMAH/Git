@@ -2623,9 +2623,14 @@ let sync ?(last_status = Naming.Idle 0) ~trigger_hash (store : store) =
   let*! () = Store_events.(emit start_store_sync) () in
   let sync_start = Time.System.now () in
   let main_chain_store = main_chain_store store in
-  let*! trigger_block_stored = Block.is_known main_chain_store trigger_hash in
+  let () = Format.printf "Reading block %a@." Block_hash.pp trigger_hash in
+  (* FIXME: race when calling Block.is_known *)
+  let*! _trigger_block_stored = Block.is_known main_chain_store trigger_hash in
   let* store, current_status, cleanups =
-    if trigger_block_stored then
+    if false (* trigger_block_stored *) then
+      let () =
+        Format.printf "Block %a  already stored@." Block_hash.pp trigger_hash
+      in
       let*! () = Store_events.(emit store_already_sync) () in
       (* Nothing to do, the block is already known. *)
       return (store, last_status, fun () -> Lwt.return_unit)
