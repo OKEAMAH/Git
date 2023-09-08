@@ -170,6 +170,11 @@ module type INDEXED_FILE = sig
 
   (** [readonly t] returns a read only version of the store [t]. *)
   val readonly : [> `Read] t -> [`Read] t
+
+  (** [gc ?async t ~retain] garbage collects data stored in the index [t] by
+      keeping only the ones associated to the list of keys [retain]. This call
+      runs the GC asynchronously unless [async] is [false]. *)
+  val gc : ?async:bool -> _ t -> retain:key list -> unit tzresult Lwt.t
 end
 
 (** Same as {!INDEXED_FILE} but where headers are extracted from values. *)
