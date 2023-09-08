@@ -13,7 +13,6 @@
 use crate::handler::EvmHandler;
 use crate::EthereumError;
 use alloc::collections::btree_map::BTreeMap;
-use evm::executor::stack::Log;
 use evm::{Context, ExitReason, ExitSucceed, Transfer};
 use host::runtime::Runtime;
 use primitive_types::H160;
@@ -31,12 +30,8 @@ pub struct PrecompileOutcome {
     /// Status after execution. This has the same semantics as with normal
     /// contract calls.
     pub exit_status: ExitReason,
-    /// The cost of executing the precompiled contract in gas units.
-    pub cost: u64,
     /// The return value of the call.
     pub output: Vec<u8>,
-    /// Any logs produced by the precompiled contract execution.
-    pub logs: Vec<Log>,
     /// Any withdrawals produced by the precompiled contract. This encodes
     /// withdrawals to Tezos Layer 1.
     pub withdrawals: Vec<Withdrawal>,
@@ -113,11 +108,23 @@ fn identity_precompile<Host: Runtime>(
 ) -> Result<PrecompileOutcome, EthereumError> {
     log!(handler.borrow_host(), Info, "Calling identity precompile");
 
+    let size = input.len() as u64;
+    let data_word_size = (size + 31) / 32;
+    let static_gas = 15;
+    let dynamic_gas = 3 * data_word_size;
+    let cost = static_gas + dynamic_gas;
+
+    if let Err(err) = handler.record_cost(cost) {
+        return Ok(PrecompileOutcome {
+            exit_status: ExitReason::Error(err),
+            output: vec![],
+            withdrawals: vec![],
+        });
+    }
+
     Ok(PrecompileOutcome {
         exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        cost: 0u64,
         output: input.to_vec(),
-        logs: vec![],
         withdrawals: vec![],
     })
 }
@@ -132,18 +139,23 @@ fn sha256_precompile<Host: Runtime>(
 ) -> Result<PrecompileOutcome, EthereumError> {
     log!(handler.borrow_host(), Info, "Calling sha2-256 precompile");
 
-    let output = Sha256::digest(input);
-
     let size = input.len() as u64;
-    // nearest number of words rounded up
     let data_word_size = (31 + size) / 32;
     let cost = 60 + 12 * data_word_size;
 
+    if let Err(err) = handler.record_cost(cost) {
+        return Ok(PrecompileOutcome {
+            exit_status: ExitReason::Error(err),
+            output: vec![],
+            withdrawals: vec![],
+        });
+    }
+
+    let output = Sha256::digest(input);
+
     Ok(PrecompileOutcome {
         exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        cost,
         output: output.to_vec(),
-        logs: vec![],
         withdrawals: vec![],
     })
 }
@@ -158,21 +170,26 @@ fn ripemd160_precompile<Host: Runtime>(
 ) -> Result<PrecompileOutcome, EthereumError> {
     log!(handler.borrow_host(), Info, "Calling ripemd-160 precompile");
 
+    let size = input.len() as u64;
+    let data_word_size = (31 + size) / 32;
+    let cost = 600 + 120 * data_word_size;
+
+    if let Err(err) = handler.record_cost(cost) {
+        return Ok(PrecompileOutcome {
+            exit_status: ExitReason::Error(err),
+            output: vec![],
+            withdrawals: vec![],
+        });
+    }
+
     let hash = Ripemd160::digest(input);
     // The 20-byte hash is returned right aligned to 32 bytes
     let mut output = [0u8; 32];
     output[12..].clone_from_slice(&hash);
 
-    let size = input.len() as u64;
-    // nearest number of words rounded up
-    let data_word_size = (31 + size) / 32;
-    let cost = 600 + 120 * data_word_size;
-
     Ok(PrecompileOutcome {
         exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        cost,
         output: output.to_vec(),
-        logs: vec![],
         withdrawals: vec![],
     })
 }
@@ -199,6 +216,7 @@ pub fn precompile_set<Host: Runtime>() -> PrecompileBTreeMap<Host> {
 mod tests {
     use super::*;
     use crate::account_storage::init_account_storage as init_evm_account_storage;
+    use crate::handler::ExecutionOutcome;
     use evm::Config;
     use primitive_types::{H160, U256};
     use tezos_ethereum::block::BlockConstants;
@@ -208,7 +226,8 @@ mod tests {
         address: H160,
         input: &[u8],
         transfer: Option<Transfer>,
-    ) -> Option<Result<PrecompileOutcome, EthereumError>> {
+        gas_limit: Option<u64>,
+    ) -> Result<ExecutionOutcome, EthereumError> {
         let caller = H160::from_low_u64_be(118u64);
         let mut mock_runtime = MockHost::default();
         let block = BlockConstants::first_block(U256::zero(), U256::one());
@@ -224,15 +243,18 @@ mod tests {
             &config,
             &precompiles,
         );
-        let context = Context {
-            address,
-            caller,
-            apparent_value: U256::zero(),
-        };
 
         let is_static = true;
+        let value = transfer.map(|t| t.value);
 
-        precompiles.execute(&mut handler, address, input, &context, is_static, transfer)
+        handler.call_contract(
+            caller,
+            address,
+            value,
+            input.to_vec(),
+            gas_limit,
+            is_static,
+        )
     }
 
     #[test]
@@ -240,23 +262,24 @@ mod tests {
         // act
         let input: &[u8] = &[0xFF];
         let address = H160::from_low_u64_be(2u64);
-        let result = execute_precompiled(address, input, None);
+        let result = execute_precompiled(address, input, None, Some(21072));
 
         // assert
         let expected_hash = hex::decode(
             "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
         )
         .expect("Result should be hex string");
-        let expected_cost = 72;
-        let expected = PrecompileOutcome {
-            exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-            cost: expected_cost,
-            output: expected_hash,
+
+        let expected = ExecutionOutcome {
+            gas_used: 21072,
+            is_success: true,
+            new_address: None,
             logs: vec![],
+            result: Some(expected_hash),
             withdrawals: vec![],
         };
 
-        assert_eq!(Some(Ok(expected)), result);
+        assert_eq!(Ok(expected), result);
     }
 
     #[test]
@@ -264,22 +287,23 @@ mod tests {
         // act
         let input: &[u8] = &[0xFF];
         let address = H160::from_low_u64_be(3u64);
-        let result = execute_precompiled(address, input, None);
+        let result = execute_precompiled(address, input, None, Some(22072));
 
         // assert
         let expected_hash = hex::decode(
             "0000000000000000000000002c0c45d3ecab80fe060e5f1d7057cd2f8de5e557",
         )
         .expect("Result should be hex string");
-        let expected_cost = 720;
-        let expected = PrecompileOutcome {
-            exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-            cost: expected_cost,
-            output: expected_hash,
+
+        let expected = ExecutionOutcome {
+            gas_used: 21720,
+            is_success: true,
+            new_address: None,
             logs: vec![],
+            result: Some(expected_hash),
             withdrawals: vec![],
         };
 
-        assert_eq!(Some(Ok(expected)), result);
+        assert_eq!(Ok(expected), result);
     }
 }

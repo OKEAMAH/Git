@@ -16,6 +16,7 @@
 - Fees are now paid by the sender. (!9480)
 - Unused gas is refunded after succesful transactions. (!9915)
 - Impose a maximum gas limit per transaction based on the tick model. (!10094)
+- Upgrade SputnikVM to version 0.39.1 and `primitive_types` to version 0.12.1 (!10043)
 
 ### EVM Node
 
