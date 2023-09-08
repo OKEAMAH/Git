@@ -1316,9 +1316,13 @@ let create_merging_thread block_store ~history_mode ~old_ro_store ~old_rw_store
                 in
                 (* Clean-up the files that are below the offset *)
                 let*! () =
-                  Cemented_block_store.trigger_gc
-                    block_store.cemented_store
-                    history_mode
+                  let*! () = lock block_store.lockfile in
+                  Lwt.finalize
+                    (fun () ->
+                      Cemented_block_store.trigger_gc
+                        block_store.cemented_store
+                        history_mode)
+                    (fun () -> unlock block_store.lockfile)
                 in
                 return_unit
               else (* Don't cement any cycles! *)
@@ -1345,9 +1349,13 @@ let create_merging_thread block_store ~history_mode ~old_ro_store ~old_rw_store
                 in
                 (* Clean-up the files that are below the offset *)
                 let*! () =
-                  Cemented_block_store.trigger_gc
-                    block_store.cemented_store
-                    history_mode
+                  let*! () = lock block_store.lockfile in
+                  Lwt.finalize
+                    (fun () ->
+                      Cemented_block_store.trigger_gc
+                        block_store.cemented_store
+                        history_mode)
+                    (fun () -> unlock block_store.lockfile)
                 in
                 return_unit
               else
