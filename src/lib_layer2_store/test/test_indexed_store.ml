@@ -67,8 +67,12 @@ module SKey = struct
   let gen =
     let open QCheck2.Gen in
     let size_gen = pure size in
-    let gen = string_size ~gen:printable size_gen in
-    graft_corners gen [String.init size (fun _ -> '\000')] ()
+    let c =
+      let+ code = 97 -- 122 in
+      Char.chr code
+    in
+    let gen = string_size ~gen:c size_gen in
+    graft_corners gen [String.init size (fun _ -> '\000')] () |> no_shrink
 
   let gen_distinct distinct_keys = QCheck2.Gen.list_repeat distinct_keys gen
 
@@ -94,7 +98,7 @@ module Value = struct
 
   let name = "bytes_value"
 
-  let gen = QCheck2.Gen.bytes
+  let gen = QCheck2.Gen.(bytes |> no_shrink)
 
   let pp fmt b = Hex.of_bytes b |> Hex.show |> Format.fprintf fmt "%S"
 
@@ -113,7 +117,7 @@ module FixedValue = struct
   let gen =
     let open QCheck2.Gen in
     let size_gen = pure size in
-    bytes_size size_gen
+    bytes_size size_gen |> no_shrink
 
   let pp = Value.pp
 
@@ -123,12 +127,16 @@ end
 module Action (Key : GENERATABLE) (Value : GENERATABLE) = struct
   (** Actions for a key-value store whose keys are [Key.t] and values are
       [Value.t]. *)
-  type t = Write of Key.t * Value.t | Read of Key.t | Delete of Key.t
+  type t =
+    | Write of Key.t * Value.t
+    | Read of Key.t
+    | Delete of Key.t
+    | GC of Key.t list
 
   (** Generator for actions. The parameter [no_delete] indicates if the
       generator should generate delete actions or not, because some append-only
       stores do not support delete. *)
-  let gen ?(no_delete = false) k_gen =
+  let gen ?(no_delete = false) ?(gc = false) k_gen =
     let open QCheck2.Gen in
     let* k = k_gen in
     let write =
@@ -137,7 +145,14 @@ module Action (Key : GENERATABLE) (Value : GENERATABLE) = struct
     in
     let read = pure (Read k) in
     let delete = pure (Delete k) in
-    let l = if no_delete then [read; write] else [read; write; delete] in
+    let gc_act =
+      let s = int_range 2 1000 in
+      let+ retain = list_size s k_gen in
+      GC retain
+    in
+    let l = [read; write] in
+    let l = if no_delete then l else l @ [delete] in
+    let l = if gc then l @ [gc_act] else l in
     oneof l
 
   let _gen_for_key k = gen (QCheck2.Gen.pure k)
@@ -148,19 +163,28 @@ module Action (Key : GENERATABLE) (Value : GENERATABLE) = struct
     | Write (k, v) -> Format.fprintf fmt "+ %a -> %a" Key.pp k Value.pp v
     | Read k -> Format.fprintf fmt "%a ?" Key.pp k
     | Delete k -> Format.fprintf fmt "- %a" Key.pp k
+    | GC l -> Format.fprintf fmt "GC [%a]" (Format.pp_print_list Key.pp) l
 
-  let key (Write (k, _) | Read k | Delete k) = k
+  let keys = function Write (k, _) | Read k | Delete k -> [k] | GC ks -> ks
 
   let parallelizable_with action parallel_actions =
     match action with
     | Read k ->
         (* Can be in parallel with other reads, and writes on other keys than k *)
         List.for_all
-          (function Read _ -> true | Write (k', _) | Delete k' -> k <> k')
+          (function
+            | Read _ -> true
+            | Write (k', _) | Delete k' -> k <> k'
+            | GC ks -> Stdlib.List.mem k ks)
           parallel_actions
     | Write (k, _) | Delete k ->
         (* Can be in parallel with actions on other keys *)
-        List.for_all (fun a -> key a <> k) parallel_actions
+        List.for_all
+          (function
+            | GC ks -> Stdlib.List.mem k ks
+            | a -> not (Stdlib.List.mem k (keys a)))
+          parallel_actions
+    | GC _ -> false
 end
 
 (** A scenario is a parallelizable list of sequence of actions. Sequential tests
@@ -174,16 +198,29 @@ module Scenario (Key : GENERATABLE) (Value : GENERATABLE) = struct
     let compare = Stdlib.compare
   end)
 
-  let gen_sequence ?no_delete keys =
+  let fill_table keys =
+    let open QCheck2.Gen in
+    List.rev_map
+      (fun k ->
+        let+ v = Value.gen in
+        Action.Write (k, v))
+      keys
+    |> List.rev |> flatten_l
+
+  let gen_sequence ?no_delete ?gc ?(fill = false) keys =
     let open QCheck2.Gen in
     let key_gen = oneofl keys in
     let size = frequency [(95, small_nat); (5, nat)] in
-    list_size size (Action.gen ?no_delete key_gen)
+    let* seq = list_size size (Action.gen ?no_delete ?gc key_gen) in
+    if fill then
+      let+ fill_seq = fill_table keys |> no_shrink in
+      fill_seq @ seq
+    else return seq
 
-  let gen_sequential ?no_delete keys =
+  let gen_sequential ?no_delete ?gc ?fill keys =
     let open QCheck2.Gen in
-    let+ sequence = gen_sequence ?no_delete keys in
-    List.map (fun a -> [a]) sequence
+    let+ sequence = gen_sequence ?no_delete ?gc ?fill keys in
+    List.rev_map (fun a -> [a]) sequence |> List.rev
 
   let parallelize sequence =
     let l =
@@ -199,15 +236,15 @@ module Scenario (Key : GENERATABLE) (Value : GENERATABLE) = struct
     in
     List.rev_map List.rev l
 
-  let gen_parallel ?no_delete keys =
+  let gen_parallel ?no_delete ?gc ?fill keys =
     let open QCheck2.Gen in
-    let+ sequence = gen_sequence ?no_delete keys in
+    let+ sequence = gen_sequence ?no_delete ?gc ?fill keys in
     parallelize sequence
 
-  let gen ?no_delete keys kind =
+  let gen ?no_delete ?gc ?fill keys kind =
     match kind with
-    | `Sequential -> gen_sequential ?no_delete keys
-    | `Parallel -> gen_parallel ?no_delete keys
+    | `Sequential -> gen_sequential ?no_delete ?gc ?fill keys
+    | `Parallel -> gen_parallel ?no_delete ?gc ?fill keys
 
   let pp_parallel fmt =
     Format.fprintf fmt "[@[<hov 2> %a@ @]]"
@@ -246,6 +283,8 @@ module Runner
       val delete : t -> Key.t -> unit tzresult Lwt.t
 
       val close : t -> unit tzresult Lwt.t
+
+      val gc : t -> retain:Key.t list -> unit tzresult Lwt.t
     end) =
 struct
   module Scenario = Scenario (Key) (Value)
@@ -262,6 +301,7 @@ struct
     | [] -> None
     | Scenario.Action.Delete k :: _ when k = key -> None
     | Write (k, v) :: _ when k = key -> Some v
+    | GC ks :: _ when not (Stdlib.List.mem key ks) -> None
     | _ :: executed -> last_written_value key executed
 
   let pp_opt_value =
@@ -335,6 +375,10 @@ struct
           let res = Stdlib.Hashtbl.find_opt witness k in
           last_witness_read := res
       | Delete k -> Stdlib.Hashtbl.remove witness k
+      | GC retain ->
+          Stdlib.Hashtbl.filter_map_inplace
+            (fun k v -> if Stdlib.List.mem k retain then Some v else None)
+            witness
     in
     (* Actions on the real store. *)
     let* keys =
@@ -347,6 +391,7 @@ struct
             last_store_read := res ;
             check_read_value_last_write k res executed
         | Delete k -> Store.delete store k
+        | GC retain -> Store.gc store ~retain
       in
       (* Inner loop to run actions. It returns the keys of the scenario and the
          executed actions. *)
@@ -359,7 +404,9 @@ struct
             in
             let keys =
               KeySet.add_seq
-                (List.to_seq parallel_actions |> Seq.map Scenario.Action.key)
+                (List.to_seq parallel_actions
+                |> Seq.flat_map (fun a -> Scenario.Action.keys a |> List.to_seq)
+                )
                 keys
             in
             run_actions keys (parallel_actions @ executed) rest
@@ -441,6 +488,8 @@ let () =
     let delete s () = S.delete s
 
     let close _ = Lwt_result_syntax.return_unit
+
+    let gc _ ~retain:_ = Lwt_result_syntax.return_unit
   end in
   let module R = Runner (NoKey) (Value) (Singleton_for_test) in
   let test_gen = R.Scenario.gen [()] in
@@ -472,6 +521,11 @@ module Indexable_for_test = struct
   let delete _ _ = assert false
 
   let close = S.close
+
+  let gc s ~retain =
+    let open Lwt_result_syntax in
+    let*! () = S.gc ~async:false s ~retain in
+    return_unit
 end
 
 let () =
@@ -517,6 +571,11 @@ module Indexable_removable_for_test = struct
   let delete s k = S.remove s k
 
   let close = S.close
+
+  let gc s ~retain =
+    let open Lwt_result_syntax in
+    let*! () = S.gc ~async:false s ~retain in
+    return_unit
 end
 
 let () =
@@ -591,6 +650,8 @@ module Indexed_file_for_test = struct
   let delete _ _ = assert false
 
   let close = S.close
+
+  let gc s ~retain = S.gc ~async:false s ~retain
 end
 
 let () =
@@ -615,6 +676,50 @@ let () =
     ~max_fail:1_000 (*to stop shrinking after [max_fail] failures. *)
     (test_gen `Parallel)
     R.check_run
+
+(* GC tests *)
+
+let () =
+  let module R = Runner (SKey) (FixedValue) (Indexable_for_test) in
+  let test_gen kind =
+    let open QCheck2.Gen in
+    let* keys = SKey.gen_distinct 5000 in
+    R.Scenario.gen ~no_delete:true ~gc:true ~fill:true keys kind
+  in
+  register_test
+    ~print:R.Scenario.print
+    ~name:"gc in indexable store (sequential)"
+    ~count:20
+    (test_gen `Sequential)
+    R.check_run ;
+  register_test
+    ~print:R.Scenario.print
+    ~name:"gc in indexable store (parallel)"
+    ~count:20
+    (test_gen `Parallel)
+    R.check_run
+
+let () =
+  let module R = Runner (SKey) (Value) (Indexed_file_for_test) in
+  let test_gen kind =
+    let open QCheck2.Gen in
+    let* keys = SKey.gen_distinct 5000 in
+    R.Scenario.gen ~no_delete:true ~gc:true ~fill:true keys kind
+  in
+  register_test
+    ~print:R.Scenario.print
+    ~name:"gc in indexed file store (sequential)"
+    ~count:20
+    (test_gen `Sequential)
+    R.check_run ;
+  register_test
+    ~print:R.Scenario.print
+    ~name:"gc in indexed file store (parallel)"
+    ~count:20
+    (test_gen `Parallel)
+    R.check_run
+
+(* Unit tests *)
 
 let test_load () =
   incr uid ;
@@ -660,6 +765,7 @@ let () =
     ~__FILE__
     "tezos-layer2-store"
     [
-      ("indexed-store-pbt", List.map QCheck_alcotest.to_alcotest !tests);
+      ( "indexed-store-pbt",
+        List.map QCheck_alcotest.to_alcotest (List.rev !tests) );
       ("indexed-store-unit", unit_tests);
     ]
