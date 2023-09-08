@@ -97,6 +97,8 @@ module type INDEXABLE_STORE = sig
   val close : _ t -> unit tzresult Lwt.t
 
   val readonly : [> `Read] t -> [`Read] t
+
+  val gc : ?async:bool -> _ t -> retain:key list -> unit Lwt.t
 end
 
 module type INDEXABLE_REMOVABLE_STORE = sig
@@ -217,6 +219,11 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
 
   type internal_index = {index : I.t; index_path : string}
 
+  type gc_status =
+    | No_gc
+    | Ongoing of {tmp_index : internal_index; promise : unit Lwt.t}
+    | Failed of tztrace
+
   type _ t = {
     mutable fresh : internal_index;
     mutable stales : internal_index list;
@@ -224,6 +231,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     readonly : bool;
     index_buffer_size : int;
     path : string;
+    mutable gc_status : gc_status;
   }
 
   let internal_indexes store = store.fresh :: store.stales
@@ -310,19 +318,141 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     in
     let*! stales = load_stales [] 1 in
     let scheduler = Lwt_idle_waiter.create () in
-    return {fresh; stales; scheduler; readonly; index_buffer_size; path}
+    return
+      {
+        fresh;
+        stales;
+        scheduler;
+        readonly;
+        index_buffer_size;
+        path;
+        gc_status = No_gc;
+      }
 
   let close_internal_index i = try I.close i.index with Index.Closed -> ()
+
+  let mv_internal_index index dest =
+    close_internal_index index ;
+    Lwt_unix.rename index.index_path dest
+
+  let rm_internal_index index =
+    close_internal_index index ;
+    Lwt_utils_unix.remove_dir index.index_path
 
   let close store =
     protect @@ fun () ->
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
     let open Lwt_result_syntax in
+    (match store.gc_status with
+    | Ongoing {promise; _} -> Lwt.cancel promise
+    | _ -> ()) ;
     close_internal_index store.fresh ;
     List.iter close_internal_index store.stales ;
+    let*! () =
+      match store.gc_status with
+      | No_gc | Failed _ -> Lwt.return_unit
+      | Ongoing {tmp_index; _} -> rm_internal_index tmp_index
+    in
     return_unit
 
   let readonly x = (x :> [`Read] t)
+
+  let initiate_gc store =
+    let open Lwt_syntax in
+    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
+    let tmp_index_path = tmp_path store.path in
+    let new_stale_path = stale_path store.path (List.length store.stales + 1) in
+    let* () = mv_internal_index store.fresh new_stale_path in
+    let new_index_fresh =
+      load_internal_index
+        ~index_buffer_size:store.index_buffer_size
+        ~readonly:store.readonly
+        store.path
+    in
+    let new_index_stale =
+      load_internal_index
+        ~index_buffer_size:store.index_buffer_size
+        ~readonly:store.readonly
+        new_stale_path
+    in
+    let tmp_index =
+      load_internal_index
+        ~index_buffer_size:store.index_buffer_size
+        ~readonly:false
+        tmp_index_path
+    in
+    I.clear tmp_index.index ;
+    store.fresh <- new_index_fresh ;
+    store.stales <- new_index_stale :: store.stales ;
+    return tmp_index
+
+  let revert_failed_gc store error =
+    let open Lwt_syntax in
+    match store.gc_status with
+    | No_gc | Failed _ -> return_unit
+    | Ongoing {tmp_index; promise} ->
+        Lwt.cancel promise ;
+        store.gc_status <- Failed error ;
+        rm_internal_index tmp_index
+
+  let unsafe_retain_one_item store tmp_index filter k =
+    match unsafe_find store k with
+    | None -> Lwt.return_unit
+    | Some v ->
+        if filter v then I.replace tmp_index.index k v ;
+        Lwt.return_unit
+
+  let unsafe_finalize_gc store tmp_index =
+    let open Lwt_syntax in
+    let* () = List.iter_s rm_internal_index store.stales in
+    let stale_path = stale_path store.path 1 in
+    let* () = mv_internal_index tmp_index stale_path in
+    let index_stale =
+      load_internal_index
+        ~index_buffer_size:store.index_buffer_size
+        ~readonly:store.readonly
+        stale_path
+    in
+    store.stales <- [index_stale] ;
+    store.gc_status <- No_gc ;
+    return_unit
+
+  let finalize_gc store tmp =
+    let open Lwt_result_syntax in
+    protect @@ fun () ->
+    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
+    let*! () = unsafe_finalize_gc store tmp in
+    return_unit
+
+  let gc_background_task store tmp_index retain filter =
+    let open Lwt_syntax in
+    let* res =
+      let open Lwt_result_syntax in
+      protect @@ fun () ->
+      let*! () =
+        List.iter_s (unsafe_retain_one_item store tmp_index filter) retain
+      in
+      finalize_gc store tmp_index
+    in
+    match res with
+    | Ok () -> return_unit
+    | Error error -> revert_failed_gc store error
+
+  let gc_internal async store retain filter =
+    let open Lwt_syntax in
+    let* tmp_index = initiate_gc store in
+    let promise = gc_background_task store tmp_index retain filter in
+    store.gc_status <- Ongoing {tmp_index; promise} ;
+    if async then return_unit else promise
+
+  let gc_internal async store retain filter =
+    let open Lwt_syntax in
+    match store.gc_status with
+    | No_gc | Failed _ -> gc_internal async store retain filter
+    | Ongoing _ -> Lwt.fail_with "Already ongoing GC"
+
+  let gc ?(async = true) store ~retain =
+    gc_internal async store retain (fun _ -> true)
 end
 
 module Make_indexable_removable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) =
@@ -386,6 +516,9 @@ struct
       I.replace store.fresh.index k None ;
       if flush then I.flush store.fresh.index ;
       return_unit)
+
+  let gc ?(async = true) store ~retain =
+    gc_internal async store retain Option.is_some
 end
 
 module Make_singleton (S : sig
