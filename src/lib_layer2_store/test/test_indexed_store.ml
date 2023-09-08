@@ -320,15 +320,9 @@ struct
     let* _ = Store.close store in
     return_unit
 
-  let run scenario =
+  let run_in_dir dir scenario =
     let open Lwt_result_syntax in
-    incr uid ;
-    (* To avoid any conflict with previous runs of this test. *)
-    let pid = Unix.getpid () in
-    let path =
-      Filename.(concat @@ get_temp_dir_name ())
-        (Format.sprintf "tezos-layer2-indexed-store-test-%d-%d" pid !uid)
-    in
+    let path = Filename.concat dir "store" in
     (* Use use a hash table as a witness for the result of our scenario. Each
        action is performed both on the witness (in memory) and the real
        store. *)
@@ -384,6 +378,18 @@ struct
       check_store_agree_witness store witness keys
     in
     return keys
+
+  let run scenario =
+    incr uid ;
+    (* To avoid any conflict with previous runs of this test. *)
+    let pid = Unix.getpid () in
+    let root_path =
+      Filename.(concat @@ get_temp_dir_name ())
+        (Format.sprintf "tezos-layer2-indexed-store-test-%d-%d" pid !uid)
+    in
+    Lwt.finalize
+      (fun () -> run_in_dir root_path scenario)
+      (fun () -> Tezos_stdlib_unix.Lwt_utils_unix.remove_dir root_path)
 
   let check_run scenario =
     let promise =
@@ -618,22 +624,25 @@ let test_load () =
       (Format.sprintf "tezos-layer2-indexed-store-test-load-%d-%d" pid !uid)
   in
   let open Lwt_result_syntax in
-  let* store =
-    Indexed_file_for_test.S.load
-      ~index_buffer_size:default_index_buffer_size
-      ~path
-      ~cache_size:1
-      Read_only
-  in
-  let* () = Indexed_file_for_test.S.close store in
-  let* store =
-    Indexed_file_for_test.S.load
-      ~index_buffer_size:default_index_buffer_size
-      ~path
-      ~cache_size:1
-      Read_write
-  in
-  Indexed_file_for_test.S.close store
+  Lwt.finalize
+    (fun () ->
+      let* store =
+        Indexed_file_for_test.S.load
+          ~index_buffer_size:default_index_buffer_size
+          ~path
+          ~cache_size:1
+          Read_only
+      in
+      let* () = Indexed_file_for_test.S.close store in
+      let* store =
+        Indexed_file_for_test.S.load
+          ~index_buffer_size:default_index_buffer_size
+          ~path
+          ~cache_size:1
+          Read_write
+      in
+      Indexed_file_for_test.S.close store)
+    (fun () -> Tezos_stdlib_unix.Lwt_utils_unix.remove_dir path)
 
 let unit_tests =
   let wrap (name, t) =
