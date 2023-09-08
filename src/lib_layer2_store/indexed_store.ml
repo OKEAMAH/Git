@@ -224,6 +224,8 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     | Ongoing of {tmp_index : internal_index; promise : unit Lwt.t}
     | Failed of tztrace
 
+  type pending_gc = {retain : K.t list; filter : V.t -> bool}
+
   type _ t = {
     mutable fresh : internal_index;
     mutable stales : internal_index list;
@@ -232,6 +234,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     index_buffer_size : int;
     path : string;
     mutable gc_status : gc_status;
+    pending_gcs : pending_gc Queue.t;
   }
 
   let internal_indexes store = store.fresh :: store.stales
@@ -327,6 +330,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
         index_buffer_size;
         path;
         gc_status = No_gc;
+        pending_gcs = Queue.create ();
       }
 
   let close_internal_index i = try I.close i.index with Index.Closed -> ()
@@ -404,6 +408,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
 
   let unsafe_finalize_gc store tmp_index =
     let open Lwt_syntax in
+    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
     let* () = List.iter_s rm_internal_index store.stales in
     let stale_path = stale_path store.path 1 in
     let* () = mv_internal_index tmp_index stale_path in
@@ -417,14 +422,19 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     store.gc_status <- No_gc ;
     return_unit
 
-  let finalize_gc store tmp =
+  let rec finalize_gc store tmp =
     let open Lwt_result_syntax in
     protect @@ fun () ->
-    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
     let*! () = unsafe_finalize_gc store tmp in
+    let*! () =
+      try
+        let {retain; filter} = Queue.pop store.pending_gcs in
+        gc_internal false store retain filter
+      with Queue.Empty -> Lwt.return_unit
+    in
     return_unit
 
-  let gc_background_task store tmp_index retain filter =
+  and gc_background_task store tmp_index retain filter =
     let open Lwt_syntax in
     let* res =
       let open Lwt_result_syntax in
@@ -438,7 +448,7 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     | Ok () -> return_unit
     | Error error -> revert_failed_gc store error
 
-  let gc_internal async store retain filter =
+  and gc_internal async store retain filter =
     let open Lwt_syntax in
     let* tmp_index = initiate_gc store in
     let promise = gc_background_task store tmp_index retain filter in
@@ -446,10 +456,11 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     if async then return_unit else promise
 
   let gc_internal async store retain filter =
-    let open Lwt_syntax in
     match store.gc_status with
     | No_gc | Failed _ -> gc_internal async store retain filter
-    | Ongoing _ -> Lwt.fail_with "Already ongoing GC"
+    | Ongoing _ ->
+        Queue.push {retain; filter} store.pending_gcs ;
+        Lwt.return_unit
 
   let gc ?(async = true) store ~retain =
     gc_internal async store retain (fun _ -> true)
