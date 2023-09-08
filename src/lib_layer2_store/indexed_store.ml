@@ -702,6 +702,7 @@ struct
     path : string;
     cache : (V.t * V.Header.t, tztrace) Cache.t;
     mutable gc_status : gc_status;
+    pending_gcs : pending_gc Queue.t;
   }
 
   let internal_stores store = store.fresh :: store.stales
@@ -875,6 +876,7 @@ struct
         path;
         cache;
         gc_status = No_gc;
+        pending_gcs = Queue.create ();
       }
 
   let close_internal_store store =
@@ -964,6 +966,7 @@ struct
 
   let unsafe_finalize_gc store tmp_store =
     let open Lwt_result_syntax in
+    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
     let* () = List.iter_es rm_internal_store store.stales in
     let stale_path = stale_path store.path 1 in
     let* () = mv_internal_store tmp_store stale_path in
@@ -978,23 +981,27 @@ struct
     Cache.clear store.cache ;
     return_unit
 
-  let finalize_gc store files =
+  let rec finalize_gc store tmp =
+    let open Lwt_result_syntax in
     protect @@ fun () ->
-    Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
-    unsafe_finalize_gc store files
+    let* () = unsafe_finalize_gc store tmp in
+    try
+      let {retain} = Queue.pop store.pending_gcs in
+      gc_internal false store retain
+    with Queue.Empty -> return_unit
 
-  let gc_background_task store tmp retain =
+  and gc_background_task store tmp_store retain =
     let open Lwt_result_syntax in
     let*! res =
       protect @@ fun () ->
-      let* () = List.iter_es (unsafe_retain_one_item store tmp) retain in
-      finalize_gc store tmp
+      let* () = List.iter_es (unsafe_retain_one_item store tmp_store) retain in
+      finalize_gc store tmp_store
     in
     match res with
-    | Error error -> revert_failed_gc store error
     | Ok () -> return_unit
+    | Error error -> revert_failed_gc store error
 
-  let gc_internal async store retain =
+  and gc_internal async store retain =
     let open Lwt_result_syntax in
     let* tmp_store = initiate_gc store in
     let promise = gc_background_task store tmp_store retain in
@@ -1005,7 +1012,9 @@ struct
     let open Lwt_result_syntax in
     match store.gc_status with
     | No_gc | Failed _ -> gc_internal async store retain
-    | Ongoing _ -> Lwt.fail_with "Cannot start GC when already ongoing one"
+    | Ongoing _ ->
+        Queue.push {retain} store.pending_gcs ;
+        return_unit
 end
 
 module Make_simple_indexed_file
