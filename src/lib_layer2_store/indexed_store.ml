@@ -228,6 +228,18 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
 
   type pending_gc = {retain : K.t list; filter : V.t -> bool}
 
+  (** In order to periodically clean up the store with the {!gc} function, each
+      pure index store is split in multiple indexes: one fresh index and
+      multiple stale indexes.
+
+      Adding new information to the store is always done on the fresh indexes
+      whereas queries are done on both the fresh and stale indexes.
+
+      A gc operation starts by moving the fresh index to the stale list and
+      creates a new fresh index. The rest of the gc operation consists in,
+      asynchronously, merging the stale indexes while removing data. See {!gc}
+      for more details.
+  *)
   type _ t = {
     mutable fresh : internal_index;
     mutable stales : internal_index list;
@@ -363,6 +375,9 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
 
   let readonly x = (x :> [`Read] t)
 
+  (** A gc is initiated by moving the fresh index to the stale list and creating
+      a new fresh index, as well as creating a temporary index for the result of
+      the gc. *)
   let initiate_gc store =
     let open Lwt_syntax in
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
@@ -387,11 +402,16 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
         ~readonly:false
         tmp_index_path
     in
+    (* Clear temporary index in case there are leftovers from a dirtily aborted
+       previous gc. *)
     I.clear tmp_index.index ;
     store.fresh <- new_index_fresh ;
     store.stales <- new_index_stale :: store.stales ;
     return tmp_index
 
+  (** If a gc operation fails, reverting simply consists in removing the
+      temporary index. We keep the two stale indexes as is, they will be merged
+      by the next successful gc.  *)
   let revert_failed_gc store error =
     let open Lwt_syntax in
     match store.gc_status with
@@ -401,6 +421,8 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
         store.gc_status <- Failed error ;
         rm_internal_index tmp_index
 
+  (** Copy item associated to [k] from the [store] (stale indexes) to
+      [tmp_index]. *)
   let unsafe_retain_one_item store tmp_index filter k =
     match unsafe_find store k with
     | None -> Lwt.return_unit
@@ -408,6 +430,9 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
         if filter v then I.replace tmp_index.index k v ;
         Lwt.return_unit
 
+  (** When the gc operation finishes, i.e. we have copied all elements to retain
+      to the temporary index, we can replace all the stale indexes by the
+      temporary one. *)
   let unsafe_finalize_gc store tmp_index =
     let open Lwt_syntax in
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
@@ -431,17 +456,25 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     let*! () =
       try
         let {retain; filter} = Queue.pop store.pending_gcs in
+        (* If there are pending gc requests, execute them. The new gc is called
+           synchronously because we are already in code that is executed
+           asynchronously. *)
         gc_internal false store retain filter
       with Queue.Empty -> Lwt.return_unit
     in
     return_unit
 
+  (** The background task for a gc operation consists in copying all items in
+      [retain] from the stale indexes to the temporary one. While this is
+      happening, the stale indexes can still be queried and new bindings can
+      still be added to the store because only the fresh index is modified. *)
   and gc_background_task store tmp_index retain filter =
     let open Lwt_syntax in
     let* res =
       let open Lwt_result_syntax in
       protect @@ fun () ->
       let*! () =
+        (* Copy items from the stale indexes to the temporary one. *)
         List.iter_s (unsafe_retain_one_item store tmp_index filter) retain
       in
       finalize_gc store tmp_index
@@ -450,17 +483,26 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     | Ok () -> return_unit
     | Error error -> revert_failed_gc store error
 
+  (** This function is called every time a gc operation starts. *)
   and gc_internal async store retain filter =
     let open Lwt_syntax in
     let* tmp_index = initiate_gc store in
+    (* The actual gc task is performed in the background. *)
     let promise = gc_background_task store tmp_index retain filter in
+    (* Remember a gc is ongoing to prevent multiple gc operations from being
+       started at the same time. *)
     store.gc_status <- Ongoing {tmp_index; promise} ;
+    (* If not in asynchronous mode, wait for the gc promise to be resolved
+       otherwise let it run in the background. *)
     if async then return_unit else promise
 
   let gc_internal async store retain filter =
     match store.gc_status with
-    | No_gc | Failed _ -> gc_internal async store retain filter
+    | No_gc | Failed _ ->
+        (* If no ongoing GC, start one right away. *)
+        gc_internal async store retain filter
     | Ongoing _ ->
+        (* If already ongoing GC, push it to the pending queue. *)
         Queue.push {retain; filter} store.pending_gcs ;
         Lwt.return_unit
 
@@ -693,6 +735,18 @@ struct
 
   type pending_gc = {retain : K.t list}
 
+  (** In order to periodically clean up the store with the {!gc} function, each
+      pure store store is split in multiple stores: one fresh store and
+      multiple stale stores.
+
+      Adding new information to the store is always done on the fresh stores
+      whereas queries are done on both the fresh and stale stores.
+
+      A gc operation starts by moving the fresh store to the stale list and
+      creates a new fresh store. The rest of the gc operation consists in,
+      asynchronously, merging the stale stores while removing data. See {!gc}
+      for more details.
+  *)
   type _ t = {
     mutable fresh : internal_store;
     mutable stales : internal_store list;
@@ -917,6 +971,9 @@ struct
 
   let readonly x = (x :> [`Read] t)
 
+  (** A gc is initiated by moving the fresh store to the stale list and creating
+      a new fresh store, as well as creating a temporary store for the result of
+      the gc. *)
   let initiate_gc store =
     let open Lwt_result_syntax in
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
@@ -941,12 +998,17 @@ struct
         ~readonly:false
         tmp_store_path
     in
+    (* Clear temporary store in case there are leftovers from a dirtily aborted
+       previous gc. *)
     Header_index.clear tmp_store.index ;
     let*! () = Lwt_unix.ftruncate tmp_store.fd 0 in
     store.fresh <- new_store_fresh ;
     store.stales <- new_store_stale :: store.stales ;
     return tmp_store
 
+  (** If a gc operation fails, reverting simply consists in removing the
+      temporary store. We keep the two stale stores as is, they will be merged
+      by the next successful gc.  *)
   let revert_failed_gc store error =
     let open Lwt_result_syntax in
     match store.gc_status with
@@ -956,6 +1018,8 @@ struct
         store.gc_status <- Failed error ;
         rm_internal_store tmp_store
 
+  (** Copy item associated to [k] from the [store] (stale stores) to
+      [tmp_store]. *)
   let unsafe_retain_one_item store tmp_store key =
     let open Lwt_result_syntax in
     let* v = unsafe_read_from_disk_opt store key in
@@ -964,6 +1028,9 @@ struct
     | Some (value, header) ->
         unsafe_append_internal tmp_store ~key ~header ~value
 
+  (** When the gc operation finishes, i.e. we have copied all elements to retain
+      to the temporary store, we can replace all the stale stores by the
+      temporary one. *)
   let unsafe_finalize_gc store tmp_store =
     let open Lwt_result_syntax in
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
@@ -987,9 +1054,16 @@ struct
     let* () = unsafe_finalize_gc store tmp in
     try
       let {retain} = Queue.pop store.pending_gcs in
+      (* If there are pending gc requests, execute them. The new gc is called
+         synchronously because we are already in code that is executed
+         asynchronously. *)
       gc_internal false store retain
     with Queue.Empty -> return_unit
 
+  (** The background task for a gc operation consists in copying all items in
+      [retain] from the stale stores to the temporary one. While this is
+      happening, the stale stores can still be queried and new bindings can
+      still be added to the store because only the fresh store is modified. *)
   and gc_background_task store tmp_store retain =
     let open Lwt_result_syntax in
     let*! res =
@@ -1004,15 +1078,23 @@ struct
   and gc_internal async store retain =
     let open Lwt_result_syntax in
     let* tmp_store = initiate_gc store in
+    (* The actual gc task is performed in the background. *)
     let promise = gc_background_task store tmp_store retain in
+    (* Remember a gc is ongoing to prevent multiple gc operations from being
+       started at the same time. *)
     store.gc_status <- Ongoing {tmp_store; promise} ;
+    (* If not in asynchronous mode, wait for the gc promise to be resolved
+       otherwise let it run in the background. *)
     if async then return_unit else promise
 
   let gc ?(async = true) store ~retain =
     let open Lwt_result_syntax in
     match store.gc_status with
-    | No_gc | Failed _ -> gc_internal async store retain
+    | No_gc | Failed _ ->
+        (* If no ongoing GC, start one right away. *)
+        gc_internal async store retain
     | Ongoing _ ->
+        (* If already ongoing GC, push it to the pending queue. *)
         Queue.push {retain} store.pending_gcs ;
         return_unit
 end
