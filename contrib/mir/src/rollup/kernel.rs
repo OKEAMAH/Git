@@ -4,6 +4,8 @@ use tezos_smart_rollup::{
     types::Message,
 };
 
+use crate::rollup::demo::process_external_message;
+
 use super::types::*;
 
 // This module follows the reference examples: https://gitlab.com/tezos/kernel-gallery
@@ -62,7 +64,8 @@ pub fn process_message(host: &mut impl Runtime, msg: &Message) -> Result<(), Err
                 "Message #{msg_id} - internal transfer to {} with payload: {:#x?}",
                 transfer.destination,
                 &transfer.payload.0
-            )
+            );
+            process_external_message(host, &transfer.payload.0)?
         }
         _ => {}
     }
