@@ -16,13 +16,13 @@ fn typecheck_one(i: &Instruction, stack: &mut Stack) -> bool {
     use Type::*;
 
     match i {
-        Add => match stack.make_contiguous() {
-            [Type::Nat, Type::Nat, ..] => {
-                stack.pop_front();
+        Add => match stack[..] {
+            [.., Type::Nat, Type::Nat] => {
+                stack.pop();
                 true
             }
-            [Type::Int, Type::Int, ..] => {
-                stack.pop_front();
+            [.., Type::Int, Type::Int] => {
+                stack.pop();
                 true
             }
             _ => unimplemented!(),
@@ -39,15 +39,16 @@ fn typecheck_one(i: &Instruction, stack: &mut Stack) -> bool {
             };
             let protected_height: usize = usize::try_from(h).unwrap();
 
-            if stack.len() < protected_height {
+            let stack_len = stack.len();
+            if stack_len < protected_height {
                 false
             } else {
                 // Here we split the stack into protected and live segments, and after typechecking
                 // nested code with the live segment, we append the protected and the potentially
                 // modified live segment as the result stack.
-                let mut live = stack.split_off(protected_height);
-                if typecheck(nested, &mut live) {
-                    stack.append(&mut live);
+                let mut protected = stack.split_off(stack_len - protected_height);
+                if typecheck(nested, stack) {
+                    stack.append(&mut protected);
                     true
                 } else {
                     false
@@ -83,29 +84,29 @@ fn typecheck_one(i: &Instruction, stack: &mut Stack) -> bool {
                 }
             };
             let dup_height: usize = usize::try_from(h).unwrap();
-            if dup_height <= stack.len() {
-                stack.push_front(stack.get(dup_height - 1).unwrap().to_owned());
+            let stack_len: usize = stack.len();
+            if dup_height <= stack_len {
+                stack.push(stack.get(stack_len - dup_height).unwrap().to_owned());
                 true
             } else {
                 false
             }
         }
-        Gt => {
-            match stack.make_contiguous() {
-                [Type::Int, ..] => {
-                    stack[0] = Type::Bool;
-                    true
-                }
-                _ => false,
+        Gt => match stack[..] {
+            [Type::Int, ..] => {
+                stack.pop();
+                stack.push(Type::Bool);
+                true
             }
-        }
-        If(nested_t, nested_f) => match stack.make_contiguous() {
+            _ => false,
+        },
+        If(nested_t, nested_f) => match stack.as_slice() {
             // Check if top is bool and bind the tail to `t`.
-            [Type::Bool, t @ ..] => {
+            [t @ .., Type::Bool] => {
                 // Clone the stack so that we have two stacks to run
                 // the two branches with.
-                let mut t_stack: Stack = VecDeque::from(t.to_owned());
-                let mut f_stack: Stack = VecDeque::from(t.to_owned());
+                let mut t_stack: Stack = Vec::from(t.to_owned());
+                let mut f_stack: Stack = Vec::from(t.to_owned());
                 if typecheck(nested_t, &mut t_stack) && typecheck(nested_f, &mut f_stack) {
                     // If both stacks are same after typecheck, then make result
                     // stack using one of them and return success.
@@ -121,30 +122,28 @@ fn typecheck_one(i: &Instruction, stack: &mut Stack) -> bool {
             }
             _ => false,
         },
-        Instruction::Int => {
-            match stack.make_contiguous() {
-                [Type::Nat, ..] => {
-                    stack.pop_front();
-                    stack.push_front(Type::Int);
-                    true
-                }
-                _ => false,
+        Instruction::Int => match stack[..] {
+            [.., Type::Nat] => {
+                stack.pop();
+                stack.push(Type::Int);
+                true
             }
-        }
-        Loop(nested) => match stack.make_contiguous() {
+            _ => false,
+        },
+        Loop(nested) => match stack.as_slice() {
             // Check if top is bool and bind the tail to `t`.
-            [Bool, t @ ..] => {
-                let mut live: Stack = VecDeque::from(t.to_owned());
+            [t @ .., Bool] => {
+                let mut live: Stack = Vec::from(t.to_owned());
                 // Clone the tail and typecheck the nested body using it.
                 if typecheck(nested, &mut live) {
-                    match live.make_contiguous() {
+                    match live.as_slice() {
                         // ensure the result stack has a bool on top.
-                        [Bool, r @ ..] => {
+                        [r @ .., Bool] => {
                             // If the starting tail and result tail match
                             // then the typecheck is complete. pop the bool
                             // off the original stack to form the final result.
                             if t == r {
-                                stack.pop_front();
+                                stack.pop();
                                 true
                             } else {
                                 false
@@ -160,15 +159,16 @@ fn typecheck_one(i: &Instruction, stack: &mut Stack) -> bool {
         },
         Push(t, v) => {
             if typecheck_value(&t, &v) {
-                stack.push_front(t.to_owned());
+                stack.push(t.to_owned());
                 true
             } else {
                 false
             }
         }
         Swap => {
-            if stack.len() > 1 {
-                stack.swap(0, 1);
+            let stack_len = stack.len();
+            if stack_len > 1 {
+                stack.swap(stack_len - 1, stack_len - 2);
                 true
             } else {
                 false
