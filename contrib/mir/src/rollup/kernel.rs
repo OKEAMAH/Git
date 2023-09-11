@@ -11,6 +11,8 @@ use tezos_smart_rollup::{
     types::Message,
 };
 
+use crate::rollup::demo::{process_external_message, process_internal_message};
+
 use super::types::*;
 
 // This module follows the reference examples: https://gitlab.com/tezos/kernel-gallery
@@ -58,7 +60,8 @@ pub fn process_message(host: &mut impl Runtime, msg: &Message) -> Result<(), Err
     debug_assert!(rest.is_empty());
     match msg {
         InboxMessage::External(payload) => {
-            debug_msg!(host, "Message #{msg_id} - external: {payload:#x?}")
+            debug_msg!(host, "Message #{msg_id} - external: {payload:#x?}");
+            process_external_message(host, &payload)?
         }
         // [optimization] If payload is bytes, it should not be hard
         // to avoid copying payload when parsing if we use our own structures.
@@ -72,7 +75,8 @@ pub fn process_message(host: &mut impl Runtime, msg: &Message) -> Result<(), Err
                     "Message #{msg_id} - internal transfer to {} with payload: {:#x?}",
                     transfer.destination,
                     &transfer.payload.0
-                )
+                );
+                process_internal_message(host, &transfer)?
             }
             InternalInboxMessage::StartOfLevel => {}
             InternalInboxMessage::InfoPerLevel(_) => {}

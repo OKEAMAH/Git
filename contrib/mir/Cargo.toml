@@ -16,3 +16,4 @@ lalrpop = "0.20.0"
 [dependencies]
 lalrpop-util = { version = "0.20.0", features = ["lexer"] }
 tezos-smart-rollup = "0.2.1"
+tezos-smart-rollup-mock = "0.2.1"
