@@ -1344,7 +1344,7 @@ module Shared = struct
     {
       existing_context = ("/no/such/directory", Context_hash.zero);
       subdirectory = "/no/such/key";
-      memoryAvailable = 4.4;
+      memoryAvailable = 6.0;
       runs = 0;
     }
 
@@ -1605,14 +1605,12 @@ module Write_bench = struct
                  (* Using [Lwt_main.run] here slows down the benchmark *)
                  Measure.Time.measure_lwt (fun () ->
                      let* context = Context.add context key random_bytes in
-                     let+ context_hash = Io_helpers.commit context in
+                     let* context_hash = Io_helpers.commit context in
                      (* We need to call [flush] to finish the disk writing.
                         It is a sort of the worst case: in a real node,
                         it is rare to flush just after 1 write.
                      *)
-(*
                      let+ _context = Io_helpers.flush context in
-*)
                      context_hash)
                in
                output_value oc (key, value_size, nsecs) ;
