@@ -198,88 +198,88 @@ mod typecheck_tests {
 
     #[test]
     fn test_dup() {
-        let mut stack = VecDeque::from([Type::Nat]);
-        let expected_stack = VecDeque::from([Type::Nat, Type::Nat]);
+        let mut stack = Vec::from([Type::Nat]);
+        let expected_stack = Vec::from([Type::Nat, Type::Nat]);
         typecheck_one(&DupN(1), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_dup_n() {
-        let mut stack = VecDeque::from([Type::Nat, Type::Int]);
-        let expected_stack = VecDeque::from([Type::Int, Type::Nat, Type::Int]);
+        let mut stack = Vec::from([Type::Int, Type::Nat]);
+        let expected_stack = Vec::from([Type::Int, Type::Nat, Type::Int]);
         typecheck_one(&DupN(2), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_swap() {
-        let mut stack = VecDeque::from([Type::Nat, Type::Int]);
-        let expected_stack = VecDeque::from([Type::Int, Type::Nat]);
+        let mut stack = Vec::from([Type::Nat, Type::Int]);
+        let expected_stack = Vec::from([Type::Int, Type::Nat]);
         typecheck_one(&Swap, &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_int() {
-        let mut stack = VecDeque::from([Type::Nat]);
-        let expected_stack = VecDeque::from([Type::Int]);
+        let mut stack = Vec::from([Type::Nat]);
+        let expected_stack = Vec::from([Type::Int]);
         typecheck_one(&Int, &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_drop() {
-        let mut stack = VecDeque::from([Type::Nat]);
-        let expected_stack = VecDeque::from([]);
+        let mut stack = Vec::from([Type::Nat]);
+        let expected_stack = Vec::from([]);
         typecheck(&parse("{DROP}").unwrap(), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_drop_n() {
-        let mut stack = VecDeque::from([Type::Nat, Type::Int]);
-        let expected_stack = VecDeque::from([]);
+        let mut stack = Vec::from([Type::Nat, Type::Int]);
+        let expected_stack = Vec::from([]);
         typecheck_one(&DropN(2), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_push() {
-        let mut stack = VecDeque::from([Type::Nat]);
-        let expected_stack = VecDeque::from([Type::Int, Type::Nat]);
+        let mut stack = Vec::from([Type::Nat]);
+        let expected_stack = Vec::from([Type::Nat, Type::Int]);
         typecheck_one(&Push(Type::Int, Value::NumberValue(1)), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_gt() {
-        let mut stack = VecDeque::from([Type::Int]);
-        let expected_stack = VecDeque::from([Type::Bool]);
+        let mut stack = Vec::from([Type::Int]);
+        let expected_stack = Vec::from([Type::Bool]);
         typecheck_one(&Gt, &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_dip() {
-        let mut stack = VecDeque::from([Type::Int, Type::Bool]);
-        let expected_stack = VecDeque::from([Type::Int, Type::Nat, Type::Bool]);
+        let mut stack = Vec::from([Type::Int, Type::Bool]);
+        let expected_stack = Vec::from([Type::Int, Type::Nat, Type::Bool]);
         typecheck_one(&DipN(1, parse("{PUSH nat 6}").unwrap()), &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_add() {
-        let mut stack = VecDeque::from([Type::Int, Type::Int]);
-        let expected_stack = VecDeque::from([Type::Int]);
+        let mut stack = Vec::from([Type::Int, Type::Int]);
+        let expected_stack = Vec::from([Type::Int]);
         typecheck_one(&Add, &mut stack);
         assert!(stack == expected_stack);
     }
 
     #[test]
     fn test_loop() {
-        let mut stack = VecDeque::from([Type::Bool, Type::Int]);
-        let expected_stack = VecDeque::from([Type::Int]);
+        let mut stack = Vec::from([Type::Int, Type::Bool]);
+        let expected_stack = Vec::from([Type::Int]);
         assert!(typecheck_one(
             &Loop(parse("{PUSH bool True}").unwrap()),
             &mut stack

@@ -42,14 +42,14 @@ mod tests {
     #[test]
     fn typecheck_test_expect_success() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let mut stack = VecDeque::from([Type::Nat]);
+        let mut stack = Vec::from([Type::Nat]);
         assert!(typechecker::typecheck(&ast, &mut stack));
     }
 
     #[test]
     fn typecheck_test_expect_fail() {
         let ast = parser::parse(&FIBONACCI_ILLTYPED_SRC).unwrap();
-        let mut stack = VecDeque::from([Type::Nat]);
+        let mut stack = Vec::from([Type::Nat]);
         assert!(!typechecker::typecheck(&ast, &mut stack));
     }
 
