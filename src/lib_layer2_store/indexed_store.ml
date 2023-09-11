@@ -26,6 +26,8 @@
 open Store_sigs
 open Store_errors
 
+let discard_gc_timespan = Time.System.Span.of_seconds_exn 259200. (* 3 days *)
+
 (* Helper functions to copy byte sequences or integers in [src] to another byte
    sequence [dst] at offset [offset], with named arguments to avoid
    confusion. These functions return the offset in the destination at which to
@@ -55,6 +57,30 @@ let read_int64 str offset =
 let read_int8 str offset =
   let i = TzEndian.get_int8_string str offset in
   (i, offset + 1)
+
+let read_binary_file encoding path =
+  let open Lwt_result_syntax in
+  protect @@ fun () ->
+  let*! exists = Lwt_unix.file_exists path in
+  match exists with
+  | false -> return_none
+  | true -> (
+      Lwt_io.with_file ~flags:[Unix.O_RDONLY; O_CLOEXEC] ~mode:Input path
+      @@ fun channel ->
+      let*! raw_data = Lwt_io.read channel in
+      let data = Data_encoding.Binary.of_string encoding raw_data in
+      match data with
+      | Ok data -> return_some data
+      | Error err -> tzfail (Decoding_error err))
+
+let write_binary_file encoding path data =
+  let open Lwt_result_syntax in
+  let*! res =
+    Lwt_utils_unix.with_atomic_open_out ~overwrite:true path @@ fun fd ->
+    let block_bytes = Data_encoding.Binary.to_bytes_exn encoding data in
+    Lwt_utils_unix.write_bytes fd block_bytes
+  in
+  Result.bind_error res Lwt_utils_unix.tzfail_of_io_error |> Lwt.return
 
 (* Functors to build stores on indexes *)
 
@@ -296,56 +322,25 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     if flush then I.flush store.fresh.index ;
     return_unit
 
+  let ongoing_gc_info_encoding =
+    let open Data_encoding in
+    conv
+      (fun (time, remain) -> (time, List.rev_map K.encode remain |> List.rev))
+      (fun (time, remain) ->
+        (time, List.rev_map (fun s -> K.decode s 0) remain |> List.rev))
+    @@ obj2
+         (req "started_on" Time.System.encoding)
+         (req "retain" (list (Fixed.string K.encoded_size)))
+
   let stale_path path n = String.concat "." [path; string_of_int n]
 
   let tmp_path path = String.concat "." [path; "tmp"]
 
+  let ongoing_gc_path path = String.concat "." [path; "ongoing-gc"]
+
   let load_internal_index ~index_buffer_size ~readonly index_path =
     let index = I.v ~log_size:index_buffer_size ~readonly index_path in
     {index; index_path}
-
-  let load (type a) ~path ~index_buffer_size (mode : a mode) :
-      a t tzresult Lwt.t =
-    let open Lwt_result_syntax in
-    trace (Cannot_load_store {name = N.name; path})
-    @@ protect
-    @@ fun () ->
-    let*! () = Lwt_utils_unix.create_dir (Filename.dirname path) in
-    let readonly = match mode with Read_only -> true | Read_write -> false in
-    let fresh = load_internal_index ~index_buffer_size ~readonly path in
-    let rec load_stales acc n =
-      let open Lwt_syntax in
-      if n = 1 then
-        let stale =
-          load_internal_index
-            ~index_buffer_size
-            ~readonly:true
-            (stale_path path 1)
-        in
-        load_stales (stale :: acc) (n + 1)
-      else
-        let stale_path = stale_path path n in
-        let*! exists = Lwt_unix.file_exists stale_path in
-        if exists then
-          let stale =
-            load_internal_index ~index_buffer_size ~readonly:true stale_path
-          in
-          load_stales (stale :: acc) (n + 1)
-        else return acc
-    in
-    let*! stales = load_stales [] 1 in
-    let scheduler = Lwt_idle_waiter.create () in
-    return
-      {
-        fresh;
-        stales;
-        scheduler;
-        readonly;
-        index_buffer_size;
-        path;
-        gc_status = No_gc;
-        pending_gcs = Queue.create ();
-      }
 
   let close_internal_index i = try I.close i.index with Index.Closed -> ()
 
@@ -453,14 +448,14 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     let open Lwt_result_syntax in
     protect @@ fun () ->
     let*! () = unsafe_finalize_gc store tmp in
-    let*! () =
+    let* () =
       try
         let {retain; filter} = Queue.pop store.pending_gcs in
         (* If there are pending gc requests, execute them. The new gc is called
            synchronously because we are already in code that is executed
            asynchronously. *)
-        gc_internal false store retain filter
-      with Queue.Empty -> Lwt.return_unit
+        internal_gc false store retain filter
+      with Queue.Empty -> return_unit
     in
     return_unit
 
@@ -484,30 +479,103 @@ module Make_indexable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) = struct
     | Error error -> revert_failed_gc store error
 
   (** This function is called every time a gc operation starts. *)
-  and gc_internal async store retain filter =
-    let open Lwt_syntax in
-    let* tmp_index = initiate_gc store in
+  and internal_gc ?(save = true) async store retain filter =
+    let open Lwt_result_syntax in
+    let*! tmp_index = initiate_gc store in
     (* The actual gc task is performed in the background. *)
     let promise = gc_background_task store tmp_index retain filter in
     (* Remember a gc is ongoing to prevent multiple gc operations from being
-       started at the same time. *)
+       started at the same time, and to allow to resume GC on restart. *)
     store.gc_status <- Ongoing {tmp_index; promise} ;
+    let* () =
+      when_ save @@ fun () ->
+      write_binary_file
+        ongoing_gc_info_encoding
+        (ongoing_gc_path store.path)
+        (Time.System.now (), retain)
+    in
     (* If not in asynchronous mode, wait for the gc promise to be resolved
        otherwise let it run in the background. *)
-    if async then return_unit else promise
+    if async then return_unit
+    else
+      let*! () = promise in
+      return_unit
 
   let gc_internal async store retain filter =
+    let open Lwt_result_syntax in
     match store.gc_status with
     | No_gc | Failed _ ->
         (* If no ongoing GC, start one right away. *)
-        gc_internal async store retain filter
+        internal_gc async store retain filter
     | Ongoing _ ->
         (* If already ongoing GC, push it to the pending queue. *)
         Queue.push {retain; filter} store.pending_gcs ;
-        Lwt.return_unit
+        return_unit
 
   let gc ?(async = true) store ~retain =
     gc_internal async store retain (fun _ -> true)
+
+  let load (type a) ~path ~index_buffer_size (mode : a mode) :
+      a t tzresult Lwt.t =
+    let open Lwt_result_syntax in
+    trace (Cannot_load_store {name = N.name; path})
+    @@ protect
+    @@ fun () ->
+    let*! () = Lwt_utils_unix.create_dir (Filename.dirname path) in
+    let readonly = match mode with Read_only -> true | Read_write -> false in
+    let fresh = load_internal_index ~index_buffer_size ~readonly path in
+    let rec load_stales acc n =
+      let open Lwt_syntax in
+      if n = 1 then
+        let stale =
+          load_internal_index
+            ~index_buffer_size
+            ~readonly:true
+            (stale_path path 1)
+        in
+        load_stales (stale :: acc) (n + 1)
+      else
+        let stale_path = stale_path path n in
+        let*! exists = Lwt_unix.file_exists stale_path in
+        if exists then
+          let stale =
+            load_internal_index ~index_buffer_size ~readonly:true stale_path
+          in
+          load_stales (stale :: acc) (n + 1)
+        else return acc
+    in
+    let*! stales = load_stales [] 1 in
+    let scheduler = Lwt_idle_waiter.create () in
+    let store =
+      {
+        fresh;
+        stales;
+        scheduler;
+        readonly;
+        index_buffer_size;
+        path;
+        gc_status = No_gc;
+        pending_gcs = Queue.create ();
+      }
+    in
+    let ongoing_gc_path = ongoing_gc_path path in
+    let* gc_to_start =
+      read_binary_file ongoing_gc_info_encoding ongoing_gc_path
+    in
+    let* () =
+      match gc_to_start with
+      | None -> return_unit
+      | Some (time, _)
+        when let earliest_allowed_gc =
+               Ptime.sub_span (Time.System.now ()) discard_gc_timespan
+               |> Option.value ~default:Ptime.epoch
+             in
+             Time.System.(time < earliest_allowed_gc) ->
+          return_unit
+      | Some (_, retain) ->
+          internal_gc ~save:false true store retain (fun _ -> true)
+    in
+    return store
 end
 
 module Make_indexable_removable (N : NAME) (K : Index.Key.S) (V : Index.Value.S) =
@@ -588,22 +656,7 @@ end) : SINGLETON_STORE with type value := S.t = struct
   let read_disk store =
     let open Lwt_result_syntax in
     trace (Cannot_read_from_store S.name)
-    @@ protect
-    @@ fun () ->
-    let*! exists = Lwt_unix.file_exists store.file in
-    match exists with
-    | false -> return_none
-    | true -> (
-        Lwt_io.with_file
-          ~flags:[Unix.O_RDONLY; O_CLOEXEC]
-          ~mode:Input
-          store.file
-        @@ fun channel ->
-        let*! raw_data = Lwt_io.read channel in
-        let data = Data_encoding.Binary.of_string S.encoding raw_data in
-        match data with
-        | Ok data -> return_some data
-        | Error err -> tzfail (Decoding_error err))
+    @@ read_binary_file S.encoding store.file
 
   let read store =
     let open Lwt_result_syntax in
@@ -612,13 +665,7 @@ end) : SINGLETON_STORE with type value := S.t = struct
   let write_disk store x =
     let open Lwt_result_syntax in
     trace (Cannot_write_to_store S.name)
-    @@ let*! res =
-         Lwt_utils_unix.with_atomic_open_out ~overwrite:true store.file
-         @@ fun fd ->
-         let block_bytes = Data_encoding.Binary.to_bytes_exn S.encoding x in
-         Lwt_utils_unix.write_bytes fd block_bytes
-       in
-       Result.bind_error res Lwt_utils_unix.tzfail_of_io_error |> Lwt.return
+    @@ write_binary_file S.encoding store.file x
 
   let write store x =
     let open Lwt_result_syntax in
