@@ -1,0 +1,1140 @@
+octogram_binary:
+  push: octogram
+
+agents:
+
+  # HTTP server agent
+  - name: http_server
+    address: %%ADDR_1%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  # boot nodes' agent
+  - name: boot_
+    address: %%ADDR_2%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  #  Agents for Attestors + slots producers
+  # We name them 0, 1, ..., 5 beucase indices are needed to itentify the slot
+  # indices in the scenario below
+
+  - name: "0"
+    address: %%ADDR_3%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "1"
+    address: %%ADDR_4%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "2"
+    address: %%ADDR_5%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "3"
+    address: %%ADDR_6%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "4"
+    address: %%ADDR_7%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "5"
+    address: %%ADDR_8%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "6"
+    address: %%ADDR_9%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "7"
+    address: %%ADDR_10%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "8"
+    address: %%ADDR_11%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "9"
+    address: %%ADDR_12%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "10"
+    address: %%ADDR_13%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "11"
+    address: %%ADDR_14%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "12"
+    address: %%ADDR_15%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "13"
+    address: %%ADDR_16%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "14"
+    address: %%ADDR_17%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "15"
+    address: %%ADDR_18%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "16"
+    address: %%ADDR_19%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "17"
+    address: %%ADDR_20%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "18"
+    address: %%ADDR_21%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "19"
+    address: %%ADDR_22%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "20"
+    address: %%ADDR_23%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "21"
+    address: %%ADDR_24%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "22"
+    address: %%ADDR_25%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "23"
+    address: %%ADDR_26%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "24"
+    address: %%ADDR_27%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "25"
+    address: %%ADDR_28%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "26"
+    address: %%ADDR_29%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "27"
+    address: %%ADDR_30%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "28"
+    address: %%ADDR_31%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "29"
+    address: %%ADDR_32%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "30"
+    address: %%ADDR_33%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "31"
+    address: %%ADDR_34%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "32"
+    address: %%ADDR_35%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "33"
+    address: %%ADDR_36%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "34"
+    address: %%ADDR_37%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "35"
+    address: %%ADDR_38%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "36"
+    address: %%ADDR_39%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "37"
+    address: %%ADDR_40%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "38"
+    address: %%ADDR_41%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "39"
+    address: %%ADDR_42%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "40"
+    address: %%ADDR_43%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "41"
+    address: %%ADDR_44%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "42"
+    address: %%ADDR_45%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "43"
+    address: %%ADDR_46%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "44"
+    address: %%ADDR_47%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "45"
+    address: %%ADDR_48%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "46"
+    address: %%ADDR_49%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "47"
+    address: %%ADDR_50%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "48"
+    address: %%ADDR_51%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "49"
+    address: %%ADDR_52%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "50"
+    address: %%ADDR_53%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "51"
+    address: %%ADDR_54%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "52"
+    address: %%ADDR_55%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "53"
+    address: %%ADDR_56%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "54"
+    address: %%ADDR_57%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "55"
+    address: %%ADDR_58%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "56"
+    address: %%ADDR_59%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "57"
+    address: %%ADDR_60%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "58"
+    address: %%ADDR_61%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "59"
+    address: %%ADDR_62%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "60"
+    address: %%ADDR_63%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "61"
+    address: %%ADDR_64%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "62"
+    address: %%ADDR_65%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "63"
+    address: %%ADDR_66%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "64"
+    address: %%ADDR_67%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "65"
+    address: %%ADDR_68%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "66"
+    address: %%ADDR_69%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "67"
+    address: %%ADDR_70%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "68"
+    address: %%ADDR_71%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "69"
+    address: %%ADDR_72%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "70"
+    address: %%ADDR_73%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "71"
+    address: %%ADDR_74%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "72"
+    address: %%ADDR_75%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "73"
+    address: %%ADDR_76%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "74"
+    address: %%ADDR_77%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "75"
+    address: %%ADDR_78%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "76"
+    address: %%ADDR_79%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "77"
+    address: %%ADDR_80%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "78"
+    address: %%ADDR_81%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "79"
+    address: %%ADDR_82%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "80"
+    address: %%ADDR_83%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "81"
+    address: %%ADDR_84%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "82"
+    address: %%ADDR_85%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "83"
+    address: %%ADDR_86%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "84"
+    address: %%ADDR_87%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "85"
+    address: %%ADDR_88%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "86"
+    address: %%ADDR_89%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "87"
+    address: %%ADDR_90%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "88"
+    address: %%ADDR_91%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "89"
+    address: %%ADDR_92%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "90"
+    address: %%ADDR_93%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "91"
+    address: %%ADDR_94%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "92"
+    address: %%ADDR_95%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "93"
+    address: %%ADDR_96%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "94"
+    address: %%ADDR_97%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "95"
+    address: %%ADDR_98%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "96"
+    address: %%ADDR_99%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "97"
+    address: %%ADDR_100%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "98"
+    address: %%ADDR_101%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "99"
+    address: %%ADDR_102%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "100"
+    address: %%ADDR_103%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "101"
+    address: %%ADDR_104%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "102"
+    address: %%ADDR_105%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "103"
+    address: %%ADDR_106%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "104"
+    address: %%ADDR_107%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "105"
+    address: %%ADDR_108%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "106"
+    address: %%ADDR_109%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "107"
+    address: %%ADDR_110%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "108"
+    address: %%ADDR_111%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "109"
+    address: %%ADDR_112%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "110"
+    address: %%ADDR_113%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "111"
+    address: %%ADDR_114%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "112"
+    address: %%ADDR_115%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "113"
+    address: %%ADDR_116%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "114"
+    address: %%ADDR_117%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "115"
+    address: %%ADDR_118%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "116"
+    address: %%ADDR_119%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "117"
+    address: %%ADDR_120%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "118"
+    address: %%ADDR_121%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "119"
+    address: %%ADDR_122%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "120"
+    address: %%ADDR_123%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "121"
+    address: %%ADDR_124%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "122"
+    address: %%ADDR_125%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "123"
+    address: %%ADDR_126%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "124"
+    address: %%ADDR_127%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+  - name: "125"
+    address: %%ADDR_128%%
+    user: root
+    port: 30000
+    identity: ~/.ssh/tf
+
+vars:
+  network: mainnet
+  aliases_prefix: delegate_
+  keys_base_dir: fresh_wallet
+
+  ## These are mainnet parameters' values
+  page_size: 4096
+  slot_size: 1048576
+  number_of_shards: 2048
+  number_of_slots: 256
+  redundancy_factor: 16
+  attestation_lag: 4
+  attestation_threshold: 50
+  blocks_per_epoch: 32
+  minimal_block_delay : 15
+
+  boot_nodes_address: %%ADDR_2%%
+
+  l1_node_rpc_port: 30001
+  l1_node_metric_port: 30002
+  l1_node_net_port: 30003
+
+  dal_node_rpc_port: 30011
+  dal_node_metric_port: 30012
+  dal_node_net_port: 30013
+
+  output_parameters_file_name: "octogram-network-parameters.json"
+stages:
+  ## Stage 1: Prepare things on HTTP server
+  - name: Prepare things on HTTP server
+    with_agents: 'http_server'
+    run_agents: concurrent
+    jobs:
+      - name: Upload needed items to HTTP server
+        run_items: concurrent
+        copy:
+          local_path: '{{ item }}'
+          remote_path: '.'
+        with_items:
+          - 'src/proto_alpha/parameters/{{ vars.network }}-parameters.json'
+          - octez-client
+          - octez-node
+          - octez-baker-alpha
+          - octez-dal-node
+
+      - name: Generate keys
+        tezos.generate_keys:
+          base_dir: 'self://{{ vars.keys_base_dir }}'
+          kind:
+             fresh:
+               count: 126 # TODO: put as string in vars
+               path_client: 'self://./octez-client'
+               alias_prefix: '{{ vars.aliases_prefix }}'
+
+      - name: Compress generated keys
+        builtins.tar:
+          contents: '{{ vars.keys_base_dir }}'
+          archive: 'self://{{ vars.keys_base_dir }}.tar.gz'
+          action: create
+
+      - name: Generate protocol parameters file
+        tezos.generate_protocol_parameters_file:
+          # generates the file 'parameters.json' in the agent's home dir
+          # use output_file_name: <other_file_name> to change that
+          base_file: 'self://{{ vars.network }}-parameters.json'
+          output_file_name: '{{ vars.output_parameters_file_name }}'
+          wallet: 'self://{{ vars.keys_base_dir }}'
+          pk_revealed_accounts_prefix: '{{ vars.aliases_prefix }}'
+          minimal_block_delay: '{{ vars.minimal_block_delay }}'
+          balance_updates: [
+               [ 'delegate_0', '35600317756398'  ]
+             , [ 'delegate_1', '21722837094728'  ]
+             , [ 'delegate_2', '17534320541765'  ]
+             , [ 'delegate_3', '13504002775078'  ]
+             , [ 'delegate_4', '13198704325935'  ]
+             , [ 'delegate_5', '12867400516421'  ]
+             , [ 'delegate_6', '8130727152446'  ]
+             , [ 'delegate_7', '6654303182352'  ]
+             , [ 'delegate_8', '6537087787878'  ]
+             , [ 'delegate_9', '6342872176511'  ]
+             , [ 'delegate_10', '6238085796983'  ]
+             , [ 'delegate_11', '5603146820815'  ]
+             , [ 'delegate_12', '4572581430768'  ]
+             , [ 'delegate_13', '3029743853607'  ]
+             , [ 'delegate_14', '2567770648718'  ]
+             , [ 'delegate_15', '2416866269508'  ]
+             , [ 'delegate_16', '2364578087861'  ]
+             , [ 'delegate_17', '2283068328013'  ]
+             , [ 'delegate_18', '1967048971718'  ]
+             , [ 'delegate_19', '1684235694930'  ]
+             , [ 'delegate_20', '1471410155282'  ]
+             , [ 'delegate_21', '1402024546888'  ]
+             , [ 'delegate_22', '1132892278093'  ]
+             , [ 'delegate_23', '1048357313164'  ]
+             , [ 'delegate_24', '993604849803'  ]
+             , [ 'delegate_25', '957228790586'  ]
+             , [ 'delegate_26', '851245262293'  ]
+             , [ 'delegate_27', '817154847756'  ]
+             , [ 'delegate_28', '706549374882'  ]
+             , [ 'delegate_29', '684736412194'  ]
+             , [ 'delegate_30', '645077074145'  ]
+             , [ 'delegate_31', '620453096454'  ]
+             , [ 'delegate_32', '574480103803'  ]
+             , [ 'delegate_33', '552366231687'  ]
+             , [ 'delegate_34', '493264684823'  ]
+             , [ 'delegate_35', '463485377383'  ]
+             , [ 'delegate_36', '446408363185'  ]
+             , [ 'delegate_37', '434908766308'  ]
+             , [ 'delegate_38', '427601399813'  ]
+             , [ 'delegate_39', '420006404039'  ]
+             , [ 'delegate_40', '412180100528'  ]
+             , [ 'delegate_41', '400515152353'  ]
+             , [ 'delegate_42', '367184785515'  ]
+             , [ 'delegate_43', '351514098890'  ]
+             , [ 'delegate_44', '333982626453'  ]
+             , [ 'delegate_45', '271633666628'  ]
+             , [ 'delegate_46', '253195518389'  ]
+             , [ 'delegate_47', '240330810205'  ]
+             , [ 'delegate_48', '229701370541'  ]
+             , [ 'delegate_49', '223369876679'  ]
+             , [ 'delegate_50', '217377960508'  ]
+             , [ 'delegate_51', '201069412969'  ]
+             , [ 'delegate_52', '188729480035'  ]
+             , [ 'delegate_53', '175512882099'  ]
+             , [ 'delegate_54', '168131444539'  ]
+             , [ 'delegate_55', '158694480643'  ]
+             , [ 'delegate_56', '142652240540'  ]
+             , [ 'delegate_57', '131862678230'  ]
+             , [ 'delegate_58', '127334676232'  ]
+             , [ 'delegate_59', '120138882957'  ]
+             , [ 'delegate_60', '116095659594'  ]
+             , [ 'delegate_61', '109107225373'  ]
+             , [ 'delegate_62', '107019923902'  ]
+             , [ 'delegate_63', '103366855218'  ]
+             , [ 'delegate_64', '94399242428'  ]
+             , [ 'delegate_65', '88154964441'  ]
+             , [ 'delegate_66', '83933392959'  ]
+             , [ 'delegate_67', '79632001780'  ]
+             , [ 'delegate_68', '76179334565'  ]
+             , [ 'delegate_69', '72530196682'  ]
+             , [ 'delegate_70', '71056731056'  ]
+             , [ 'delegate_71', '69803459712'  ]
+             , [ 'delegate_72', '66461684333'  ]
+             , [ 'delegate_73', '62968668028'  ]
+             , [ 'delegate_74', '58750940316'  ]
+             , [ 'delegate_75', '56758112792'  ]
+             , [ 'delegate_76', '54617826121'  ]
+             , [ 'delegate_77', '52164861783'  ]
+             , [ 'delegate_78', '50000402684'  ]
+             , [ 'delegate_79', '48114830085'  ]
+             , [ 'delegate_80', '47468901687'  ]
+             , [ 'delegate_81', '46235171498'  ]
+             , [ 'delegate_82', '44753755119'  ]
+             , [ 'delegate_83', '43462200410'  ]
+             , [ 'delegate_84', '40053397023'  ]
+             , [ 'delegate_85', '37075906499'  ]
+             , [ 'delegate_86', '33751484836'  ]
+             , [ 'delegate_87', '33000007560'  ]
+             , [ 'delegate_88', '30224501954'  ]
+             , [ 'delegate_89', '27339000803'  ]
+             , [ 'delegate_90', '26194804382'  ]
+             , [ 'delegate_91', '25505053745'  ]
+             , [ 'delegate_92', '25279183593'  ]
+             , [ 'delegate_93', '22183466856'  ]
+             , [ 'delegate_94', '21361641336'  ]
+             , [ 'delegate_95', '20195313405'  ]
+             , [ 'delegate_96', '19728835834'  ]
+             , [ 'delegate_97', '19039880296'  ]
+             , [ 'delegate_98', '18630242961'  ]
+             , [ 'delegate_99', '17944611438'  ]
+             , [ 'delegate_100', '16445335774'  ]
+             , [ 'delegate_101', '15549258272'  ]
+             , [ 'delegate_102', '14861252037'  ]
+             , [ 'delegate_103', '13339989275'  ]
+             , [ 'delegate_104', '12898630636'  ]
+             , [ 'delegate_105', '12389245030'  ]
+             , [ 'delegate_106', '12110672370'  ]
+             , [ 'delegate_107', '11489961122'  ]
+             , [ 'delegate_108', '11257088870'  ]
+             , [ 'delegate_109', '10822887253'  ]
+             , [ 'delegate_110', '10662792293'  ]
+             , [ 'delegate_111', '10020302823'  ]
+             , [ 'delegate_112', '9940704072'  ]
+             , [ 'delegate_113', '9717248514'  ]
+             , [ 'delegate_114', '9059591132'  ]
+             , [ 'delegate_115', '9010882166'  ]
+             , [ 'delegate_116', '8813641601'  ]
+             , [ 'delegate_117', '8710748071'  ]
+             , [ 'delegate_118', '8484561365'  ]
+             , [ 'delegate_119', '8313513858'  ]
+             , [ 'delegate_120', '8181540371'  ]
+             , [ 'delegate_121', '7889623973'  ]
+             , [ 'delegate_122', '7434282639'  ]
+             , [ 'delegate_123', '6643790165'  ]
+             , [ 'delegate_124', '6462456931'  ]
+             , [ 'delegate_125', '6372782853'  ]]
+          dal:
+            feature_enable: 'true'
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+            attestation_lag: '{{ vars.attestation_lag }}'
+            attestation_threshold: '{{ vars.attestation_threshold }}'
+            number_of_slots: '{{ vars.number_of_slots }}'
+            blocks_per_epoch: '{{ vars.blocks_per_epoch }}'
+
+      - name: Start HTTP server
+        builtins.start_http_server:
+          http_port: '30999'
+
+
+  ## Stage 2: Pull files from HTTP server to every agent
+  - name: Pull data from remote http servers (over-approximation)
+    with_agents:
+      - 'boot_'
+      - '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Pull all binaries to all agents
+        builtins.prefetch: 'http_server://{{ item }}'
+        run_items: concurrent
+        with_items:
+          - octez-client
+          - octez-node
+          - octez-baker-alpha
+          - octez-dal-node
+
+      - name: Pull and uncompress generated keys on every agent
+        builtins.tar:
+          contents: 'dir_{{ agent.name }}__wallet__'
+          archive: 'http_server://{{ vars.keys_base_dir }}.tar.gz'
+          action: extract
+
+
+  # Stage 3: Start boot nodes and activate the L1 protocol
+  - name: Start boot nodes and activate the L1 protocol
+    with_agents: 'boot_'
+    jobs:
+      - name: Pull protocol parameters file
+        builtins.prefetch: 'http_server://{{ vars.output_parameters_file_name }}'
+
+      - name: Start the boot octez-node
+        tezos.start_node:
+          name: 'dir_{{ agent.name }}__octez-node'
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          synchronization_threshold: 0
+          rpc_port: '{{ vars.l1_node_rpc_port }}'
+          metrics_port: '{{ vars.l1_node_metric_port }}'
+          net_port: '{{ vars.l1_node_net_port }}'
+          dal_cryptobox_parameters:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+
+      - name: Activate protocol
+        tezos.activate_protocol:
+          endpoint: 'self://dir_{{ agent.name }}__octez-node'
+          path_client: self://./octez-client
+          protocol: alpha
+          parameter_file: 'self://{{ vars.output_parameters_file_name }}'
+
+      - name: Wait for bootstrapped boot L1 node
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: 'self://dir_{{ agent.name }}__octez-node'
+
+      - name: Start the boot octez-dal-node
+        tezos.start_dal_node:
+          name: 'dir_{{ agent.name }}__octez-dal-node'
+          path_node: self://./octez-dal-node
+          rpc_port: '{{ vars.dal_node_rpc_port }}'
+          metrics_port: '{{ vars.dal_node_metric_port }}'
+          net_port: '{{ vars.dal_node_net_port }}'
+          l1_node_uri: 'self://dir_{{ agent.name }}__octez-node'
+          bootstrap_profile: true
+
+  ## Stage 4: Start slot producer L1 and DAL nodes
+  - name: Start slot producer L1 and DAL nodes
+    with_agents: '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Start octez-node for slots producer
+        tezos.start_node:
+          name: 'dir_{{ agent.name }}__octez-node'
+          path_node: self://./octez-node
+          network: '{{ vars.network }}'
+          synchronization_threshold: 0
+          rpc_port: '{{ vars.l1_node_rpc_port }}'
+          metrics_port: '{{ vars.l1_node_metric_port }}'
+          net_port: '{{ vars.l1_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.l1_node_net_port }}'
+          dal_cryptobox_parameters:
+            number_of_shards: '{{ vars.number_of_shards }}'
+            page_size: '{{ vars.page_size }}'
+            slot_size: '{{ vars.slot_size }}'
+            redundancy_factor: '{{ vars.redundancy_factor }}'
+
+      - name: Wait for bootstrapped node
+        tezos.wait_for_bootstrapped:
+          path_client: self://./octez-client
+          endpoint: 'self://dir_{{ agent.name }}__octez-node'
+
+      - name: Start octez-dal-node for slots producer
+        tezos.start_dal_node:
+          name: 'dir_{{ agent.name }}__octez-dal-node'
+          path_node: self://./octez-dal-node
+          l1_node_uri: 'self://dir_{{ agent.name }}__octez-node'
+          rpc_port: '{{ vars.dal_node_rpc_port }}'
+          metrics_port: '{{ vars.dal_node_metric_port }}'
+          net_port: '{{ vars.dal_node_net_port }}'
+          peers:
+            - '{{ vars.boot_nodes_address }}:{{ vars.dal_node_net_port }}'
+          bootstrap_profile: false
+          producer_profiles:
+            - '{{ agent.name }}' # 1, 2, 3, 4 ou 5
+          attestor_profiles:
+            # we run one DAL node per attestor
+            - 'delegate_{{ agent.name }}'
+          path_client: self://./octez-client
+          base_dir: 'self://dir_{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+
+
+  # Stage 5: Start attestors' bakers
+  - name: Start attestors' bakers
+    with_agents: '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Start octez-baker-alpha
+        tezos.start_baker:
+          name: 'dir_{{ agent.name }}__octez-baker'
+          protocol: alpha
+          base_dir: 'self://dir_{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+          node_uri: 'self://dir_{{ agent.name }}__octez-node'
+          dal_node_uri: 'self://dir_{{ agent.name }}__octez-dal-node'
+          delegates:
+           - 'delegate_{{ agent.name }}'
+
+  # Stage 6: Run DAL slots publishers
+  - name: Run DAL slots publishers
+    with_agents: '^[0-9]$'
+    run_agents: concurrent
+    jobs:
+      - name: Publish a DAL slot
+        run_items: sequential
+        tezos.publish_dal_slot:
+          slot_info:
+            slot_index: '{{ agent.name }}'
+            slot_size: '{{ vars.slot_size }}'
+            payload: 'slot content for level {{ item }} for index/agent {{ agent.name }}'
+          target_published_level: '{{ item }}'
+          l1_node_uri: 'self://dir_{{ agent.name }}__octez-node'
+          dal_node_uri: 'self://dir_{{ agent.name }}__octez-dal-node'
+          path_client: self://./octez-client
+          base_dir: 'self://dir_{{ agent.name }}__wallet__/{{ vars.keys_base_dir }}'
+          source: 'delegate_{{ agent.name }}'
+        with_items:
+         - '5..204' # We inject slots during 200 levels
