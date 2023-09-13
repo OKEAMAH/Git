@@ -565,7 +565,7 @@ let choose_and_inject_operations cctxt state prohibited_managers n =
         | End -> return (!cpt, !errors, !updated_state) | exn -> Lwt.fail exn)
   in
   Format.printf
-    "%d new manager operations injected, %d errorneous operation queues \
+    "%d new manager operations injected, %d erroneous operation queues \
      discarded@."
     nb_injected
     nb_erroneous ;
@@ -587,6 +587,7 @@ let start_injector cctxt ~operations_file_path =
     | Some (_chain, _bh, header, _opll)
       when Compare.Int32.(header.shell.level <= current_level) ->
         (* reorg *)
+        Format.printf "New head with non-increasing level: ignoring@." ;
         loop state current_level
     | Some (_chain, _bh, _header, opll) as _new_head ->
         let included_manager_hashes =
@@ -611,8 +612,8 @@ let start_injector cctxt ~operations_file_path =
           Operation_hash.Set.cardinal included_manager_hashes
         in
         let nb_missing_operations =
-          if nb_included_operations = 0 then op_per_mempool
-          else min op_per_mempool nb_included_operations
+          op_per_mempool
+          - ManagerMap.cardinal state.last_injected_op_per_manager
         in
         Format.printf
           "New increasing head received with %d manager operations: injecting \

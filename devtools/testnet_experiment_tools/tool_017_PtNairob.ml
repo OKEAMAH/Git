@@ -565,7 +565,7 @@ let choose_and_inject_operations cctxt state prohibited_managers n =
         | End -> return (!cpt, !errors, !updated_state) | exn -> Lwt.fail exn)
   in
   Format.printf
-    "%d new manager operations injected, %d errorneous operation queues \
+    "%d new manager operations injected, %d erroneous operation queues \
      discarded@."
     nb_injected
     nb_erroneous ;
@@ -587,37 +587,51 @@ let start_injector cctxt ~operations_file_path =
     | Some (_chain, _bh, header, _opll)
       when Compare.Int32.(header.shell.level <= current_level) ->
         (* reorg *)
+        Format.printf "New head with non-increasing level: ignoring@." ;
         loop state current_level
     | Some (_chain, _bh, _header, opll) as _new_head ->
-        let included_manager_hashes =
-          Stdlib.List.nth opll Operation_repr.manager_pass
-          |> List.map Tezos_base.Operation.hash
-          |> Operation_hash.Set.of_list
+        Format.printf
+          "New increasing head received with %d injected operations@."
+          (List.length (Stdlib.List.nth opll Operation_repr.manager_pass)) ;
+        let* mempool =
+          Shell_services.Mempool.pending_operations
+            cctxt
+            ~validated:true
+            ~refused:false
+            ~outdated:false
+            ~branch_refused:false
+            ~branch_delayed:false
+            ~validation_passes:[Operation_repr.manager_pass]
+            ()
         in
-        let last_injected_op_per_manager = state.last_injected_op_per_manager in
+        let live_operations =
+          let open Chain_services.Mempool in
+          Operation_hash.Set.of_list (List.map fst mempool.validated)
+        in
+        Format.printf
+          "%d manager operations still live in the mempool@."
+          (Operation_hash.Set.cardinal live_operations) ;
         let new_last_injected, prohibited_managers =
+          let last_injected_op_per_manager =
+            state.last_injected_op_per_manager
+          in
           ManagerMap.fold
             (fun manager {modified_hash; _} (new_last_injected, acc) ->
-              if Operation_hash.Set.mem modified_hash included_manager_hashes
-              then (ManagerMap.remove manager new_last_injected, acc)
-              else (new_last_injected, ManagerSet.add manager acc))
+              if Operation_hash.Set.mem modified_hash live_operations then
+                (new_last_injected, ManagerSet.add manager acc)
+              else (ManagerMap.remove manager new_last_injected, acc))
             last_injected_op_per_manager
             (last_injected_op_per_manager, ManagerSet.empty)
         in
         let state =
           {state with last_injected_op_per_manager = new_last_injected}
         in
-        let nb_included_operations =
-          Operation_hash.Set.cardinal included_manager_hashes
-        in
         let nb_missing_operations =
-          if nb_included_operations = 0 then op_per_mempool
-          else min op_per_mempool nb_included_operations
+          op_per_mempool
+          - ManagerMap.cardinal state.last_injected_op_per_manager
         in
         Format.printf
-          "New increasing head received with %d manager operations: injecting \
-           %d new operations...@."
-          nb_included_operations
+          "Injecting %d new manager operations...@."
           nb_missing_operations ;
         let* state =
           choose_and_inject_operations
