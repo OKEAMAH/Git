@@ -7,6 +7,7 @@
 
 use crate::block_in_progress::BlockInProgress;
 use crate::inbox::{read_inbox, KernelUpgrade, Transaction, TransactionContent};
+use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
 use primitive_types::U256;
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -43,17 +44,29 @@ impl Queue {
     }
 }
 
-fn filter_invalid_chain_id(
+fn filter_invalid_transactions(
     transactions: Vec<Transaction>,
     chain_id: U256,
+    max_gas_limit: u64,
 ) -> Vec<Transaction> {
+    let filter_chain_id = |transaction: &Transaction| match &transaction.content {
+        TransactionContent::Deposit(_) => true,
+        TransactionContent::Ethereum(transaction) => {
+            U256::eq(&transaction.chain_id, &chain_id)
+        }
+    };
+
+    let filter_max_gas_limit = |transaction: &Transaction| match &transaction.content {
+        TransactionContent::Deposit(_) => true,
+        TransactionContent::Ethereum(transaction) => {
+            transaction.gas_limit <= max_gas_limit
+        }
+    };
+
     transactions
         .into_iter()
-        .filter(|transaction| match &transaction.content {
-            TransactionContent::Deposit(_) => true,
-            TransactionContent::Ethereum(transaction) => {
-                U256::eq(&transaction.chain_id, &chain_id)
-            }
+        .filter(|transaction| {
+            filter_chain_id(transaction) && filter_max_gas_limit(transaction)
         })
         .collect()
 }
@@ -66,7 +79,11 @@ pub fn fetch<Host: Runtime>(
     admin: Option<ContractKt1Hash>,
 ) -> Result<Queue, anyhow::Error> {
     let inbox_content = read_inbox(host, smart_rollup_address, ticketer, admin)?;
-    let transactions = filter_invalid_chain_id(inbox_content.transactions, chain_id);
+    let transactions = filter_invalid_transactions(
+        inbox_content.transactions,
+        chain_id,
+        MAX_TRANSACTION_GAS_LIMIT,
+    );
     let blueprint = QueueElement::Blueprint(Blueprint { transactions });
     Ok(Queue {
         proposals: vec![blueprint],
@@ -119,9 +136,10 @@ mod tests {
             }),
         };
 
-        let filtered_transactions = filter_invalid_chain_id(
+        let filtered_transactions = filter_invalid_transactions(
             vec![valid_transaction.clone(), invalid_transaction],
             chain_id,
+            1_000_000u64,
         );
         assert_eq!(vec![valid_transaction], filtered_transactions)
     }
