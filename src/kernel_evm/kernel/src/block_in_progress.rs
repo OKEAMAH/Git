@@ -164,12 +164,7 @@ impl BlockInProgress {
         gas_price: U256,
         transactions: VecDeque<Transaction>,
     ) -> BlockInProgress {
-        Self::new_with_ticks(
-            number,
-            gas_price,
-            transactions,
-            tick_model::top_level_overhead_ticks(),
-        )
+        Self::new_with_ticks(number, gas_price, transactions, 0u64)
     }
 
     pub fn from_queue_element(
