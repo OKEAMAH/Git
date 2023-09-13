@@ -751,7 +751,7 @@ let test_l2_blocks_progression =
   unit
 
 (** The info for the "storage.sol" contract.
-    See [src\kernel_evm\solidity_examples] *)
+    See [src/kernel_evm/solidity_examples] *)
 let simple_storage =
   {
     label = "simpleStorage";
@@ -760,12 +760,21 @@ let simple_storage =
   }
 
 (** The info for the "erc20tok.sol" contract.
-    See [src\kernel_evm\solidity_examples] *)
+    See [src/kernel_evm/solidity_examples] *)
 let erc20 =
   {
     label = "erc20tok";
     abi = kernel_inputs_path ^ "/erc20tok_abi.json";
     bin = kernel_inputs_path ^ "/erc20tok.bin";
+  }
+
+(** The info for the "loop.sol" contract.
+    See [src/kernel_evm/benchmarks/scripts/benchmarks/contracts/loop.sol] *)
+let loop =
+  {
+    label = "loop";
+    abi = kernel_inputs_path ^ "/loop_abi.json";
+    bin = kernel_inputs_path ^ "/loop.bin";
   }
 
 (** Test that the contract creation works.  *)
@@ -2686,6 +2695,28 @@ let test_reboot =
     ~error_msg:"Expected gas used %L to be superior to %R" ;
   unit
 
+let test_large_gas_limit =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "reboot"; "loop"; "bar"]
+    ~title:"Check that the kernel can handle too many txs for a single run"
+  @@ fun protocol ->
+  let* ({sc_rollup_node; node; client; endpoint; _} as full_evm_setup) =
+    setup_past_genesis ~admin:None protocol
+  in
+  let sender = Eth_account.bootstrap_accounts.(0) in
+  let* loop_address, _tx = deploy ~contract:loop ~sender full_evm_setup in
+  let call =
+    Eth_cli.contract_send
+      ~source_private_key:sender.private_key
+      ~endpoint
+      ~abi_label:loop.label
+      ~address:loop_address
+      ~method_call:(sf "loop(%d)" 5)
+  in
+  let* _tx = wait_for_application ~sc_rollup_node ~node ~client call () in
+  assert false
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -2732,7 +2763,8 @@ let register_evm_proxy_server ~protocols =
   test_rpc_sendRawTransaction_invalid_chain_id protocols ;
   test_rpc_getTransactionByBlockHashAndIndex protocols ;
   test_rpc_getTransactionByBlockNumberAndIndex protocols ;
-  test_reboot protocols
+  test_reboot protocols ;
+  test_large_gas_limit protocols
 
 let register ~protocols =
   register_evm_proxy_server ~protocols ;
