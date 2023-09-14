@@ -45,7 +45,7 @@ let default_config =
     rpc_port = 8545;
     debug = true;
     rollup_node_endpoint = Mockup;
-    mode = Prod;
+    mode = Dev;
     cors_origins = [];
     cors_headers = [];
   }
