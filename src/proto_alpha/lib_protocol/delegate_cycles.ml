@@ -123,7 +123,7 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
     Stake_storage.get_total_active_stake ctxt last_cycle
   in
   let total_active_stake_weight =
-    Stake_context.staking_weight ctxt total_active_stake
+    Stake_context.staking_weight ctxt ~for_rewards:true total_active_stake
   in
   let* delegates = Stake_storage.get_selected_distribution ctxt last_cycle in
   List.fold_left_es
@@ -138,7 +138,7 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
         delegate_has_revealed_nonces delegate unrevealed_nonces_set
       in
       let active_stake_weight =
-        Stake_context.staking_weight ctxt active_stake
+        Stake_context.staking_weight ctxt ~for_rewards:true active_stake
       in
       let expected_slots =
         Delegate_missed_attestations_storage

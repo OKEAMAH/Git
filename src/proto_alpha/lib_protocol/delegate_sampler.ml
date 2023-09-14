@@ -213,7 +213,7 @@ let select_distribution_for_cycle ctxt cycle =
         let+ pk =
           Delegate_consensus_key.active_pubkey_for_cycle ctxt pkh cycle
         in
-        (pk, Stake_context.staking_weight ctxt stake) :: acc)
+        (pk, Stake_context.staking_weight ctxt ~for_rewards:false stake) :: acc)
       []
       stakes
   in
