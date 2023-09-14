@@ -212,6 +212,12 @@ let octez_endpoint state endpoint =
       Client.Node (Agent_state.find (Octez_node_k node) state)
   | Remote {endpoint} -> Foreign_endpoint (parse_endpoint endpoint)
 
+let octez_foreign_endpoint state endpoint =
+  match endpoint with
+  | Uri.Owned {name = node} ->
+      Agent_state.find (Octez_node_k node) state |> Node.as_rpc_endpoint
+  | Remote {endpoint} -> parse_endpoint endpoint
+
 let dal_foreign_endpoint state endpoint =
   match endpoint with
   | Uri.Owned {name = node} ->
@@ -3150,9 +3156,9 @@ type 'uri publish_dal_slot = {
   slot_info : publish_slot_info;
   target_published_level : string option;
       (** We target the inclusion of the publish slot header operation at this
-          level, so the operation should be inject at least one level before. *)
-  l1_node_uri : 'uri;
-      (** An URI to a Layer 1 node. If [None], we target the next level. *)
+          level, so the operation should be inject at least one level before.
+          If [None], we target the next level. *)
+  l1_node_uri : 'uri;  (** An URI to a Layer 1 node. *)
   dal_node_uri : 'uri;  (** An URI to a DAL node used for injection. *)
   base_dir : 'uri;
   source : string;  (** The alias of the account that signs the operation. *)
@@ -3354,6 +3360,211 @@ module Publish_dal_slot : Remote_procedure.S = struct
   let on_completion ~on_new_service:_ ~on_new_metrics_source:_ (_res : r) = ()
 end
 
+type count_dal_slots_r = {
+  published_slots_avg : float;
+  attested_slots_avg : float;
+}
+
+type 'uri count_dal_slots = {
+  l1_node_uri : 'uri;
+  dal_node_uri : 'uri;
+  start_level : string; (* refers to a publish level *)
+  end_level : string; (* refers to a publish level *)
+}
+
+type (_, _) Remote_procedure.t +=
+  | Count_dal_slots :
+      'uri count_dal_slots
+      -> (count_dal_slots_r, 'uri) Remote_procedure.t
+
+module Count_dal_slots : Remote_procedure.S = struct
+  let name = "tezos.count_dal_slots"
+
+  type 'uri t = 'uri count_dal_slots
+
+  type r = count_dal_slots_r
+
+  let of_remote_procedure :
+      type a. (a, 'uri) Remote_procedure.t -> 'uri t option = function
+    | Count_dal_slots args -> Some args
+    | _ -> None
+
+  let to_remote_procedure args = Count_dal_slots args
+
+  let unify : type a. (a, 'uri) Remote_procedure.t -> (a, r) Remote_procedure.eq
+      = function
+    | Count_dal_slots _ -> Eq
+    | _ -> Neq
+
+  let encoding uri_encoding =
+    let open Data_encoding in
+    conv
+      (fun {l1_node_uri; dal_node_uri; start_level; end_level} ->
+        (l1_node_uri, dal_node_uri, start_level, end_level))
+      (fun (l1_node_uri, dal_node_uri, start_level, end_level) ->
+        {l1_node_uri; dal_node_uri; start_level; end_level})
+      (obj4
+         (req "l1_node_uri" uri_encoding)
+         (req "dal_node_uri" uri_encoding)
+         (req "start_level" string)
+         (req "end_level" string))
+
+  let r_encoding =
+    let open Data_encoding in
+    conv
+      (fun {published_slots_avg; attested_slots_avg} ->
+        (published_slots_avg, attested_slots_avg))
+      (fun (published_slots_avg, attested_slots_avg) ->
+        {published_slots_avg; attested_slots_avg})
+      (obj2 (req "published_slots_avg" float) (req "attested_slots_avg" float))
+
+  let tvalue_of_r ({published_slots_avg; attested_slots_avg} : r) =
+    Tobj
+      [
+        ("published_slots_avg", Tfloat published_slots_avg);
+        ("attested_slots_avg", Tfloat attested_slots_avg);
+      ]
+
+  let expand ~self ~run {l1_node_uri; dal_node_uri; start_level; end_level} =
+    let uri_run = Remote_procedure.global_uri_of_string ~self ~run in
+    {
+      l1_node_uri = uri_run l1_node_uri;
+      dal_node_uri = uri_run dal_node_uri;
+      start_level = run start_level;
+      end_level = run end_level;
+    }
+
+  let resolve ~self (resolver : Uri_resolver.t)
+      {l1_node_uri; dal_node_uri; start_level; end_level} =
+    let uri_resolve = resolve_octez_rpc_global_uri ~self ~resolver in
+    {
+      l1_node_uri = uri_resolve l1_node_uri;
+      dal_node_uri = uri_resolve dal_node_uri;
+      start_level;
+      end_level;
+    }
+
+  (* [check_attestations level] checks that the attested slot indexes posted to
+     L1 at level [level] matches the slot indexes classified as attestable by
+     the DAL node.  Returns a pair of (number of published slot headers, number
+       of attested slot indexes) at the given level. *)
+  (* very similar with src/bin_testnet_scenarios/dal.ml *)
+  let check_attestations l1_endpoint dal_endpoint ~lag ~number_of_slots level =
+    let module Map = Map.Make (String) in
+    let* slot_headers =
+      Dal_common.RPC.Remote.call dal_endpoint
+      @@ Dal_common.RPC.get_published_level_headers level
+    in
+    let map =
+      List.fold_left
+        (fun acc Dal_common.RPC.{status; slot_index; _} ->
+          Map.update
+            status
+            (function
+              | None -> Some (1, [slot_index])
+              | Some (c, indexes) -> Some (c + 1, slot_index :: indexes))
+            acc)
+        Map.empty
+        slot_headers
+    in
+    let attested_level = string_of_int (level + lag) in
+    let* metadata =
+      RPC_core.call l1_endpoint
+      @@ RPC.get_chain_block_metadata ~block:attested_level ()
+    in
+    let pp_array fmt a =
+      for i = 0 to Array.length a - 1 do
+        let b = if a.(i) then 1 else 0 in
+        Format.fprintf fmt "%d" b
+      done
+    in
+    let proto_attestation =
+      match metadata.dal_attestation with
+      | None -> Array.make number_of_slots false
+      | Some x ->
+          let len = Array.length x in
+          if len < number_of_slots then (
+            let a = Array.make number_of_slots false in
+            for i = 0 to number_of_slots - 1 do
+              if i < len then a.(i) <- x.(i)
+            done ;
+            a)
+          else x
+    in
+    let num_attested, indexes =
+      match Map.find_opt "attested" map with
+      | None -> (0, [])
+      | Some (c, l) -> (c, l)
+    in
+    let node_attestation =
+      (* build array from list *)
+      let a = Array.make number_of_slots false in
+      List.iter (fun i -> a.(i) <- true) indexes ;
+      a
+    in
+    if proto_attestation <> node_attestation then
+      Test.fail
+        "At level %d, attestations in the L1 and DAL nodes differ %a vs %a"
+        level
+        pp_array
+        proto_attestation
+        pp_array
+        node_attestation ;
+    let num_published = List.length slot_headers in
+    return (num_published, num_attested)
+
+  let run state {l1_node_uri; dal_node_uri; start_level; end_level} =
+    let l1_node = octez_foreign_endpoint state l1_node_uri in
+    let l1_endpoint = Client.Foreign_endpoint l1_node in
+    let dal_node = dal_foreign_endpoint state dal_node_uri in
+    let start_level = positive_int_of_string start_level in
+    let end_level = positive_int_of_string end_level in
+
+    let* dal_params =
+      let* constants =
+        RPC_core.call l1_node @@ RPC.get_chain_block_context_constants ()
+      in
+      Dal_common.Parameters.from_protocol_parameters constants |> return
+    in
+    let lag = dal_params.attestation_lag in
+
+    let wait_for_level = end_level + lag + 1 in
+    Log.info "Wait for L1 node to reach level %d:" wait_for_level ;
+    let* _level = wait_for_l1_level l1_endpoint wait_for_level in
+
+    Log.info "Stats on attestations at levels %d to %d:" start_level end_level ;
+    let* published, attested =
+      Lwt_list.fold_left_s
+        (fun (total_published, total_attested) level ->
+          let* published, attested =
+            check_attestations
+              l1_node
+              dal_node
+              ~lag
+              ~number_of_slots:dal_params.number_of_slots
+              level
+          in
+          return (total_published + published, total_attested + attested))
+        (0, 0)
+        (range start_level end_level)
+    in
+    let num_levels = end_level - start_level + 1 in
+    let published_slots_avg, attested_slots_avg =
+      let n = float_of_int num_levels in
+      (float_of_int published /. n, float_of_int attested /. n)
+    in
+    Log.info
+      "\n\n\
+       Average slots per level over %d levels: published = %.2f attested = \
+       %.2f\n\n"
+      num_levels
+      published_slots_avg
+      attested_slots_avg ;
+    return {published_slots_avg; attested_slots_avg}
+
+  let on_completion ~on_new_service:_ ~on_new_metrics_source:_ (_res : r) = ()
+end
+
 let register_procedures () =
   Remote_procedure.register (module Generate_keys) ;
   Remote_procedure.register (module Start_octez_node) ;
@@ -3369,4 +3580,5 @@ let register_procedures () =
   Remote_procedure.register (module Dac_post_file) ;
   Remote_procedure.register (module Start_octez_dal_node) ;
   Remote_procedure.register (module Start_octez_baker) ;
-  Remote_procedure.register (module Publish_dal_slot)
+  Remote_procedure.register (module Publish_dal_slot) ;
+  Remote_procedure.register (module Count_dal_slots)

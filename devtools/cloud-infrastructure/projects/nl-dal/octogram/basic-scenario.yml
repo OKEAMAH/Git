@@ -224,3 +224,10 @@ stages:
           source: delegate_2
         with_items:
          - '10..14'
+
+      - name: Count number of published and attested slots
+        tezos.count_dal_slots:
+          l1_node_uri: self://node
+          dal_node_uri: self://dal_node
+          start_level: '5'
+          end_level: '14'
