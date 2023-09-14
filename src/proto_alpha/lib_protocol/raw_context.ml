@@ -274,6 +274,7 @@ type back = {
   dal_attestation_slot_accountability : Dal_attestation_repr.Accountability.t;
   dal_committee : dal_committee;
   adaptive_issuance_enable : bool;
+  adaptive_issuance_rewarding_enable : bool;
 }
 
 (*
@@ -345,6 +346,9 @@ let[@inline] reward_coeff_for_current_cycle ctxt =
 
 let[@inline] adaptive_issuance_enable ctxt = ctxt.back.adaptive_issuance_enable
 
+let[@inline] adaptive_issuance_rewarding_enable ctxt =
+  ctxt.back.adaptive_issuance_rewarding_enable
+
 let[@inline] update_back ctxt back = {ctxt with back}
 
 let[@inline] update_remaining_block_gas ctxt remaining_block_gas =
@@ -392,6 +396,9 @@ let[@inline] update_reward_coeff_for_current_cycle ctxt
 
 let[@inline] set_adaptive_issuance_enable ctxt =
   update_back ctxt {ctxt.back with adaptive_issuance_enable = true}
+
+let[@inline] set_adaptive_issuance_rewarding_enable ctxt =
+  update_back ctxt {ctxt.back with adaptive_issuance_rewarding_enable = true}
 
 type error += Too_many_internal_operations (* `Permanent *)
 
@@ -837,7 +844,7 @@ let check_cycle_eras (cycle_eras : Level_repr.cycle_eras)
       current_era.blocks_per_commitment = constants.blocks_per_commitment))
 
 let prepare ~level ~predecessor_timestamp ~timestamp ~adaptive_issuance_enable
-    ctxt =
+    ~adaptive_issuance_rewarding_enable ctxt =
   let open Lwt_result_syntax in
   let*? level = Raw_level_repr.of_int32 level in
   let* () = check_inited ctxt in
@@ -888,6 +895,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~adaptive_issuance_enable
             ~length:constants.Constants_parametric_repr.dal.number_of_slots;
         dal_committee = empty_dal_committee;
         adaptive_issuance_enable;
+        adaptive_issuance_rewarding_enable;
       };
   }
 
@@ -1162,6 +1170,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
       ~predecessor_timestamp:timestamp
       ~timestamp
       ~adaptive_issuance_enable:false
+      ~adaptive_issuance_rewarding_enable:false
   in
   (previous_proto, ctxt)
 

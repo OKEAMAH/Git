@@ -223,6 +223,7 @@ let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
       ~predecessor_timestamp
       ~timestamp
       ~adaptive_issuance_enable:false
+      ~adaptive_issuance_rewarding_enable:false
       ctxt
   in
   let* ctxt = Adaptive_issuance_storage.set_adaptive_issuance_enable ctxt in

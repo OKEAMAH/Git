@@ -236,6 +236,9 @@ let adaptive_issuance c = (Raw_context.constants c).adaptive_issuance
 
 let adaptive_issuance_enable c = Raw_context.adaptive_issuance_enable c
 
+let adaptive_issuance_rewarding_enable c =
+  Raw_context.adaptive_issuance_rewarding_enable c
+
 let adaptive_issuance_global_limit_of_staking_over_baking c =
   (adaptive_issuance c).global_limit_of_staking_over_baking
 

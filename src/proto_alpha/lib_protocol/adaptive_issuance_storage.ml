@@ -276,15 +276,23 @@ let launch_cycle ctxt = Storage.Adaptive_issuance.Activation.get ctxt
 
 let set_adaptive_issuance_enable ctxt =
   let open Lwt_result_syntax in
-  let+ enable =
+  let+ ai_enable, rewarding_enable =
     let+ launch_cycle = launch_cycle ctxt in
     match launch_cycle with
-    | None -> false
+    | None -> (false, false)
     | Some launch_cycle ->
         let current_cycle = (Level_storage.current ctxt).cycle in
-        Cycle_repr.(current_cycle >= launch_cycle)
+        ( Cycle_repr.(current_cycle >= launch_cycle),
+          Cycle_repr.(
+            current_cycle
+            >= add launch_cycle @@ Constants_storage.preserved_cycles ctxt) )
   in
-  if enable then Raw_context.set_adaptive_issuance_enable ctxt else ctxt
+  if ai_enable then
+    let ctxt = Raw_context.set_adaptive_issuance_enable ctxt in
+    if rewarding_enable then
+      Raw_context.set_adaptive_issuance_rewarding_enable ctxt
+    else ctxt
+  else ctxt
 
 let update_ema ctxt ~vote =
   let open Lwt_result_syntax in
