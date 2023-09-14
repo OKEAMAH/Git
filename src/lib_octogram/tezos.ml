@@ -663,7 +663,7 @@ type 'uri generate_protocol_parameters_file = {
   pk_revealed_accounts_prefix : string option;
   pk_unrevealed_accounts_prefix : string option;
   default_balance : string option;
-  balance_updates : (string * int) list;
+  balance_updates : (string * int64) list;
   dal : dal_parameters;
   minimal_block_delay : string option;
 }
@@ -744,7 +744,7 @@ module Generate_protocol_parameters_file = struct
          (opt "pk_revealed_accounts_prefix" string)
          (opt "pk_unrevealed_accounts_prefix" string)
          (opt "default_balance" string)
-         (dft "balance_updates" (list (tup2 string int31)) [])
+         (dft "balance_updates" (list (tup2 string int64)) [])
          (req "dal" dal_parameters_encoding)
          (opt "minimal_block_delay" string))
 
@@ -859,7 +859,7 @@ module Generate_protocol_parameters_file = struct
     let default_balance =
       match default_balance with
       | None -> Protocol.default_bootstrap_balance
-      | Some str -> int_of_string str
+      | Some str -> Int64.of_string str
     in
     let bootstrap_accounts_overrides =
       let json_accounts : JSON.u list =
@@ -875,7 +875,7 @@ module Generate_protocol_parameters_file = struct
                    (* We pass the public key of the account, therefore it will
                       not have to be revealed later. *)
                    `String account.public_key;
-                   `String (string_of_int balance);
+                   `String (Int64.to_string balance);
                  ]))
         @ (pk_unrevealed_accounts
           |> List.map (fun (account : Account.key) ->
@@ -890,7 +890,7 @@ module Generate_protocol_parameters_file = struct
                         therefore the public key will be considered as not yet
                         revealed for these accounts. *)
                      `String account.public_key_hash;
-                     `String (string_of_int balance);
+                     `String (Int64.to_string balance);
                    ]))
       in
       let key = ["bootstrap_accounts"] in

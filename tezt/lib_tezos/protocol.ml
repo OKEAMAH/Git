@@ -109,10 +109,10 @@ type bootstrap_smart_rollup = {
   parameters_ty : Ezjsonm.value;
 }
 
-let default_bootstrap_balance = 4_000_000_000_000
+let default_bootstrap_balance = 4_000_000_000_000L
 
 let write_parameter_file :
-    ?bootstrap_accounts:(Account.key * int option) list ->
+    ?bootstrap_accounts:(Account.key * int64 option) list ->
     ?additional_bootstrap_accounts:(Account.key * int option * bool) list ->
     ?bootstrap_smart_rollups:bootstrap_smart_rollup list ->
     ?bootstrap_contracts:bootstrap_contract list ->
@@ -147,7 +147,7 @@ let write_parameter_file :
               [
                 `String account.public_key;
                 `String
-                  (string_of_int
+                  (Int64.to_string
                      (Option.value
                         ~default:default_bootstrap_balance
                         default_balance));

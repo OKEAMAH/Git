@@ -126,7 +126,7 @@ type bootstrap_contract = {
 }
 
 (** The value is the same as the one in src/proto_alpha/lib_parameters/default_parameters.ml. *)
-val default_bootstrap_balance : int
+val default_bootstrap_balance : int64
 
 (** Write a protocol parameter file.
 
@@ -149,7 +149,7 @@ val default_bootstrap_balance : int
     - [bootstrap_contracts] when given.
 *)
 val write_parameter_file :
-  ?bootstrap_accounts:(Account.key * int option) list ->
+  ?bootstrap_accounts:(Account.key * int64 option) list ->
   ?additional_bootstrap_accounts:(Account.key * int option * bool) list ->
   ?bootstrap_smart_rollups:bootstrap_smart_rollup list ->
   ?bootstrap_contracts:bootstrap_contract list ->
