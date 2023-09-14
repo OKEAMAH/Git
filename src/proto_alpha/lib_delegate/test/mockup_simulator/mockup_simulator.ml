@@ -1158,8 +1158,12 @@ module Default_hooks : Hooks = struct
   let check_chain_on_success ~chain:_ = return_unit
 end
 
+type logger =
+  | Ex_logger : (('a, Format.formatter, unit, unit) format4 -> 'a) -> logger
+
 type config = {
   debug : bool;
+  output : logger option;
   round0 : int64;
   round1 : int64;
   timeout : int;
@@ -1172,6 +1176,7 @@ type config = {
 let default_config =
   {
     debug = false;
+    output = None;
     round0 = 2L;
     (* Rounds should be long enough for the bakers to
        exchange all the necessary messages. *)

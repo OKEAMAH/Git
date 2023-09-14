@@ -55,6 +55,7 @@ let test_level_5 () =
   let config =
     {
       default_config with
+      output = Some (Ex_logger (Tezt.Log.debug ?color:None ?prefix:None));
       timeout = Int32.to_int level_to_reach * 3 * 2;
       round0 = 2L;
       round1 = 3L;

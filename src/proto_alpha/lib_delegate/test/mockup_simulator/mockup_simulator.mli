@@ -137,11 +137,15 @@ end
 (** The default hook implementation. *)
 module Default_hooks : Hooks
 
+type logger =
+  | Ex_logger : (('a, Format.formatter, unit, unit) format4 -> 'a) -> logger
+
 (** Simulation configuration. *)
 type config = {
   debug : bool;
       (** Whether to initialize the event system in order to display
         information about the progress of the simulation. *)
+  output : logger option;
   round0 : int64;  (** Duration of the round 0 in seconds. *)
   round1 : int64;  (** Duration of the round 1 in seconds. *)
   timeout : int;
@@ -159,6 +163,7 @@ type config = {
      reached. Should be [2 * consensus_committee_size / 3 + 1] in
      usual setting for tenderbake. *)
 }
+
 
 (** Default configuration. *)
 val default_config : config
