@@ -1389,9 +1389,8 @@ module Shared = struct
     let rec loop () =
       match input_value ic with
       | exception End_of_file -> close_in ic
-      | key, value_size, nsecs ->
-          let depth = List.length key in
-          let n = (value_size + 255) / 256 * 256 in
+      | depth, value_size, nsecs ->
+          let n = (value_size + 4095) / 4096 * 4096 in
           (match Stdlib.Hashtbl.find_opt tbl (depth, n) with
           | None -> Stdlib.Hashtbl.replace tbl (depth, n) [nsecs]
           | Some nsecs_list ->
@@ -1586,34 +1585,48 @@ module Write_bench = struct
                  | Some context ->
                      Tezos_shell_context.Shell_context.wrap_disk_context context
                in
-               let key, _value_size =
-                 match Random.State.int rng_state 2 with
-                 | 0 ->
-                     let i = Random.State.int rng_state n_normal_keys in
-                     normal_keys.(i)
-                 | _ ->
-                     let i = Random.State.int rng_state n_rare_keys in
-                     rare_keys.(i)
+               let key_values =
+                 Stdlib.List.init 10 (fun _ ->
+                     let key, _value_size =
+                       match Random.State.int rng_state 2 with
+                       | 0 ->
+                           let i = Random.State.int rng_state n_normal_keys in
+                           normal_keys.(i)
+                       | _ ->
+                           let i = Random.State.int rng_state n_rare_keys in
+                           rare_keys.(i)
+                     in
+                     let random_bytes =
+                       (* The biggest file we have is 368640B *)
+                       Base_samplers.uniform_bytes rng_state ~nbytes:(4096 * 1000)
+                     in
+                     key, random_bytes)
                in
-               let random_bytes =
-                 (* The biggest file we have is 368640B *)
-                 Base_samplers.uniform_bytes rng_state ~nbytes:(4096 * 1000)
-               in
-               let value_size = Bytes.length random_bytes in
-
                let* nsecs, context_hash =
                  (* Using [Lwt_main.run] here slows down the benchmark *)
                  Measure.Time.measure_lwt (fun () ->
-                     let* context = Context.add context key random_bytes in
-                     let* context_hash = Io_helpers.commit context in
-                     (* We need to call [flush] to finish the disk writing.
+                     let* context =
+                       Lwt_list.fold_left_s (fun context (key, value) ->
+                           Context.add context key value)
+                         context key_values
+                     in
+                     (* We need to call [commit]+[flush] to finish the disk writing.
                         It is a sort of the worst case: in a real node,
                         it is rare to flush just after 1 write.
                      *)
+                     let* context_hash = Io_helpers.commit context in
                      let+ _context = Io_helpers.flush context in
                      context_hash)
                in
-               output_value oc (key, value_size, nsecs) ;
+               let depth =
+                 List.fold_left (+) 0
+                 @@ List.map (fun (key, _) -> List.length key) key_values
+               in
+               let value_size =
+                 List.fold_left (+) 0
+                 @@ List.map (fun (_, value) -> Bytes.length value) key_values
+               in
+               output_value oc (depth, value_size, nsecs) ;
                if n mod 100 = 0 then restrict_memory () ;
                loop context_hash (n - 1)
            in
