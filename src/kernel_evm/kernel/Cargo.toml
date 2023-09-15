@@ -15,6 +15,11 @@ license = "MIT"
 [lib]
 crate-type = ["cdylib"]
 
+[[bin]]
+name = "migration_gen"
+path = "src/bin/migration_gen.rs"
+# required-features = ["serde_yaml"]
+
 [dependencies]
 thiserror.workspace = true
 anyhow.workspace = true
@@ -40,6 +45,8 @@ tezos-smart-rollup-entrypoint.workspace = true
 tezos-smart-rollup-debug.workspace = true
 tezos-smart-rollup-encoding.workspace = true
 tezos-smart-rollup-installer-config.workspace = true
+
+serde_yaml = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 tezos-smart-rollup-mock.workspace = true

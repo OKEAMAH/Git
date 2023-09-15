@@ -508,6 +508,7 @@ dependencies = [
  "num-traits",
  "primitive-types",
  "rlp",
+ "serde_yaml",
  "sha3",
  "tezos-evm-logging",
  "tezos-smart-rollup-core",
