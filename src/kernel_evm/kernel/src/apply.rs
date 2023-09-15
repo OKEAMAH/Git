@@ -31,6 +31,7 @@ use tezos_smart_rollup_host::runtime::Runtime;
 use crate::error::Error;
 use crate::inbox::{Deposit, Transaction, TransactionContent};
 use crate::indexable_storage::IndexableStorage;
+use crate::outbox_counter::{get_outbox_counter, increment_outbox_counter};
 use crate::storage::{index_account, read_ticketer};
 use crate::CONFIG;
 
@@ -225,6 +226,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     let call_data = transaction.data.clone();
     let gas_limit = transaction.gas_limit;
     let value = transaction.value;
+    let outbox_counter = get_outbox_counter(host)?;
     let execution_outcome = match run_transaction(
         host,
         block_constants,
@@ -237,6 +239,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         Some(gas_limit),
         Some(value),
         true,
+        outbox_counter,
     ) {
         Ok(outcome) => outcome,
         Err(err) => {
@@ -346,6 +349,8 @@ fn post_withdrawals<Host: Runtime>(
         outbox_message.bin_write(&mut encoded).unwrap();
 
         host.write_output(&encoded)?;
+
+        increment_outbox_counter(host)?;
     }
 
     Ok(())

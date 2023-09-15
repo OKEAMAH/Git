@@ -178,6 +178,10 @@ fn ripemd160_precompile<Host: Runtime>(
     })
 }
 
+/// The maximum number of withdrawals we can produce per level, given that each
+/// withdrawal take up one outbox message.
+const MAXIMUM_WITHDRAWALS: usize = 100;
+
 /// Implementation of Etherelink specific withdrawals precompiled contract.
 fn withdrawal_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
@@ -202,6 +206,15 @@ fn withdrawal_precompile<Host: Runtime>(
         log!(handler.borrow_host(), Info, "Withdrawal precompiled contract: no transfer");
         return Ok(revert_withdrawal())
     };
+
+    if (handler.outbox_count()? + 1) > MAXIMUM_WITHDRAWALS {
+        log!(
+            handler.borrow_host(),
+            Info,
+            "Too many outbox messages for withdrawal"
+        );
+        return Ok(revert_withdrawal());
+    }
 
     match input {
         [0xcd, 0xa4, 0xfe, 0xe2, rest @ ..] => {

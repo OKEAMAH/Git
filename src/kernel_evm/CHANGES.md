@@ -62,6 +62,7 @@
 - Refactor `TransactionCommon` and transactions' signatures modules. (!9590)
 - Make it possible for any precompiled contract to generate withdrawals. (!9910)
 - A precompiled contract for withdrawing funds at address 0x00...20. (!10022)
+- Limit number of withdrawals to the number of outbox messages per level (100 per level). (!10233)
 
 ## Version 4c111dcae061bea6c3616429a0ea1262ce6c174f
 

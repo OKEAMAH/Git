@@ -42,6 +42,7 @@ mod error;
 mod inbox;
 mod indexable_storage;
 mod migration;
+mod outbox_counter;
 mod parsing;
 mod safe_storage;
 mod simulation;

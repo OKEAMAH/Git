@@ -124,6 +124,7 @@ pub fn run_transaction<'a, Host>(
     gas_limit: Option<u64>,
     value: Option<U256>,
     pay_for_gas: bool,
+    outbox_counter: usize,
 ) -> Result<Option<handler::ExecutionOutcome>, EthereumError>
 where
     Host: Runtime,
@@ -148,15 +149,29 @@ where
                     address,
                     value.unwrap_or(U256::zero()),
                     gas_limit,
+                    outbox_counter,
                 )?
             } else {
                 // This must be a contract-call transaction
-                handler
-                    .call_contract(caller, address, value, call_data, gas_limit, false)?
+                handler.call_contract(
+                    caller,
+                    address,
+                    value,
+                    call_data,
+                    gas_limit,
+                    false,
+                    outbox_counter,
+                )?
             }
         } else {
             // This is a create-contract transaction
-            handler.create_contract(caller, value, call_data, gas_limit)?
+            handler.create_contract(
+                caller,
+                value,
+                call_data,
+                gas_limit,
+                outbox_counter,
+            )?
         };
 
         handler.increment_nonce(caller)?;
@@ -172,6 +187,7 @@ where
         if pay_for_gas {
             log!(host, Info, "Caller was unable to pre-pay the transaction")
         };
+
         Ok(None)
     }
 }
@@ -190,6 +206,8 @@ mod test {
     use primitive_types::{H160, H256};
     use std::str::FromStr;
     use tezos_ethereum::tx_common::EthereumTransactionCommon;
+    use tezos_ethereum::withdrawal::Withdrawal;
+    use tezos_smart_rollup_encoding::contract::Contract;
     use tezos_smart_rollup_mock::MockHost;
 
     // The compiled initialization code for the Ethereum demo contract given
@@ -299,6 +317,7 @@ mod test {
             Some(22000),
             Some(transaction_value),
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -359,6 +378,7 @@ mod test {
             Some(21000),
             Some(transaction_value),
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -413,6 +433,7 @@ mod test {
             None,
             Some(transaction_value),
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -462,6 +483,7 @@ mod test {
             Some(31000),
             Some(transaction_value),
             true,
+            0,
         );
 
         let new_address =
@@ -494,6 +516,7 @@ mod test {
             Some(31000),
             Some(U256::zero()),
             true,
+            0,
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
@@ -520,6 +543,7 @@ mod test {
             Some(100000),
             Some(U256::zero()),
             true,
+            0,
         );
         assert!(result3.is_ok(), "execution should have succeeded");
         let result = result3.unwrap();
@@ -545,6 +569,7 @@ mod test {
             Some(31000),
             Some(U256::zero()),
             true,
+            0,
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
@@ -590,6 +615,7 @@ mod test {
             Some(100000),
             Some(transaction_value),
             true,
+            0,
         );
 
         assert!(result.is_ok());
@@ -638,6 +664,7 @@ mod test {
             None,
             Some(transaction_value),
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -687,6 +714,7 @@ mod test {
             Some(21000),
             None,
             true,
+            0,
         );
 
         // Assert
@@ -827,6 +855,7 @@ mod test {
             Some(21006),
             None,
             true,
+            0,
         );
 
         // Assert
@@ -882,6 +911,7 @@ mod test {
             Some(6),
             None,
             true,
+            0,
         );
 
         // Assert
@@ -931,6 +961,7 @@ mod test {
             None,
             None,
             true,
+            0,
         );
 
         // Assert
@@ -984,6 +1015,7 @@ mod test {
             None,
             Some(U256::from(100)),
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -1037,6 +1069,7 @@ mod test {
             Some(21001),
             None,
             true,
+            0,
         );
 
         // Assert
@@ -1142,6 +1175,7 @@ mod test {
             None,
             None,
             true,
+            0,
         );
 
         // Assert
@@ -1218,6 +1252,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         // Since we execute an invalid instruction (for a static call that is) we spend
@@ -1302,6 +1337,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         // Since we execute an invalid instruction (for a static call that is), we
@@ -1407,6 +1443,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         let log_record1 = Log {
@@ -1512,6 +1549,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         let log_record1 = Log {
@@ -1606,6 +1644,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -1719,6 +1758,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -1800,6 +1840,7 @@ mod test {
             Some(all_the_gas),
             None,
             true,
+            0,
         );
 
         // Assert
@@ -1812,5 +1853,119 @@ mod test {
             withdrawals: vec![],
         }));
         assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn produce_withdrawal_with_call() {
+        let mut mock_runtime = MockHost::default();
+        let block = BlockConstants::first_block(U256::zero(), U256::one());
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let target = H160::from_low_u64_be(32u64);
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let caller = H160::from_low_u64_be(118u64);
+        let data: &[u8] = &hex::decode(
+            "cda4fee2\
+             0000000000000000000000000000000000000000000000000000000000000020\
+             0000000000000000000000000000000000000000000000000000000000000024\
+             4b54314275455a7462363863315134796a74636b634e6a47454c71577435365879657363\
+             00000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+
+        let value: Option<U256> = Some(100.into());
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            10000000.into(),
+        );
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            CONFIG,
+            Some(target),
+            caller,
+            data.to_vec(),
+            Some(21001),
+            value,
+            true,
+            10,
+        );
+
+        let expected_target =
+            Contract::from_b58check("KT1BuEZtb68c1Q4yjtckcNjGELqWt56Xyesc").unwrap();
+
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 21000,
+            is_success: true,
+            new_address: None,
+            logs: vec![],
+            result: Some(vec![]),
+            withdrawals: vec![Withdrawal {
+                target: expected_target,
+                amount: 100.into(),
+            }],
+        }));
+
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
+    fn no_withdrawals_beyond_limit() {
+        // Arrange
+        let mut mock_runtime = MockHost::default();
+        let block = BlockConstants::first_block(U256::zero(), U256::one());
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let target = H160::from_low_u64_be(32u64);
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+        let caller = H160::from_low_u64_be(118u64);
+        let value: Option<U256> = Some(100.into());
+        let data: &[u8] = &hex::decode(
+            "cda4fee2\
+             0000000000000000000000000000000000000000000000000000000000000020\
+             0000000000000000000000000000000000000000000000000000000000000024\
+             4b54314275455a7462363863315134796a74636b634e6a47454c71577435365879657363\
+             00000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            10000000.into(),
+        );
+
+        // Act
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            CONFIG,
+            Some(target),
+            caller,
+            data.to_vec(),
+            Some(21000),
+            value,
+            true,
+            100,
+        );
+
+        // Assert
+        let expected_result = Ok(Some(ExecutionOutcome {
+            gas_used: 21000,
+            is_success: false,
+            new_address: None,
+            logs: vec![],
+            result: None,
+            withdrawals: vec![],
+        }));
+
+        assert_eq!(expected_result, result);
     }
 }

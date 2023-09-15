@@ -108,6 +108,7 @@ impl Evaluation {
                 .or(Some(MAX_EVALUATION_GAS)), // gas could be omitted
             self.value,
             false,
+            0_usize,
         )
         .map_err(Error::Simulation)?;
         Ok(outcome)
@@ -508,6 +509,7 @@ mod tests {
             Some(31000),
             Some(transaction_value),
             false,
+            0_usize,
         );
         assert!(outcome.is_ok(), "contract should have been created");
         let outcome = outcome.unwrap();
