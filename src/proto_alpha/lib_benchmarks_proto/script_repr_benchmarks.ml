@@ -73,7 +73,7 @@ module Sampler = Micheline_sampler.Make (struct
   let width_function = Micheline_sampler.reasonable_width_function
 end)
 
-module Micheline_nodes_benchmark : Benchmark.S = struct
+module Micheline_nodes_benchmark : Benchmark.Simple = struct
   include Script_repr_shared_config
 
   let name = ns "MICHELINE_NODES"
@@ -90,6 +90,7 @@ module Micheline_nodes_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(function {micheline_nodes} -> (micheline_nodes, ()))
       (Model.affine
          ~intercept:(fv (Format.asprintf "%s_const" (Namespace.basename name)))
@@ -110,7 +111,7 @@ end
 
 let () = Registration.register (module Micheline_nodes_benchmark)
 
-module Script_repr_strip_annotations : Benchmark.S = struct
+module Script_repr_strip_annotations : Benchmark.Simple = struct
   include Script_repr_shared_config
 
   let name = ns "strip_annotations"
@@ -126,6 +127,7 @@ module Script_repr_strip_annotations : Benchmark.S = struct
   let model =
     Model.(
       make
+        ~name
         ~conv:(fun {micheline_nodes} -> (micheline_nodes, ()))
         (linear ~coeff:(fv "nodes")))
 

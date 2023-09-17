@@ -23,12 +23,13 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Benchmarks_proto
 
-let ns = Namespace.make Registration_helpers.ns "dal"
+let ns = Namespace.make Registration.ns "dal"
 
 let fv s = Free_variable.of_namespace (ns s)
 
-module Publish_slot_header : Benchmark.S = struct
+module Publish_slot_header : Benchmark.Simple_with_num = struct
   let name = ns "Dal_publish_slot_header"
 
   let info = "Estimating the cost of publishing a slot header"
@@ -52,12 +53,13 @@ module Publish_slot_header : Benchmark.S = struct
 
   let workload_to_vector _ = Sparse_vec.String.of_list []
 
+  let group = Benchmark.Group "dal"
+
   let model =
     Model.make
+      ~name
       ~conv:(fun () -> ())
-      (Model.unknown_const1 ~name ~const:(fv "publish_slot_header_const"))
-
-  let models = [("dal", model)]
+      (Model.unknown_const1 ~const:(fv "publish_slot_header_const"))
 
   let operation_generator cryptobox rng_state =
     let open Result_syntax in
@@ -145,4 +147,4 @@ module Publish_slot_header : Benchmark.S = struct
     List.repeat bench_num (make_bench rng_state config)
 end
 
-let () = Registration_helpers.register (module Publish_slot_header)
+let () = Registration.register_simple_with_num (module Publish_slot_header)

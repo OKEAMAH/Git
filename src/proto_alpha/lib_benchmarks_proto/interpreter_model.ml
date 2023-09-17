@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let ns = Namespace.make Registration_helpers.ns "interpreter"
+let ns = Namespace.make Benchmarks_proto.Registration.ns "interpreter"
 
 let fv s = Free_variable.of_namespace (ns s)
 
@@ -824,7 +824,9 @@ let interpreter_model ?amplification pack_model sub_model =
       ((module Def) : Model.applied))
     ~sub_models:[pack_model sub_model]
 
-type benchmark_type = Registration_helpers.benchmark_type = Time | Alloc
+type benchmark_type = Benchmarks_proto.Registration.benchmark_type =
+  | Time
+  | Alloc
 
 let make_time_model ?amplification instr_name =
   let ir_model = ir_model instr_name in

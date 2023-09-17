@@ -53,7 +53,9 @@ type ex_stack_and_continuation =
 type ex_value =
   | Ex_value : {value : 'a; ty : ('a, _) Script_typed_ir.ty} -> ex_value
 
-type benchmark_type = Registration_helpers.benchmark_type = Time | Alloc
+type benchmark_type = Benchmarks_proto.Registration.benchmark_type =
+  | Time
+  | Alloc
 
 (* ------------------------------------------------------------------------- *)
 
@@ -469,7 +471,7 @@ let benchmark ?(benchmark_type = Time) ?amplification ?intercept ?more_tags
       ~kinstr_and_stack_sampler
       ()
   in
-  Registration_helpers.register ~benchmark_type bench
+  Benchmarks_proto.Registration.register_s ~benchmark_type bench
 
 let time_alloc_benchmark ?amplification ?intercept ?more_tags ?salt ?check ~name
     ~kinstr_and_stack_sampler () =
@@ -513,7 +515,7 @@ let benchmark_with_stack_sampler ?(benchmark_type = Time) ?amplification
       ~kinstr_and_stack_sampler
       ()
   in
-  Registration_helpers.register ~benchmark_type bench
+  Benchmarks_proto.Registration.register_s ~benchmark_type bench
 
 let benchmark_with_fixed_stack ?(benchmark_type = Time) ?amplification
     ?intercept ?more_tags ?salt ?check ~name ~stack_type ~stack ~kinstr () =
@@ -631,7 +633,7 @@ let simple_benchmark ?(benchmark_type = Time) ?amplification ?intercept_stack
       ~kinstr
       ()
   in
-  Registration_helpers.register ~benchmark_type bench ;
+  Benchmarks_proto.Registration.register_s ~benchmark_type bench ;
   Option.iter
     (fun stack ->
       benchmark_with_fixed_stack
@@ -895,7 +897,7 @@ let continuation_benchmark ?(benchmark_type = Time) ?amplification ?intercept
       ~cont_and_stack_sampler
       ()
   in
-  Registration_helpers.register ~benchmark_type bench
+  Benchmarks_proto.Registration.register_s ~benchmark_type bench
 
 let continuation_time_alloc_benchmark ?amplification ?intercept ?salt ?more_tags
     ?check ~name ~cont_and_stack_sampler () =
@@ -1022,7 +1024,7 @@ module Registration_section = struct
     end
   end
 
-  let () = Registration_helpers.register (module Amplification.Loop)
+  let () = Registration.register (module Amplification.Loop)
 
   module Stack = struct
     let () =
@@ -3433,11 +3435,11 @@ module Registration_section = struct
                     stack_instr)
                 transitions
       end in
-      Registration_helpers.register
+      Registration.register
         (module B (struct
           let value = Time
         end)) ;
-      Registration_helpers.register
+      Registration.register
         (module B (struct
           let value = Alloc
         end)) ;

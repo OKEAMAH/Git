@@ -73,7 +73,7 @@ end
   Benchmarks the [fold] functions of [Carbonated_map].
   This benchmark does not depend on the size of the keys or types of elements.
 *)
-module Fold_benchmark : Benchmark.S = struct
+module Fold_benchmark : Benchmark.Simple = struct
   include Config_and_workload
 
   module Int = struct
@@ -89,6 +89,7 @@ module Fold_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(fun {size} -> (size, ()))
       (Model.affine
          ~intercept:(fv "fold_const")
@@ -172,6 +173,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
 
     let model =
       Model.make
+        ~name
         ~conv:(fun () -> ())
         (Model.unknown_const1 ~const:(compare_var CS.type_name))
 
@@ -239,7 +241,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
       end in
       (module M : Model.Model_impl with type arg_type = int * unit)
 
-    let model = Model.make ~conv:(fun {size} -> (size, ())) find_model
+    let model = Model.make ~name ~conv:(fun {size} -> (size, ())) find_model
 
     let create_benchmark ~rng_state (config : config) =
       let _, list =
@@ -306,6 +308,7 @@ module Make (CS : COMPARABLE_SAMPLER) = struct
 
     let model =
       Model.make
+        ~name
         ~conv:(fun () -> ())
         (Model.unknown_const1 ~const:Find.fv_intercept)
 

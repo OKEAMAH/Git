@@ -36,7 +36,7 @@ open Benchmarks_proto
 open Storage_functors
 open Protocol
 
-let ns = Namespace.make Registration_helpers.ns "storage"
+let ns = Namespace.make Registration.ns "storage"
 
 let fv s = Free_variable.of_namespace (ns s)
 
@@ -174,8 +174,9 @@ module List_key_values_benchmark_boilerplate = struct
 
   let group = Benchmark.Group "storage_costs"
 
-  let model =
+  let model name =
     Model.make
+      ~name
       ~conv:(fun {size} -> (size, ()))
       (Model.affine
          ~intercept:(fv "list_key_values_intercept")
@@ -184,6 +185,8 @@ end
 
 module List_key_values_benchmark = struct
   include List_key_values_benchmark_boilerplate
+
+  let model = model name
 
   let module_filename = __FILE__
 
@@ -227,6 +230,8 @@ module List_key_values_benchmark_intercept = struct
   include List_key_values_benchmark_boilerplate
 
   let name = Namespace.make ns (Namespace.basename name) "intercept"
+
+  let model = model name
 
   let module_filename = __FILE__
 

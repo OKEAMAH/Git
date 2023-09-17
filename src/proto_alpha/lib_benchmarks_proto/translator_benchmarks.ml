@@ -566,11 +566,11 @@ let check_printable_benchmark =
       Generator.Plain {workload; closure})
     ()
 
-let () = Registration_helpers.register_simple_with_num check_printable_benchmark
+let () = Registration.register_simple_with_num check_printable_benchmark
 
 open Benchmarks_proto
 
-module Ty_eq : Benchmark.S = struct
+module Ty_eq : Benchmark.Simple = struct
   type config = {max_size : int}
 
   let config_encoding =
@@ -610,6 +610,7 @@ module Ty_eq : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~takes_saturation_reprs:true
       ~conv:(function Ty_eq_workload {nodes; _} -> (nodes, ()))
       Model.affine
@@ -736,7 +737,7 @@ let parse_ty ctxt node =
 
 let unparse_ty ctxt ty = Script_ir_unparser.unparse_ty ~loc:(-1) ctxt ty
 
-module Parse_type_benchmark : Benchmark.S = struct
+module Parse_type_benchmark : Benchmark.Simple = struct
   include Parse_type_shared
 
   let name = ns "PARSE_TYPE"
@@ -777,13 +778,14 @@ module Parse_type_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
       Model.affine
 end
 
 let () = Registration.register (module Parse_type_benchmark)
 
-module Unparse_type_benchmark : Benchmark.S = struct
+module Unparse_type_benchmark : Benchmark.Simple = struct
   include Parse_type_shared
 
   let name = ns "UNPARSE_TYPE"
@@ -823,6 +825,7 @@ module Unparse_type_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~takes_saturation_reprs:true
       ~conv:(function Type_workload {nodes; consumed = _} -> (nodes, ()))
       Model.affine

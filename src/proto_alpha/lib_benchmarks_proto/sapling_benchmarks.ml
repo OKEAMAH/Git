@@ -25,12 +25,13 @@
 
 open Protocol
 module Size = Gas_input_size
+open Benchmarks_proto
 
-let ns = Namespace.make Registration_helpers.ns "sapling"
+let ns = Namespace.make Registration.ns "sapling"
 
 let fv s = Free_variable.of_namespace (ns s)
 
-module Apply_diff_bench : Benchmark.S = struct
+module Apply_diff_bench : Benchmark.Simple_with_num = struct
   include Interpreter_benchmarks.Default_config
   include Interpreter_benchmarks.Default_boilerplate
 
@@ -75,7 +76,10 @@ module Apply_diff_bench : Benchmark.S = struct
     in
     Sparse_vec.String.of_list l
 
+  let group = Benchmark.Group "apply_diff"
+
   let model =
+    let open Tezos_benchmark in
     Model.make
       ~conv:(fun {nb_input; nb_output; _} -> (nb_input, (nb_output, ())))
       (Model.bilinear_affine
@@ -83,8 +87,6 @@ module Apply_diff_bench : Benchmark.S = struct
          ~intercept:(fv "apply_diff_const")
          ~coeff1:(fv "apply_diff_inputs")
          ~coeff2:(fv "apply_diff_outputs"))
-
-  let models = [("apply_diff", model)]
 
   let benchmark_apply_diff seed sapling_transition () =
     let open Lwt_result_syntax in
@@ -168,4 +170,4 @@ module Apply_diff_bench : Benchmark.S = struct
           transitions
 end
 
-let () = Registration_helpers.register (module Apply_diff_bench)
+let () = Registration.register_simple_with_num (module Apply_diff_bench)

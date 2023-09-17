@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let ns = Namespace.make Registration_helpers.ns "translator"
+let ns = Namespace.make Benchmarks_proto.Registration.ns "translator"
 
 let fv s = Free_variable.of_namespace (ns s)
 

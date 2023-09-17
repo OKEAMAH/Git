@@ -64,14 +64,14 @@ module Size_benchmarks_shared_config = struct
       (Model.affine ~intercept:intercept_variable ~coeff:coeff_variable)
 end
 
-module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
+module Value_size_benchmark : Benchmark.Simple_with_num = struct
   include Size_benchmarks_shared_config
 
   let name = ns "VALUE_SIZE"
 
-  let models =
-    let model = size_based_model ~name in
-    [(local_model_name, model)]
+  let group = Benchmark.Group local_model_name
+
+  let model = size_based_model ~name
 
   let info = "Benchmarking Script_typed_ir_size.value_size"
 
@@ -133,11 +133,11 @@ module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
         List.repeat bench_num (make_bench rng_state config)
 end
 
-let () = Registration_helpers.register (module Value_size_benchmark)
+let () = Registration.register_simple_with_num (module Value_size_benchmark)
 
 (** Benchmarking {!Script_typed_ir_size.ty_size}. *)
 
-module Type_size_benchmark : Benchmark.S = struct
+module Type_size_benchmark : Benchmark.Simple = struct
   include Size_benchmarks_shared_config
 
   type config = unit
@@ -157,7 +157,7 @@ module Type_size_benchmark : Benchmark.S = struct
 
   let group = Benchmark.Group local_model_name
 
-  let model = size_based_model
+  let model = size_based_model ~name
 
   let type_size_benchmark (Script_typed_ir.Ex_ty ty) =
     let open Script_typed_ir_size.Internal_for_tests in
@@ -183,12 +183,14 @@ let () = Registration.register (module Type_size_benchmark)
 
 (** Benchmarking {!Script_typed_ir_size.kinstr_size}. *)
 
-module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
+module Kinstr_size_benchmark : Benchmark.Simple_with_num = struct
   include Size_benchmarks_shared_config
 
   let name = ns "KINSTR_SIZE"
 
-  let models = [(local_model_name, size_based_model ~name)]
+  let group = Benchmark.Group local_model_name
+
+  let model = size_based_model ~name
 
   let info = "Benchmarking Script_typed_ir_size.kinstr_size"
 
@@ -264,9 +266,9 @@ module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
         List.repeat bench_num (make_bench rng_state config)
 end
 
-let () = Registration_helpers.register (module Kinstr_size_benchmark)
+let () = Registration.register_simple_with_num (module Kinstr_size_benchmark)
 
-module Node_size_benchmark : Benchmark.S = struct
+module Node_size_benchmark : Benchmark.Simple = struct
   include Script_repr_benchmarks.Script_repr_shared_config
 
   let name = ns "NODE_SIZE"
@@ -282,6 +284,7 @@ module Node_size_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(function {micheline_nodes} -> (micheline_nodes, ()))
       (Model.affine
          ~intercept:(fv (Format.asprintf "%s_const" (Namespace.basename name)))

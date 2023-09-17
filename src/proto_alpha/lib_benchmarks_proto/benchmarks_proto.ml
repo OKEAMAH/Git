@@ -24,84 +24,44 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Benchmark_base = Benchmark
-
-module Benchmark = struct
-  type group = Benchmark_base.group = Standalone | Group of string | Generic
-
-  type purpose = Benchmark_base.purpose =
-    | Other_purpose of string
-    | Generate_code of string
-
-  module type S = sig
-    val name : Namespace.t
-
-    val info : string
-
-    val module_filename : string
-
-    val group : group
-
-    val tags : string list
-
-    type config
-
-    val default_config : config
-
-    val config_encoding : config Data_encoding.t
-
-    type workload
-
-    val workload_encoding : workload Data_encoding.t
-
-    val workload_to_vector : workload -> Sparse_vec.String.t
-
-    val model : name:Namespace.t -> workload Model.t
-
-    val purpose : Benchmark_base.purpose
-
-    val create_benchmark :
-      rng_state:Random.State.t -> config -> workload Generator.benchmark
-  end
-
-  type t = (module S)
-end
-
 module Registration = struct
   let ns = Namespace.root
 
-  let register ((module Bench) : Benchmark.t) =
-    let module B : Benchmark_base.S = struct
+  let adjust_tags tags = Tags.common :: tags
+
+  type benchmark_type = Time | Alloc
+
+  let register_s ?(benchmark_type = Time) ((module Bench) : Benchmark.t) =
+    let module B : Benchmark.S = struct
       include Bench
 
-      let models =
-        [
-          ( (match Bench.group with
-            | Generic -> "*"
-            | Group g -> g
-            | Standalone -> Namespace.(cons Bench.name "model" |> to_string)),
-            Bench.model ~name );
-        ]
-
-      let create_benchmarks ~rng_state ~bench_num config =
-        List.repeat bench_num (fun () ->
-            Bench.create_benchmark ~rng_state config)
+      let tags = adjust_tags tags
     end in
-    Registration_helpers.register (module B)
+    Registration.register ~add_timer:(benchmark_type = Time) (module B)
 
-  let register_simple_with_num ((module Bench) : Benchmark_base.simple_with_num)
-      =
-    let module B : Benchmark_base.Simple_with_num = struct
+  let register ?(benchmark_type = Time) (module Bench : Benchmark.Simple) =
+    let module B = struct
       include Bench
 
-      let tags = Tags.common :: tags
+      let tags = adjust_tags tags
     end in
-    Registration.register_simple_with_num (module B)
+    Registration.register_simple ~add_timer:(benchmark_type = Time) (module B)
 
-  let register_as_simple_with_num ~group (module B : Benchmark_base.S) =
+  let register_simple_with_num ?(benchmark_type = Time)
+      (module Bench : Benchmark.Simple_with_num) =
+    let module B = struct
+      include Bench
+
+      let tags = adjust_tags tags
+    end in
+    Registration.register_simple_with_num
+      ~add_timer:(benchmark_type = Time)
+      (module B)
+
+  let register_as_simple_with_num ~group (module B : Benchmark.S) =
     let modules =
       List.map
-        (fun (model_name, model) : (module Benchmark_base.Simple_with_num) ->
+        (fun (model_name, model) : (module Benchmark.Simple_with_num) ->
           (module struct
             include B
 

@@ -23,8 +23,9 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Benchmarks_proto
 
-let ns = Namespace.make Registration_helpers.ns "sc_rollup"
+let ns = Namespace.make Registration.ns "sc_rollup"
 
 let fv s = Free_variable.of_namespace (ns s)
 
@@ -293,7 +294,7 @@ module Sc_rollup_verify_output_proof_benchmark = struct
 
   let purpose = Benchmark.Generate_code "sc_rollup"
 
-  let group = Benchmarks_proto.Benchmark.Group "sc_rollup"
+  let group = Benchmark.Group "sc_rollup"
 
   let tags = ["sc_rollup"]
 
@@ -424,8 +425,10 @@ module Sc_rollup_verify_output_proof_benchmark = struct
     Sparse_vec.String.of_list [("proof_length", float_of_int proof_length)]
 
   let model =
-    let open Benchmarks_proto in
-    Model.make ~conv:(fun {proof_length} -> (proof_length, ())) Model.affine
+    Model.make
+      ~name
+      ~conv:(fun {proof_length} -> (proof_length, ()))
+      Model.affine
 
   let pvm_state = ref None
 
@@ -505,7 +508,7 @@ module Sc_rollup_deserialize_output_proof_benchmark = struct
 
   let purpose = Benchmark.Generate_code "sc_rollup"
 
-  let group = Benchmarks_proto.Benchmark.Group "sc_rollup"
+  let group = Benchmark.Group "sc_rollup"
 
   let tags = ["sc_rollup"]
 
@@ -566,8 +569,10 @@ module Sc_rollup_deserialize_output_proof_benchmark = struct
     Sparse_vec.String.of_list [("proof_length", float_of_int proof_length)]
 
   let model =
-    let open Benchmarks_proto in
-    Model.make ~conv:(fun {proof_length} -> (proof_length, ())) Model.affine
+    Model.make
+      ~name
+      ~conv:(fun {proof_length} -> (proof_length, ()))
+      Model.affine
 
   let pvm_state = ref None
 
@@ -645,7 +650,7 @@ module Sc_rollup_install_boot_sector_benchmark = struct
 
   let name = ns "Sc_rollup_install_boot_sector_benchmark"
 
-  let group = Benchmarks_proto.Benchmark.Group "sc_rollup"
+  let group = Benchmark.Group "sc_rollup"
 
   let info = "Estimating the cost of installing a boot sector."
 
@@ -675,8 +680,8 @@ module Sc_rollup_install_boot_sector_benchmark = struct
       [("boot_sector_length", float_of_int boot_sector_length)]
 
   let model =
-    let open Benchmarks_proto in
     Model.make
+      ~name
       ~conv:(fun {boot_sector_length} -> (boot_sector_length, ()))
       Model.affine
 

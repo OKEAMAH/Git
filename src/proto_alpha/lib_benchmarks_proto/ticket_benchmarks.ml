@@ -66,7 +66,7 @@ exception
   }
 
 (** A benchmark for {!Ticket_costs.Constants.cost_compare_ticket_hash}. *)
-module Compare_ticket_hash_benchmark : Benchmark.S = struct
+module Compare_ticket_hash_benchmark : Benchmark.Simple = struct
   type config = unit
 
   let config_encoding = Data_encoding.unit
@@ -93,6 +93,7 @@ module Compare_ticket_hash_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(fun () -> ())
       (Model.unknown_const1 ~const:(fv "compare_ticket_hash"))
 
@@ -118,7 +119,7 @@ let () = Registration.register (module Compare_ticket_hash_benchmark)
     currently the carbonated maps only use originated contracts as keys.
     In addition, while developing this benchmark the implicit contracts were
     also tested and gave almost identical timings. *)
-module Compare_key_contract_benchmark : Benchmark.S = struct
+module Compare_key_contract_benchmark : Benchmark.Simple = struct
   type config = unit
 
   let config_encoding = Data_encoding.unit
@@ -145,6 +146,7 @@ module Compare_key_contract_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~conv:(fun () -> ())
       (Model.unknown_const1 ~const:(fv "compare_contract"))
 
@@ -189,7 +191,7 @@ let rec dummy_type_generator ~rng_state size =
         | Ok (Ty_ex_c t) -> Ex_ty t)
 
 (** A benchmark for {!Ticket_costs.Constants.cost_has_tickets_of_ty}. *)
-module Has_tickets_type_benchmark : Benchmark.S = struct
+module Has_tickets_type_benchmark : Benchmark.Simple = struct
   include Ticket_type_shared
 
   let name = ns "TYPE_HAS_TICKETS"
@@ -224,6 +226,7 @@ module Has_tickets_type_benchmark : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~takes_saturation_reprs:true
       ~conv:(function {nodes} -> (nodes, ()))
       Model.affine
@@ -239,7 +242,7 @@ let ticket_sampler rng_state =
     {ticketer; contents = Script_int.zero; amount = Ticket_amount.one}
 
 (** A benchmark for {!Ticket_costs.Constants.cost_collect_tickets_step}. *)
-module Collect_tickets_benchmark : Benchmark.S = struct
+module Collect_tickets_benchmark : Benchmark.Simple = struct
   include Ticket_type_shared
 
   let name = ns "COLLECT_TICKETS_STEP"
@@ -287,7 +290,8 @@ module Collect_tickets_benchmark : Benchmark.S = struct
     | Error trace ->
         raise (Ticket_benchmark_error {benchmark_name = name; trace})
 
-  let model = Model.make ~conv:(function {nodes} -> (nodes, ())) Model.affine
+  let model =
+    Model.make ~name ~conv:(function {nodes} -> (nodes, ())) Model.affine
 end
 
 let () = Registration.register (module Collect_tickets_benchmark)

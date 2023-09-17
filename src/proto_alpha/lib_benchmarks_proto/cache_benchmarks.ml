@@ -27,7 +27,7 @@
 open Protocol
 open Benchmarks_proto
 
-let ns = Namespace.make Registration_helpers.ns "cache"
+let ns = Namespace.make Registration.ns "cache"
 
 let fv s = Free_variable.of_namespace (ns s)
 
@@ -128,7 +128,7 @@ let prepare_context rng_state cache_cardinal =
 (** Benchmark {!Script_cache.update}. This almost directly calls {!Environment_cache.update}.
     We also use the result of this benchmark to assign a cost to {!Environment_cache.find},
     which alas can't be directly benchmarked from the interface provided by {!Script_cache}. *)
-module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
+module Cache_update_benchmark : Benchmark.Simple = struct
   include Cache_shared_config
 
   let name = ns "CACHE_UPDATE"
@@ -180,6 +180,7 @@ module Cache_update_benchmark : Benchmarks_proto.Benchmark.S = struct
     (* Looking at the plots, it looks like this benchmark underestimates the constant term.
        In the interpreter, this would warrant a dedicated benchmark for the intercept. *)
     Benchmarks_proto.Model.make
+      ~name
       ~conv:(function {cache_cardinal} -> (cache_cardinal, ()))
       affine_logn
 

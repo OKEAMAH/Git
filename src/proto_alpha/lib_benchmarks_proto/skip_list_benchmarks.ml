@@ -40,7 +40,7 @@ let fv s = Free_variable.of_namespace (ns s)
 
 (** Benchmark for the [Skip_list_repr.next] function. It is used for estimating
     the parameters for [Skip_list_cost_model.model_next]. *)
-module Next : Benchmark.S = struct
+module Next : Benchmark.Simple = struct
   let purpose = Benchmark.Generate_code "skip_list"
 
   include Skip_list
@@ -70,7 +70,7 @@ module Next : Benchmark.S = struct
   let workload_to_vector len =
     Sparse_vec.String.of_list [("len", float_of_int @@ len)]
 
-  let model = Model.make ~conv:(fun x -> (x, ())) Model.logn
+  let model = Model.make ~name ~conv:(fun x -> (x, ())) Model.logn
 
   let create_skip_list_of_len len =
     let rec go n cell =
@@ -100,7 +100,7 @@ end
    function. It is used for estimating the parameters for
    [Skip_list_cost_model.model_hash_cell]. The model estimates hashing
    a skip_list cell content and all its back pointers. *)
-module Hash_cell : Benchmark.S = struct
+module Hash_cell : Benchmark.Simple = struct
   let purpose = Benchmark.Generate_code "skip_list"
 
   let name = ns "hash_cell"
@@ -148,6 +148,7 @@ module Hash_cell : Benchmark.S = struct
 
   let model =
     Model.make
+      ~name
       ~takes_saturation_reprs:true
       ~conv:(fun {nb_backpointers} -> (nb_backpointers, ()))
       Model.affine
