@@ -1435,16 +1435,17 @@ let opened_ticket_type loc ty = comparable_pair_3_t loc address_t ty nat_t
 
 (* -- parse data of primitive types -- *)
 
-let parse_unit ctxt ~legacy =
-  let open Result_syntax in
+let parse_unit ~legacy =
+  let open Gas_monad.Syntax in
   function
   | Prim (loc, D_Unit, [], annot) ->
-      let* () =
-        if legacy (* Legacy check introduced before Ithaca. *) then return_unit
+      let*? () =
+        if legacy (* Legacy check introduced before Ithaca. *) then
+          Result.return_unit
         else error_unexpected_annot loc annot
       in
-      let+ ctxt = Gas.consume ctxt Typecheck_costs.unit in
-      ((), ctxt)
+      let+$ () = Typecheck_costs.unit in
+      ()
   | Prim (loc, D_Unit, l, _) ->
       tzfail @@ Invalid_arity (loc, D_Unit, 0, List.length l)
   | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Unit]
@@ -2081,6 +2082,14 @@ let rec parse_data :
   let fail_parse_data () = tzfail (parse_data_error ()) in
   let traced_no_lwt body = record_trace_eval parse_data_error body in
   let traced body = trace_eval parse_data_error body in
+  let traced_from_gas_monad ctxt body =
+    Lwt.return @@ traced_no_lwt
+    @@
+    let open Result_syntax in
+    let* res, ctxt = Gas_monad.run ctxt body in
+    let+ res in
+    (res, ctxt)
+  in
   let traced_fail err =
     Lwt.return @@ traced_no_lwt (Result_syntax.tzfail err)
   in
@@ -2206,8 +2215,8 @@ let rec parse_data :
   let legacy = elab_conf.legacy in
   match (ty, script_data) with
   | Unit_t, expr ->
-      Lwt.return @@ traced_no_lwt
-      @@ (parse_unit ctxt ~legacy expr : (a * context) tzresult)
+      traced_from_gas_monad ctxt
+      @@ (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
   | Bool_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bool ctxt ~legacy expr
   | String_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_string ctxt expr
   | Bytes_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bytes ctxt expr
