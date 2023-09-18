@@ -414,7 +414,7 @@ let test_unparse_comb_comparable_type () =
 
 let test_parse_data ?(equal = Stdlib.( = )) loc ctxt ty node expected =
   let open Lwt_result_wrap_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:false () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt in
   let allow_forged = true in
   let*@ actual, ctxt =
     Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
@@ -424,7 +424,7 @@ let test_parse_data ?(equal = Stdlib.( = )) loc ctxt ty node expected =
 
 let test_parse_data_fails loc ctxt ty node =
   let open Lwt_result_wrap_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:false () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt in
   let allow_forged = false in
   let*! result =
     Script_ir_translator.parse_data ctxt ~elab_conf ~allow_forged ty node
@@ -808,11 +808,11 @@ let gas_monad_run ctxt m =
 *)
 let test_contract_not_packable () =
   let open Lwt_result_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:false () in
   let contract_unit =
     Prim (0, Script.T_contract, [Prim (0, T_unit, [], [])], [])
   in
   let* ctxt = test_context () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt in
   (* Test that [contract_unit] is parsable *)
   let* () =
     match

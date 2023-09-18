@@ -562,7 +562,7 @@ module Raw = struct
         let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
         (step [@ocaml.tailcall]) (ctxt, sc) gas k ks None stack
       in
-      let legacy = Script_ir_translator_config.make ~legacy:true () in
+      let legacy = Script_ir_translator_config.make ~legacy:true ctxt in
       match addr.destination with
       | Contract (Implicit _) | Sc_rollup _ | Zk_rollup _ ->
           (return_none [@ocaml.tailcall]) ctxt
@@ -1769,7 +1769,7 @@ let lift_execution_arg (type a ac) ctxt ~internal (entrypoint_ty : (a, ac) ty)
         let arg = Micheline.root arg in
         parse_data
           ctxt
-          ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+          ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
           ~allow_forged:internal
           entrypoint_ty
           arg
@@ -1805,7 +1805,7 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
     Script_ir_translator_config.make
       ~legacy:true
       ~keep_extra_types_for_interpreter_logging:(Option.is_some logger)
-      ()
+      ctxt
   in
   let* ( Ex_script
            (Script

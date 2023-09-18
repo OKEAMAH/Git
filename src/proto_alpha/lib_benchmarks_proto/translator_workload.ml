@@ -117,7 +117,7 @@ let data_typechecker_workload ctxt t_kind micheline_node ex_ty =
         (let* res =
            Script_ir_translator.parse_data
              ctxt
-             ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
+             ~elab_conf:(Script_ir_translator_config.make ~legacy:false ctxt)
              ~allow_forged:false
              ty
              micheline_node
@@ -161,7 +161,7 @@ let code_typechecker_workload (ctxt : Protocol.Alpha_context.context)
        Script_ir_translator.parse_instr
          Script_tc_context.data
          ctxt
-         ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
+         ~elab_conf:(Script_ir_translator_config.make ~legacy:false ctxt)
          code
          stack_ty
        |> Lwt.map Environment.wrap_tzresult

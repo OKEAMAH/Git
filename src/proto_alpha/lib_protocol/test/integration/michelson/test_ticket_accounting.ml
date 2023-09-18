@@ -356,7 +356,7 @@ let origination_operation ctxt ~sender ~script:(code, storage) ~orig_contract =
           ctxt ) =
     Script_ir_translator.parse_script
       ctxt
-      ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+      ~elab_conf:(Script_ir_translator_config.make ~legacy:true ctxt)
       ~allow_forged_in_storage:true
       script
   in

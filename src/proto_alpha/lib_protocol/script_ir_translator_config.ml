@@ -75,7 +75,7 @@ type elab_config = {
   legacy : bool;  (** If set to true, it enables the legacy mode (see above). *)
 }
 
-(** [make ?type_logger ?logging_enabled ~legacy ()] creates an [elab_config]
+(** [make ?type_logger ?logging_enabled ~legacy ctxt] creates an [elab_config]
     record to be passed to parsing functions in [Script_ir_translator].
 
     Note: [?logging_enabled] defaults to [false], because it only ever should
@@ -85,7 +85,10 @@ let make :
     ?type_logger:type_logger ->
     ?keep_extra_types_for_interpreter_logging:bool ->
     legacy:bool ->
-    unit ->
+    context ->
     elab_config =
- fun ?type_logger ?(keep_extra_types_for_interpreter_logging = false) ~legacy () ->
+ fun ?type_logger
+     ?(keep_extra_types_for_interpreter_logging = false)
+     ~legacy
+     _ctxt ->
   {type_logger; keep_extra_types_for_interpreter_logging; legacy}

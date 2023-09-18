@@ -361,7 +361,7 @@ let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
     let* parsed_unparsed_parameters, ctxt =
       Script_ir_translator.parse_data
         ctxt
-        ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
+        ~elab_conf:Script_ir_translator_config.(make ~legacy:true ctxt)
         ~allow_forged:true
         parameters_ty
         (Environment.Micheline.root unparsed_parameters)

@@ -1059,7 +1059,7 @@ let apply_manager_operation :
             ctxt
             parameters
         in
-        let elab_conf = Script_ir_translator_config.make ~legacy:false () in
+        let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt in
         let+ ctxt, res, ops =
           match Entrypoint.to_string entrypoint with
           | "default" ->
@@ -1290,7 +1290,7 @@ let apply_manager_operation :
         let* Ex_script parsed_script, ctxt =
           Script_ir_translator.parse_script
             ctxt
-            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
             ~allow_forged_in_storage:false
             script
         in
@@ -1298,7 +1298,7 @@ let apply_manager_operation :
         let views_result =
           Script_ir_translator.parse_views
             ctxt
-            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
             storage_type
             views
         in

@@ -135,7 +135,7 @@ module Proto = struct
       let+ data, updated_ctxt =
         Lwt.map wrap_tzresult
         @@ Script_ir_translator.parse_data
-             ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+             ~elab_conf:(Script_ir_translator_config.make ~legacy:true ctxt)
              ctxt
              ~allow_forged
              ty
@@ -187,7 +187,7 @@ module Proto = struct
         Lwt.map wrap_tzresult
         @@ Script_ir_translator.parse_code
              ctxt
-             ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+             ~elab_conf:(Script_ir_translator_config.make ~legacy:true ctxt)
              ~code
       in
       parsed_code

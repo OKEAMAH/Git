@@ -1049,7 +1049,8 @@ module Interpreter_tests = struct
       let*@ Ex_script (Script script), ctxt =
         Script_ir_translator.parse_script
           ctx_without_gas_2
-          ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+          ~elab_conf:
+            (Script_ir_translator_config.make ~legacy:true ctx_without_gas_2)
           ~allow_forged_in_storage:true
           script
       in
@@ -1193,7 +1194,8 @@ module Interpreter_tests = struct
     let*@ (state_1, state_2), _ctx =
       Script_ir_translator.parse_storage
         ctx_without_gas
-        ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+        ~elab_conf:
+          (Script_ir_translator_config.make ~legacy:true ctx_without_gas)
         ~allow_forged:true
         tytype
         ~storage:storage_lazy_expr

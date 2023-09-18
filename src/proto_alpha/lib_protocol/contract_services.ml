@@ -54,7 +54,7 @@ let info_encoding =
        (opt "script" Script.encoding)
        (opt "counter" Manager_counter.encoding_for_RPCs)
 
-let legacy = Script_ir_translator_config.make ~legacy:true ()
+let legacy ctxt = Script_ir_translator_config.make ~legacy:true ctxt
 
 module S = struct
   open Data_encoding
@@ -311,7 +311,7 @@ module S = struct
           let*! tzresult =
             Script_ir_translator.parse_script
               ctxt
-              ~elab_conf:legacy
+              ~elab_conf:(legacy ctxt)
               ~allow_forged_in_storage:true
               script
           in
@@ -421,7 +421,7 @@ let register () =
             let* value, ctxt =
               parse_data
                 ctxt
-                ~elab_conf:legacy
+                ~elab_conf:(legacy ctxt)
                 ~allow_forged:true
                 value_type
                 (Micheline.root value)
@@ -450,7 +450,7 @@ let register () =
               let* value, ctxt =
                 parse_data
                   ctxt
-                  ~elab_conf:legacy
+                  ~elab_conf:(legacy ctxt)
                   ~allow_forged:true
                   value_type
                   (Micheline.root value)
@@ -523,7 +523,7 @@ let register () =
           let* Ex_script (Script {storage; storage_type; _}), ctxt =
             parse_script
               ctxt
-              ~elab_conf:legacy
+              ~elab_conf:(legacy ctxt)
               ~allow_forged_in_storage:true
               script
           in
@@ -659,7 +659,7 @@ let register () =
               let* Ex_script (Script script), ctxt =
                 parse_script
                   ctxt
-                  ~elab_conf:legacy
+                  ~elab_conf:(legacy ctxt)
                   ~allow_forged_in_storage:true
                   script
               in

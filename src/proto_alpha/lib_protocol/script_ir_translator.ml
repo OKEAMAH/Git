@@ -5302,7 +5302,9 @@ let typecheck_code :
       type_map := (loc, (stack_ty_before, stack_ty_after)) :: !type_map
     in
     let type_logger = if show_types then Some type_logger else None in
-    let elab_conf = Script_ir_translator_config.make ~legacy ?type_logger () in
+    let elab_conf =
+      Script_ir_translator_config.make ~legacy ?type_logger ctxt
+    in
     let result =
       parse_kdescr
         ~unparse_code_rec
@@ -5425,7 +5427,7 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
   let* storage, ctxt =
     parse_storage
       ~unparse_code_rec
-      ~elab_conf:(Script_ir_translator_config.make ~legacy ())
+      ~elab_conf:(Script_ir_translator_config.make ~legacy ctxt)
       ctxt
       ~allow_forged:allow_forged_in_storage
       storage_type
@@ -5963,7 +5965,8 @@ let parse_script ~elab_conf ctxt ~allow_forged_in_storage script =
 
 let parse_comparable_data ?type_logger ctxt ty t =
   parse_data
-    ~elab_conf:Script_ir_translator_config.(make ~legacy:false ?type_logger ())
+    ~elab_conf:
+      Script_ir_translator_config.(make ~legacy:false ?type_logger ctxt)
     ~allow_forged:false
     ctxt
     ty

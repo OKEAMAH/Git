@@ -777,7 +777,7 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
 
   and unparse_code_rec ctxt ~stack_depth mode code =
     let open Lwt_result_syntax in
-    let elab_conf = Script_ir_translator_config.make ~legacy:true () in
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
     let*? ctxt = Gas.consume ctxt Unparse_costs.unparse_instr_cycle in
     let non_terminal_recursion ctxt mode code =
       if Compare.Int.(stack_depth > 10_000) then

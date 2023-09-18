@@ -711,7 +711,7 @@ module Scripts = struct
            in
            Script_ir_translator.parse_data
              ctxt
-             ~elab_conf:(elab_conf ~legacy ())
+             ~elab_conf:(elab_conf ~legacy ctxt)
              ~allow_forged
              exp_ty
              (Micheline.root data))
@@ -830,7 +830,7 @@ module Scripts = struct
                    ty_node
             in
             let*? (Ex_ty ty) = res in
-            let elab_conf = elab_conf ~legacy () in
+            let elab_conf = elab_conf ~legacy ctxt in
             let* x, ctxt =
               Script_ir_translator.parse_data
                 ctxt
@@ -1621,7 +1621,7 @@ module Scripts = struct
           | None -> Gas.set_unlimited ctxt
           | Some gas -> Gas.set_limit ctxt gas
         in
-        let elab_conf = elab_conf ~legacy () in
+        let elab_conf = elab_conf ~legacy ctxt in
         let code = Script.lazy_expr expr in
         let* ( Ex_code
                  (Code
@@ -1684,7 +1684,7 @@ module Scripts = struct
         let* data, ctxt =
           parse_data
             ctxt
-            ~elab_conf:(elab_conf ~legacy:true ())
+            ~elab_conf:(elab_conf ~legacy:true ctxt)
             ~allow_forged:true
             typ
             (Micheline.root expr)
@@ -1705,7 +1705,7 @@ module Scripts = struct
         let* data, ctxt =
           parse_data
             ctxt
-            ~elab_conf:(elab_conf ~legacy ())
+            ~elab_conf:(elab_conf ~legacy ctxt)
             ~allow_forged:true
             typ
             (Micheline.root expr)
@@ -2054,7 +2054,7 @@ module Contract = struct
             let* Ex_script (Script {storage; storage_type; _}), ctxt =
               parse_script
                 ctxt
-                ~elab_conf:(elab_conf ~legacy:true ())
+                ~elab_conf:(elab_conf ~legacy:true ctxt)
                 ~allow_forged_in_storage:true
                 script
             in
@@ -2123,7 +2123,7 @@ module Contract = struct
             let* Ex_script (Script {storage; storage_type; _}), ctxt =
               Script_ir_translator.parse_script
                 ctxt
-                ~elab_conf:(elab_conf ~legacy:true ())
+                ~elab_conf:(elab_conf ~legacy:true ctxt)
                 ~allow_forged_in_storage:true
                 script
             in
@@ -2242,7 +2242,7 @@ module Big_map = struct
                 let* value, ctxt =
                   parse_data
                     ctxt
-                    ~elab_conf:(elab_conf ~legacy:true ())
+                    ~elab_conf:(elab_conf ~legacy:true ctxt)
                     ~allow_forged:true
                     value_type
                     (Micheline.root value)

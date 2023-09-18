@@ -785,7 +785,7 @@ let unpack ctxt ~ty ~bytes =
         let*! value_opt =
           parse_data
             ctxt
-            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
             ~allow_forged:false
             ty
             (Micheline.root expr)

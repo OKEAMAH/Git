@@ -48,7 +48,7 @@ let load_and_elaborate ctxt addr =
           parse_script
             ctxt
             script
-            ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
+            ~elab_conf:Script_ir_translator_config.(make ~legacy:true ctxt)
             ~allow_forged_in_storage:true
         in
         (* We consume gas after the fact in order to not have to instrument

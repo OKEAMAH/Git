@@ -1105,7 +1105,7 @@ module Registration_section = struct
                       Script_tc_context.data
                       ctxt
                       ~elab_conf:
-                        (Script_ir_translator_config.make ~legacy:false ())
+                        (Script_ir_translator_config.make ~legacy:false ctxt)
                       node
                       stack_ty
                   in

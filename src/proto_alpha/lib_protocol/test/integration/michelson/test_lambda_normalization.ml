@@ -44,7 +44,7 @@ let new_ctxt () =
 let parse_and_project (ty : ((_, _) lambda, _) ty) (node : Script.node) =
   let open Lwt_result_wrap_syntax in
   let* ctxt = new_ctxt () in
-  let elab_conf = Script_ir_translator_config.make ~legacy:false () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt in
   let*@ lam, _ctxt =
     Script_ir_translator.parse_data ~elab_conf ctxt ~allow_forged:false ty node
   in

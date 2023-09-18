@@ -76,7 +76,7 @@ let make_transaction ctxt ~parameters_ty ~unparsed_parameters ~destination
   let+ parameters, ctxt =
     Script_ir_translator.parse_data
       ctxt
-      ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+      ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
       ~allow_forged:true
       parameters_ty
       (Micheline.root unparsed_parameters)

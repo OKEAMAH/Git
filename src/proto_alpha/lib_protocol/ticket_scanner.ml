@@ -496,7 +496,7 @@ module Ticket_collection = struct
                   let+ v, ctxt =
                     Script_ir_translator.parse_data
                       ~elab_conf:
-                        Script_ir_translator_config.(make ~legacy:true ())
+                        Script_ir_translator_config.(make ~legacy:true ctxt)
                       ctxt
                       ~allow_forged:true
                       value_type
@@ -546,7 +546,7 @@ let tickets_of_node ctxt ~include_lazy has_tickets expr =
       let* value, ctxt =
         Script_ir_translator.parse_data
           ctxt
-          ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
+          ~elab_conf:Script_ir_translator_config.(make ~legacy:true ctxt)
           ~allow_forged:true
           ty
           expr

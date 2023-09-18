@@ -37,7 +37,7 @@ let fv s = Free_variable.of_namespace (ns s)
 
 let local_model_name = "script_typed_ir_size"
 
-let strict = Script_ir_translator_config.make ~legacy:false ()
+let strict ctxt = Script_ir_translator_config.make ~legacy:false ctxt
 
 module Size_benchmarks_shared_config = struct
   include Translator_benchmarks.Config
@@ -93,7 +93,7 @@ module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
              Lwt_main.run
                (Script_ir_translator.parse_data
                   ctxt
-                  ~elab_conf:strict
+                  ~elab_conf:(strict ctxt)
                   ~allow_forged:false
                   ty
                   (Micheline.root node))
@@ -213,7 +213,7 @@ module Kinstr_size_benchmark : Tezos_benchmark.Benchmark.S = struct
            (Script_ir_translator.parse_instr
               Script_tc_context.data
               ctxt
-              ~elab_conf:strict
+              ~elab_conf:(strict ctxt)
               node
               bef)
        with

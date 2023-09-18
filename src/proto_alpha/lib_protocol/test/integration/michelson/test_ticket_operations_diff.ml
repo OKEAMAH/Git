@@ -279,7 +279,7 @@ let origination_operation block ~sender ~baker ~script ~storage ~forges_tickets
           ctxt ) =
     Script_ir_translator.parse_script
       ctxt
-      ~elab_conf:(Script_ir_translator_config.make ~legacy:true ())
+      ~elab_conf:(Script_ir_translator_config.make ~legacy:true ctxt)
       ~allow_forged_in_storage:true
       script
   in
