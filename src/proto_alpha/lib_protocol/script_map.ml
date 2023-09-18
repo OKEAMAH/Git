@@ -145,3 +145,32 @@ let map_es_in_context :
           let size = Box.size
         end),
       ctxt )
+
+let map_in_gas_monad :
+    type key value value' trace.
+    (key -> value -> (value', trace) Gas_monad.t) ->
+    (key, value) map ->
+    ((key, value') map, trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun f (Map_tag (module Box)) ->
+    let+ map =
+      Box.OPS.fold
+        (fun key value map ->
+          let* map in
+          let+ value = f key value in
+          Box.OPS.add key value map)
+        Box.boxed
+        (return Box.OPS.empty)
+    in
+    Map_tag
+      (module struct
+        type key = Box.key
+
+        type value = value'
+
+        module OPS = Box.OPS
+
+        let boxed = map
+
+        let size = Box.size
+      end)

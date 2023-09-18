@@ -78,3 +78,8 @@ val map_es_in_context :
   'context ->
   ('key, 'value1) map ->
   (('key, 'value2) map * 'context) tzresult Lwt.t
+
+val map_in_gas_monad :
+  ('key -> 'value1 -> ('value2, 'trace) Gas_monad.t) ->
+  ('key, 'value1) map ->
+  (('key, 'value2) map, 'trace) Gas_monad.t
