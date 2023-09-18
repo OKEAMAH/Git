@@ -73,6 +73,8 @@ type elab_config = {
         result in a crash. This cannot be helped at the moment, but since 
         logging is never enabled during validation, we should be safe. *)
   legacy : bool;  (** If set to true, it enables the legacy mode (see above). *)
+  sc_rollup_enable : bool;
+  zk_rollup_enable : bool;
 }
 
 (** [make ?type_logger ?logging_enabled ~legacy ctxt] creates an [elab_config]
@@ -90,5 +92,11 @@ let make :
  fun ?type_logger
      ?(keep_extra_types_for_interpreter_logging = false)
      ~legacy
-     _ctxt ->
-  {type_logger; keep_extra_types_for_interpreter_logging; legacy}
+     ctxt ->
+  {
+    type_logger;
+    keep_extra_types_for_interpreter_logging;
+    legacy;
+    sc_rollup_enable = Constants.sc_rollup_enable ctxt;
+    zk_rollup_enable = Constants.zk_rollup_enable ctxt;
+  }
