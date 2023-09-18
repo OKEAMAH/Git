@@ -58,7 +58,7 @@ let test_reward_coeff_ratio () =
   let curve stake_ratio =
     compute_reward_coeff_ratio
       ~stake_ratio
-      ~bonus:Issuance_bonus_repr.zero
+      ~bonus:Q.zero
       ~issuance_ratio_max:(Q.of_int 100)
       ~issuance_ratio_min:(Q.of_int (-100))
   in
@@ -68,8 +68,8 @@ let test_reward_coeff_ratio () =
   let* () = assert_eq ~loc:__LOC__ (curve Q.(1 // 100)) Q.(100 // 16) in
   let* () = assert_eq ~loc:__LOC__ (curve Q.(1 // 2)) Q.(1 // 400) in
   (* Test bonus *)
-  let max_bonus = Issuance_bonus_repr.max_bonus_parameter_of_Q_exn Q.one in
-  let*?@ bonus = Issuance_bonus_repr.of_Q ~max_bonus Q.(1 // 5) in
+  let _max_bonus = Q.one in
+  let bonus = Q.(1 // 5) in
   (* If bounds are not reached, the bonus is an additive component of the curve *)
   let* () =
     assert_eq
@@ -89,7 +89,7 @@ let test_reward_coeff_ratio () =
       ~loc:__LOC__
       (compute_reward_coeff_ratio
          ~stake_ratio:Q.(1 // 10)
-         ~bonus:Issuance_bonus_repr.zero
+         ~bonus:Q.zero
          ~issuance_ratio_max:bound
          ~issuance_ratio_min:(Q.of_int (-100)))
       bound
@@ -100,7 +100,7 @@ let test_reward_coeff_ratio () =
       ~loc:__LOC__
       (compute_reward_coeff_ratio
          ~stake_ratio:Q.one
-         ~bonus:Issuance_bonus_repr.zero
+         ~bonus:Q.zero
          ~issuance_ratio_max:(Q.of_int 100)
          ~issuance_ratio_min:bound)
       bound
@@ -133,10 +133,8 @@ let test_compute_bonus () =
     Lwt_main.run
       (let total_supply = Tez_repr.of_mutez_exn total in
        let total_frozen_stake = Tez_repr.of_mutez_exn frozen in
-       let*?@ previous_bonus =
-         Issuance_bonus_repr.of_Q ~max_bonus:reward_params.max_bonus previous
-       in
-       let*?@ bonus =
+       let previous_bonus = previous in
+       let bonus =
          compute_bonus
            ~seconds_per_cycle
            ~total_supply

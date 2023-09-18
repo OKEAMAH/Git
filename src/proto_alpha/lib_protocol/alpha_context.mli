@@ -2272,7 +2272,7 @@ module Delegate : sig
       (** Reward computation functions *)
       val compute_reward_coeff_ratio :
         stake_ratio:Q.t ->
-        bonus:Issuance_bonus_repr.t ->
+        bonus:Q.t ->
         issuance_ratio_max:Q.t ->
         issuance_ratio_min:Q.t ->
         Q.t
@@ -2281,9 +2281,9 @@ module Delegate : sig
         seconds_per_cycle:int64 ->
         total_supply:Tez_repr.t ->
         total_frozen_stake:Tez_repr.t ->
-        previous_bonus:Issuance_bonus_repr.t ->
+        previous_bonus:Q.t ->
         reward_params:Constants.Parametric.adaptive_rewards_params ->
-        Issuance_bonus_repr.t tzresult
+        Q.t
     end
   end
 

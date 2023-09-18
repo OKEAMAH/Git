@@ -329,7 +329,22 @@ module For_RPC = struct
 end
 
 module Internal_for_tests = struct
-  let compute_reward_coeff_ratio = compute_reward_coeff_ratio
+  let compute_reward_coeff_ratio ~stake_ratio ~bonus =
+    compute_reward_coeff_ratio
+      ~stake_ratio
+      ~bonus:Q.(to_int64 (mul bonus (of_int64 bonus_unit)))
 
-  let compute_bonus = compute_bonus
+  let compute_bonus ~seconds_per_cycle ~total_supply ~total_frozen_stake
+      ~previous_bonus ~reward_params =
+    Q.(
+      div
+        (of_int64
+        @@ compute_bonus
+             ~seconds_per_cycle
+             ~total_supply
+             ~total_frozen_stake
+             ~previous_bonus:
+               Q.(to_int64 (mul previous_bonus (of_int64 bonus_unit)))
+             ~reward_params)
+        (Q.of_int64 bonus_unit))
 end
