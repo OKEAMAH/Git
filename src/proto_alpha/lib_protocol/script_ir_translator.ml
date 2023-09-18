@@ -2237,8 +2237,8 @@ let rec parse_data :
   | Address_t, expr ->
       traced_from_gas_monad ctxt
       @@ parse_address
-           ~sc_rollup_enable:(Constants.sc_rollup_enable ctxt)
-           ~zk_rollup_enable:(Constants.zk_rollup_enable ctxt)
+           ~sc_rollup_enable:elab_conf.sc_rollup_enable
+           ~zk_rollup_enable:elab_conf.zk_rollup_enable
            expr
   | Contract_t (arg_ty, _), expr ->
       traced
