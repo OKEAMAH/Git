@@ -1824,90 +1824,6 @@ let parse_chest :
 
 (* -- parse data of complex types -- *)
 
-let parse_pair (type r) parse_l parse_r ctxt ~legacy
-    (r_comb_witness : (r, unit -> _) comb_witness) expr =
-  let open Lwt_result_syntax in
-  let parse_comb loc l rs =
-    let* l, ctxt = parse_l ctxt l in
-    let*? r =
-      match (rs, r_comb_witness) with
-      | [r], _ -> Ok r
-      | [], _ -> Result_syntax.tzfail @@ Invalid_arity (loc, D_Pair, 2, 1)
-      | _ :: _, Comb_Pair _ ->
-          (* Unfold [Pair x1 ... xn] as [Pair x1 (Pair x2 ... xn-1 xn))]
-             for type [pair ta (pair tb1 tb2)] and n >= 3 only *)
-          Ok (Prim (loc, D_Pair, rs, []))
-      | _ ->
-          Result_syntax.tzfail
-          @@ Invalid_arity (loc, D_Pair, 2, 1 + List.length rs)
-    in
-    let+ r, ctxt = parse_r ctxt r in
-    ((l, r), ctxt)
-  in
-  match expr with
-  | Prim (loc, D_Pair, l :: rs, annot) ->
-      let*? () =
-        if legacy (* Legacy check introduced before Ithaca. *) then
-          Result_syntax.return_unit
-        else error_unexpected_annot loc annot
-      in
-      parse_comb loc l rs
-  | Prim (loc, D_Pair, l, _) ->
-      tzfail @@ Invalid_arity (loc, D_Pair, 2, List.length l)
-  (* Unfold [{x1; ...; xn}] as [Pair x1 x2 ... xn-1 xn] for n >= 2 *)
-  | Seq (loc, l :: (_ :: _ as rs)) -> parse_comb loc l rs
-  | Seq (loc, l) -> tzfail @@ Invalid_seq_arity (loc, 2, List.length l)
-  | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Pair]
-
-let parse_or parse_l parse_r ctxt ~legacy =
-  let open Lwt_result_syntax in
-  function
-  | Prim (loc, D_Left, [v], annot) ->
-      let*? () =
-        if legacy (* Legacy check introduced before Ithaca. *) then
-          Result_syntax.return_unit
-        else error_unexpected_annot loc annot
-      in
-      let+ v, ctxt = parse_l ctxt v in
-      (L v, ctxt)
-  | Prim (loc, D_Left, l, _) ->
-      tzfail @@ Invalid_arity (loc, D_Left, 1, List.length l)
-  | Prim (loc, D_Right, [v], annot) ->
-      let*? () =
-        if legacy (* Legacy check introduced before Ithaca. *) then
-          Result_syntax.return_unit
-        else error_unexpected_annot loc annot
-      in
-      let+ v, ctxt = parse_r ctxt v in
-      (R v, ctxt)
-  | Prim (loc, D_Right, l, _) ->
-      tzfail @@ Invalid_arity (loc, D_Right, 1, List.length l)
-  | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Left; D_Right]
-
-let parse_option parse_v ctxt ~legacy =
-  let open Lwt_result_syntax in
-  function
-  | Prim (loc, D_Some, [v], annot) ->
-      let*? () =
-        if legacy (* Legacy check introduced before Ithaca. *) then
-          Result_syntax.return_unit
-        else error_unexpected_annot loc annot
-      in
-      let+ v, ctxt = parse_v ctxt v in
-      (Some v, ctxt)
-  | Prim (loc, D_Some, l, _) ->
-      tzfail @@ Invalid_arity (loc, D_Some, 1, List.length l)
-  | Prim (loc, D_None, [], annot) ->
-      let*? () =
-        if legacy (* Legacy check introduced before Ithaca. *) then
-          Result_syntax.return_unit
-        else error_unexpected_annot loc annot
-      in
-      return (None, ctxt)
-  | Prim (loc, D_None, l, _) ->
-      tzfail @@ Invalid_arity (loc, D_None, 0, List.length l)
-  | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Some; D_None]
-
 let comb_witness1 : type t tc. (t, tc) ty -> (t, unit -> unit) comb_witness =
   function
   | Pair_t _ -> Comb_Pair Comb_Any
@@ -4937,6 +4853,90 @@ struct
 end
 
 module Parse_data (M : GAS_MONAD) = struct
+  let parse_pair (type r) parse_l parse_r ctxt ~legacy
+      (r_comb_witness : (r, unit -> _) comb_witness) expr =
+    let open Lwt_result_syntax in
+    let parse_comb loc l rs =
+      let* l, ctxt = parse_l ctxt l in
+      let*? r =
+        match (rs, r_comb_witness) with
+        | [r], _ -> Ok r
+        | [], _ -> Result_syntax.tzfail @@ Invalid_arity (loc, D_Pair, 2, 1)
+        | _ :: _, Comb_Pair _ ->
+            (* Unfold [Pair x1 ... xn] as [Pair x1 (Pair x2 ... xn-1 xn))]
+               for type [pair ta (pair tb1 tb2)] and n >= 3 only *)
+            Ok (Prim (loc, D_Pair, rs, []))
+        | _ ->
+            Result_syntax.tzfail
+            @@ Invalid_arity (loc, D_Pair, 2, 1 + List.length rs)
+      in
+      let+ r, ctxt = parse_r ctxt r in
+      ((l, r), ctxt)
+    in
+    match expr with
+    | Prim (loc, D_Pair, l :: rs, annot) ->
+        let*? () =
+          if legacy (* Legacy check introduced before Ithaca. *) then
+            Result_syntax.return_unit
+          else error_unexpected_annot loc annot
+        in
+        parse_comb loc l rs
+    | Prim (loc, D_Pair, l, _) ->
+        tzfail @@ Invalid_arity (loc, D_Pair, 2, List.length l)
+    (* Unfold [{x1; ...; xn}] as [Pair x1 x2 ... xn-1 xn] for n >= 2 *)
+    | Seq (loc, l :: (_ :: _ as rs)) -> parse_comb loc l rs
+    | Seq (loc, l) -> tzfail @@ Invalid_seq_arity (loc, 2, List.length l)
+    | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Pair]
+
+  let parse_or parse_l parse_r ctxt ~legacy =
+    let open Lwt_result_syntax in
+    function
+    | Prim (loc, D_Left, [v], annot) ->
+        let*? () =
+          if legacy (* Legacy check introduced before Ithaca. *) then
+            Result_syntax.return_unit
+          else error_unexpected_annot loc annot
+        in
+        let+ v, ctxt = parse_l ctxt v in
+        (L v, ctxt)
+    | Prim (loc, D_Left, l, _) ->
+        tzfail @@ Invalid_arity (loc, D_Left, 1, List.length l)
+    | Prim (loc, D_Right, [v], annot) ->
+        let*? () =
+          if legacy (* Legacy check introduced before Ithaca. *) then
+            Result_syntax.return_unit
+          else error_unexpected_annot loc annot
+        in
+        let+ v, ctxt = parse_r ctxt v in
+        (R v, ctxt)
+    | Prim (loc, D_Right, l, _) ->
+        tzfail @@ Invalid_arity (loc, D_Right, 1, List.length l)
+    | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Left; D_Right]
+
+  let parse_option parse_v ctxt ~legacy =
+    let open Lwt_result_syntax in
+    function
+    | Prim (loc, D_Some, [v], annot) ->
+        let*? () =
+          if legacy (* Legacy check introduced before Ithaca. *) then
+            Result_syntax.return_unit
+          else error_unexpected_annot loc annot
+        in
+        let+ v, ctxt = parse_v ctxt v in
+        (Some v, ctxt)
+    | Prim (loc, D_Some, l, _) ->
+        tzfail @@ Invalid_arity (loc, D_Some, 1, List.length l)
+    | Prim (loc, D_None, [], annot) ->
+        let*? () =
+          if legacy (* Legacy check introduced before Ithaca. *) then
+            Result_syntax.return_unit
+          else error_unexpected_annot loc annot
+        in
+        return (None, ctxt)
+    | Prim (loc, D_None, l, _) ->
+        tzfail @@ Invalid_arity (loc, D_None, 0, List.length l)
+    | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Some; D_None]
+
   (* -- parse data of any type -- *)
 
   (*
