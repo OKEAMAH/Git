@@ -2244,9 +2244,23 @@ let parse_contract_for_script :
       | Ok res -> Some res
       | Error Inconsistent_types_fast -> None )
 
+type parse_packable_data = {
+  parse_packable_data :
+    'a 'ac.
+    unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    elab_conf:elab_conf ->
+    stack_depth:int ->
+    allow_forged:bool ->
+    ('a, 'ac) ty ->
+    Script.node ->
+    context ->
+    ('a * context) tzresult Lwt.t;
+}
+
 let rec parse_view :
     type storage storagec.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     context ->
     (storage, storagec) ty ->
@@ -2254,6 +2268,7 @@ let rec parse_view :
     (storage typed_view * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
   fun ~unparse_code_rec
+      ~parse_packable_data
       ~elab_conf
       ctxt
       storage_type
@@ -2285,6 +2300,7 @@ let rec parse_view :
     let* judgement, ctxt =
       parse_instr
         ~unparse_code_rec
+        ~parse_packable_data
         ~elab_conf
         ~stack_depth:0
         Tc_context.view
@@ -2329,26 +2345,34 @@ let rec parse_view :
 and parse_views :
     type storage storagec.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     context ->
     (storage, storagec) ty ->
     view_map ->
     (storage typed_view_map * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt storage_type views ->
+  fun ~unparse_code_rec ~parse_packable_data ~elab_conf ctxt storage_type views ->
     let aux ctxt name cur_view =
       let*? ctxt =
         Gas.consume
           ctxt
           (Michelson_v1_gas.Cost_of.Interpreter.view_update name views)
       in
-      parse_view ~unparse_code_rec ~elab_conf ctxt storage_type cur_view
+      parse_view
+        ~unparse_code_rec
+        ~parse_packable_data
+        ~elab_conf
+        ctxt
+        storage_type
+        cur_view
     in
     Script_map.map_es_in_context aux ctxt views
 
 and parse_kdescr :
     type arg argc ret retc.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     stack_depth:int ->
     tc_context ->
@@ -2359,6 +2383,7 @@ and parse_kdescr :
     ((arg, end_of_stack, ret, end_of_stack) kdescr * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
   fun ~unparse_code_rec
+      ~parse_packable_data
       ~elab_conf
       ~stack_depth
       tc_context
@@ -2369,6 +2394,7 @@ and parse_kdescr :
     let* result =
       parse_instr
         ~unparse_code_rec
+        ~parse_packable_data
         ~elab_conf
         tc_context
         ctxt
@@ -2404,6 +2430,7 @@ and parse_kdescr :
 and parse_lam_rec :
     type arg argc ret retc.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     stack_depth:int ->
     tc_context ->
@@ -2414,6 +2441,7 @@ and parse_lam_rec :
     Script.node ->
     ((arg, ret) lambda * context) tzresult Lwt.t =
  fun ~unparse_code_rec
+     ~parse_packable_data
      ~elab_conf
      ~stack_depth
      tc_context
@@ -2426,6 +2454,7 @@ and parse_lam_rec :
   let* result =
     parse_instr
       ~unparse_code_rec
+      ~parse_packable_data
       ~elab_conf
       tc_context
       ctxt
@@ -2477,6 +2506,7 @@ and parse_lam_rec :
 and parse_instr :
     type a s.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     stack_depth:int ->
     tc_context ->
@@ -2485,6 +2515,7 @@ and parse_instr :
     (a, s) stack_ty ->
     ((a, s) judgement * context) tzresult Lwt.t =
  fun ~unparse_code_rec
+     ~parse_packable_data
      ~elab_conf
      ~stack_depth
      tc_context
@@ -2534,6 +2565,7 @@ and parse_instr :
     else
       parse_instr
         ~unparse_code_rec
+        ~parse_packable_data
         ~elab_conf
         tc_context
         ctxt
@@ -2686,7 +2718,7 @@ and parse_instr :
       in
       let*? (Ex_ty t) = t in
       let* v, ctxt =
-        parse_data
+        parse_packable_data.parse_packable_data
           ~unparse_code_rec
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
@@ -3485,6 +3517,7 @@ and parse_instr :
       let* kdescr, ctxt =
         parse_kdescr
           ~unparse_code_rec
+          ~parse_packable_data
           (Tc_context.add_lambda tc_context)
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
@@ -3521,6 +3554,7 @@ and parse_instr :
         parse_lam_rec
           ~unparse_code_rec:(fun ctxt ~stack_depth:_ _unparsing_mode node ->
             return (node, ctxt))
+          ~parse_packable_data
           (* No need to normalize the unparsed component to Optimized mode here
              because the script is already normalized in Optimized mode. *)
           Tc_context.(add_lambda tc_context)
@@ -4151,6 +4185,7 @@ and parse_instr :
           (Ill_typed_contract (canonical_code, []))
           (parse_kdescr
              ~unparse_code_rec
+             ~parse_packable_data
              (Tc_context.toplevel
                 ~storage_type
                 ~param_type:arg_type
@@ -4165,7 +4200,13 @@ and parse_instr :
       match result with
       | {kbef = Item_t (arg, Bot_t); kaft = Item_t (ret, Bot_t); _}, ctxt ->
           let views_result =
-            parse_views ~unparse_code_rec ctxt ~elab_conf storage_type views
+            parse_views
+              ~unparse_code_rec
+              ~parse_packable_data
+              ctxt
+              ~elab_conf
+              storage_type
+              views
           in
           let* _typed_views, ctxt =
             trace (Ill_typed_contract (canonical_code, [])) views_result
@@ -4690,9 +4731,10 @@ and parse_instr :
              - storage after origination
            *)
 
-and parse_data :
+let rec parse_data_rec :
     type a ac.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    parse_packable_data:parse_packable_data ->
     elab_conf:elab_conf ->
     stack_depth:int ->
     allow_forged:bool ->
@@ -4700,15 +4742,23 @@ and parse_data :
     Script.node ->
     context ->
     (a * context) tzresult Lwt.t =
- fun ~unparse_code_rec ~elab_conf ~stack_depth ~allow_forged ty script_data ctxt ->
+ fun ~unparse_code_rec
+     ~parse_packable_data
+     ~elab_conf
+     ~stack_depth
+     ~allow_forged
+     ty
+     script_data
+     ctxt ->
   let open Lwt_result_syntax in
   let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_data_cycle in
   let non_terminal_recursion ctxt ty script_data =
     if Compare.Int.(stack_depth > 10_000) then
       tzfail Typechecking_too_many_recursive_calls
     else
-      parse_data
+      parse_data_rec
         ~unparse_code_rec
+        ~parse_packable_data
         ~elab_conf
         ~stack_depth:(stack_depth + 1)
         ~allow_forged
@@ -4917,6 +4967,7 @@ and parse_data :
         traced
         @@ parse_kdescr
              ~unparse_code_rec
+             ~parse_packable_data
              Tc_context.data
              ~elab_conf
              ~stack_depth:(stack_depth + 1)
@@ -4937,6 +4988,7 @@ and parse_data :
       @@ let*? lambda_rec_ty = lambda_t loc ta tr in
          parse_lam_rec
            ~unparse_code_rec
+           ~parse_packable_data
            Tc_context.(add_lambda data)
            ~elab_conf
            ~stack_depth:(stack_depth + 1)
@@ -5131,6 +5183,18 @@ and parse_data :
   | Chest_key_t, expr -> traced_from_gas_monad ctxt @@ parse_chest_key expr
   | Chest_t, expr -> traced_from_gas_monad ctxt @@ parse_chest expr
 
+let rec parse_data :
+    type a ac.
+    unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
+    elab_conf:elab_conf ->
+    stack_depth:int ->
+    allow_forged:bool ->
+    (a, ac) ty ->
+    Script.node ->
+    context ->
+    (a * context) tzresult Lwt.t =
+  parse_data_rec ~parse_packable_data:{parse_packable_data = parse_data}
+
 let view_size view =
   let open Script_typed_ir_size in
   node_size view.view_code ++ node_size view.input_ty
@@ -5204,6 +5268,7 @@ let parse_code :
         (Ill_typed_contract (code, []))
         (parse_kdescr
            ~unparse_code_rec
+           ~parse_packable_data:{parse_packable_data = parse_data}
            Tc_context.(toplevel ~storage_type ~param_type:arg_type ~entrypoints)
            ~elab_conf
            ctxt
@@ -5352,6 +5417,7 @@ let typecheck_code :
     let result =
       parse_kdescr
         ~unparse_code_rec
+        ~parse_packable_data:{parse_packable_data = parse_data}
         (Tc_context.toplevel ~storage_type ~param_type:arg_type ~entrypoints)
         ctxt
         ~elab_conf
@@ -5364,7 +5430,13 @@ let typecheck_code :
       trace (Ill_typed_contract (code, !type_map)) result
     in
     let views_result =
-      parse_views ~unparse_code_rec ctxt ~elab_conf storage_type views
+      parse_views
+        ~unparse_code_rec
+        ~parse_packable_data:{parse_packable_data = parse_data}
+        ctxt
+        ~elab_conf
+        storage_type
+        views
     in
     let+ typed_views, ctxt =
       trace (Ill_typed_contract (code, !type_map)) views_result
@@ -5990,10 +6062,22 @@ let list_of_big_map_ids ids =
   Lazy_storage.IdSet.fold Big_map (fun id acc -> id :: acc) ids []
 
 let parse_view ~elab_conf ctxt ty view =
-  parse_view ~unparse_code_rec ~elab_conf ctxt ty view
+  parse_view
+    ~unparse_code_rec
+    ~parse_packable_data:{parse_packable_data = parse_data}
+    ~elab_conf
+    ctxt
+    ty
+    view
 
 let parse_views ~elab_conf ctxt ty views =
-  parse_views ~unparse_code_rec ~elab_conf ctxt ty views
+  parse_views
+    ~unparse_code_rec
+    ~parse_packable_data:{parse_packable_data = parse_data}
+    ~elab_conf
+    ctxt
+    ty
+    views
 
 let parse_code ~elab_conf ctxt ~code =
   parse_code ~unparse_code_rec ~elab_conf ctxt ~code
@@ -6015,6 +6099,7 @@ let parse_instr :
  fun ~elab_conf tc_context ctxt script_instr stack_ty ->
   parse_instr
     ~unparse_code_rec
+    ~parse_packable_data:{parse_packable_data = parse_data}
     ~elab_conf
     ~stack_depth:0
     tc_context
