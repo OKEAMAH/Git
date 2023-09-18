@@ -4853,11 +4853,11 @@ struct
 end
 
 module Parse_data (M : GAS_MONAD) = struct
-  let parse_pair (type r) parse_l parse_r ctxt ~legacy
+  let parse_pair (type r) parse_l parse_r ~legacy
       (r_comb_witness : (r, unit -> _) comb_witness) expr =
-    let open Lwt_result_syntax in
+    let open M in
     let parse_comb loc l rs =
-      let* l, ctxt = parse_l ctxt l in
+      let* l = parse_l l in
       let*? r =
         match (rs, r_comb_witness) with
         | [r], _ -> Ok r
@@ -4870,8 +4870,8 @@ module Parse_data (M : GAS_MONAD) = struct
             Result_syntax.tzfail
             @@ Invalid_arity (loc, D_Pair, 2, 1 + List.length rs)
       in
-      let+ r, ctxt = parse_r ctxt r in
-      ((l, r), ctxt)
+      let+ r = parse_r r in
+      (l, r)
     in
     match expr with
     | Prim (loc, D_Pair, l :: rs, annot) ->
@@ -4888,8 +4888,8 @@ module Parse_data (M : GAS_MONAD) = struct
     | Seq (loc, l) -> tzfail @@ Invalid_seq_arity (loc, 2, List.length l)
     | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Pair]
 
-  let parse_or parse_l parse_r ctxt ~legacy =
-    let open Lwt_result_syntax in
+  let parse_or parse_l parse_r ~legacy =
+    let open M in
     function
     | Prim (loc, D_Left, [v], annot) ->
         let*? () =
@@ -4897,8 +4897,8 @@ module Parse_data (M : GAS_MONAD) = struct
             Result_syntax.return_unit
           else error_unexpected_annot loc annot
         in
-        let+ v, ctxt = parse_l ctxt v in
-        (L v, ctxt)
+        let+ v = parse_l v in
+        L v
     | Prim (loc, D_Left, l, _) ->
         tzfail @@ Invalid_arity (loc, D_Left, 1, List.length l)
     | Prim (loc, D_Right, [v], annot) ->
@@ -4907,14 +4907,14 @@ module Parse_data (M : GAS_MONAD) = struct
             Result_syntax.return_unit
           else error_unexpected_annot loc annot
         in
-        let+ v, ctxt = parse_r ctxt v in
-        (R v, ctxt)
+        let+ v = parse_r v in
+        R v
     | Prim (loc, D_Right, l, _) ->
         tzfail @@ Invalid_arity (loc, D_Right, 1, List.length l)
     | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Left; D_Right]
 
-  let parse_option parse_v ctxt ~legacy =
-    let open Lwt_result_syntax in
+  let parse_option parse_v ~legacy =
+    let open M in
     function
     | Prim (loc, D_Some, [v], annot) ->
         let*? () =
@@ -4922,8 +4922,8 @@ module Parse_data (M : GAS_MONAD) = struct
             Result_syntax.return_unit
           else error_unexpected_annot loc annot
         in
-        let+ v, ctxt = parse_v ctxt v in
-        (Some v, ctxt)
+        let+ v = parse_v v in
+        Some v
     | Prim (loc, D_Some, l, _) ->
         tzfail @@ Invalid_arity (loc, D_Some, 1, List.length l)
     | Prim (loc, D_None, [], annot) ->
@@ -4932,7 +4932,7 @@ module Parse_data (M : GAS_MONAD) = struct
             Result_syntax.return_unit
           else error_unexpected_annot loc annot
         in
-        return (None, ctxt)
+        return None
     | Prim (loc, D_None, l, _) ->
         tzfail @@ Invalid_arity (loc, D_None, 0, List.length l)
     | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Some; D_None]
@@ -4961,19 +4961,17 @@ module Parse_data (M : GAS_MONAD) = struct
       allow_forged:bool ->
       (a, ac) ty ->
       Script.node ->
-      context ->
-      (a * context) tzresult Lwt.t =
+      (a, error trace) M.t =
    fun ~unparse_code_rec
        ~parse_packable_data
        ~elab_conf
        ~stack_depth
        ~allow_forged
        ty
-       script_data
-       ctxt ->
-    let open Lwt_result_syntax in
-    let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_data_cycle in
-    let non_terminal_recursion ctxt ty script_data =
+       script_data ->
+    let open M in
+    let*$ () = Typecheck_costs.parse_data_cycle in
+    let non_terminal_recursion ty script_data =
       if Compare.Int.(stack_depth > 10_000) then
         tzfail Typechecking_too_many_recursive_calls
       else
@@ -4985,30 +4983,19 @@ module Parse_data (M : GAS_MONAD) = struct
           ~allow_forged
           ty
           script_data
-          ctxt
     in
     let parse_data_error () =
       let ty = serialize_ty_for_error ty in
       Invalid_constant (location script_data, strip_locations script_data, ty)
     in
     let fail_parse_data () = tzfail (parse_data_error ()) in
-    let traced_no_lwt body = record_trace_eval parse_data_error body in
-    let traced body = trace_eval parse_data_error body in
-    let traced_from_gas_monad ctxt body =
-      Lwt.return @@ traced_no_lwt
-      @@
-      let open Result_syntax in
-      let* res, ctxt = Gas_monad.run ctxt body in
-      let+ res in
-      (res, ctxt)
-    in
-    let traced_fail err =
-      Lwt.return @@ traced_no_lwt (Result_syntax.tzfail err)
-    in
-    let parse_items ctxt expr key_type value_type items item_wrapper =
-      let+ _, items, ctxt =
-        List.fold_left_es
-          (fun (last_value, map, ctxt) item ->
+    let traced body = record_trace_eval parse_data_error body in
+    let traced_from_gas_monad body = traced (from_gas_monad body) in
+    let traced_fail err = traced (tzfail err) in
+    let parse_items expr key_type value_type items item_wrapper =
+      let+ _, items =
+        list_fold_left
+          (fun (last_value, map) item ->
             match item with
             | Prim (loc, D_Elt, [k; v], annot) ->
                 let*? () =
@@ -5018,19 +5005,16 @@ module Parse_data (M : GAS_MONAD) = struct
                   then Result_syntax.return_unit
                   else error_unexpected_annot loc annot
                 in
-                let* k, ctxt = non_terminal_recursion ctxt key_type k in
-                let* v, ctxt = non_terminal_recursion ctxt value_type v in
-                let*? ctxt =
-                  let open Result_syntax in
+                let* k = non_terminal_recursion key_type k in
+                let* v = non_terminal_recursion value_type v in
+                let* () =
                   match last_value with
                   | Some value ->
-                      let* ctxt =
-                        Gas.consume
-                          ctxt
-                          (Michelson_v1_gas.Cost_of.Interpreter.compare
-                             key_type
-                             value
-                             k)
+                      let*$ () =
+                        Michelson_v1_gas.Cost_of.Interpreter.compare
+                          key_type
+                          value
+                          k
                       in
                       let c =
                         Script_comparable.compare_comparable key_type value k
@@ -5042,32 +5026,29 @@ module Parse_data (M : GAS_MONAD) = struct
                         else
                           tzfail
                             (Unordered_map_keys (loc, strip_locations expr))
-                      else return ctxt
-                  | None -> return ctxt
+                      else return_unit
+                  | None -> return_unit
                 in
-                let*? ctxt =
-                  Gas.consume
-                    ctxt
-                    (Michelson_v1_gas.Cost_of.Interpreter.map_update k map)
+                let*$ () =
+                  Michelson_v1_gas.Cost_of.Interpreter.map_update k map
                 in
-                return
-                  (Some k, Script_map.update k (Some (item_wrapper v)) map, ctxt)
+                return (Some k, Script_map.update k (Some (item_wrapper v)) map)
             | Prim (loc, D_Elt, l, _) ->
                 tzfail @@ Invalid_arity (loc, D_Elt, 2, List.length l)
             | Prim (loc, name, _, _) ->
                 tzfail @@ Invalid_primitive (loc, [D_Elt], name)
             | Int _ | String _ | Bytes _ | Seq _ -> fail_parse_data ())
-          (None, Script_map.empty key_type, ctxt)
+          (None, Script_map.empty key_type)
           items
         |> traced
       in
-      (items, ctxt)
+      items
     in
-    let parse_big_map_items (type t) ctxt expr (key_type : t comparable_ty)
+    let parse_big_map_items (type t) expr (key_type : t comparable_ty)
         value_type items item_wrapper =
-      let+ _, map, ctxt =
-        List.fold_left_es
-          (fun (last_key, {map; size}, ctxt) item ->
+      let+ _, map =
+        list_fold_left
+          (fun (last_key, {map; size}) item ->
             match item with
             | Prim (loc, D_Elt, [k; v], annot) ->
                 let*? () =
@@ -5077,20 +5058,17 @@ module Parse_data (M : GAS_MONAD) = struct
                   then Result_syntax.return_unit
                   else error_unexpected_annot loc annot
                 in
-                let* k, ctxt = non_terminal_recursion ctxt key_type k in
-                let* key_hash, ctxt = hash_comparable_data ctxt key_type k in
-                let* v, ctxt = non_terminal_recursion ctxt value_type v in
-                let*? ctxt =
-                  let open Result_syntax in
+                let* k = non_terminal_recursion key_type k in
+                let* key_hash = hash_comparable_data key_type k in
+                let* v = non_terminal_recursion value_type v in
+                let* () =
                   match last_key with
                   | Some last_key ->
-                      let* ctxt =
-                        Gas.consume
-                          ctxt
-                          (Michelson_v1_gas.Cost_of.Interpreter.compare
-                             key_type
-                             last_key
-                             k)
+                      let*$ () =
+                        Michelson_v1_gas.Cost_of.Interpreter.compare
+                          key_type
+                          last_key
+                          k
                       in
                       let c =
                         Script_comparable.compare_comparable key_type last_key k
@@ -5102,14 +5080,12 @@ module Parse_data (M : GAS_MONAD) = struct
                         else
                           tzfail
                             (Unordered_map_keys (loc, strip_locations expr))
-                      else return ctxt
-                  | None -> return ctxt
+                      else return_unit
+                  | None -> return_unit
                 in
-                let*? ctxt =
-                  Gas.consume
-                    ctxt
-                    (Michelson_v1_gas.Cost_of.Interpreter.big_map_update
-                       {map; size})
+                let*$ () =
+                  Michelson_v1_gas.Cost_of.Interpreter.big_map_update
+                    {map; size}
                 in
                 if Big_map_overlay.mem key_hash map then
                   tzfail (Duplicate_map_keys (loc, strip_locations expr))
@@ -5120,80 +5096,74 @@ module Parse_data (M : GAS_MONAD) = struct
                         map =
                           Big_map_overlay.add key_hash (k, item_wrapper v) map;
                         size = size + 1;
-                      },
-                      ctxt )
+                      } )
             | Prim (loc, D_Elt, l, _) ->
                 tzfail @@ Invalid_arity (loc, D_Elt, 2, List.length l)
             | Prim (loc, name, _, _) ->
                 tzfail @@ Invalid_primitive (loc, [D_Elt], name)
             | Int _ | String _ | Bytes _ | Seq _ -> fail_parse_data ())
-          (None, {map = Big_map_overlay.empty; size = 0}, ctxt)
+          (None, {map = Big_map_overlay.empty; size = 0})
           items
         |> traced
       in
-      (map, ctxt)
+      map
     in
     let legacy = elab_conf.legacy in
     match (ty, script_data) with
     | Unit_t, expr ->
-        traced_from_gas_monad ctxt
-        @@ (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
-    | Bool_t, expr -> traced_from_gas_monad ctxt @@ parse_bool ~legacy expr
-    | String_t, expr -> traced_from_gas_monad ctxt @@ parse_string expr
-    | Bytes_t, expr -> traced_from_gas_monad ctxt @@ parse_bytes expr
-    | Int_t, expr -> traced_from_gas_monad ctxt @@ parse_int expr
-    | Nat_t, expr -> traced_from_gas_monad ctxt @@ parse_nat expr
-    | Mutez_t, expr -> traced_from_gas_monad ctxt @@ parse_mutez expr
-    | Timestamp_t, expr -> traced_from_gas_monad ctxt @@ parse_timestamp expr
-    | Key_t, expr -> traced_from_gas_monad ctxt @@ parse_key expr
-    | Key_hash_t, expr -> traced_from_gas_monad ctxt @@ parse_key_hash expr
-    | Signature_t, expr -> traced_from_gas_monad ctxt @@ parse_signature expr
+        traced_from_gas_monad
+          (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
+    | Bool_t, expr -> traced_from_gas_monad @@ parse_bool ~legacy expr
+    | String_t, expr -> traced_from_gas_monad @@ parse_string expr
+    | Bytes_t, expr -> traced_from_gas_monad @@ parse_bytes expr
+    | Int_t, expr -> traced_from_gas_monad @@ parse_int expr
+    | Nat_t, expr -> traced_from_gas_monad @@ parse_nat expr
+    | Mutez_t, expr -> traced_from_gas_monad @@ parse_mutez expr
+    | Timestamp_t, expr -> traced_from_gas_monad @@ parse_timestamp expr
+    | Key_t, expr -> traced_from_gas_monad @@ parse_key expr
+    | Key_hash_t, expr -> traced_from_gas_monad @@ parse_key_hash expr
+    | Signature_t, expr -> traced_from_gas_monad @@ parse_signature expr
     | Operation_t, _ ->
         (* operations cannot appear in parameters or storage,
             the protocol should never parse the bytes of an operation *)
         assert false
-    | Chain_id_t, expr -> traced_from_gas_monad ctxt @@ parse_chain_id expr
+    | Chain_id_t, expr -> traced_from_gas_monad @@ parse_chain_id expr
     | Address_t, expr ->
-        traced_from_gas_monad ctxt
+        traced_from_gas_monad
         @@ parse_address
              ~sc_rollup_enable:elab_conf.sc_rollup_enable
              ~zk_rollup_enable:elab_conf.zk_rollup_enable
              expr
     | Contract_t (arg_ty, _), expr ->
         traced
-          (let*? address, ctxt =
-             Gas_monad.run ctxt
+        @@ let* address =
+             from_gas_monad
              @@ parse_address
-                  ~sc_rollup_enable:(Constants.sc_rollup_enable ctxt)
-                  ~zk_rollup_enable:(Constants.zk_rollup_enable ctxt)
+                  ~sc_rollup_enable:elab_conf.sc_rollup_enable
+                  ~zk_rollup_enable:elab_conf.zk_rollup_enable
                   expr
            in
-           let*? address in
            let loc = location expr in
-           let+ ctxt, typed_contract =
-             parse_contract_data
-               ~stack_depth:(stack_depth + 1)
-               ctxt
-               loc
-               arg_ty
-               address.destination
-               ~entrypoint:address.entrypoint
-           in
-           (typed_contract, ctxt))
+           parse_contract_data
+             ~stack_depth:(stack_depth + 1)
+             loc
+             arg_ty
+             address.destination
+             ~entrypoint:address.entrypoint
     (* Pairs *)
     | Pair_t (tl, tr, _, _), expr ->
         let r_witness = comb_witness1 tr in
-        let parse_l ctxt v = non_terminal_recursion ctxt tl v in
-        let parse_r ctxt v = non_terminal_recursion ctxt tr v in
-        traced @@ parse_pair parse_l parse_r ctxt ~legacy r_witness expr
+        let parse_l v = non_terminal_recursion tl v in
+        let parse_r v = non_terminal_recursion tr v in
+        traced @@ parse_pair parse_l parse_r ~legacy r_witness expr
     (* Ors *)
     | Or_t (tl, tr, _, _), expr ->
-        let parse_l ctxt v = non_terminal_recursion ctxt tl v in
-        let parse_r ctxt v = non_terminal_recursion ctxt tr v in
-        traced @@ parse_or parse_l parse_r ctxt ~legacy expr
+        let parse_l v = non_terminal_recursion tl v in
+        let parse_r v = non_terminal_recursion tr v in
+        traced @@ parse_or parse_l parse_r ~legacy expr
     (* Lambdas *)
     | Lambda_t (ta, tr, _ty_name), (Seq (_loc, _) as script_instr) ->
-        let* kdescr, ctxt =
+        let* kdescr =
           traced
           @@ parse_kdescr
                ~unparse_code_rec
@@ -5201,14 +5171,12 @@ module Parse_data (M : GAS_MONAD) = struct
                Tc_context.data
                ~elab_conf
                ~stack_depth:(stack_depth + 1)
-               ctxt
                ta
                tr
                script_instr
         in
         (normalized_lam [@ocaml.tailcall])
           ~unparse_code_rec
-          ctxt
           ~stack_depth
           kdescr
           script_instr
@@ -5222,7 +5190,6 @@ module Parse_data (M : GAS_MONAD) = struct
              Tc_context.(add_lambda data)
              ~elab_conf
              ~stack_depth:(stack_depth + 1)
-             ctxt
              ta
              tr
              lambda_rec_ty
@@ -5231,16 +5198,16 @@ module Parse_data (M : GAS_MONAD) = struct
         traced_fail (Invalid_kind (location expr, [Seq_kind], kind expr))
     (* Options *)
     | Option_t (t, _, _), expr ->
-        let parse_v ctxt v = non_terminal_recursion ctxt t v in
-        traced @@ parse_option parse_v ctxt ~legacy expr
+        let parse_v v = non_terminal_recursion t v in
+        traced @@ parse_option parse_v ~legacy expr
     (* Lists *)
     | List_t (t, _ty_name), Seq (_loc, items) ->
         traced
-        @@ List.fold_left_es
-             (fun (rest, ctxt) v ->
-               let+ v, ctxt = non_terminal_recursion ctxt t v in
-               (Script_list.cons v rest, ctxt))
-             (Script_list.empty, ctxt)
+        @@ list_fold_left
+             (fun rest v ->
+               let+ v = non_terminal_recursion t v in
+               Script_list.cons v rest)
+             Script_list.empty
              (List.rev items)
     | List_t _, expr ->
         traced_fail (Invalid_kind (location expr, [Seq_kind], kind expr))
@@ -5248,35 +5215,29 @@ module Parse_data (M : GAS_MONAD) = struct
     | Ticket_t (t, _ty_name), expr ->
         if allow_forged then
           let*? ty = opened_ticket_type (location expr) t in
-          let* ({destination; entrypoint = _}, (contents, amount)), ctxt =
-            non_terminal_recursion ctxt ty expr
+          let* {destination; entrypoint = _}, (contents, amount) =
+            non_terminal_recursion ty expr
           in
           match Ticket_amount.of_n amount with
           | Some amount -> (
               match destination with
-              | Contract ticketer -> return ({ticketer; contents; amount}, ctxt)
+              | Contract ticketer -> return {ticketer; contents; amount}
               | Sc_rollup _ | Zk_rollup _ ->
                   tzfail (Unexpected_ticket_owner destination))
           | None -> traced_fail Forbidden_zero_ticket_quantity
         else traced_fail (Unexpected_forged_value (location expr))
     (* Sets *)
     | Set_t (t, _ty_name), (Seq (loc, vs) as expr) ->
-        let+ _, set, ctxt =
+        let+ _, set =
           traced
-          @@ List.fold_left_es
-               (fun (last_value, set, ctxt) v ->
-                 let* v, ctxt = non_terminal_recursion ctxt t v in
-                 let*? ctxt =
-                   let open Result_syntax in
+          @@ list_fold_left
+               (fun (last_value, set) v ->
+                 let* v = non_terminal_recursion t v in
+                 let* () =
                    match last_value with
                    | Some value ->
-                       let* ctxt =
-                         Gas.consume
-                           ctxt
-                           (Michelson_v1_gas.Cost_of.Interpreter.compare
-                              t
-                              value
-                              v)
+                       let*$ () =
+                         Michelson_v1_gas.Cost_of.Interpreter.compare t value v
                        in
                        let c = Script_comparable.compare_comparable t value v in
                        if Compare.Int.(0 <= c) then
@@ -5286,44 +5247,37 @@ module Parse_data (M : GAS_MONAD) = struct
                          else
                            tzfail
                              (Unordered_set_values (loc, strip_locations expr))
-                       else return ctxt
-                   | None -> return ctxt
+                       else return_unit
+                   | None -> return_unit
                  in
-                 let*? ctxt =
-                   Gas.consume
-                     ctxt
-                     (Michelson_v1_gas.Cost_of.Interpreter.set_update v set)
+                 let*$ () =
+                   Michelson_v1_gas.Cost_of.Interpreter.set_update v set
                  in
-                 return (Some v, Script_set.update v true set, ctxt))
-               (None, Script_set.empty t, ctxt)
+                 return (Some v, Script_set.update v true set))
+               (None, Script_set.empty t)
                vs
         in
-        (set, ctxt)
+        set
     | Set_t _, expr ->
         traced_fail (Invalid_kind (location expr, [Seq_kind], kind expr))
     (* Maps *)
     | Map_t (tk, tv, _ty_name), (Seq (_, vs) as expr) ->
-        parse_items ctxt expr tk tv vs (fun x -> x)
+        parse_items expr tk tv vs (fun x -> x)
     | Map_t _, expr ->
         traced_fail (Invalid_kind (location expr, [Seq_kind], kind expr))
     | Big_map_t (tk, tv, _ty_name), expr ->
-        let* id_opt, diff, ctxt =
+        let* id_opt, diff =
           match expr with
           | Int (loc, id) ->
-              return
-                (Some (id, loc), {map = Big_map_overlay.empty; size = 0}, ctxt)
+              return (Some (id, loc), {map = Big_map_overlay.empty; size = 0})
           | Seq (_, vs) ->
-              let+ diff, ctxt =
-                parse_big_map_items ctxt expr tk tv vs (fun x -> Some x)
-              in
-              (None, diff, ctxt)
+              let+ diff = parse_big_map_items expr tk tv vs (fun x -> Some x) in
+              (None, diff)
           | Prim (loc, D_Pair, [Int (loc_id, id); Seq (_, vs)], annot) ->
               let*? () = error_unexpected_annot loc annot in
               let*? tv_opt = option_t loc tv in
-              let+ diff, ctxt =
-                parse_big_map_items ctxt expr tk tv_opt vs (fun x -> x)
-              in
-              (Some (id, loc_id), diff, ctxt)
+              let+ diff = parse_big_map_items expr tk tv_opt vs (fun x -> x) in
+              (Some (id, loc_id), diff)
           | Prim (_, D_Pair, [Int _; expr], _) ->
               traced_fail (Invalid_kind (location expr, [Seq_kind], kind expr))
           | Prim (_, D_Pair, [expr; _], _) ->
@@ -5338,84 +5292,77 @@ module Parse_data (M : GAS_MONAD) = struct
                    Constant_namespace
                    [D_Pair])
         in
-        let+ id, ctxt =
+        let+ id =
           match id_opt with
-          | None -> return (None, ctxt)
+          | None -> return None
           | Some (id, loc) ->
               if allow_forged then
                 let id = Big_map.Id.parse_z id in
-                let* ctxt, tys_opt = Big_map.exists ctxt id in
+                let* tys_opt = big_map_exists id in
                 match tys_opt with
                 | None -> traced_fail (Invalid_big_map (loc, id))
                 | Some (btk, btv) ->
-                    let*? res, ctxt =
-                      Gas_monad.run ctxt
-                      @@
-                      let open Gas_monad.Syntax in
-                      let* (Ex_comparable_ty btk) =
-                        parse_comparable_ty
-                          ~stack_depth:(stack_depth + 1)
-                          (Micheline.root btk)
-                      in
-                      let* (Ex_ty btv) =
-                        parse_big_map_value_ty
-                          ~stack_depth:(stack_depth + 1)
-                          ~legacy
-                          (Micheline.root btv)
-                      in
-                      let+ Eq =
-                        let error_details = Informative loc in
-                        let* Eq = ty_eq ~error_details tk btk in
-                        ty_eq ~error_details tv btv
-                      in
-                      Some id
+                    from_gas_monad
+                    @@
+                    let open Gas_monad.Syntax in
+                    let* (Ex_comparable_ty btk) =
+                      parse_comparable_ty
+                        ~stack_depth:(stack_depth + 1)
+                        (Micheline.root btk)
                     in
-                    let*? res in
-                    return (res, ctxt)
+                    let* (Ex_ty btv) =
+                      parse_big_map_value_ty
+                        ~stack_depth:(stack_depth + 1)
+                        ~legacy
+                        (Micheline.root btv)
+                    in
+                    let+ Eq =
+                      let error_details = Informative loc in
+                      let* Eq = ty_eq ~error_details tk btk in
+                      ty_eq ~error_details tv btv
+                    in
+                    Some id
               else traced_fail (Unexpected_forged_value loc)
         in
-        (Big_map {id; diff; key_type = tk; value_type = tv}, ctxt)
-    | Never_t, expr -> traced_from_gas_monad ctxt @@ parse_never expr
+        Big_map {id; diff; key_type = tk; value_type = tv}
+    | Never_t, expr -> traced_from_gas_monad @@ parse_never expr
     (* Bls12_381 types *)
-    | Bls12_381_g1_t, expr ->
-        traced_from_gas_monad ctxt @@ parse_bls12_381_g1 expr
-    | Bls12_381_g2_t, expr ->
-        traced_from_gas_monad ctxt @@ parse_bls12_381_g2 expr
-    | Bls12_381_fr_t, expr ->
-        traced_from_gas_monad ctxt @@ parse_bls12_381_fr expr
+    | Bls12_381_g1_t, expr -> traced_from_gas_monad @@ parse_bls12_381_g1 expr
+    | Bls12_381_g2_t, expr -> traced_from_gas_monad @@ parse_bls12_381_g2 expr
+    | Bls12_381_fr_t, expr -> traced_from_gas_monad @@ parse_bls12_381_fr expr
     (*
                    /!\ When adding new lazy storage kinds, you may want to guard the parsing
                    of identifiers with [allow_forged].
                *)
     (* Sapling *)
     | Sapling_transaction_t memo_size, expr ->
-        traced_from_gas_monad ctxt @@ parse_sapling_transaction ~memo_size expr
+        traced_from_gas_monad @@ parse_sapling_transaction ~memo_size expr
     | Sapling_transaction_deprecated_t memo_size, expr ->
-        traced_from_gas_monad ctxt
+        traced_from_gas_monad
         @@ parse_sapling_transaction_deprecated ~memo_size expr
     | Sapling_state_t memo_size, Int (loc, id) ->
         if allow_forged then
           let id = Sapling.Id.parse_z id in
-          let* state, ctxt = Sapling.state_from_id ctxt id in
-          let*? () =
-            traced_no_lwt
-            @@ memo_size_eq
+          let* state = sapling_state_from_id id in
+          traced
+          @@ let*? () =
+               memo_size_eq
                  ~error_details:(Informative ())
                  memo_size
                  state.Sapling.memo_size
-          in
-          return (state, ctxt)
+             in
+             return state
         else traced_fail (Unexpected_forged_value loc)
     | Sapling_state_t memo_size, Seq (_, []) ->
-        return (Sapling.empty_state ~memo_size (), ctxt)
+        return (Sapling.empty_state ~memo_size ())
     | Sapling_state_t _, expr ->
         (* Do not allow to input diffs as they are untrusted and may not be the
             result of a verify_update. *)
         traced_fail
           (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
     (* Time lock*)
-    | Chest_key_t, expr -> traced_from_gas_monad ctxt @@ parse_chest_key expr
-    | Chest_t, expr -> traced_from_gas_monad ctxt @@ parse_chest expr
+    | Chest_key_t, expr -> traced_from_gas_monad @@ parse_chest_key expr
+    | Chest_t, expr -> traced_from_gas_monad @@ parse_chest expr
 end
 
 open Parse_data (LGM)
