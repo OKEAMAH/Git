@@ -2690,10 +2690,10 @@ and parse_instr :
           ~unparse_code_rec
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
-          ctxt
           ~allow_forged:false
           t
           d
+          ctxt
       in
       let push = {apply = (fun k -> IPush (loc, t, v, k))} in
       typed ctxt loc push (Item_t (t, stack))
@@ -4695,12 +4695,12 @@ and parse_data :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     stack_depth:int ->
-    context ->
     allow_forged:bool ->
     (a, ac) ty ->
     Script.node ->
+    context ->
     (a * context) tzresult Lwt.t =
- fun ~unparse_code_rec ~elab_conf ~stack_depth ctxt ~allow_forged ty script_data ->
+ fun ~unparse_code_rec ~elab_conf ~stack_depth ~allow_forged ty script_data ctxt ->
   let open Lwt_result_syntax in
   let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_data_cycle in
   let non_terminal_recursion ctxt ty script_data =
@@ -4711,10 +4711,10 @@ and parse_data :
         ~unparse_code_rec
         ~elab_conf
         ~stack_depth:(stack_depth + 1)
-        ctxt
         ~allow_forged
         ty
         script_data
+        ctxt
   in
   let parse_data_error () =
     let ty = serialize_ty_for_error ty in
@@ -5243,10 +5243,10 @@ let parse_storage :
          ~unparse_code_rec
          ~elab_conf
          ~stack_depth:0
-         ctxt
          ~allow_forged
          storage_type
-         (root storage))
+         (root storage)
+         ctxt)
 
 let parse_script :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
@@ -6023,7 +6023,7 @@ let parse_instr :
     stack_ty
 
 let parse_data ~elab_conf ctxt ~allow_forged ty t =
-  parse_data ~unparse_code_rec ~elab_conf ~allow_forged ~stack_depth:0 ctxt ty t
+  parse_data ~unparse_code_rec ~elab_conf ~allow_forged ~stack_depth:0 ty t ctxt
 
 let parse_comparable_data ?type_logger ctxt ty t =
   parse_data

@@ -178,11 +178,11 @@ module type MICHELSON_PARSER = sig
     unparse_code_rec:unparse_code_rec ->
     elab_conf:Script_ir_translator_config.elab_config ->
     stack_depth:int ->
-    context ->
     allow_forged:bool ->
     ('a, 'ac) ty ->
     Script.node ->
-    ('a * t) tzresult Lwt.t
+    context ->
+    ('a * context) tzresult Lwt.t
 end
 
 module Data_unparser : functor (P : MICHELSON_PARSER) -> sig
