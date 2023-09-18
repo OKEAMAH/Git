@@ -414,10 +414,7 @@ end
 
 module Helpers = struct
   let endpoint dal_node =
-    Printf.sprintf
-      "http://%s:%d"
-      (Dal_node.rpc_host dal_node)
-      (Dal_node.rpc_port dal_node)
+    Dal_node.as_foreign_rpc_endpoint dal_node |> Foreign_endpoint.as_string
 
   let pad n message =
     let padding = String.make n '\000' in

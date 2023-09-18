@@ -3430,6 +3430,8 @@ let _test_gs_prune_ihave_and_iwant protocol parameters _cryptobox node client
   let* () = iwant_events_waiter and* () = ihave_events_waiter in
   unit
 
+(* XXX *)
+
 (* Checks that:
    * the baker does not crash when there's a DAL node specified, but it is not
    running
@@ -3476,20 +3478,12 @@ let test_baker_registers_profiles protocol _parameters _cryptobox l1_node client
     [dal_node2] should connect to [dal_node1] at startup.
     [dal_node3] should also connect to [dal_node1] at startup.
     [dal_node2] and [dal_node3] should find each other via [dal_node1]. *)
-let test_peer_discovery_via_bootstrap_node _protocol _parameters _cryptobox node
-    client dal_node1 =
-  let* dal_node2 =
-    make_dal_node
-      ~peers:[Dal_node.listen_addr dal_node1]
-      ~attestor_profiles:[Constant.bootstrap1.public_key_hash]
-      node
-  in
-  let* dal_node3 =
-    make_dal_node
-      ~peers:[Dal_node.listen_addr dal_node1]
-      ~producer_profiles:[0]
-      node
-  in
+let connect_attestor_and_producer_via_bootstrap ?(producer_profiles = [0])
+    ?(attestor_profiles = [Constant.bootstrap1.public_key_hash]) node client
+    dal_node1 =
+  let peers = [Dal_node.listen_addr dal_node1] in
+  let* dal_node2 = make_dal_node ~peers ~producer_profiles node in
+  let* dal_node3 = make_dal_node ~peers ~attestor_profiles node in
   let check_conn_event_from_2_to_3 =
     check_new_connection_event
       ~main_node:dal_node2
@@ -3506,7 +3500,95 @@ let test_peer_discovery_via_bootstrap_node _protocol _parameters _cryptobox node
   let* () = Client.bake_for_and_wait client in
   let* () = Client.bake_for_and_wait client in
   Log.info "Wait for dal_node2 and dal_node3 to find each other." ;
-  Lwt.join [check_conn_event_from_2_to_3; check_conn_event_from_3_to_2]
+  let* () =
+    Lwt.join [check_conn_event_from_2_to_3; check_conn_event_from_3_to_2]
+  in
+  return (dal_node2, dal_node3)
+
+let test_peer_discovery_via_bootstrap_node _protocol _parameters _cryptobox node
+    client dal_node1 =
+  let* _producer_node, _attestor_node =
+    connect_attestor_and_producer_via_bootstrap node client dal_node1
+  in
+  unit
+
+(**  *)
+let test_shards_exchange_via_gossipsub _protocol parameters _cryptobox node
+    client dal_node1 =
+  let attestor_profiles = [Constant.bootstrap1.public_key_hash] in
+  let producer_profiles = [0; 1] in
+  let* producer_node, attestor_node =
+    connect_attestor_and_producer_via_bootstrap
+      node
+      client
+      dal_node1
+      ~producer_profiles
+      ~attestor_profiles
+  in
+  let* () = Dal_node.terminate dal_node1 in
+  let dal_node_endpoint = Helpers.endpoint attestor_node in
+  let crypto_params = parameters.Dal.Parameters.cryptobox in
+  let slot_size = crypto_params.slot_size in
+
+  let do_inject ~slot_index n account =
+    let* commitment, proof =
+      Dal_common.Helpers.(
+        Format.sprintf "slot_index %d at loop num %d" slot_index n
+        |> make_slot ~slot_size
+        |> store_slot (Either.Left producer_node) ~with_proof:true)
+    in
+    let*! () =
+      Client.publish_dal_commitment
+        ~src:account.Account.alias
+        ~slot_index
+        ~commitment
+        ~proof
+        client
+    in
+    unit
+  in
+  let aux n =
+    let* () = do_inject ~slot_index:0 n Constant.bootstrap2 in
+    let* () = do_inject ~slot_index:1 n Constant.bootstrap3 in
+    (*
+  open Unix
+
+let count_open_file_descriptors () =
+  let pid = getpid () in
+  let proc_dir = "/proc/" ^ (string_of_int pid) ^ "/fd" in
+  try
+    let entries = Sys.readdir proc_dir in
+    Array.length entries
+  with
+  | _ -> 0  (* Handle errors gracefully, e.g., if /proc/PID/fd doesn't exist *)
+
+let () =
+  let opened_fds = count_open_file_descriptors () in
+  Printf.printf "Number of opened file descriptors: %d\n" opened_fds
+  *)
+    (* TODO: We should not terminate bootstrap node but rather ensure that it
+       doesn't store any shard. *)
+    (*
+  let* shards_from_dal =
+    Dal_RPC.(call dal_node @@ get_assigned_shard_indices ~level ~pkh)
+  in
+    *)
+    Log.info "Bake two times to finalize a block." ;
+    let* () = Client.bake_for_and_wait client ~dal_node_endpoint in
+    let* () = Client.bake_for_and_wait client in
+    unit
+  in
+
+  let rec loop n =
+    if n = 0 then unit
+    else
+      let* () = aux n in
+      loop (n - 1)
+  in
+  let* () = loop 10 in
+  let* () = Dal_node.terminate producer_node in
+  let* () = Lwt_unix.sleep 120. in
+  unit
 
 (* Adapted from sc_rollup.ml *)
 let test_l1_migration_scenario ?(tags = []) ~migrate_from ~migrate_to
@@ -3585,6 +3667,7 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ~description
     ()
 
+(* XXX *)
 let register ~protocols =
   (* Tests with Layer1 node only *)
   scenario_with_layer1_node
@@ -3715,6 +3798,13 @@ let register ~protocols =
     ~bootstrap_profile:true
     "peer discovery via bootstrap node"
     test_peer_discovery_via_bootstrap_node
+    protocols ;
+
+  scenario_with_layer1_and_dal_nodes
+    ~tags:["shard"]
+    ~bootstrap_profile:true
+    "shards exchange"
+    test_shards_exchange_via_gossipsub
     protocols ;
 
   (* Tests with all nodes *)
