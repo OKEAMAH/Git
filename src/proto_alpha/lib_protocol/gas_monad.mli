@@ -94,6 +94,10 @@ val fail : 'trace -> ('a, 'trace) t
 (** [tzfail e] is [of_result (Result_syntax.tzfail e)] . *)
 val tzfail : 'err -> ('a, 'err Error_monad.trace) t
 
+(** Folding over a list. *)
+val list_fold_left :
+  ('a -> 'b -> ('a, 'trace) t) -> 'a -> 'b list -> ('a, 'trace) t
+
 (** Syntax module for the {!Gas_monad}. This is intended to be opened locally in
     functions. Within the scope of this module, the code can include binding
     operators, leading to a [let]-style syntax. Similar to {!Lwt_result_syntax}

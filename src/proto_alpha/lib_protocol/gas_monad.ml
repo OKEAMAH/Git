@@ -156,3 +156,11 @@ module Syntax = struct
 
   let ( let+$ ) cost f = map f (consume_gas cost)
 end
+
+let rec list_fold_left f acc =
+  let open Syntax in
+  function
+  | [] -> return acc
+  | hd :: tl ->
+      let* acc = f acc hd in
+      (list_fold_left [@ocaml.tailcall]) f acc tl
