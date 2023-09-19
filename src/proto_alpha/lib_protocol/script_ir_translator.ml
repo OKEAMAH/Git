@@ -190,11 +190,10 @@ let check_dupable_comparable_ty : type a. a comparable_ty -> unit = function
   | Pair_t _ | Or_t _ | Option_t _ ->
       ()
 
-let check_dupable_ty ctxt loc ty =
-  let open Result_syntax in
-  let rec aux : type a ac. location -> (a, ac) ty -> (unit, error) Gas_monad.t =
-   fun loc ty ->
-    let open Gas_monad.Syntax in
+let rec check_dupable_ty :
+    type a ac. location -> (a, ac) ty -> (unit, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun loc ty ->
     let*$ () = Typecheck_costs.check_dupable_cycle in
     match ty with
     | Unit_t -> return_unit
@@ -221,13 +220,13 @@ let check_dupable_ty ctxt loc ty =
     | Sapling_transaction_deprecated_t _ -> return_unit
     | Chest_t -> return_unit
     | Chest_key_t -> return_unit
-    | Ticket_t _ -> fail @@ Unexpected_ticket loc
+    | Ticket_t _ -> tzfail @@ Unexpected_ticket loc
     | Pair_t (ty_a, ty_b, _, _) ->
-        let* () = aux loc ty_a in
-        aux loc ty_b
+        let* () = check_dupable_ty loc ty_a in
+        check_dupable_ty loc ty_b
     | Or_t (ty_a, ty_b, _, _) ->
-        let* () = aux loc ty_a in
-        aux loc ty_b
+        let* () = check_dupable_ty loc ty_a in
+        check_dupable_ty loc ty_b
     | Lambda_t (_, _, _) ->
         (*
         Lambda are dupable as long as:
@@ -238,21 +237,17 @@ let check_dupable_ty ctxt loc ty =
             Hence non-dupable should imply non-packable.
       *)
         return_unit
-    | Option_t (ty, _, _) -> aux loc ty
-    | List_t (ty, _) -> aux loc ty
+    | Option_t (ty, _, _) -> check_dupable_ty loc ty
+    | List_t (ty, _) -> check_dupable_ty loc ty
     | Set_t (key_ty, _) ->
         let () = check_dupable_comparable_ty key_ty in
         return_unit
     | Map_t (key_ty, val_ty, _) ->
         let () = check_dupable_comparable_ty key_ty in
-        aux loc val_ty
+        check_dupable_ty loc val_ty
     | Big_map_t (key_ty, val_ty, _) ->
         let () = check_dupable_comparable_ty key_ty in
-        aux loc val_ty
-  in
-  let gas = aux loc ty in
-  let* res, ctxt = Gas_monad.run ctxt gas in
-  match res with Ok () -> return ctxt | Error e -> tzfail e
+        check_dupable_ty loc val_ty
 
 let type_metadata_eq :
     type error_trace.
@@ -2832,12 +2827,13 @@ and parse_instr :
       tzfail (Invalid_arity (loc, I_DROP, 1, List.length l))
   | Prim (loc, I_DUP, [], annot), (Item_t (v, _) as stack) ->
       let*? () = check_var_annot loc annot in
-      let*? ctxt =
+      let*? res, ctxt = Gas_monad.run ctxt @@ check_dupable_ty loc v in
+      let*? () =
         record_trace_eval
           (fun () ->
             let t = serialize_ty_for_error v in
             Non_dupable_type (loc, t))
-          (check_dupable_ty ctxt loc v)
+          res
       in
       let dup = {apply = (fun k -> IDup (loc, k))} in
       typed ctxt loc dup (Item_t (v, stack))
@@ -2867,12 +2863,13 @@ and parse_instr :
       let*? (Dup_n_proof_argument (witness, after_ty)) =
         record_trace (Dup_n_bad_stack loc) (make_proof_argument n stack_ty)
       in
-      let*? ctxt =
+      let*? res, ctxt = Gas_monad.run ctxt (check_dupable_ty loc after_ty) in
+      let*? () =
         record_trace_eval
           (fun () ->
             let t = serialize_ty_for_error after_ty in
             Non_dupable_type (loc, t))
-          (check_dupable_ty ctxt loc after_ty)
+          res
       in
       let dupn = {apply = (fun k -> IDup_n (loc, n, witness, k))} in
       typed ctxt loc dupn (Item_t (after_ty, stack_ty))
