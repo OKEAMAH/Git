@@ -1113,6 +1113,87 @@ mod tests {
     }
 
     #[test]
+    fn test_foo_bar() {
+        let mut host = MockHost::default();
+
+        // Create loop contract
+        let create_contract = hex::decode("f90241808252088252958080b901f0608060405234801561001057600080fd5b506101d0806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80630b7d796e14610030575b600080fd5b61004a600480360381019061004591906100c2565b61004c565b005b60005b81811015610083576001600080828254610069919061011e565b92505081905550808061007b90610152565b91505061004f565b5050565b600080fd5b6000819050919050565b61009f8161008c565b81146100aa57600080fd5b50565b6000813590506100bc81610096565b92915050565b6000602082840312156100d8576100d7610087565b5b60006100e6848285016100ad565b91505092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006101298261008c565b91506101348361008c565b925082820190508082111561014c5761014b6100ef565b5b92915050565b600061015d8261008c565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff820361018f5761018e6100ef565b5b60018201905091905056fea2646970667358221220b68d7e1992570312899845abc99ae5875316b75f32c98c0117a0fc0001d77d4064736f6c63430008120033820a95a0be86dc276d3f63fed089a615c3c134ee6881347fe4756354831bda57d508e5a2a007c577366775ae3000918c8984069cba20f07072bffc33b0e394bf6174993e7d").unwrap();
+        let create_contract = Transaction {
+            tx_hash: [0; 32],
+            content: TransactionContent::Ethereum(
+                EthereumTransactionCommon::from_bytes(&create_contract).unwrap(),
+            ),
+        };
+        // Call loop(5)
+        // let call_contract = hex::decode("f88901843b9aca0082acef94d77420f73b4612a7a99dba8c2afd30a1886b034480a40b7d796e0000000000000000000000000000000000000000000000000000000000000005820a95a031806e319d5726116f92a733c037041dc235f0f6695c498ec3998f3d6f8c1871a05437eee4cb408425f84e6d3cbc1d4db121571d48996b28d5aa4668cd30ed8877").unwrap();
+        // let content = TransactionContent::Ethereum(
+        //     EthereumTransactionCommon::from_bytes(&call_contract).unwrap(),
+        // );
+        // println!("content: {:?}", content);
+
+        let signature = TxSignature::new(
+            U256::from(2709),
+            H256::from_slice(
+                &hex::decode(
+                    "31806e319d5726116f92a733c037041dc235f0f6695c498ec3998f3d6f8c1871",
+                )
+                .unwrap(),
+            ),
+            H256::from_slice(
+                &hex::decode(
+                    "5437eee4cb408425f84e6d3cbc1d4db121571d48996b28d5aa4668cd30ed8877",
+                )
+                .unwrap(),
+            ),
+        )
+        .unwrap();
+        let content = TransactionContent::Ethereum(EthereumTransactionCommon {
+            type_: TransactionType::Legacy,
+            chain_id: U256::from(1337),
+            nonce: U256::one(),
+            max_priority_fee_per_gas: U256::from(1_000_000),
+            max_fee_per_gas: U256::from(1_000_000),
+            gas_limit: 44271,
+            to: address_from_str("705939fd4c3beefc39a9c4517549bf33bd0306d8"),
+            value: 0.into(),
+            data: vec![
+                11, 125, 121, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+            ],
+            access_list: vec![],
+            signature: Some(signature),
+        });
+
+        let call_contract = Transaction {
+            tx_hash: [1; 32],
+            content,
+        };
+
+        // println!("call: {:?}", call_contract);
+
+        let caller = H160::from_str("8aaD6553Cf769Aa7b89174bE824ED0e53768ed70").unwrap();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        set_balance(
+            &mut host,
+            &mut evm_account_storage,
+            &caller,
+            U256::from(1_000_000),
+        );
+
+        let element = blueprint(vec![create_contract, call_contract]);
+        let queue = Queue {
+            proposals: vec![element],
+            kernel_upgrade: None,
+        };
+
+        produce(&mut host, queue).unwrap();
+
+        let status = read_transaction_receipt_status(&mut host, &[1; 32]).unwrap();
+        assert_eq!(TransactionStatus::Success, status);
+        assert_eq!(true, false);
+    }
+
+    #[test]
     fn test_reboot_many_tx_many_proposal() {
         // init host
         let mut host = MockHost::default();
