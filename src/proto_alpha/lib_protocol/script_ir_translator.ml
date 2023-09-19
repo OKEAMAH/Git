@@ -2169,8 +2169,7 @@ type parse_packable_data = {
     allow_forged:bool ->
     ('a, 'ac) ty ->
     Script.node ->
-    context ->
-    ('a * context) tzresult Lwt.t;
+    ('a, error trace) Gas_monad.t;
 }
 
 let rec parse_view :
@@ -2633,16 +2632,17 @@ and parse_instr :
         @@ parse_packable_ty ~stack_depth:(stack_depth + 1) ~legacy t
       in
       let*? (Ex_ty t) = t in
-      let* v, ctxt =
-        parse_packable_data.parse_packable_data
-          ~unparse_code_rec
-          ~elab_conf
-          ~stack_depth:(stack_depth + 1)
-          ~allow_forged:false
-          t
-          d
-          ctxt
+      let*? v, ctxt =
+        Gas_monad.run ctxt
+        @@ parse_packable_data.parse_packable_data
+             ~unparse_code_rec
+             ~elab_conf
+             ~stack_depth:(stack_depth + 1)
+             ~allow_forged:false
+             t
+             d
       in
+      let*? v in
       let push = {apply = (fun k -> IPush (loc, t, v, k))} in
       typed ctxt loc push (Item_t (t, stack))
   | Prim (loc, I_UNIT, [], annot), stack ->
@@ -4852,7 +4852,7 @@ struct
       node
 end
 
-module Parse_data (M : GAS_MONAD) = struct
+module Data_parser (M : GAS_MONAD) = struct
   let parse_pair (type r) parse_l parse_r ~legacy
       (r_comb_witness : (r, unit -> _) comb_witness) expr =
     let open M in
@@ -5365,9 +5365,9 @@ module Parse_data (M : GAS_MONAD) = struct
     | Chest_t, expr -> traced_from_gas_monad @@ parse_chest expr
 end
 
-open Parse_data (LGM)
+module Parse_packable_data = Data_parser (GM)
 
-let rec parse_data :
+let rec parse_packable_data :
     type a ac.
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
@@ -5375,9 +5375,13 @@ let rec parse_data :
     allow_forged:bool ->
     (a, ac) ty ->
     Script.node ->
-    context ->
-    (a * context) tzresult Lwt.t =
-  parse_data_rec ~parse_packable_data:{parse_packable_data = parse_data}
+    (a, error trace) Gas_monad.t =
+  Parse_packable_data.parse_data_rec ~parse_packable_data:{parse_packable_data}
+
+module Parse_data = Data_parser (LGM)
+
+let parse_data =
+  Parse_data.parse_data_rec ~parse_packable_data:{parse_packable_data}
 
 let view_size view =
   let open Script_typed_ir_size in
@@ -5452,7 +5456,7 @@ let parse_code :
         (Ill_typed_contract (code, []))
         (parse_kdescr
            ~unparse_code_rec
-           ~parse_packable_data:{parse_packable_data = parse_data}
+           ~parse_packable_data:{parse_packable_data}
            Tc_context.(toplevel ~storage_type ~param_type:arg_type ~entrypoints)
            ~elab_conf
            ctxt
@@ -5601,7 +5605,7 @@ let typecheck_code :
     let result =
       parse_kdescr
         ~unparse_code_rec
-        ~parse_packable_data:{parse_packable_data = parse_data}
+        ~parse_packable_data:{parse_packable_data}
         (Tc_context.toplevel ~storage_type ~param_type:arg_type ~entrypoints)
         ctxt
         ~elab_conf
@@ -5616,7 +5620,7 @@ let typecheck_code :
     let views_result =
       parse_views
         ~unparse_code_rec
-        ~parse_packable_data:{parse_packable_data = parse_data}
+        ~parse_packable_data:{parse_packable_data}
         ctxt
         ~elab_conf
         storage_type
@@ -6248,7 +6252,7 @@ let list_of_big_map_ids ids =
 let parse_view ~elab_conf ctxt ty view =
   parse_view
     ~unparse_code_rec
-    ~parse_packable_data:{parse_packable_data = parse_data}
+    ~parse_packable_data:{parse_packable_data}
     ~elab_conf
     ctxt
     ty
@@ -6257,7 +6261,7 @@ let parse_view ~elab_conf ctxt ty view =
 let parse_views ~elab_conf ctxt ty views =
   parse_views
     ~unparse_code_rec
-    ~parse_packable_data:{parse_packable_data = parse_data}
+    ~parse_packable_data:{parse_packable_data}
     ~elab_conf
     ctxt
     ty
@@ -6283,7 +6287,7 @@ let parse_instr :
  fun ~elab_conf tc_context ctxt script_instr stack_ty ->
   parse_instr
     ~unparse_code_rec
-    ~parse_packable_data:{parse_packable_data = parse_data}
+    ~parse_packable_data:{parse_packable_data}
     ~elab_conf
     ~stack_depth:0
     tc_context
