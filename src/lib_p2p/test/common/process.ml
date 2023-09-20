@@ -26,8 +26,6 @@
 
 open Error_monad
 
-let () = Lwt_unix.set_default_async_method Async_none [@@ocaml.warning "-3"]
-
 exception Exited of int
 
 exception Signaled of int
