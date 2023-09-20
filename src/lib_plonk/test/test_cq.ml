@@ -110,8 +110,9 @@ let test_ka () =
   let srs = Srs_g1.generate_insecure (m + 1) x in
   let poly = Poly.init m (fun _i -> Scalar.random ()) in
   let time = Unix.gettimeofday () in
+  let pp = Kzg.Kate_amortized.preprocess domain2m srs in
   let proofs =
-    Kzg.Kate_amortized.build_ct_list srs (domain, domain2m) poly
+    Kzg.Kate_amortized.build_ct_list pp (domain, domain2m) poly
     |> G1_carray.to_array
   in
   Printf.printf "\nbuild_ct_list : %f s." (Unix.gettimeofday () -. time) ;

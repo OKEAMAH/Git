@@ -188,6 +188,16 @@ module Internal = struct
     let m, l = List.map f list |> Array.of_list |> Array.split in
     (m, Kzg.Commitment.Commit.with_affine_array_1 l m)
 
+  let compute_q (n, domain, domain2n) ka_pp table_poly =
+    let res =
+      Kzg.Kate_amortized.build_ct_list ka_pp (domain, domain2n) table_poly
+      |> G1_carray.to_array
+    in
+    Array.iteri
+      (fun i q -> G1.mul_inplace q Scalar.(Domain.get domain i / of_int n))
+      res ;
+    res
+
   let setup_prover (n, domain) k (table_arrays, table_polys) pc =
     let domain_k = Domain.build k in
     let domain_2k = Domain.build (2 * k) in
@@ -224,21 +234,13 @@ module Internal = struct
     in
 
     let q =
-      List.map2
-        (fun t_poly t_array ->
-          Array.init n (fun i ->
-              let q, r =
-                Poly.(
-                  division_xn
-                    (lagrange.(i) * (t_poly - constant t_array.(i)))
-                    n
-                    Scalar.(negate one))
-              in
-              if not (Poly.is_zero r) then
-                failwith "Cq.setup_prover : division error." ;
-              commit1 pc q))
-        table_polys
-        table_arrays
+      let domain2n = Domain.build (2 * n) in
+      let ka_pp =
+        Kzg.Kate_amortized.preprocess
+          domain2n
+          (PC.Public_parameters.get_commit_parameters pc)
+      in
+      List.map (compute_q (n, domain, domain2n) ka_pp) table_polys
     in
 
     {n; domain_k; domain_2k; table; q; cms_lagrange; cms_lagrange_0; pc}
