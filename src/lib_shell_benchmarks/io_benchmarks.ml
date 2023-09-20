@@ -1395,6 +1395,7 @@ module Shared = struct
           (match Stdlib.Hashtbl.find_opt tbl (depth, n) with
           | None -> Stdlib.Hashtbl.replace tbl (depth, n) [nsecs]
           | Some nsecs_list ->
+              Format.eprintf "depth %d  nsecs %d@." depth n;
               Stdlib.Hashtbl.replace tbl (depth, n) (nsecs :: nsecs_list)) ;
           loop ()
     in
@@ -1497,7 +1498,6 @@ module Read_bench = struct
                   (* Using [Lwt_main.run] here slows down the benchmark *)
                   Measure.Time.measure_lwt (fun () -> Context.find context key)
                 in
-                (* Format.eprintf "bench %.12g secs@." (nsecs /. 1_000_000_000.0) ; *)
                 output_value oc (key, value_size, nsecs) ;
                 if n mod 10000 = 0 then restrict_memory () ;
                 loop (n - 1)
