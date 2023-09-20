@@ -1934,19 +1934,16 @@ let parse_toplevel : Script.expr -> (toplevel, error trace) Gas_monad.t =
 (* Normalize lambdas during parsing *)
 
 let normalized_lam ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
-    ~stack_depth ctxt kdescr code_field =
-  let open Lwt_result_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
-  let*? code_field, ctxt =
-    Gas_monad.run ctxt
-    @@ unparse_code_rec
-         ~stack_depth:(stack_depth + 1)
-         ~elab_conf
-         Optimized
-         code_field
+    ~elab_conf ~stack_depth kdescr code_field =
+  let open Gas_monad.Syntax in
+  let+ code_field =
+    unparse_code_rec
+      ~stack_depth:(stack_depth + 1)
+      ~elab_conf
+      Optimized
+      code_field
   in
-  let*? code_field in
-  return (Lam (kdescr, code_field), ctxt)
+  Lam (kdescr, code_field)
 
 let normalized_lam_rec ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
     ~elab_conf ~stack_depth kdescr code_field =
@@ -4487,13 +4484,6 @@ module type GAS_MONAD = sig
     ('key -> 'value1 -> ('value2, error trace) t) ->
     ('key, 'value1) map ->
     (('key, 'value2) map, error trace) t
-
-  val normalized_lam :
-    unparse_code_rec:unparse_code_rec ->
-    stack_depth:int ->
-    ('a, end_of_stack, 'b, end_of_stack) kdescr ->
-    Script.node ->
-    (('a, 'b) lambda, error trace) t
 end
 
 module GM : GAS_MONAD with type ('a, 'trace) t = ('a, 'trace) Gas_monad.t =
@@ -4519,9 +4509,6 @@ struct
   let list_fold_left = Gas_monad.list_fold_left
 
   let map_map = Script_map.map_in_gas_monad
-
-  let normalized_lam ~unparse_code_rec:_ ~stack_depth:_ _kdescr _script_instr =
-    assert false
 end
 
 module LGM :
@@ -4592,9 +4579,6 @@ struct
 
   let map_map f m ctxt =
     Script_map.map_es_in_context (fun ctxt k v -> f k v ctxt) ctxt m
-
-  let normalized_lam ~unparse_code_rec ~stack_depth kdescr script_instr ctxt =
-    normalized_lam ~unparse_code_rec ~stack_depth ctxt kdescr script_instr
 end
 
 module Data_parser (M : GAS_MONAD) = struct
@@ -4920,11 +4904,13 @@ module Data_parser (M : GAS_MONAD) = struct
                tr
                script_instr
         in
-        (normalized_lam [@ocaml.tailcall])
-          ~unparse_code_rec
-          ~stack_depth
-          kdescr
-          script_instr
+        from_gas_monad
+        @@ normalized_lam
+             ~unparse_code_rec
+             ~elab_conf
+             ~stack_depth:(stack_depth + 1)
+             kdescr
+             script_instr
     | ( Lambda_t (ta, tr, _ty_name),
         Prim (loc, D_Lambda_rec, [(Seq (_loc, _) as script_instr)], []) ) ->
         traced
