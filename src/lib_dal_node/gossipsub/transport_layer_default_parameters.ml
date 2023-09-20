@@ -41,13 +41,13 @@ module P2p_limits = struct
 
   let min_connections = 10
 
-  let expected_connections = 50
+  let expected_connections = 500
 
-  let max_connections = 100
+  let max_connections = 1000
 
   let backlog = 20
 
-  let max_incoming_connections = 20
+  let max_incoming_connections = 200
 
   let max_download_speed = None
 
@@ -65,9 +65,9 @@ module P2p_limits = struct
 
   let outgoing_message_queue_size = None
 
-  let max_known_points = Some (400, 300)
+  let max_known_points = Some (4000, 3000)
 
-  let max_known_peer_ids = Some (400, 300)
+  let max_known_peer_ids = Some (4000, 3000)
 
   let peer_greylist_size = 1023 (* historical value *)
 
