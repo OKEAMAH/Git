@@ -446,23 +446,23 @@ let ty_eq :
 let rec stack_eq :
     type ta tb ts tu.
     Script.location ->
-    context ->
     int ->
     (ta, ts) stack_ty ->
     (tb, tu) stack_ty ->
-    (((ta, ts) stack_ty, (tb, tu) stack_ty) eq * context) tzresult =
-  let open Result_syntax in
-  fun loc ctxt lvl stack1 stack2 ->
+    (((ta, ts) stack_ty, (tb, tu) stack_ty) eq, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun loc lvl stack1 stack2 ->
     match (stack1, stack2) with
-    | Bot_t, Bot_t -> return (Eq, ctxt)
+    | Bot_t, Bot_t -> return Eq
     | Item_t (ty1, rest1), Item_t (ty2, rest2) ->
-        let* eq, ctxt =
-          Gas_monad.run ctxt @@ ty_eq ~error_details:(Informative loc) ty1 ty2
-          |> record_trace (Bad_stack_item lvl)
+        let* Eq =
+          let error_details = Informative loc in
+          ty_eq ~error_details ty1 ty2
+          |> Gas_monad.record_trace_eval ~error_details (fun _loc ->
+                 Bad_stack_item lvl)
         in
-        let* Eq = eq in
-        let+ Eq, ctxt = stack_eq loc ctxt (lvl + 1) rest1 rest2 in
-        ((Eq : ((ta, ts) stack_ty, (tb, tu) stack_ty) eq), ctxt)
+        let+ Eq = stack_eq loc (lvl + 1) rest1 rest2 in
+        (Eq : ((ta, ts) stack_ty, (tb, tu) stack_ty) eq)
     | _, _ -> tzfail Bad_stack_length
 
 (* ---- Type checker results -------------------------------------------------*)
@@ -502,8 +502,9 @@ let merge_branches :
         in
         record_trace_eval
           unmatched_branches
-          (let+ Eq, ctxt = stack_eq loc ctxt 1 aftbt aftbf in
-           (Typed (branch dbt dbf), ctxt))
+          (let* eq, ctxt = Gas_monad.run ctxt @@ stack_eq loc 1 aftbt aftbf in
+           let* Eq = eq in
+           return (Typed (branch dbt dbf), ctxt))
     | Failed {descr = descrt}, Failed {descr = descrf} ->
         let descr ret = branch (descrt ret) (descrf ret) in
         return (Failed {descr}, ctxt)
@@ -2978,7 +2979,10 @@ and parse_instr :
           in
           record_trace_eval
             invalid_map_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 aft_rest rest in
+            (let* eq, ctxt =
+               Gas_monad.run ctxt @@ stack_eq loc 1 aft_rest rest
+             in
+             let* Eq = eq in
              let* opt_ty = option_t loc ret in
              let final_stack = Item_t (opt_ty, rest) in
              let body = kibody.instr.apply (IHalt loc) in
@@ -3222,7 +3226,10 @@ and parse_instr :
           in
           record_trace_eval
             invalid_map_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 rest starting_rest in
+            (let* eq, ctxt =
+               Gas_monad.run ctxt @@ stack_eq loc 1 rest starting_rest
+             in
+             let* Eq = eq in
              let hloc = loc in
              let ibody = kibody.instr.apply (IHalt hloc) in
              let* ty = list_t loc ret in
@@ -3265,7 +3272,8 @@ and parse_instr :
           in
           record_trace_eval
             invalid_iter_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 aft rest in
+            (let* eq, ctxt = Gas_monad.run ctxt @@ stack_eq loc 1 aft rest in
+             let* Eq = eq in
              typed_no_lwt ctxt loc (mk_list_iter ibody) rest)
       | Failed {descr} -> typed_no_lwt ctxt loc (mk_list_iter (descr rest)) rest
       )
@@ -3307,7 +3315,8 @@ and parse_instr :
           in
           record_trace_eval
             invalid_iter_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 aft rest in
+            (let* eq, ctxt = Gas_monad.run ctxt @@ stack_eq loc 1 aft rest in
+             let* Eq = eq in
              typed_no_lwt ctxt loc (mk_iset_iter ibody) rest)
       | Failed {descr} -> typed_no_lwt ctxt loc (mk_iset_iter (descr rest)) rest
       )
@@ -3363,7 +3372,10 @@ and parse_instr :
           in
           record_trace_eval
             invalid_map_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 rest starting_rest in
+            (let* eq, ctxt =
+               Gas_monad.run ctxt @@ stack_eq loc 1 rest starting_rest
+             in
+             let* Eq = eq in
              let* ty = map_t loc kt ret in
              let instr =
                {
@@ -3409,7 +3421,8 @@ and parse_instr :
           in
           record_trace_eval
             invalid_iter_body
-            (let* Eq, ctxt = stack_eq loc ctxt 1 aft rest in
+            (let* eq, ctxt = Gas_monad.run ctxt @@ stack_eq loc 1 aft rest in
+             let* Eq = eq in
              typed_no_lwt ctxt loc (make_instr ibody) rest)
       | Failed {descr} -> typed_no_lwt ctxt loc (make_instr (descr rest)) rest)
   | Prim (loc, I_MEM, [], annot), Item_t (vk, Item_t (Map_t (k, _, _), rest)) ->
@@ -3612,7 +3625,10 @@ and parse_instr :
           in
           record_trace_eval
             unmatched_branches
-            (let* Eq, ctxt = stack_eq loc ctxt 1 ibody.aft stack in
+            (let* eq, ctxt =
+               Gas_monad.run ctxt @@ stack_eq loc 1 ibody.aft stack
+             in
+             let* Eq = eq in
              let instr =
                {
                  apply =
@@ -3654,7 +3670,10 @@ and parse_instr :
           in
           record_trace_eval
             unmatched_branches
-            (let* Eq, ctxt = stack_eq loc ctxt 1 ibody.aft stack in
+            (let* eq, ctxt =
+               Gas_monad.run ctxt @@ stack_eq loc 1 ibody.aft stack
+             in
+             let* Eq = eq in
              let instr =
                {
                  apply =
