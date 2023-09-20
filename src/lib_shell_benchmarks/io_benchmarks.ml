@@ -1389,13 +1389,11 @@ module Shared = struct
     let rec loop () =
       match input_value ic with
       | exception End_of_file -> close_in ic
-      | key, value_size, nsecs ->
-          let depth = List.length key in
+      | depth, value_size, nsecs ->
           let n = (value_size + 255) / 256 * 256 in
           (match Stdlib.Hashtbl.find_opt tbl (depth, n) with
           | None -> Stdlib.Hashtbl.replace tbl (depth, n) [nsecs]
           | Some nsecs_list ->
-              Format.eprintf "depth %d  nsecs %d@." depth n;
               Stdlib.Hashtbl.replace tbl (depth, n) (nsecs :: nsecs_list)) ;
           loop ()
     in
@@ -1498,7 +1496,7 @@ module Read_bench = struct
                   (* Using [Lwt_main.run] here slows down the benchmark *)
                   Measure.Time.measure_lwt (fun () -> Context.find context key)
                 in
-                output_value oc (key, value_size, nsecs) ;
+                output_value oc (List.length key, value_size, nsecs) ;
                 if n mod 10000 = 0 then restrict_memory () ;
                 loop (n - 1)
             in
@@ -1613,7 +1611,7 @@ module Write_bench = struct
                      let+ _context = Io_helpers.flush context in
                      context_hash)
                in
-               output_value oc (key, value_size, nsecs) ;
+               output_value oc (List.length key, value_size, nsecs) ;
                if n mod 100 = 0 then restrict_memory () ;
                loop context_hash (n - 1)
            in
