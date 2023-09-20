@@ -112,14 +112,12 @@ val unparse_with_data_encoding :
   ('loc Script.michelson_node, 'trace) Gas_monad.t
 
 (** [unparse_comparable_data ctxt unparsing_mode ty v] returns the
-    Micheline representation of [v] of type [ty], consuming gas from
-    [ctxt]. *)
+    Micheline representation of [v] of type [ty], consuming gas. *)
 val unparse_comparable_data :
-  context ->
   unparsing_mode ->
   'a comparable_ty ->
   'a ->
-  (Script.expr * context) tzresult Lwt.t
+  (Script.expr, error trace) Gas_monad.t
 
 (** [unparse_contract ~loc unparsin_mode contract] returns a Micheline
     representation of a given contract in a given [unparsing_mode], and consumes

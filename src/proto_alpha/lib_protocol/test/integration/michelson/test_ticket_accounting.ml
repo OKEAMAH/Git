@@ -52,13 +52,14 @@ let string_list_of_ex_token_diffs ctxt token_diffs =
   let open Lwt_result_wrap_syntax in
   let accum (xs, ctxt)
       (Ticket_token.Ex_token {ticketer; contents_type; contents}, amount) =
-    let*@ x, ctxt =
-      Script_ir_unparser.unparse_comparable_data
-        ctxt
-        Script_ir_unparser.Readable
-        contents_type
-        contents
+    let*?@ x, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_unparser.unparse_comparable_data
+           Script_ir_unparser.Readable
+           contents_type
+           contents
     in
+    let*?@ x in
     let str =
       Format.asprintf
         {|{ticketer: "%a"; contents: %a; amount: %a}|}
@@ -143,13 +144,14 @@ let updates_of_key_values ctxt ~key_type ~value_type key_values =
       let*@ key_hash, ctxt =
         Script_ir_translator.hash_comparable_data ctxt key_type key
       in
-      let*@ key, ctxt =
-        Script_ir_unparser.unparse_comparable_data
-          ctxt
-          Script_ir_unparser.Readable
-          key_type
-          key
+      let*?@ key, ctxt =
+        Gas_monad.run ctxt
+        @@ Script_ir_unparser.unparse_comparable_data
+             Script_ir_unparser.Readable
+             key_type
+             key
       in
+      let*?@ key in
       let* value, ctxt =
         match value with
         | None -> return (None, ctxt)

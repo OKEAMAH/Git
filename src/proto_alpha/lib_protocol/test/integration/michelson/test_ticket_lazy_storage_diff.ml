@@ -42,13 +42,14 @@ let string_list_of_ex_token_diffs ctxt token_diffs =
   let open Lwt_result_wrap_syntax in
   let accum (xs, ctxt)
       (Ticket_token.Ex_token {ticketer; contents_type; contents}, amount) =
-    let*@ x, ctxt =
-      Script_ir_unparser.unparse_comparable_data
-        ctxt
-        Script_ir_unparser.Readable
-        contents_type
-        contents
+    let*?@ x, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_unparser.unparse_comparable_data
+           Script_ir_unparser.Readable
+           contents_type
+           contents
     in
+    let*?@ x in
     let str =
       Format.asprintf
         "((%a, %a), %a)"

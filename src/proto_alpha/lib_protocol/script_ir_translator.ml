@@ -165,8 +165,11 @@ let pack_node unparsed ctxt =
 
 let pack_comparable_data ctxt ty data =
   let open Lwt_result_syntax in
-  let+ unparsed, ctxt = unparse_comparable_data ctxt Optimized_legacy ty data in
-  pack_node unparsed ctxt
+  let*? unparsed, ctxt =
+    Gas_monad.run ctxt @@ unparse_comparable_data Optimized_legacy ty data
+  in
+  let*? unparsed in
+  return (pack_node unparsed ctxt)
 
 let hash_bytes bytes =
   let open Gas_monad.Syntax in
@@ -5605,7 +5608,10 @@ let diff_of_big_map ctxt mode ~temporary ~ids_to_copy
     List.fold_left_es
       (fun (acc, ctxt) (key_hash, key, value) ->
         let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_instr_cycle in
-        let* key, ctxt = unparse_comparable_data ctxt mode key_type key in
+        let*? key, ctxt =
+          Gas_monad.run ctxt @@ unparse_comparable_data mode key_type key
+        in
+        let*? key in
         let+ value, ctxt =
           match value with
           | None -> return (None, ctxt)

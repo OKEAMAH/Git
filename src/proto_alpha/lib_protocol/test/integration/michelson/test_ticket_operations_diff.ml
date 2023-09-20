@@ -116,15 +116,15 @@ let new_int_key_big_map ctxt contract ~value_type entries =
 let assert_equal_string_list ~loc msg =
   Assert.assert_equal_list ~loc String.equal msg Format.pp_print_string
 
-let string_of_ticket_token ctxt
+let string_of_ticket_token _ctxt
     (Ticket_token.Ex_token {ticketer; contents_type; contents}) =
   let open Lwt_result_wrap_syntax in
-  let*@ x, _ =
-    Script_ir_unparser.unparse_comparable_data
-      ctxt
-      Script_ir_unparser.Readable
-      contents_type
-      contents
+  let*?@ x =
+    Gas_monad.run_unaccounted
+    @@ Script_ir_unparser.unparse_comparable_data
+         Script_ir_unparser.Readable
+         contents_type
+         contents
   in
   return
   @@ Format.asprintf

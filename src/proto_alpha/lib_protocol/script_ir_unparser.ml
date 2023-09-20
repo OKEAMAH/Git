@@ -821,12 +821,7 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
   end
 end
 
-let unparse_comparable_data ctxt mode ty v =
-  let open Lwt_result_syntax in
-  let*? unparsed_data, ctxt =
-    Gas_monad.run ctxt @@ unparse_comparable_data_rec ~loc:() mode ty v
-  in
-  let*? unparsed_data in
-  Lwt.return
-    (Gas_monad.run_pure ctxt
-    @@ account_for_future_serialization_cost unparsed_data)
+let unparse_comparable_data mode ty v =
+  let open Gas_monad.Syntax in
+  let* unparsed_data = unparse_comparable_data_rec ~loc:() mode ty v in
+  account_for_future_serialization_cost unparsed_data
