@@ -2785,7 +2785,7 @@ and parse_instr :
         script_instr
         stack_ty
   in
-  let bad_stack_error _ctxt loc prim relevant_stack_portion =
+  let bad_stack_error loc prim relevant_stack_portion =
     let whole_stack = serialize_stack_for_error stack_ty in
     Result_syntax.tzfail
       (Bad_stack (loc, prim, relevant_stack_portion, whole_stack))
@@ -2854,7 +2854,7 @@ and parse_instr :
                 make_proof_argument (n - 1) tl_ty
               in
               Dup_n_proof_argument (Dup_n_succ dup_n_witness, b_ty)
-          | _ -> bad_stack_error ctxt loc I_DUP 1
+          | _ -> bad_stack_error loc I_DUP 1
       in
       let*? n = parse_uint10 n in
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
@@ -3037,7 +3037,7 @@ and parse_instr :
               let+ (Ty_ex_c pair_t) = pair_t loc a_ty b_ty in
               Comb_proof_argument
                 (Comb_succ comb_witness, Item_t (pair_t, tl_ty'))
-          | _ -> bad_stack_error ctxt loc I_PAIR 1
+          | _ -> bad_stack_error loc I_PAIR 1
       in
       let*? n = parse_uint10 n in
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
@@ -3064,7 +3064,7 @@ and parse_instr :
               in
               Uncomb_proof_argument
                 (Uncomb_succ uncomb_witness, Item_t (a_ty, after_ty))
-          | _ -> bad_stack_error ctxt loc I_UNPAIR 1
+          | _ -> bad_stack_error loc I_UNPAIR 1
       in
       let*? n = parse_uint10 n in
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
