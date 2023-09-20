@@ -1949,19 +1949,16 @@ let normalized_lam ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
   return (Lam (kdescr, code_field), ctxt)
 
 let normalized_lam_rec ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
-    ~stack_depth ctxt kdescr code_field =
-  let open Lwt_result_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
-  let*? code_field, ctxt =
-    Gas_monad.run ctxt
-    @@ unparse_code_rec
-         ~stack_depth:(stack_depth + 1)
-         ~elab_conf
-         Optimized
-         code_field
+    ~elab_conf ~stack_depth kdescr code_field =
+  let open Gas_monad.Syntax in
+  let+ code_field =
+    unparse_code_rec
+      ~stack_depth:(stack_depth + 1)
+      ~elab_conf
+      Optimized
+      code_field
   in
-  let*? code_field in
-  return (LamRec (kdescr, code_field), ctxt)
+  LamRec (kdescr, code_field)
 
 (* [parse_contract] is used both to:
    - parse contract data by [parse_data] ([parse_contract_data])
@@ -2416,23 +2413,33 @@ and parse_lam_rec :
                 kdescr),
             ctxt )
       in
-      (normalized_lam_rec [@ocaml.tailcall])
-        ~unparse_code_rec
-        ~stack_depth
-        ctxt
-        closed_descr
-        script_instr
+      let*? res, ctxt =
+        Gas_monad.run ctxt
+        @@ normalized_lam_rec
+             ~unparse_code_rec
+             ~stack_depth:(stack_depth + 1)
+             ~elab_conf
+             closed_descr
+             script_instr
+      in
+      let*? res in
+      return (res, ctxt)
   | Typed {loc; aft = stack_ty; _}, _ctxt ->
       let ret = serialize_ty_for_error ret in
       let stack_ty = serialize_stack_for_error stack_ty in
       tzfail @@ Bad_return (loc, stack_ty, ret)
   | Failed {descr}, ctxt ->
-      (normalized_lam_rec [@ocaml.tailcall])
-        ~unparse_code_rec
-        ~stack_depth
-        ctxt
-        (close_descr (descr (Item_t (ret, Bot_t))))
-        script_instr
+      let*? res, ctxt =
+        Gas_monad.run ctxt
+        @@ normalized_lam_rec
+             ~unparse_code_rec
+             ~stack_depth
+             ~elab_conf
+             (close_descr (descr (Item_t (ret, Bot_t))))
+             script_instr
+      in
+      let*? res in
+      return (res, ctxt)
 
 and parse_instr :
     type a s.
