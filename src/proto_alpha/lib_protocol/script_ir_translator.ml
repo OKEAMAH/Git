@@ -485,14 +485,13 @@ type ('a, 's, 'b, 'u, 'c, 'v) branch = {
 
 let merge_branches :
     type a s b u c v.
-    context ->
     Script.location ->
     (a, s) judgement ->
     (b, u) judgement ->
     (a, s, b, u, c, v) branch ->
-    ((c, v) judgement * context) tzresult =
-  let open Result_syntax in
-  fun ctxt loc btr bfr {branch} ->
+    ((c, v) judgement, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun loc btr bfr {branch} ->
     match (btr, bfr) with
     | Typed ({aft = aftbt; _} as dbt), Typed ({aft = aftbf; _} as dbf) ->
         let unmatched_branches () =
@@ -500,18 +499,18 @@ let merge_branches :
           let aftbf = serialize_stack_for_error aftbf in
           Unmatched_branches (loc, aftbt, aftbf)
         in
-        record_trace_eval
+        Gas_monad.record_trace_eval
+          ~error_details:(Informative ())
           unmatched_branches
-          (let* eq, ctxt = Gas_monad.run ctxt @@ stack_eq loc 1 aftbt aftbf in
-           let* Eq = eq in
-           return (Typed (branch dbt dbf), ctxt))
+          (let+ Eq = stack_eq loc 1 aftbt aftbf in
+           Typed (branch dbt dbf))
     | Failed {descr = descrt}, Failed {descr = descrf} ->
         let descr ret = branch (descrt ret) (descrf ret) in
-        return (Failed {descr}, ctxt)
+        return (Failed {descr})
     | Typed dbt, Failed {descr = descrf} ->
-        return (Typed (branch dbt (descrf dbt.aft)), ctxt)
+        return (Typed (branch dbt (descrf dbt.aft)))
     | Failed {descr = descrt}, Typed dbf ->
-        return (Typed (branch (descrt dbf.aft) dbf), ctxt)
+        return (Typed (branch (descrt dbf.aft) dbf))
 
 let parse_memo_size (n : (location, _) Micheline.node) :
     Sapling.Memo_size.t tzresult =
@@ -3013,7 +3012,11 @@ and parse_instr :
         in
         {loc; instr = ifnone; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      let*? res, ctxt =
+        Gas_monad.run ctxt @@ merge_branches loc btr bfr {branch}
+      in
+      let*? res in
+      return (res, ctxt)
   (* pairs *)
   | Prim (loc, I_PAIR, [], annot), Item_t (a, Item_t (b, rest)) ->
       let*? () = check_constr_annot loc annot in
@@ -3158,7 +3161,11 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      let*? res, ctxt =
+        Gas_monad.run ctxt @@ merge_branches loc btr bfr {branch}
+      in
+      let*? res in
+      return (res, ctxt)
   (* lists *)
   | Prim (loc, I_NIL, [t], annot), stack ->
       let*? t, ctxt =
@@ -3199,7 +3206,11 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      let*? res, ctxt =
+        Gas_monad.run ctxt @@ merge_branches loc btr bfr {branch}
+      in
+      let*? res in
+      return (res, ctxt)
   | Prim (loc, I_SIZE, [], annot), Item_t (List_t _, rest) ->
       let*? () = check_var_type_annot loc annot in
       let list_size = {apply = (fun k -> IList_size (loc, k))} in
@@ -3608,7 +3619,11 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      let*? res, ctxt =
+        Gas_monad.run ctxt @@ merge_branches loc btr bfr {branch}
+      in
+      let*? res in
+      return (res, ctxt)
   | Prim (loc, I_LOOP, [body], annot), (Item_t (Bool_t, rest) as stack) -> (
       let*? () = check_kind [Seq_kind] body in
       let*? () = error_unexpected_annot loc annot in
