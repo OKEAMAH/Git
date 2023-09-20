@@ -1211,7 +1211,6 @@ let rec make_comb_get_proof_argument :
 
 let rec make_comb_set_proof_argument :
     type value valuec before beforec a s.
-    context ->
     (a, s) stack_ty ->
     location ->
     int ->
@@ -1219,7 +1218,7 @@ let rec make_comb_set_proof_argument :
     (before, beforec) ty ->
     (value, before) comb_set_proof_argument tzresult =
   let open Result_syntax in
-  fun ctxt stack_ty loc n value_ty ty ->
+  fun stack_ty loc n value_ty ty ->
     match (n, ty) with
     | 0, _ -> return (Comb_set_proof_argument (Comb_set_zero, value_ty))
     | 1, Pair_t (_hd_ty, tl_ty, _, _) ->
@@ -1227,7 +1226,7 @@ let rec make_comb_set_proof_argument :
         Comb_set_proof_argument (Comb_set_one, after_ty)
     | n, Pair_t (hd_ty, tl_ty, _, _) ->
         let* (Comb_set_proof_argument (comb_set_left_witness, tl_ty')) =
-          make_comb_set_proof_argument ctxt stack_ty loc (n - 2) value_ty tl_ty
+          make_comb_set_proof_argument stack_ty loc (n - 2) value_ty tl_ty
         in
         let+ (Ty_ex_c after_ty) = pair_t loc hd_ty tl_ty' in
         Comb_set_proof_argument
@@ -3097,7 +3096,7 @@ and parse_instr :
       let*? n = parse_uint11 n in
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
       let*? (Comb_set_proof_argument (witness, after_ty)) =
-        make_comb_set_proof_argument ctxt stack_ty loc n value_ty comb_ty
+        make_comb_set_proof_argument stack_ty loc n value_ty comb_ty
       in
       let after_stack_ty = Item_t (after_ty, rest_ty) in
       let comb_set = {apply = (fun k -> IComb_set (loc, n, witness, k))} in
