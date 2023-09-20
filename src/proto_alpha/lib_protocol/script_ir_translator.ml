@@ -4497,13 +4497,17 @@ struct
 
   let from_gas_monad g = g
 
+  (* Only used to parse the "contract" type, which is not packable *)
   let parse_contract_data ~stack_depth:_ _loc _ty _dest ~entrypoint:_ =
     assert false
 
+  (* Only used to parse the "big_map" type, which is not packable *)
   let hash_comparable_data _ty _x = assert false
 
+  (* Only used to parse the "big_map" type, which is not packable *)
   let big_map_exists _id = assert false
 
+  (* Only used to parse the "sapling_state" type, which is not packable *)
   let sapling_state_from_id _id = assert false
 
   let list_fold_left = Gas_monad.list_fold_left
