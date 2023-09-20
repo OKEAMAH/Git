@@ -1913,8 +1913,9 @@ let comb_witness1 : type t tc. (t, tc) ty -> (t, unit -> unit) comb_witness =
   | Pair_t _ -> Comb_Pair Comb_Any
   | _ -> Comb_Any
 
-let parse_view_name ctxt : Script.node -> (Script_string.t * context) tzresult =
-  let open Result_syntax in
+let parse_view_name : Script.node -> (Script_string.t, error trace) Gas_monad.t
+    =
+  let open Gas_monad.Syntax in
   function
   | String (loc, v) as expr ->
       (* The limitation of length of string is same as entrypoint *)
@@ -1925,16 +1926,18 @@ let parse_view_name ctxt : Script.node -> (Script_string.t * context) tzresult =
           else if Script_ir_annot.is_allowed_char v.[i] then check_char (i - 1)
           else tzfail (Bad_view_name loc)
         in
-        let* ctxt = Gas.consume ctxt (Typecheck_costs.check_printable v) in
-        record_trace
-          (Invalid_syntactic_constant
-             ( loc,
-               strip_locations expr,
-               "string [a-zA-Z0-9_.%@] and the maximum string length of 31 \
-                characters" ))
+        let*$ () = Typecheck_costs.check_printable v in
+        Gas_monad.record_trace_eval
+          ~error_details:(Informative ())
+          (fun () ->
+            Invalid_syntactic_constant
+              ( loc,
+                strip_locations expr,
+                "string [a-zA-Z0-9_.%@] and the maximum string length of 31 \
+                 characters" ))
           (let* v = check_char (String.length v - 1) in
-           let+ s = Script_string.of_string v in
-           (s, ctxt))
+           let+? s = Script_string.of_string v in
+           s)
   | expr -> tzfail @@ Invalid_kind (location expr, [String_kind], kind expr)
 
 let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
@@ -1976,7 +1979,8 @@ let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
               tzfail (Invalid_arity (loc, name, 1, List.length args))
           | Prim (loc, K_view, [name; input_ty; output_ty; view_code], _)
             :: rest ->
-              let* str, ctxt = parse_view_name ctxt name in
+              let* str, ctxt = Gas_monad.run ctxt @@ parse_view_name name in
+              let* str in
               let* ctxt =
                 Gas.consume
                   ctxt
@@ -4295,7 +4299,8 @@ and parse_instr :
   | ( Prim (loc, I_VIEW, [name; output_ty], annot),
       Item_t (input_ty, Item_t (Address_t, rest)) ) ->
       let output_ty_loc = location output_ty in
-      let*? name, ctxt = parse_view_name ctxt name in
+      let*? name, ctxt = Gas_monad.run ctxt @@ parse_view_name name in
+      let*? name in
       let*? output_ty, ctxt =
         Gas_monad.run ctxt
         @@ parse_view_output_ty ~stack_depth:0 ~legacy output_ty
