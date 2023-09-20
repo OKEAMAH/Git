@@ -496,8 +496,8 @@ let merge_branches :
     match (btr, bfr) with
     | Typed ({aft = aftbt; _} as dbt), Typed ({aft = aftbf; _} as dbf) ->
         let unmatched_branches () =
-          let aftbt = serialize_stack_for_error ctxt aftbt in
-          let aftbf = serialize_stack_for_error ctxt aftbf in
+          let aftbt = serialize_stack_for_error aftbt in
+          let aftbf = serialize_stack_for_error aftbf in
           Unmatched_branches (loc, aftbt, aftbf)
         in
         record_trace_eval
@@ -1234,7 +1234,7 @@ let rec make_comb_set_proof_argument :
         Comb_set_proof_argument
           (Comb_set_plus_two comb_set_left_witness, after_ty)
     | _ ->
-        let whole_stack = serialize_stack_for_error ctxt stack_ty in
+        let whole_stack = serialize_stack_for_error stack_ty in
         tzfail (Bad_stack (loc, I_UPDATE, 2, whole_stack))
 
 type 'a ex_ty_cstr =
@@ -2547,9 +2547,9 @@ and parse_view :
             ctxt )
     | Typed ({loc; aft; _} as descr) -> (
         let ill_type_view stack_ty loc =
-          let actual = serialize_stack_for_error ctxt stack_ty in
+          let actual = serialize_stack_for_error stack_ty in
           let expected_stack = Item_t (output_ty, Bot_t) in
-          let expected = serialize_stack_for_error ctxt expected_stack in
+          let expected = serialize_stack_for_error expected_stack in
           Ill_typed_view {loc; actual; expected}
         in
         let open Result_syntax in
@@ -2627,7 +2627,7 @@ and parse_kdescr :
           Gas_monad.run ctxt
           @@ Gas_monad.record_trace_eval ~error_details (fun loc ->
                  let ret = serialize_ty_for_error ret in
-                 let stack_ty = serialize_stack_for_error ctxt stack_ty in
+                 let stack_ty = serialize_stack_for_error stack_ty in
                  Bad_return (loc, stack_ty, ret))
           @@ ty_eq ~error_details ty ret
         in
@@ -2635,9 +2635,9 @@ and parse_kdescr :
         return
           ( (close_descr descr : (arg, end_of_stack, ret, end_of_stack) kdescr),
             ctxt )
-    | Typed {loc; aft = stack_ty; _}, ctxt ->
+    | Typed {loc; aft = stack_ty; _}, _ctxt ->
         let ret = serialize_ty_for_error ret in
-        let stack_ty = serialize_stack_for_error ctxt stack_ty in
+        let stack_ty = serialize_stack_for_error stack_ty in
         tzfail @@ Bad_return (loc, stack_ty, ret)
     | Failed {descr}, ctxt ->
         return
@@ -2686,7 +2686,7 @@ and parse_lam_rec :
           Gas_monad.run ctxt
           @@ Gas_monad.record_trace_eval ~error_details (fun loc ->
                  let ret = serialize_ty_for_error ret in
-                 let stack_ty = serialize_stack_for_error ctxt stack_ty in
+                 let stack_ty = serialize_stack_for_error stack_ty in
                  Bad_return (loc, stack_ty, ret))
           @@ ty_eq ~error_details ty ret
         in
@@ -2706,9 +2706,9 @@ and parse_lam_rec :
         ctxt
         closed_descr
         script_instr
-  | Typed {loc; aft = stack_ty; _}, ctxt ->
+  | Typed {loc; aft = stack_ty; _}, _ctxt ->
       let ret = serialize_ty_for_error ret in
-      let stack_ty = serialize_stack_for_error ctxt stack_ty in
+      let stack_ty = serialize_stack_for_error stack_ty in
       tzfail @@ Bad_return (loc, stack_ty, ret)
   | Failed {descr}, ctxt ->
       (normalized_lam_rec [@ocaml.tailcall])
@@ -2743,7 +2743,7 @@ and parse_instr :
       loc name n m : ((a, b) eq * context) tzresult =
     let open Result_syntax in
     record_trace_eval (fun () ->
-        let stack_ty = serialize_stack_for_error ctxt stack_ty in
+        let stack_ty = serialize_stack_for_error stack_ty in
         Bad_stack (loc, name, m, stack_ty))
     @@ record_trace
          (Bad_stack_item n)
@@ -2785,8 +2785,8 @@ and parse_instr :
         script_instr
         stack_ty
   in
-  let bad_stack_error ctxt loc prim relevant_stack_portion =
-    let whole_stack = serialize_stack_for_error ctxt stack_ty in
+  let bad_stack_error _ctxt loc prim relevant_stack_portion =
+    let whole_stack = serialize_stack_for_error stack_ty in
     Result_syntax.tzfail
       (Bad_stack (loc, prim, relevant_stack_portion, whole_stack))
   in
@@ -2813,7 +2813,7 @@ and parse_instr :
               in
               Dropn_proof_argument (KPrefix (loc, a, n'), stack_after_drops)
           | _, _ ->
-              let whole_stack = serialize_stack_for_error ctxt whole_stack in
+              let whole_stack = serialize_stack_for_error whole_stack in
               tzfail (Bad_stack (loc, I_DROP, whole_n, whole_stack))
       in
       let*? () = error_unexpected_annot loc result_annot in
@@ -2889,7 +2889,7 @@ and parse_instr :
               in
               Dig_proof_argument (KPrefix (loc, v, n'), x, Item_t (v, aft'))
           | _, _ ->
-              let whole_stack = serialize_stack_for_error ctxt stack in
+              let whole_stack = serialize_stack_for_error stack in
               tzfail (Bad_stack (loc, I_DIG, 3, whole_stack))
       in
       let*? n = parse_uint10 n in
@@ -2906,14 +2906,14 @@ and parse_instr :
       let*? () = error_unexpected_annot loc result_annot in
       match make_dug_proof_argument loc whole_n x whole_stack with
       | None ->
-          let whole_stack = serialize_stack_for_error ctxt whole_stack in
+          let whole_stack = serialize_stack_for_error whole_stack in
           tzfail (Bad_stack (loc, I_DUG, whole_n, whole_stack))
       | Some (Dug_proof_argument (n', aft)) ->
           let dug = {apply = (fun k -> IDug (loc, whole_n, n', k))} in
           typed ctxt loc dug aft)
   | Prim (loc, I_DUG, [_], result_annot), stack ->
       let*? () = error_unexpected_annot loc result_annot in
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, I_DUG, 1, stack))
   | Prim (loc, I_DUG, (([] | _ :: _ :: _) as l), _), _ ->
       tzfail (Invalid_arity (loc, I_DUG, 1, List.length l))
@@ -2974,7 +2974,7 @@ and parse_instr :
       match judgement with
       | Typed ({loc; aft = Item_t (ret, aft_rest); _} as kibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt kibody.aft in
+            let aft = serialize_stack_for_error kibody.aft in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -2989,7 +2989,7 @@ and parse_instr :
              let apply k = IOpt_map {loc; body; k} in
              typed_no_lwt ctxt loc {apply} final_stack)
       | Typed {aft = Bot_t; _} ->
-          let aft = serialize_stack_for_error ctxt Bot_t in
+          let aft = serialize_stack_for_error Bot_t in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | ( Prim (loc, I_IF_NONE, [bt; bf], annot),
@@ -3082,7 +3082,7 @@ and parse_instr :
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
       match make_comb_get_proof_argument n comb_ty with
       | None ->
-          let whole_stack = serialize_stack_for_error ctxt stack_ty in
+          let whole_stack = serialize_stack_for_error stack_ty in
           tzfail (Bad_stack (loc, I_GET, 1, whole_stack))
       | Some (Comb_get_proof_argument (witness, ty')) ->
           let after_stack_ty = Item_t (ty', rest_ty) in
@@ -3221,7 +3221,7 @@ and parse_instr :
       match judgement with
       | Typed ({aft = Item_t (ret, rest) as aft; _} as kibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt aft in
+            let aft = serialize_stack_for_error aft in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -3242,7 +3242,7 @@ and parse_instr :
              let stack = Item_t (ty, rest) in
              typed_no_lwt ctxt loc list_map stack)
       | Typed {aft; _} ->
-          let aft = serialize_stack_for_error ctxt aft in
+          let aft = serialize_stack_for_error aft in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | Prim (loc, I_ITER, [body], annot), Item_t (List_t (elt, _), rest) -> (
@@ -3266,8 +3266,8 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft = serialize_stack_for_error ibody.aft in
+            let rest = serialize_stack_for_error rest in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3309,8 +3309,8 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft = serialize_stack_for_error ibody.aft in
+            let rest = serialize_stack_for_error rest in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3367,7 +3367,7 @@ and parse_instr :
       match judgement with
       | Typed ({aft = Item_t (ret, rest) as aft; _} as ibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt aft in
+            let aft = serialize_stack_for_error aft in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -3389,7 +3389,7 @@ and parse_instr :
              let stack = Item_t (ty, rest) in
              typed_no_lwt ctxt loc instr stack)
       | Typed {aft; _} ->
-          let aft = serialize_stack_for_error ctxt aft in
+          let aft = serialize_stack_for_error aft in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | Prim (loc, I_ITER, [body], annot), Item_t (Map_t (key, element_ty, _), rest)
@@ -3415,8 +3415,8 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft = serialize_stack_for_error ibody.aft in
+            let rest = serialize_stack_for_error rest in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3619,8 +3619,8 @@ and parse_instr :
       match judgement with
       | Typed ibody ->
           let unmatched_branches () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let stack = serialize_stack_for_error ctxt stack in
+            let aft = serialize_stack_for_error ibody.aft in
+            let stack = serialize_stack_for_error stack in
             Unmatched_branches (loc, aft, stack)
           in
           record_trace_eval
@@ -3664,8 +3664,8 @@ and parse_instr :
       match judgement with
       | Typed ibody ->
           let unmatched_branches () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let stack = serialize_stack_for_error ctxt stack in
+            let aft = serialize_stack_for_error ibody.aft in
+            let stack = serialize_stack_for_error stack in
             Unmatched_branches (loc, aft, stack)
           in
           record_trace_eval
@@ -3829,7 +3829,7 @@ and parse_instr :
             let w = KPrefix (loc, v, n') in
             Dipn_proof_argument (w, ctxt, descr, Item_t (v, aft'))
         | _, _ ->
-            let whole_stack = serialize_stack_for_error ctxt stack in
+            let whole_stack = serialize_stack_for_error stack in
             tzfail (Bad_stack (loc, I_DIP, 1, whole_stack))
       in
       let*? () = error_unexpected_annot loc result_annot in
@@ -4763,13 +4763,13 @@ and parse_instr :
       let t = serialize_ty_for_error t in
       tzfail (Undefined_unop (loc, name, t))
   | Prim (loc, ((I_UPDATE | I_SLICE | I_OPEN_CHEST) as name), [], _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, name, 3, stack))
   | Prim (loc, I_CREATE_CONTRACT, _, _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, I_CREATE_CONTRACT, 7, stack))
   | Prim (loc, I_TRANSFER_TOKENS, [], _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, I_TRANSFER_TOKENS, 4, stack))
   | ( Prim
         ( loc,
@@ -4784,7 +4784,7 @@ and parse_instr :
           _,
           _ ),
       stack ) ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, name, 1, stack))
   | ( Prim
         ( loc,
@@ -4795,7 +4795,7 @@ and parse_instr :
           _,
           _ ),
       stack ) ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack = serialize_stack_for_error stack in
       tzfail (Bad_stack (loc, name, 2, stack))
   (* Generic parsing errors *)
   | expr, _ ->

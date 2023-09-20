@@ -46,10 +46,9 @@ type ('ty, 'depth) comb_witness =
     when this function is called, the operation must have already failed. *)
 val serialize_ty_for_error : ('a, 'b) ty -> Script.expr
 
-(** [serialize_stack_for_error ctxt stack_ty] returns a Micheline representation of
-    [stack_ty] as a list of Micheline expressions ONLY IF gas is unlimited
-    in [ctxt]. Otherwise returns an empty list. *)
-val serialize_stack_for_error : context -> ('a, 'b) stack_ty -> Script.expr list
+(** [serialize_stack_for_error stack_ty] returns a Micheline representation of
+    [stack_ty] as a list of Micheline expressions. *)
+val serialize_stack_for_error : ('a, 'b) stack_ty -> Script.expr list
 
 (** [unparse_ty ~loc ty] returns the Micheline representation of a given
     type. *)

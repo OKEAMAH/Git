@@ -182,10 +182,7 @@ let rec unparse_stack_uncarbonated :
       let urest = unparse_stack_uncarbonated rest in
       strip_locations uty :: urest
 
-let serialize_stack_for_error ctxt stack_ty =
-  match Gas.level ctxt with
-  | Unaccounted -> unparse_stack_uncarbonated stack_ty
-  | Limited _ -> []
+let serialize_stack_for_error stack_ty = unparse_stack_uncarbonated stack_ty
 
 let unparse_unit ~loc () = Gas_monad.return (Prim (loc, D_Unit, [], []))
 
