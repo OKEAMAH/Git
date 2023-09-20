@@ -204,19 +204,19 @@ val unparse_code :
     not carbonated and should not be called directly from the protocol. *)
 module Internal_for_benchmarking : sig
   val unparse_data :
-    context ->
     stack_depth:int ->
+    elab_conf:Script_ir_translator_config.elab_config ->
     Script_ir_unparser.unparsing_mode ->
     ('a, 'ac) ty ->
     'a ->
-    (Script.node * context) tzresult Lwt.t
+    (Script.node, error trace) Gas_monad.t
 
   val unparse_code :
-    context ->
     stack_depth:int ->
+    elab_conf:Script_ir_translator_config.elab_config ->
     Script_ir_unparser.unparsing_mode ->
     Script.node ->
-    (Script.node * context) tzresult Lwt.t
+    (Script.node, error trace) Gas_monad.t
 end
 
 val parse_instr :

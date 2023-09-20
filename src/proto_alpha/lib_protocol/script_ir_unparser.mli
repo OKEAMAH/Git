@@ -149,11 +149,11 @@ val unparse_contract :
     several functions of [Script_ir_translator]. To avoid repeating the
     signature of this function we define a type alias for it. *)
 type unparse_code_rec =
-  context ->
   stack_depth:int ->
+  elab_conf:Script_ir_translator_config.elab_config ->
   unparsing_mode ->
   Script.node ->
-  (Script.node * context) tzresult Lwt.t
+  (Script.node, error trace) Gas_monad.t
 
 (** [MICHELSON_PARSER] signature describes a set of dependencies required to
     unparse arbitrary values in the IR. Because some of those values contain
@@ -181,8 +181,7 @@ module type MICHELSON_PARSER = sig
     allow_forged:bool ->
     ('a, 'ac) ty ->
     Script.node ->
-    context ->
-    ('a * context) tzresult Lwt.t
+    ('a, error trace) Gas_monad.t
 end
 
 module Data_unparser : functor (P : MICHELSON_PARSER) -> sig
@@ -210,34 +209,33 @@ module Data_unparser : functor (P : MICHELSON_PARSER) -> sig
     ('k * 'v) list ->
     (Script.expr list * context) tzresult Lwt.t
 
-  (** [unparse_code ctxt ~stack_depth unparsing_mode code] returns [code]
+  (** [unparse_code ~stack_depth ~elab_conf unparsing_mode code] returns [code]
       with [I_PUSH] instructions parsed and unparsed back to make sure that
-      only forgeable values are being pushed. The gas is being consumed from
-      [ctxt]. *)
+      only forgeable values are being pushed. Gas is being consumed. *)
   val unparse_code :
-    context ->
     stack_depth:int ->
+    elab_conf:Script_ir_translator_config.elab_config ->
     unparsing_mode ->
     Script.node ->
-    (Script.expr * context, error trace) result Lwt.t
+    (Script.expr, error trace) Gas_monad.t
 
   (** For benchmarking purpose, we also export versions of the unparsing
       functions which don't call location stripping. These functions are
       not carbonated and should not be called directly from the protocol. *)
   module Internal_for_benchmarking : sig
     val unparse_data :
-      context ->
       stack_depth:int ->
+      elab_conf:Script_ir_translator_config.elab_config ->
       unparsing_mode ->
       ('a, 'ac) ty ->
       'a ->
-      (Script.node * context) tzresult Lwt.t
+      (Script.node, error trace) Gas_monad.t
 
     val unparse_code :
-      context ->
       stack_depth:int ->
+      elab_conf:Script_ir_translator_config.elab_config ->
       unparsing_mode ->
       Script.node ->
-      (Script.node * context) tzresult Lwt.t
+      (Script.node, error trace) Gas_monad.t
   end
 end

@@ -320,13 +320,13 @@ module Unparsing_data : Benchmark.S = struct
            in
            let closure () =
              match
-               Lwt_main.run
-                 (Script_ir_translator.Internal_for_benchmarking.unparse_data
+               Gas_monad.run_unaccounted
+               @@ Script_ir_translator.Internal_for_benchmarking.unparse_data
                     ~stack_depth:0
-                    ctxt
+                    ~elab_conf:(strict ctxt)
                     Script_ir_unparser.Optimized
                     ty
-                    typed)
+                    typed
              with
              | Error _ | (exception _) ->
                  bad_data name node michelson_type In_protocol
@@ -496,12 +496,12 @@ module Unparsing_code : Benchmark.S = struct
        in
        let closure () =
          let result =
-           Lwt_main.run
-             (Script_ir_translator.Internal_for_benchmarking.unparse_code
+           Gas_monad.run_unaccounted
+           @@ Script_ir_translator.Internal_for_benchmarking.unparse_code
                 ~stack_depth:0
-                ctxt
+                ~elab_conf:(strict ctxt)
                 Optimized
-                (Micheline.root node))
+                (Micheline.root node)
          in
          match Environment.wrap_tzresult result with
          | Error errs ->

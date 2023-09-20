@@ -1933,19 +1933,35 @@ let parse_toplevel : Script.expr -> (toplevel, error trace) Gas_monad.t =
 
 (* Normalize lambdas during parsing *)
 
-let normalized_lam ~unparse_code_rec ~stack_depth ctxt kdescr code_field =
+let normalized_lam ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
+    ~stack_depth ctxt kdescr code_field =
   let open Lwt_result_syntax in
-  let+ code_field, ctxt =
-    unparse_code_rec ctxt ~stack_depth:(stack_depth + 1) Optimized code_field
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? code_field, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_code_rec
+         ~stack_depth:(stack_depth + 1)
+         ~elab_conf
+         Optimized
+         code_field
   in
-  (Lam (kdescr, code_field), ctxt)
+  let*? code_field in
+  return (Lam (kdescr, code_field), ctxt)
 
-let normalized_lam_rec ~unparse_code_rec ~stack_depth ctxt kdescr code_field =
+let normalized_lam_rec ~(unparse_code_rec : Script_ir_unparser.unparse_code_rec)
+    ~stack_depth ctxt kdescr code_field =
   let open Lwt_result_syntax in
-  let+ code_field, ctxt =
-    unparse_code_rec ctxt ~stack_depth:(stack_depth + 1) Optimized code_field
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? code_field, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_code_rec
+         ~stack_depth:(stack_depth + 1)
+         ~elab_conf
+         Optimized
+         code_field
   in
-  (LamRec (kdescr, code_field), ctxt)
+  let*? code_field in
+  return (LamRec (kdescr, code_field), ctxt)
 
 (* [parse_contract] is used both to:
    - parse contract data by [parse_data] ([parse_contract_data])
@@ -3468,8 +3484,9 @@ and parse_instr :
       let*? lambda_rec_ty = lambda_t loc arg ret in
       let* code, ctxt =
         parse_lam_rec
-          ~unparse_code_rec:(fun ctxt ~stack_depth:_ _unparsing_mode node ->
-            return (node, ctxt))
+          ~unparse_code_rec:
+            (fun ~stack_depth:_ ~elab_conf:_ _unparsing_mode node ->
+            Gas_monad.return node)
           ~parse_packable_data
           (* No need to normalize the unparsed component to Optimized mode here
              because the script is already normalized in Optimized mode. *)
@@ -5692,14 +5709,14 @@ include Data_unparser (struct
 
   let parse_packable_ty = parse_packable_ty
 
-  let parse_data = parse_data
+  let parse_data = parse_packable_data
 end)
 
-let unparse_code_rec : unparse_code_rec =
-  let open Lwt_result_syntax in
-  fun ctxt ~stack_depth mode node ->
-    let* code, ctxt = unparse_code ctxt ~stack_depth mode node in
-    return (Micheline.root code, ctxt)
+let unparse_code_rec =
+  let open Gas_monad.Syntax in
+  fun ~stack_depth ~elab_conf mode node ->
+    let+ code = unparse_code ~stack_depth ~elab_conf mode node in
+    Micheline.root code
 
 let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
     mode ~normalize_types {code; storage} =
@@ -5728,16 +5745,20 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
          ctxt ) =
     typecheck_code ~unparse_code_rec ~legacy ~show_types:false ctxt code
   in
+  let elab_conf = Script_ir_translator_config.make ~legacy ctxt in
   let* storage, ctxt =
     parse_storage
       ~unparse_code_rec
-      ~elab_conf:(Script_ir_translator_config.make ~legacy ctxt)
+      ~elab_conf
       ctxt
       ~allow_forged:allow_forged_in_storage
       storage_type
       ~storage
   in
-  let* code, ctxt = unparse_code ctxt ~stack_depth:0 mode code_field in
+  let*? code =
+    Gas_monad.run_unaccounted
+    @@ unparse_code ~stack_depth:0 ~elab_conf mode code_field
+  in
   let* storage, ctxt =
     unparse_data ctxt ~stack_depth:0 mode storage_type storage
   in
@@ -5776,11 +5797,12 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
   let* views, ctxt =
     Script_map.map_es_in_context
       (fun ctxt _name {input_ty; output_ty; view_code} ->
-        let+ view_code, ctxt =
-          unparse_code ctxt ~stack_depth:0 mode view_code
+        let*? view_code =
+          Gas_monad.run_unaccounted
+          @@ unparse_code ~stack_depth:0 ~elab_conf mode view_code
         in
         let view_code = Micheline.root view_code in
-        ({input_ty; output_ty; view_code}, ctxt))
+        return ({input_ty; output_ty; view_code}, ctxt))
       ctxt
       views
   in
@@ -6315,7 +6337,16 @@ let unparse_code ctxt mode code =
   let* ctxt, code =
     Global_constants_storage.expand ctxt (strip_locations code)
   in
-  unparse_code ~stack_depth:0 ctxt mode (root code)
+  let*? code, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_code
+         ~stack_depth:0
+         ~elab_conf:Script_ir_translator_config.(make ~legacy:true ctxt)
+         mode
+         (root code)
+  in
+  let*? code in
+  return (code, ctxt)
 
 let parse_contract_data context loc arg_ty contract ~entrypoint =
   parse_contract_data ~stack_depth:0 context loc arg_ty contract ~entrypoint
