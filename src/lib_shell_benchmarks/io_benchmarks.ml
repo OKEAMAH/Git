@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2020-2021 Nomadic Labs. <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2023 DaiLambda, Inc. <contact@nomadic-labs.com>             *)
 (* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
@@ -1420,7 +1421,7 @@ end
 module Read_bench = struct
   include Shared
 
-  let default_config = {default_config with runs = 200_000}
+  let default_config = {default_config with runs = 400_000}
 
   let name = ns "READ"
 
@@ -1512,7 +1513,8 @@ let () = Registration.register_simple_with_num (module Read_bench)
 module Write_bench = struct
   include Shared
 
-  let default_config = {default_config with runs = 5_000}
+  (* Too small samples... *)
+  let default_config = {default_config with runs = 100_000}
 
   let name = ns "WRITE"
 
@@ -1593,11 +1595,13 @@ module Write_bench = struct
                      let i = Random.State.int rng_state n_rare_keys in
                      rare_keys.(i)
                in
+               (* The biggest file we have is 368640B *)
+               (* 0B - 4MB *)
+               let value_size = Random.State.int rng_state 800 * 512 in
+
                let random_bytes =
-                 (* The biggest file we have is 368640B *)
-                 Base_samplers.uniform_bytes rng_state ~nbytes:(4096 * 1000)
+                 Base_samplers.uniform_bytes rng_state ~nbytes:value_size
                in
-               let value_size = Bytes.length random_bytes in
 
                let* nsecs, context_hash =
                  (* Using [Lwt_main.run] here slows down the benchmark *)
