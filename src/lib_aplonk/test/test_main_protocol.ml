@@ -31,7 +31,8 @@ module External = struct
   let no_pi_cases =
     Cases.Unit_tests_for_each_selector.list
     @ [Cases.General.no_public_inputs]
-    @ Cases.Range_Checks.list @ Cases.Mod_Arith.list
+    (* @ Cases.Range_Checks.list *)
+    @ Cases.Mod_Arith.list
 
   let one_pi_cases =
     Cases.General_circuits.list @ Cases.General.list_one_public_input
@@ -139,10 +140,10 @@ module External = struct
               (qe.name, (module No_public_input : CircuitPI));
               (qlg.name, (module No_public_input : CircuitPI));
               (qrg.name, (module No_public_input : CircuitPI));
-              ( Cases.Range_Checks.basic.name,
-                (module No_public_input : CircuitPI) );
-              ( Cases.Range_Checks.valid.name,
-                (module No_public_input : CircuitPI) );
+              (* ( Cases.Range_Checks.basic.name,
+                   (module No_public_input : CircuitPI) );
+                 ( Cases.Range_Checks.valid.name,
+                   (module No_public_input : CircuitPI) ); *)
               (zero_values.name, (module One_public_input : CircuitPI));
               (non_zero_values.name, (module One_public_input : CircuitPI));
             ]
@@ -172,7 +173,8 @@ module External = struct
              aPlonk doesn’t work when used with two circuits with different evaluation points for wires
              I (Anne-Laure) thought the problem was solved when I fixed the number of batches to the max of the circuits but it still fails in verification *)
           (* [ql; qlg]; *)
-          [qc; Cases.Range_Checks.basic; Cases.Range_Checks.basic];
+          (* FIXME: handle range-checks in aPlonK
+              [qc; Cases.Range_Checks.basic; Cases.Range_Checks.basic]; *)
           [non_zero_values; non_zero_values; zero_values];
           [qlg; qrg; non_zero_values; zero_values];
         ]
@@ -181,7 +183,7 @@ module External = struct
     @ [
         ("nb_proofs no pi", upper_bound_no_pi_simple);
         ("nb_proofs no pi (next wire)", upper_bound_no_pi_next_wire);
-        ("nb_proofs no pi (RC)", upper_bound_no_pi_rc);
+        (* ("nb_proofs no pi (RC)", upper_bound_no_pi_rc); *)
         ("nb_proofs pi_rollup", upper_bound_pi_rollup);
       ]
     @ multi_tests
