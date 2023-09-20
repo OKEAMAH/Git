@@ -53,12 +53,19 @@ let write_model ~name =
     ~coeff1:(fv name "keys_written")
     ~coeff2:(fv name "storage_bytes_write")
 
+let read_model2 ~name =
+  Model.bilinear_affine
+    ~name:(ns2 name "read")
+    ~intercept:(fv name "intercept")
+    ~coeff1:(fv name "depth")
+    ~coeff2:(fv name "bytes")
+
 let write_model2 ~name =
   Model.bilinear_affine
-    ~name:(ns2 name "write_model")
-    ~intercept:(fv name "write_latency")
+    ~name:(ns2 name "write")
+    ~intercept:(fv name "intercept")
     ~coeff1:(fv name "depth")
-    ~coeff2:(fv name "storage_bytes_write")
+    ~coeff2:(fv name "bytes")
 
 module Helpers = struct
   (* Samples keys in an alphabet of [card] elements. *)
@@ -1435,7 +1442,7 @@ module Read_bench = struct
         | Key {depth; storage_bytes} ->
             (* Shift depth so that it starts from 0 *)
             (depth - 1, (storage_bytes, ())))
-      ~model:(read_model ~name:"random_read")
+      ~model:(read_model2 ~name:"read")
 
   (* - Use existing context.  Mainnet context just before a GC is preferable.
      - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
@@ -1528,7 +1535,7 @@ module Write_bench = struct
         | Key {depth; storage_bytes} ->
             (* Shift depth so that it starts from 0 *)
             (depth - 1, (storage_bytes, ())))
-      ~model:(write_model2 ~name:"random_write")
+      ~model:(write_model2 ~name:"write")
 
   (* - Use existing context.  Mainnet context just before a GC is preferable.
      - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
