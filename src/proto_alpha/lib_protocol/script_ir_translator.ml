@@ -1143,7 +1143,6 @@ type (_, _, _) dug_proof_argument =
 type (_, _) dipn_proof_argument =
   | Dipn_proof_argument :
       ('fa, 'fs, 'fb, 'fu, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
-      * context
       * ('fa, 'fs, 'fb, 'fu) descr
       * ('b, 'u) stack_ty
       -> ('a, 's) dipn_proof_argument
@@ -3823,8 +3822,11 @@ and parse_instr :
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
       let rec make_proof_argument :
           type a s.
-          int -> (a, s) stack_ty -> (a, s) dipn_proof_argument tzresult Lwt.t =
-       fun n stk ->
+          int ->
+          (a, s) stack_ty ->
+          context ->
+          ((a, s) dipn_proof_argument * context) tzresult Lwt.t =
+       fun n stk ctxt ->
         match (Compare.Int.(n = 0), stk) with
         | true, rest -> (
             let* judgement, ctxt =
@@ -3833,22 +3835,23 @@ and parse_instr :
             match judgement with
             | Typed descr ->
                 return
-                  (Dipn_proof_argument (KRest, ctxt, descr, descr.aft)
-                    : (a, s) dipn_proof_argument)
+                  ( (Dipn_proof_argument (KRest, descr, descr.aft)
+                      : (a, s) dipn_proof_argument),
+                    ctxt )
             | Failed _ -> tzfail (Fail_not_in_tail_position loc))
         | false, Item_t (v, rest) ->
-            let+ (Dipn_proof_argument (n', ctxt, descr, aft')) =
-              make_proof_argument (n - 1) rest
+            let+ Dipn_proof_argument (n', descr, aft'), ctxt =
+              make_proof_argument (n - 1) rest ctxt
             in
             let w = KPrefix (loc, v, n') in
-            Dipn_proof_argument (w, ctxt, descr, Item_t (v, aft'))
+            (Dipn_proof_argument (w, descr, Item_t (v, aft')), ctxt)
         | _, _ ->
             let whole_stack = serialize_stack_for_error stack in
             tzfail (Bad_stack (loc, I_DIP, 1, whole_stack))
       in
       let*? () = error_unexpected_annot loc result_annot in
-      let* (Dipn_proof_argument (n', ctxt, descr, aft)) =
-        make_proof_argument n stack
+      let* Dipn_proof_argument (n', descr, aft), ctxt =
+        make_proof_argument n stack ctxt
       in
       let b = descr.instr.apply (IHalt descr.loc) in
       let res = {apply = (fun k -> IDipn (loc, n, n', b, k))} in
