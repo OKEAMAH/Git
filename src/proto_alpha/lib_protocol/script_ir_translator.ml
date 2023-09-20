@@ -1940,10 +1940,11 @@ let parse_view_name : Script.node -> (Script_string.t, error trace) Gas_monad.t
            s)
   | expr -> tzfail @@ Invalid_kind (location expr, [String_kind], kind expr)
 
-let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
-  let open Result_syntax in
-  fun ctxt toplevel ->
-    record_trace (Ill_typed_contract (toplevel, []))
+let parse_toplevel : Script.expr -> (toplevel, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun toplevel ->
+    Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
+        Ill_typed_contract (toplevel, []))
     @@
     match root toplevel with
     | Int (loc, _) -> tzfail (Invalid_kind (loc, [Seq_kind], Int_kind))
@@ -1951,9 +1952,9 @@ let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
     | Bytes (loc, _) -> tzfail (Invalid_kind (loc, [Seq_kind], Bytes_kind))
     | Prim (loc, _, _, _) -> tzfail (Invalid_kind (loc, [Seq_kind], Prim_kind))
     | Seq (_, fields) -> (
-        let rec find_fields ctxt p s c views fields =
+        let rec find_fields p s c views fields =
           match fields with
-          | [] -> return (ctxt, (p, s, c, views))
+          | [] -> return (p, s, c, views)
           | Int (loc, _) :: _ ->
               tzfail (Invalid_kind (loc, [Prim_kind], Int_kind))
           | String (loc, _) :: _ ->
@@ -1964,27 +1965,24 @@ let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
               tzfail (Invalid_kind (loc, [Prim_kind], Seq_kind))
           | Prim (loc, K_parameter, [arg], annot) :: rest -> (
               match p with
-              | None -> find_fields ctxt (Some (arg, loc, annot)) s c views rest
+              | None -> find_fields (Some (arg, loc, annot)) s c views rest
               | Some _ -> tzfail (Duplicate_field (loc, K_parameter)))
           | Prim (loc, K_storage, [arg], annot) :: rest -> (
               match s with
-              | None -> find_fields ctxt p (Some (arg, loc, annot)) c views rest
+              | None -> find_fields p (Some (arg, loc, annot)) c views rest
               | Some _ -> tzfail (Duplicate_field (loc, K_storage)))
           | Prim (loc, K_code, [arg], annot) :: rest -> (
               match c with
-              | None -> find_fields ctxt p s (Some (arg, loc, annot)) views rest
+              | None -> find_fields p s (Some (arg, loc, annot)) views rest
               | Some _ -> tzfail (Duplicate_field (loc, K_code)))
           | Prim (loc, ((K_parameter | K_storage | K_code) as name), args, _)
             :: _ ->
               tzfail (Invalid_arity (loc, name, 1, List.length args))
           | Prim (loc, K_view, [name; input_ty; output_ty; view_code], _)
             :: rest ->
-              let* str, ctxt = Gas_monad.run ctxt @@ parse_view_name name in
-              let* str in
-              let* ctxt =
-                Gas.consume
-                  ctxt
-                  (Michelson_v1_gas.Cost_of.Interpreter.view_update str views)
+              let* str = parse_view_name name in
+              let*$ () =
+                Michelson_v1_gas.Cost_of.Interpreter.view_update str views
               in
               if Script_map.mem str views then tzfail (Duplicated_view_name loc)
               else
@@ -1994,15 +1992,15 @@ let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
                     (Some {input_ty; output_ty; view_code})
                     views
                 in
-                find_fields ctxt p s c views' rest
+                find_fields p s c views' rest
           | Prim (loc, K_view, args, _) :: _ ->
               tzfail (Invalid_arity (loc, K_view, 4, List.length args))
           | Prim (loc, name, _, _) :: _ ->
               let allowed = [K_parameter; K_storage; K_code; K_view] in
               tzfail (Invalid_primitive (loc, allowed, name))
         in
-        let* ctxt, toplevel =
-          find_fields ctxt None None None (Script_map.empty string_t) fields
+        let* toplevel =
+          find_fields None None None (Script_map.empty string_t) fields
         in
         match toplevel with
         | None, _, _, _ -> tzfail (Missing_field K_parameter)
@@ -2012,10 +2010,10 @@ let parse_toplevel : context -> Script.expr -> (toplevel * context) tzresult =
             Some (s, sloc, sannot),
             Some (c, cloc, cannot),
             views ) ->
-            let* () = Script_ir_annot.error_unexpected_annot ploc pannot in
-            let* () = Script_ir_annot.error_unexpected_annot cloc cannot in
-            let+ () = Script_ir_annot.error_unexpected_annot sloc sannot in
-            ({code_field = c; arg_type = p; views; storage_type = s}, ctxt))
+            let*? () = Script_ir_annot.error_unexpected_annot ploc pannot in
+            let*? () = Script_ir_annot.error_unexpected_annot cloc cannot in
+            let+? () = Script_ir_annot.error_unexpected_annot sloc sannot in
+            {code_field = c; arg_type = p; views; storage_type = s})
 
 (* Normalize lambdas during parsing *)
 
@@ -4353,13 +4351,13 @@ and parse_instr :
          contracts but then we throw away the typed version, except for the
          storage type which is kept for efficiency in the ticket scanner. *)
       let canonical_code = Micheline.strip_locations code in
-      let*? {arg_type; storage_type; code_field; views}, ctxt =
-        parse_toplevel ctxt canonical_code
-      in
       let*? res, ctxt =
         Gas_monad.run ctxt
         @@
         let open Gas_monad.Syntax in
+        let* {arg_type; storage_type; code_field; views} =
+          parse_toplevel canonical_code
+        in
         let error_details = Informative () in
         let* arg_type =
           Gas_monad.record_trace_eval ~error_details (fun () ->
@@ -4379,10 +4377,12 @@ and parse_instr :
                ~legacy
                storage_type
         in
-        (arg_type, storage_type)
+        (arg_type, storage_type, code_field, views)
       in
       let*? ( Ex_parameter_ty_and_entrypoints {arg_type; entrypoints},
-              Ex_ty storage_type ) =
+              Ex_ty storage_type,
+              code_field,
+              views ) =
         res
       in
       let*? (Ty_ex_c arg_type_full) = pair_t loc arg_type storage_type in
@@ -5019,14 +5019,15 @@ and parse_contract :
                        ctxt
                        code
                    in
-                   (* can only fail because of gas *)
-                   let*? {arg_type; _}, ctxt = parse_toplevel ctxt code in
                    let*? targ, ctxt =
                      Gas_monad.run ctxt
-                     @@ parse_parameter_ty_and_entrypoints
-                          ~stack_depth:(stack_depth + 1)
-                          ~legacy:true
-                          arg_type
+                     @@
+                     let open Gas_monad.Syntax in
+                     let* {arg_type; _} = parse_toplevel code in
+                     parse_parameter_ty_and_entrypoints
+                       ~stack_depth:(stack_depth + 1)
+                       ~legacy:true
+                       arg_type
                    in
                    let*? (Ex_parameter_ty_and_entrypoints
                            {arg_type = targ; entrypoints}) =
@@ -5166,15 +5167,13 @@ let parse_code :
     in
     let legacy = elab_conf.legacy in
     let* ctxt, code = Global_constants_storage.expand ctxt code in
-    let*? {arg_type; storage_type; code_field; views}, ctxt =
-      parse_toplevel ctxt code
-    in
-    let arg_type_loc = location arg_type in
-    let storage_type_loc = location storage_type in
     let*? res, ctxt =
       Gas_monad.run ctxt
       @@
       let open Gas_monad.Syntax in
+      let* {arg_type; storage_type; code_field; views} = parse_toplevel code in
+      let arg_type_loc = location arg_type in
+      let storage_type_loc = location storage_type in
       let* arg_type =
         Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
             Ill_formed_type (Some "parameter", code, arg_type_loc))
@@ -5185,10 +5184,13 @@ let parse_code :
             Ill_formed_type (Some "storage", code, storage_type_loc))
         @@ parse_storage_ty ~stack_depth:0 ~legacy storage_type
       in
-      (arg_type, storage_type)
+      (arg_type, storage_type, code_field, views, storage_type_loc)
     in
     let*? ( Ex_parameter_ty_and_entrypoints {arg_type; entrypoints},
-            Ex_ty storage_type ) =
+            Ex_ty storage_type,
+            code_field,
+            views,
+            storage_type_loc ) =
       res
     in
     let*? (Ty_ex_c arg_type_full) =
@@ -5305,15 +5307,15 @@ let typecheck_code :
   fun ~unparse_code_rec ~legacy ~show_types ctxt code ->
     (* Constants need to be expanded or [parse_toplevel] may fail. *)
     let* ctxt, code = Global_constants_storage.expand ctxt code in
-    let*? toplevel, ctxt = parse_toplevel ctxt code in
-    let {arg_type; storage_type; code_field; views} = toplevel in
     let type_map = ref [] in
-    let arg_type_loc = location arg_type in
-    let storage_type_loc = location storage_type in
     let*? res, ctxt =
       Gas_monad.run ctxt
       @@
       let open Gas_monad.Syntax in
+      let* toplevel = parse_toplevel code in
+      let {arg_type; storage_type; code_field; views} = toplevel in
+      let arg_type_loc = location arg_type in
+      let storage_type_loc = location storage_type in
       let* arg_type =
         Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
             Ill_formed_type (Some "parameter", code, arg_type_loc))
@@ -5324,10 +5326,14 @@ let typecheck_code :
             Ill_formed_type (Some "storage", code, storage_type_loc))
         @@ parse_storage_ty ~stack_depth:0 ~legacy storage_type
       in
-      (arg_type, ex_storage_type)
+      (arg_type, ex_storage_type, toplevel, code_field, views, storage_type_loc)
     in
     let*? ( Ex_parameter_ty_and_entrypoints {arg_type; entrypoints},
-            Ex_ty storage_type ) =
+            Ex_ty storage_type,
+            toplevel,
+            code_field,
+            views,
+            storage_type_loc ) =
       res
     in
     let*? (Ty_ex_c arg_type_full) =
@@ -6044,7 +6050,9 @@ let parse_contract_data context loc arg_ty contract ~entrypoint =
 let parse_toplevel ctxt toplevel =
   let open Lwt_result_syntax in
   let* ctxt, toplevel = Global_constants_storage.expand ctxt toplevel in
-  Lwt.return @@ parse_toplevel ctxt toplevel
+  let*? toplevel, ctxt = Gas_monad.run ctxt @@ parse_toplevel toplevel in
+  let*? toplevel in
+  return (toplevel, ctxt)
 
 let parse_comparable_ty = parse_comparable_ty ~stack_depth:0
 
