@@ -1206,6 +1206,7 @@ module Auto_build = struct
         lasso_positive = true;
         report = ReportToFile report_file;
         display = {infer_opts.Cmdline.display with save_directory = outdir};
+        plot = true;
       }
     in
     let solution =
