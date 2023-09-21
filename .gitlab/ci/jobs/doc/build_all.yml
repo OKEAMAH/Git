@@ -9,10 +9,24 @@ documentation:build_all:
     - .tags_template__build
   stage: build
   needs: [trigger]
+  variables:
+    DUNE_CACHE: "enabled"
+    XDG_CACHE_HOME: $CI_PROJECT_DIR/_build/_dune_cache
+    DUNE_CACHE_STORAGE_MODE: "hardlink"
+  cache:
+    key: $CI_JOB_NAME_SLUG
+    paths:
+      - _build/_dune_cache
   before_script:
     - . $HOME/.venv/bin/activate
+    - env | grep CACHE
+    ### Inspect size and contents of Dune cache
+    - '[ -d $XDG_CACHE_HOME ] && { du -hs $XDG_CACHE_HOME; find $XDG_CACHE_HOME/dune/db/ -type f | wc -l ; } || true'
   script:
     - ./.gitlab/ci/jobs/doc/documentation:build_all.sh
+  after_script:
+    ### Inspect size and contents of Dune cache
+    - '[ -d $XDG_CACHE_HOME ] && { du -hs $XDG_CACHE_HOME; find $XDG_CACHE_HOME/dune/db/ -type f | wc -l ; } || true'
   artifacts:
     expose_as: 'Documentation - excluding old protocols'
     paths:
