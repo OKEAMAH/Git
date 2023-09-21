@@ -119,11 +119,11 @@ end
 
 module Shared : sig
   type config = {
-    existing_context : string * Context_hash.t;
+    tezos_data_dir : string;
+    context_hash : Context_hash.t;
     subdirectory : string;
     memoryAvailable : float;
-        (** Restrict MemoryAvailable to this amount, in GiB *)
-    runs : int;  (** How many random IOs are performed *)
+    runs : int;
   }
 end
 

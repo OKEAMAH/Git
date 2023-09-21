@@ -1223,7 +1223,8 @@ module Shared = struct
   let group = Benchmark.Group "io"
 
   type config = {
-    existing_context : string * Context_hash.t;
+    tezos_data_dir : string;
+    context_hash : Context_hash.t;
     subdirectory : string;
     memoryAvailable : float;
     runs : int;
@@ -1231,7 +1232,8 @@ module Shared = struct
 
   let default_config =
     {
-      existing_context = ("/no/such/directory", Context_hash.zero);
+      tezos_data_dir = "/somewhere/tezos-node";
+      context_hash = Context_hash.zero;
       subdirectory = "/no/such/key";
       memoryAvailable = 6.0;
       runs = 0;
@@ -1240,12 +1242,13 @@ module Shared = struct
   let config_encoding =
     let open Data_encoding in
     conv
-      (fun {existing_context; subdirectory; memoryAvailable; runs} ->
-        (existing_context, subdirectory, memoryAvailable, runs))
-      (fun (existing_context, subdirectory, memoryAvailable, runs) ->
-        {existing_context; subdirectory; memoryAvailable; runs})
-      (obj4
-         (req "existing_context" (tup2 string Context_hash.encoding))
+      (fun {tezos_data_dir; context_hash; subdirectory; memoryAvailable; runs} ->
+        (tezos_data_dir, context_hash, subdirectory, memoryAvailable, runs))
+      (fun (tezos_data_dir, context_hash, subdirectory, memoryAvailable, runs) ->
+       {tezos_data_dir; context_hash; subdirectory; memoryAvailable; runs})
+      (obj5
+         (req "tezos_data_dir" string)
+         (req "context_hash" Context_hash.encoding)
          (req "subdirectory" string)
          (req "memoryAvailable" float)
          (req "runs" int31))
@@ -1445,7 +1448,8 @@ module Shared = struct
      It ignores [bench_num].
   *)
   let create_benchmarks ~rng_state config f =
-    let base_dir, context_hash = config.existing_context in
+    let {tezos_data_dir; context_hash; _} = config in
+    let base_dir = Filename.concat tezos_data_dir "context" in
 
     (* We sample keys in the context ,since we cannot carry the all *)
     let normal_keys, rare_keys = sample_keys ~rng:rng_state base_dir context_hash in
@@ -1481,7 +1485,7 @@ module Shared = struct
               context
               [normal_keys; rare_keys]) ;
         restrict_memory () ;
-        Lwt_main.run (f oc ~restrict_memory ~base_dir ~context_hash ~get_random_key)) ;
+        Lwt_main.run (f oc ~restrict_memory ~get_random_key)) ;
 
     close_out oc ;
     recover_measurements fn
@@ -1501,7 +1505,9 @@ module Read_bench = struct
   let model = make_model (read_model2 ~name:"read")
 
   let create_benchmarks ~rng_state ~bench_num:_ config =
-    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~base_dir ~context_hash ~get_random_key ->
+    let base_dir = Filename.concat config.tezos_data_dir "context" in
+    let context_hash = config.context_hash in
+    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~get_random_key ->
     let open Lwt.Syntax in
     let* context, index =
       Io_helpers.load_context_from_disk_lwt base_dir context_hash
@@ -1544,8 +1550,19 @@ module Write_bench = struct
   let model = make_model (write_model2 ~name:"write")
 
   let create_benchmarks ~rng_state ~bench_num:_ config =
-    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~base_dir ~context_hash ~get_random_key ->
+    let source_base_dir = Filename.concat config.tezos_data_dir "context" in
+    let base_dir = source_base_dir ^ ".tmp" in
+    let context_hash = config.context_hash in
+    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~get_random_key ->
     let open Lwt.Syntax in
+
+    (* Copy the context dir *)
+    let () =
+      Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir
+    in
+    Format.eprintf "Copying the data directory to %s@." base_dir ;
+    Io_helpers.copy_rec source_base_dir base_dir ;
+
     let* index = Tezos_context.Context.init ~readonly:false base_dir in
     let rec loop context_hash n =
       if n <= 0 then Lwt.return_unit
