@@ -80,7 +80,7 @@ module Helpers = struct
 
   (* Initializes a context by setting random bytes for each key in the
      given [key_set]. *)
-  let random_contents rng_state base_dir index context key_set commit_batch_size
+  let random_contents rng_state context_dir index context key_set commit_batch_size
       =
     let open Lwt_syntax in
     let* index, context, _ =
@@ -94,13 +94,13 @@ module Helpers = struct
           else
             (* save and proceed with fresh diff *)
             let* context, index =
-              Io_helpers.commit_and_reload base_dir index context
+              Io_helpers.commit_and_reload context_dir index context
             in
             Lwt.return (index, context, 0))
         key_set
         (index, context, 0)
     in
-    Io_helpers.commit_and_reload base_dir index context
+    Io_helpers.commit_and_reload context_dir index context
 
   let random_key_set rng_state ~depth ~key_card ~insertions =
     let rec loop remaining acc =
@@ -121,20 +121,20 @@ module Helpers = struct
     in
     loop insertions initial
 
-  let prepare_random_context rng_state base_dir commit_batch_size keys =
+  let prepare_random_context rng_state context_dir commit_batch_size keys =
     let context_hash =
       Io_helpers.assert_ok ~msg:"Io_helpers.prepare_empty_context"
-      @@ Lwt_main.run (Io_helpers.prepare_empty_context base_dir)
+      @@ Lwt_main.run (Io_helpers.prepare_empty_context context_dir)
     in
     let context, index =
-      Io_helpers.load_context_from_disk base_dir context_hash
+      Io_helpers.load_context_from_disk context_dir context_hash
     in
     Lwt_main.run
       (let open Lwt_syntax in
       let* context, index =
-        random_contents rng_state base_dir index context keys commit_batch_size
+        random_contents rng_state context_dir index context keys commit_batch_size
       in
-      Io_helpers.commit_and_reload base_dir index context)
+      Io_helpers.commit_and_reload context_dir index context)
 end
 
 module Context_size_dependent_shared = struct
@@ -314,14 +314,14 @@ module Context_size_dependent_read_bench = struct
         }
     in
     let with_context f =
-      let base_dir =
+      let context_dir =
         Filename.temp_file ?temp_dir:cfg.temp_dir (Namespace.basename name) ""
       in
-      Io_helpers.prepare_base_dir base_dir ;
+      Io_helpers.prepare_context_dir context_dir ;
       let context, index =
         Helpers.prepare_random_context
           rng_state
-          base_dir
+          context_dir
           cfg.commit_batch_size
           keys
       in
@@ -330,7 +330,7 @@ module Context_size_dependent_read_bench = struct
         Lwt_main.run
           (let open Lwt_syntax in
           let* () = Tezos_context.Context.close index in
-          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir)
+          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir context_dir)
       in
       let result =
         try f context
@@ -415,14 +415,14 @@ module Context_size_dependent_write_bench = struct
         }
     in
     let with_context f =
-      let base_dir =
+      let context_dir =
         Filename.temp_file ?temp_dir:cfg.temp_dir (Namespace.basename name) ""
       in
-      Io_helpers.prepare_base_dir base_dir ;
+      Io_helpers.prepare_context_dir context_dir ;
       let context, index =
         Helpers.prepare_random_context
           rng_state
-          base_dir
+          context_dir
           cfg.commit_batch_size
           keys
       in
@@ -433,7 +433,7 @@ module Context_size_dependent_write_bench = struct
         Lwt_main.run
           (let open Lwt_syntax in
           let* () = Tezos_context.Context.close index in
-          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir)
+          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir context_dir)
       in
       let result =
         try f context
@@ -691,14 +691,14 @@ module Irmin_pack_read_bench = struct
         }
     in
     let with_context f =
-      let base_dir =
+      let context_dir =
         Filename.temp_file ?temp_dir:cfg.temp_dir (Namespace.basename name) ""
       in
-      Io_helpers.prepare_base_dir base_dir ;
+      Io_helpers.prepare_context_dir context_dir ;
       let context, index =
         Helpers.prepare_random_context
           rng_state
-          base_dir
+          context_dir
           cfg.commit_batch_size
           keys
       in
@@ -707,7 +707,7 @@ module Irmin_pack_read_bench = struct
         Lwt_main.run
           (let open Lwt_syntax in
           let* () = Tezos_context.Context.close index in
-          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir)
+          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir context_dir)
       in
       let result =
         try f context
@@ -848,7 +848,7 @@ module Irmin_pack_write_bench = struct
       (insertions + total_keys_in_pack)
       Io_stats.pp
       stats ;
-    let base_dir =
+    let context_dir =
       Filename.temp_file ?temp_dir:cfg.temp_dir (Namespace.basename name) ""
     in
     let value_size =
@@ -856,11 +856,11 @@ module Irmin_pack_write_bench = struct
       * cfg.storage_chunk_bytes
     in
     let with_context f =
-      Io_helpers.prepare_base_dir base_dir ;
+      Io_helpers.prepare_context_dir context_dir ;
       let context, index =
         Helpers.prepare_random_context
           rng_state
-          base_dir
+          context_dir
           cfg.commit_batch_size
           key_set
       in
@@ -879,7 +879,7 @@ module Irmin_pack_write_bench = struct
         Lwt_main.run
           (let open Lwt_syntax in
           let* () = Tezos_context.Context.close index in
-          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir)
+          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir context_dir)
       in
       let result =
         try f context
@@ -975,8 +975,8 @@ module Read_random_key_bench = struct
     let key, value_size = keys.(Random.State.int rng_state card) in
     let with_context f =
       let context, index =
-        let base_dir, context_hash = config.existing_context in
-        Io_helpers.load_context_from_disk base_dir context_hash
+        let context_dir, context_hash = config.existing_context in
+        Io_helpers.load_context_from_disk context_dir context_hash
       in
       let finalizer () =
         Gc.compact () ;
@@ -1005,10 +1005,10 @@ module Read_random_key_bench = struct
     Generator.With_context {workload; closure; with_context}
 
   let create_benchmarks ~rng_state ~bench_num config =
-    let base_dir, context_hash = config.existing_context in
+    let context_dir, context_hash = config.existing_context in
     (* files under [config.subdirectory] *)
     let tree =
-      Io_helpers.with_context ~base_dir ~context_hash (fun context ->
+      Io_helpers.with_context ~context_dir ~context_hash (fun context ->
           Io_stats.load_tree context
           @@ Option.value_f ~default:(fun () ->
                  Stdlib.failwith
@@ -1138,13 +1138,13 @@ module Write_random_keys_bench = struct
     let keys_written_to, _keys_not_written_to =
       Io_helpers.sample_without_replacement number_of_keys_written keys
     in
-    let source_base_dir, context_hash = cfg.existing_context in
+    let source_context_dir, context_hash = cfg.existing_context in
     let value_size =
       Base_samplers.sample_in_interval rng_state ~range:cfg.storage_chunks
       * cfg.storage_chunk_bytes
     in
     let with_context f =
-      let target_base_dir =
+      let target_context_dir =
         let temp_dir = Option.value cfg.temp_dir ~default:"/tmp" in
         Format.asprintf
           "%s/%s_%d"
@@ -1153,10 +1153,10 @@ module Write_random_keys_bench = struct
           (Random.int 65536)
       in
       (* copying the original context for EACH test *)
-      Io_helpers.copy_rec source_base_dir target_base_dir ;
-      Format.eprintf "Finished copying original context to %s@." target_base_dir ;
+      Io_helpers.copy_rec source_context_dir target_context_dir ;
+      Format.eprintf "Finished copying original context to %s@." target_context_dir ;
       let context, index =
-        Io_helpers.load_context_from_disk target_base_dir context_hash
+        Io_helpers.load_context_from_disk target_context_dir context_hash
       in
       (* overwrite [keys_written_to].  The times of the writes are not measured. *)
       let context =
@@ -1174,7 +1174,7 @@ module Write_random_keys_bench = struct
         Lwt_main.run
           (let open Lwt_syntax in
           let* () = Tezos_context.Context.close index in
-          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir target_base_dir)
+          Tezos_stdlib_unix.Lwt_utils_unix.remove_dir target_context_dir)
       in
       let result =
         try f context
@@ -1199,10 +1199,10 @@ module Write_random_keys_bench = struct
     Generator.With_context {workload; closure; with_context}
 
   let create_benchmarks ~rng_state ~bench_num config =
-    let base_dir, context_hash = config.existing_context in
+    let context_dir, context_hash = config.existing_context in
     (* files under [config.subdirectory] *)
     let tree =
-      Io_helpers.with_context ~base_dir ~context_hash (fun context ->
+      Io_helpers.with_context ~context_dir ~context_hash (fun context ->
           Io_stats.load_tree context
           @@ Option.value_f ~default:(fun () ->
                  Stdlib.failwith
@@ -1238,6 +1238,9 @@ module Shared = struct
       memoryAvailable = 6.0;
       runs = 0;
     }
+
+  (* /somewhere/tezos-node/context *)
+  let context_dir config = Filename.concat config.tezos_data_dir "context"
 
   let config_encoding =
     let open Data_encoding in
@@ -1284,7 +1287,7 @@ module Shared = struct
      [<tezos_data_dir>/<context_hash>.txt] lodable in 3mins *)
   let build_key_list config =
     let open Lwt.Syntax in
-    let base_dir = Filename.concat config.tezos_data_dir "context" in
+    let context_dir = context_dir config in
     let context_hash = config.context_hash in
     let fn_cache =
       Filename.concat
@@ -1296,7 +1299,7 @@ module Shared = struct
       let oc = open_out fn_cache in
       Format.eprintf "Loading the trees of %a@." Context_hash.pp context_hash ;
       let+ () =
-        Io_stats.fold_tree base_dir context_hash [] () @@ fun () key tree ->
+        Io_stats.fold_tree context_dir context_hash [] () @@ fun () key tree ->
         let+ o = Context.Tree.to_value tree in
         match o with
         | Some bytes ->
@@ -1450,8 +1453,8 @@ module Shared = struct
      It ignores [bench_num].
   *)
   let create_benchmarks ~rng_state config f =
-    let {tezos_data_dir; context_hash; _} = config in
-    let base_dir = Filename.concat tezos_data_dir "context" in
+    let context_dir = context_dir config in
+    let context_hash = config.context_hash in
 
     (* We sample keys in the context ,since we cannot carry the all *)
     let normal_keys, rare_keys = sample_keys ~rng:rng_state config in
@@ -1480,7 +1483,7 @@ module Shared = struct
       (fun restrict_memory ->
         restrict_memory () ;
         Io_helpers.purge_disk_cache () ;
-        Io_helpers.with_context ~base_dir ~context_hash (fun context ->
+        Io_helpers.with_context ~context_dir ~context_hash (fun context ->
             Io_helpers.fill_disk_cache
               ~rng:rng_state
               ~restrict_memory
@@ -1507,12 +1510,12 @@ module Read_bench = struct
   let model = make_model (read_model2 ~name:"read")
 
   let create_benchmarks ~rng_state ~bench_num:_ config =
-    let base_dir = Filename.concat config.tezos_data_dir "context" in
     let context_hash = config.context_hash in
+    let context_dir = context_dir config in
     create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~get_random_key ->
     let open Lwt.Syntax in
     let* context, index =
-      Io_helpers.load_context_from_disk_lwt base_dir context_hash
+      Io_helpers.load_context_from_disk_lwt context_dir context_hash
     in
     let* () =
       let rec loop n =
@@ -1552,20 +1555,20 @@ module Write_bench = struct
   let model = make_model (write_model2 ~name:"write")
 
   let create_benchmarks ~rng_state ~bench_num:_ config =
-    let source_base_dir = Filename.concat config.tezos_data_dir "context" in
-    let base_dir = source_base_dir ^ ".tmp" in
     let context_hash = config.context_hash in
+    let source_context_dir = context_dir config in
+    let context_dir = source_context_dir ^ ".tmp" in
     create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~get_random_key ->
     let open Lwt.Syntax in
 
     (* Copy the context dir *)
     let () =
-      Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir
+      Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.remove_dir context_dir
     in
-    Format.eprintf "Copying the data directory to %s@." base_dir ;
-    Io_helpers.copy_rec source_base_dir base_dir ;
+    Format.eprintf "Copying the data directory to %s@." context_dir ;
+    Io_helpers.copy_rec source_context_dir context_dir ;
 
-    let* index = Tezos_context.Context.init ~readonly:false base_dir in
+    let* index = Tezos_context.Context.init ~readonly:false context_dir in
     let rec loop context_hash n =
       if n <= 0 then Lwt.return_unit
       else
