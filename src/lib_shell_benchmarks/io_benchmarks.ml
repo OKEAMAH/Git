@@ -1281,12 +1281,14 @@ module Shared = struct
       ~model
 
   (* To avoid long time (≒ 20mins) to traverse the tree, we have a cache file
-     [<base_dir>/<context_hash>.txt] lodable in 3mins *)
-  let build_key_list base_dir context_hash =
+     [<tezos_data_dir>/<context_hash>.txt] lodable in 3mins *)
+  let build_key_list config =
     let open Lwt.Syntax in
+    let base_dir = Filename.concat config.tezos_data_dir "context" in
+    let context_hash = config.context_hash in
     let fn_cache =
       Filename.concat
-        base_dir
+        config.tezos_data_dir
         (Format.asprintf "%a.txt" Context_hash.pp context_hash)
     in
     if Sys.file_exists fn_cache then Lwt.return fn_cache
@@ -1308,12 +1310,12 @@ module Shared = struct
       close_out oc ;
       fn_cache
 
-  let fold_tree base_dir context_hash init f =
-    let fn_cache = Lwt_main.run @@ build_key_list base_dir context_hash in
+  let fold_tree config init f =
+    let fn_cache = Lwt_main.run @@ build_key_list config in
     Format.eprintf
       "Loading the cached trees of %a at %s@."
       Context_hash.pp
-      context_hash
+      config.context_hash
       fn_cache ;
     let tbl = Stdlib.Hashtbl.create 1024 in
     let ic = open_in fn_cache in
@@ -1345,11 +1347,11 @@ module Shared = struct
     loop init
 
   (* Get 1_000_000+ random keys from the context. *)
-  let sample_keys ~rng base_dir context_hash =
+  let sample_keys ~rng config =
     let depths_tbl = Stdlib.Hashtbl.create 101 in
     let blocks_tbl = Stdlib.Hashtbl.create 101 in
     let nkeys =
-      fold_tree base_dir context_hash 0 (fun nkeys (key, size) ->
+      fold_tree config 0 (fun nkeys (key, size) ->
           let depth = List.length key in
           let n =
             Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt depths_tbl depth
@@ -1380,7 +1382,7 @@ module Shared = struct
 
     let normals, rares =
       let normals, rares =
-        fold_tree base_dir context_hash ([], []) (fun (acc, rares) (key, size) ->
+        fold_tree config ([], []) (fun (acc, rares) (key, size) ->
             let depth = List.length key in
             if
               size > 4096 (* Big files are rare, so we keep all of them. *)
@@ -1452,7 +1454,7 @@ module Shared = struct
     let base_dir = Filename.concat tezos_data_dir "context" in
 
     (* We sample keys in the context ,since we cannot carry the all *)
-    let normal_keys, rare_keys = sample_keys ~rng:rng_state base_dir context_hash in
+    let normal_keys, rare_keys = sample_keys ~rng:rng_state config in
 
     let get_random_key =
       let n_normal_keys = Array.length normal_keys in
