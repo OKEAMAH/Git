@@ -5,7 +5,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::inbox::{Deposit, KernelUpgrade, Transaction, TransactionContent};
+use crate::inbox::{Deposit, KernelUpgrade, TransactionContent};
 use primitive_types::{H160, U256};
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_ethereum::{
@@ -66,14 +66,20 @@ pub const MAX_SIZE_PER_CHUNK: usize = 4095 // Max input size minus external tag
 
 pub const UPGRADE_NONCE_SIZE: usize = 2;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Input {
-    SimpleTransaction(Box<Transaction>),
+    SimpleTransaction {
+        tx_hash: TransactionHash,
+        fee_reimbursement_address: H160,
+        content: TransactionContent,
+    },
     Deposit(Deposit),
     Upgrade(KernelUpgrade),
     NewChunkedTransaction {
         tx_hash: TransactionHash,
         num_chunks: u16,
+        fee_reimbursement_address: H160,
     },
     TransactionChunk {
         tx_hash: TransactionHash,
@@ -84,6 +90,7 @@ pub enum Input {
     Info(InfoPerLevel),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Default)]
 pub enum InputResult {
     /// No further inputs
@@ -104,12 +111,20 @@ impl InputResult {
     fn parse_simple_transaction(bytes: &[u8]) -> Self {
         // Next 32 bytes is the transaction hash.
         let (tx_hash, remaining) = parsable!(split_at(bytes, 32));
-        let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok()); // Remaining bytes is the rlp encoded transaction.
+        let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok());
+        let (fee_reimbursement_address, remaining) = parsable!(split_at(remaining, 20));
+        let fee_reimbursement_address: &[u8; 20] =
+            parsable!(fee_reimbursement_address.try_into().ok());
+        // We expect simple transaction to specify reimbursement address
+        let fee_reimbursement_address: H160 = From::from(fee_reimbursement_address);
+
+        // Remaining bytes is the rlp encoded transaction.
         let tx: EthereumTransactionCommon = parsable!(remaining.try_into().ok());
-        InputResult::Input(Input::SimpleTransaction(Box::new(Transaction {
+        InputResult::Input(Input::SimpleTransaction {
             tx_hash,
             content: TransactionContent::Ethereum(tx),
-        })))
+            fee_reimbursement_address,
+        })
     }
 
     fn parse_new_chunked_transaction(bytes: &[u8]) -> Self {
@@ -119,10 +134,16 @@ impl InputResult {
         // Next 2 bytes is the number of chunks.
         let (num_chunks, remaining) = parsable!(split_at(remaining, 2));
         let num_chunks = u16::from_le_bytes(num_chunks.try_into().unwrap());
+        let (fee_reimbursement_address, remaining) = parsable!(split_at(remaining, 20));
+        let fee_reimbursement_address: &[u8; 20] =
+            parsable!(fee_reimbursement_address.try_into().ok());
+        let fee_reimbursement_address: H160 = From::from(fee_reimbursement_address);
+
         if remaining.is_empty() {
             Self::Input(Input::NewChunkedTransaction {
                 tx_hash,
                 num_chunks,
+                fee_reimbursement_address,
             })
         } else {
             Self::Unparsable

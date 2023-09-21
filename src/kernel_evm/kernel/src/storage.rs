@@ -355,6 +355,8 @@ pub fn store_transaction_object<Host: Runtime>(
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
 const CHUNKED_TRANSACTION_NUM_CHUNKS: RefPath = RefPath::assert_from(b"/num_chunks");
+const CHUNKED_TRANSACTION_REIMBURSEMENT_ADDRESS: RefPath =
+    RefPath::assert_from(b"/reimbursement_address");
 
 pub fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath, Error> {
     let hash = hex::encode(tx_hash);
@@ -367,6 +369,16 @@ fn chunked_transaction_num_chunks_path(
     chunked_transaction_path: &OwnedPath,
 ) -> Result<OwnedPath, Error> {
     concat(chunked_transaction_path, &CHUNKED_TRANSACTION_NUM_CHUNKS).map_err(Error::from)
+}
+
+fn chunked_transaction_reimbursement_address_path(
+    chunked_transaction_path: &OwnedPath,
+) -> Result<OwnedPath, Error> {
+    concat(
+        chunked_transaction_path,
+        &CHUNKED_TRANSACTION_REIMBURSEMENT_ADDRESS,
+    )
+    .map_err(Error::from)
 }
 
 pub fn transaction_chunk_path(
@@ -384,10 +396,27 @@ fn is_transaction_complete<Host: Runtime>(
     num_chunks: u16,
 ) -> Result<bool, Error> {
     let n_subkeys = host.store_count_subkeys(chunked_transaction_path)? as u16;
-    // `n_subkeys` includes the key `num_chunks`
-    Ok(n_subkeys > num_chunks)
+    // `n_subkeys` includes the key `num_chunks` and `reimbursement_address`
+    Ok(n_subkeys >= num_chunks + 2)
 }
 
+pub fn fetch_transaction_data_if_complete<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+    num_chunks: u16,
+) -> Result<Option<Vec<u8>>, Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+
+    // If the chunk was the last one, we gather all the chunks and remove the
+    // sub elements.
+    if is_transaction_complete(host, &chunked_transaction_path, num_chunks)? {
+        let data = get_full_transaction(host, &chunked_transaction_path, num_chunks)?;
+        host.store_delete(&chunked_transaction_path)?;
+        Ok(Some(data))
+    } else {
+        Ok(None)
+    }
+}
 fn chunked_transaction_num_chunks_by_path<Host: Runtime>(
     host: &mut Host,
     chunked_transaction_path: &OwnedPath,
@@ -405,6 +434,17 @@ pub fn chunked_transaction_num_chunks<Host: Runtime>(
 ) -> Result<u16, Error> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     chunked_transaction_num_chunks_by_path(host, &chunked_transaction_path)
+}
+
+pub fn chunked_transaction_reimbursement_address<Host: Runtime>(
+    host: &Host,
+    tx_hash: &TransactionHash,
+) -> Result<H160, Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+
+    let chunked_transaction_reimbursement_address_path =
+        chunked_transaction_reimbursement_address_path(&chunked_transaction_path)?;
+    read_address(host, &chunked_transaction_reimbursement_address_path)
 }
 
 fn store_transaction_chunk_data<Host: Runtime>(
@@ -485,30 +525,19 @@ pub fn store_transaction_chunk<Host: Runtime>(
     tx_hash: &TransactionHash,
     i: u16,
     data: Vec<u8>,
-) -> Result<Option<Vec<u8>>, Error> {
+) -> Result<(), Error> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
-    let num_chunks =
-        chunked_transaction_num_chunks_by_path(host, &chunked_transaction_path)?;
 
     // Store the new transaction chunk.
     let transaction_chunk_path = transaction_chunk_path(&chunked_transaction_path, i)?;
-    store_transaction_chunk_data(host, &transaction_chunk_path, data)?;
-
-    // If the chunk was the last one, we gather all the chunks and remove the
-    // sub elements.
-    if is_transaction_complete(host, &chunked_transaction_path, num_chunks)? {
-        let data = get_full_transaction(host, &chunked_transaction_path, num_chunks)?;
-        host.store_delete(&chunked_transaction_path)?;
-        Ok(Some(data))
-    } else {
-        Ok(None)
-    }
+    store_transaction_chunk_data(host, &transaction_chunk_path, data)
 }
 
 pub fn create_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
     num_chunks: u16,
+    fee_reimbursement_address: H160,
 ) -> Result<(), Error> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
     let chunked_transaction_num_chunks_path =
@@ -533,6 +562,14 @@ pub fn create_chunked_transaction<Host: Runtime>(
     host.store_write(
         &chunked_transaction_num_chunks_path,
         &u16::to_le_bytes(num_chunks),
+        0,
+    )?;
+
+    let chunked_transaction_reimbursement_address_path =
+        chunked_transaction_reimbursement_address_path(&chunked_transaction_path)?;
+    host.store_write(
+        &chunked_transaction_reimbursement_address_path,
+        &fee_reimbursement_address.to_fixed_bytes(),
         0,
     )
     .map_err(Error::from)

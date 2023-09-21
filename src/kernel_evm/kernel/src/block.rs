@@ -357,10 +357,18 @@ mod tests {
             Transaction {
                 tx_hash: tx_hash_0,
                 content: Ethereum(dummy_eth_transaction_zero()),
+                fee_reimbursement_address: address_from_str(
+                    "3535353535353535353535353535353535353535",
+                ),
+                batching_fee: U256::from(200),
             },
             Transaction {
                 tx_hash: tx_hash_1,
                 content: Ethereum(dummy_eth_transaction_one()),
+                fee_reimbursement_address: address_from_str(
+                    "3535353535353535353535353535353535353535",
+                ),
+                batching_fee: U256::from(200),
             },
         ];
 
@@ -399,6 +407,10 @@ mod tests {
         let invalid_tx = Transaction {
             tx_hash,
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions: Vec<Transaction> = vec![invalid_tx];
@@ -424,6 +436,10 @@ mod tests {
         let valid_tx = Transaction {
             tx_hash,
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions: Vec<Transaction> = vec![valid_tx];
@@ -462,6 +478,10 @@ mod tests {
         let valid_tx = Transaction {
             tx_hash,
             content: Ethereum(dummy_eth_transaction_deploy()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions: Vec<Transaction> = vec![valid_tx];
@@ -521,11 +541,19 @@ mod tests {
         let transaction_0 = vec![Transaction {
             tx_hash: tx_hash_0,
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         }];
 
         let transaction_1 = vec![Transaction {
             tx_hash: tx_hash_1,
             content: Ethereum(dummy_eth_transaction_one()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         }];
 
         let queue = Queue {
@@ -565,10 +593,18 @@ mod tests {
             Transaction {
                 tx_hash: tx_hash_0,
                 content: Ethereum(dummy_eth_transaction_zero()),
+                fee_reimbursement_address: address_from_str(
+                    "3535353535353535353535353535353535353535",
+                ),
+                batching_fee: U256::from(200),
             },
             Transaction {
                 tx_hash: tx_hash_1,
                 content: Ethereum(dummy_eth_transaction_one()),
+                fee_reimbursement_address: address_from_str(
+                    "3535353535353535353535353535353535353535",
+                ),
+                batching_fee: U256::from(200),
             },
         ];
 
@@ -619,6 +655,10 @@ mod tests {
         let tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![tx.clone(), tx];
@@ -658,6 +698,10 @@ mod tests {
         let tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![tx];
@@ -691,6 +735,10 @@ mod tests {
         let tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![tx];
@@ -733,6 +781,10 @@ mod tests {
         let tx = Transaction {
             tx_hash,
             content: Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![tx];
@@ -838,6 +890,10 @@ mod tests {
         let valid_tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: TransactionContent::Ethereum(dummy_eth_transaction_deploy()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![valid_tx].into();
@@ -879,6 +935,10 @@ mod tests {
                     "e922354a3e5902b5ac474f3ff08a79cff43533826b8f451ae2190b65a9d26158",
                 ),
             ),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![valid_tx].into();
@@ -924,6 +984,10 @@ mod tests {
         let valid_tx = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: TransactionContent::Ethereum(dummy_eth_transaction_zero()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
         let transactions = vec![valid_tx].into();
 
@@ -996,6 +1060,10 @@ mod tests {
         let transaction = Transaction {
             tx_hash,
             content: Ethereum(tx),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
         let queue = Queue {
             proposals: vec![blueprint(vec![transaction])],
@@ -1025,6 +1093,10 @@ mod tests {
         let tx = Transaction {
             tx_hash,
             content: Ethereum(dummy_eth_transaction_one()),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         };
 
         let transactions = vec![tx];
@@ -1100,6 +1172,10 @@ mod tests {
         Transaction {
             tx_hash: hash_from_nonce(nonce),
             content: TransactionContent::Ethereum(dummy_eth(nonce)),
+            fee_reimbursement_address: address_from_str(
+                "3535353535353535353535353535353535353535",
+            ),
+            batching_fee: U256::from(200),
         }
     }
 

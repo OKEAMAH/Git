@@ -64,8 +64,10 @@ pub fn fetch<Host: Runtime>(
     chain_id: U256,
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    l1_tx_fee: U256,
 ) -> Result<Queue, anyhow::Error> {
-    let inbox_content = read_inbox(host, smart_rollup_address, ticketer, admin)?;
+    let inbox_content =
+        read_inbox(host, smart_rollup_address, ticketer, admin, l1_tx_fee)?;
     let transactions = filter_invalid_chain_id(inbox_content.transactions, chain_id);
     let blueprint = QueueElement::Blueprint(Blueprint { transactions });
     Ok(Queue {
@@ -107,9 +109,15 @@ mod tests {
             signature: None,
         };
 
+        let l1_fee = U256::from(100);
+
         let valid_transaction = Transaction {
             tx_hash: [0; TRANSACTION_HASH_SIZE],
             content: Ethereum(tx.clone()),
+            fee_reimbursement_address: address_from_str(
+                "323163e58aabec5daa3dd1130b759d24bef0f6ea",
+            ),
+            batching_fee: l1_fee,
         };
         let invalid_transaction = Transaction {
             tx_hash: [1; TRANSACTION_HASH_SIZE],
@@ -117,6 +125,10 @@ mod tests {
                 chain_id: U256::from(1312321),
                 ..tx
             }),
+            fee_reimbursement_address: address_from_str(
+                "323163e58aabec5daa3dd1130b759d24bef0f6ea",
+            ),
+            batching_fee: l1_fee,
         };
 
         let filtered_transactions = filter_invalid_chain_id(

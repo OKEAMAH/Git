@@ -9,8 +9,9 @@ use crate::error::UpgradeProcessError::InvalidUpgradeNonce;
 use crate::parsing::{Input, InputResult, MAX_SIZE_PER_CHUNK, UPGRADE_NONCE_SIZE};
 use crate::simulation;
 use crate::storage::{
+    chunked_transaction_reimbursement_address, fetch_transaction_data_if_complete,
     get_and_increment_deposit_nonce, read_kernel_upgrade_nonce,
-    store_last_info_per_level_timestamp,
+    store_last_info_per_level_timestamp, store_transaction_chunk,
 };
 use crate::tick_model;
 use crate::Error;
@@ -18,7 +19,9 @@ use primitive_types::{H160, U256};
 use rlp::{Decodable, DecoderError, Encodable};
 use sha3::{Digest, Keccak256};
 use tezos_crypto_rs::hash::ContractKt1Hash;
-use tezos_ethereum::rlp_helpers::{decode_field, decode_tx_hash, next};
+use tezos_ethereum::rlp_helpers::{
+    append_option, decode_field, decode_option, decode_tx_hash, next,
+};
 use tezos_ethereum::transaction::TransactionHash;
 use tezos_ethereum::tx_common::EthereumTransactionCommon;
 use tezos_evm_logging::{log, Level::*};
@@ -116,6 +119,12 @@ impl Decodable for TransactionContent {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
     pub tx_hash: TransactionHash,
+    // Address of the batcher/L1 transaction sender.
+    // In case of Deposit we allow omitting it
+    pub fee_reimbursement_address: Option<H160>,
+    // In case if fee_reimbursement_address unspecified,
+    // those fees would be burnt, otherwise, transfered to the address
+    pub batching_fee: U256,
     pub content: TransactionContent,
 }
 
@@ -130,8 +139,10 @@ impl Transaction {
 
 impl Encodable for Transaction {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream.begin_list(2);
+        stream.begin_list(4);
         stream.append_iter(self.tx_hash);
+        append_option(stream, self.fee_reimbursement_address);
+        stream.append(&self.batching_fee);
         stream.append(&self.content);
     }
 }
@@ -141,14 +152,22 @@ impl Decodable for Transaction {
         if !decoder.is_list() {
             return Err(DecoderError::RlpExpectedToBeList);
         }
-        if decoder.item_count()? != 2 {
+        if decoder.item_count()? != 4 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let mut it = decoder.iter();
         let tx_hash: TransactionHash = decode_tx_hash(next(&mut it)?)?;
+        let fee_reimbursement_address: Option<H160> =
+            decode_option(&next(&mut it)?, "Reimbursement address")?;
+        let batching_fee: U256 = decode_field(&next(&mut it)?, "Batching fee")?;
         let content: TransactionContent =
             decode_field(&next(&mut it)?, "Transaction content")?;
-        Ok(Transaction { tx_hash, content })
+        Ok(Transaction {
+            tx_hash,
+            content,
+            fee_reimbursement_address,
+            batching_fee,
+        })
     }
 }
 
@@ -189,6 +208,7 @@ fn handle_transaction_chunk<Host: Runtime>(
     tx_hash: TransactionHash,
     i: u16,
     data: Vec<u8>,
+    l1_tx_fee: U256,
 ) -> Result<Option<Transaction>, Error> {
     // If the number of chunks doesn't exist in the storage, the chunked
     // transaction wasn't created, so the chunk is ignored.
@@ -216,13 +236,23 @@ fn handle_transaction_chunk<Host: Runtime>(
         crate::storage::remove_chunked_transaction(host, &tx_hash)?;
         return Ok(None);
     };
+
+    store_transaction_chunk(host, &tx_hash, i, data)?;
+
+    let reimbursement_address =
+        chunked_transaction_reimbursement_address(host, &tx_hash)?;
+
     // When the transaction is stored in the storage, it returns the full transaction
     // if `data` was the missing chunk.
-    if let Some(data) = crate::storage::store_transaction_chunk(host, &tx_hash, i, data)?
-    {
+    if let Some(data) = fetch_transaction_data_if_complete(host, &tx_hash, num_chunks)? {
         if let Ok(tx) = EthereumTransactionCommon::from_bytes(&data) {
             let content = TransactionContent::Ethereum(tx);
-            return Ok(Some(Transaction { tx_hash, content }));
+            return Ok(Some(Transaction {
+                tx_hash,
+                content,
+                batching_fee: l1_tx_fee * num_chunks,
+                fee_reimbursement_address: Some(reimbursement_address),
+            }));
         }
     }
     Ok(None)
@@ -244,6 +274,7 @@ fn handle_kernel_upgrade<Host: Runtime>(
 fn handle_deposit<Host: Runtime>(
     host: &mut Host,
     deposit: Deposit,
+    l1_tx_fee: U256,
 ) -> Result<Transaction, Error> {
     let deposit_nonce = get_and_increment_deposit_nonce(host)?;
 
@@ -267,6 +298,8 @@ fn handle_deposit<Host: Runtime>(
     Ok(Transaction {
         tx_hash,
         content: TransactionContent::Deposit(deposit),
+        batching_fee: l1_tx_fee,
+        fee_reimbursement_address: None,
     })
 }
 
@@ -275,6 +308,7 @@ pub fn read_inbox<Host: Runtime>(
     smart_rollup_address: [u8; 20],
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    l1_tx_fee: U256,
 ) -> Result<InboxContent, anyhow::Error> {
     let mut res = InboxContent {
         kernel_upgrade: None,
@@ -286,15 +320,30 @@ pub fn read_inbox<Host: Runtime>(
                 return Ok(res);
             }
             InputResult::Unparsable => (),
-            InputResult::Input(Input::SimpleTransaction(tx)) => {
-                res.transactions.push(*tx)
-            }
+            InputResult::Input(Input::SimpleTransaction {
+                tx_hash,
+                fee_reimbursement_address,
+                content,
+            }) => res.transactions.push(Transaction {
+                tx_hash,
+                fee_reimbursement_address: Some(fee_reimbursement_address),
+                batching_fee: l1_tx_fee,
+                content,
+            }),
             InputResult::Input(Input::NewChunkedTransaction {
                 tx_hash,
                 num_chunks,
-            }) => crate::storage::create_chunked_transaction(host, &tx_hash, num_chunks)?,
+                fee_reimbursement_address,
+            }) => crate::storage::create_chunked_transaction(
+                host,
+                &tx_hash,
+                num_chunks,
+                fee_reimbursement_address,
+            )?,
             InputResult::Input(Input::TransactionChunk { tx_hash, i, data }) => {
-                if let Some(tx) = handle_transaction_chunk(host, tx_hash, i, data)? {
+                if let Some(tx) =
+                    handle_transaction_chunk(host, tx_hash, i, data, l1_tx_fee)?
+                {
                     res.transactions.push(tx)
                 }
             }
@@ -322,9 +371,9 @@ pub fn read_inbox<Host: Runtime>(
             InputResult::Input(Input::Info(info)) => {
                 store_last_info_per_level_timestamp(host, info.predecessor_timestamp)?;
             }
-            InputResult::Input(Input::Deposit(deposit)) => {
-                res.transactions.push(handle_deposit(host, deposit)?)
-            }
+            InputResult::Input(Input::Deposit(deposit)) => res
+                .transactions
+                .push(handle_deposit(host, deposit, l1_tx_fee)?),
         }
     }
 }
@@ -356,17 +405,27 @@ mod tests {
         SmartRollupAddress::new(SmartRollupHash(SMART_ROLLUP_ADDRESS.into()))
     }
 
+    fn address_from_str(s: &str) -> H160 {
+        let data = &hex::decode(s).unwrap();
+        H160::from_slice(data)
+    }
+
     fn input_to_bytes(smart_rollup_address: [u8; 20], input: Input) -> Vec<u8> {
         let mut buffer = Vec::new();
         // Targetted framing protocol
         buffer.push(0);
         buffer.extend_from_slice(&smart_rollup_address);
         match input {
-            Input::SimpleTransaction(tx) => {
+            Input::SimpleTransaction {
+                tx_hash,
+                fee_reimbursement_address,
+                content,
+            } => {
                 // Simple transaction tag
                 buffer.push(0);
-                buffer.extend_from_slice(&tx.tx_hash);
-                let mut tx_bytes = match tx.content {
+                buffer.extend_from_slice(&tx_hash);
+                buffer.extend_from_slice(&fee_reimbursement_address.to_fixed_bytes());
+                let mut tx_bytes = match content {
                     Ethereum(tx) => tx.into(),
                     _ => panic!(
                         "Simple transaction can contain only ethereum transactions"
@@ -378,11 +437,13 @@ mod tests {
             Input::NewChunkedTransaction {
                 tx_hash,
                 num_chunks,
+                fee_reimbursement_address,
             } => {
                 // New chunked transaction tag
                 buffer.push(1);
                 buffer.extend_from_slice(&tx_hash);
-                buffer.extend_from_slice(&u16::to_le_bytes(num_chunks))
+                buffer.extend_from_slice(&u16::to_le_bytes(num_chunks));
+                buffer.extend_from_slice(&fee_reimbursement_address.to_fixed_bytes())
             }
             Input::TransactionChunk { tx_hash, i, data } => {
                 // Transaction chunk tag
@@ -396,7 +457,11 @@ mod tests {
         buffer
     }
 
-    fn make_chunked_transactions(tx_hash: TransactionHash, data: Vec<u8>) -> Vec<Input> {
+    fn make_chunked_transactions(
+        tx_hash: TransactionHash,
+        fee_reimbursement_address: H160,
+        data: Vec<u8>,
+    ) -> Vec<Input> {
         let mut chunks: Vec<Input> = data
             .chunks(MAX_SIZE_PER_CHUNK)
             .enumerate()
@@ -411,6 +476,7 @@ mod tests {
         let new_chunked_transaction = Input::NewChunkedTransaction {
             tx_hash,
             num_chunks: number_of_chunks,
+            fee_reimbursement_address,
         };
 
         let mut buffer = Vec::new();
@@ -431,18 +497,23 @@ mod tests {
 
         let tx =
             EthereumTransactionCommon::from_bytes(&hex::decode("f86d80843b9aca00825208940b52d4d3be5d18a7ab5e4476a2f5382bbf2b38d888016345785d8a000080820a95a0d9ef1298c18c88604e3f08e14907a17dfa81b1dc6b37948abe189d8db5cb8a43a06fc7040a71d71d3cb74bd05ead7046b10668ad255da60391c017eea31555f156").unwrap()).unwrap();
-        let input = Input::SimpleTransaction(Box::new(Transaction {
+        let l1_fee = U256::from(100);
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
+        let input = Input::SimpleTransaction {
             tx_hash: ZERO_TX_HASH,
+            fee_reimbursement_address: reimb_address,
             content: Ethereum(tx.clone()),
-        }));
+        };
 
         host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)));
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
+            fee_reimbursement_address: Some(reimb_address),
+            batching_fee: l1_fee,
         }];
         assert_eq!(inbox_content.transactions, expected_transactions);
     }
@@ -451,20 +522,25 @@ mod tests {
     fn parse_valid_chunked_transaction() {
         let address = smart_rollup_address();
         let mut host = MockHost::with_address(&address);
+        let l1_fee = U256::from(200);
+        let num_of_chunks = 2;
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
 
         let (data, tx) = large_transaction();
 
-        let inputs = make_chunked_transactions(ZERO_TX_HASH, data);
+        let inputs = make_chunked_transactions(ZERO_TX_HASH, reimb_address, data);
 
         for input in inputs {
             host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
         }
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
+            fee_reimbursement_address: Some(reimb_address),
+            batching_fee: l1_fee * num_of_chunks,
         }];
         assert_eq!(inbox_content.transactions, expected_transactions);
     }
@@ -505,7 +581,9 @@ mod tests {
         let transfer_metadata = TransferMetadata::new(sender.clone(), source);
         host.add_transfer(payload, &transfer_metadata);
 
-        let inbox_content = read_inbox(&mut host, [0; 20], None, Some(sender)).unwrap();
+        let l1_fee = U256::from(200);
+        let inbox_content =
+            read_inbox(&mut host, [0; 20], None, Some(sender), l1_fee).unwrap();
         let expected_upgrade = Some(KernelUpgrade {
             nonce,
             preimage_hash,
@@ -520,13 +598,17 @@ mod tests {
         let mut host = MockHost::default();
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
+        let l1_fee = U256::from(200);
         let new_chunk1 = Input::NewChunkedTransaction {
             tx_hash,
             num_chunks: 2,
+            fee_reimbursement_address: reimb_address,
         };
         let new_chunk2 = Input::NewChunkedTransaction {
             tx_hash,
             num_chunks: 42,
+            fee_reimbursement_address: reimb_address,
         };
 
         host.add_external(Bytes::from(input_to_bytes(
@@ -539,7 +621,7 @@ mod tests {
         )));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
 
         let num_chunks = chunked_transaction_num_chunks(&mut host, &tx_hash)
             .expect("The number of chunks should exist");
@@ -554,9 +636,11 @@ mod tests {
         let mut host = MockHost::default();
 
         let (data, _tx) = large_transaction();
+        let l1_fee = U256::from(200);
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
         let tx_hash = ZERO_TX_HASH;
 
-        let mut inputs = make_chunked_transactions(tx_hash, data);
+        let mut inputs = make_chunked_transactions(tx_hash, reimb_address, data);
         let new_chunk = inputs.remove(0);
         let chunk = inputs.remove(0);
 
@@ -580,7 +664,7 @@ mod tests {
         host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
 
         // The out of bounds chunk should not exist.
         let chunked_transaction_path = chunked_transaction_path(&tx_hash).unwrap();
@@ -599,8 +683,10 @@ mod tests {
 
         let (data, _tx) = large_transaction();
         let tx_hash = ZERO_TX_HASH;
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
+        let l1_fee = U256::from(200);
 
-        let mut inputs = make_chunked_transactions(tx_hash, data);
+        let mut inputs = make_chunked_transactions(tx_hash, reimb_address, data);
         let chunk = inputs.remove(1);
 
         // Extract the index of the non existing chunked transaction.
@@ -612,7 +698,7 @@ mod tests {
         host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
 
         // The unknown chunk should not exist.
         let chunked_transaction_path = chunked_transaction_path(&tx_hash).unwrap();
@@ -646,8 +732,11 @@ mod tests {
 
         let (data, tx) = large_transaction();
         let tx_hash = ZERO_TX_HASH;
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
+        let l1_fee = U256::from(200);
+        let num_chunks = 2;
 
-        let inputs = make_chunked_transactions(tx_hash, data);
+        let inputs = make_chunked_transactions(tx_hash, reimb_address, data);
         // The test works if there are 3 inputs: new chunked of size 2, first and second
         // chunks.
         assert_eq!(inputs.len(), 3);
@@ -660,7 +749,7 @@ mod tests {
         host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk0)));
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
         assert_eq!(
             inbox_content,
             InboxContent {
@@ -674,11 +763,13 @@ mod tests {
             host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
         }
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
 
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
+            fee_reimbursement_address: Some(reimb_address),
+            batching_fee: l1_fee * num_chunks,
         }];
         assert_eq!(inbox_content.transactions, expected_transactions);
     }
@@ -696,18 +787,27 @@ mod tests {
 e4476a2f5382bbf2b38d888016345785d8a000080820a95a0d9ef1298c18c88604e3f08e14907a17dfa81b1dc6b37948abe189d8db5cb8a43a06\
 fc7040a71d71d3cb74bd05ead7046b10668ad255da60391c017eea31555f156").unwrap()).unwrap();
 
-        let input = Input::SimpleTransaction(Box::new(Transaction {
+        let reimb_address = address_from_str("3535353535353535353535353535353535353535");
+        let l1_fee = U256::from(200);
+
+        let input = Input::SimpleTransaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx.clone()),
-        }));
+            fee_reimbursement_address: reimb_address,
+        };
 
         let mut buffer = Vec::new();
         match input {
-            Input::SimpleTransaction(tx) => {
+            Input::SimpleTransaction {
+                tx_hash,
+                fee_reimbursement_address,
+                content,
+            } => {
                 // Simple transaction tag
                 buffer.push(0);
-                buffer.extend_from_slice(&tx.tx_hash);
-                let mut tx_bytes = match tx.content {
+                buffer.extend_from_slice(&tx_hash);
+                buffer.extend_from_slice(&fee_reimbursement_address.to_fixed_bytes());
+                let mut tx_bytes = match content {
                     Ethereum(tx) => tx.into(),
                     _ => panic!(
                         "Simple transaction can contain only ethereum transactions"
@@ -727,10 +827,12 @@ fc7040a71d71d3cb74bd05ead7046b10668ad255da60391c017eea31555f156").unwrap()).unwr
         host.add_external(framed);
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, l1_fee).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash: ZERO_TX_HASH,
             content: Ethereum(tx),
+            fee_reimbursement_address: Some(reimb_address),
+            batching_fee: l1_fee,
         }];
         assert_eq!(inbox_content.transactions, expected_transactions);
     }

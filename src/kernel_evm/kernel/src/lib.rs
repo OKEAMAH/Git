@@ -84,6 +84,7 @@ pub fn stage_one<Host: Runtime>(
     chain_id: U256,
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    l1_tx_fee: U256,
 ) -> Result<Queue, anyhow::Error> {
     log!(host, Info, "Entering stage one.");
     log!(
@@ -96,7 +97,14 @@ pub fn stage_one<Host: Runtime>(
 
     // TODO: https://gitlab.com/tezos/tezos/-/issues/5873
     // if rebooted, don't fetch inbox
-    let queue = fetch(host, smart_rollup_address, chain_id, ticketer, admin)?;
+    let queue = fetch(
+        host,
+        smart_rollup_address,
+        chain_id,
+        ticketer,
+        admin,
+        l1_tx_fee,
+    )?;
 
     for (i, queue_elt) in queue.proposals.iter().enumerate() {
         match queue_elt {
@@ -241,8 +249,17 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
                     retrieve_chain_id(host).context("Failed to retrieve chain id")?;
                 let ticketer = read_ticketer(host);
                 let admin = read_admin(host);
-                stage_one(host, smart_rollup_address, chain_id, ticketer, admin)
-                    .context("Failed during stage 1")?
+                // TODO set it to correct value
+                let l1_tx_fee = U256::from(1000);
+                stage_one(
+                    host,
+                    smart_rollup_address,
+                    chain_id,
+                    ticketer,
+                    admin,
+                    l1_tx_fee,
+                )
+                .context("Failed during stage 1")?
             }
             MigrationStatus::InProgress => return Ok(()),
         }
