@@ -1279,9 +1279,8 @@ let fold_tree base_dir context_hash init f =
   in
   loop init
 
-(* Get 1_000_000+ random keys from the context.
-   The files over 4096 bytes (= 1 disk block) are always listed. *)
-let get_sample_keys ~rng base_dir context_hash =
+(* Get 1_000_000+ random keys from the context. *)
+let sample_keys ~rng base_dir context_hash =
   let depths_tbl = Stdlib.Hashtbl.create 101 in
   let blocks_tbl = Stdlib.Hashtbl.create 101 in
   let nkeys =
@@ -1388,6 +1387,14 @@ module Shared = struct
         in
         Sparse_vec.String.of_list keys
 
+  let make_model model =
+    Model.make
+      ~conv:(function
+        | Key {depth; storage_bytes} ->
+            (* Shift depth so that it starts from 0 *)
+            (depth - 1, (storage_bytes, ())))
+      ~model
+
   (* Load the measurements and build the data for [Measure] *)
   let recover_measurements fn =
     (* Recover the measurements *)
@@ -1423,43 +1430,32 @@ module Shared = struct
         :: acc)
       tbl
       []
-end
-
-module Read_bench = struct
-  include Shared
-
-  let default_config = {default_config with runs = 400_000}
-
-  let name = ns "READ"
-
-  let info = "Benchmarking random read accesses"
-
-  let module_filename = __FILE__
-
-  let model =
-    Model.make
-      ~conv:(function
-        | Key {depth; storage_bytes} ->
-            (* Shift depth so that it starts from 0 *)
-            (depth - 1, (storage_bytes, ())))
-      ~model:(read_model2 ~name:"read")
 
   (* - Use existing context.  Mainnet context just before a GC is preferable.
-     - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
-     - Random accesses to the context to use 3.5 GiB of the available memory for the disk cache.
+     - Restrict the available memory about to 6 GiB, to emulate an 8 GiB machine
+     - Random accesses to the context to use the available memory for the disk cache.
      - Random accesses for the benchmark
 
      It ignores [bench_num].
   *)
-  let create_benchmarks ~rng_state ~bench_num:_ config =
+  let create_benchmarks ~rng_state config f =
     let base_dir, context_hash = config.existing_context in
 
     (* We sample keys in the context ,since we cannot carry the all *)
-    let normal_keys, rare_keys =
-      get_sample_keys ~rng:rng_state base_dir context_hash
+    let normal_keys, rare_keys = sample_keys ~rng:rng_state base_dir context_hash in
+
+    let get_random_key =
+      let n_normal_keys = Array.length normal_keys in
+      let n_rare_keys = Array.length rare_keys in
+      fun () ->
+        match Random.State.int rng_state 2 with
+        | 0 ->
+            let i = Random.State.int rng_state n_normal_keys in
+            normal_keys.(i)
+        | _ ->
+            let i = Random.State.int rng_state n_rare_keys in
+            rare_keys.(i)
     in
-    let n_normal_keys = Array.length normal_keys in
-    let n_rare_keys = Array.length rare_keys in
 
     (* Actual benchmarks.  During benchmarking, we avoid new allocations
        as possible: the obtained measurements are stored in a temp file. *)
@@ -1479,40 +1475,49 @@ module Read_bench = struct
               context
               [normal_keys; rare_keys]) ;
         restrict_memory () ;
-        Lwt_main.run
-          (let open Lwt.Syntax in
-          let* context, index =
-            Io_helpers.load_context_from_disk_lwt base_dir context_hash
-          in
-          let* () =
-            let rec loop n =
-              if n <= 0 then Lwt.return_unit
-              else
-                (* We need flush even for reading.
-                   Otherwise the tree on memory grows forever *)
-                let* context = Io_helpers.flush context in
-                let key, value_size =
-                  match Random.State.int rng_state 2 with
-                  | 0 ->
-                      let i = Random.State.int rng_state n_normal_keys in
-                      normal_keys.(i)
-                  | _ ->
-                      let i = Random.State.int rng_state n_rare_keys in
-                      rare_keys.(i)
-                in
-                let* nsecs, _ =
-                  (* Using [Lwt_main.run] here slows down the benchmark *)
-                  Measure.Time.measure_lwt (fun () -> Context.find context key)
-                in
-                output_value oc (List.length key, value_size, nsecs) ;
-                if n mod 10000 = 0 then restrict_memory () ;
-                loop (n - 1)
-            in
-            loop config.runs
-          in
-          Tezos_context.Context.close index)) ;
+        Lwt_main.run (f oc ~restrict_memory ~base_dir ~context_hash ~get_random_key)) ;
     close_out oc ;
     recover_measurements fn
+end
+
+module Read_bench = struct
+  include Shared
+
+  let default_config = {default_config with runs = 400_000}
+
+  let name = ns "READ"
+
+  let info = "Benchmarking random read accesses"
+
+  let module_filename = __FILE__
+
+  let model = make_model (read_model2 ~name:"read")
+
+  let create_benchmarks ~rng_state ~bench_num:_ config =
+    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~base_dir ~context_hash ~get_random_key ->
+    let open Lwt.Syntax in
+    let* context, index =
+      Io_helpers.load_context_from_disk_lwt base_dir context_hash
+    in
+    let* () =
+      let rec loop n =
+        if n <= 0 then Lwt.return_unit
+        else
+          (* We need flush even for reading.
+             Otherwise the tree on memory grows forever *)
+          let* context = Io_helpers.flush context in
+          let key, value_size = get_random_key () in
+          let* nsecs, _ =
+            (* Using [Lwt_main.run] here slows down the benchmark *)
+            Measure.Time.measure_lwt (fun () -> Context.find context key)
+          in
+          output_value oc (List.length key, value_size, nsecs) ;
+          if n mod 10000 = 0 then restrict_memory () ;
+          loop (n - 1)
+      in
+      loop config.runs
+    in
+    Tezos_context.Context.close index
 end
 
 let () = Registration.register_simple_with_num (module Read_bench)
@@ -1529,107 +1534,51 @@ module Write_bench = struct
 
   let module_filename = __FILE__
 
-  let model =
-    Model.make
-      ~conv:(function
-        | Key {depth; storage_bytes} ->
-            (* Shift depth so that it starts from 0 *)
-            (depth - 1, (storage_bytes, ())))
-      ~model:(write_model2 ~name:"write")
+  let model = make_model (write_model2 ~name:"write")
 
-  (* - Use existing context.  Mainnet context just before a GC is preferable.
-     - Restrict the available memory about to 4 GiB, to emulate an 8 GiB machine
-     - Random accesses to the context to use 3.5 GiB of the available memory for the disk cache.
-     - Random accesses for the benchmark
-
-     It ignores [bench_num].
-  *)
   let create_benchmarks ~rng_state ~bench_num:_ config =
+    create_benchmarks ~rng_state config @@ fun oc ~restrict_memory ~base_dir ~context_hash ~get_random_key ->
     let open Lwt.Syntax in
-    let source_base_dir, context_hash = config.existing_context in
+    let* index = Tezos_context.Context.init ~readonly:false base_dir in
+    let rec loop context_hash n =
+      if n <= 0 then Lwt.return_unit
+      else
+        let* context =
+          let+ context =
+            Tezos_context.Context.checkout index context_hash
+          in
+          match context with
+          | None -> assert false
+          | Some context ->
+              Tezos_shell_context.Shell_context.wrap_disk_context context
+        in
+        let key, _value_size = get_random_key () in
+        (* The biggest file we have is 368640B *)
+        (* 0B - 4MB *)
+        let value_size = Random.State.int rng_state 800 * 512 in
 
-    (* Copy the context dir *)
-    let base_dir = source_base_dir ^ ".tmp" in
-    let () =
-      Lwt_main.run @@ Tezos_stdlib_unix.Lwt_utils_unix.remove_dir base_dir
+        let random_bytes =
+          Base_samplers.uniform_bytes rng_state ~nbytes:value_size
+        in
+
+        let* nsecs, context_hash =
+          (* Using [Lwt_main.run] here slows down the benchmark *)
+          Measure.Time.measure_lwt (fun () ->
+              let* context = Context.add context key random_bytes in
+              let* context_hash = Io_helpers.commit context in
+              (* We need to call [flush] to finish the disk writing.
+                 It is a sort of the worst case: in a real node,
+                 it is rare to flush just after 1 write.
+              *)
+              let+ _context = Io_helpers.flush context in
+              context_hash)
+        in
+        output_value oc (List.length key, value_size, nsecs) ;
+        if n mod 100 = 0 then restrict_memory () ;
+        loop context_hash (n - 1)
     in
-    Format.eprintf "Copying the data directory to %s@." base_dir ;
-    Io_helpers.copy_rec source_base_dir base_dir ;
-
-    let normal_keys, rare_keys =
-      get_sample_keys ~rng:rng_state base_dir context_hash
-    in
-    let n_normal_keys = Array.length normal_keys in
-    let n_rare_keys = Array.length rare_keys in
-
-    (* Actual benchmarks.  During benchmarking, we avoid new allocations
-       as possible: the obtained measurements are stored in a temp file. *)
-    let fn = Filename.temp_file "snoop_io_" ".data" in
-    let oc = open_out_bin fn in
-
-    Io_helpers.with_memory_restriction
-      config.memoryAvailable
-      (fun restrict_memory ->
-        restrict_memory () ;
-        Io_helpers.purge_disk_cache () ;
-        Io_helpers.with_context ~base_dir ~context_hash (fun context ->
-            Io_helpers.fill_disk_cache
-              ~rng:rng_state
-              ~restrict_memory
-              context
-              [normal_keys; rare_keys]) ;
-        restrict_memory () ;
-        Lwt_main.run
-          (let* index = Tezos_context.Context.init ~readonly:false base_dir in
-           let rec loop context_hash n =
-             if n <= 0 then Lwt.return_unit
-             else
-               let* context =
-                 let+ context =
-                   Tezos_context.Context.checkout index context_hash
-                 in
-                 match context with
-                 | None -> assert false
-                 | Some context ->
-                     Tezos_shell_context.Shell_context.wrap_disk_context context
-               in
-               let key, _value_size =
-                 match Random.State.int rng_state 2 with
-                 | 0 ->
-                     let i = Random.State.int rng_state n_normal_keys in
-                     normal_keys.(i)
-                 | _ ->
-                     let i = Random.State.int rng_state n_rare_keys in
-                     rare_keys.(i)
-               in
-               (* The biggest file we have is 368640B *)
-               (* 0B - 4MB *)
-               let value_size = Random.State.int rng_state 800 * 512 in
-
-               let random_bytes =
-                 Base_samplers.uniform_bytes rng_state ~nbytes:value_size
-               in
-
-               let* nsecs, context_hash =
-                 (* Using [Lwt_main.run] here slows down the benchmark *)
-                 Measure.Time.measure_lwt (fun () ->
-                     let* context = Context.add context key random_bytes in
-                     let* context_hash = Io_helpers.commit context in
-                     (* We need to call [flush] to finish the disk writing.
-                        It is a sort of the worst case: in a real node,
-                        it is rare to flush just after 1 write.
-                     *)
-                     let+ _context = Io_helpers.flush context in
-                     context_hash)
-               in
-               output_value oc (List.length key, value_size, nsecs) ;
-               if n mod 100 = 0 then restrict_memory () ;
-               loop context_hash (n - 1)
-           in
-           let* () = loop context_hash config.runs in
-           Tezos_context.Context.close index)) ;
-    close_out oc ;
-    recover_measurements fn
+    let* () = loop context_hash config.runs in
+    Tezos_context.Context.close index
 end
 
 let () = Registration.register_simple_with_num (module Write_bench)
