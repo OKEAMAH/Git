@@ -1406,7 +1406,8 @@ module Shared = struct
       match input_value ic with
       | exception End_of_file -> close_in ic
       | depth, value_size, nsecs ->
-          let n = (value_size + 255) / 256 * 256 in
+          (* We round DOWN them to avoid underestimation *)
+          let n = value_size / 256 * 256 in
           (match Stdlib.Hashtbl.find_opt tbl (depth, n) with
           | None -> Stdlib.Hashtbl.replace tbl (depth, n) [nsecs]
           | Some nsecs_list ->
