@@ -1297,7 +1297,6 @@ module Shared = struct
     if Sys.file_exists fn_cache then Lwt.return fn_cache
     else
       let oc = open_out fn_cache in
-      Format.eprintf "Loading the trees of %a@." Context_hash.pp context_hash ;
       let+ () =
         Io_stats.fold_tree context_dir context_hash [] () @@ fun () key tree ->
         let+ o = Context.Tree.to_value tree in
