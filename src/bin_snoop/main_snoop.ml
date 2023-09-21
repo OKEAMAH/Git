@@ -945,8 +945,8 @@ module Auto_build = struct
     Some dest
 
   (* Assumes the data files are found in [_snoop/tezos_node] *)
-  let make_io_read_benchmark_config dest ns =
-    let open Tezos_shell_benchmarks.Io_benchmarks.Read_bench in
+  let make_io_benchmark_config default_config dest ns =
+    let open Tezos_shell_benchmarks.Io_benchmarks.Shared in
     let tezos_data_dir = "_snoop/tezos-node" in
     let context_hash = get_head_context_hash tezos_data_dir in
     Format.eprintf
@@ -966,7 +966,13 @@ module Auto_build = struct
     Config.(save_config dest (build [(ns, json)])) ;
     Some dest
 
-  let make_io_write_benchmark_config = make_io_read_benchmark_config
+  let make_io_read_benchmark_config =
+    make_io_benchmark_config
+      Tezos_shell_benchmarks.Io_benchmarks.Read_bench.default_config
+
+  let make_io_write_benchmark_config =
+    make_io_benchmark_config
+      Tezos_shell_benchmarks.Io_benchmarks.Write_bench.default_config
 
   (* Benchmark specific config overrides *)
   let override_measure_options ~outdir ~bench_name measure_options =

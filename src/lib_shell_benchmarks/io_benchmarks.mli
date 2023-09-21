@@ -125,6 +125,8 @@ module Shared : sig
     memoryAvailable : float;
     runs : int;
   }
+
+  val config_encoding : config Data_encoding.t
 end
 
 module Read_bench : Benchmark.Simple_with_num with type config := Shared.config

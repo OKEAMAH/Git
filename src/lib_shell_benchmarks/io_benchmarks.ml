@@ -1498,7 +1498,7 @@ end
 module Read_bench = struct
   include Shared
 
-  let default_config = {default_config with runs = 400_000}
+  let default_config = {default_config with runs = 800_000}
 
   let name = ns "READ"
 
@@ -1543,7 +1543,7 @@ module Write_bench = struct
   include Shared
 
   (* Too small samples... *)
-  let default_config = {default_config with runs = 100_000}
+  let default_config = {default_config with runs = 50_000}
 
   let name = ns "WRITE"
 
@@ -1583,7 +1583,7 @@ module Write_bench = struct
         let key, _value_size = get_random_key () in
         (* The biggest file we have is 368640B *)
         (* 0B - 4MB *)
-        let value_size = Random.State.int rng_state 800 * 512 in
+        let value_size = Random.State.int rng_state 409600 in
 
         let random_bytes =
           Base_samplers.uniform_bytes rng_state ~nbytes:value_size
