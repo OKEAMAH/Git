@@ -1398,8 +1398,9 @@ module Shared = struct
   (* Load the measurements and build the data for [Measure] *)
   let recover_measurements fn =
     (* Recover the measurements *)
+    (* Samples have lots of noises. We group them and get the median
+       of each group to reduce the noises *)
     let tbl = Stdlib.Hashtbl.create 1023 in
-
     let ic = open_in_bin fn in
     let rec loop () =
       match input_value ic with
@@ -1423,11 +1424,15 @@ module Shared = struct
 
     Stdlib.Hashtbl.fold
       (fun (depth, n) nsecs_list acc ->
-        let median = median nsecs_list in
-        let workload = Key {depth; storage_bytes = n} in
-        (fun () ->
-          Generator.Calculated {workload; measure = (fun () -> median)})
-        :: acc)
+         if List.length nsecs_list < 5 then
+           (* Too few samples. *)
+           acc
+         else
+           let median = median nsecs_list in
+           let workload = Key {depth; storage_bytes = n} in
+           (fun () ->
+              Generator.Calculated {workload; measure = (fun () -> median)})
+           :: acc)
       tbl
       []
 
@@ -1476,6 +1481,7 @@ module Shared = struct
               [normal_keys; rare_keys]) ;
         restrict_memory () ;
         Lwt_main.run (f oc ~restrict_memory ~base_dir ~context_hash ~get_random_key)) ;
+
     close_out oc ;
     recover_measurements fn
 end
