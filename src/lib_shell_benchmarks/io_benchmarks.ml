@@ -1215,124 +1215,6 @@ end
 
 let () = Registration.register_simple_with_num (module Write_random_keys_bench)
 
-(* To avoid long time (≒ 20mins) to traverse the tree, we have a cache file
-   [<base_dir>/<context_hash>.txt] lodable in 3mins *)
-let build_key_list base_dir context_hash =
-  let open Lwt.Syntax in
-  let fn_cache =
-    Filename.concat
-      base_dir
-      (Format.asprintf "%a.txt" Context_hash.pp context_hash)
-  in
-  if Sys.file_exists fn_cache then Lwt.return fn_cache
-  else
-    let oc = open_out fn_cache in
-    Format.eprintf "Loading the trees of %a@." Context_hash.pp context_hash ;
-    let+ () =
-      Io_stats.fold_tree base_dir context_hash [] () @@ fun () key tree ->
-      let+ o = Context.Tree.to_value tree in
-      match o with
-      | Some bytes ->
-          let len = Bytes.length bytes in
-          output_string
-            oc
-            (Printf.sprintf "%s %d\n" (String.concat "/" key) len)
-      | None -> ()
-    in
-    output_string oc "END OF LIST\n" ;
-    close_out oc ;
-    fn_cache
-
-let fold_tree base_dir context_hash init f =
-  let fn_cache = Lwt_main.run @@ build_key_list base_dir context_hash in
-  Format.eprintf
-    "Loading the cached trees of %a at %s@."
-    Context_hash.pp
-    context_hash
-    fn_cache ;
-  let tbl = Stdlib.Hashtbl.create 1024 in
-  let ic = open_in fn_cache in
-  let rec loop acc =
-    match input_line ic with
-    | "END OF LIST" ->
-        close_in ic ;
-        acc
-    | l -> (
-        match String.split ' ' ~limit:2 l with
-        | [k; n] ->
-            let ks =
-              let ks = String.split '/' k in
-              (* hashcons for shorter strings *)
-              List.map
-                (fun k ->
-                  if String.length k > 12 then k
-                  else
-                    match Stdlib.Hashtbl.find_opt tbl k with
-                    | Some k -> k
-                    | None ->
-                        Stdlib.Hashtbl.add tbl k k ;
-                        k)
-                ks
-            in
-            loop (f acc (ks, int_of_string n))
-        | _ -> Stdlib.failwith (Printf.sprintf "Broken file list: %s" fn_cache))
-  in
-  loop init
-
-(* Get 1_000_000+ random keys from the context. *)
-let sample_keys ~rng base_dir context_hash =
-  let depths_tbl = Stdlib.Hashtbl.create 101 in
-  let blocks_tbl = Stdlib.Hashtbl.create 101 in
-  let nkeys =
-    fold_tree base_dir context_hash 0 (fun nkeys (key, size) ->
-        let depth = List.length key in
-        let n =
-          Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt depths_tbl depth
-        in
-        Stdlib.Hashtbl.replace depths_tbl depth (n + 1) ;
-
-        let blocks = (size + 4095) / 4096 in
-        let n =
-          Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt blocks_tbl blocks
-        in
-        Stdlib.Hashtbl.replace blocks_tbl blocks (n + 1) ;
-
-        nkeys + 1)
-  in
-  Format.eprintf "Got %d keys@." nkeys ;
-
-  List.iter (fun (depth, n) -> Format.eprintf "Depth %d: %d@." depth n)
-  @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
-  @@ List.of_seq
-  @@ Stdlib.Hashtbl.to_seq depths_tbl ;
-
-  List.iter (fun (blocks, n) -> Format.eprintf "Blocks %d: %d@." blocks n)
-  @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
-  @@ List.of_seq
-  @@ Stdlib.Hashtbl.to_seq blocks_tbl ;
-
-  let nsamples = 1_000_000 in
-
-  let normals, rares =
-    let normals, rares =
-      fold_tree base_dir context_hash ([], []) (fun (acc, rares) (key, size) ->
-          let depth = List.length key in
-          if
-            size > 4096 (* Big files are rare, so we keep all of them. *)
-            || depth <= 3 (* Shallow files are rare, so we keep all of them. *)
-          then (acc, (key, size) :: rares)
-          else if Random.State.int rng nkeys < nsamples then
-            ((key, size) :: acc, rares)
-          else (acc, rares))
-    in
-    (Array.of_list normals, Array.of_list rares)
-  in
-  Format.eprintf
-    "Got %d normal keys and %d rare)keys after filtering@."
-    (Array.length normals)
-    (Array.length rares) ;
-  (normals, rares)
-
 module Shared = struct
   let purpose = purpose
 
@@ -1394,6 +1276,124 @@ module Shared = struct
             (* Shift depth so that it starts from 0 *)
             (depth - 1, (storage_bytes, ())))
       ~model
+
+  (* To avoid long time (≒ 20mins) to traverse the tree, we have a cache file
+     [<base_dir>/<context_hash>.txt] lodable in 3mins *)
+  let build_key_list base_dir context_hash =
+    let open Lwt.Syntax in
+    let fn_cache =
+      Filename.concat
+        base_dir
+        (Format.asprintf "%a.txt" Context_hash.pp context_hash)
+    in
+    if Sys.file_exists fn_cache then Lwt.return fn_cache
+    else
+      let oc = open_out fn_cache in
+      Format.eprintf "Loading the trees of %a@." Context_hash.pp context_hash ;
+      let+ () =
+        Io_stats.fold_tree base_dir context_hash [] () @@ fun () key tree ->
+        let+ o = Context.Tree.to_value tree in
+        match o with
+        | Some bytes ->
+            let len = Bytes.length bytes in
+            output_string
+              oc
+              (Printf.sprintf "%s %d\n" (String.concat "/" key) len)
+        | None -> ()
+      in
+      output_string oc "END OF LIST\n" ;
+      close_out oc ;
+      fn_cache
+
+  let fold_tree base_dir context_hash init f =
+    let fn_cache = Lwt_main.run @@ build_key_list base_dir context_hash in
+    Format.eprintf
+      "Loading the cached trees of %a at %s@."
+      Context_hash.pp
+      context_hash
+      fn_cache ;
+    let tbl = Stdlib.Hashtbl.create 1024 in
+    let ic = open_in fn_cache in
+    let rec loop acc =
+      match input_line ic with
+      | "END OF LIST" ->
+          close_in ic ;
+          acc
+      | l -> (
+          match String.split ' ' ~limit:2 l with
+          | [k; n] ->
+              let ks =
+                let ks = String.split '/' k in
+                (* hashcons for shorter strings *)
+                List.map
+                  (fun k ->
+                     if String.length k > 12 then k
+                     else
+                       match Stdlib.Hashtbl.find_opt tbl k with
+                       | Some k -> k
+                       | None ->
+                           Stdlib.Hashtbl.add tbl k k ;
+                           k)
+                  ks
+              in
+              loop (f acc (ks, int_of_string n))
+          | _ -> Stdlib.failwith (Printf.sprintf "Broken file list: %s" fn_cache))
+    in
+    loop init
+
+  (* Get 1_000_000+ random keys from the context. *)
+  let sample_keys ~rng base_dir context_hash =
+    let depths_tbl = Stdlib.Hashtbl.create 101 in
+    let blocks_tbl = Stdlib.Hashtbl.create 101 in
+    let nkeys =
+      fold_tree base_dir context_hash 0 (fun nkeys (key, size) ->
+          let depth = List.length key in
+          let n =
+            Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt depths_tbl depth
+          in
+          Stdlib.Hashtbl.replace depths_tbl depth (n + 1) ;
+
+          let blocks = (size + 4095) / 4096 in
+          let n =
+            Option.value ~default:0 @@ Stdlib.Hashtbl.find_opt blocks_tbl blocks
+          in
+          Stdlib.Hashtbl.replace blocks_tbl blocks (n + 1) ;
+
+          nkeys + 1)
+    in
+    Format.eprintf "Got %d keys@." nkeys ;
+
+    List.iter (fun (depth, n) -> Format.eprintf "Depth %d: %d@." depth n)
+    @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
+    @@ List.of_seq
+    @@ Stdlib.Hashtbl.to_seq depths_tbl ;
+
+    List.iter (fun (blocks, n) -> Format.eprintf "Blocks %d: %d@." blocks n)
+    @@ List.sort (fun (k1, _) (k2, _) -> Int.compare k1 k2)
+    @@ List.of_seq
+    @@ Stdlib.Hashtbl.to_seq blocks_tbl ;
+
+    let nsamples = 1_000_000 in
+
+    let normals, rares =
+      let normals, rares =
+        fold_tree base_dir context_hash ([], []) (fun (acc, rares) (key, size) ->
+            let depth = List.length key in
+            if
+              size > 4096 (* Big files are rare, so we keep all of them. *)
+              || depth <= 3 (* Shallow files are rare, so we keep all of them. *)
+            then (acc, (key, size) :: rares)
+            else if Random.State.int rng nkeys < nsamples then
+              ((key, size) :: acc, rares)
+            else (acc, rares))
+      in
+      (Array.of_list normals, Array.of_list rares)
+    in
+    Format.eprintf
+      "Got %d normal keys and %d rare)keys after filtering@."
+      (Array.length normals)
+      (Array.length rares) ;
+    (normals, rares)
 
   (* Load the measurements and build the data for [Measure] *)
   let recover_measurements fn =
