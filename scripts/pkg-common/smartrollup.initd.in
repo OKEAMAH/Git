@@ -33,15 +33,14 @@ nodedir=/var/tezos/node
 clientdir=~tezos/.tezos-client
 logdir=/var/log/tezos
 rotateonstart=yes
-protocols="@PROTOCOLS@"
 waitfornode=yes
 rpcport=8732
-othercliopts_smartrollup_@PROTOCOL@=""
+othercliopts_smartrollup=""
 
 [ -r /etc/octez/node.conf ] && . /etc/octez/node.conf
 [ -r /etc/octez/smartrollup.conf ] && . /etc/octez/smartrollup.conf
 
-logfile_base="${logdir}/smartrollup_"
+logfile="${logdir}/smartrollup.log"
 sr="/usr/bin/octez-smart-rollup-node"
 
 initial_checks()
@@ -84,9 +83,7 @@ wait_for_bootstrap()
 rotate_logs ()
 {
 	if [ ${rotateonstart} = "yes" ]; then
-		for p in ${protocols}; do
-			mv -f "${logfile_base}${p}.log" "${logfile_base}${p}.log.1"
-		done
+		mv -f "${logfile}" "${logfile}.1"
 	fi
 }
 
@@ -94,11 +91,7 @@ case "$1" in
 start)	initial_checks
 	rotate_logs
 	[ "$waitfornode" = "yes" ] && wait_for_bootstrap
-	for p in ${protocols}; do
-		[ ! -x "${sr}-$p" ] && continue
-		othercliopts="othercliopts_smartrollup_$p"
-		su $user -c "${sr}-$p -d "$clientdir" run --data-dir "$rollupdatadir" ${!othercliopts} >> ${logfile_base}${p}.log 2>&1 &"
-	done
+	su $user -c "${sr} -d "$clientdir" run --data-dir "$rollupdatadir" ${othercliopts_smartrollup} >> ${logfile} 2>&1 &"
 	;;
 stop)	
        	pkill octez-smart
