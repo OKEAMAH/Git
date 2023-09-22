@@ -84,6 +84,7 @@ val class_spec_of_attr :
   encoding_name:string ->
   ?description:string ->
   ?enums:(string * EnumSpec.t) list ->
+  ?types:(string * ClassSpec.t) list ->
   ?instances:(string * InstanceSpec.t) list ->
   AttrSpec.t ->
   ClassSpec.t
