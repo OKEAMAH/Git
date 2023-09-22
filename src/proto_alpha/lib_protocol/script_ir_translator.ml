@@ -1692,8 +1692,8 @@ let parse_address ctxt : Script.node -> (address * context) tzresult =
       tzfail
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-let parse_never expr : (never * context) tzresult =
-  Result_syntax.tzfail @@ Invalid_never_expr (location expr)
+let parse_never expr : (never, error trace) Gas_monad.t =
+  Gas_monad.Syntax.tzfail @@ Invalid_never_expr (location expr)
 
 let parse_bls12_381_g1 ctxt :
     Script.node -> (Script_bls.G1.t * context) tzresult =
@@ -2439,7 +2439,7 @@ let rec parse_data :
             else traced_fail (Unexpected_forged_value loc)
       in
       (Big_map {id; diff; key_type = tk; value_type = tv}, ctxt)
-  | Never_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_never expr
+  | Never_t, expr -> traced_from_gas_monad ctxt @@ parse_never expr
   (* Bls12_381 types *)
   | Bls12_381_g1_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_bls12_381_g1 ctxt expr
