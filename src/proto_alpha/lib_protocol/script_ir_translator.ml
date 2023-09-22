@@ -1600,23 +1600,23 @@ let parse_key_hash : Script.node -> (public_key_hash, error trace) Gas_monad.t =
       tzfail
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-let parse_signature ctxt : Script.node -> (signature * context) tzresult =
-  let open Result_syntax in
+let parse_signature : Script.node -> (signature, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr (* As unparsed with [Optimized]. *) -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.signature_optimized in
+      let*$ () = Typecheck_costs.signature_optimized in
       match
         Data_encoding.Binary.of_bytes_opt Script_signature.encoding bytes
       with
-      | Some k -> return (k, ctxt)
+      | Some k -> return k
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
                (loc, strip_locations expr, "a valid signature"))
   | String (loc, s) as expr (* As unparsed with [Readable]. *) -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.signature_readable in
+      let*$ () = Typecheck_costs.signature_readable in
       match Script_signature.of_b58check_opt s with
-      | Some s -> return (s, ctxt)
+      | Some s -> return s
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2229,8 +2229,7 @@ let rec parse_data :
   | Timestamp_t, expr -> traced_from_gas_monad ctxt @@ parse_timestamp expr
   | Key_t, expr -> traced_from_gas_monad ctxt @@ parse_key expr
   | Key_hash_t, expr -> traced_from_gas_monad ctxt @@ parse_key_hash expr
-  | Signature_t, expr ->
-      Lwt.return @@ traced_no_lwt @@ parse_signature ctxt expr
+  | Signature_t, expr -> traced_from_gas_monad ctxt @@ parse_signature expr
   | Operation_t, _ ->
       (* operations cannot appear in parameters or storage,
           the protocol should never parse the bytes of an operation *)
