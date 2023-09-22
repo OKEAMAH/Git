@@ -1625,24 +1625,24 @@ let parse_signature : Script.node -> (signature, error trace) Gas_monad.t =
       tzfail
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-let parse_chain_id ctxt : Script.node -> (Script_chain_id.t * context) tzresult
+let parse_chain_id : Script.node -> (Script_chain_id.t, error trace) Gas_monad.t
     =
-  let open Result_syntax in
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.chain_id_optimized in
+      let*$ () = Typecheck_costs.chain_id_optimized in
       match
         Data_encoding.Binary.of_bytes_opt Script_chain_id.encoding bytes
       with
-      | Some k -> return (k, ctxt)
+      | Some k -> return k
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
                (loc, strip_locations expr, "a valid chain id"))
   | String (loc, s) as expr -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.chain_id_readable in
+      let*$ () = Typecheck_costs.chain_id_readable in
       match Script_chain_id.of_b58check_opt s with
-      | Some s -> return (s, ctxt)
+      | Some s -> return s
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2234,7 +2234,7 @@ let rec parse_data :
       (* operations cannot appear in parameters or storage,
           the protocol should never parse the bytes of an operation *)
       assert false
-  | Chain_id_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_chain_id ctxt expr
+  | Chain_id_t, expr -> traced_from_gas_monad ctxt @@ parse_chain_id expr
   | Address_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_address ctxt expr
   | Contract_t (arg_ty, _), expr ->
       traced
