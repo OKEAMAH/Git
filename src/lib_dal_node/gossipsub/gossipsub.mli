@@ -89,6 +89,9 @@ module Worker : sig
   module Validate_message_hook : sig
     val set : (message -> message_id -> [`Invalid | `Unknown | `Valid]) -> unit
   end
+
+  (* input, p2p_output, app_output *)
+  val streams_size : t -> int * int * int
 end
 
 (** The transport layer module exposes the needed primitives, interface and

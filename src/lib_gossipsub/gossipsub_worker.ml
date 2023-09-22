@@ -593,6 +593,8 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
 
   let app_output_stream t = t.app_output_stream
 
+  let input_stream t = t.events_stream
+
   let is_subscribed state topic =
     GS.Introspection.(has_joined topic (view state.gossip_state))
 

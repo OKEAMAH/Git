@@ -236,8 +236,17 @@ module Handler = struct
       | Starting -> return_unit
       | Ready ready_ctxt ->
           let head_level = header.shell.level in
+
+          let gs_worker = Node_context.get_gs_worker ctxt in
+          let input, p2p_output, app_output =
+            Gossipsub.Worker.streams_size gs_worker
+          in
+
           let*! () =
-            Event.(emit layer1_node_new_head (head_hash, head_level))
+            Event.(
+              emit
+                layer1_node_new_head
+                (head_hash, head_level, input, p2p_output, app_output))
           in
           let Node_context.
                 {
