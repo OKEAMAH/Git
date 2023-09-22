@@ -32,6 +32,8 @@ module Worker = struct
   module Logging = Gs_logging
   include Gs_interface.Worker_instance
   module Validate_message_hook = Validate_message_hook
+
+  let streams_size = streams_size
 end
 
 module Transport_layer = struct

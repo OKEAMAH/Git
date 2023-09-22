@@ -109,3 +109,6 @@ module Worker_instance :
 module Validate_message_hook : sig
   val set : (message -> message_id -> [`Invalid | `Unknown | `Valid]) -> unit
 end
+
+(* input, p2p_output, app_output *)
+val streams_size : Worker_instance.t -> int * int * int

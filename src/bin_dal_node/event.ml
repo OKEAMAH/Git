@@ -87,13 +87,18 @@ let fetched_slot =
     ("shards", Data_encoding.int31)
 
 let layer1_node_new_head =
-  declare_2
+  declare_5
     ~section
     ~name:"dal_node_layer_1_new_head"
-    ~msg:"head of Layer 1 node updated to {hash} at level {level}"
-    ~level:Info
+    ~msg:
+      "head of Layer 1 node updated to {hash} at level {level} streams \
+       size:[input:{input}, p2p_output:{p2p_output}, app_output:{app_output}]"
+    ~level:Notice
     ("hash", Block_hash.encoding)
     ("level", Data_encoding.int32)
+    ("input", Data_encoding.int31)
+    ("p2p_output", Data_encoding.int31)
+    ("app_output", Data_encoding.int31)
 
 let layer1_node_final_block =
   declare_1
