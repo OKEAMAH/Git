@@ -1512,15 +1512,15 @@ let parse_nat :
                (loc, strip_locations expr, "a non-negative integer"))
   | expr -> tzfail @@ Invalid_kind (location expr, [Int_kind], kind expr)
 
-let parse_mutez ctxt : Script.node -> (Tez.t * context) tzresult =
-  let open Result_syntax in
+let parse_mutez : Script.node -> (Tez.t, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Int (loc, v) as expr -> (
       match
         let open Option in
         bind (catch (fun () -> Z.to_int64 v)) Tez.of_mutez
       with
-      | Some tez -> Ok (tez, ctxt)
+      | Some tez -> return tez
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2225,7 +2225,7 @@ let rec parse_data :
   | Bytes_t, expr -> traced_from_gas_monad ctxt @@ parse_bytes expr
   | Int_t, expr -> traced_from_gas_monad ctxt @@ parse_int expr
   | Nat_t, expr -> traced_from_gas_monad ctxt @@ parse_nat expr
-  | Mutez_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_mutez ctxt expr
+  | Mutez_t, expr -> traced_from_gas_monad ctxt @@ parse_mutez expr
   | Timestamp_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_timestamp ctxt expr
   | Key_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key ctxt expr
