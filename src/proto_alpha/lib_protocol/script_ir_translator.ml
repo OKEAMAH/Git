@@ -1545,25 +1545,25 @@ let parse_timestamp :
   | expr ->
       tzfail @@ Invalid_kind (location expr, [String_kind; Int_kind], kind expr)
 
-let parse_key ctxt : Script.node -> (public_key * context) tzresult =
-  let open Result_syntax in
+let parse_key : Script.node -> (public_key, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr -> (
       (* As unparsed with [Optimized]. *)
-      let* ctxt = Gas.consume ctxt Typecheck_costs.public_key_optimized in
+      let*$ () = Typecheck_costs.public_key_optimized in
       match
         Data_encoding.Binary.of_bytes_opt Signature.Public_key.encoding bytes
       with
-      | Some k -> return (k, ctxt)
+      | Some k -> return k
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
                (loc, strip_locations expr, "a valid public key"))
   | String (loc, s) as expr -> (
       (* As unparsed with [Readable]. *)
-      let* ctxt = Gas.consume ctxt Typecheck_costs.public_key_readable in
+      let*$ () = Typecheck_costs.public_key_readable in
       match Signature.Public_key.of_b58check_opt s with
-      | Some k -> return (k, ctxt)
+      | Some k -> return k
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2227,7 +2227,7 @@ let rec parse_data :
   | Nat_t, expr -> traced_from_gas_monad ctxt @@ parse_nat expr
   | Mutez_t, expr -> traced_from_gas_monad ctxt @@ parse_mutez expr
   | Timestamp_t, expr -> traced_from_gas_monad ctxt @@ parse_timestamp expr
-  | Key_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key ctxt expr
+  | Key_t, expr -> traced_from_gas_monad ctxt @@ parse_key expr
   | Key_hash_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key_hash ctxt expr
   | Signature_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_signature ctxt expr
