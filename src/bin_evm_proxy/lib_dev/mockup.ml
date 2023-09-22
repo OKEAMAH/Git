@@ -155,7 +155,7 @@ let balance _addr = return balance
 
 let nonce _addr = return (transaction_count ())
 
-let inject_raw_transaction ~smart_rollup_address:_ _tx =
+let inject_raw_transaction ~smart_rollup_address:_ ~batcher_eth_address:_ _tx =
   incr block_height_counter ;
   incr transaction_counter ;
   return transaction_hash

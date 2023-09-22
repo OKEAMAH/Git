@@ -103,8 +103,9 @@ let block_transaction_count block =
   | TxFull l -> List.length l
 
 let dispatch_input ~verbose
-    ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) (input, id)
-    =
+    ( (module Rollup_node_rpc : Rollup_node.S),
+      smart_rollup_address,
+      batcher_eth_address ) (input, id) =
   let open Lwt_result_syntax in
   let dispatch_input_aux : type w. w input -> w output tzresult Lwt.t = function
     (* INTERNAL RPCs *)
@@ -234,6 +235,7 @@ let dispatch_input ~verbose
             let* tx_hash =
               Rollup_node_rpc.inject_raw_transaction
                 ~smart_rollup_address
+                ~batcher_eth_address
                 tx_raw
             in
             return (Send_raw_transaction.Output (Ok tx_hash))
@@ -289,8 +291,11 @@ let dispatch ~verbose ctx dir =
           Batch outputs)
 
 let directory ~verbose
-    ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) =
+    ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
+    ~batcher_eth_address =
   Directory.empty |> version
   |> dispatch
        ~verbose
-       ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
+       ( (module Rollup_node_rpc : Rollup_node.S),
+         smart_rollup_address,
+         batcher_eth_address )

@@ -26,6 +26,8 @@
 (** Transaction hash size is 32 bytes. *)
 let transaction_hash_size = 32
 
+let eth_address_size = 20
+
 (** Translate an int in a binary string of two bytes (little endian).
     Ints greater than 2 bytes are truncated. *)
 let u16_to_bytes n =
@@ -58,8 +60,12 @@ let address_of_string s = Address (hex_of_string (String.lowercase_ascii s))
 
 let address_to_string (Address a) = hex_to_string a
 
+let address_to_bytes (Address hex) = hex_to_bytes hex
+
 let address_encoding =
   Data_encoding.(conv address_to_string address_of_string string)
+
+let default_address = address_of_string @@ String.make 40 '0'
 
 (** Ethereum generic quantity, always encoded in hexadecimal. *)
 type quantity = Qty of Z.t [@@ocaml.unboxed]

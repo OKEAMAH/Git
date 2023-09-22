@@ -24,15 +24,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [make_encoded_messages ~smart_rollup_address raw_tx] returns the
+(** [make_encoded_messages ~smart_rollup_address ~batcher_eth_address raw_tx] returns the
     hash of the transaction, and a list of transactions to include in the inbox.
-    - [smart_rollup_address] is encoded on 20 bytes
+    - [smart_rollup_address] is encoded as 20 bytes
+    - [batcher_eth_address] is encoded as 20 bytes
     - [raw_tx] is an ethereum transaction in hex format (without the 0x prefix).
 
     All messages go through the same encoding, but will only be chunked if
     necessary. *)
 val make_encoded_messages :
   smart_rollup_address:string ->
+  batcher_eth_address:Ethereum_types.address ->
   Ethereum_types.hex ->
   (string * string list, 'a) result
 
@@ -54,10 +56,12 @@ module type S = sig
         the injector a message consisting of:
         - First 20 bytes: [smart_rollup_address].
         - Following 32 bytes: crafted transaction hash.
+        - Following 20 bytes: L2 address of the batcher to reimburse injection fee
         - Remaining bytes: [tx_raw] in binary format.
     *)
   val inject_raw_transaction :
     smart_rollup_address:string ->
+    batcher_eth_address:Ethereum_types.address ->
     Ethereum_types.hex ->
     Ethereum_types.hash tzresult Lwt.t
 

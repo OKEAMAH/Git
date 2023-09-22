@@ -37,6 +37,7 @@ type config = {
   mode : mode;
   cors_origins : string list;
   cors_headers : string list;
+  batcher_eth_address : Evm_proxy_lib_dev.Ethereum_types.address;
   verbose : bool;
 }
 
@@ -50,10 +51,11 @@ let default_config =
     cors_origins = [];
     cors_headers = [];
     verbose = false;
+    batcher_eth_address = Evm_proxy_lib_dev.Ethereum_types.default_address;
   }
 
 let make_config ?mode ?rpc_addr ?rpc_port ?debug ?cors_origins ?cors_headers
-    ~rollup_node_endpoint ~verbose () =
+    ?batcher_address ~rollup_node_endpoint ~verbose () =
   {
     rpc_addr = Option.value ~default:default_config.rpc_addr rpc_addr;
     rpc_port = Option.value ~default:default_config.rpc_port rpc_port;
@@ -65,6 +67,8 @@ let make_config ?mode ?rpc_addr ?rpc_port ?debug ?cors_origins ?cors_headers
     cors_headers =
       Option.value ~default:default_config.cors_headers cors_headers;
     verbose;
+    batcher_eth_address =
+      Option.value ~default:default_config.batcher_eth_address batcher_address;
   }
 
 let install_finalizer server =
@@ -140,10 +144,10 @@ let prod_directory rollup_node_config =
   let open Evm_proxy_lib_prod in
   return @@ Services.directory rollup_node_config
 
-let dev_directory ~verbose rollup_node_config =
+let dev_directory ~verbose ~batcher_eth_address rollup_node_config =
   let open Lwt_result_syntax in
   let open Evm_proxy_lib_dev in
-  return @@ Services.directory ~verbose rollup_node_config
+  return @@ Services.directory ~batcher_eth_address ~verbose rollup_node_config
 
 let start {rpc_addr; rpc_port; debug; cors_origins; cors_headers; _} ~directory
     =
@@ -246,6 +250,21 @@ let mode_arg =
     ~doc:"The EVM proxy server mode, it's either prod or dev."
     Params.mode
 
+let batcher_address_arg =
+  let open Tezos_clic in
+  arg
+    ~long:"batcher"
+    ~placeholder:"ETH_ADDR"
+    ~doc:"Ethereum address of the batcher to reimburse injection fees"
+  @@ parameter (fun _ eth_addr ->
+         if String.length eth_addr = 40 then
+           Lwt.return_ok
+           @@ Evm_proxy_lib_dev.Ethereum_types.address_of_string eth_addr
+         else
+           failwith
+             "Batcher address has to be ethereum address which is 40 bytes \
+              long in hex representation")
+
 let verbose_arg =
   Tezos_clic.switch
     ~short:'v'
@@ -294,15 +313,22 @@ let main_command =
   let open Lwt_result_syntax in
   command
     ~desc:"Start the RPC server"
-    (args6
+    (args7
        mode_arg
        rpc_addr_arg
        rpc_port_arg
        cors_allowed_origins_arg
        cors_allowed_headers_arg
-       verbose_arg)
+       verbose_arg
+       batcher_address_arg)
     (prefixes ["run"; "with"; "endpoint"] @@ rollup_node_endpoint_param @@ stop)
-    (fun (mode, rpc_addr, rpc_port, cors_origins, cors_headers, verbose)
+    (fun ( mode,
+           rpc_addr,
+           rpc_port,
+           cors_origins,
+           cors_headers,
+           verbose,
+           batcher_address )
          rollup_node_endpoint
          () ->
       let*! () = Tezos_base_unix.Internal_event_unix.init () in
@@ -314,6 +340,7 @@ let main_command =
           ?rpc_port
           ?cors_origins
           ?cors_headers
+          ?batcher_address
           ~rollup_node_endpoint
           ~verbose
           ()
@@ -329,7 +356,10 @@ let main_command =
         | Dev ->
             let* rollup_config = rollup_node_config_dev ~rollup_node_endpoint in
             let* directory =
-              dev_directory ~verbose:config.verbose rollup_config
+              dev_directory
+                ~verbose:config.verbose
+                ~batcher_eth_address:config.batcher_eth_address
+                rollup_config
             in
             start config ~directory
       in
@@ -348,12 +378,13 @@ let make_prod_messages ~smart_rollup_address s =
   in
   return messages
 
-let make_dev_messages ~smart_rollup_address s =
+let make_dev_messages ~smart_rollup_address ~batcher_eth_address s =
   let open Lwt_result_syntax in
   let open Evm_proxy_lib_dev in
   let*? _, messages =
     Rollup_node.make_encoded_messages
       ~smart_rollup_address
+      ~batcher_eth_address
       (Ethereum_types.hex_of_string s)
   in
   return messages
@@ -365,14 +396,20 @@ let chunker_command =
     ~desc:
       "Chunk hexadecimal data according to the message representation of the \
        EVM rollup"
-    (args2 mode_arg rollup_address_arg)
+    (args3 mode_arg rollup_address_arg batcher_address_arg)
     (prefixes ["chunk"; "data"] @@ data_parameter @@ stop)
-    (fun (mode, rollup_address) data () ->
+    (fun (mode, rollup_address, batcher_address) data () ->
       let print_chunks smart_rollup_address s =
         let* messages =
           match Option.value ~default:Prod mode with
           | Prod -> make_prod_messages ~smart_rollup_address s
-          | Dev -> make_dev_messages ~smart_rollup_address s
+          | Dev ->
+              let batcher_eth_address =
+                Option.value
+                  ~default:Evm_proxy_lib_dev.Ethereum_types.default_address
+                  batcher_address
+              in
+              make_dev_messages ~smart_rollup_address ~batcher_eth_address s
         in
         Format.printf "Chunked transactions :\n%!" ;
         List.iter (Format.printf "%s\n%!") messages ;
