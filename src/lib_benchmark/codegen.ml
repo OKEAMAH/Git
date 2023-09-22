@@ -382,7 +382,7 @@ let make_toplevel_module structure_items =
           Str.attribute
             (Attr.mk
                (loc_str "warning")
-               (PStr [Str.eval (Exp.constant (Const.string "-26-33"))]));
+               (PStr [Str.eval (Exp.constant (Const.string "-33"))]));
       }
   in
   let rename_saturation_repr =
@@ -590,7 +590,7 @@ let%expect_test "module_generation" =
        a. update the corresponding model, or
        b. move the function to another module and edit it there. *)
 
-    [@@@warning "-26-33"]
+    [@@@warning "-33"]
 
     module S = Saturation_repr
     open S.Syntax
