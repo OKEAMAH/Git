@@ -1477,8 +1477,8 @@ module Inner = struct
      for each of the [t.number_of_shards] shards.
 
      Implements the "Multiple multi-reveals" section above. *)
-  let multiple_multi_reveals t ~preprocess:(domain, sj) ~coefficients :
-      shard_proof array =
+  let multiple_multi_reveals t ~preprocess:(domain, sj) ~coefficients
+      ~(shards : shard Seq.t) : shard_proof array =
     (* [t.max_polynomial_length > l] where [l = t.shard_length]. *)
     assert (t.shard_length < t.max_polynomial_length) ;
     (* Step 2. *)
@@ -1533,10 +1533,7 @@ module Inner = struct
 
     let proofs = G1_array.(to_array (evaluation_ecfft ~domain ~points)) in
     let domain = Domains.build t.shard_length in
-    let evaluations =
-      shards_from_polynomial t (Polynomials.of_dense coefficients)
-      |> Array.of_seq
-    in
+    let evaluations = shards |> Array.of_seq in
     Array.mapi
       (fun shard_index proof ->
         let remainder_challenge_point = Scalar.random () (*TODO Fiat-Shamir*) in
@@ -1721,7 +1718,7 @@ module Inner = struct
     ( Octez_bls12_381_polynomial.Domain.to_array domain,
       Array.map G1_array.to_array precomputation )
 
-  let prove_shards t ~precomputation:(domain, precomp) ~polynomial =
+  let prove_shards t ~precomputation:(domain, precomp) ~polynomial ~shards =
     let setup =
       (Domains.of_array domain, Array.map G1_array.of_array precomp)
     in
@@ -1732,7 +1729,7 @@ module Inner = struct
     let p_length = Polynomials.degree polynomial + 1 in
     let p = Polynomials.to_dense_coefficients polynomial in
     Array.blit p 0 coefficients 0 p_length ;
-    multiple_multi_reveals t ~preprocess:setup ~coefficients
+    multiple_multi_reveals t ~preprocess:setup ~coefficients ~shards
 
   let verify_shard (t : t) commitment {index = shard_index; share}
       {

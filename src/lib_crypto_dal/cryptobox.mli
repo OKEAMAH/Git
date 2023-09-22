@@ -420,6 +420,7 @@ val prove_shards :
   t ->
   precomputation:shards_proofs_precomputation ->
   polynomial:polynomial ->
+  shards:shard Seq.t ->
   shard_proof array
 
 module Internal_for_tests : sig

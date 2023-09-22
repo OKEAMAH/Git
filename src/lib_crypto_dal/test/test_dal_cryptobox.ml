@@ -410,7 +410,7 @@ module Test = struct
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let precomputation = Cryptobox.precompute_shards_proofs t in
          let shard_proofs =
-           Cryptobox.prove_shards t ~polynomial ~precomputation
+           Cryptobox.prove_shards t ~polynomial ~precomputation ~shards
          in
          let shard_index = randrange params.number_of_shards in
          match
@@ -448,7 +448,7 @@ module Test = struct
          let shards = Cryptobox.shards_from_polynomial t polynomial in
          let precomputation = Cryptobox.precompute_shards_proofs t in
          let shard_proofs =
-           Cryptobox.prove_shards t ~precomputation ~polynomial
+           Cryptobox.prove_shards t ~precomputation ~polynomial ~shards
          in
          let shard_index = randrange params.number_of_shards in
          match
@@ -959,17 +959,69 @@ module Test = struct
     |> function
     | Ok check -> assert check
     | _ -> assert false
+
+  (* Initializes the DAL parameters *)
+  let init parameters = Cryptobox.Internal_for_tests.load_parameters parameters
+
+  let verify_shard =
+    let open Error_monad.Result_syntax in
+    let config =
+      Dal_config.
+        {
+          page_size = 4096;
+          slot_size = 1 lsl 20;
+          redundancy_factor = 16;
+          number_of_shards = 2048;
+        }
+    in
+    let params =
+      Cryptobox.Internal_for_tests.parameters_initialisation config
+    in
+    init params ;
+    assert (Cryptobox.Internal_for_tests.ensure_validity config) ;
+    let* t = Cryptobox.make config in
+    let slot = Bytes.init config.slot_size (fun i -> Char.chr (i mod 255)) in
+    let* polynomial = Cryptobox.polynomial_from_slot t slot in
+    let* commitment = Cryptobox.commit t polynomial in
+    let shards = Cryptobox.shards_from_polynomial t polynomial in
+    let precomputation = Cryptobox.precompute_shards_proofs t in
+    let shard_proofs =
+      Cryptobox.prove_shards t ~polynomial ~precomputation ~shards
+    in
+    let shard_index = Random.int config.number_of_shards in
+    match
+      Seq.find
+        (fun ({index; _} : Cryptobox.shard) -> index = shard_index)
+        shards
+    with
+    | None ->
+        (* The shard index was sampled within the bounds, so this case
+           (the queried index is out of bounds) doesn't happen. *)
+        assert false
+    | Some shard ->
+        let start = Sys.time () in
+        let v =
+          Cryptobox.verify_shard t commitment shard shard_proofs.(shard_index)
+        in
+        Printf.eprintf "\ndiff = %f s\n" (Sys.time () -. start) ;
+        v
+
+  let verify_shard () =
+    Lwt.async (fun () ->
+        verify_shard |> function Ok _ -> Lwt.return () | _ -> assert false)
 end
 
 let test =
   List.map
     (fun (test_name, test_func) ->
       Alcotest.test_case test_name `Quick test_func)
-    [
-      ("find_trusted_setup_files", Test.find_trusted_setup_files);
-      ("find_trusted_setup_files_failure", Test.find_trusted_setup_files_failure)
-      (*("test_collision_page_size", Test.test_collision_page_size);*);
-    ]
+    Test.
+      [
+        ("find_trusted_setup_files", find_trusted_setup_files);
+        ("find_trusted_setup_files_failure", find_trusted_setup_files_failure);
+        ("verif shard", verify_shard);
+        (*("test_collision_page_size", Test.test_collision_page_size);*)
+      ]
 
 let () =
   (* Seed for deterministic pseudo-randomness:

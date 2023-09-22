@@ -137,6 +137,7 @@ let add_commitment_shards ~shards_proofs_precomputation node_store cryptobox
         cryptobox
         ~polynomial
         ~precomputation:shards_proofs_precomputation
+        ~shards
     in
     Store.Legacy.save_shard_proofs node_store commitment shard_proofs |> return
   else return_unit
