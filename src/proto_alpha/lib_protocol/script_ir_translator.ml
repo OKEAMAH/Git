@@ -1527,17 +1527,17 @@ let parse_mutez : Script.node -> (Tez.t, error trace) Gas_monad.t =
                (loc, strip_locations expr, "a valid mutez amount"))
   | expr -> tzfail @@ Invalid_kind (location expr, [Int_kind], kind expr)
 
-let parse_timestamp ctxt :
-    Script.node -> (Script_timestamp.t * context) tzresult =
-  let open Result_syntax in
+let parse_timestamp :
+    Script.node -> (Script_timestamp.t, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Int (_, v) (* As unparsed with [Optimized] or out of bounds [Readable]. *)
     ->
-      return (Script_timestamp.of_zint v, ctxt)
+      return (Script_timestamp.of_zint v)
   | String (loc, s) as expr (* As unparsed with [Readable]. *) -> (
-      let* ctxt = Gas.consume ctxt (Typecheck_costs.timestamp_readable s) in
+      let*$ () = Typecheck_costs.timestamp_readable s in
       match Script_timestamp.of_string s with
-      | Some v -> return (v, ctxt)
+      | Some v -> return v
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2226,8 +2226,7 @@ let rec parse_data :
   | Int_t, expr -> traced_from_gas_monad ctxt @@ parse_int expr
   | Nat_t, expr -> traced_from_gas_monad ctxt @@ parse_nat expr
   | Mutez_t, expr -> traced_from_gas_monad ctxt @@ parse_mutez expr
-  | Timestamp_t, expr ->
-      Lwt.return @@ traced_no_lwt @@ parse_timestamp ctxt expr
+  | Timestamp_t, expr -> traced_from_gas_monad ctxt @@ parse_timestamp expr
   | Key_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key ctxt expr
   | Key_hash_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_key_hash ctxt expr
   | Signature_t, expr ->
