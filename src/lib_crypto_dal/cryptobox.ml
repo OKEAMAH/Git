@@ -152,7 +152,13 @@ module Inner = struct
 
   type commitment = Bls12_381.G1.t
 
-  type shard_proof = Bls12_381.G1.t
+  type shard_proof = {
+    proof : Bls12_381.G1.t;
+    remainder_commitment : commitment;
+    remainder_challenge_point : scalar;
+    remainder_evaluation : scalar;
+    remainder_proof : Bls12_381.G1.t;
+  }
 
   type commitment_proof = Bls12_381.G1.t
 
@@ -164,7 +170,7 @@ module Inner = struct
 
   type shard = {index : int; share : share}
 
-  type shards_proofs_precomputation = scalar array * shard_proof array array
+  type shards_proofs_precomputation = scalar array * Bls12_381.G1.t array array
 
   type ('a, 'b) error_container = {given : 'a; expected : 'b}
 
@@ -188,9 +194,35 @@ module Inner = struct
 
     let page_proof_encoding = g1_encoding
 
-    let share_encoding = array fr_encoding
+    let share_encoding = array fr_encoding [@@coverage off]
 
-    let shard_proof_encoding = g1_encoding
+    let shard_proof_encoding =
+      conv
+        (fun {
+               proof;
+               remainder_commitment;
+               remainder_challenge_point;
+               remainder_evaluation;
+               remainder_proof;
+             } ->
+          ( proof,
+            remainder_commitment,
+            remainder_challenge_point,
+            remainder_evaluation,
+            remainder_proof ))
+        (fun ( proof,
+               remainder_commitment,
+               remainder_challenge_point,
+               remainder_evaluation,
+               remainder_proof ) ->
+          {
+            proof;
+            remainder_commitment;
+            remainder_challenge_point;
+            remainder_evaluation;
+            remainder_proof;
+          })
+        (tup5 g1_encoding g1_encoding fr_encoding fr_encoding g1_encoding)
 
     let shard_encoding =
       conv
@@ -829,6 +861,29 @@ module Inner = struct
       offset := !offset + t.remaining_bytes
     done ;
     slot
+
+  (* [interpolation_poly root domain evaluations] returns the unique
+     polynomial P of degree [< Domains.length domain] verifying
+     P(root * domain[i]) = evaluations[i].
+
+     Requires:
+     - [(Array.length evaluations = Domains.length domain)] *)
+  let interpolation_poly ~root ~domain ~evaluations =
+    assert (Array.length evaluations = Domains.length domain) ;
+    let size = Domains.length domain in
+    let evaluations =
+      ifft_inplace size (Evaluations.of_array (size - 1, evaluations))
+    in
+    (* Computes root_inverse = 1/root. *)
+    let root_inverse = Scalar.inverse_exn root in
+    (* Computes evaluations[i] = evaluations[i] * root_inverse^i. *)
+    snd
+      (Polynomials.fold_left_map
+         (fun root_pow_inverse coefficient ->
+           ( Scalar.mul root_pow_inverse root_inverse,
+             Scalar.mul coefficient root_pow_inverse ))
+         Scalar.(copy one)
+         evaluations)
 
   (* Encoding a message P = (P_0, ... ,P_{k-1}) amounts to evaluate
      its associated polynomial P(x)=sum_{i=0}^{k-1} P_i x^i at the
@@ -1475,30 +1530,56 @@ module Inner = struct
     let points = G1_array.sub sum ~off:0 ~len in
     (* Step 4. *)
     let domain = Domains.build t.number_of_shards in
-    G1_array.(to_array (evaluation_ecfft ~domain ~points))
 
-  (* [interpolation_poly root domain evaluations] returns the unique
-     polynomial P of degree [< Domains.length domain] verifying
-     P(root * domain[i]) = evaluations[i].
-
-     Requires:
-     - [(Array.length evaluations = Domains.length domain)] *)
-  let interpolation_poly ~root ~domain ~evaluations =
-    assert (Array.length evaluations = Domains.length domain) ;
-    let size = Domains.length domain in
+    let proofs = G1_array.(to_array (evaluation_ecfft ~domain ~points)) in
+    let domain = Domains.build t.shard_length in
     let evaluations =
-      ifft_inplace size (Evaluations.of_array (size - 1, evaluations))
+      shards_from_polynomial t (Polynomials.of_dense coefficients)
+      |> Array.of_seq
     in
-    (* Computes root_inverse = 1/root. *)
-    let root_inverse = Scalar.inverse_exn root in
-    (* Computes evaluations[i] = evaluations[i] * root_inverse^i. *)
-    snd
-      (Polynomials.fold_left_map
-         (fun root_pow_inverse coefficient ->
-           ( Scalar.mul root_pow_inverse root_inverse,
-             Scalar.mul coefficient root_pow_inverse ))
-         Scalar.(copy one)
-         evaluations)
+    Array.mapi
+      (fun shard_index proof ->
+        let remainder_challenge_point = Scalar.random () (*TODO Fiat-Shamir*) in
+        let root =
+          Domains.get t.domain_erasure_encoded_polynomial_length shard_index
+        in
+        let remainder =
+          interpolation_poly
+            ~root
+            ~domain
+            ~evaluations:evaluations.(shard_index).share
+        in
+        let remainder_evaluation =
+          Polynomials.evaluate remainder remainder_challenge_point
+        in
+        let remainder_commitment : page_proof =
+          (*TODO proper error handling*)
+          match commit t remainder with
+          | Error _ -> Bls12_381.G1.(copy zero)
+          | Ok c -> c
+        in
+        let remainder_proof =
+          (*TODO proper error handling*)
+          match
+            commit
+              t
+              (fst
+                 (Polynomials.division_xn
+                    remainder
+                    1
+                    Scalar.(negate remainder_challenge_point)))
+          with
+          | Error _ -> Bls12_381.G1.(copy zero)
+          | Ok c -> c
+        in
+        {
+          proof;
+          remainder_commitment;
+          remainder_challenge_point;
+          remainder_evaluation;
+          remainder_proof;
+        })
+      proofs
 
   (* [verify t commitment srs_point domain root evaluations proof]
      verifies that P(root * domain.(i)) = evaluations.(i),
@@ -1535,6 +1616,57 @@ module Inner = struct
          [
            (diff_commits, G2.(copy one));
            (proof, commit_srs_point_minus_root_pow);
+         ])
+
+  let verify_no_remainder_computation ~commitment ~srs_point ~domain ~root
+      ~commitment_remainder ~remainder_challenge_point ~remainder_evaluation
+      ~proof_remainder ~srs_1 ~proof =
+    let open Bls12_381 in
+    (* Compute r_i(x). *)
+    (*let remainder = interpolation_poly ~root ~domain ~evaluations in*)
+    (* Compute [r_i(τ)]_1. *)
+    (*let* commitment_remainder = commit t remainder in*)
+    (* Compute [w^{i * l}]. *)
+    let root_pow = Scalar.pow root (Z.of_int (Domains.length domain)) in
+    (* Compute [τ^l]_2 - [w^{i * l}]_2). *)
+    let commit_srs_point_minus_root_pow =
+      G2.(add srs_point (negate (mul (copy one) root_pow)))
+    in
+    (* One the one hand, we check e(c-[r_i(τ)]_1, g_2) ?= e(π, [τ^l]_2 - [w^{i * l}]_2).
+
+       One the other hand, we check that the supplied [remainder] (denoted here by r) is valid
+       by KZG-verifying its evaluation at [remainder_challenge_point] (denoted here by χ):
+       e([r(τ)]_1-[r(χ)]_1, g_2) ?= e(π_r, [τ]_2 - [χ]_2).
+
+       Exploiting the bilinearity of the pairing, we can combine the two pairing checks
+       using some randomness α to reduce the number of pairings to compute from four to three:
+
+       e(c-[r_i(τ)]_1 + α([r(τ)]_1-[r(χ)]_1), g_2)
+       ?= e(π, [τ^l]_2 - [w^{i * l}]_2) . α e(π_r, [τ]_2 - [χ]_2).
+
+       We do so by checking
+       1 ?= -e(c-[r_i(τ)]_1 + α([r(τ)]_1-[r(χ)]_1), g_2) . e(π, [τ^l]_2 - [w^{i * l}]_2) . α e(π_r, [τ]_2 - [χ]_2)
+          = e([r_i(τ)]_1-c + α([r(χ)]_1-[r(τ)]_1), g_2) . e(π, [τ^l]_2 - [w^{i * l}]_2) . e(α π_r, [τ]_2 - [χ]_2).
+    *)
+    (* Compute [r_i(τ)]_1-c. *)
+    let diff_commits = G1.(add commitment_remainder (negate commitment)) in
+    let randomness = Scalar.random () in
+    Ok
+      (Pairing.pairing_check
+         [
+           ( G1.(
+               add
+                 diff_commits
+                 (mul
+                    (add
+                       (mul (copy one) remainder_evaluation)
+                       (negate commitment_remainder))
+                    randomness)),
+             G2.(copy one) );
+           (proof, commit_srs_point_minus_root_pow);
+           ( G1.(mul proof_remainder randomness),
+             G2.(add srs_1 (negate (mul (copy one) remainder_challenge_point)))
+           );
          ])
 
   let save_precompute_shards_proofs precomputation ~filename =
@@ -1602,8 +1734,14 @@ module Inner = struct
     Array.blit p 0 coefficients 0 p_length ;
     multiple_multi_reveals t ~preprocess:setup ~coefficients
 
-  let verify_shard (t : t) commitment {index = shard_index; share = evaluations}
-      proof =
+  let verify_shard (t : t) commitment {index = shard_index; share}
+      {
+        proof;
+        remainder_commitment;
+        remainder_challenge_point;
+        remainder_evaluation;
+        remainder_proof;
+      } =
     if shard_index < 0 || shard_index >= t.number_of_shards then
       Error
         (`Shard_index_out_of_range
@@ -1615,7 +1753,7 @@ module Inner = struct
              (t.number_of_shards - 1)))
     else
       let expected_shard_length = t.shard_length in
-      let got_shard_length = Array.length evaluations in
+      let got_shard_length = Array.length share in
       if expected_shard_length <> got_shard_length then
         Error `Shard_length_mismatch
       else
@@ -1625,7 +1763,17 @@ module Inner = struct
         let domain = Domains.build t.shard_length in
         let srs_point = t.srs.kate_amortized_srs_g2_shards in
         match
-          verify t ~commitment ~srs_point ~domain ~root ~evaluations ~proof
+          verify_no_remainder_computation
+            ~commitment
+            ~srs_point
+            ~domain
+            ~root
+            ~proof
+            ~commitment_remainder:remainder_commitment
+            ~remainder_challenge_point
+            ~remainder_evaluation
+            ~proof_remainder:remainder_proof
+            ~srs_1:(Srs_g2.get t.srs.raw.srs_g2 1)
         with
         | Ok true -> Ok ()
         | Ok false -> Error `Invalid_shard
@@ -1750,7 +1898,8 @@ module Internal_for_tests = struct
 
   let alter_page_proof (proof : page_proof) = alter_proof proof
 
-  let alter_shard_proof (proof : shard_proof) = alter_proof proof
+  let alter_shard_proof ({proof; _} as shard_proof : shard_proof) =
+    {shard_proof with proof = alter_proof proof}
 
   let alter_commitment_proof (proof : commitment_proof) = alter_proof proof
 
@@ -1770,7 +1919,14 @@ module Internal_for_tests = struct
 
   let dummy_page_proof ~state () = Bls12_381.G1.random ~state ()
 
-  let dummy_shard_proof ~state () = Bls12_381.G1.random ~state ()
+  let dummy_shard_proof ~state () =
+    {
+      proof = Bls12_381.G1.random ~state ();
+      remainder_commitment = Bls12_381.G1.random ~state ();
+      remainder_challenge_point = Scalar.random ~state ();
+      remainder_evaluation = Scalar.random ~state ();
+      remainder_proof = Bls12_381.G1.random ~state ();
+    }
 
   let make_dummy_shard ~state ~index ~length =
     {index; share = Array.init length (fun _ -> Scalar.(random ~state ()))}
