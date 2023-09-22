@@ -421,9 +421,13 @@ let codegen (Model.Model model) (sol : solution)
   let takes_saturation_reprs = M.takes_saturation_reprs in
   let comments =
     let open Costlang in
-    let module Transform = Subst (struct
-      let subst = subst
-    end) in
+    let ( ++ ) = compose in
+    let ((module Transform) : transform) =
+      (module Ast.At_least_10)
+      ++ (module Subst (struct
+           let subst = subst
+         end))
+    in
     let module X = Transform (Comment) in
     let module M = M.Def (X) in
     let expr = X.prj M.model in
@@ -438,6 +442,7 @@ let codegen (Model.Model model) (sol : solution)
     let ( ++ ) = compose in
     let ((module Transform) : transform) =
       (module Ast.Optimize)
+      ++ (module Ast.At_least_10)
       ++ (module Let_lift)
       ++ transform
       ++ (module Subst (struct
