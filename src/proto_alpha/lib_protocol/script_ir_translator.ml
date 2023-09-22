@@ -1498,14 +1498,14 @@ let parse_int =
   | Int (_, v) -> return (Script_int.of_zint v)
   | expr -> tzfail @@ Invalid_kind (location expr, [Int_kind], kind expr)
 
-let parse_nat ctxt :
-    Script.node -> (Script_int.n Script_int.num * context) tzresult =
-  let open Result_syntax in
+let parse_nat :
+    Script.node -> (Script_int.n Script_int.num, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Int (loc, v) as expr -> (
       let v = Script_int.of_zint v in
       match Script_int.is_nat v with
-      | Some nat -> return (nat, ctxt)
+      | Some nat -> return nat
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
@@ -2224,7 +2224,7 @@ let rec parse_data :
   | String_t, expr -> traced_from_gas_monad ctxt @@ parse_string expr
   | Bytes_t, expr -> traced_from_gas_monad ctxt @@ parse_bytes expr
   | Int_t, expr -> traced_from_gas_monad ctxt @@ parse_int expr
-  | Nat_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_nat ctxt expr
+  | Nat_t, expr -> traced_from_gas_monad ctxt @@ parse_nat expr
   | Mutez_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_mutez ctxt expr
   | Timestamp_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_timestamp ctxt expr
