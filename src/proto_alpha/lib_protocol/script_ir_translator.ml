@@ -1486,10 +1486,10 @@ let parse_string : Script.node -> (Script_string.t, error trace) Gas_monad.t =
         (Gas_monad.of_result @@ Script_string.of_string v)
   | expr -> tzfail @@ Invalid_kind (location expr, [String_kind], kind expr)
 
-let parse_bytes ctxt =
-  let open Result_syntax in
+let parse_bytes =
+  let open Gas_monad.Syntax in
   function
-  | Bytes (_, v) -> return (v, ctxt)
+  | Bytes (_, v) -> return v
   | expr -> tzfail @@ Invalid_kind (location expr, [Bytes_kind], kind expr)
 
 let parse_int ctxt =
@@ -2222,7 +2222,7 @@ let rec parse_data :
       @@ (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
   | Bool_t, expr -> traced_from_gas_monad ctxt @@ parse_bool ~legacy expr
   | String_t, expr -> traced_from_gas_monad ctxt @@ parse_string expr
-  | Bytes_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bytes ctxt expr
+  | Bytes_t, expr -> traced_from_gas_monad ctxt @@ parse_bytes expr
   | Int_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_int ctxt expr
   | Nat_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_nat ctxt expr
   | Mutez_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_mutez ctxt expr
