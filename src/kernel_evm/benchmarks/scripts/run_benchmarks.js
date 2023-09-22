@@ -197,7 +197,6 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     estimated_ticks = run_benchmark_result.estimated_ticks;
     estimated_ticks_per_tx = run_benchmark_result.estimated_ticks_per_tx;
 
-    unaccounted_ticks = sumArray(kernel_run_ticks) - sumArray(run_transaction_ticks) - sumArray(signature_verification_ticks) - sumArray(store_transaction_object_ticks) - sumArray(fetch_blueprint_ticks)
     console.log(`Number of transactions: ${tx_status.length}`)
     run_time_index = 0;
     for (var j = 0; j < tx_status.length; j++) {
@@ -230,6 +229,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     }
 
     // first kernel run, reading the inbox
+    // TODO: the nb_tx is only valid if there is only one run
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         interpreter_init_ticks: interpreter_init_ticks[0],
@@ -237,7 +237,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         fetch_blueprint_ticks: fetch_blueprint_ticks[0],
         kernel_run_ticks: kernel_run_ticks[0],
         estimated_ticks: estimated_ticks[0],
-        inbox_size: run_benchmark_result.inbox_size
+        inbox_size: run_benchmark_result.inbox_size,
+        nb_tx: tx_status.length
     });
     // reboots
     for (var j = 1; j < kernel_run_ticks.length; j++) {
@@ -250,6 +251,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             estimated_ticks: estimated_ticks[j]
         });
     }
+    // row conserning all runs
+    unaccounted_ticks = sumArray(kernel_run_ticks) - sumArray(run_transaction_ticks) - sumArray(signature_verification_ticks) - sumArray(store_transaction_object_ticks) - sumArray(fetch_blueprint_ticks)
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         unaccounted_ticks,
@@ -279,7 +282,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         "unaccounted_ticks",
         "status",
         "estimated_ticks",
-        "inbox_size"
+        "inbox_size",
+        "nb_tx"
     ];
     let output = output_filename();
     console.log(`Output in ${output}`);
