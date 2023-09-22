@@ -1651,43 +1651,44 @@ let parse_chain_id : Script.node -> (Script_chain_id.t, error trace) Gas_monad.t
       tzfail
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-let parse_address ctxt : Script.node -> (address * context) tzresult =
-  let open Result_syntax in
-  let destination_allowed loc {destination; entrypoint} ctxt =
+let parse_address ~sc_rollup_enable ~zk_rollup_enable :
+    Script.node -> (address, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  let destination_allowed loc {destination; entrypoint} =
     match destination with
-    | Destination.Sc_rollup _ when not (Constants.sc_rollup_enable ctxt) ->
+    | Destination.Sc_rollup _ when not sc_rollup_enable ->
         tzfail @@ Sc_rollup_disabled loc
-    | Destination.Zk_rollup _ when not (Constants.zk_rollup_enable ctxt) ->
+    | Destination.Zk_rollup _ when not zk_rollup_enable ->
         tzfail @@ Zk_rollup_disabled loc
-    | _ -> Ok ({destination; entrypoint}, ctxt)
+    | _ -> return {destination; entrypoint}
   in
   function
   | Bytes (loc, bytes) as expr (* As unparsed with [Optimized]. *) -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.contract_optimized in
+      let*$ () = Typecheck_costs.contract_optimized in
       match
         Data_encoding.Binary.of_bytes_opt
           Data_encoding.(tup2 Destination.encoding Entrypoint.value_encoding)
           bytes
       with
       | Some (destination, entrypoint) ->
-          destination_allowed loc {destination; entrypoint} ctxt
+          destination_allowed loc {destination; entrypoint}
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
                (loc, strip_locations expr, "a valid address"))
   | String (loc, s) (* As unparsed with [Readable]. *) ->
-      let* ctxt = Gas.consume ctxt Typecheck_costs.contract_readable in
+      let*$ () = Typecheck_costs.contract_readable in
       let* addr, entrypoint =
         match String.index_opt s '%' with
         | None -> return (s, Entrypoint.default)
         | Some pos ->
             let len = String.length s - pos - 1 in
             let name = String.sub s (pos + 1) len in
-            let+ entrypoint = Entrypoint.of_string_strict ~loc name in
+            let+? entrypoint = Entrypoint.of_string_strict ~loc name in
             (String.sub s 0 pos, entrypoint)
       in
-      let* destination = Destination.of_b58check addr in
-      destination_allowed loc {destination; entrypoint} ctxt
+      let*? destination = Destination.of_b58check addr in
+      destination_allowed loc {destination; entrypoint}
   | expr ->
       tzfail
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
@@ -2235,10 +2236,22 @@ let rec parse_data :
           the protocol should never parse the bytes of an operation *)
       assert false
   | Chain_id_t, expr -> traced_from_gas_monad ctxt @@ parse_chain_id expr
-  | Address_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_address ctxt expr
+  | Address_t, expr ->
+      traced_from_gas_monad ctxt
+      @@ parse_address
+           ~sc_rollup_enable:(Constants.sc_rollup_enable ctxt)
+           ~zk_rollup_enable:(Constants.zk_rollup_enable ctxt)
+           expr
   | Contract_t (arg_ty, _), expr ->
       traced
-        (let*? address, ctxt = parse_address ctxt expr in
+        (let*? address, ctxt =
+           Gas_monad.run ctxt
+           @@ parse_address
+                ~sc_rollup_enable:(Constants.sc_rollup_enable ctxt)
+                ~zk_rollup_enable:(Constants.zk_rollup_enable ctxt)
+                expr
+         in
+         let*? address in
          let loc = location expr in
          let+ ctxt, typed_contract =
            parse_contract_data
