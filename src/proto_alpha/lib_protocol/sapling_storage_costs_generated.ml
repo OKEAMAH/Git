@@ -4,7 +4,7 @@
    a. update the corresponding model, or
    b. move the function to another module and edit it there. *)
 
-[@@@warning "-26-33"]
+[@@@warning "-33"]
 
 module S = Saturation_repr
 open S.Syntax
