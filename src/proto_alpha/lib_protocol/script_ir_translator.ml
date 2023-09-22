@@ -1450,23 +1450,25 @@ let parse_unit ~legacy =
       tzfail @@ Invalid_arity (loc, D_Unit, 0, List.length l)
   | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_Unit]
 
-let parse_bool ctxt ~legacy =
-  let open Result_syntax in
+let parse_bool ~legacy =
+  let open Gas_monad.Syntax in
   function
   | Prim (loc, D_True, [], annot) ->
-      let* () =
-        if legacy (* Legacy check introduced before Ithaca. *) then return_unit
+      let*? () =
+        if legacy (* Legacy check introduced before Ithaca. *) then
+          Result.return_unit
         else error_unexpected_annot loc annot
       in
-      let+ ctxt = Gas.consume ctxt Typecheck_costs.bool in
-      (true, ctxt)
+      let+$ () = Typecheck_costs.bool in
+      true
   | Prim (loc, D_False, [], annot) ->
-      let* () =
-        if legacy (* Legacy check introduced before Ithaca. *) then return_unit
+      let*? () =
+        if legacy (* Legacy check introduced before Ithaca. *) then
+          Result.return_unit
         else error_unexpected_annot loc annot
       in
-      let+ ctxt = Gas.consume ctxt Typecheck_costs.bool in
-      (false, ctxt)
+      let+$ () = Typecheck_costs.bool in
+      false
   | Prim (loc, ((D_True | D_False) as c), l, _) ->
       tzfail @@ Invalid_arity (loc, c, 0, List.length l)
   | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_True; D_False]
@@ -2217,7 +2219,7 @@ let rec parse_data :
   | Unit_t, expr ->
       traced_from_gas_monad ctxt
       @@ (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
-  | Bool_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bool ctxt ~legacy expr
+  | Bool_t, expr -> traced_from_gas_monad ctxt @@ parse_bool ~legacy expr
   | String_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_string ctxt expr
   | Bytes_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bytes ctxt expr
   | Int_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_int ctxt expr
