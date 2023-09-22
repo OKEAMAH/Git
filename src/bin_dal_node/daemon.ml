@@ -524,7 +524,12 @@ let run ~data_dir configuration_override =
     in
     let gs_worker =
       Gossipsub.Worker.(
-        make ~events_logging:Logging.event rng limits peer_filter_parameters)
+        make
+          ~events_logging:Logging.event
+          ~gs_output_logging:Logging.automaton_output
+          rng
+          limits
+          peer_filter_parameters)
     in
     Gossipsub.Worker.start [] gs_worker ;
     gs_worker

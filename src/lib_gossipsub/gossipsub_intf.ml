@@ -410,12 +410,12 @@ module type SCORE = sig
 
   val pp_value : Format.formatter -> value -> unit
 
+  (** Convert a score value into a float.  *)
+  val to_float : value -> float
+
   module Internal_for_tests : sig
     val get_topic_params :
       ('topic, 'span) score_limits -> 'topic -> 'span per_topic_score_limits
-
-    (** Convert a score value into a float.  *)
-    val to_float : value -> float
 
     (** [is_active topic t] returns [true] if the peer's score for [topic] is marked as active,
         and [false] otherwise. *)
@@ -727,6 +727,8 @@ module type AUTOMATON = sig
             peer we don't know.*)
     | Set_application_score : [`Set_application_score] output
         (** The output returned when we set the application score of a peer *)
+
+  type wrapped_output = Output : _ output -> wrapped_output
 
   (** A type alias for the state monad. *)
   type 'a monad := state -> state * 'a output
@@ -1122,6 +1124,7 @@ module type WORKER = sig
       handler for logging the worker's events. *)
   val make :
     ?events_logging:(event -> unit Monad.t) ->
+    ?gs_output_logging:(GS.wrapped_output -> unit Monad.t) ->
     Random.State.t ->
     (GS.Topic.t, GS.Peer.t, GS.Message_id.t, GS.span) limits ->
     (GS.Peer.t, GS.Message_id.t) parameters ->

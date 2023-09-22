@@ -82,6 +82,8 @@ module Worker : sig
 
   module Logging : sig
     val event : event -> unit Monad.t
+
+    val automaton_output : GS.wrapped_output -> unit Monad.t
   end
 
   (** A hook to set or update messages validation function. Should be called once

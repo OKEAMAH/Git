@@ -166,6 +166,8 @@ module Make (C : AUTOMATON_CONFIG) :
     | Unsubscribe_from_unknown_peer : [`Unsubscribe] output
     | Set_application_score : [`Set_application_score] output
 
+  type wrapped_output = Output : _ output -> wrapped_output
+
   type connection = {
     topics : Topic.Set.t;  (** The set of topics the peer subscribed to. *)
     direct : bool;

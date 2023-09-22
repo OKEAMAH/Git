@@ -113,6 +113,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     p2p_output_stream : p2p_output Stream.t;
     app_output_stream : app_output Stream.t;
     events_logging : event -> unit Monad.t;
+    gs_output_logging : GS.wrapped_output -> unit Monad.t;
   }
 
   let send_p2p_output ~emit_p2p_output ~mk_output =
@@ -400,16 +401,19 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
                    (Seq.return peer)) ;
         gstate
 
+  let ( |>> ) arg handler : GS.state * GS.wrapped_output =
+    (handler arg, GS.Output (snd arg))
+
   (** Handling application events. *)
   let apply_app_event ~emit_p2p_output gossip_state = function
     | Publish_message {message; message_id; topic} ->
         let publish_message = GS.{topic; message_id; message} in
         GS.publish_message publish_message gossip_state
-        |> handle_publish_message ~emit_p2p_output publish_message
+        |>> handle_publish_message ~emit_p2p_output publish_message
     | Join topic ->
-        GS.join {topic} gossip_state |> handle_join ~emit_p2p_output topic
+        GS.join {topic} gossip_state |>> handle_join ~emit_p2p_output topic
     | Leave topic ->
-        GS.leave {topic} gossip_state |> handle_leave ~emit_p2p_output topic
+        GS.leave {topic} gossip_state |>> handle_leave ~emit_p2p_output topic
 
   (** Handling messages received from the P2P network. *)
   let apply_p2p_message ~emit_p2p_output ~emit_app_output gossip_state from_peer
@@ -419,42 +423,42 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
           {GS.sender = from_peer; topic; message_id; message}
         in
         GS.handle_receive_message receive_message gossip_state
-        |> handle_receive_message
-             ~emit_p2p_output
-             ~emit_app_output
-             receive_message
+        |>> handle_receive_message
+              ~emit_p2p_output
+              ~emit_app_output
+              receive_message
     | Graft {topic} ->
         let graft : GS.graft = {peer = from_peer; topic} in
         GS.handle_graft graft gossip_state
-        |> handle_graft ~emit_p2p_output from_peer topic
+        |>> handle_graft ~emit_p2p_output from_peer topic
     | Subscribe {topic} ->
         let subscribe : GS.subscribe = {peer = from_peer; topic} in
-        GS.handle_subscribe subscribe gossip_state |> handle_subscribe
+        GS.handle_subscribe subscribe gossip_state |>> handle_subscribe
     | Unsubscribe {topic} ->
         let unsubscribe : GS.unsubscribe = {peer = from_peer; topic} in
-        GS.handle_unsubscribe unsubscribe gossip_state |> handle_unsubscribe
+        GS.handle_unsubscribe unsubscribe gossip_state |>> handle_unsubscribe
     | IHave {topic; message_ids} ->
         (* The automaton should guarantee that the list is not empty. *)
         let ihave : GS.ihave = {peer = from_peer; topic; message_ids} in
         GS.handle_ihave ihave gossip_state
-        |> handle_ihave ~emit_p2p_output ihave
+        |>> handle_ihave ~emit_p2p_output ihave
     | IWant {message_ids} ->
         (* The automaton should guarantee that the list is not empty. *)
         let iwant : GS.iwant = {peer = from_peer; message_ids} in
         GS.handle_iwant iwant gossip_state
-        |> handle_iwant ~emit_p2p_output iwant
+        |>> handle_iwant ~emit_p2p_output iwant
     | Prune {topic; px; backoff} ->
         let prune : GS.prune = {peer = from_peer; topic; px; backoff} in
         GS.handle_prune prune gossip_state
-        |> handle_prune ~emit_p2p_output ~from_peer px
+        |>> handle_prune ~emit_p2p_output ~from_peer px
 
   (** Handling events received from P2P layer. *)
   let apply_p2p_event ~emit_p2p_output ~emit_app_output gossip_state = function
     | New_connection {peer; direct; outbound} ->
         GS.add_peer {direct; outbound; peer} gossip_state
-        |> handle_new_connection ~emit_p2p_output peer
+        |>> handle_new_connection ~emit_p2p_output peer
     | Disconnection {peer} ->
-        GS.remove_peer {peer} gossip_state |> handle_disconnection
+        GS.remove_peer {peer} gossip_state |>> handle_disconnection
     | In_message {from_peer; p2p_message} ->
         apply_p2p_message
           ~emit_p2p_output
@@ -476,7 +480,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
 
            Do we want to detect cases where two successive [Heartbeat] events
            would be handled (e.g. because the first one is late)? *)
-        GS.heartbeat gossip_state |> handle_heartheat ~emit_p2p_output
+        GS.heartbeat gossip_state |>> handle_heartheat ~emit_p2p_output
     | P2P_input event ->
         apply_p2p_event ~emit_p2p_output ~emit_app_output gossip_state event
     | App_input event -> apply_app_event ~emit_p2p_output gossip_state event
@@ -523,14 +527,16 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     let emit_app_output = rev_push t.app_output_stream in
     let events_stream = t.events_stream in
     let events_logging = t.events_logging in
+    let gs_output_logging = t.gs_output_logging in
     let rec loop t =
       let* event = Stream.pop events_stream in
       if !shutdown then return ()
       else
         let* () = events_logging event in
-        let gossip_state =
+        let gossip_state, output =
           apply_event ~emit_p2p_output ~emit_app_output t.gossip_state event
         in
+        let* () = gs_output_logging output in
         t.gossip_state <- gossip_state ;
         loop t
     in
@@ -578,7 +584,8 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
            resolved. *)
         event_loop_promise
 
-  let make ?(events_logging = fun _event -> Monad.return ()) rng limits
+  let make ?(events_logging = fun _event -> Monad.return ())
+      ?(gs_output_logging = fun _output -> Monad.return ()) rng limits
       parameters =
     {
       gossip_state = GS.make rng limits parameters;
@@ -587,6 +594,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
       p2p_output_stream = Stream.empty ();
       app_output_stream = Stream.empty ();
       events_logging;
+      gs_output_logging;
     }
 
   let p2p_output_stream t = t.p2p_output_stream
