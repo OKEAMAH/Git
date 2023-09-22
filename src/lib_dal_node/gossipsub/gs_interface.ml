@@ -274,6 +274,41 @@ module Monad = struct
   let sleep (span : Span.t) = Lwt_unix.sleep @@ Span.to_float_s span
 end
 
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/5596
+
+   Use Seq_s instead of Lwt_stream to implement module Stream. *)
+module Stream = struct
+  type 'a t = {
+    stream : 'a Lwt_stream.t;
+    pusher : 'a option -> unit;
+    size : int ref;
+  }
+
+  let empty () =
+    let stream, pusher = Lwt_stream.create () in
+    {stream; pusher; size = ref 0}
+
+  let push e t =
+    t.pusher (Some e) ;
+    incr t.size
+
+  let pop t =
+    let open Lwt_syntax in
+    let* r = Lwt_stream.get t.stream in
+    match r with
+    | Some r ->
+        decr t.size ;
+        Lwt.return r
+    | None ->
+        Stdlib.failwith "Invariant: None values are never pushed in the stream"
+
+  let get_available t =
+    t.size := 0 ;
+    Lwt_stream.get_available t.stream
+
+  let size t = !(t.size)
+end
+
 (** Instantiate the worker functor *)
 module Worker_config :
   Gossipsub_intf.WORKER_CONFIGURATION
@@ -282,33 +317,11 @@ module Worker_config :
      and type GS.Message.t = message
      and type GS.Peer.t = peer
      and module GS.Span = Span
-     and module Monad = Monad = struct
+     and module Monad = Monad
+     and module Stream = Stream = struct
   module GS = Tezos_gossipsub.Make (Automaton_config)
   module Monad = Monad
-
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/5596
-
-     Use Seq_s instead of Lwt_stream to implement module Stream. *)
-  module Stream = struct
-    type 'a t = {stream : 'a Lwt_stream.t; pusher : 'a option -> unit}
-
-    let empty () =
-      let stream, pusher = Lwt_stream.create () in
-      {stream; pusher}
-
-    let push e t = t.pusher (Some e)
-
-    let pop t =
-      let open Lwt_syntax in
-      let* r = Lwt_stream.get t.stream in
-      match r with
-      | Some r -> Lwt.return r
-      | None ->
-          Stdlib.failwith
-            "Invariant: None values are never pushed in the stream"
-
-    let get_available t = Lwt_stream.get_available t.stream
-  end
+  module Stream = Stream
 end
 
 let span_encoding : Span.t Data_encoding.t =
@@ -324,3 +337,10 @@ let span_encoding : Span.t Data_encoding.t =
        (obj1 (req "span" int16))
 
 module Worker_instance = Tezos_gossipsub.Worker (Worker_config)
+
+let streams_size gs_worker =
+  let input = Worker_instance.input_stream gs_worker in
+  let p2p_output = Worker_instance.p2p_output_stream gs_worker in
+  let app_output = Worker_instance.app_output_stream gs_worker in
+  let s = Worker_config.Stream.size in
+  (s input, s p2p_output, s app_output)
