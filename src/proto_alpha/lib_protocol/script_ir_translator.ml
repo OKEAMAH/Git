@@ -1473,16 +1473,17 @@ let parse_bool ~legacy =
       tzfail @@ Invalid_arity (loc, c, 0, List.length l)
   | expr -> tzfail @@ unexpected expr [] Constant_namespace [D_True; D_False]
 
-let parse_string ctxt : Script.node -> (Script_string.t * context) tzresult =
-  let open Result_syntax in
+let parse_string : Script.node -> (Script_string.t, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | String (loc, v) as expr ->
-      let* ctxt = Gas.consume ctxt (Typecheck_costs.check_printable v) in
-      record_trace
-        (Invalid_syntactic_constant
-           (loc, strip_locations expr, "a printable ascii string"))
-        (let+ s = Script_string.of_string v in
-         (s, ctxt))
+      let*$ () = Typecheck_costs.check_printable v in
+      Gas_monad.record_trace_eval
+        ~error_details:(Informative ())
+        (fun () ->
+          Invalid_syntactic_constant
+            (loc, strip_locations expr, "a printable ascii string"))
+        (Gas_monad.of_result @@ Script_string.of_string v)
   | expr -> tzfail @@ Invalid_kind (location expr, [String_kind], kind expr)
 
 let parse_bytes ctxt =
@@ -2220,7 +2221,7 @@ let rec parse_data :
       traced_from_gas_monad ctxt
       @@ (parse_unit ~legacy expr : (a, error trace) Gas_monad.t)
   | Bool_t, expr -> traced_from_gas_monad ctxt @@ parse_bool ~legacy expr
-  | String_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_string ctxt expr
+  | String_t, expr -> traced_from_gas_monad ctxt @@ parse_string expr
   | Bytes_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_bytes ctxt expr
   | Int_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_int ctxt expr
   | Nat_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_nat ctxt expr
