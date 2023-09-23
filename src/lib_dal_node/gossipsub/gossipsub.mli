@@ -87,7 +87,12 @@ module Worker : sig
   (** A hook to set or update messages validation function. Should be called once
     at startup and every time the DAL parameters change. *)
   module Validate_message_hook : sig
-    val set : (message -> message_id -> [`Invalid | `Unknown | `Valid]) -> unit
+    val set_message_id_validation :
+      (message_id -> [`Outdated | `Invalid | `Unknown | `Valid]) -> unit
+
+    val set_message_validation :
+      (message -> message_id -> [`Outdated | `Invalid | `Unknown | `Valid]) ->
+      unit
   end
 
   (* input, p2p_output, app_output *)

@@ -128,6 +128,26 @@ module Topic = struct
       slot_index
 end
 
+module Validate_message_hook = struct
+  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5674
+
+     Refactor gossipsub integration to avoid this mutable hook in the lib. *)
+  let check_message =
+    ref (fun _msg _msg_id ->
+        Format.eprintf "Gs interface: messages validate function is not set@." ;
+        `Unknown)
+
+  let check_message_id =
+    ref (fun _msg_id ->
+        Format.eprintf
+          "Gs interface: messages IDs validate function is not set@." ;
+        `Unknown)
+
+  let set_message_validation func = check_message := func
+
+  let set_message_id_validation func = check_message_id := func
+end
+
 module Message_id = struct
   type t = message_id
 
@@ -161,18 +181,8 @@ module Message_id = struct
       {slot_index; pkh}
 
   let get_topic {slot_index; pkh; _} = {slot_index; pkh}
-end
 
-module Validate_message_hook = struct
-  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/5674
-
-     Refactor gossipsub integration to avoid this mutable hook in the lib. *)
-  let check =
-    ref (fun _msg _msg_id ->
-        Format.eprintf "Gs interface: messages validate function is not set@." ;
-        `Unknown)
-
-  let set func = check := func
+  let valid msg_id = !Validate_message_hook.check_message_id msg_id
 end
 
 module Message = struct
@@ -187,7 +197,7 @@ module Message = struct
          Cryptobox.shard_proof_encoding
          shard_proof)
 
-  let valid msg msg_id = !Validate_message_hook.check msg msg_id
+  let valid msg msg_id = !Validate_message_hook.check_message msg msg_id
 end
 
 module Peer = struct

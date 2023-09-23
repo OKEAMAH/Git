@@ -106,40 +106,56 @@ module Handler = struct
      with the current [cryptobox] parameters. The validity check is done by
      verifying that the shard in the message effectively belongs to the
      commitment given by [message_id]. *)
-  let gossipsub_app_messages_validation cryptobox message message_id =
-    let open Gossipsub in
-    let {share; shard_proof} = message in
-    let {commitment; shard_index; _} = message_id in
-    let shard = Cryptobox.{share; index = shard_index} in
-    match Cryptobox.verify_shard cryptobox commitment shard shard_proof with
-    | Ok () -> `Valid
-    | Error err ->
-        let err =
-          match err with
-          | `Invalid_degree_strictly_less_than_expected {given; expected} ->
-              Format.sprintf
-                "Invalid_degree_strictly_less_than_expected. Given: %d, \
-                 expected: %d"
-                given
-                expected
-          | `Invalid_shard -> "Invalid_shard"
-          | `Shard_index_out_of_range s ->
-              Format.sprintf "Shard_index_out_of_range(%s)" s
-          | `Shard_length_mismatch -> "Shard_length_mismatch"
-        in
-        Event.(
-          emit__dont_wait__use_with_care
-            message_validation_error
-            (message_id, err)) ;
-        `Invalid
-    | exception exn ->
-        (* Don't crash if crypto raised an exception. *)
-        let err = Printexc.to_string exn in
-        Event.(
-          emit__dont_wait__use_with_care
-            message_validation_error
-            (message_id, err)) ;
-        `Invalid
+  let gossipsub_app_messages_ids_validation ctxt head_level attestation_lag
+      message_id =
+    if
+      Profile_manager.is_bootstrap_profile @@ Node_context.get_profile_ctxt ctxt
+    then `Unknown
+    else
+      let open Gossipsub in
+      (* TODO: also check that commitment is waiting for attestation *)
+      let {level; _} = message_id in
+      if Int32.(sub head_level level > of_int attestation_lag) then `Outdated
+      else `Valid
+
+  let gossipsub_app_messages_validation ctxt cryptobox message message_id =
+    if
+      Profile_manager.is_bootstrap_profile @@ Node_context.get_profile_ctxt ctxt
+    then `Unknown
+    else
+      let open Gossipsub in
+      let {share; shard_proof} = message in
+      let {commitment; shard_index; _} = message_id in
+      let shard = Cryptobox.{share; index = shard_index} in
+      match Cryptobox.verify_shard cryptobox commitment shard shard_proof with
+      | Ok () -> `Valid
+      | Error err ->
+          let err =
+            match err with
+            | `Invalid_degree_strictly_less_than_expected {given; expected} ->
+                Format.sprintf
+                  "Invalid_degree_strictly_less_than_expected. Given: %d, \
+                   expected: %d"
+                  given
+                  expected
+            | `Invalid_shard -> "Invalid_shard"
+            | `Shard_index_out_of_range s ->
+                Format.sprintf "Shard_index_out_of_range(%s)" s
+            | `Shard_length_mismatch -> "Shard_length_mismatch"
+          in
+          Event.(
+            emit__dont_wait__use_with_care
+              message_validation_error
+              (message_id, err)) ;
+          `Invalid
+      | exception exn ->
+          (* Don't crash if crypto raised an exception. *)
+          let err = Printexc.to_string exn in
+          Event.(
+            emit__dont_wait__use_with_care
+              message_validation_error
+              (message_id, err)) ;
+          `Invalid
 
   let resolve_plugin_and_set_ready config dal_config ctxt cctxt =
     (* Monitor heads and try resolve the DAL protocol plugin corresponding to
@@ -188,8 +204,8 @@ module Handler = struct
 
              The hook below should be called each time cryptobox parameters
              change. *)
-          Gossipsub.Worker.Validate_message_hook.set
-            (gossipsub_app_messages_validation cryptobox) ;
+          Gossipsub.Worker.Validate_message_hook.set_message_validation
+            (gossipsub_app_messages_validation ctxt cryptobox) ;
           let*! () = Event.(emit node_is_ready ()) in
           stopper () ;
           return_unit
@@ -236,7 +252,6 @@ module Handler = struct
       | Starting -> return_unit
       | Ready ready_ctxt ->
           let head_level = header.shell.level in
-
           let gs_worker = Node_context.get_gs_worker ctxt in
           let input, p2p_output, app_output =
             Gossipsub.Worker.streams_size gs_worker
@@ -259,6 +274,12 @@ module Handler = struct
                 } =
             ready_ctxt
           in
+          Gossipsub.Worker.Validate_message_hook.set_message_id_validation
+            (gossipsub_app_messages_ids_validation
+               ctxt
+               head_level
+               proto_parameters.attestation_lag) ;
+
           let process_block block_proto block_level =
             let block = `Level block_level in
             let* block_info =

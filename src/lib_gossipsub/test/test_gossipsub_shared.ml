@@ -159,6 +159,8 @@ module Automaton_config :
       include Int_iterable
 
       let get_topic i = string_of_int (i mod 10)
+
+      let valid _msg_id = `Valid
     end
 
     module Message = struct
