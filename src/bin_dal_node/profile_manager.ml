@@ -33,6 +33,8 @@ type operator_sets = {producers : Slot_set.t; attestors : Pkh_set.t}
 (** A profile context stores profile-specific data used by the daemon.  *)
 type t = Bootstrap | Operator of operator_sets
 
+let is_bootstrap_profile = function Bootstrap -> true | Operator _ -> false
+
 let empty = Operator {producers = Slot_set.empty; attestors = Pkh_set.empty}
 
 let bootstrap_profile = Bootstrap

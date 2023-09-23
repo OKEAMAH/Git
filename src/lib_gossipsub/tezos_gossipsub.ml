@@ -809,6 +809,8 @@ module Make (C : AUTOMATON_CONFIG) :
   let handle_unsubscribe : unsubscribe -> [`Unsubscribe] output Monad.t =
    fun {topic; peer} -> Unsubscribe.handle topic peer
 
+  let valid_message_id message_id = Message_id.valid message_id = `Valid
+
   module IHave = struct
     let check_too_many_recv_ihave_message count =
       let open Monad.Syntax in
@@ -845,6 +847,7 @@ module Make (C : AUTOMATON_CONFIG) :
       let should_handle_message_id message_id : bool =
         (not (Message_cache.seen_message message_id message_cache))
         && peer_filter peer (`IHave message_id)
+        && valid_message_id message_id
       in
       List.filter should_handle_message_id message_ids |> return
 
@@ -1096,18 +1099,20 @@ module Make (C : AUTOMATON_CONFIG) :
   module Receive_message = struct
     let check_valid sender topic message message_id =
       let open Monad.Syntax in
-      match Message.valid message message_id with
-      | `Valid -> unit
-      | `Unknown ->
-          (* FIXME https://gitlab.com/tezos/tezos/-/issues/5486
-             It is not clear yet what we should do here. *)
-          fail Unknown_validity
-      | `Invalid ->
-          let* () =
-            update_score sender (fun stats ->
-                Score.invalid_message_delivered stats topic)
-          in
-          fail Invalid_message
+      if not (valid_message_id message_id) then fail Invalid_message
+      else
+        match Message.valid message message_id with
+        | `Valid -> unit
+        | `Unknown | `Outdated ->
+            (* FIXME https://gitlab.com/tezos/tezos/-/issues/5486
+               It is not clear yet what we should do here. *)
+            fail Unknown_validity
+        | `Invalid ->
+            let* () =
+              update_score sender (fun stats ->
+                  Score.invalid_message_delivered stats topic)
+            in
+            fail Invalid_message
 
     let handle sender topic message_id message =
       let open Monad.Syntax in

@@ -54,13 +54,15 @@ module type AUTOMATON_SUBCONFIG = sig
         id. Message ids should be defined so that this function can be
         implemented. *)
     val get_topic : t -> Topic.t
+
+    val valid : t -> [`Outdated | `Valid | `Unknown | `Invalid]
   end
 
   module Message : sig
     include PRINTABLE
 
     (** [valid] performs an application layer-level validity check on a message. *)
-    val valid : t -> Message_id.t -> [`Valid | `Unknown | `Invalid]
+    val valid : t -> Message_id.t -> [`Outdated | `Valid | `Unknown | `Invalid]
   end
 end
 
