@@ -43,7 +43,10 @@ let () =
 let default_net_timeout = ref (Ptime.Span.of_int_s 8)
 
 let end_of_file_if_zero nb_read =
-  if nb_read = 0 then Lwt.fail End_of_file else Lwt.return_unit
+  if nb_read = 0 then (
+    Format.eprintf "#### ICI END_OF_'LIFE'" ;
+    Lwt.fail End_of_file)
+  else Lwt.return_unit
 
 let read_bytes_with_timeout ?(timeout = !default_net_timeout) ?file_offset
     ?(pos = 0) ?len fd buf =
