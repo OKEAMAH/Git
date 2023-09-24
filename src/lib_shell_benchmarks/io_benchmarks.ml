@@ -1498,7 +1498,7 @@ end
 module Read_bench = struct
   include Shared
 
-  let default_config = {default_config with runs = 800_000}
+  let default_config = {default_config with runs = 1_000_000}
 
   let name = ns "READ"
 
@@ -1543,7 +1543,7 @@ module Write_bench = struct
   include Shared
 
   (* Too small samples... *)
-  let default_config = {default_config with runs = 50_000}
+  let default_config = {default_config with runs = 100_000}
 
   let name = ns "WRITE"
 
