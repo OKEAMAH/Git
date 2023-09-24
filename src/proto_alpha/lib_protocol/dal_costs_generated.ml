@@ -11,4 +11,4 @@ open S.Syntax
 
 (* model dal/Dal_publish_slot_header *)
 (* 16300000. *)
-let cost_Dal_publish_slot_header = S.safe_int 16300000
+let cost_Dal_publish_slot_header = S.safe_int 163000
