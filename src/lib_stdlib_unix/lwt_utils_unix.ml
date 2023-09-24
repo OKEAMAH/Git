@@ -26,6 +26,8 @@
 
 open Error_monad
 
+exception End_of_life
+
 let () =
   register_error_kind
     `Temporary
@@ -45,7 +47,7 @@ let default_net_timeout = ref (Ptime.Span.of_int_s 8)
 let end_of_file_if_zero nb_read =
   if nb_read = 0 then (
     Format.eprintf "#### ICI END_OF_'LIFE'" ;
-    Lwt.fail End_of_file)
+    Lwt.fail End_of_life)
   else Lwt.return_unit
 
 let read_bytes_with_timeout ?(timeout = !default_net_timeout) ?file_offset
