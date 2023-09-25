@@ -215,6 +215,7 @@ let init_identity_file (config : Config_file.t) =
 let init_node ?sandbox ?target ~identity ~singleprocess ~internal_events
     ~force_history_mode_switch (config : Config_file.t) =
   let open Lwt_result_syntax in
+  let singleprocess = singleprocess || true in
   (* TODO "WARN" when pow is below our expectation. *)
   let*! () =
     if config.disable_config_validation then
@@ -504,6 +505,7 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
     ?ignore_testchain_warning ~singleprocess ~force_history_mode_switch
     (config : Config_file.t) =
   let open Lwt_result_syntax in
+  let singleprocess = singleprocess || true in
   (* Main loop *)
   let internal_events =
     match config.internal_events with
@@ -607,6 +609,7 @@ let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
 let process sandbox verbosity target singleprocess force_history_mode_switch
     args =
   let open Lwt_result_syntax in
+  let singleprocess = singleprocess || true in
   let verbosity =
     let open Internal_event in
     match verbosity with [] -> None | [_] -> Some Info | _ -> Some Debug
@@ -778,8 +781,8 @@ module Manpage = struct
       `P
         ("The environment variable $(b,TEZOS_LOG) is used to fine-tune what is \
           going to be logged. The syntax is \
-          $(b,TEZOS_LOG='<section> -> <level> [ ; ...]') where section is one \
-          of $(i," ^ log_sections
+          $(b,TEZOS_LOG='<section> -> <level> [ ; ...]') where section is \
+          one of $(i," ^ log_sections
        ^ ") and level is one of $(i,fatal), $(i,error), $(i,warn), \
           $(i,notice), $(i,info) or $(i,debug). A $(b,*) can be used as a \
           wildcard in sections, i.e. $(b, node* -> debug). The rules are \

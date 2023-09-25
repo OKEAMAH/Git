@@ -389,6 +389,7 @@ let replay ~internal_events ~singleprocess ~strict
   let context_root = Data_version.context_dir config.data_dir in
   let protocol_root = Data_version.protocol_dir config.data_dir in
   let genesis = config.blockchain_network.genesis in
+  let singleprocess = singleprocess || true in
   let (validator_env : Block_validator_process.validator_environment) =
     {
       user_activated_upgrades = config.blockchain_network.user_activated_upgrades;
@@ -474,6 +475,7 @@ let replay ~internal_events ~singleprocess ~strict
 let run ?verbosity ~singleprocess ~strict ~operation_metadata_size_limit
     (config : Config_file.t) blocks =
   let open Lwt_result_syntax in
+  let singleprocess = singleprocess || true in
   let* () =
     Data_version.ensure_data_dir
       config.blockchain_network.genesis
@@ -523,6 +525,7 @@ let check_data_dir dir =
 
 let process verbosity singleprocess strict blocks data_dir config_file
     operation_metadata_size_limit =
+  let singleprocess = singleprocess || true in
   let verbosity =
     let open Internal_event in
     match verbosity with [] -> None | [_] -> Some Info | _ -> Some Debug
@@ -652,8 +655,8 @@ module Manpage = struct
       `P
         ("The environment variable $(b,TEZOS_LOG) is used to fine-tune what is \
           going to be logged. The syntax is \
-          $(b,TEZOS_LOG='<section> -> <level> [ ; ...]') where section is one \
-          of $(i," ^ log_sections
+          $(b,TEZOS_LOG='<section> -> <level> [ ; ...]') where section is \
+          one of $(i," ^ log_sections
        ^ ") and level is one of $(i,fatal), $(i,error), $(i,warn), \
           $(i,notice), $(i,info) or $(i,debug). A $(b,*) can be used as a \
           wildcard in sections, i.e. $(b, client* -> debug). The rules are \
