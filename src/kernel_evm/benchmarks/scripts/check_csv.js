@@ -21,6 +21,7 @@ if (args.length == 0) {
 const filename = args[0]
 const cast_value = function (value, context) {
     if (context.header) return value
+    if (context.column === 'benchmark_name') return value
     return parseInt(value)
 }
 const processFile = async () => {
