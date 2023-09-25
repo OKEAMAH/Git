@@ -28,7 +28,8 @@ function init_analysis() {
         nb_call: 0,
         nb_create: 0,
         nb_transfer: 0,
-        kernel_runs: []
+        kernel_runs: [],
+        fetch_data: []
 
     };
     return empty
@@ -36,6 +37,7 @@ function init_analysis() {
 
 function print_analysis(infos) {
     const tickPerGas = infos.total_ticks_tx / infos.total_gas
+    print_fetch_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Kernels infos`)
     console.info(`Overall tick per gas: ~${tickPerGas.toFixed()}`)
@@ -55,6 +57,24 @@ function print_analysis(infos) {
 
 }
 
+function predict_fetch(fetch) {
+    let nbtx = fetch[2]
+    let size = fetch[1]
+    return 800000 + 160 * size + 140000 * nbtx
+}
+
+function print_fetch_analysis(infos) {
+    console.log(infos.fetch_data)
+    for (datum of infos.fetch_data) {
+        let prediction = predict_fetch(datum)
+        let value = datum[0]
+        let error = prediction - value;
+        let error_pct = error * 100 / value
+        let error_pct_fmted = number_formatter_compact.format(error_pct)
+        console.log(`prediction: ${prediction} vs ${value} (${number_formatter_compact.format(error)} ${error_pct_fmted}%)`)
+    }
+}
+
 function process_record(record, acc) {
     if (is_transaction(record)) process_transaction_record(record, acc)
     else process_bench_record(record, acc)
@@ -65,6 +85,7 @@ function process_bench_record(record, acc) {
     if (!isNaN(record.interpreter_init_ticks)) acc.decode = record.interpreter_init_ticks
     if (!isNaN(record.interpreter_decode_ticks)) acc.nb_kernel_run += 1
     if (!isNaN(record.kernel_run_ticks)) acc.kernel_runs.push(record.kernel_run_ticks)
+    if (!isNaN(record.fetch_blueprint_ticks) && !isNaN(record.nb_tx)) acc.fetch_data.push([record.fetch_blueprint_ticks, record.inbox_size, record.nb_tx])
 }
 
 function process_transaction_record(record, acc) {
