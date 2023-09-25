@@ -5,7 +5,8 @@
 /*                                                                            */
 /******************************************************************************/
 
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::ptr::NonNull;
 use std::slice::SliceIndex;
 
 use crate::ast::*;
@@ -23,101 +24,180 @@ macro_rules! stk {
 
 pub(crate) use stk;
 
-#[derive(Debug, Clone)]
-pub struct Stack<T: Default> {
-    data: Vec<T>,
+pub struct Stack<T> {
+    data: std::ptr::NonNull<T>,
+    cap: usize,
     head: usize,
 }
 
-impl<T: Default + Clone + PartialEq> PartialEq for Stack<T> {
+impl<T> Drop for Stack<T> {
+    fn drop(&mut self) {
+        if self.cap != 0 {
+            let layout = std::alloc::Layout::array::<T>(self.cap).unwrap();
+            self.clear();
+            unsafe { std::alloc::dealloc(self.data.as_ptr() as *mut u8, layout) };
+            self.data = NonNull::dangling();
+            self.cap = 0;
+            self.head = 0;
+        }
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for Stack<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("stk!")?;
+        f.debug_list().entries(self.as_slice().iter()).finish()
+    }
+}
+
+impl<T: PartialEq> PartialEq for Stack<T> {
     fn eq(&self, other: &Stack<T>) -> bool {
         self.as_slice() == other.as_slice()
     }
 }
 
-impl<T: Default + Clone> From<Vec<T>> for Stack<T> {
+impl<T: Eq> Eq for Stack<T> {}
+
+impl<T> From<Vec<T>> for Stack<T> {
     fn from(v: Vec<T>) -> Self {
-        return Stack { data: v, head: 0 };
-    }
-}
-
-impl<T: Default + Clone> Index<usize> for Stack<T> {
-    type Output = <usize as SliceIndex<[T]>>::Output;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        if index >= self.len() {
-            panic!("out of bounds stack access")
+        let mut s = Stack::<T>::new();
+        let len = v.len();
+        s.cap = v.capacity();
+        s.data = NonNull::new(v.leak().as_mut_ptr()).unwrap();
+        s.head = s.cap - len;
+        if len != s.cap {
+            // move to end
+            unsafe {
+                std::ptr::copy(
+                    s.data.as_ptr(),
+                    s.data.as_ptr().offset((s.head) as isize),
+                    len,
+                )
+            };
         }
-        self.data.index(self.head + index)
+        s
     }
 }
 
-impl<T: Clone + Default> IndexMut<usize> for Stack<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index >= self.len() {
-            panic!("out of bounds stack access")
-        }
-        self.data.index_mut(self.head + index)
+impl<T> Deref for Stack<T> {
+    type Target = [T];
+    fn deref(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.head_ptr(), self.len()) }
     }
 }
 
-impl<T: Default + Clone> Stack<T> {
+impl<T> DerefMut for Stack<T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.head_mut_ptr(), self.len()) }
+    }
+}
+
+impl<T, I: SliceIndex<[T]>> Index<I> for Stack<T> {
+    type Output = <I as SliceIndex<[T]>>::Output;
+
+    fn index(&self, index: I) -> &Self::Output {
+        &self.deref()[index]
+    }
+}
+
+impl<T, I: SliceIndex<[T]>> IndexMut<I> for Stack<T> {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.deref_mut()[index]
+    }
+}
+
+impl<T> Stack<T> {
     pub fn new() -> Stack<T> {
-        let v = Stack::from(vec![]);
-        return v;
+        Stack {
+            data: NonNull::dangling(),
+            cap: 0,
+            head: 0,
+        }
     }
 
-    pub fn resize_data(&mut self, size: usize) {
-        if self.data.capacity() < size {
-            let mut vec = Vec::with_capacity(size);
-            unsafe { vec.set_len(size - self.data.len()) };
-            vec.extend_from_slice(self.data.as_slice());
-            self.head = self.head + (size - self.data.len());
-            self.data = vec;
+    fn grow(&mut self, size: usize) {
+        if self.cap < size {
+            if self.cap == 0 {
+                let layout = std::alloc::Layout::array::<T>(size).unwrap();
+                unsafe {
+                    self.data =
+                        std::ptr::NonNull::new(std::alloc::alloc(layout) as *mut T).unwrap();
+                    self.cap = size;
+                    self.head = size;
+                }
+            } else {
+                let old_layout = std::alloc::Layout::array::<T>(self.cap).unwrap();
+                let new_layout = std::alloc::Layout::array::<T>(size).unwrap();
+                unsafe {
+                    self.data = std::ptr::NonNull::new(std::alloc::realloc(
+                        self.data.as_ptr() as *mut u8,
+                        old_layout,
+                        new_layout.size(),
+                    ) as *mut T)
+                    .unwrap();
+                    let ptr = self.data.as_ptr();
+                    std::ptr::copy(
+                        ptr.offset(self.head as isize),
+                        ptr.offset((size - self.len()) as isize),
+                        self.len(),
+                    );
+                }
+                self.head += size - self.cap;
+                self.cap = size;
+            }
         }
+    }
+
+    unsafe fn head_ptr(&self) -> *const T {
+        self.data.as_ptr().offset(self.head as isize)
+    }
+
+    unsafe fn head_mut_ptr(&mut self) -> *mut T {
+        self.data.as_ptr().offset(self.head as isize)
     }
 
     pub fn push(&mut self, e: T) {
-        if self.head > 0 {
-            self.head = self.head - 1;
-            self.data[self.head] = e;
-        } else {
-            if self.data.len() == 0 {
-                self.resize_data(2);
-            } else {
-                self.resize_data(self.data.capacity() * 2);
-            }
-            self.push(e);
+        if self.head == 0 {
+            self.grow(std::cmp::max(8, self.cap * 2));
+        }
+        debug_assert!(self.head > 0);
+        unsafe {
+            self.head -= 1;
+            std::ptr::write(self.head_mut_ptr(), e);
         }
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        if self.head < self.data.len() {
-            let r = self.data[self.head].clone();
-            self.head = self.head + 1;
-            return Some(r);
+        if self.head < self.cap {
+            unsafe {
+                let r = self.head_ptr();
+                self.head += 1;
+                Some(std::ptr::read(r))
+            }
         } else {
             None
         }
     }
 
     pub fn len(&self) -> usize {
-        self.data.len() - self.head
+        self.cap - self.head
     }
 
     pub fn drop_top(&mut self, size: usize) -> () {
         if size > self.len() {
             panic!("size too large in drop_top");
         }
-        self.head = self.head + size;
+        let s = &mut self[..size];
+        unsafe { std::ptr::drop_in_place(s) };
+        self.head += size;
     }
 
     pub fn as_slice(&self) -> &[T] {
-        return &self.data[self.head..];
+        &*self
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        return &mut self.data[self.head..];
+        &mut *self
     }
 
     pub fn split_off(&mut self, size: usize) -> Stack<T> {
@@ -125,26 +205,33 @@ impl<T: Default + Clone> Stack<T> {
             panic!("size too large in split_off")
         }
         let mut r = Stack::new();
-        for i in 0..size {
-            r.push(self[size - 1 - i].clone());
-        }
-        self.head = self.head + size;
-        return r;
+        r.grow(size);
+        unsafe { std::ptr::copy_nonoverlapping(self.head_ptr(), r.data.as_mut(), size) }
+        r.head = r.cap - size;
+        self.head += size;
+        r
     }
 
     pub fn append(&mut self, other: &mut Stack<T>) -> () {
         let other_len = other.len();
-        let mut offset: usize = 0;
-        self.resize_data(other_len + self.data.capacity());
-        for i in other.as_slice() {
-            self.data[self.head - other_len + offset] = i.clone();
-            offset = offset + 1;
-        }
-        self.head = self.head - other.len();
+        self.grow(other_len + self.cap);
+        self.head -= other_len;
+        unsafe { std::ptr::copy_nonoverlapping(other.head_ptr(), self.head_mut_ptr(), other_len) }
+        other.clear();
     }
 
     pub fn swap(&mut self, i1: usize, i2: usize) -> () {
-        self.data.swap(self.head + i1, self.head + i2);
+        let a = std::ptr::addr_of_mut!(self[i1]);
+        let b = std::ptr::addr_of_mut!(self[i2]);
+        unsafe {
+            std::ptr::swap(a, b);
+        }
+    }
+
+    /// Clear the stack without freeing the buffer.
+    pub fn clear(&mut self) -> () {
+        unsafe { std::ptr::drop_in_place(self.as_mut_slice()) }
+        self.head = self.cap;
     }
 }
 
@@ -167,7 +254,7 @@ mod tests {
         stk.push(3);
         stk.push(2);
         stk.push(1);
-        assert_eq!(stk, stk![1, 2, 3, 4, 5, 6]);
+        assert_eq!(stk.as_slice(), stk![1, 2, 3, 4, 5, 6].as_slice());
     }
 
     #[test]
@@ -238,7 +325,7 @@ mod tests {
         let mut stk2 = stk![1, 2];
         stk1.append(&mut stk2);
         assert_eq!(stk1, stk![1, 2, 3, 4, 5]);
-        //assert_eq!(stk2, stk![]);
+        assert_eq!(stk2, stk![]);
     }
 
     #[test]
@@ -249,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "out of bounds stack access")]
+    #[should_panic(expected = "index out of bounds")]
     fn index_out_of_bounds() {
         let stk = stk![1, 2, 3, 4, 5];
         assert_eq!(stk[7], 5); // panics
@@ -260,5 +347,10 @@ mod tests {
         let mut stk = stk![1, 2, 3, 4, 5];
         stk[2] = 42;
         assert_eq!(stk, stk![1, 2, 42, 4, 5]);
+    }
+
+    #[test]
+    fn debug() {
+        assert_eq!(format!("{:?}", stk![1, 2, 3]), "stk![1, 2, 3]")
     }
 }
