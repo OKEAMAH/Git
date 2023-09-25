@@ -1696,14 +1696,14 @@ let parse_address ~sc_rollup_enable ~zk_rollup_enable :
 let parse_never expr : (never, error trace) Gas_monad.t =
   Gas_monad.Syntax.tzfail @@ Invalid_never_expr (location expr)
 
-let parse_bls12_381_g1 ctxt :
-    Script.node -> (Script_bls.G1.t * context) tzresult =
-  let open Result_syntax in
+let parse_bls12_381_g1 :
+    Script.node -> (Script_bls.G1.t, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bs) as expr -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_g1 in
+      let*$ () = Typecheck_costs.bls12_381_g1 in
       match Script_bls.G1.of_bytes_opt bs with
-      | Some pt -> return (pt, ctxt)
+      | Some pt -> return pt
       | None ->
           tzfail
             (Invalid_syntactic_constant
@@ -2455,7 +2455,7 @@ let rec parse_data :
   | Never_t, expr -> traced_from_gas_monad ctxt @@ parse_never expr
   (* Bls12_381 types *)
   | Bls12_381_g1_t, expr ->
-      Lwt.return @@ traced_no_lwt @@ parse_bls12_381_g1 ctxt expr
+      traced_from_gas_monad ctxt @@ parse_bls12_381_g1 expr
   | Bls12_381_g2_t, expr ->
       Lwt.return @@ traced_no_lwt @@ parse_bls12_381_g2 ctxt expr
   | Bls12_381_fr_t, expr ->
