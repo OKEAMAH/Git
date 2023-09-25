@@ -1795,18 +1795,18 @@ let parse_sapling_transaction_deprecated ~memo_size :
                  "a valid Sapling transaction (deprecated format)" )))
   | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr))
 
-let parse_chest_key ctxt :
-    Script.node -> (Script_timelock.chest_key * context) tzresult =
-  let open Result_syntax in
+let parse_chest_key :
+    Script.node -> (Script_timelock.chest_key, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr -> (
-      let* ctxt = Gas.consume ctxt Typecheck_costs.chest_key in
+      let*$ () = Typecheck_costs.chest_key in
       match
         Data_encoding.Binary.of_bytes_opt
           Script_timelock.chest_key_encoding
           bytes
       with
-      | Some chest_key -> return (chest_key, ctxt)
+      | Some chest_key -> return chest_key
       | None ->
           tzfail
             (Invalid_syntactic_constant
@@ -2491,8 +2491,7 @@ let rec parse_data :
       traced_fail
         (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
   (* Time lock*)
-  | Chest_key_t, expr ->
-      Lwt.return @@ traced_no_lwt @@ parse_chest_key ctxt expr
+  | Chest_key_t, expr -> traced_from_gas_monad ctxt @@ parse_chest_key expr
   | Chest_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_chest ctxt expr
 
 and parse_view :
