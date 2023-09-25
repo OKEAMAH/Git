@@ -2297,51 +2297,60 @@ let rec parse_data :
   | Never_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_never expr
   (* Bls12_381 types *)
   | Bls12_381_g1_t, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bs) as expr -> (
-          let*? ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_g1 in
+          let* ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_g1 in
           match Script_bls.G1.of_bytes_opt bs with
           | Some pt -> return (pt, ctxt)
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid BLS12-381 G1 element")))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   | Bls12_381_g2_t, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bs) as expr -> (
-          let*? ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_g2 in
+          let* ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_g2 in
           match Script_bls.G2.of_bytes_opt bs with
           | Some pt -> return (pt, ctxt)
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid BLS12-381 G2 element")))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   | Bls12_381_fr_t, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bs) as expr -> (
-          let*? ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_fr in
+          let* ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_fr in
           match Script_bls.Fr.of_bytes_opt bs with
           | Some pt -> return (pt, ctxt)
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid BLS12-381 field element"))
           )
       | Int (_, v) ->
-          let*? ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_fr in
+          let* ctxt = Gas.consume ctxt Typecheck_costs.bls12_381_fr in
           return (Script_bls.Fr.of_z v, ctxt)
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   (*
                    /!\ When adding new lazy storage kinds, you may want to guard the parsing
                    of identifiers with [allow_forged].
                *)
   (* Sapling *)
   | Sapling_transaction_t memo_size, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bytes) as expr -> (
           match
@@ -2351,7 +2360,7 @@ let rec parse_data :
               match Sapling.transaction_get_memo_size transaction with
               | None -> return (transaction, ctxt)
               | Some transac_memo_size ->
-                  let*? () =
+                  let* () =
                     memo_size_eq
                       ~error_details:(Informative ())
                       memo_size
@@ -2359,12 +2368,14 @@ let rec parse_data :
                   in
                   return (transaction, ctxt))
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid Sapling transaction")))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   | Sapling_transaction_deprecated_t memo_size, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bytes) as expr -> (
           match
@@ -2376,7 +2387,7 @@ let rec parse_data :
               match Sapling.Legacy.transaction_get_memo_size transaction with
               | None -> return (transaction, ctxt)
               | Some transac_memo_size ->
-                  let*? () =
+                  let* () =
                     memo_size_eq
                       ~error_details:(Informative ())
                       memo_size
@@ -2384,13 +2395,12 @@ let rec parse_data :
                   in
                   return (transaction, ctxt))
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    ( loc,
                      strip_locations expr,
                      "a valid Sapling transaction (deprecated format)" )))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   | Sapling_state_t memo_size, Int (loc, id) ->
       if allow_forged then
         let id = Sapling.Id.parse_z id in
@@ -2413,9 +2423,12 @@ let rec parse_data :
         (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
   (* Time lock*)
   | Chest_key_t, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bytes) as expr -> (
-          let*? ctxt = Gas.consume ctxt Typecheck_costs.chest_key in
+          let* ctxt = Gas.consume ctxt Typecheck_costs.chest_key in
           match
             Data_encoding.Binary.of_bytes_opt
               Script_timelock.chest_key_encoding
@@ -2423,15 +2436,17 @@ let rec parse_data :
           with
           | Some chest_key -> return (chest_key, ctxt)
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid time-lock chest key")))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
   | Chest_t, expr -> (
+      Lwt.return @@ traced_no_lwt
+      @@
+      let open Result_syntax in
       match expr with
       | Bytes (loc, bytes) as expr -> (
-          let*? ctxt =
+          let* ctxt =
             Gas.consume ctxt (Typecheck_costs.chest ~bytes:(Bytes.length bytes))
           in
           match
@@ -2441,11 +2456,10 @@ let rec parse_data :
           with
           | Some chest -> return (chest, ctxt)
           | None ->
-              traced_fail
+              tzfail
                 (Invalid_syntactic_constant
                    (loc, strip_locations expr, "a valid time-lock chest")))
-      | expr ->
-          traced_fail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
+      | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr)))
 
 and parse_view :
     type storage storagec.
