@@ -57,6 +57,7 @@ tx_demo_collector:
 
 tx_kernel.wasm: tx_demo_collector
 	@cp src/kernel_tx_demo/target/wasm32-unknown-unknown/release/tx_kernel.wasm $@
+	@wasm-strip $@
 
 .PHONY: build
 build: ${KERNELS} kernel_sdk
