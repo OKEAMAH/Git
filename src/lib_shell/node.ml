@@ -226,6 +226,7 @@ let create ?(sandboxed = false) ?sandbox_parameters ~singleprocess ~version
     } peer_validator_limits block_validator_limits prevalidator_limits
     chain_validator_limits history_mode =
   let open Lwt_result_syntax in
+  let singleprocess = singleprocess || true in
   let start_prevalidator, start_testchain =
     match p2p_params with
     | Some _ -> (not disable_mempool, enable_testchain)
