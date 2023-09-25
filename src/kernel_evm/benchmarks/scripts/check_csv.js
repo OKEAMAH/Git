@@ -27,7 +27,7 @@ const processFile = async () => {
     const acc = analysis.init_analysis()
     const graph_acc = graphs.init_graphs()
     const parser = fs
-        .createReadStream(`${__dirname}/${filename}`)
+        .createReadStream(`${filename}`)
         .pipe(parse({
             // CSV options if any
             delimiter: ",",
