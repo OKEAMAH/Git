@@ -29,7 +29,7 @@ pub struct Stack<T: Default> {
     head: usize,
 }
 
-impl<T: Default + Clone + Copy + PartialEq> PartialEq for Stack<T> {
+impl<T: Default + Clone + PartialEq> PartialEq for Stack<T> {
     fn eq(&self, other: &Stack<T>) -> bool {
         self.as_slice() == other.as_slice()
     }
@@ -41,7 +41,7 @@ impl<T: Default + Clone> From<Vec<T>> for Stack<T> {
     }
 }
 
-impl<T: Default + Clone + Copy> Index<usize> for Stack<T> {
+impl<T: Default + Clone> Index<usize> for Stack<T> {
     type Output = <usize as SliceIndex<[T]>>::Output;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -52,7 +52,7 @@ impl<T: Default + Clone + Copy> Index<usize> for Stack<T> {
     }
 }
 
-impl<T: Copy + Clone + Default> IndexMut<usize> for Stack<T> {
+impl<T: Clone + Default> IndexMut<usize> for Stack<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         if index >= self.len() {
             panic!("out of bounds stack access")
@@ -61,7 +61,7 @@ impl<T: Copy + Clone + Default> IndexMut<usize> for Stack<T> {
     }
 }
 
-impl<T: Default + Clone + Copy> Stack<T> {
+impl<T: Default + Clone> Stack<T> {
     pub fn new() -> Stack<T> {
         let v = Stack::from(vec![]);
         return v;
@@ -85,7 +85,7 @@ impl<T: Default + Clone + Copy> Stack<T> {
             if self.data.len() == 0 {
                 self.resize_data(2);
             } else {
-                self.resize_data(self.data.capacity() * 20);
+                self.resize_data(self.data.capacity() * 2);
             }
             self.push(e);
         }
@@ -126,7 +126,7 @@ impl<T: Default + Clone + Copy> Stack<T> {
         }
         let mut r = Stack::new();
         for i in 0..size {
-            r.push(self[size - 1 - i]);
+            r.push(self[size - 1 - i].clone());
         }
         self.head = self.head + size;
         return r;
@@ -137,7 +137,7 @@ impl<T: Default + Clone + Copy> Stack<T> {
         let mut offset: usize = 0;
         self.resize_data(other_len + self.data.capacity());
         for i in other.as_slice() {
-            self.data[self.head - other_len + offset] = *i;
+            self.data[self.head - other_len + offset] = i.clone();
             offset = offset + 1;
         }
         self.head = self.head - other.len();
