@@ -1741,9 +1741,9 @@ let parse_bls12_381_fr :
       return (Script_bls.Fr.of_z v)
   | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr))
 
-let parse_sapling_transaction ctxt ~memo_size :
-    Script.node -> (Sapling.transaction * context) tzresult =
-  let open Result_syntax in
+let parse_sapling_transaction ~memo_size :
+    Script.node -> (Sapling.transaction, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr -> (
       match
@@ -1751,15 +1751,15 @@ let parse_sapling_transaction ctxt ~memo_size :
       with
       | Some transaction -> (
           match Sapling.transaction_get_memo_size transaction with
-          | None -> return (transaction, ctxt)
+          | None -> return transaction
           | Some transac_memo_size ->
-              let* () =
+              let*? () =
                 memo_size_eq
                   ~error_details:(Informative ())
                   memo_size
                   transac_memo_size
               in
-              return (transaction, ctxt))
+              return transaction)
       | None ->
           tzfail
             (Invalid_syntactic_constant
@@ -2466,8 +2466,7 @@ let rec parse_data :
                *)
   (* Sapling *)
   | Sapling_transaction_t memo_size, expr ->
-      Lwt.return @@ traced_no_lwt
-      @@ parse_sapling_transaction ctxt ~memo_size expr
+      traced_from_gas_monad ctxt @@ parse_sapling_transaction ~memo_size expr
   | Sapling_transaction_deprecated_t memo_size, expr ->
       Lwt.return @@ traced_no_lwt
       @@ parse_sapling_transaction_deprecated ctxt ~memo_size expr
