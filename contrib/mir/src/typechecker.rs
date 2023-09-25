@@ -45,10 +45,10 @@ fn typecheck_instruction(
 
     match i {
         Add => match stack.as_slice() {
-            [.., Type::Nat, Type::Nat] => {
+            [Type::Nat, Type::Nat, ..] => {
                 stack.pop();
             }
-            [.., Type::Int, Type::Int] => {
+            [Type::Int, Type::Int, ..] => {
                 stack.pop();
             }
             _ => unimplemented!(),
@@ -82,14 +82,14 @@ fn typecheck_instruction(
             stack.push(stack[dup_height - 1].clone());
         }
         Gt => match stack.as_slice() {
-            [.., Type::Int] => {
+            [Type::Int, ..] => {
                 stack[0] = Type::Bool;
             }
             _ => return Err(TcError::GenericTcError),
         },
         If(nested_t, nested_f) => match stack.as_slice() {
             // Check if top is bool and bind the tail to `t`.
-            [t @ .., Type::Bool] => {
+            [Type::Bool, t @ ..] => {
                 // Clone the stack so that we have two stacks to run
                 // the two branches with.
                 let mut t_stack: TypeStack = Stack::from(t.to_owned());
@@ -104,14 +104,14 @@ fn typecheck_instruction(
             _ => return Err(TcError::GenericTcError),
         },
         Instruction::Int => match stack.as_mut_slice() {
-            [.., val @ Type::Nat] => {
+            [val @ Type::Nat, ..] => {
                 *val = Type::Int;
             }
             _ => return Err(TcError::GenericTcError),
         },
         Loop(nested) => match stack.as_slice() {
             // Check if top is bool and bind the tail to `t`.
-            [t @ .., Bool] => {
+            [Bool, t @ ..] => {
                 let mut live: TypeStack = Stack::from(t.to_owned());
                 // Clone the tail and typecheck the nested body using it.
                 typecheck(nested, gas, &mut live)?;
@@ -197,7 +197,7 @@ mod typecheck_tests {
     #[test]
     fn test_dup_n() {
         let mut stack = stk![Type::Int, Type::Nat];
-        let expected_stack = stk![Type::Int, Type::Nat, Type::Int];
+        let expected_stack = stk![Type::Nat, Type::Int, Type::Nat];
         let mut gas = Gas::new(10000);
         typecheck_instruction(&Dup(Some(2)), &mut gas, &mut stack).unwrap();
         assert!(stack == expected_stack);
@@ -247,7 +247,7 @@ mod typecheck_tests {
     #[test]
     fn test_push() {
         let mut stack = stk![Type::Nat];
-        let expected_stack = stk![Type::Nat, Type::Int];
+        let expected_stack = stk![Type::Int, Type::Nat];
         let mut gas = Gas::new(10000);
         typecheck_instruction(
             &Push(Type::Int, Value::NumberValue(1)),
@@ -296,7 +296,7 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop() {
-        let mut stack = stk![Type::Int, Type::Bool];
+        let mut stack = stk![Type::Bool, Type::Int];
         let expected_stack = stk![Type::Int];
         let mut gas = Gas::new(10000);
         assert!(typecheck_instruction(
@@ -311,7 +311,7 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop_stacks_not_equal_length() {
-        let mut stack = stk![Type::Int, Type::Bool];
+        let mut stack = stk![Type::Bool, Type::Int];
         let mut gas = Gas::new(10000);
         assert!(
             typecheck_instruction(
@@ -324,7 +324,7 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop_stacks_not_equal_types() {
-        let mut stack = stk![Type::Int, Type::Bool];
+        let mut stack = stk![Type::Bool, Type::Int];
         let mut gas = Gas::new(10000);
         assert!(
             typecheck_instruction(
@@ -333,5 +333,19 @@ mod typecheck_tests {
                 &mut stack
             ) == Err(TcError::StacksNotEqual)
         );
+    }
+
+    #[test]
+    fn typecheck_test_vec_deque_slowdown() {
+        let code = vec![
+            Instruction::Push(Type::Int, Value::NumberValue(1)),
+            Instruction::Push(Type::Int, Value::NumberValue(1)),
+            Instruction::Gt,
+        ];
+        let ast: Vec<_> = code.into_iter().cycle().take(1_000_000).collect();
+        let mut stack = stk![];
+        let t = std::time::Instant::now();
+        assert!(typecheck(&ast, &mut Gas::default(), &mut stack).is_ok());
+        dbg!(t.elapsed());
     }
 }

@@ -5,7 +5,13 @@
 /*                                                                            */
 /******************************************************************************/
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+impl Default for Type {
+    fn default() -> Type {
+        return Type::Nat;
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Type {
     Nat,
     Int,
@@ -24,10 +30,16 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Value {
     NumberValue(i32),
     BooleanValue(bool),
+}
+
+impl Default for Value {
+    fn default() -> Value {
+        return Value::NumberValue(0);
+    }
 }
 
 pub type InstructionBlock = Vec<Instruction>;

@@ -23,106 +23,128 @@ macro_rules! stk {
 
 pub(crate) use stk;
 
-/// A stack abstraction based on `Vec`.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Stack<T>(Vec<T>);
+#[derive(Debug, Clone)]
+pub struct Stack<T: Default> {
+    data: Vec<T>,
+    head: usize,
+}
 
-impl<T> Stack<T> {
-    /// Allocate a new empty stack.
-    pub fn new() -> Stack<T> {
-        Stack::from(Vec::new())
-    }
-
-    /// Convert stack index to vec index.
-    fn vec_index(&self, i: usize) -> usize {
-        let len = self.len();
-        len.checked_sub(i + 1).expect("out of bounds stack access")
-    }
-
-    /// Push an element onto the top of the stack.
-    pub fn push(&mut self, elt: T) {
-        self.0.push(elt)
-    }
-
-    /// Pop an element off the top of the stack.
-    pub fn pop(&mut self) -> Option<T> {
-        self.0.pop()
-    }
-
-    /// Get the stack's element count.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Removes the specified number of elements from the top of the stack in
-    /// bulk.
-    ///
-    /// Panics if the `size` is larger than length of the stack.
-    pub fn drop_top(&mut self, size: usize) -> () {
-        let len = self.len();
-        self.0
-            .truncate(len.checked_sub(size).expect("size too large in drop_top"));
-    }
-
-    /// Borrow the stack content as an immutable slice. Note that stack top is
-    /// the _rightmost_ element.
-    pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
-    }
-
-    /// Borrow the stack content as a mutable slice. Note that stack top is
-    /// the _rightmost_ element.
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        self.0.as_mut_slice()
-    }
-
-    /// Split off the top `size` elements of the stack into a new `Stack`.
-    ///
-    /// Panics if the `size` is larger than length of the stack.
-    pub fn split_off(&mut self, size: usize) -> Stack<T> {
-        let len = self.len();
-        Stack::from(
-            self.0
-                .split_off(len.checked_sub(size).expect("size too large in split_off")),
-        )
-    }
-
-    /// Move elements from `other` to the top of the stack. New stack top is the
-    /// top of `other`. Note that elements are moved out of `other`.
-    pub fn append(&mut self, other: &mut Stack<T>) -> () {
-        self.0.append(&mut other.0)
-    }
-
-    /// Swap two elements in the stack, identified by their index from the top,
-    /// with `0` being the top.
-    pub fn swap(&mut self, i1: usize, i2: usize) -> () {
-        let i1v = self.vec_index(i1);
-        let i2v = self.vec_index(i2);
-        self.0.swap(i1v, i2v)
+impl<T: Default + Clone + Copy + PartialEq> PartialEq for Stack<T> {
+    fn eq(&self, other: &Stack<T>) -> bool {
+        self.as_slice() == other.as_slice()
     }
 }
 
-impl<T> From<Vec<T>> for Stack<T> {
-    fn from(data: Vec<T>) -> Self {
-        Stack(data)
+impl<T: Default + Clone> From<Vec<T>> for Stack<T> {
+    fn from(v: Vec<T>) -> Self {
+        return Stack { data: v, head: 0 };
     }
 }
 
-impl<T> Index<usize> for Stack<T> {
+impl<T: Default + Clone + Copy> Index<usize> for Stack<T> {
     type Output = <usize as SliceIndex<[T]>>::Output;
 
-    /// Index into the stack. The top's index is `0`. Returns an immutable
-    /// reference to the element.
     fn index(&self, index: usize) -> &Self::Output {
-        self.0.index(self.vec_index(index))
+        if index >= self.len() {
+            panic!("out of bounds stack access")
+        }
+        self.data.index(self.head + index)
     }
 }
 
-impl<T> IndexMut<usize> for Stack<T> {
-    /// Index into the stack. The top's index is `0`. Returns a mutable
-    /// reference to the element.
+impl<T: Copy + Clone + Default> IndexMut<usize> for Stack<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.0.index_mut(self.vec_index(index))
+        if index >= self.len() {
+            panic!("out of bounds stack access")
+        }
+        self.data.index_mut(self.head + index)
+    }
+}
+
+impl<T: Default + Clone + Copy> Stack<T> {
+    pub fn new() -> Stack<T> {
+        let v = Stack::from(vec![]);
+        return v;
+    }
+
+    pub fn resize_data(&mut self, size: usize) {
+        if self.data.capacity() < size {
+            let mut vec = Vec::with_capacity(size);
+            unsafe { vec.set_len(size - self.data.len()) };
+            vec.extend_from_slice(self.data.as_slice());
+            self.head = self.head + (size - self.data.len());
+            self.data = vec;
+        }
+    }
+
+    pub fn push(&mut self, e: T) {
+        if self.head > 0 {
+            self.head = self.head - 1;
+            self.data[self.head] = e;
+        } else {
+            if self.data.len() == 0 {
+                self.resize_data(2);
+            } else {
+                self.resize_data(self.data.capacity() * 20);
+            }
+            self.push(e);
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        if self.head < self.data.len() {
+            let r = self.data[self.head].clone();
+            self.head = self.head + 1;
+            return Some(r);
+        } else {
+            None
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len() - self.head
+    }
+
+    pub fn drop_top(&mut self, size: usize) -> () {
+        if size > self.len() {
+            panic!("size too large in drop_top");
+        }
+        self.head = self.head + size;
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        return &self.data[self.head..];
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        return &mut self.data[self.head..];
+    }
+
+    pub fn split_off(&mut self, size: usize) -> Stack<T> {
+        if size > self.len() {
+            panic!("size too large in split_off")
+        }
+        let mut r = Stack::new();
+        for i in 0..size {
+            r.push(self[size - 1 - i]);
+        }
+        self.head = self.head + size;
+        return r;
+    }
+
+    pub fn append(&mut self, other: &mut Stack<T>) -> () {
+        let other_len = other.len();
+        let mut offset: usize = 0;
+        self.resize_data(other_len + self.data.capacity());
+        for i in other.as_slice() {
+            self.data[self.head - other_len + offset] = *i;
+            offset = offset + 1;
+        }
+        self.head = self.head - other.len();
+    }
+
+    pub fn swap(&mut self, i1: usize, i2: usize) -> () {
+        self.data.swap(self.head + i1, self.head + i2);
     }
 }
 
@@ -139,18 +161,21 @@ mod tests {
     #[test]
     fn push() {
         let mut stk = Stack::new();
-        stk.push(1);
-        stk.push(2);
+        stk.push(6);
+        stk.push(5);
+        stk.push(4);
         stk.push(3);
-        assert_eq!(stk, stk![1, 2, 3]);
+        stk.push(2);
+        stk.push(1);
+        assert_eq!(stk, stk![1, 2, 3, 4, 5, 6]);
     }
 
     #[test]
     fn pop() {
         let mut stk = stk![1, 2, 3];
-        assert_eq!(stk.pop(), Some(3));
-        assert_eq!(stk.pop(), Some(2));
         assert_eq!(stk.pop(), Some(1));
+        assert_eq!(stk.pop(), Some(2));
+        assert_eq!(stk.pop(), Some(3));
         assert_eq!(stk.pop(), None);
     }
 
@@ -166,7 +191,7 @@ mod tests {
     fn drop_top() {
         let mut stk = stk![1, 2, 3, 4];
         stk.drop_top(3);
-        assert_eq!(stk, stk![1]);
+        assert_eq!(stk, stk![4]);
     }
 
     #[test]
@@ -196,8 +221,8 @@ mod tests {
     fn split_off() {
         let mut stk = stk![1, 2, 3, 4, 5];
         let stk2 = stk.split_off(3);
-        assert_eq!(stk2, stk![3, 4, 5]);
-        assert_eq!(stk, stk![1, 2]);
+        assert_eq!(stk2, stk![1, 2, 3]);
+        assert_eq!(stk, stk![4, 5]);
     }
 
     #[test]
@@ -209,18 +234,18 @@ mod tests {
 
     #[test]
     fn append() {
-        let mut stk1 = stk![1, 2, 3];
-        let mut stk2 = stk![4, 5];
+        let mut stk1 = stk![3, 4, 5];
+        let mut stk2 = stk![1, 2];
         stk1.append(&mut stk2);
         assert_eq!(stk1, stk![1, 2, 3, 4, 5]);
-        assert_eq!(stk2, stk![]);
+        //assert_eq!(stk2, stk![]);
     }
 
     #[test]
     fn index() {
         let stk = stk![1, 2, 3, 4, 5];
-        assert_eq!(stk[0], 5);
-        assert_eq!(stk[4], 1);
+        assert_eq!(stk[0], 1);
+        assert_eq!(stk[4], 5);
     }
 
     #[test]

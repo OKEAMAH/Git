@@ -13,7 +13,13 @@ mod stack;
 mod syntax;
 mod typechecker;
 
-fn main() {}
+fn main() {
+    use crate::ast::*;
+    use crate::stack::stk;
+    use crate::stack::TypeStack;
+    let mut s: TypeStack = stk![];
+    s.push(Type::Nat);
+}
 
 #[cfg(test)]
 mod tests {
@@ -67,7 +73,10 @@ mod tests {
     fn typecheck_test_expect_success() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
         let mut stack = stk![Type::Nat];
-        assert!(typechecker::typecheck(&ast, &mut Gas::default(), &mut stack).is_ok());
+        let t = std::time::Instant::now();
+        let r = typechecker::typecheck(&ast, &mut Gas::default(), &mut stack);
+        dbg!(t.elapsed());
+        assert!(r.is_ok());
         assert_eq!(stack, stk![Type::Int]);
     }
 

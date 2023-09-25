@@ -41,7 +41,7 @@ fn interpret_one(i: &Instruction, gas: &mut Gas, stack: &mut IStack) -> Result<(
 
     match i {
         Add => match stack.as_slice() {
-            [.., NumberValue(o2), NumberValue(o1)] => {
+            [NumberValue(o2), NumberValue(o1), ..] => {
                 gas.consume(interpret_cost::add_int(*o1, *o2)?)?;
                 let sum = *o1 + *o2;
                 stack.drop_top(2);
@@ -70,7 +70,7 @@ fn interpret_one(i: &Instruction, gas: &mut Gas, stack: &mut IStack) -> Result<(
         Gt => {
             gas.consume(interpret_cost::GT)?;
             match stack.as_slice() {
-                [.., NumberValue(i)] => {
+                [NumberValue(i), ..] => {
                     stack[0] = BooleanValue(*i > 0);
                 }
                 _ => unreachable_state(),
@@ -89,7 +89,7 @@ fn interpret_one(i: &Instruction, gas: &mut Gas, stack: &mut IStack) -> Result<(
             }
         }
         Instruction::Int => match stack.as_slice() {
-            [.., NumberValue(_)] => gas.consume(interpret_cost::INT_NAT)?,
+            [NumberValue(_), ..] => gas.consume(interpret_cost::INT_NAT)?,
             _ => {
                 unreachable_state();
             }
@@ -141,7 +141,7 @@ mod interpreter_tests {
     #[test]
     fn test_dip() {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(25), NumberValue(10)];
+        let expected_stack = stk![NumberValue(20), NumberValue(15)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Dip(None, parse("{ADD}").unwrap()), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -150,7 +150,7 @@ mod interpreter_tests {
     #[test]
     fn test_dip2() {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(5), NumberValue(10)];
+        let expected_stack = stk![NumberValue(20), NumberValue(5)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Dip(Some(2), parse("{DROP}").unwrap()),
@@ -164,7 +164,7 @@ mod interpreter_tests {
     #[test]
     fn test_drop() {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), NumberValue(5)];
+        let expected_stack = stk![NumberValue(5), NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Drop(None), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -173,7 +173,7 @@ mod interpreter_tests {
     #[test]
     fn test_drop2() {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20)];
+        let expected_stack = stk![NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Drop(Some(2)), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -184,8 +184,8 @@ mod interpreter_tests {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
         let expected_stack = stk![
             NumberValue(20),
+            NumberValue(20),
             NumberValue(5),
-            NumberValue(10),
             NumberValue(10),
         ];
         let mut gas = Gas::default();
@@ -197,10 +197,10 @@ mod interpreter_tests {
     fn test_dup2() {
         let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
         let expected_stack = stk![
+            NumberValue(5),
             NumberValue(20),
             NumberValue(5),
             NumberValue(10),
-            NumberValue(5),
         ];
         let mut gas = Gas::default();
         assert!(interpret_one(&Dup(Some(2)), &mut gas, &mut stack).is_ok());
@@ -210,7 +210,7 @@ mod interpreter_tests {
     #[test]
     fn test_gt() {
         let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), BooleanValue(true)];
+        let expected_stack = stk![BooleanValue(true), NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Gt, &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -218,8 +218,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_if_t() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20)];
+        let mut stack = stk![BooleanValue(true), NumberValue(20), NumberValue(5)];
+        let expected_stack = stk![NumberValue(5)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &If(parse("{DROP}").unwrap(), parse("{ADD}").unwrap()),
@@ -232,7 +232,7 @@ mod interpreter_tests {
 
     #[test]
     fn test_if_f() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), BooleanValue(false)];
+        let mut stack = stk![BooleanValue(false), NumberValue(20), NumberValue(5),];
         let expected_stack = stk![NumberValue(25)];
         let mut gas = Gas::default();
         assert!(interpret_one(
@@ -256,7 +256,7 @@ mod interpreter_tests {
     #[test]
     fn test_push() {
         let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), NumberValue(10), NumberValue(0)];
+        let expected_stack = stk![NumberValue(0), NumberValue(20), NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Push(Type::Nat, NumberValue(0)), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -264,7 +264,7 @@ mod interpreter_tests {
 
     #[test]
     fn test_loop_0() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(false)];
+        let mut stack = stk![BooleanValue(false), NumberValue(20), NumberValue(10)];
         let expected_stack = stk![NumberValue(20), NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(
@@ -278,8 +278,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_loop_1() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20), NumberValue(11)];
+        let mut stack = stk![BooleanValue(true), NumberValue(10), NumberValue(20)];
+        let expected_stack = stk![NumberValue(11), NumberValue(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Loop(parse("{PUSH nat 1; ADD; PUSH bool False}").unwrap()),
@@ -292,8 +292,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_loop_many() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20), NumberValue(0)];
+        let mut stack = stk![BooleanValue(true), NumberValue(10), NumberValue(20)];
+        let expected_stack = stk![NumberValue(0), NumberValue(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Loop(parse("{PUSH int -1; ADD; DUP; GT}").unwrap()),
