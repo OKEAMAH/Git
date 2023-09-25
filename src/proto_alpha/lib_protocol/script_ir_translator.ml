@@ -155,13 +155,10 @@ let check_comparable :
         let t = Script_ir_unparser.serialize_ty_for_error ty in
         tzfail (Comparable_type_expected (loc, t))
 
-let pack_node unparsed ctxt =
-  let bytes =
-    Data_encoding.(
-      Binary.to_bytes_exn (tup2 (Fixed.string Plain 1) expr_encoding))
-      ("\x05", unparsed)
-  in
-  (bytes, ctxt)
+let pack_node unparsed =
+  Data_encoding.(
+    Binary.to_bytes_exn (tup2 (Fixed.string Plain 1) expr_encoding))
+    ("\x05", unparsed)
 
 let pack_comparable_data ctxt ty data =
   let open Lwt_result_syntax in
@@ -169,7 +166,7 @@ let pack_comparable_data ctxt ty data =
     Gas_monad.run ctxt @@ unparse_comparable_data Optimized_legacy ty data
   in
   let*? unparsed in
-  return (pack_node unparsed ctxt)
+  return (pack_node unparsed, ctxt)
 
 let hash_bytes bytes =
   let open Gas_monad.Syntax in
@@ -5551,7 +5548,7 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
 let pack_data_with_mode ctxt ty data ~mode =
   let open Lwt_result_syntax in
   let+ unparsed, ctxt = unparse_data ~stack_depth:0 ctxt mode ty data in
-  pack_node unparsed ctxt
+  (pack_node unparsed, ctxt)
 
 let hash_data ctxt ty data =
   let open Lwt_result_syntax in
