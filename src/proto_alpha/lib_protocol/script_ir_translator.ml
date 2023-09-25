@@ -1813,18 +1813,16 @@ let parse_chest_key :
                (loc, strip_locations expr, "a valid time-lock chest key")))
   | expr -> tzfail (Invalid_kind (location expr, [Bytes_kind], kind expr))
 
-let parse_chest ctxt : Script.node -> (Script_timelock.chest * context) tzresult
-    =
-  let open Result_syntax in
+let parse_chest :
+    Script.node -> (Script_timelock.chest, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
   function
   | Bytes (loc, bytes) as expr -> (
-      let* ctxt =
-        Gas.consume ctxt (Typecheck_costs.chest ~bytes:(Bytes.length bytes))
-      in
+      let*$ () = Typecheck_costs.chest ~bytes:(Bytes.length bytes) in
       match
         Data_encoding.Binary.of_bytes_opt Script_timelock.chest_encoding bytes
       with
-      | Some chest -> return (chest, ctxt)
+      | Some chest -> return chest
       | None ->
           tzfail
             (Invalid_syntactic_constant
@@ -2492,7 +2490,7 @@ let rec parse_data :
         (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
   (* Time lock*)
   | Chest_key_t, expr -> traced_from_gas_monad ctxt @@ parse_chest_key expr
-  | Chest_t, expr -> Lwt.return @@ traced_no_lwt @@ parse_chest ctxt expr
+  | Chest_t, expr -> traced_from_gas_monad ctxt @@ parse_chest expr
 
 and parse_view :
     type storage storagec.
