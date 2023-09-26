@@ -11,7 +11,6 @@ use evm_execution::account_storage::EthereumAccount;
 use tezos_crypto_rs::hash::{ContractKt1Hash, HashTrait};
 use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
-use tezos_smart_rollup_debug::debug_msg;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
 use tezos_smart_rollup_host::path::*;
 use tezos_smart_rollup_host::runtime::{Runtime, RuntimeError, ValueType};
@@ -359,7 +358,12 @@ pub fn store_transaction_object<Host: Runtime>(
 ) -> Result<(), Error> {
     let object_path = object_path(&object.hash)?;
     let encoded: &[u8] = &object.rlp_bytes();
-    debug_msg!(host, "Storing transaction object of size {}", encoded.len());
+    log!(
+        host,
+        Debug,
+        "Storing transaction object of size {}",
+        encoded.len()
+    );
     host.store_write_all(&object_path, encoded)?;
     Ok(())
 }
