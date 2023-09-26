@@ -63,8 +63,6 @@ mod test_message_processing {
 
     fn test_on_sample(param: &[u8], expected_res: &[u8]) {
         let mut host = MockHost::default();
-        host.store_write_all(STORAGE_PATH, &[0; size_of::<usize>()])
-            .unwrap();
         process_external_message(&mut host, param).unwrap();
         assert_eq!(host.store_read_all(STORAGE_PATH).unwrap(), expected_res);
     }
