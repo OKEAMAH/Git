@@ -6,6 +6,7 @@ const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const { is_transfer, is_create, is_transaction, BASE_GAS } = require('./utils')
 // const { ChartConfiguration } = require('chart')
 const fs = require('fs');
+const tx_register = require('./tx_register')
 const fetch = require('./fetch')
 
 const number_formatter_compact = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'long' });
@@ -30,7 +31,8 @@ function init_analysis() {
         nb_create: 0,
         nb_transfer: 0,
         kernel_runs: [],
-        fetch_data: []
+        fetch_data: [],
+        tx_register: []
 
     };
     return empty
@@ -39,6 +41,7 @@ function init_analysis() {
 function print_analysis(infos) {
     const tickPerGas = infos.total_ticks_tx / infos.total_gas
     fetch.print_fetch_analysis(infos)
+    tx_register.print_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Kernels infos`)
     console.info(`Overall tick per gas: ~${tickPerGas.toFixed()}`)
@@ -77,6 +80,7 @@ function process_bench_record(record, acc) {
 
 function process_transaction_record(record, acc) {
     acc.signatures.push(record.signature_verification_ticks)
+    acc.tx_register.push([record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
     if (is_transfer(record)) process_transfer(record, acc)
     else if (is_create(record)) process_create(record, acc)
     else process_call(record, acc)

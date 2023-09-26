@@ -100,7 +100,7 @@ function run_profiler(path) {
                 console.log(new Error("Tx status array length (" + tx_status.length + ") != estimated ticks per tx array length (" + estimated_ticks_per_tx.length + ")"));
             }
             if (tx_status.length != tx_size.length) {
-                console.log(new Error("Tx status array length (" + tx_status.length + ") != size of tx aray length (" + tx_size.length + ")"));
+                console.log(new Error("Tx status array length (" + tx_status.length + ") != size of tx array length (" + tx_size.length + ")"));
             }
             resolve({
                 profiler_output_path,
@@ -156,10 +156,11 @@ async function analyze_profiler_output(path) {
     run_transaction_ticks = await get_ticks(path, "run_transaction");
     signature_verification_ticks = await get_ticks(path, "25EthereumTransactionCommon6caller");
     sputnik_runtime_ticks = await get_ticks(path, "11evm_runtime7Runtime3run");
-    store_transaction_object_ticks = await get_ticks(path, "storage24store_transaction_object");
+    store_transaction_object_ticks = await get_ticks(path, "BlockInProgress26register_valid_transaction");
     interpreter_init_ticks = await get_ticks(path, "interpreter(init)");
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
     fetch_blueprint_ticks = await get_ticks(path, "blueprint5fetch");
+    block_finalize = await get_ticks(path, "BlockInProgress18finalize_and_store");
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -169,6 +170,7 @@ async function analyze_profiler_output(path) {
         interpreter_decode_ticks: interpreter_decode_ticks,
         fetch_blueprint_ticks: fetch_blueprint_ticks,
         sputnik_runtime_ticks: sputnik_runtime_ticks,
+        block_finalize
     };
 }
 
