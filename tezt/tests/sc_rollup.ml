@@ -6173,7 +6173,7 @@ let test_rollup_whitelist_outdated_update ~kind =
     ~supports:(From_protocol 019)
     ~commitment_period
     ~challenge_window
-  @@ fun _protocol rollup_node rollup_client rollup_addr node client ->
+  @@ fun _protocol rollup_node rollup_client rollup_addr _node client ->
   let* () = Sc_rollup_node.run rollup_node rollup_addr [] in
   let*! payload =
     Sc_rollup_client.encode_json_outbox_msg rollup_client
@@ -6192,28 +6192,16 @@ let test_rollup_whitelist_outdated_update ~kind =
          ]
   in
   (* Execute whitelist update with outdated message index. *)
-  let* () = send_text_messages ~hooks ~format:`Hex client [payload; payload2] in
-  let* outbox_level = Node.get_level node in
-  let blocks_to_wait = 3 + (2 * commitment_period) + challenge_window in
-  let* () =
-    repeat blocks_to_wait @@ fun () -> Client.bake_for_and_wait client
-  in
-  let* {commitment_hash; proof} =
-    get_outbox_proof rollup_client ~__LOC__ ~message_index:1 ~outbox_level
-  in
-  let*! () =
-    Client.Sc_rollup.execute_outbox_message
-      ~hooks
-      ~burn_cap:(Tez.of_int 10)
-      ~fee:(Tez.of_mutez_int 1358)
-      ~rollup:rollup_addr
-      ~src:Constant.bootstrap3.alias
-      ~commitment_hash
-      ~proof
+  let* _hash, outbox_level, message_index =
+    send_messages_then_bake_until_rollup_node_execute_output_message
+      ~commitment_period
+      ~challenge_window
       client
+      rollup_node
+      [payload; payload2]
   in
-  let* () = Client.bake_for_and_wait client in
-  (* Outdated message index. *)
+  Check.((message_index = 1) int)
+    ~error_msg:"Executed output message of index %L expected %R." ;
   let* {commitment_hash; proof} =
     get_outbox_proof rollup_client ~__LOC__ ~message_index:0 ~outbox_level
   in
@@ -6235,34 +6223,14 @@ let test_rollup_whitelist_outdated_update ~kind =
   in
 
   (* Execute whitelist update with outdated outbox level. *)
-  let* () = send_text_messages ~hooks ~format:`Hex client [payload; payload2] in
-  let* outbox_level = Node.get_level node in
-  let* () = send_text_messages ~hooks ~format:`Hex client [payload; payload2] in
-  let blocks_to_wait = 3 + (2 * commitment_period) + challenge_window in
-  let* () =
-    repeat blocks_to_wait @@ fun () -> Client.bake_for_and_wait client
-  in
-  let message_index = 0 in
-  let* {commitment_hash; proof} =
-    get_outbox_proof
-      rollup_client
-      ~__LOC__
-      ~message_index
-      ~outbox_level:(outbox_level + 1)
-  in
-  let*! () =
-    Client.Sc_rollup.execute_outbox_message
-      ~hooks
-      ~burn_cap:(Tez.of_int 10)
-      ~fee:(Tez.of_mutez_int 1391)
-      ~rollup:rollup_addr
-      ~src:Constant.bootstrap3.alias
-      ~commitment_hash
-      ~proof
+  let* _hash, _outbox_level, _message_index =
+    send_messages_then_bake_until_rollup_node_execute_output_message
+      ~commitment_period
+      ~challenge_window
       client
+      rollup_node
+      [payload; payload2]
   in
-  let* () = Client.bake_for_and_wait client in
-
   let* {commitment_hash; proof} =
     get_outbox_proof rollup_client ~__LOC__ ~message_index ~outbox_level
   in
