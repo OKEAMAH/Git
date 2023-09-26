@@ -732,6 +732,13 @@ module Script : sig
         been deserialized before. *)
   type consume_deserialization_gas = Always | When_needed
 
+  (** Deserialization gas cost for decoding an expression (see
+      {!consume_deserialization_gas}). *)
+  val force_decode_cost :
+    consume_deserialization_gas:consume_deserialization_gas ->
+    lazy_expr ->
+    Gas.cost
+
   (** Decode an expression in the context after consuming the deserialization
       gas cost (see {!consume_deserialization_gas}). *)
   val force_decode_in_context :

@@ -315,13 +315,14 @@ module Script = struct
 
   type consume_deserialization_gas = Always | When_needed
 
+  let force_decode_cost ~consume_deserialization_gas lexpr =
+    match consume_deserialization_gas with
+    | Always -> Script_repr.stable_force_decode_cost lexpr
+    | When_needed -> Script_repr.force_decode_cost lexpr
+
   let force_decode_in_context ~consume_deserialization_gas ctxt lexpr =
     let open Result_syntax in
-    let gas_cost =
-      match consume_deserialization_gas with
-      | Always -> Script_repr.stable_force_decode_cost lexpr
-      | When_needed -> Script_repr.force_decode_cost lexpr
-    in
+    let gas_cost = force_decode_cost ~consume_deserialization_gas lexpr in
     let* ctxt = Raw_context.consume_gas ctxt gas_cost in
     let+ v = Script_repr.force_decode lexpr in
     (v, ctxt)
