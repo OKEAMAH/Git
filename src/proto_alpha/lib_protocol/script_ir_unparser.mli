@@ -194,19 +194,6 @@ module Data_unparser : functor (P : MICHELSON_PARSER) -> sig
     'a ->
     (Script.expr, error trace) Gas_monad.t
 
-  (** [unparse_items ctxt ~stack_depth unparsing_mode kty vty assoc] returns the
-      Micheline representation of [assoc] (being an association list) with keys
-      of type [kty] and values of type [vty]. Gas is being consumed from
-      [ctxt]. *)
-  val unparse_items :
-    context ->
-    stack_depth:int ->
-    unparsing_mode ->
-    'k comparable_ty ->
-    ('v, 'vc) ty ->
-    ('k * 'v) list ->
-    (Script.expr list * context) tzresult Lwt.t
-
   (** [unparse_code ~stack_depth ~elab_conf unparsing_mode code] returns [code]
       with [I_PUSH] instructions parsed and unparsed back to make sure that
       only forgeable values are being pushed. Gas is being consumed. *)

@@ -786,28 +786,6 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
     let* unparsed_data = unparse_code_rec ~stack_depth ~elab_conf mode v in
     account_for_future_serialization_cost unparsed_data
 
-  let unparse_items ctxt ~stack_depth mode ty vty vs =
-    let open Lwt_result_syntax in
-    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
-    let*? unparsed_datas, ctxt =
-      Gas_monad.run ctxt
-      @@ unparse_items_rec ~stack_depth ~elab_conf mode ty vty vs
-    in
-    let*? unparsed_datas in
-    let*? unparsed_datas, ctxt =
-      List.fold_left_e
-        (fun (acc, ctxt) unparsed_data ->
-          let open Result_syntax in
-          let+ unparsed_data, ctxt =
-            Gas_monad.run_pure ctxt
-            @@ account_for_future_serialization_cost unparsed_data
-          in
-          (unparsed_data :: acc, ctxt))
-        ([], ctxt)
-        unparsed_datas
-    in
-    return (List.rev unparsed_datas, ctxt)
-
   module Internal_for_benchmarking = struct
     let unparse_data = unparse_data_rec
 
