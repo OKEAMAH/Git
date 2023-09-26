@@ -345,11 +345,10 @@ val parse_code :
 
 val parse_storage :
   elab_conf:Script_ir_translator_config.elab_config ->
-  context ->
   allow_forged:bool ->
   ('storage, _) Script_typed_ir.ty ->
   storage:Script.lazy_expr ->
-  ('storage * context) tzresult Lwt.t
+  ('storage, error trace) Gas_monad.t
 
 (** Combines [parse_code] and [parse_storage] *)
 val parse_script :

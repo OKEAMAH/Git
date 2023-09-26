@@ -5130,6 +5130,11 @@ let code_size code views =
   let+$ () = Script_typed_ir_size_costs.nodes_cost ~nodes in
   code_size
 
+let force_decode ~consume_deserialization_gas lexpr =
+  let open Gas_monad.Syntax in
+  let*$ () = Script.force_decode_cost ~consume_deserialization_gas lexpr in
+  Gas_monad.of_result @@ Script.force_decode_unaccounted lexpr
+
 let parse_code :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
@@ -5139,11 +5144,10 @@ let parse_code :
   let open Lwt_result_syntax in
   fun ~unparse_code_rec ~elab_conf ctxt ~code ->
     let*? code, ctxt =
-      Script.force_decode_in_context
-        ~consume_deserialization_gas:When_needed
-        ctxt
-        code
+      Gas_monad.run ctxt
+      @@ force_decode ~consume_deserialization_gas:When_needed code
     in
+    let*? code in
     let legacy = elab_conf.legacy in
     let* ctxt, code = Global_constants_storage.expand ctxt code in
     let*? res, ctxt =
@@ -5194,31 +5198,27 @@ let parse_code :
 let parse_storage :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
-    context ->
     allow_forged:bool ->
     ('storage, _) ty ->
     storage:lazy_expr ->
-    ('storage * context) tzresult Lwt.t =
-  let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt ~allow_forged storage_type ~storage ->
-    let*? storage, ctxt =
-      Script.force_decode_in_context
-        ~consume_deserialization_gas:When_needed
-        ctxt
-        storage
+    ('storage, error trace) Gas_monad.t =
+  let open Gas_monad.Syntax in
+  fun ~unparse_code_rec ~elab_conf ~allow_forged storage_type ~storage ->
+    let* storage =
+      force_decode ~consume_deserialization_gas:When_needed storage
     in
-    trace_eval
+    Gas_monad.record_trace_eval
+      ~error_details:(Informative ())
       (fun () ->
         let storage_type = serialize_ty_for_error storage_type in
         Ill_typed_data (None, storage, storage_type))
-      (parse_data
+      (parse_packable_data
          ~unparse_code_rec
          ~elab_conf
          ~stack_depth:0
          ~allow_forged
          storage_type
-         (root storage)
-         ctxt)
+         (root storage))
 
 let parse_script :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
@@ -5235,27 +5235,29 @@ let parse_script :
            ctxt ) =
       parse_code ~unparse_code_rec ~elab_conf ctxt ~code
     in
-    let+ storage, ctxt =
-      parse_storage
-        ~unparse_code_rec
-        ~elab_conf
-        ctxt
-        ~allow_forged:allow_forged_in_storage
-        storage_type
-        ~storage
+    let*? storage, ctxt =
+      Gas_monad.run ctxt
+      @@ parse_storage
+           ~unparse_code_rec
+           ~elab_conf
+           ~allow_forged:allow_forged_in_storage
+           storage_type
+           ~storage
     in
-    ( Ex_script
-        (Script
-           {
-             code_size;
-             code;
-             arg_type;
-             storage;
-             storage_type;
-             views;
-             entrypoints;
-           }),
-      ctxt )
+    let*? storage in
+    return
+      ( Ex_script
+          (Script
+             {
+               code_size;
+               code;
+               arg_type;
+               storage;
+               storage_type;
+               views;
+               entrypoints;
+             }),
+        ctxt )
 
 type typechecked_code_internal =
   | Typechecked_code_internal : {
@@ -5440,19 +5442,18 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
     typecheck_code ~unparse_code_rec ~legacy ~show_types:false ctxt code
   in
   let elab_conf = Script_ir_translator_config.make ~legacy ctxt in
-  let* storage, ctxt =
-    parse_storage
-      ~unparse_code_rec
-      ~elab_conf
-      ctxt
-      ~allow_forged:allow_forged_in_storage
-      storage_type
-      ~storage
-  in
   let*? code, storage =
     Gas_monad.run_unaccounted
     @@
     let open Gas_monad.Syntax in
+    let* storage =
+      parse_storage
+        ~unparse_code_rec
+        ~elab_conf
+        ~allow_forged:allow_forged_in_storage
+        storage_type
+        ~storage
+    in
     let* code = unparse_code ~stack_depth:0 ~elab_conf mode code_field in
     let+ storage =
       unparse_data ~stack_depth:0 ~elab_conf mode storage_type storage
@@ -6011,8 +6012,8 @@ let parse_views ~elab_conf ctxt ty views =
 let parse_code ~elab_conf ctxt ~code =
   parse_code ~unparse_code_rec ~elab_conf ctxt ~code
 
-let parse_storage ~elab_conf ctxt ~allow_forged ty ~storage =
-  parse_storage ~unparse_code_rec ~elab_conf ctxt ~allow_forged ty ~storage
+let parse_storage ~elab_conf ~allow_forged ty ~storage =
+  parse_storage ~unparse_code_rec ~elab_conf ~allow_forged ty ~storage
 
 let parse_script ~elab_conf ctxt ~allow_forged_in_storage script =
   parse_script ~unparse_code_rec ~elab_conf ctxt ~allow_forged_in_storage script

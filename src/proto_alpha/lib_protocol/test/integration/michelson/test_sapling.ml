@@ -1182,7 +1182,7 @@ module Interpreter_tests = struct
     let* b = next_block b operation in
     let* incr = Incremental.begin_construction b in
     let ctx = Incremental.alpha_ctxt incr in
-    let ctx_without_gas = Alpha_context.Gas.set_unlimited ctx in
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctx in
     let* storage = Alpha_services.Contract.storage Block.rpc_ctxt b dst in
     let storage_lazy_expr = Alpha_context.Script.lazy_expr storage in
     let*?@ (Ty_ex_c tytype) =
@@ -1191,14 +1191,13 @@ module Interpreter_tests = struct
       let state_ty = sapling_state_t ~memo_size in
       pair_t (-1) state_ty state_ty
     in
-    let*@ (state_1, state_2), _ctx =
-      Script_ir_translator.parse_storage
-        ctx_without_gas
-        ~elab_conf:
-          (Script_ir_translator_config.make ~legacy:true ctx_without_gas)
-        ~allow_forged:true
-        tytype
-        ~storage:storage_lazy_expr
+    let*?@ state_1, state_2 =
+      Gas_monad.run_unaccounted
+      @@ Script_ir_translator.parse_storage
+           ~elab_conf
+           ~allow_forged:true
+           tytype
+           ~storage:storage_lazy_expr
     in
     (*Only works when diff is empty*)
     let local_state_from_disk disk_state ctx =
