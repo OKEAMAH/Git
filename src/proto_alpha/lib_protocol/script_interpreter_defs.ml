@@ -782,7 +782,7 @@ let unpack ctxt ~ty ~bytes =
         let*? ctxt = Gas.consume ctxt (Interp_costs.unpack_failed str) in
         return (None, ctxt)
     | Some expr -> (
-        let*? value_opt =
+        let*? value_opt, ctxt =
           Gas_monad.run ctxt
           @@ parse_packable_data
                ~elab_conf:Script_ir_translator_config.(make ~legacy:false ctxt)
@@ -790,8 +790,8 @@ let unpack ctxt ~ty ~bytes =
                (Micheline.root expr)
         in
         match value_opt with
-        | Ok value, ctxt -> return (Some value, ctxt)
-        | Error _ignored, ctxt -> return (None, ctxt))
+        | Ok value -> return (Some value, ctxt)
+        | Error _ignored -> return (None, ctxt))
   else return (None, ctxt)
 
 (* [interp_stack_prefix_preserving_operation f w accu stack] applies
