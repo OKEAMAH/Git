@@ -6061,6 +6061,15 @@ let parse_comparable_data ?type_logger ctxt ty t =
     ty
     t
 
+let parse_packable_data ~elab_conf ty t =
+  parse_packable_data
+    ~unparse_code_rec
+    ~elab_conf
+    ~allow_forged:false
+    ~stack_depth:0
+    ty
+    t
+
 let unparse_data = unparse_data ~stack_depth:0
 
 let unparse_code ctxt mode code =

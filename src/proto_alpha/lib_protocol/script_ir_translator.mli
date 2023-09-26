@@ -185,6 +185,13 @@ val parse_data :
   Script.node ->
   ('a * context) tzresult Lwt.t
 
+(* Same as [parse_data] but meant to be used on packable data only. *)
+val parse_packable_data :
+  elab_conf:Script_ir_translator_config.elab_config ->
+  ('a, _) Script_typed_ir.ty ->
+  Script.node ->
+  ('a, error trace) Gas_monad.t
+
 (* Unparsing an IR-typed data back into a Micheline node data *)
 val unparse_data :
   context ->
