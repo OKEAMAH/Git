@@ -1,6 +1,6 @@
 (*****************************************************************************)
 (*                                                                           *)
-(* Open Source License                                                       *)
+(* MIT License                                                               *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
@@ -23,23 +23,45 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Plonk.Main_protocol
+(** Module used to handle transcripts, used for applying the Fiat-Shamir heuristic *)
+module Transcript : sig
+  type t [@@deriving repr]
 
-type public_parameters = verifier_public_parameters
+  val empty : t
 
-type verifier_inputs = (string * scalar array list) list
+  val equal : t -> t -> bool
 
-let public_parameters_encoding =
-  Plonk.Main_protocol.verifier_public_parameters_encoding
+  val of_srs : len1:int -> len2:int -> Srs.t -> t
 
-let scalar_array_encoding = Data_encoding.array scalar_encoding
+  val list_expand : 'a Repr.ty -> 'a list -> t -> t
 
-let verify pp inputs proof =
-  let inputs =
-    List.map
-      (fun (k, v) -> (k, (v, List.(init (length v) (Fun.const [])))))
-      inputs
-  in
-  Result.value ~default:false
-  @@ Tezos_lwt_result_stdlib.Lwtreslib.Bare.Result.catch (fun () ->
-         verify pp ~inputs:(Kzg.SMap.of_list inputs) proof)
+  val expand : 'a Repr.ty -> 'a -> t -> t
+end
+
+module Fr_generation : sig
+  val powers : int -> scalar -> scalar array
+
+  val batch : scalar -> scalar list -> scalar
+
+  val build_quadratic_non_residues : int -> scalar array
+
+  val random_fr_list : Transcript.t -> int -> scalar list * Transcript.t
+
+  val random_fr : Transcript.t -> scalar * Transcript.t
+end
+
+module FFT : sig
+  val select_fft_domain : int -> int * int * int
+
+  val fft : Domain.t -> Bls.Poly.t -> Evaluations.t
+
+  val ifft_inplace : Domain.t -> Evaluations.t -> Bls.Poly.t
+end
+
+val diff_next_power_of_two : int -> int
+
+val is_power_of_two : int -> bool
+
+val pad_array : 'a array -> int -> 'a array
+
+val resize_array : 'a array -> int -> 'a array
