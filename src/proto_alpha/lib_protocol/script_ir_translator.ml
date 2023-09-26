@@ -160,13 +160,10 @@ let pack_node unparsed =
     Binary.to_bytes_exn (tup2 (Fixed.string Plain 1) expr_encoding))
     ("\x05", unparsed)
 
-let pack_comparable_data ctxt ty data =
-  let open Lwt_result_syntax in
-  let*? unparsed, ctxt =
-    Gas_monad.run ctxt @@ unparse_comparable_data Optimized_legacy ty data
-  in
-  let*? unparsed in
-  return (pack_node unparsed, ctxt)
+let pack_comparable_data ty data =
+  let open Gas_monad.Syntax in
+  let+ unparsed = unparse_comparable_data Optimized_legacy ty data in
+  pack_node unparsed
 
 let hash_bytes bytes =
   let open Gas_monad.Syntax in
@@ -175,8 +172,15 @@ let hash_bytes bytes =
 
 let hash_comparable_data ctxt ty data =
   let open Lwt_result_syntax in
-  let* bytes, ctxt = pack_comparable_data ctxt ty data in
-  Lwt.return @@ Gas_monad.run_pure ctxt @@ hash_bytes bytes
+  let*? hash, ctxt =
+    Gas_monad.run ctxt
+    @@
+    let open Gas_monad.Syntax in
+    let* bytes = pack_comparable_data ty data in
+    hash_bytes bytes
+  in
+  let*? hash in
+  return (hash, ctxt)
 
 (* ---- Tickets ------------------------------------------------------------ *)
 
