@@ -69,8 +69,7 @@ impl<T: Default + Clone> Stack<T> {
 
     pub fn resize_data(&mut self, size: usize) {
         if self.data.capacity() < size {
-            let mut vec = Vec::with_capacity(size);
-            unsafe { vec.set_len(size - self.data.len()) };
+            let mut vec = vec![Default::default(); size - self.data.len()];
             vec.extend_from_slice(self.data.as_slice());
             self.head = self.head + (size - self.data.len());
             self.data = vec;
