@@ -410,10 +410,10 @@ val list_entrypoints_uncarbonated :
   * (ex_ty * Script.node) Entrypoint.Map.t
 
 val pack_data :
-  context ->
+  elab_conf:Script_ir_translator_config.elab_config ->
   ('a, _) Script_typed_ir.ty ->
   'a ->
-  (bytes * context) tzresult Lwt.t
+  (bytes, error trace) Gas_monad.t
 
 val hash_comparable_data :
   'a Script_typed_ir.comparable_ty ->
@@ -421,10 +421,10 @@ val hash_comparable_data :
   (Script_expr_hash.t, error trace) Gas_monad.t
 
 val hash_data :
-  context ->
+  elab_conf:Script_ir_translator_config.elab_config ->
   ('a, _) Script_typed_ir.ty ->
   'a ->
-  (Script_expr_hash.t * context) tzresult Lwt.t
+  (Script_expr_hash.t, error trace) Gas_monad.t
 
 type lazy_storage_ids
 

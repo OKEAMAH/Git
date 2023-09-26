@@ -5533,22 +5533,18 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
     ( {code = lazy_expr (strip_locations code); storage = lazy_expr storage},
       ctxt )
 
-let pack_data_with_mode ctxt ty data ~mode =
-  let open Lwt_result_syntax in
-  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
-  let*? unparsed, ctxt =
-    Gas_monad.run ctxt @@ unparse_data ~stack_depth:0 ~elab_conf mode ty data
-  in
-  let*? unparsed in
-  return (pack_node unparsed, ctxt)
+let pack_data_with_mode ~elab_conf ty data ~mode =
+  let open Gas_monad.Syntax in
+  let+ unparsed = unparse_data ~stack_depth:0 ~elab_conf mode ty data in
+  pack_node unparsed
 
-let hash_data ctxt ty data =
-  let open Lwt_result_syntax in
-  let* bytes, ctxt = pack_data_with_mode ctxt ty data ~mode:Optimized_legacy in
-  Lwt.return @@ Gas_monad.run_pure ctxt @@ hash_bytes bytes
+let hash_data ~elab_conf ty data =
+  let open Gas_monad.Syntax in
+  let* bytes = pack_data_with_mode ~elab_conf ty data ~mode:Optimized_legacy in
+  hash_bytes bytes
 
-let pack_data ctxt ty data =
-  pack_data_with_mode ctxt ty data ~mode:Optimized_legacy
+let pack_data ~elab_conf ty data =
+  pack_data_with_mode ~elab_conf ty data ~mode:Optimized_legacy
 
 (* ---------------- Lazy storage---------------------------------------------*)
 

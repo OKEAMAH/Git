@@ -226,9 +226,15 @@ module Storage = struct
     let* storage = get ctxt ~contract in
     let tokens = storage.tokens in
     let* ctxt = get_alpha_context ctxt in
-    let*@ address_hash, ctxt =
-      Script_ir_translator.hash_data ctxt Script_typed_ir.address_t owner
+    let elab_conf = Script_ir_translator_config.(make ~legacy:true ctxt) in
+    let*?@ address_hash, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_translator.hash_data
+           ~elab_conf
+           Script_typed_ir.address_t
+           owner
     in
+    let*?@ address_hash in
     let*@ _, result = Big_map.get_opt ctxt tokens address_hash in
     match result with
     | Some canonical -> (

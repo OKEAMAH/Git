@@ -211,7 +211,8 @@ let unparse_comparable_data ty x =
        Script_ir_translator.(unparse_data ~elab_conf Readable ty x))
 
 let pack_comparable_data ty x =
-  fst (assert_return Script_ir_translator.(pack_data ctxt ty x))
+  assert_ok
+    (Gas_monad.run_unaccounted Script_ir_translator.(pack_data ~elab_conf ty x))
 
 let unpack_comparable_data ty bytes =
   fst (assert_return (Script_interpreter_defs.unpack ctxt ~ty ~bytes))

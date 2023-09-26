@@ -3139,22 +3139,21 @@ module Registration_section = struct
               {stack = ((), eos); stack_type = unit @$ bot; kinstr})
         ()
 
+    let ctxt, _ =
+      raise_if_error
+        (Lwt_main.run
+           (Execution_context.make ~rng_state:(Random.get_state ()) ()))
+
+    let elab_conf = Script_ir_translator_config.make ~legacy:false ctxt
+
     let () =
-      let open Lwt_result_syntax in
       time_alloc_benchmark
         ~name:Interpreter_workload.N_IUnpack
-        ~kinstr_and_stack_sampler:(fun _cfg rng_state ->
+        ~kinstr_and_stack_sampler:(fun _cfg _rng_state ->
           let b =
-            raise_if_error
-              (Lwt_main.run
-                 (let* ctxt, _ = Execution_context.make ~rng_state () in
-                  let* bytes, _ =
-                    let*! result =
-                      Script_ir_translator.pack_data ctxt unit ()
-                    in
-                    Lwt.return (Environment.wrap_tzresult result)
-                  in
-                  return bytes))
+            raise_if_error @@ Environment.wrap_tzresult
+            @@ Gas_monad.run_unaccounted
+            @@ Script_ir_translator.pack_data ~elab_conf unit ()
           in
           let kinstr = IUnpack (dummy_loc, unit, halt) in
           fun () ->

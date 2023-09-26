@@ -1684,21 +1684,21 @@ module Scripts = struct
           | None -> Gas.set_unlimited ctxt
           | Some gas -> Gas.set_limit ctxt gas
         in
+        let elab_conf = elab_conf ~legacy:true ctxt in
         let*? res, ctxt =
           Gas_monad.run ctxt
-          @@ parse_packable_ty ~legacy:true (Micheline.root typ)
+          @@
+          let open Gas_monad.Syntax in
+          let* (Ex_ty typ) =
+            parse_packable_ty ~legacy:true (Micheline.root typ)
+          in
+          let* data =
+            parse_packable_data ~elab_conf typ (Micheline.root expr)
+          in
+          pack_data ~elab_conf typ data
         in
-        let*? (Ex_ty typ) = res in
-        let* data, ctxt =
-          parse_data
-            ctxt
-            ~elab_conf:(elab_conf ~legacy:true ctxt)
-            ~allow_forged:true
-            typ
-            (Micheline.root expr)
-        in
-        let+ bytes, ctxt = Script_ir_translator.pack_data ctxt typ data in
-        (bytes, Gas.level ctxt)) ;
+        let*? res in
+        return (res, Gas.level ctxt)) ;
     Registration.register0
       ~chunked:true
       S.normalize_data

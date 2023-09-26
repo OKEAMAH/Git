@@ -707,8 +707,15 @@ module Interpreter_tests = struct
     let pkh = Context.Contract.pkh src1 in
     let* incr = Incremental.begin_construction b3 in
     let alpha_ctxt = Incremental.alpha_ctxt incr in
-    let*@ bound_data, _alpha_ctxt =
-      Script_ir_translator.pack_data alpha_ctxt Script_typed_ir.key_hash_t pkh
+    let elab_conf =
+      Script_ir_translator_config.(make ~legacy:true alpha_ctxt)
+    in
+    let*?@ bound_data =
+      Gas_monad.run_unaccounted
+      @@ Script_ir_translator.pack_data
+           ~elab_conf
+           Script_typed_ir.key_hash_t
+           pkh
     in
     let hex_transac =
       to_hex
