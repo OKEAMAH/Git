@@ -5115,8 +5115,8 @@ let view_size view =
   node_size view.view_code ++ node_size view.input_ty
   ++ node_size view.output_ty
 
-let code_size ctxt code views =
-  let open Result_syntax in
+let code_size code views =
+  let open Gas_monad.Syntax in
   let open Script_typed_ir_size in
   let views_size = Script_map.fold (fun _ v s -> view_size v ++ s) views zero in
   (* The size of the storage_type and the arg_type is counted by
@@ -5127,8 +5127,8 @@ let code_size ctxt code views =
      [node_size] (for efficiency).
      This is safe, as we already pay gas proportional to [views_size] and
      [ir_size] during their typechecking. *)
-  let+ ctxt = Gas.consume ctxt (Script_typed_ir_size_costs.nodes_cost ~nodes) in
-  (code_size, ctxt)
+  let+$ () = Script_typed_ir_size_costs.nodes_cost ~nodes in
+  code_size
 
 let parse_code :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
@@ -5153,50 +5153,43 @@ let parse_code :
       let* {arg_type; storage_type; code_field; views} = parse_toplevel code in
       let arg_type_loc = location arg_type in
       let storage_type_loc = location storage_type in
-      let* arg_type =
+      let* (Ex_parameter_ty_and_entrypoints {arg_type; entrypoints}) =
         Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
             Ill_formed_type (Some "parameter", code, arg_type_loc))
         @@ parse_parameter_ty_and_entrypoints ~stack_depth:0 ~legacy arg_type
       in
-      let+ storage_type =
+      let* (Ex_ty storage_type) =
         Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
             Ill_formed_type (Some "storage", code, storage_type_loc))
         @@ parse_storage_ty ~stack_depth:0 ~legacy storage_type
       in
-      (arg_type, storage_type, code_field, views, storage_type_loc)
+      let*? (Ty_ex_c arg_type_full) =
+        pair_t storage_type_loc arg_type storage_type
+      in
+      let*? (Ty_ex_c ret_type_full) =
+        pair_t storage_type_loc list_operation_t storage_type
+      in
+      let* kdescr =
+        Gas_monad.record_trace_eval ~error_details:(Informative ()) (fun () ->
+            Ill_typed_contract (code, []))
+        @@ parse_kdescr
+             ~unparse_code_rec
+             ~parse_packable_data:{parse_packable_data}
+             Tc_context.(
+               toplevel ~storage_type ~param_type:arg_type ~entrypoints)
+             ~elab_conf
+             ~stack_depth:0
+             arg_type_full
+             ret_type_full
+             code_field
+      in
+      let code = Lam (kdescr, code_field) in
+      let+ code_size = code_size code views in
+      Ex_code
+        (Code {code; arg_type; storage_type; views; entrypoints; code_size})
     in
-    let*? ( Ex_parameter_ty_and_entrypoints {arg_type; entrypoints},
-            Ex_ty storage_type,
-            code_field,
-            views,
-            storage_type_loc ) =
-      res
-    in
-    let*? (Ty_ex_c arg_type_full) =
-      pair_t storage_type_loc arg_type storage_type
-    in
-    let*? (Ty_ex_c ret_type_full) =
-      pair_t storage_type_loc list_operation_t storage_type
-    in
-    let*? kdescr, ctxt =
-      Gas_monad.run ctxt
-      @@ parse_kdescr
-           ~unparse_code_rec
-           ~parse_packable_data:{parse_packable_data}
-           Tc_context.(toplevel ~storage_type ~param_type:arg_type ~entrypoints)
-           ~elab_conf
-           ~stack_depth:0
-           arg_type_full
-           ret_type_full
-           code_field
-    in
-    let*? kdescr = record_trace (Ill_typed_contract (code, [])) kdescr in
-    let code = Lam (kdescr, code_field) in
-    let*? code_size, ctxt = code_size ctxt code views in
-    return
-      ( Ex_code
-          (Code {code; arg_type; storage_type; views; entrypoints; code_size}),
-        ctxt )
+    let*? res in
+    return (res, ctxt)
 
 let parse_storage :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
