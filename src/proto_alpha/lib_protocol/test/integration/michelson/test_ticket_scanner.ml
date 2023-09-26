@@ -70,13 +70,16 @@ let string_list_of_ex_tickets ctxt tickets =
   let accum (xs, ctxt)
       (Ticket_scanner.Ex_ticket
         (cty, {Script_typed_ir.ticketer; contents; amount})) =
-    let*@ x, ctxt =
-      Script_ir_translator.unparse_data
-        ctxt
-        Script_ir_unparser.Readable
-        cty
-        contents
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+    let*?@ x, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_translator.unparse_data
+           ~elab_conf
+           Script_ir_unparser.Readable
+           cty
+           contents
     in
+    let*?@ x in
     let content =
       Format.kasprintf Fun.id "%a" Michelson_v1_printer.print_expr x
     in

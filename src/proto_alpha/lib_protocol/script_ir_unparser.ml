@@ -776,16 +776,10 @@ module Data_unparser (P : MICHELSON_PARSER) = struct
         return (Prim (loc, prim, List.rev items, annot))
     | (Int _ | String _ | Bytes _) as atom -> return atom
 
-  let unparse_data ctxt ~stack_depth mode ty v =
-    let open Lwt_result_syntax in
-    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
-    let*? unparsed_data, ctxt =
-      Gas_monad.run ctxt @@ unparse_data_rec ~stack_depth mode ~elab_conf ty v
-    in
-    let*? unparsed_data in
-    Lwt.return
-      (Gas_monad.run_pure ctxt
-      @@ account_for_future_serialization_cost unparsed_data)
+  let unparse_data ~stack_depth ~elab_conf mode ty v =
+    let open Gas_monad.Syntax in
+    let* unparsed_data = unparse_data_rec ~stack_depth mode ~elab_conf ty v in
+    account_for_future_serialization_cost unparsed_data
 
   let unparse_code ~stack_depth ~elab_conf mode v =
     let open Gas_monad.Syntax in

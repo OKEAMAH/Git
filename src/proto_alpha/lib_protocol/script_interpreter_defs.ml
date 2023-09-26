@@ -479,10 +479,16 @@ let apply ctxt gas capture_ty capture lam =
   let open Lwt_result_syntax in
   let loc = Micheline.dummy_location in
   let ctxt = update_context gas ctxt in
-  let*? ty_expr, ctxt =
-    Gas_monad.run_pure ctxt @@ Script_ir_unparser.unparse_ty ~loc capture_ty
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? typed_const_expr, ctxt =
+    Gas_monad.run ctxt
+    @@
+    let open Gas_monad.Syntax in
+    let* ty = Script_ir_unparser.unparse_ty ~loc capture_ty in
+    let+ const = unparse_data ~elab_conf Optimized capture_ty capture in
+    (ty, const)
   in
-  let* const_expr, ctxt = unparse_data ctxt Optimized capture_ty capture in
+  let*? ty_expr, const_expr = typed_const_expr in
   let make_expr expr =
     Micheline.(
       Seq
@@ -584,12 +590,22 @@ let make_transaction_to_sc_rollup ctxt ~destination ~amount ~entrypoint
   let*? () =
     error_unless (Entrypoint.is_default entrypoint) Rollup_invalid_entrypoint
   in
-  let+ unparsed_parameters, ctxt =
-    unparse_data ctxt Optimized parameters_ty parameters
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed_parameters, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_data ~elab_conf Optimized parameters_ty parameters
   in
-  ( Transaction_to_sc_rollup
-      {destination; entrypoint; parameters_ty; parameters; unparsed_parameters},
-    ctxt )
+  let*? unparsed_parameters in
+  return
+    ( Transaction_to_sc_rollup
+        {
+          destination;
+          entrypoint;
+          parameters_ty;
+          parameters;
+          unparsed_parameters;
+        },
+      ctxt )
 
 (** [emit_event] generates an internal operation that will effect an event emission
     if the contract code returns this successfully. *)
@@ -599,9 +615,12 @@ let emit_event (type t tc) (ctxt, sc) gas ~(event_type : (t, tc) ty)
   let ctxt = update_context gas ctxt in
   (* No need to take care of lazy storage as only packable types are allowed *)
   let lazy_storage_diff = None in
-  let* unparsed_data, ctxt =
-    unparse_data ctxt Optimized event_type event_data
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed_data, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_data ~elab_conf Optimized event_type event_data
   in
+  let*? unparsed_data in
   let*? ctxt, nonce = fresh_internal_nonce ctxt in
   let operation = Event {ty = unparsed_ty; tag; unparsed_data} in
   let iop =
@@ -621,12 +640,16 @@ let make_transaction_to_zk_rollup (type t) ctxt ~destination ~amount
   let*? () =
     error_unless Tez.(amount = zero) Rollup_invalid_transaction_amount
   in
-  let+ unparsed_parameters, ctxt =
-    unparse_data ctxt Optimized parameters_ty parameters
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed_parameters, ctxt =
+    Gas_monad.run ctxt
+    @@ unparse_data ~elab_conf Optimized parameters_ty parameters
   in
-  ( Transaction_to_zk_rollup
-      {destination; parameters_ty; parameters; unparsed_parameters},
-    ctxt )
+  let*? unparsed_parameters in
+  return
+    ( Transaction_to_zk_rollup
+        {destination; parameters_ty; parameters; unparsed_parameters},
+      ctxt )
 
 (* [transfer (ctxt, sc) gas tez parameters_ty parameters destination entrypoint]
    creates an operation that transfers an amount of [tez] to a destination and
@@ -636,15 +659,18 @@ let transfer (type t) (ctxt, sc) gas amount location
     (typed_contract : t typed_contract) (parameters : t) =
   let open Lwt_result_syntax in
   let ctxt = update_context gas ctxt in
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
   let* operation, lazy_storage_diff, ctxt =
     match typed_contract with
     | Typed_implicit destination ->
         let () = parameters in
         return (Transaction_to_implicit {destination; amount}, None, ctxt)
     | Typed_implicit_with_ticket {destination; ticket_ty} ->
-        let* unparsed_ticket, ctxt =
-          unparse_data ctxt Optimized ticket_ty parameters
+        let*? unparsed_ticket, ctxt =
+          Gas_monad.run ctxt
+          @@ unparse_data ~elab_conf Optimized ticket_ty parameters
         in
+        let*? unparsed_ticket in
         return
           ( Transaction_to_implicit_with_ticket
               {
@@ -672,21 +698,24 @@ let transfer (type t) (ctxt, sc) gas amount location
             ~to_update
             ~temporary:true
         in
-        let+ unparsed_parameters, ctxt =
-          unparse_data ctxt Optimized parameters_ty parameters
+        let*? unparsed_parameters, ctxt =
+          Gas_monad.run ctxt
+          @@ unparse_data ~elab_conf Optimized parameters_ty parameters
         in
-        ( Transaction_to_smart_contract
-            {
-              destination;
-              amount;
-              entrypoint;
-              location;
-              parameters_ty;
-              parameters;
-              unparsed_parameters;
-            },
-          lazy_storage_diff,
-          ctxt )
+        let*? unparsed_parameters in
+        return
+          ( Transaction_to_smart_contract
+              {
+                destination;
+                amount;
+                entrypoint;
+                location;
+                parameters_ty;
+                parameters;
+                unparsed_parameters;
+              },
+            lazy_storage_diff,
+            ctxt )
     | Typed_sc_rollup
         {arg_ty = parameters_ty; sc_rollup = destination; entrypoint} ->
         let+ operation, ctxt =
@@ -741,7 +770,11 @@ let create_contract (ctxt, sc) gas storage_type code delegate credit init =
       ~to_update
       ~temporary:true
   in
-  let* unparsed_storage, ctxt = unparse_data ctxt Optimized storage_type init in
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed_storage, ctxt =
+    Gas_monad.run ctxt @@ unparse_data ~elab_conf Optimized storage_type init
+  in
+  let*? unparsed_storage in
   let*? ctxt, preorigination =
     Contract.fresh_contract_from_current_nonce ctxt
   in

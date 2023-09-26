@@ -461,15 +461,17 @@ let initial_alpha_context ?(commitments = []) constants
         ~to_update:Script_ir_translator.no_lazy_storage_id
         ~temporary:false
     in
-    let+ storage, ctxt =
-      Script_ir_translator.unparse_data
-        ctxt
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+    let*? storage, ctxt =
+      Gas_monad.run ctxt @@
+      Script_ir_translator.unparse_data ~elab_conf
         Optimized
         parsed_script.storage_type
         storage
     in
+    let*? storage in
     let storage = Alpha_context.Script.lazy_expr storage in
-    (({script with storage}, lazy_storage_diff), ctxt)
+    return (({script with storage}, lazy_storage_diff), ctxt)
   in
   let*@ result =
     Alpha_context.prepare_first_block

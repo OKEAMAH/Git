@@ -194,11 +194,11 @@ val parse_packable_data :
 
 (* Unparsing an IR-typed data back into a Micheline node data *)
 val unparse_data :
-  context ->
+  elab_conf:Script_ir_translator_config.elab_config ->
   Script_ir_unparser.unparsing_mode ->
   ('a, _) Script_typed_ir.ty ->
   'a ->
-  (Script.expr * context) tzresult Lwt.t
+  (Script.expr, error trace) Gas_monad.t
 
 val unparse_code :
   context ->

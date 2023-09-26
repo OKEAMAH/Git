@@ -183,16 +183,16 @@ module type MICHELSON_PARSER = sig
 end
 
 module Data_unparser : functor (P : MICHELSON_PARSER) -> sig
-  (** [unparse_data ctxt ~stack_depth unparsing_mode ty data] returns the
+  (** [unparse_data ~stack_depth unparsing_mode ty data] returns the
       Micheline representation of [data] of type [ty], consuming an appropriate
-      amount of gas from [ctxt]. *)
+      amount of gas. *)
   val unparse_data :
-    context ->
     stack_depth:int ->
+    elab_conf:Script_ir_translator_config.elab_config ->
     unparsing_mode ->
     ('a, 'ac) ty ->
     'a ->
-    (Script.expr * context) tzresult Lwt.t
+    (Script.expr, error trace) Gas_monad.t
 
   (** [unparse_items ctxt ~stack_depth unparsing_mode kty vty assoc] returns the
       Micheline representation of [assoc] (being an association list) with keys

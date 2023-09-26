@@ -1466,12 +1466,13 @@ let extract_ir_sized_step :
           Instructions.check_signature_bls pk signature message)
   | IHash_key (_, _), _ -> Instructions.hash_key
   | IPack (_, ty, _), (v, _) -> (
+      let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
       let script_res =
-        Lwt_main.run (Script_ir_translator.unparse_data ctxt Optimized ty v)
+        Gas_monad.run_unaccounted
+          (Script_ir_translator.unparse_data ~elab_conf Optimized ty v)
       in
       match script_res with
-      | Ok (node, _ctxt) ->
-          Instructions.pack (Size.of_micheline (Micheline.root node))
+      | Ok node -> Instructions.pack (Size.of_micheline (Micheline.root node))
       | Error _ -> Stdlib.failwith "IPack workload: could not unparse")
   | IUnpack (_, _, _), _ -> Instructions.unpack
   | IBlake2b (_, _), (bytes, _) -> Instructions.blake2b (Size.bytes bytes)

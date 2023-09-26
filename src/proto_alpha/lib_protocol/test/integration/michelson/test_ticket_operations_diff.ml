@@ -319,13 +319,16 @@ let originate block ~sender ~baker ~script ~storage ~forges_tickets =
 let transfer_operation ~incr ~sender ~destination ~parameters_ty ~parameters =
   let open Lwt_result_wrap_syntax in
   let ctxt = Incremental.alpha_ctxt incr in
-  let*@ params_node, ctxt =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Readable
-      parameters_ty
-      parameters
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*?@ params_node, ctxt =
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Readable
+         parameters_ty
+         parameters
   in
+  let*?@ params_node in
   let incr = Incremental.set_alpha_ctxt incr ctxt in
   return
     ( Script_typed_ir.Internal_operation

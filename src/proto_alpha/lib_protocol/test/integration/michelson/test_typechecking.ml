@@ -641,21 +641,32 @@ let test_parse_address () =
   in
   ()
 
-let test_unparse_data loc ctxt ty x ~expected_readable ~expected_optimized =
+let test_unparse_data loc ~elab_conf ty x ~expected_readable ~expected_optimized
+    =
   let open Lwt_result_wrap_syntax in
-  let*@ actual_readable, ctxt =
-    Script_ir_translator.unparse_data ctxt Script_ir_unparser.Readable ty x
+  let*?@ actual_readable =
+    Gas_monad.run_unaccounted
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Readable
+         ty
+         x
   in
-  let*@ ctxt =
+  let* () =
     if actual_readable = Micheline.strip_locations expected_readable then
-      return ctxt
+      return_unit
     else Alcotest.failf "Error in readable unparsing: %s" loc
   in
-  let*@ actual_optimized, ctxt =
-    Script_ir_translator.unparse_data ctxt Script_ir_unparser.Optimized ty x
+  let*?@ actual_optimized =
+    Gas_monad.run_unaccounted
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Optimized
+         ty
+         x
   in
   if actual_optimized = Micheline.strip_locations expected_optimized then
-    return ctxt
+    return_unit
   else Alcotest.failf "Error in optimized unparsing: %s" loc
 
 let test_unparse_comb_data () =
@@ -671,11 +682,12 @@ let test_unparse_comb_data () =
   let pair_prim2 a b = pair_prim [a; b] in
   let pair_z_z_prim = pair_prim2 z_prim z_prim in
   let* ctxt = test_context () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
   (* Pair 0 0 *)
-  let* ctxt =
+  let* () =
     test_unparse_data
       __LOC__
-      ctxt
+      ~elab_conf
       pair_nat_nat_ty
       (z, z)
       ~expected_readable:pair_z_z_prim
@@ -683,10 +695,10 @@ let test_unparse_comb_data () =
   in
   (* Pair (Pair 0 0) 0 *)
   let*?@ (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
-  let* ctxt =
+  let* () =
     test_unparse_data
       __LOC__
-      ctxt
+      ~elab_conf
       pair_pair_nat_nat_nat_ty
       ((z, z), z)
       ~expected_readable:(pair_prim2 pair_z_z_prim z_prim)
@@ -694,10 +706,10 @@ let test_unparse_comb_data () =
   in
   (* Readable: Pair 0 0 0; Optimized: Pair 0 (Pair 0 0) *)
   let*?@ (Ty_ex_c pair_nat_pair_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
-  let* ctxt =
+  let* () =
     test_unparse_data
       __LOC__
-      ctxt
+      ~elab_conf
       pair_nat_pair_nat_nat_ty
       (z, (z, z))
       ~expected_readable:(pair_prim [z_prim; z_prim; z_prim])
@@ -707,10 +719,10 @@ let test_unparse_comb_data () =
   let*?@ (Ty_ex_c pair_nat_pair_nat_pair_nat_nat_ty) =
     pair_ty nat_ty pair_nat_pair_nat_nat_ty
   in
-  let* (_ : context) =
+  let* () =
     test_unparse_data
       __LOC__
-      ctxt
+      ~elab_conf
       pair_nat_pair_nat_pair_nat_nat_ty
       (z, (z, (z, z)))
       ~expected_readable:(pair_prim [z_prim; z_prim; z_prim; z_prim])
@@ -750,9 +762,14 @@ let test_optimal_comb () =
       Bytes.length
       @@ Data_encoding.Binary.to_bytes_exn Script.expr_encoding canonical )
   in
-  let check_optimal_comb loc ctxt ty v arity =
-    let*@ unparsed, ctxt =
-      Script_ir_translator.unparse_data ctxt Script_ir_unparser.Optimized ty v
+  let check_optimal_comb loc ~elab_conf ty v arity =
+    let*?@ unparsed =
+      Gas_monad.run_unaccounted
+      @@ Script_ir_translator.unparse_data
+           ~elab_conf
+           Script_ir_unparser.Optimized
+           ty
+           v
     in
     let unparsed_canonical, unparsed_size =
       size_of_micheline (Micheline.root unparsed)
@@ -778,22 +795,23 @@ let test_optimal_comb () =
           else return_unit)
       @@ gen_combs leaf_mich arity
     in
-    return ctxt
+    return_unit
   in
   let pair_ty ty1 ty2 = pair_t (-1) ty1 ty2 in
   let* ctxt = test_context () in
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
   let*?@ (Ty_ex_c comb2_ty) = pair_ty leaf_ty leaf_ty in
   let comb2_v = (leaf_v, leaf_v) in
-  let* ctxt = check_optimal_comb __LOC__ ctxt comb2_ty comb2_v 2 in
+  let* () = check_optimal_comb __LOC__ ~elab_conf comb2_ty comb2_v 2 in
   let*?@ (Ty_ex_c comb3_ty) = pair_ty leaf_ty comb2_ty in
   let comb3_v = (leaf_v, comb2_v) in
-  let* ctxt = check_optimal_comb __LOC__ ctxt comb3_ty comb3_v 3 in
+  let* () = check_optimal_comb __LOC__ ~elab_conf comb3_ty comb3_v 3 in
   let*?@ (Ty_ex_c comb4_ty) = pair_ty leaf_ty comb3_ty in
   let comb4_v = (leaf_v, comb3_v) in
-  let* ctxt = check_optimal_comb __LOC__ ctxt comb4_ty comb4_v 4 in
+  let* () = check_optimal_comb __LOC__ ~elab_conf comb4_ty comb4_v 4 in
   let*?@ (Ty_ex_c comb5_ty) = pair_ty leaf_ty comb4_ty in
   let comb5_v = (leaf_v, comb4_v) in
-  let* (_ : context) = check_optimal_comb __LOC__ ctxt comb5_ty comb5_v 5 in
+  let* () = check_optimal_comb __LOC__ ~elab_conf comb5_ty comb5_v 5 in
   return_unit
 
 let gas_monad_run ctxt m =

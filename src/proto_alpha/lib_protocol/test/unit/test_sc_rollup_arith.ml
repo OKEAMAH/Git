@@ -566,13 +566,14 @@ let test_initial_state_hash_arith_pvm () =
       hash
 
 let dummy_internal_transfer address =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let open Alpha_context.Sc_rollup in
   let* ctxt =
     let* block, _baker, _contract, _src2 = Contract_helpers.init () in
     let+ incr = Incremental.begin_construction block in
     Incremental.alpha_ctxt incr
   in
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
   let sender =
     Contract_hash.of_b58check_exn "KT1BuEZtb68c1Q4yjtckcNjGELqWt56Xyesc"
   in
@@ -583,14 +584,14 @@ let dummy_internal_transfer address =
          "tz1RjtZUVeLhADFHDL8UwDZA6vjWWhojpu5w")
   in
   let payload = Bytes.of_string "foo" in
-  let*! result =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Optimized
-      Bytes_t
-      payload
+  let*?@ payload =
+    Gas_monad.run_unaccounted
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Optimized
+         Bytes_t
+         payload
   in
-  let*? payload, _ctxt = Environment.wrap_tzresult result in
   let transfer =
     Inbox_message.Internal
       (Transfer {payload; sender; source; destination = address})

@@ -150,10 +150,11 @@ module Proto = struct
     let unparse_data_cost (raw_ctxt : Raw_context.t) ty data =
       let open Lwt_result_syntax in
       let ctxt : Alpha_context.context = Obj.magic raw_ctxt in
-      let+ _expr, updated_ctxt =
-        Lwt.map wrap_tzresult
+      let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+      let*? _expr, updated_ctxt =
+        wrap_tzresult @@ Gas_monad.run ctxt
         @@ Script_ir_translator.unparse_data
-             ctxt
+             ~elab_conf
              Script_ir_unparser.Optimized
              ty
              data
@@ -162,7 +163,7 @@ module Proto = struct
         (Alpha_context.Gas.consumed ~since:ctxt ~until:updated_ctxt :> int)
       in
       assert (consumed > 0) ;
-      consumed
+      return consumed
 
     let unparse_ty (_raw_ctxt : Raw_context.t) (Ex_ty ty) =
       wrap_tzresult @@ Gas_monad.run_unaccounted

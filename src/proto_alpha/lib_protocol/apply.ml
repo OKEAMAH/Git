@@ -730,9 +730,16 @@ let apply_origination ~ctxt ~storage_type ~storage ~unparsed_code
       ~to_update
       ~temporary:false
   in
-  let* storage, ctxt =
-    Script_ir_translator.unparse_data ctxt Optimized storage_type storage
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? storage, ctxt =
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Optimized
+         storage_type
+         storage
   in
+  let*? storage in
   let storage = Script.lazy_expr storage in
   (* Normalize code to avoid #843 *)
   let* code, ctxt =

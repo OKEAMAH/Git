@@ -613,18 +613,20 @@ module Scripts = struct
       let open Lwt_result_syntax in
       (* We drop the gas limit as this function is only used for debugging/errors. *)
       let ctxt = Gas.set_unlimited ctxt in
+      let elab_conf = elab_conf ~legacy:true ctxt in
       let rec unparse_stack :
           type a s.
           (a, s) Script_typed_ir.stack_ty * (a * s) ->
           Script.expr list tzresult Lwt.t = function
         | Bot_t, (EmptyCell, EmptyCell) -> return_nil
         | Item_t (ty, rest_ty), (v, rest) ->
-            let* data, _ctxt =
-              Script_ir_translator.unparse_data
-                ctxt
-                Unparsing_mode.unparsing_mode
-                ty
-                v
+            let*? data =
+              Gas_monad.run_unaccounted
+              @@ Script_ir_translator.unparse_data
+                   ~elab_conf
+                   Unparsing_mode.unparsing_mode
+                   ty
+                   v
             in
             let+ rest = unparse_stack (rest_ty, rest) in
             data :: rest
@@ -856,12 +858,18 @@ module Scripts = struct
         match (sty, x, st) with
         | Bot_t, EmptyCell, EmptyCell -> return ([], ctxt)
         | Item_t (ty, sty), x, (y, st) ->
-            let*? ty_node, ctxt =
-              Gas_monad.run_pure ctxt @@ Script_ir_unparser.unparse_ty ~loc ty
+            let elab_conf = elab_conf ~legacy:true ctxt in
+            let*? nodes, ctxt =
+              Gas_monad.run ctxt
+              @@
+              let open Gas_monad.Syntax in
+              let* ty_node = Script_ir_unparser.unparse_ty ~loc ty in
+              let+ data_node =
+                Script_ir_translator.unparse_data ~elab_conf unparsing_mode ty x
+              in
+              (ty_node, data_node)
             in
-            let* data_node, ctxt =
-              Script_ir_translator.unparse_data ctxt unparsing_mode ty x
-            in
+            let*? ty_node, data_node = nodes in
             let* l, ctxt = unparse_stack ctxt unparsing_mode sty y st in
             return ((Micheline.strip_locations ty_node, data_node) :: l, ctxt)
   end
@@ -1697,23 +1705,29 @@ module Scripts = struct
       (fun ctxt () (expr, typ, unparsing_mode, legacy) ->
         let open Script_ir_translator in
         let legacy = Option.value ~default:false legacy in
+        let elab_conf = elab_conf ~legacy ctxt in
         let ctxt = Gas.set_unlimited ctxt in
         let*? (Ex_ty typ) =
           Gas_monad.run_unaccounted
           @@ Script_ir_translator.parse_any_ty ~legacy (Micheline.root typ)
         in
-        let* data, ctxt =
+        let* data, _ctxt =
           parse_data
             ctxt
-            ~elab_conf:(elab_conf ~legacy ctxt)
+            ~elab_conf
             ~allow_forged:true
             typ
             (Micheline.root expr)
         in
-        let+ normalized, _ctxt =
-          Script_ir_translator.unparse_data ctxt unparsing_mode typ data
+        let*? normalized =
+          Gas_monad.run_unaccounted
+          @@ Script_ir_translator.unparse_data
+               ~elab_conf
+               unparsing_mode
+               typ
+               data
         in
-        normalized) ;
+        return normalized) ;
     Registration.register0
       ~chunked:true
       S.normalize_stack
@@ -2050,18 +2064,16 @@ module Contract = struct
         | None -> return_none
         | Some script ->
             let ctxt = Gas.set_unlimited ctxt in
+            let elab_conf = elab_conf ~legacy:true ctxt in
             let open Script_ir_translator in
-            let* Ex_script (Script {storage; storage_type; _}), ctxt =
-              parse_script
-                ctxt
-                ~elab_conf:(elab_conf ~legacy:true ctxt)
-                ~allow_forged_in_storage:true
-                script
+            let* Ex_script (Script {storage; storage_type; _}), _ctxt =
+              parse_script ctxt ~elab_conf ~allow_forged_in_storage:true script
             in
-            let+ storage, _ctxt =
-              unparse_data ctxt unparsing_mode storage_type storage
+            let*? storage =
+              Gas_monad.run_unaccounted
+              @@ unparse_data ~elab_conf unparsing_mode storage_type storage
             in
-            Some storage) ;
+            return_some storage) ;
     (* Patched RPC: get_script *)
     Registration.register1
       ~chunked:true
@@ -2239,18 +2251,20 @@ module Big_map = struct
             match value with
             | None -> raise Not_found
             | Some value ->
-                let* value, ctxt =
+                let elab_conf = elab_conf ~legacy:true ctxt in
+                let* value, _ctxt =
                   parse_data
                     ctxt
-                    ~elab_conf:(elab_conf ~legacy:true ctxt)
+                    ~elab_conf
                     ~allow_forged:true
                     value_type
                     (Micheline.root value)
                 in
-                let+ value, _ctxt =
-                  unparse_data ctxt unparsing_mode value_type value
+                let*? value =
+                  Gas_monad.run_unaccounted
+                  @@ unparse_data ~elab_conf unparsing_mode value_type value
                 in
-                value))
+                return value))
 
   let big_map_get_normalized ctxt block id key ~unparsing_mode =
     RPC_context.make_call2

@@ -388,15 +388,18 @@ let init chain_id ctxt block_header =
         ~to_update:Script_ir_translator.no_lazy_storage_id
         ~temporary:false
     in
-    let+ storage, ctxt =
-      Script_ir_translator.unparse_data
-        ctxt
-        Optimized
-        parsed_script.storage_type
-        storage
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+    let*? storage, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_translator.unparse_data
+           ~elab_conf
+           Optimized
+           parsed_script.storage_type
+           storage
     in
+    let*? storage in
     let storage = Alpha_context.Script.lazy_expr storage in
-    (({script with storage}, lazy_storage_diff), ctxt)
+    return (({script with storage}, lazy_storage_diff), ctxt)
   in
   (* The cache must be synced at the end of block validation, so we do
      so here for the first block in a protocol where `finalize_block`

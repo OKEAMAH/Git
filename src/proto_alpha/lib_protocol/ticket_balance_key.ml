@@ -35,20 +35,28 @@ let make ctxt ~owner ~ticketer ~contents_type ~contents =
   let owner_address =
     Script_typed_ir.{destination = owner; entrypoint = Entrypoint.default}
   in
-  let* ticketer, ctxt =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Optimized_legacy
-      Script_typed_ir.address_t
-      ticketer_address
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? ticketer_and_owner, ctxt =
+    Gas_monad.run ctxt
+    @@
+    let open Gas_monad.Syntax in
+    let* ticketer =
+      Script_ir_translator.unparse_data
+        ~elab_conf
+        Script_ir_unparser.Optimized_legacy
+        Script_typed_ir.address_t
+        ticketer_address
+    in
+    let+ owner =
+      Script_ir_translator.unparse_data
+        ~elab_conf
+        Script_ir_unparser.Optimized_legacy
+        Script_typed_ir.address_t
+        owner_address
+    in
+    (ticketer, owner)
   in
-  let* owner, ctxt =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Optimized_legacy
-      Script_typed_ir.address_t
-      owner_address
-  in
+  let*? ticketer, owner = ticketer_and_owner in
   Lwt.return
   @@ Ticket_hash.make
        ctxt

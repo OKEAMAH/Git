@@ -197,6 +197,8 @@ let ctxt =
     let* v = Incremental.begin_construction b in
     return (Incremental.alpha_ctxt v))
 
+let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt
+
 let unparse_comparable_ty ty =
   Micheline.strip_locations
     (fst
@@ -204,7 +206,9 @@ let unparse_comparable_ty ty =
           (Gas_monad.run_pure ctxt Script_ir_unparser.(unparse_ty ~loc:() ty))))
 
 let unparse_comparable_data ty x =
-  fst (assert_return Script_ir_translator.(unparse_data ctxt Readable ty x))
+  assert_ok
+    (Gas_monad.run_unaccounted
+       Script_ir_translator.(unparse_data ~elab_conf Readable ty x))
 
 let pack_comparable_data ty x =
   fst (assert_return Script_ir_translator.(pack_data ctxt ty x))

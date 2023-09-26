@@ -517,9 +517,13 @@ module Raw = struct
         (fun logger (ctxt, _) gas kloc tv accu ->
           let v = accu in
           let ctxt = update_context gas ctxt in
-          let* v, _ctxt =
-            trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
+          let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+          let*? v, _ctxt =
+            record_trace Cannot_serialize_failure
+            @@ Gas_monad.run ctxt
+            @@ unparse_data ~elab_conf Optimized tv v
           in
+          let*? v = record_trace Cannot_serialize_failure v in
           let* log = get_log logger in
           tzfail (Reject (kloc, v, log)));
     }
@@ -1867,8 +1871,13 @@ let execute_any_arg logger ctxt mode step_constants ~entrypoint ~internal
       storage_type
       new_storage
   in
-  let* unparsed_storage, ctxt =
-    trace Cannot_serialize_storage (unparse_data ctxt mode storage_type storage)
+  let*? unparsed_storage, ctxt =
+    record_trace Cannot_serialize_storage
+    @@ Gas_monad.run ctxt
+    @@ unparse_data ~elab_conf mode storage_type storage
+  in
+  let*? unparsed_storage =
+    record_trace Cannot_serialize_storage unparsed_storage
   in
   let op_to_couple op = (op.piop, op.lazy_storage_diff) in
   let operations, op_diffs =

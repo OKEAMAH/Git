@@ -60,9 +60,12 @@ let parse_ticket_and_operation ~consume_deserialization_gas ~ticketer ~contents
     Script_typed_ir.ticket_t Micheline.dummy_location contents_type
   in
   let ticket = Script_typed_ir.{ticketer; contents; amount} in
-  let* unparsed_parameters, ctxt =
-    Script_ir_translator.unparse_data ctxt Optimized ticket_ty ticket
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed_parameters, ctxt =
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.unparse_data ~elab_conf Optimized ticket_ty ticket
   in
+  let*? unparsed_parameters in
   let*? ctxt, nonce = fresh_internal_nonce ctxt in
   let op =
     Script_typed_ir.Internal_operation

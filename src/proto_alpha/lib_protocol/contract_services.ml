@@ -426,8 +426,14 @@ let register () =
                 value_type
                 (Micheline.root value)
             in
-            let+ value, _ctxt = unparse_data ctxt Readable value_type value in
-            Some value)
+            let elab_conf =
+              Script_ir_translator_config.make ~legacy:true ctxt
+            in
+            let*? value =
+              Gas_monad.run_unaccounted
+              @@ unparse_data ~elab_conf Readable value_type value
+            in
+            return_some value)
   in
   let do_big_map_get_all ?offset ?length ctxt id =
     let open Script_ir_translator in
@@ -455,8 +461,15 @@ let register () =
                   value_type
                   (Micheline.root value)
               in
-              let+ value, ctxt = unparse_data ctxt Readable value_type value in
-              (ctxt, value :: rev_values))
+              let elab_conf =
+                Script_ir_translator_config.make ~legacy:true ctxt
+              in
+              let*? value, ctxt =
+                Gas_monad.run ctxt
+                @@ unparse_data ~elab_conf Readable value_type value
+              in
+              let*? value in
+              return (ctxt, value :: rev_values))
             (Ok (ctxt, []))
             key_values
         in
@@ -527,10 +540,12 @@ let register () =
               ~allow_forged_in_storage:true
               script
           in
-          let+ storage, _ctxt =
-            unparse_data ctxt Readable storage_type storage
+          let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+          let*? storage =
+            Gas_monad.run_unaccounted
+            @@ unparse_data ~elab_conf Readable storage_type storage
           in
-          Some storage) ;
+          return_some storage) ;
   opt_register2
     ~chunked:true
     S.entrypoint_type

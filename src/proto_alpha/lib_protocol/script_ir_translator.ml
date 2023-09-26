@@ -5465,12 +5465,15 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
       storage_type
       ~storage
   in
-  let*? code =
+  let*? code, storage =
     Gas_monad.run_unaccounted
-    @@ unparse_code ~stack_depth:0 ~elab_conf mode code_field
-  in
-  let* storage, ctxt =
-    unparse_data ctxt ~stack_depth:0 mode storage_type storage
+    @@
+    let open Gas_monad.Syntax in
+    let* code = unparse_code ~stack_depth:0 ~elab_conf mode code_field in
+    let+ storage =
+      unparse_data ~stack_depth:0 ~elab_conf mode storage_type storage
+    in
+    (code, storage)
   in
   let loc = Micheline.dummy_location in
   let* arg_type, storage_type, views, ctxt =
@@ -5547,8 +5550,12 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
 
 let pack_data_with_mode ctxt ty data ~mode =
   let open Lwt_result_syntax in
-  let+ unparsed, ctxt = unparse_data ~stack_depth:0 ctxt mode ty data in
-  (pack_node unparsed, ctxt)
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? unparsed, ctxt =
+    Gas_monad.run ctxt @@ unparse_data ~stack_depth:0 ~elab_conf mode ty data
+  in
+  let*? unparsed in
+  return (pack_node unparsed, ctxt)
 
 let hash_data ctxt ty data =
   let open Lwt_result_syntax in
@@ -5605,21 +5612,26 @@ let diff_of_big_map ctxt mode ~temporary ~ids_to_copy
     List.fold_left_es
       (fun (acc, ctxt) (key_hash, key, value) ->
         let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_instr_cycle in
-        let*? key, ctxt =
-          Gas_monad.run ctxt @@ unparse_comparable_data mode key_type key
+        let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+        let*? key_value, ctxt =
+          Gas_monad.run ctxt
+          @@
+          let open Gas_monad.Syntax in
+          let* key = unparse_comparable_data mode key_type key in
+          let+ value =
+            match value with
+            | None -> return None
+            | Some x ->
+                let+ node =
+                  unparse_data ~stack_depth:0 ~elab_conf mode value_type x
+                in
+                Some node
+          in
+          (key, value)
         in
-        let*? key in
-        let+ value, ctxt =
-          match value with
-          | None -> return (None, ctxt)
-          | Some x ->
-              let+ node, ctxt =
-                unparse_data ~stack_depth:0 ctxt mode value_type x
-              in
-              (Some node, ctxt)
-        in
+        let*? key, value = key_value in
         let diff_item = Big_map.{key; key_hash; value} in
-        (diff_item :: acc, ctxt))
+        return (diff_item :: acc, ctxt))
       ([], ctxt)
       (List.rev pairs)
   in
@@ -6067,7 +6079,7 @@ let parse_packable_data ~elab_conf ty t =
     ty
     t
 
-let unparse_data = unparse_data ~stack_depth:0
+let unparse_data ~elab_conf = unparse_data ~stack_depth:0 ~elab_conf
 
 let unparse_code ctxt mode code =
   let open Lwt_result_syntax in

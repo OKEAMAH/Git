@@ -58,16 +58,20 @@ type outbox_message =
 
 let make_internal_transfer ctxt ty ~payload ~sender ~source ~destination =
   let open Lwt_result_syntax in
-  let+ payload, ctxt =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Optimized
-      ty
-      payload
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*? payload, ctxt =
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Optimized
+         ty
+         payload
   in
-  ( Sc_rollup.Inbox_message.Internal
-      (Transfer {payload; sender; source; destination}),
-    ctxt )
+  let*? payload in
+  return
+    ( Sc_rollup.Inbox_message.Internal
+        (Transfer {payload; sender; source; destination}),
+      ctxt )
 
 let make_transaction ctxt ~parameters_ty ~unparsed_parameters ~destination
     ~entrypoint =
@@ -153,9 +157,16 @@ let outbox_message_of_outbox_message_repr ctxt transactions =
 module Internal_for_tests = struct
   let make_transaction ctxt parameters_ty ~parameters ~destination ~entrypoint =
     let open Lwt_result_syntax in
-    let* unparsed_parameters, ctxt =
-      Script_ir_translator.unparse_data ctxt Optimized parameters_ty parameters
+    let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+    let*? unparsed_parameters, ctxt =
+      Gas_monad.run ctxt
+      @@ Script_ir_translator.unparse_data
+           ~elab_conf
+           Optimized
+           parameters_ty
+           parameters
     in
+    let*? unparsed_parameters in
     return
       ( Transaction
           {

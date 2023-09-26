@@ -348,17 +348,18 @@ let publish_op_and_dummy_commitment ~sender ?compressed_state ?predecessor
 let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
   let open Lwt_result_wrap_syntax in
   let show exp = Expr.to_string @@ exp in
-  let unparse ctxt parameters =
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let unparse parameters =
     Script_ir_translator.unparse_data
-      ctxt
+      ~elab_conf
       Script_ir_unparser.Optimized
       parameters_ty
       parameters
   in
-  let*@ unparsed_parameters, ctxt =
+  let*@ unparsed_parameters =
     (* Make sure we can parse the unparsed-parameters with the given parameters
        type. *)
-    let* parsed_unparsed_parameters, ctxt =
+    let* parsed_unparsed_parameters, _ctxt =
       Script_ir_translator.parse_data
         ctxt
         ~elab_conf:Script_ir_translator_config.(make ~legacy:true ctxt)
@@ -367,10 +368,15 @@ let verify_params ctxt ~parameters_ty ~parameters ~unparsed_parameters =
         (Environment.Micheline.root unparsed_parameters)
     in
     (* Un-parse again to get back to Micheline. *)
-    unparse ctxt parsed_unparsed_parameters
+    let*? unparsed_parameters =
+      Gas_monad.run_unaccounted @@ unparse parsed_unparsed_parameters
+    in
+    return unparsed_parameters
   in
   (* Un-parse the parsed parameters. *)
-  let*@ expected_unparsed_parameters, _ctxt = unparse ctxt parameters in
+  let*?@ expected_unparsed_parameters =
+    Gas_monad.run_unaccounted @@ unparse parameters
+  in
   (* Verify that both version match. *)
   Assert.equal_string
     ~loc:__LOC__

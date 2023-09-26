@@ -156,13 +156,18 @@ let updates_of_key_values ctxt ~key_type ~value_type key_values =
         match value with
         | None -> return (None, ctxt)
         | Some value ->
-            let*@ value_node, ctxt =
-              Script_ir_translator.unparse_data
-                ctxt
-                Script_ir_unparser.Readable
-                value_type
-                value
+            let elab_conf =
+              Script_ir_translator_config.make ~legacy:true ctxt
             in
+            let*?@ value_node, ctxt =
+              Gas_monad.run ctxt
+              @@ Script_ir_translator.unparse_data
+                   ~elab_conf
+                   Script_ir_unparser.Readable
+                   value_type
+                   value
+            in
+            let*?@ value_node in
             return (Some value_node, ctxt)
       in
       return ({Big_map.key; key_hash; value} :: kvs, ctxt))
@@ -394,13 +399,16 @@ let originate block ~sender ~baker ~script ~storage ~forges_tickets =
 
 let transfer_operation ctxt ~sender ~destination ~arg_type ~arg =
   let open Lwt_result_wrap_syntax in
-  let*@ params_node, ctxt =
-    Script_ir_translator.unparse_data
-      ctxt
-      Script_ir_unparser.Readable
-      arg_type
-      arg
+  let elab_conf = Script_ir_translator_config.make ~legacy:true ctxt in
+  let*?@ params_node, ctxt =
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.unparse_data
+         ~elab_conf
+         Script_ir_unparser.Readable
+         arg_type
+         arg
   in
+  let*?@ params_node in
   return
     ( Internal_operation
         {
