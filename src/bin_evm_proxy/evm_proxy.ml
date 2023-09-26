@@ -262,7 +262,7 @@ let batcher_address_arg =
            @@ Evm_proxy_lib_dev.Ethereum_types.address_of_string eth_addr
          else
            failwith
-             "Batcher address has to be ethereum address which is 40 bytes \
+             "Batcher address has to be ethereum address which is 40 character \
               long in hex representation")
 
 let verbose_arg =

@@ -78,8 +78,8 @@ pub enum Input {
     Upgrade(KernelUpgrade),
     NewChunkedTransaction {
         tx_hash: TransactionHash,
-        num_chunks: u16,
         fee_reimbursement_address: H160,
+        num_chunks: u16,
     },
     TransactionChunk {
         tx_hash: TransactionHash,
@@ -131,13 +131,14 @@ impl InputResult {
         // Next 32 bytes is the transaction hash.
         let (tx_hash, remaining) = parsable!(split_at(bytes, 32));
         let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok());
-        // Next 2 bytes is the number of chunks.
-        let (num_chunks, remaining) = parsable!(split_at(remaining, 2));
-        let num_chunks = u16::from_le_bytes(num_chunks.try_into().unwrap());
+        // Next 20 bytes is ETH address of fee reimbursement address (of L1 tx batcher/sender)
         let (fee_reimbursement_address, remaining) = parsable!(split_at(remaining, 20));
         let fee_reimbursement_address: &[u8; 20] =
             parsable!(fee_reimbursement_address.try_into().ok());
         let fee_reimbursement_address: H160 = From::from(fee_reimbursement_address);
+        // Next 2 bytes is the number of chunks.
+        let (num_chunks, remaining) = parsable!(split_at(remaining, 2));
+        let num_chunks = u16::from_le_bytes(num_chunks.try_into().unwrap());
 
         if remaining.is_empty() {
             Self::Input(Input::NewChunkedTransaction {

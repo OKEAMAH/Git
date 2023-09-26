@@ -51,7 +51,7 @@ let encode_transaction ~smart_rollup_address kind =
         "\000" ^ tx_hash ^ batcher_eth_address ^ tx_raw
     | NewChunked {tx_hash; num_chunks; batcher_eth_address} ->
         let number_of_chunks_bytes = Ethereum_types.u16_to_bytes num_chunks in
-        "\001" ^ tx_hash ^ number_of_chunks_bytes ^ batcher_eth_address
+        "\001" ^ tx_hash ^ batcher_eth_address ^ number_of_chunks_bytes
     | Chunk data -> "\002" ^ data
   in
   "\000" ^ smart_rollup_address ^ data

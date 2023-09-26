@@ -15,6 +15,7 @@
 - Simulate if a transaction has a correct chain id. (!9752)
 - Fees are now paid by the sender. (!9480)
 - Unused gas is refunded after succesful transactions. (!9915)
+- Message format is extended with fee reimbursement address. (!10207)
 
 ### EVM Node
 

@@ -442,8 +442,8 @@ mod tests {
                 // New chunked transaction tag
                 buffer.push(1);
                 buffer.extend_from_slice(&tx_hash);
+                buffer.extend_from_slice(&fee_reimbursement_address.to_fixed_bytes());
                 buffer.extend_from_slice(&u16::to_le_bytes(num_chunks));
-                buffer.extend_from_slice(&fee_reimbursement_address.to_fixed_bytes())
             }
             Input::TransactionChunk { tx_hash, i, data } => {
                 // Transaction chunk tag

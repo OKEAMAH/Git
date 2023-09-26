@@ -400,6 +400,7 @@ fn is_transaction_complete<Host: Runtime>(
     Ok(n_subkeys >= num_chunks + 2)
 }
 
+/// Returns the full transaction if all chunks are presented in the storage.
 pub fn fetch_transaction_data_if_complete<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
@@ -518,8 +519,7 @@ pub fn remove_chunked_transaction<Host: Runtime>(
     remove_chunked_transaction_by_path(host, &chunked_transaction_path)
 }
 
-/// Store the transaction chunk in the storage. Returns the full transaction
-/// if the last chunk to store is the last missing chunk.
+/// Store the transaction chunk in the storage.
 pub fn store_transaction_chunk<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
