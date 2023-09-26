@@ -739,6 +739,10 @@ module Script : sig
     lazy_expr ->
     Gas.cost
 
+  (** Decode an expression without consuming the deserialization gas
+      cost. *)
+  val force_decode_unaccounted : lazy_expr -> expr tzresult
+
   (** Decode an expression in the context after consuming the deserialization
       gas cost (see {!consume_deserialization_gas}). *)
   val force_decode_in_context :

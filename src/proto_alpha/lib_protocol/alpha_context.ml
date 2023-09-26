@@ -320,11 +320,13 @@ module Script = struct
     | Always -> Script_repr.stable_force_decode_cost lexpr
     | When_needed -> Script_repr.force_decode_cost lexpr
 
+  let force_decode_unaccounted = Script_repr.force_decode
+
   let force_decode_in_context ~consume_deserialization_gas ctxt lexpr =
     let open Result_syntax in
     let gas_cost = force_decode_cost ~consume_deserialization_gas lexpr in
     let* ctxt = Raw_context.consume_gas ctxt gas_cost in
-    let+ v = Script_repr.force_decode lexpr in
+    let+ v = force_decode_unaccounted lexpr in
     (v, ctxt)
 
   let force_bytes_in_context ctxt lexpr =
