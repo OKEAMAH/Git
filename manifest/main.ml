@@ -2705,6 +2705,7 @@ let octez_scoru_wasm =
         octez_context_memory;
         octez_lwt_result_stdlib;
         data_encoding;
+        lwt_unix;
       ]
 
 let octez_scoru_wasm_fast =

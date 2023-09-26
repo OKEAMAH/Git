@@ -11,6 +11,8 @@ use crate::storage::{
     read_current_block_number, read_storage_version, store_block_by_hash,
     store_current_block, store_storage_version, STORAGE_VERSION,
 };
+use tezos_evm_logging::log;
+use tezos_evm_logging::Level::{Debug, Info};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 // The lowest(*) benchmarked number was 14453, but we let some margin in case
@@ -19,7 +21,7 @@ use tezos_smart_rollup_host::runtime::Runtime;
 // resulting in more ticks consumed.
 //
 // (*): lowest meaning "before reaching the maximum number of ticks"
-pub const MAX_MIGRATABLE_BLOCKS_PER_REBOOT: usize = 10000;
+pub const MAX_MIGRATABLE_BLOCKS_PER_REBOOT: usize = 1;
 
 pub enum MigrationStatus {
     None,
@@ -193,8 +195,10 @@ fn migration<Host: Runtime>(host: &mut Host) -> Result<MigrationStatus, Error> {
 
         for number in next_block_number_to_migrate..(last_block_to_migrate + 1) {
             let block = old_storage::read_and_remove_l2_block(host, number.into())?;
+            log!(host, Debug, "N: {}", block.number);
 
             if number == head_number.as_usize() {
+                log!(host, Debug, "CURRENT: {}", block.number);
                 // Needed to migrate current hash
                 store_current_block(host, &block)?
             } else {
@@ -224,6 +228,7 @@ fn migration<Host: Runtime>(host: &mut Host) -> Result<MigrationStatus, Error> {
 pub fn storage_migration<Host: Runtime>(
     host: &mut Host,
 ) -> Result<MigrationStatus, Error> {
+    log!(host, Info, "STARTING MIGRATION");
     let migration_result = migration(host);
     migration_result.map_err(|_| {
         // Something went wrong during the migration.

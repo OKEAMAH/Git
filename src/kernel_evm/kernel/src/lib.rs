@@ -189,7 +189,10 @@ fn set_kernel_version<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
 
 fn init_storage_versioning<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     match host.store_read(&STORAGE_VERSION_PATH, 0, 0) {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            log!(host, Info, "STORAGE VERSION IS ALREADY SET");
+            Ok(())
+        }
         Err(_) => store_storage_version(host, STORAGE_VERSION),
     }
 }
@@ -218,8 +221,10 @@ fn fetch_queue_left<Host: Runtime>(host: &mut Host) -> Result<Queue, anyhow::Err
 }
 
 pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
+    log!(host, Info, "Kernel loop after main entry");
     let chain_id = retrieve_chain_id(host).context("Failed to retrieve chain id")?;
     let queue = if storage::was_rebooted(host)? {
+        log!(host, Info, "REBOOT ???!");
         // kernel was rebooted
         log!(
             host,
@@ -231,9 +236,11 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
         log!(host, Info, "Read queue.");
         fetch_queue_left(host)?
     } else {
+        log!(host, Info, "NO REBOOT ???!");
         // first kernel run of the level
         match stage_zero(host)? {
             MigrationStatus::None | MigrationStatus::Done => {
+                log!(host, Info, "MIGRATION NONE/DONE");
                 set_kernel_version(host)?;
                 let smart_rollup_address = retrieve_smart_rollup_address(host)
                     .context("Failed to retrieve smart rollup address")?;
@@ -248,6 +255,7 @@ pub fn main<Host: Runtime>(host: &mut Host) -> Result<(), anyhow::Error> {
         }
     };
 
+    log!(host, Info, "STARTING STAGE TWO");
     stage_two(host, queue, chain_id).context("Failed during stage 2")
 }
 
@@ -275,6 +283,7 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
     // In order to setup the temporary directory, we need to move something
     // from /evm to /tmp, so /evm must be non empty, this only happen
     // at the first run.
+    log!(host, Info, "Kernel loop before main entry");
     let evm_subkeys = host
         .store_count_subkeys(&EVM_PATH)
         .expect("The kernel failed to read the number of /evm subkeys");

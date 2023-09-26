@@ -568,34 +568,48 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     ?(write_debug = Builtins.Noop) should_continue pvm_state =
   let open Lwt.Syntax in
   assert (max_steps > 0L) ;
+  Format.printf "[XYZ] 0@." ;
+  (* let* () = Lwt_io.print "[XZY] 1\n" in *)
   let* version = get_wasm_version pvm_state in
   let stack_size_limit = stack_size_limit version in
   let host_function_registry = Host_funcs.registry ~version ~write_debug in
+  (* let* () = Lwt_io.print "[XZY] 2\n" in *)
   let compute_step_with_reveal =
     match reveal_builtins with
     | Some reveal_builtins -> (
         fun pvm_state ->
+          (* let* () = Lwt_io.print "[XZY] 3 SOME\n" in *)
           let info = input_request pvm_state in
           match info with
           | Reveal_required req ->
+              (* let* () = Lwt_io.print "[XZY] 3 REVEAL\n" in *)
               let* res = reveal_builtins req in
               reveal_step (Bytes.of_string res) pvm_state
           | _ ->
+              (* let* () = Lwt_io.print "[XZY] 3 _ \n" in *)
               compute_step_with_host_functions
                 ~version
                 ~stack_size_limit
                 host_function_registry
                 pvm_state)
     | None ->
-        compute_step_with_host_functions
-          ~version
-          ~stack_size_limit
-          host_function_registry
+        fun pvm_state ->
+          (* let* () = Lwt_io.print "[XZY] 3 NONE\n" in *)
+          compute_step_with_host_functions
+            ~version
+            ~stack_size_limit
+            host_function_registry
+            pvm_state
   in
+  (* let* () = Lwt_io.print "[XZY] 4\n" in *)
   let rec go steps_left pvm_state =
+    (* let* () = Lwt_io.print "[XZY] 5\n" in *)
     let* continue = should_continue pvm_state in
     if steps_left > 0L && continue then
+      (* let* () = Lwt_io.print "[XZY] 5 - A IF\n" in *)
       if is_top_level_padding pvm_state then
+        (* let* () = Lwt_io.print "[XZY] 5 - B IF\n" in *)
+        let () = Format.printf "[XYZ] 5@." in
         (* We're in the top-level padding after the evaluation has
            finished. That means we can skip up to the tick before the
            snapshot in one go. *)
@@ -611,10 +625,14 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
         in
         go (Int64.sub steps_left (Z.to_int64 bulk_ticks)) pvm_state
       else
+        (* let* () = Lwt_io.print "[XZY] 5 - B ELSE\n" in *)
         let* pvm_state = compute_step_with_reveal pvm_state in
         go (Int64.pred steps_left) pvm_state
-    else Lwt.return pvm_state
+    else
+      (* let* () = Lwt_io.print "[XZY] 5 - A ELSE\n" in *)
+      Lwt.return pvm_state
   in
+  (* let* () = Lwt_io.print "[XZY] 6\n" in *)
   let one_or_more_steps pvm_state =
     (* Make sure we perform at least 1 step. The assertion above ensures that
        we were asked to perform at least 1. *)
@@ -627,6 +645,7 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     in
     go (Int64.pred max_steps) pvm_state
   in
+  let () = Format.printf "[XYZ] 7@." in
   measure_executed_ticks one_or_more_steps pvm_state
 
 let should_compute ?reveal_builtins pvm_state =

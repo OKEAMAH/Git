@@ -13,7 +13,8 @@
   octez-libs.context.sigs
   octez-libs.tezos-context.memory
   octez-libs.lwt-result-stdlib
-  data-encoding)
+  data-encoding
+  lwt.unix)
  (flags
   (:standard)
   -open Tezos_base.TzPervasives))
