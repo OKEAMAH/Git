@@ -1221,17 +1221,16 @@ module Raw = struct
           (* packing *)
           | IPack (_, ty, k) ->
               let value = accu in
-              let ctxt = update_context gas ctxt in
-              let*? bytes, ctxt =
-                Gas_monad.run ctxt
-                @@ Script_ir_translator.pack_data
-                     ~elab_conf:
-                       Script_ir_translator_config.(make ~legacy:true ctxt)
-                     ty
-                     value
+              let elab_conf =
+                Script_ir_translator_config.make
+                  ~legacy:true
+                  (update_context gas ctxt)
+              in
+              let*? bytes, gas =
+                Gas_monad.run_on_gas_counter gas
+                @@ Script_ir_translator.pack_data ~elab_conf ty value
               in
               let*? bytes in
-              let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
               (step [@ocaml.tailcall]) (ctxt, sc) gas k ks bytes stack
           | IUnpack (_, ty, k) ->
               let bytes = accu in
