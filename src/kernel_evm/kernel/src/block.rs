@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::apply::apply_transaction;
+use crate::apply::{apply_transaction, ExecutionInfo};
 use crate::block_in_progress;
 use crate::blueprint::{Queue, QueueElement};
 use crate::current_timestamp;
@@ -12,6 +12,7 @@ use crate::error::Error;
 use crate::indexable_storage::IndexableStorage;
 use crate::storage;
 use crate::storage::init_account_index;
+use crate::tick_model::estimate_remaining_ticks_for_transaction_execution;
 use anyhow::Context;
 use block_in_progress::BlockInProgress;
 use evm_execution::account_storage::{init_account_storage, EthereumAccountStorage};
@@ -71,6 +72,10 @@ fn compute<Host: Runtime>(
         }
         let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
 
+        // The current number of ticks remaining for the current `kernel_run` is allocated for the transaction.
+        let allocated_ticks = estimate_remaining_ticks_for_transaction_execution(
+            block_in_progress.estimated_ticks,
+        );
         // If `apply_transaction` returns `None`, the transaction should be
         // ignored, i.e. invalid signature or nonce.
         match apply_transaction(
@@ -81,12 +86,18 @@ fn compute<Host: Runtime>(
             block_in_progress.index,
             evm_account_storage,
             accounts_index,
+            allocated_ticks,
         )? {
-            Some((receipt_info, object_info)) => {
+            Some(ExecutionInfo {
+                receipt_info,
+                object_info,
+                estimated_ticks_used,
+            }) => {
                 block_in_progress.register_valid_transaction(
                     &transaction,
                     object_info,
                     receipt_info,
+                    estimated_ticks_used,
                     host,
                 )?;
                 log!(
@@ -211,6 +222,7 @@ mod tests {
     };
     use crate::storage::{init_blocks_index, init_transaction_hashes_index};
     use crate::tick_model;
+    use crate::CONFIG;
     use crate::{retrieve_base_fee_per_gas, retrieve_chain_id};
     use evm_execution::account_storage::{
         account_path, init_account_storage, EthereumAccountStorage,
@@ -949,7 +961,8 @@ mod tests {
             content: TransactionContent::Ethereum(dummy_eth_transaction_deploy()),
         };
 
-        let transactions = vec![valid_tx].into();
+        let transactions: VecDeque<Transaction> = vec![valid_tx].into();
+        let nb_transactions = &transactions.len();
 
         // act
         let block_in_progress =
@@ -961,13 +974,25 @@ mod tests {
             .finalize_and_store(&mut host)
             .expect("should have succeeded in processing block");
 
+        let effective_gas: u64 = (block.gas_used.as_u64()).saturating_sub(
+            CONFIG
+                .gas_transaction_call
+                .saturating_mul(u64::try_from(*nb_transactions).unwrap()),
+        );
+
         assert_eq!(
             block.gas_used,
             U256::from(21123),
             "Gas used for contract creation"
         );
 
-        assert_eq!(ticks, tick_model::ticks_of_gas(21123));
+        // This test is optimistic, as the amount of ticks spent can be higher
+        // than the average. It might not make sense with new tick model.
+        assert!(
+            ticks
+                <= tick_model::average_ticks_of_gas(effective_gas)
+                    + tick_model::constants::TICKS_FOR_CRYPTO
+        );
     }
 
     #[test]
