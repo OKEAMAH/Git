@@ -158,6 +158,12 @@ fn typecheck_instruction(
             stack.swap(0, 1);
             I::Swap
         }
+        I::Failwith => {
+            ensure_stack_len(stack, 1)?;
+            stack.pop();
+            stack.fail();
+            I::Failwith
+        }
     })
 }
 
@@ -414,5 +420,35 @@ mod typecheck_tests {
             .unwrap_err(),
             TcError::StacksNotEqual
         );
+    }
+
+    #[test]
+    fn test_failwith() {
+        assert_eq!(
+            typecheck_instruction(Failwith, &mut Gas::default(), &mut stk![Type::Int]),
+            Ok(Failwith)
+        );
+    }
+
+    #[test]
+    fn test_failed_stacks() {
+        macro_rules! test_fail {
+            ($code:expr) => {
+                assert_eq!(
+                    typecheck(parse($code).unwrap(), &mut Gas::default(), &mut stk![]),
+                    Err(TcError::FailNotInTail)
+                );
+            };
+        }
+        test_fail!("{ PUSH int 1; FAILWITH; PUSH int 1 }");
+        test_fail!("{ PUSH int 1; DIP { PUSH int 1; FAILWITH } }");
+        macro_rules! test_ok {
+            ($code:expr) => {
+                assert!(typecheck(parse($code).unwrap(), &mut Gas::default(), &mut stk![]).is_ok());
+            };
+        }
+        test_ok!("{ PUSH bool True; IF { PUSH int 1; FAILWITH } { PUSH int 1 }; GT }");
+        test_ok!("{ PUSH bool True; IF { PUSH int 1 } { PUSH int 1; FAILWITH }; GT }");
+        test_ok!("{ PUSH bool True; LOOP { PUSH int 1; FAILWITH }; PUSH int 1 }");
     }
 }
