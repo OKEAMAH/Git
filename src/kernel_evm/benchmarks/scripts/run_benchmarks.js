@@ -76,6 +76,7 @@ function run_profiler(path) {
                 : null;
             if (profiler_output_path_result !== null) {
                 profiler_output_path = profiler_output_path_result;
+                console.log(`Flamechart: ${profiler_output_path}`)
             }
             push_match(output, gas_used, /\bgas_used:\s*(\d+)/g)
             push_match(output, tx_status, /Transaction status: (OK_[a-zA-Z09]+|ERROR_[A-Z]+)\b/g)
@@ -279,6 +280,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         unaccounted_ticks,
+        block_finalize: run_benchmark_result.block_finalize[0]
     });
     return rows;
 }
@@ -309,7 +311,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         "nb_tx",
         "tx_size",
         "bip_read",
-        "bip_store"
+        "bip_store",
+        "block_finalize"
     ];
     let output = output_filename();
     console.log(`Output in ${output}`);
