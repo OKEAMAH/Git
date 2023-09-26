@@ -791,9 +791,7 @@ let unpack ctxt ~ty ~bytes =
         in
         match value_opt with
         | Ok value, ctxt -> return (Some value, ctxt)
-        | Error _ignored, _ctxt ->
-            let*? ctxt = Gas.consume ctxt (Interp_costs.unpack_failed str) in
-            return (None, ctxt))
+        | Error _ignored, ctxt -> return (None, ctxt))
   else return (None, ctxt)
 
 (* [interp_stack_prefix_preserving_operation f w accu stack] applies
