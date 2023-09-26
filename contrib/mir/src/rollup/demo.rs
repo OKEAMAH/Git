@@ -12,15 +12,25 @@ const STORAGE_PATH: &RefPath = &RefPath::assert_from(b"/storage");
 
 pub fn process_external_message(host: &mut impl Runtime, payload: &[u8]) -> Result<(), Error> {
     let param = free_form_bytes_to_number(payload);
-    let storage = free_form_bytes_to_number(
-        host.store_read_all(STORAGE_PATH)
-            .map_err(|err| err.to_string())?
-            .as_ref(),
-    );
+    let is_storage_empty = host
+        .store_has(STORAGE_PATH)
+        .map_err(|err| err.to_string())?
+        .is_none();
+    let storage = if is_storage_empty {
+        0
+    } else {
+        free_form_bytes_to_number(
+            host.store_read_all(STORAGE_PATH)
+                .map_err(|err| err.to_string())?
+                .as_ref(),
+        )
+    };
+    // ↑ That's pretty painful, MR with a higher-level API is on the way
 
     let new_storage = run_fibonacci(param, storage)?;
 
-    host.store_write_all(STORAGE_PATH, &new_storage.to_le_bytes());
+    host.store_write_all(STORAGE_PATH, &new_storage.to_le_bytes())
+        .map_err(|err| err.to_string())?;
     debug_msg!(host, "Computation successful, storage updated");
     Ok(())
 }
