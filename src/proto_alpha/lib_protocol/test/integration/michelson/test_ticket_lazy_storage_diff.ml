@@ -107,12 +107,13 @@ let updates_of_key_values ctxt key_values =
   let open Lwt_result_wrap_syntax in
   List.fold_right_es
     (fun (key, value) (kvs, ctxt) ->
-      let*@ key_hash, ctxt =
-        Script_ir_translator.hash_comparable_data
-          ctxt
-          Script_typed_ir.int_t
-          (Script_int.of_int key)
+      let*?@ key_hash, ctxt =
+        Gas_monad.run ctxt
+        @@ Script_ir_translator.hash_comparable_data
+             Script_typed_ir.int_t
+             (Script_int.of_int key)
       in
+      let*?@ key_hash in
       return
         ( {
             Big_map.key = Expr.from_string @@ string_of_int key;

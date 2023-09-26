@@ -170,17 +170,10 @@ let hash_bytes bytes =
   let+$ () = Michelson_v1_gas.Cost_of.Interpreter.blake2b bytes in
   Script_expr_hash.(hash_bytes [bytes])
 
-let hash_comparable_data ctxt ty data =
-  let open Lwt_result_syntax in
-  let*? hash, ctxt =
-    Gas_monad.run ctxt
-    @@
-    let open Gas_monad.Syntax in
-    let* bytes = pack_comparable_data ty data in
-    hash_bytes bytes
-  in
-  let*? hash in
-  return (hash, ctxt)
+let hash_comparable_data ty data =
+  let open Gas_monad.Syntax in
+  let* bytes = pack_comparable_data ty data in
+  hash_bytes bytes
 
 (* ---- Tickets ------------------------------------------------------------ *)
 
@@ -4474,9 +4467,6 @@ module type GAS_MONAD = sig
     entrypoint:Entrypoint.t ->
     ('arg typed_contract, error trace) t
 
-  val hash_comparable_data :
-    'a comparable_ty -> 'a -> (Script_expr_hash.t, error trace) t
-
   val big_map_exists : Big_map.Id.t -> ((expr * expr) option, error trace) t
 
   val sapling_state_from_id : Sapling.Id.t -> (Sapling.state, error trace) t
@@ -4504,9 +4494,6 @@ struct
   (* Only used to parse the "contract" type, which is not packable *)
   let parse_contract_data ~stack_depth:_ _loc _ty _dest ~entrypoint:_ =
     assert false
-
-  (* Only used to parse the "big_map" type, which is not packable *)
-  let hash_comparable_data _ty _x = assert false
 
   (* Only used to parse the "big_map" type, which is not packable *)
   let big_map_exists _id = assert false
@@ -4572,8 +4559,6 @@ struct
       parse_contract_data ctxt ~stack_depth loc ty addr ~entrypoint
     in
     (res, ctxt)
-
-  let hash_comparable_data ty x ctxt = hash_comparable_data ctxt ty x
 
   let big_map_exists id ctxt =
     let open Lwt_result_syntax in
@@ -4796,7 +4781,9 @@ module Data_parser (M : GAS_MONAD) = struct
                   else error_unexpected_annot loc annot
                 in
                 let* k = non_terminal_recursion key_type k in
-                let* key_hash = hash_comparable_data key_type k in
+                let* key_hash =
+                  from_gas_monad @@ hash_comparable_data key_type k
+                in
                 let* v = non_terminal_recursion value_type v in
                 let* () =
                   match last_key with

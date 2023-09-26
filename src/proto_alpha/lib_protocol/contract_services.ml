@@ -663,8 +663,9 @@ let register () =
               key_type
               (Micheline.root key)
           in
-          let* key, ctxt =
-            Script_ir_translator.hash_comparable_data ctxt key_type key
+          let*? key =
+            Gas_monad.run_unaccounted
+            @@ Script_ir_translator.hash_comparable_data key_type key
           in
           match script with
           | None -> return_none

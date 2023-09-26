@@ -202,12 +202,13 @@ let tickets_from_big_map_ref ~pre_populated value_exp =
     let* updates, ctxt =
       List.fold_left_es
         (fun (kvs, ctxt) (key, value) ->
-          let*@ key_hash, ctxt =
-            Script_ir_translator.hash_comparable_data
-              ctxt
-              Script_typed_ir.int_t
-              (Script_int.of_int key)
+          let*?@ key_hash, ctxt =
+            Gas_monad.run ctxt
+            @@ Script_ir_translator.hash_comparable_data
+                 Script_typed_ir.int_t
+                 (Script_int.of_int key)
           in
+          let*?@ key_hash in
           return
             ( {
                 Big_map.key = Expr.from_string @@ string_of_int key;

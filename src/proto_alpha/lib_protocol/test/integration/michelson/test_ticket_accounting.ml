@@ -141,17 +141,22 @@ let updates_of_key_values ctxt ~key_type ~value_type key_values =
   let open Lwt_result_wrap_syntax in
   List.fold_right_es
     (fun (key, value) (kvs, ctxt) ->
-      let*@ key_hash, ctxt =
-        Script_ir_translator.hash_comparable_data ctxt key_type key
-      in
-      let*?@ key, ctxt =
+      let*?@ key_hash_and_key, ctxt =
         Gas_monad.run ctxt
-        @@ Script_ir_unparser.unparse_comparable_data
-             Script_ir_unparser.Readable
-             key_type
-             key
+        @@
+        let open Gas_monad.Syntax in
+        let* key_hash =
+          Script_ir_translator.hash_comparable_data key_type key
+        in
+        let+ key =
+          Script_ir_unparser.unparse_comparable_data
+            Script_ir_unparser.Readable
+            key_type
+            key
+        in
+        (key_hash, key)
       in
-      let*?@ key in
+      let*?@ key_hash, key = key_hash_and_key in
       let* value, ctxt =
         match value with
         | None -> return (None, ctxt)

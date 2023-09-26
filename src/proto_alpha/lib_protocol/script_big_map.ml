@@ -40,7 +40,10 @@ let empty key_type value_type =
 
 let mem ctxt key (Big_map {id; diff; key_type; _}) =
   let open Lwt_result_syntax in
-  let* key_hash, ctxt = hash_comparable_data ctxt key_type key in
+  let*? key_hash, ctxt =
+    Gas_monad.run ctxt @@ hash_comparable_data key_type key
+  in
+  let*? key_hash in
   match (Big_map_overlay.find key_hash diff.map, id) with
   | None, None -> return (false, ctxt)
   | None, Some id ->
@@ -71,7 +74,10 @@ let get_by_hash ctxt key (Big_map {id; diff; value_type; _}) =
 
 let get ctxt key (Big_map {key_type; _} as map) =
   let open Lwt_result_syntax in
-  let* key_hash, ctxt = hash_comparable_data ctxt key_type key in
+  let*? key_hash, ctxt =
+    Gas_monad.run ctxt @@ hash_comparable_data key_type key
+  in
+  let*? key_hash in
   get_by_hash ctxt key_hash map
 
 let update_by_hash key_hash key value (Big_map map) =
@@ -88,13 +94,19 @@ let update_by_hash key_hash key value (Big_map map) =
 
 let update ctxt key value (Big_map {key_type; _} as map) =
   let open Lwt_result_syntax in
-  let* key_hash, ctxt = hash_comparable_data ctxt key_type key in
+  let*? key_hash, ctxt =
+    Gas_monad.run ctxt @@ hash_comparable_data key_type key
+  in
+  let*? key_hash in
   let map = update_by_hash key_hash key value map in
   return (map, ctxt)
 
 let get_and_update ctxt key value (Big_map {key_type; _} as map) =
   let open Lwt_result_syntax in
-  let* key_hash, ctxt = hash_comparable_data ctxt key_type key in
+  let*? key_hash, ctxt =
+    Gas_monad.run ctxt @@ hash_comparable_data key_type key
+  in
+  let*? key_hash in
   let new_map = update_by_hash key_hash key value map in
   let* old_value, ctxt = get_by_hash ctxt key_hash map in
   return ((old_value, new_map), ctxt)
