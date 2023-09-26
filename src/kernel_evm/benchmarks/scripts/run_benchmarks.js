@@ -33,6 +33,13 @@ function sumArray(arr) {
     return arr.reduce((acc, curr) => acc + curr, 0);
 }
 
+function push_match(output, array, regexp) {
+    var match;
+    while ((match = regexp.exec(output))) {
+        array.push(match[1]);
+    }
+}
+
 function run_profiler(path) {
 
     profiler_result = new Promise((resolve, _) => {
@@ -67,23 +74,10 @@ function run_profiler(path) {
             if (profiler_output_path_result !== null) {
                 profiler_output_path = profiler_output_path_result;
             }
-            const gas_used_regex = /\bgas_used:\s*(\d+)/g;
-            var match;
-            while ((match = gas_used_regex.exec(output))) {
-                gas_used.push(match[1]);
-            }
-            const status_regexp = /Transaction status: (OK_[a-zA-Z09]+|ERROR_[A-Z]+)\b/g;
-            while ((match = status_regexp.exec(output))) {
-                tx_status.push(match[1]);
-            }
-            const estimated_ticks_regex = /\bEstimated ticks:\s*(\d+)/g;
-            while ((match = estimated_ticks_regex.exec(output))) {
-                estimated_ticks.push(match[1]);
-            }
-            const estimated_ticks_per_tx_regex = /\bEstimated ticks after tx:\s*(\d+)/g;
-            while ((match = estimated_ticks_per_tx_regex.exec(output))) {
-                estimated_ticks_per_tx.push(match[1]);
-            }
+            push_match(output, gas_used, /\bgas_used:\s*(\d+)/g)
+            push_match(output, tx_status, /Transaction status: (OK_[a-zA-Z09]+|ERROR_[A-Z]+)\b/g)
+            push_match(output, estimated_ticks, /\bEstimated ticks:\s*(\d+)/g)
+            push_match(output, estimated_ticks_per_tx, /\bEstimated ticks after tx:\s*(\d+)/g)
         });
         childProcess.on('close', _ => {
             if (profiler_output_path == "") {
@@ -98,7 +92,7 @@ function run_profiler(path) {
             if (tx_status.length != estimated_ticks_per_tx.length) {
                 console.log(new Error("Tx status array length (" + tx_status.length + ") != estimated ticks per tx array length (" + estimated_ticks_per_tx.length + ")"));
             }
-            resolve({ profiler_output_path: profiler_output_path, gas_costs: gas_used, tx_status: tx_status, estimated_ticks: estimated_ticks, estimated_ticks_per_tx: estimated_ticks_per_tx });
+            resolve({ profiler_output_path, gas_costs: gas_used, tx_status, estimated_ticks, estimated_ticks_per_tx });
         });
     })
     return profiler_result;
