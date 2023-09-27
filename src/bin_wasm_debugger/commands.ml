@@ -590,7 +590,6 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
           true
       | _ -> false
     in
-
     match status with
     | Ok () when is_profilable ->
         let* tree, inboxes, level = load_inputs inboxes level tree in

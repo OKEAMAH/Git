@@ -43,7 +43,16 @@ let eval_has_finished = function
 
 let ticks_to_snapshot {current_tick; last_top_level_call; max_nb_ticks; _} =
   let open Z in
+  (* let current_tick = Z.(current_tick) in *)
+  Format.printf
+    "max nb: %d | current tick: %d | last_top_level_call: %d @."
+    (Z.to_int max_nb_ticks)
+    (Z.to_int current_tick)
+    (Z.to_int last_top_level_call) ;
+  (* max nb: 11000000000 | current tick: 11048209599 | last_top_level_call: 11000000000  *)
+  (* max_nb_ticks - one - (current_tick - last_top_level_call) *)
   max_nb_ticks - one - (current_tick - last_top_level_call)
+(* max_nb_ticks - one - (current_tick - max_nb_ticks - last_top_level_call) *)
 (* The max number of tick is offsetted by 1, which corresponds to the input
    tick. *)
 
@@ -198,10 +207,17 @@ let unsafe_next_tick_state ~version ~stack_size_limit host_funcs
         (Stuck (Wasm_pvm_errors.invalid_state "Collect is a input tick"))
   | Padding when is_time_for_snapshot pvm_state -> (
       let* reboot_status = mark_for_reboot pvm_state in
+      Format.printf "reboot status @." ;
       match reboot_status with
-      | `Reboot -> return ~status:Reboot Snapshot
-      | `Forcing_yield -> return ~status:Forcing_yield Collect
-      | `Yielding -> return ~status:Yielding Collect)
+      | `Reboot ->
+          Format.printf "Reboot @." ;
+          return ~status:Reboot Snapshot
+      | `Forcing_yield ->
+          Format.printf "Forcing yield @." ;
+          return ~status:Forcing_yield Collect
+      | `Yielding ->
+          Format.printf "Yielding @." ;
+          return ~status:Yielding Collect)
   | _ when is_time_for_snapshot pvm_state ->
       (* Execution took too many ticks *)
       return ~status:Failing (Stuck Too_many_ticks)
@@ -568,7 +584,7 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     ?(write_debug = Builtins.Noop) should_continue pvm_state =
   let open Lwt.Syntax in
   assert (max_steps > 0L) ;
-  Format.printf "[XYZ] 0@." ;
+  (* Format.printf "[XYZ] 0@." ; *)
   (* let* () = Lwt_io.print "[XZY] 1\n" in *)
   let* version = get_wasm_version pvm_state in
   let stack_size_limit = stack_size_limit version in
@@ -587,6 +603,7 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
               reveal_step (Bytes.of_string res) pvm_state
           | _ ->
               (* let* () = Lwt_io.print "[XZY] 3 _ \n" in *)
+              (* let () = Format.printf "[XYZ] 3 _ @." in *)
               compute_step_with_host_functions
                 ~version
                 ~stack_size_limit
@@ -607,14 +624,23 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     let* continue = should_continue pvm_state in
     if steps_left > 0L && continue then
       (* let* () = Lwt_io.print "[XZY] 5 - A IF\n" in *)
+      (* let () = Format.printf "[XYZ] 5 - A IF@." in *)
       if is_top_level_padding pvm_state then
         (* let* () = Lwt_io.print "[XZY] 5 - B IF\n" in *)
-        let () = Format.printf "[XYZ] 5@." in
+        (* let () = Format.printf "[XYZ] 5 - B IF@." in *)
         (* We're in the top-level padding after the evaluation has
            finished. That means we can skip up to the tick before the
            snapshot in one go. *)
         let bulk_ticks =
           Z.(min (ticks_to_snapshot pvm_state) (of_int64 steps_left))
+        in
+        let () =
+          Format.printf
+            "[XYZ] steps left %d | ticks_to_snapshot pvm_state %d | bulk ticks \
+             left %d @."
+            (Int64.to_int steps_left)
+            (Z.to_int (ticks_to_snapshot pvm_state))
+            (Z.to_int bulk_ticks)
         in
         let pvm_state =
           {
@@ -626,6 +652,10 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
         go (Int64.sub steps_left (Z.to_int64 bulk_ticks)) pvm_state
       else
         (* let* () = Lwt_io.print "[XZY] 5 - B ELSE\n" in *)
+        (* let () = Format.printf "[XYZ] 5 - B ELSE @." in *)
+        let () =
+          Format.printf "[XYZ] steps left %d@." (Int64.to_int steps_left)
+        in
         let* pvm_state = compute_step_with_reveal pvm_state in
         go (Int64.pred steps_left) pvm_state
     else
@@ -645,7 +675,7 @@ let compute_step_many_until ?(max_steps = 1L) ?reveal_builtins
     in
     go (Int64.pred max_steps) pvm_state
   in
-  let () = Format.printf "[XYZ] 7@." in
+  (* let () = Format.printf "[XYZ] 7@." in *)
   measure_executed_ticks one_or_more_steps pvm_state
 
 let should_compute ?reveal_builtins pvm_state =
