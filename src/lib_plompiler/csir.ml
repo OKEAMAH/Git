@@ -259,13 +259,75 @@ let table_add_with_carry_hi4 =
   Table.of_list
   @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_hi ~nb_bits)
 
+(* 8-bit lookup *)
+let table_bnot8 =
+  let nb_bits = 8 in
+  let mask8 = (1 lsl nb_bits) - 1 in
+  Table.of_list
+  @@ generate_lookup_table_op1 ~nb_bits (fun x -> Int.(logand (lognot x) mask8))
+
+let table_xor8 =
+  Table.of_list @@ generate_lookup_table_op2 ~nb_bits:8 Int.logxor
+
+let table_band8 =
+  Table.of_list @@ generate_lookup_table_op2 ~nb_bits:8 Int.logand
+
+let table_rotate_right8_1 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 1)
+
+let table_rotate_right8_2 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 2)
+
+let table_rotate_right8_3 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 3)
+
+let table_rotate_right8_4 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 4)
+
+let table_rotate_right8_5 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 5)
+
+let table_rotate_right8_6 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 6)
+
+let table_rotate_right8_7 =
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 7)
+
+let table_add_with_carry_lo8 =
+  (* a + b -> (a + b) % 2^nb_bits *)
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_lo ~nb_bits)
+
+let table_add_with_carry_hi8 =
+  (* a + b -> (a + b) / 2^nb_bits *)
+  let nb_bits = 8 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_hi ~nb_bits)
+
 module Tables = Map.Make (String)
 
 let table_registry =
+  (* 1-bit lookup *)
   let t = Tables.add "or" table_or Tables.empty in
   let t = Tables.add "xor" table_xor t in
   let t = Tables.add "band" table_band t in
   let t = Tables.add "bnot" table_bnot t in
+  (* 4-bit lookup *)
   let t = Tables.add "bnot4" table_bnot4 t in
   let t = Tables.add "xor4" table_xor4 t in
   let t = Tables.add "band4" table_band4 t in
@@ -274,6 +336,19 @@ let table_registry =
   let t = Tables.add "rotate_right4_3" table_rotate_right4_3 t in
   let t = Tables.add "add_with_carry_lo4" table_add_with_carry_lo4 t in
   let t = Tables.add "add_with_carry_hi4" table_add_with_carry_hi4 t in
+  (* 8-bit lookup *)
+  let t = Tables.add "bnot8" table_bnot8 t in
+  let t = Tables.add "xor8" table_xor8 t in
+  let t = Tables.add "band8" table_band8 t in
+  let t = Tables.add "rotate_right8_1" table_rotate_right8_1 t in
+  let t = Tables.add "rotate_right8_2" table_rotate_right8_2 t in
+  let t = Tables.add "rotate_right8_3" table_rotate_right8_3 t in
+  let t = Tables.add "rotate_right8_4" table_rotate_right8_4 t in
+  let t = Tables.add "rotate_right8_5" table_rotate_right8_5 t in
+  let t = Tables.add "rotate_right8_6" table_rotate_right8_6 t in
+  let t = Tables.add "rotate_right8_7" table_rotate_right8_7 t in
+  let t = Tables.add "add_with_carry_lo8" table_add_with_carry_lo8 t in
+  let t = Tables.add "add_with_carry_hi8" table_add_with_carry_hi8 t in
   t
 
 module CS = struct

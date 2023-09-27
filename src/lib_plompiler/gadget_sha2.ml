@@ -319,7 +319,7 @@ module type SHA2 = functor (L : LIB) -> sig
 end
 
 module Limb4 = struct
-  let nb_bits = 4
+  let nb_bits = 8
 end
 
 module SHA224 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha224) (L.Limbs (Limb4))
