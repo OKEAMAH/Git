@@ -1,6 +1,7 @@
 //!  This is a logic for demo rollup that eventually should be thrown away.
 
-use std::mem::size_of;
+use crate::{ast::Value, gas, interpreter, parser};
+use std::{collections::VecDeque, mem::size_of};
 use tezos_smart_rollup::{
     prelude::{debug_msg, Runtime},
     storage::path::RefPath,
@@ -36,14 +37,18 @@ pub fn process_external_message(host: &mut impl Runtime, payload: &[u8]) -> Resu
 }
 
 fn run_fibonacci(param: usize, _storage: usize) -> Result<usize, Error> {
-    // TODO: replace with contract interpretation
-    let answers: Vec<usize> = vec![
-        0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181,
-    ];
-    answers
-        .get(param)
-        .copied()
-        .ok_or(String::from("Cannot answer for such large number :shrug:"))
+    // NB: This is still not a real contract because we do not support pairs
+    let code = parser::parse(&FIBONACCI_SRC).map_err(|err| err.to_string())?;
+    let param_val = Value::NumberValue(param as i32);
+    let mut istack = VecDeque::from([param_val]);
+    let mut gas = gas::Gas::default();
+    assert!(interpreter::interpret(&code, &mut gas, &mut istack).is_ok());
+    match istack.make_contiguous() {
+        [Value::NumberValue(res)] => {
+            Ok(usize::try_from(*res).map_err(|_| String::from("Too large answer"))?)
+        }
+        _ => Err(String::from("Unexpected stack form at the end: {stack}")),
+    }
 }
 
 /// Accepts both undersized and oversized byte arrays to convert to number.
@@ -74,3 +79,13 @@ mod test_message_processing {
         test_on_sample(&[15], &[98, 2, 0, 0, 0, 0, 0, 0]);
     }
 }
+
+const FIBONACCI_SRC: &str = "{
+    INT ; PUSH int 0 ; DUP 2 ; GT ;
+    IF { DIP { PUSH int -1 ; ADD } ;
+     PUSH int 1 ;
+     DUP 3 ;
+     GT ;
+     LOOP { SWAP ; DUP 2 ; ADD ; DIP 2 { PUSH int -1 ; ADD } ; DUP 3 ; GT } ;
+     DIP { DROP 2 } }
+     { DIP { DROP } } }";

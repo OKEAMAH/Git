@@ -1,4 +1,12 @@
+mod ast;
+mod gas;
+mod interpreter;
+mod parser;
 mod rollup;
+mod stack;
+mod syntax;
+mod typechecker;
+
 use rollup::kernel::kernel_entry;
 use tezos_smart_rollup::{kernel_entry, prelude::Runtime};
 
