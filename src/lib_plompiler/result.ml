@@ -355,6 +355,20 @@ struct
             (Z.to_int (S.to_z l))
             (Z.to_int (S.to_z r))
             i)
+
+  let add_with_carry_lo_lookup (S (X l)) (S (X r)) =
+    ret @@ to_s @@ S.of_int
+    @@ Csir.add_with_carry_lo
+         ~nb_bits
+         (Z.to_int (S.to_z l))
+         (Z.to_int (S.to_z r))
+
+  let add_with_carry_hi_lookup (S (X l)) (S (X r)) =
+    ret @@ to_s @@ S.of_int
+    @@ Csir.add_with_carry_hi
+         ~nb_bits
+         (Z.to_int (S.to_z l))
+         (Z.to_int (S.to_z r))
 end
 
 let point x y = P (S (X x), S (X y))
