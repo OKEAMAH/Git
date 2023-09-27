@@ -66,29 +66,7 @@ struct
     if debug_toggle then debug s unit >* iterM (debug "") (Array.to_list a)
     else ret unit
 
-  (* For now, we mainly focus on optimising SHA-512, so we have a special
-     case for a 64-bit word, where a modular addition gadget is used.
-     In the future, the same optimisation can be done for a 32-bit word. *)
-  let add_list (lb : Op.tl repr list) : Op.tl repr t =
-    with_label ~label:"Sha2.add_list"
-    @@
-    if V.word_size = 64 then
-      let mod_int_of_bytes (x : Op.tl repr) : M64.mod_int repr t =
-        let* sx = Op.to_scalar x in
-        M64.mod_int_of_scalars (to_list [sx])
-      in
-      let* lm = mapM mod_int_of_bytes lb in
-      let* mres = foldM M64.add (List.hd lm) (List.tl lm) in
-      let* sres = M64.scalars_of_mod_int mres in
-      Op.of_scalar ~total_nb_bits:V.word_size (List.hd (of_list sres))
-    else
-      let* (lb : Bytes.tl repr list) = mapM Op.to_bool_list lb in
-      let* res =
-        foldM (Bytes.add ~ignore_carry:true) (List.hd lb) (List.tl lb)
-      in
-      Op.of_bool_list res
-
-  let add a b = add_list [a; b]
+  let add_list lb = foldM Op.add (List.hd lb) (List.tl lb)
 
   let xor_list lb = foldM Op.xor (List.hd lb) (List.tl lb)
 
@@ -256,7 +234,7 @@ struct
   (* Section 6.2.2 step 3. *)
   let step3_one_iteration t : vars -> Op.tl repr array -> vars t =
    fun (a, b, c, d, e, f, g, h) ws ->
-    let ( + ) = add in
+    let ( + ) = Op.add in
     with_label ~label:"Sha2.step3_one_iteration"
     @@ let* ks in
        (* t1 <- h + tmp_sum + tmp_ch + ks.(t) + ws.(t) *)
@@ -300,7 +278,7 @@ struct
     @@
     let vars = [a; b; c; d; e; f; g; h] in
     let hs = Array.to_list hs in
-    let* res = map2M add vars hs in
+    let* res = map2M Op.add vars hs in
     ret @@ Array.of_list res
 
   let process_one_block :
@@ -340,24 +318,14 @@ module type SHA2 = functor (L : LIB) -> sig
   val digest : Bytes.tl repr -> Bytes.tl repr t
 end
 
-module SHA224 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha224) (L.Bytes)
+module Limb4 = struct
+  let nb_bits = 4
+end
 
-module SHA256 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha256) (L.Bytes)
+module SHA224 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha224) (L.Limbs (Limb4))
 
-module SHA384 : SHA2 =
-functor
-  (L : LIB)
-  ->
-  MAKE (L) (Sha384)
-    (L.Limbs (struct
-      let nb_bits = 4
-    end))
+module SHA256 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha256) (L.Limbs (Limb4))
 
-module SHA512 : SHA2 =
-functor
-  (L : LIB)
-  ->
-  MAKE (L) (Sha512)
-    (L.Limbs (struct
-      let nb_bits = 4
-    end))
+module SHA384 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha384) (L.Limbs (Limb4))
+
+module SHA512 : SHA2 = functor (L : LIB) -> MAKE (L) (Sha512) (L.Limbs (Limb4))
