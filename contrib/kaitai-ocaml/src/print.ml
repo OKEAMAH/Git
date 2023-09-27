@@ -68,7 +68,7 @@ let instanceSpec InstanceSpec.{doc = _; descr} =
   match descr with
   | ValueInstanceSpec instance ->
       mapping [("value", scalar (Ast.to_string instance.value))]
-  | ParseInstanceSpec -> failwith "not supported"
+  | ParseInstanceSpec -> failwith "not supported (ParseInstanceSpec)"
 
 let instances_spec instances =
   mapping (instances |> List.map (fun (k, v) -> (k, instanceSpec v)))

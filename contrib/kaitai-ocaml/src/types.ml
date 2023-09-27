@@ -33,6 +33,10 @@ module Ast = struct
 
   type typeId = {absolute : bool; names : string list; isArray : bool}
 
+  let typeId_to_string {absolute; names; isArray} =
+    if isArray || not absolute then failwith "not implemented (typeId)" ;
+    String.concat "." names
+
   type operator =
     | Add
     | Sub
@@ -48,7 +52,7 @@ module Ast = struct
   let operator_to_string = function
     | BitAnd -> "&"
     | RShift -> ">>"
-    | _ -> failwith "not implemented"
+    | _ -> failwith "not implemented (operator)"
 
   type unaryop = Invert | Not | Minus
 
@@ -57,7 +61,7 @@ module Ast = struct
   let cmpop_to_string = function
     | NotEq -> "!="
     | Eq -> "=="
-    | _ -> failwith "not implemented"
+    | _ -> failwith "not implemented (cmpop)"
 
   type t =
     | Raw of string
@@ -109,7 +113,9 @@ module Ast = struct
     | Attribute {value; attr} -> Format.sprintf "(%s.%s)" (to_string value) attr
     | Subscript {value; idx} ->
         Format.sprintf "%s[%s]" (to_string value) (to_string idx)
-    | _ -> failwith "not implemented"
+    | CastToType {value; typeName} ->
+        Format.sprintf "%s.as<%s>" (to_string value) (typeId_to_string typeName)
+    | _ -> failwith "not implemented (ast)"
 end
 
 type processExpr =
@@ -120,6 +126,8 @@ type processExpr =
 
 module BitEndianness = struct
   type t = LittleBitEndian | BigBitEndidan
+
+  let to_string = function LittleBitEndian -> "le" | BigBitEndidan -> "be"
 end
 
 module Endianness = struct
@@ -132,7 +140,7 @@ module Endianness = struct
   let to_string = function
     | `BE -> "be"
     | `LE -> "le"
-    | `Calc _ | `Inherited -> failwith "not supported"
+    | `Calc _ | `Inherited -> failwith "not supported (Calc | Inherited)"
 end
 
 module DocSpec = struct
@@ -351,12 +359,14 @@ end = struct
               (endian
               |> Option.map Endianness.to_string
               |> Option.value ~default:"")
-        | _ -> failwith "not supported")
+        | BitsType {width; bit_endian} ->
+            Printf.sprintf "b%d%s" width (BitEndianness.to_string bit_endian)
+        | _ -> failwith "not supported (NumericType)")
     | NumericType (Float_type (FloatMultiType {width = _; endian = _})) -> "f8"
-    | BytesType (BytesLimitType _) -> "fixed size bytes"
-    | BytesType (BytesEosType _) -> "variable size bytes"
     | ComplexDataType (UserType {meta = {id = Some id; _}; _}) -> id
-    | _ -> failwith "not supported"
+    | BytesType _ ->
+        failwith "Bytes types are ommitted in kaitai struct representation"
+    | _ -> failwith "not supported (datatype)"
 end
 
 and AttrSpec : sig

@@ -39,25 +39,30 @@
 <td>0</td>
 <td>...</td>
 <td>n</td>
-<td><a href="#type-ground__n-n-n_group">NGroup</a></td>
+<td><a href="#type-ground__n-n_chunk">NChunk</a></td>
 <td></td>
 </tr>
 </table>
-<a name='type-ground__n-n-n_group'></a>
-<h3>Type: NGroup</h3>
+<a name='type-ground__n-n_chunk'></a>
+<h2>Type: NChunk</h2>
 
 <table class="table">
 <tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
 <tr>
 <td>0</td>
 <td>...</td>
-<td>b</td>
-<td>u1</td>
+<td>continue</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:1</td>
+<td>...</td>
+<td>payload</td>
+<td>b7</td>
 <td></td>
 </tr>
 </table>
-value instance: ValueInstanceSpec(InstanceIdentifier(has_next),List(types, n, types, n_group, instances, has_next),DocSpec(None,List()),Compare(BinOp(Name(identifier(b)),BitAnd,IntNum(128)),NotEq,IntNum(0)),None,Some(CalcBooleanType))
-value instance: ValueInstanceSpec(InstanceIdentifier(value),List(types, n, types, n_group, instances, value),DocSpec(None,List()),BinOp(Name(identifier(b)),BitAnd,IntNum(127)),None,Some(CalcIntType))
 
   </div>
     <!-- Optional JavaScript -->

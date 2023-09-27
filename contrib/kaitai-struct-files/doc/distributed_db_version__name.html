@@ -9,24 +9,32 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
 
-    <title>Id005Psbabym1ScriptLoc format specification</title>
+    <title>DistributedDbVersionName format specification</title>
   </head>
   <body>
            <div class="container">
-  <h1>Id005Psbabym1ScriptLoc format specification</h1>
+  <h1>DistributedDbVersionName format specification</h1>
 
       
-<a name='type-id_005__psbabym1__script__loc'></a>
-<h1>Type: Id005Psbabym1ScriptLoc</h1>
+<a name='type-distributed_db_version__name'></a>
+<h1>Type: DistributedDbVersionName</h1>
 
+<p>A name for the distributed DB protocol</p>
 <table class="table">
 <tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
 <tr>
 <td>0</td>
 <td>...</td>
-<td>micheline__location</td>
+<td>len_distributed_db_version__name</td>
 <td>s4be</td>
-<td>Canonical location in a Micheline expression: The location of a node in a Micheline expression tree in prefix order, with zero being the root and adding one for every basic node, sequence and primitive application.</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>distributed_db_version__name</td>
+<td></td>
+<td></td>
 </tr>
 </table>
 
