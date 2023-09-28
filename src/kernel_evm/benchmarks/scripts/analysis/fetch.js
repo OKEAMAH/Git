@@ -3,7 +3,8 @@ const MLR = require("ml-regression-multivariate-linear")
 module.exports = { print_fetch_analysis }
 const number_formatter_compact = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'long' });
 const fs = require('fs');
-const csv = require('csv-stringify/sync');
+const csv = require('csv-stringify/sync')
+const utils = require("./utils")
 const OUTPUT = 'fetch_data.csv'
 const MODEL_INTERCEPT = 165000
 const MODEL_COEF_SIZE = 600
@@ -30,15 +31,9 @@ function print_fetch_analysis(infos) {
         columns: ["benchmark_name", "size", "nb_tx", "ticks"]
     };
     fs.writeFileSync(OUTPUT, csv.stringify(infos.fetch_data, csv_config))
-    let max_error_current = 0;
-    let nb_error = 0
-    for (datum of infos.fetch_data) {
-        let error = datum.ticks - predict_current(datum)
-        if (error > 0) nb_error += 1
-        max_error_current = Math.max(max_error_current, error)
-    }
+
     console.log(`current model: Y = ${MODEL_INTERCEPT} + ${MODEL_COEF_NB_TX} * nbtx + ${MODEL_COEF_SIZE} * size`)
-    console.log(`nb of errors: ${nb_error} ; maximum error: ${max_error_current}`)
+    return utils.print_summary_errors(infos.fetch_data, datum => { return datum.ticks - predict_current(datum) })
 }
 
 function compare(prediction, value) {

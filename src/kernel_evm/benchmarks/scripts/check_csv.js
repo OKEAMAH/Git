@@ -50,7 +50,7 @@ const processFile = async () => {
 (async () => {
     const infos = await processFile()
     let exit_status = analysis.check_result(infos.analysis)
-    sanity.print_summary(infos.sanity)
+    // sanity.print_summary(infos.sanity)
     await graphs.draw_tick_per_gas(infos.graphs)
     process.exit(exit_status)
 })()
