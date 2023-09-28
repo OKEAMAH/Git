@@ -753,11 +753,11 @@ let may_reset_profiler =
       let curr_head_hash = proposal.block.hash in
       match !prev_head with
       | None ->
-          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
+          Baking_profiler.record (Block_hash.to_b58check curr_head_hash) ;
           prev_head := Some curr_head_hash
       | Some prev_head_hash when prev_head_hash <> curr_head_hash ->
           Baking_profiler.stop () ;
-          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
+          Baking_profiler.record (Block_hash.to_b58check curr_head_hash) ;
           prev_head := Some curr_head_hash
       | _ -> ())
   | _ -> ()
