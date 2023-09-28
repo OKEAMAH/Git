@@ -1,0 +1,54 @@
+qcheck random seed: 523844357
+[08:43:45.787] [sc-rollup-node1] Sep 28 10:43:45.787: [tz1KqTpEZ7Yob: publish, add_messages, cement, timeout, refute,
+[08:43:45.787] [sc-rollup-node1] Sep 28 10:43:45.787:   execute_outbox_message] injection
+[08:43:45.787] [sc-rollup-node1] Sep 28 10:43:45.787:   Request pushed on 2023-09-28T08:43:45.787-00:00, treated in 1.621us, completed in 12.260us
+[08:43:48.092] [node1] Sep 28 10:43:48.092: too few connections (0)
+[08:43:50.142] [curl#4] curl -X POST -H 'Content-Type: application/json' -s http://127.0.0.1:45381 -d '{
+[08:43:50.142] [curl#4]   "jsonrpc": "2.0",
+[08:43:50.142] [curl#4]   "method": "eth_getTransactionReceipt",
+[08:43:50.142] [curl#4]   "params": [
+[08:43:50.142] [curl#4]     "0xfe63231c20e2db740e6c2f8e18a83f8c7c60bffe94add84ca22493d5f87c2592"
+[08:43:50.142] [curl#4]   ],
+[08:43:50.142] [curl#4]   "id": "0"
+[08:43:50.142] [curl#4] }'
+[08:43:50.156] [evm_proxy_server1] Uri: //127.0.0.1:45381/
+[08:43:50.156] [evm_proxy_server1] Method: POST
+[08:43:50.156] [evm_proxy_server1] Body: {
+[08:43:50.156] [evm_proxy_server1]   "jsonrpc": "2.0",
+[08:43:50.156] [evm_proxy_server1]   "method": "eth_getTransactionReceipt",
+[08:43:50.156] [evm_proxy_server1]   "params": [
+[08:43:50.156] [evm_proxy_server1]     "0xfe63231c20e2db740e6c2f8e18a83f8c7c60bffe94add84ca22493d5f87c2592"
+[08:43:50.156] [evm_proxy_server1]   ],
+[08:43:50.156] [evm_proxy_server1]   "id": "0"
+[08:43:50.156] [evm_proxy_server1] }
+[08:43:50.158] [curl#4] {"jsonrpc":"2.0","result":null,"id":"0"}
+[08:43:50.158] curl#4 exited with code 0.
+[08:43:50.788] [client1] ./octez-client --endpoint http://localhost:45775 --base-dir /tmp/tezt-32578/1/client1 bake for bootstrap1 --minimal-timestamp
+[08:43:51.004] [client1] Sep 28 10:43:51.004: Voting pass for liquidity baking toggle vote
+[08:43:51.004] [client1] Sep 28 10:43:51.004: Voting pass for adaptive issuance vote
+[08:43:51.009] [node1] Sep 28 10:43:51.010: block at level 8 successfully pre-applied in 4.426ms
+[08:43:51.012] [client1] Sep 28 10:43:51.013: block BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level 8, round 6
+[08:43:51.012] [client1] Sep 28 10:43:51.013:   injected for bootstrap1 (tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx)
+[08:43:51.012] [client1] Injected block at minimal timestamp
+[08:43:51.014] [node1] Sep 28 10:43:51.015: head is now BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu (8)
+[08:43:51.014] [sc-rollup-node1] Sep 28 10:43:51.015: [sc_rollup_node] Layer 1 node has switched to head
+[08:43:51.014] [sc-rollup-node1] Sep 28 10:43:51.015:   BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level 8
+[08:43:51.014] [sc-rollup-node1] Sep 28 10:43:51.015: [injector] Layer 1 node has switched to head
+[08:43:51.014] [sc-rollup-node1] Sep 28 10:43:51.015:   BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level 8
+[08:43:51.015] [sc-rollup-node1] Sep 28 10:43:51.015: A new iteration of process_heads has been triggered: processing 1 heads from
+[08:43:51.015] [sc-rollup-node1] Sep 28 10:43:51.015:   level 8 to level 8
+[08:43:51.015] [sc-rollup-node1] Sep 28 10:43:51.015: Processing head BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level
+[08:43:51.015] [sc-rollup-node1] Sep 28 10:43:51.015:   8
+[08:43:51.016] [sc-rollup-node1] Sep 28 10:43:51.016: Fetching 0 messages from block
+[08:43:51.016] [sc-rollup-node1] Sep 28 10:43:51.016:   BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level 8
+[08:43:51.016] [sc-rollup-node1] Sep 28 10:43:51.016: [tz1KqTpEZ7Yob: publish, add_messages, cement, timeout, refute,
+[08:43:51.016] [sc-rollup-node1] Sep 28 10:43:51.016:   execute_outbox_message] confirmed Tezos level 6
+[08:43:51.018] client1 exited with code 0.
+[08:43:51.019] [sc-rollup-node1] Sep 28 10:43:51.020: Transitioned PVM at inbox level 8 to
+[08:43:51.019] [sc-rollup-node1] Sep 28 10:43:51.020:   srs13DzH2DxqSPSeJ7vMZJkDJk3R11MhayTaMnoTRPmJcWnW3BqkMa at tick 143000000000
+[08:43:51.019] [sc-rollup-node1] Sep 28 10:43:51.020:   with 3 messages
+[08:43:51.021] [sc-rollup-node1] Sep 28 10:43:51.021: Finished processing layer 1 head
+[08:43:51.021] [sc-rollup-node1] Sep 28 10:43:51.021:   BMMyfGsys6KpGLQiyhptHJh4TKv9stRdEfd3CzDmFWJCjUMRvBu at level 8 in 5.974ms
+[08:43:51.021] [error] Transaction still hasn't been included
+[08:43:51.097] [FAILURE] (1/1, 1 failed) Alpha: Check `evm_getBlockByNumber` with full blocks returns the correct informations
+[08:43:51.097] Try again with: _build/default/tezt/tests/main.exe --verbose --file tezt/tests/evm_rollup.ml --title 'Alpha: Check `evm_getBlockByNumber` with full blocks returns the correct informations'
