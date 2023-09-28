@@ -10,6 +10,8 @@ use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use evm_execution::run_transaction;
 use primitive_types::{H160, U256};
+use rlp::{Encodable, RlpStream};
+use sha3::{Digest, Keccak256};
 use tezos_ethereum::block::BlockConstants;
 use tezos_ethereum::transaction::TransactionHash;
 use tezos_ethereum::tx_common::EthereumTransactionCommon;
@@ -100,6 +102,31 @@ pub struct TransactionObjectInfo {
     pub signature: Option<TxSignature>,
 }
 
+fn transaction_hash(
+    transaction_content: &TransactionContent,
+    gas_price: U256,
+) -> TransactionHash {
+    let mut stream = RlpStream::new();
+    match transaction_content {
+        TransactionContent::Ethereum(tx) => {
+            stream.append(&tx.nonce);
+            stream.append(&gas_price);
+            stream.append(&tx.gas_limit);
+            stream.append(&tx.to);
+            stream.append(&tx.value);
+            stream.append(&tx.data);
+            stream.append(&tx.to);
+            tx.signature.rlp_append(&mut stream);
+        }
+        TransactionContent::Deposit(deposit) => {
+            stream.append(&deposit.amount);
+            stream.append(&deposit.gas_price);
+            stream.append(&deposit.receiver);
+        }
+    }
+    Keccak256::digest(stream.as_raw()).into()
+}
+
 #[inline(always)]
 fn make_receipt_info(
     tx_hash: TransactionHash,
@@ -124,12 +151,12 @@ fn make_object_info(
     from: H160,
     index: u32,
     gas_used: U256,
-    block_base_fee_per_gas: U256,
+    gas_price: U256,
 ) -> TransactionObjectInfo {
     TransactionObjectInfo {
         from,
         gas_used,
-        gas_price: transaction.gas_price(block_base_fee_per_gas),
+        gas_price,
         hash: tx_hash,
         input: transaction.data(),
         nonce: transaction.nonce(),
@@ -305,7 +332,10 @@ pub fn apply_transaction<Host: Runtime>(
     evm_account_storage: &mut EthereumAccountStorage,
     accounts_index: &mut IndexableStorage,
 ) -> Result<Option<(TransactionReceiptInfo, TransactionObjectInfo)>, Error> {
+    let gas_price = transaction.gas_price(block_constants.base_fee_per_gas);
     let to = transaction.to();
+    let tx_hash = transaction_hash(transaction, gas_price);
+
     let apply_result = match &transaction {
         TransactionContent::Ethereum(tx) => apply_ethereum_transaction_common(
             host,
@@ -313,7 +343,7 @@ pub fn apply_transaction<Host: Runtime>(
             precompiles,
             evm_account_storage,
             tx,
-            transaction,
+            tx_hash,
         ),
         TransactionContent::Deposit(deposit) => {
             apply_deposit(host, evm_account_storage, deposit)
@@ -327,14 +357,16 @@ pub fn apply_transaction<Host: Runtime>(
             }
 
             let receipt_info =
-                make_receipt_info(transaction, index, execution_outcome, caller, to);
+                make_receipt_info(tx_hash, index, execution_outcome, caller, to);
             let object_info = make_object_info(
+                tx_hash,
                 transaction,
                 caller,
                 index,
                 gas_used,
-                block_constants.base_fee_per_gas,
+                gas_price,
             );
+
             index_new_accounts(host, accounts_index, &receipt_info)?;
             Ok(Some((receipt_info, object_info)))
         }
