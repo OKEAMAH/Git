@@ -47,11 +47,13 @@ let cost_N_IAdd_int = cost_N_IAdd_int_synthesized
 
 let cost_N_IAdd_nat = cost_N_IAdd_nat_synthesized
 
-let cost_N_IAdd_seconds_to_timestamp = cost_N_IAdd_seconds_to_timestamp_synthesized
+let cost_N_IAdd_seconds_to_timestamp =
+  cost_N_IAdd_seconds_to_timestamp_synthesized
 
 let cost_N_IAdd_tez = cost_N_IAdd_tez_synthesized
 
-let cost_N_IAdd_timestamp_to_seconds = cost_N_IAdd_timestamp_to_seconds_synthesized
+let cost_N_IAdd_timestamp_to_seconds =
+  cost_N_IAdd_timestamp_to_seconds_synthesized
 
 let cost_N_IAddress = cost_N_IAddress_synthesized
 
@@ -91,11 +93,13 @@ let cost_N_IChainId = cost_N_IChainId_synthesized
 
 let cost_N_ICheck_signature_bls = cost_N_ICheck_signature_bls_synthesized
 
-let cost_N_ICheck_signature_ed25519 = cost_N_ICheck_signature_ed25519_synthesized
+let cost_N_ICheck_signature_ed25519 =
+  cost_N_ICheck_signature_ed25519_synthesized
 
 let cost_N_ICheck_signature_p256 = cost_N_ICheck_signature_p256_synthesized
 
-let cost_N_ICheck_signature_secp256k1 = cost_N_ICheck_signature_secp256k1_synthesized
+let cost_N_ICheck_signature_secp256k1 =
+  cost_N_ICheck_signature_secp256k1_synthesized
 
 let cost_N_IComb_get = cost_N_IComb_get_synthesized
 
@@ -283,7 +287,8 @@ let cost_N_IOr_nat = cost_N_IOr_nat_synthesized
 
 let cost_N_IOr = cost_N_IOr_synthesized
 
-let cost_N_IPairing_check_bls12_381 = cost_N_IPairing_check_bls12_381_synthesized
+let cost_N_IPairing_check_bls12_381 =
+  cost_N_IPairing_check_bls12_381_synthesized
 
 let cost_N_IPush = cost_N_IPush_synthesized
 
@@ -380,7 +385,6 @@ let cost_N_KReturn = cost_N_KReturn_synthesized
 let cost_N_KUndip = cost_N_KUndip_synthesized
 
 let cost_N_KView_exit = cost_N_KView_exit_synthesized
-
 
 (* ------------------------------------------------------------------------ *)
 
@@ -487,8 +491,7 @@ let cost_SAPLING_DIFF_ENCODING ~nfs ~cms = S.safe_int ((nfs * 22) + (cms * 215))
 let cost_N_IDropN size =
   let open S.Syntax in
   let w3 = S.safe_int size in
-  (w3 * S.safe_int 2) + (w3 lsr 1) + (w3 lsr 3)
-  + S.safe_int 30
+  (w3 * S.safe_int 2) + (w3 lsr 1) + (w3 lsr 3) + S.safe_int 30
 
 (* model N_IDupN *)
 (* fun size ->
