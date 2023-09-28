@@ -22,6 +22,7 @@ function init_analysis() {
         total_gas: 0,
         // total amount of ticks used in run_transaction_ticks
         total_ticks_tx: 0,
+        total_ticks: 0,
         tick_per_gas: [],
         run_transaction_overhead: [],
         init: 0,
@@ -44,13 +45,13 @@ function print_analysis(infos) {
     const tickPerGas = infos.total_ticks_tx / infos.total_gas
     console.info(`-------------------------------------------------------`)
     console.info(`Fetch Analysis`)
-    fetch.print_fetch_analysis(infos)
+    let error_fetch = fetch.print_fetch_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Transaction Registering Analysis`)
-    tx_register.print_analysis(infos)
+    let error_register = tx_register.print_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Block Finalization Analysis`)
-    block_finalization.print_analysis(infos)
+    let error_finalize = block_finalization.print_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Kernels infos`)
     console.info(`Overall tick per gas: ~${tickPerGas.toFixed()}`)
@@ -61,6 +62,8 @@ function print_analysis(infos) {
     console.info(`transfer overhead: ${pp_avg_max(infos.run_transaction_overhead)} `)
     console.info(`-------------------------------------------------------`)
     console.info(`Benchmark run infos`)
+    console.info(`Total gas: ${infos.total_gas}`)
+    console.info(`Total tick: ${infos.total_ticks_tx}`)
     console.info(`Number of tx: ${infos.signatures.length}`)
     console.info(`Number of transfers: ${infos.nb_transfer}`)
     console.info(`Number of create: ${infos.nb_create}`)
@@ -68,7 +71,7 @@ function print_analysis(infos) {
     console.info(`Number of kernel run: ${infos.nb_kernel_run}`)
     console.info(`Number of blocks: ${infos.block_finalization.length}`)
     console.info(`-------------------------------------------------------`)
-
+    return error_fetch + error_finalize + error_register
 }
 
 
@@ -98,7 +101,7 @@ function process_bench_record(record, acc) {
 function process_transaction_record(record, acc) {
     acc.signatures.push(record.signature_verification_ticks)
     if (!isNaN(record.tx_size) && !isNaN(record.store_transaction_object_ticks))
-        acc.tx_register.push([record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
+        acc.tx_register.push(record)
     if (is_transfer(record)) process_transfer(record, acc)
     else if (is_create(record)) process_create(record, acc)
     else process_call(record, acc)
@@ -123,11 +126,10 @@ function process_call(record, acc) {
 }
 
 function check_result(infos) {
-    const tickPerGas = infos.total_ticks_tx / infos.total_gas
-    print_analysis(infos)
-    const is_error = tickPerGas > 2000
+    let nb_errors = print_analysis(infos)
+    const is_error = nb_errors > 0
     if (is_error) {
-        console.error(`Tick per gas too high!`)
+        console.error(`too many model underestimation ${nb_errors}`)
         return 1
     }
     return 0
