@@ -9,19 +9,19 @@ big_map diff
 trace
   - location: 8 (just consumed gas: 5.942)
     [ (Pair { "d" ; "e" ; "f" } "abc") ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ { "d" ; "e" ; "f" }
       "abc" ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ "abc"
       { "d" ; "e" ; "f" } ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.025)
     [ { "abc" ; "d" ; "e" ; "f" } ]
   - location: 11 (just consumed gas: 0.143)
     [ "abcdef" ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ {}
       "abcdef" ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ (Pair {} "abcdef") ]
 

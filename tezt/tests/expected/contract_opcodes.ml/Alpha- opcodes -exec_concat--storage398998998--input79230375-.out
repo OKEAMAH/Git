@@ -14,35 +14,35 @@ trace
   - location: 8 (just consumed gas: 0.010)
     [ { PUSH string "_abc" ; NIL string ; SWAP ; CONS ; SWAP ; CONS ; CONCAT }
       "" ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.015)
     [ ""
       { PUSH string "_abc" ; NIL string ; SWAP ; CONS ; SWAP ; CONS ; CONCAT } ]
-  - location: 12 (just consumed gas: 0.020)
+  - location: 12 (just consumed gas: 0.025)
     [ "_abc"
       "" ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ {}
       "_abc"
       "" ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ "_abc"
       {}
       "" ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.025)
     [ { "_abc" }
       "" ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ ""
       { "_abc" } ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.025)
     [ { "" ; "_abc" } ]
   - location: 21 (just consumed gas: 0.122)
     [ "_abc" ]
   - location: 23 (just consumed gas: 0.035)
     [ "_abc" ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       "_abc" ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} "_abc") ]
 

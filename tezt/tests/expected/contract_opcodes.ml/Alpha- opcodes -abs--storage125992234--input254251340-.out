@@ -11,7 +11,7 @@ trace
     [ (Pair 948 Unit) ]
   - location: 7 (just consumed gas: 0.010)
     [ 948 ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 948
       948 ]
   - location: 9 (just consumed gas: 0.026)
@@ -28,11 +28,11 @@ trace
     [  ]
   - location: 14 (just consumed gas: 0.025)
     [  ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

@@ -29,7 +29,7 @@ trace
     [ (Left (Pair 1 257)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 1 257) ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ 1
       257 ]
 Fatal error:
@@ -65,7 +65,7 @@ trace
     [ (Left (Pair 123 257)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 123 257) ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ 123
       257 ]
 Fatal error:
@@ -101,7 +101,7 @@ trace
     [ (Right (Pair 1 257)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 1 257) ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ 1
       257 ]
 Fatal error:
@@ -137,7 +137,7 @@ trace
     [ (Right (Pair 123 257)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 123 257) ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ 123
       257 ]
 Fatal error:
@@ -173,10 +173,10 @@ trace
     [ (Left Unit) ]
   - location: 10 (just consumed gas: 0.010)
     [ Unit ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ 922337203685477580700
       Unit ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ 10
       922337203685477580700
       Unit ]
@@ -213,10 +213,10 @@ trace
     [ (Right Unit) ]
   - location: 10 (just consumed gas: 0.010)
     [ Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ 10
       Unit ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ 922337203685477580700
       10
       Unit ]

@@ -11,13 +11,13 @@ trace
     [ (Pair (Pair True True) None) ]
   - location: 10 (just consumed gas: 0.010)
     [ (Pair True True) ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ (Pair True True)
       (Pair True True) ]
   - location: 12 (just consumed gas: 0.010)
     [ True
       (Pair True True) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair True True)
       True ]
   - location: 14 (just consumed gas: 0.010)
@@ -27,9 +27,9 @@ trace
     [ True ]
   - location: 16 (just consumed gas: 0.010)
     [ (Some True) ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ {}
       (Some True) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ (Pair {} (Some True)) ]
 

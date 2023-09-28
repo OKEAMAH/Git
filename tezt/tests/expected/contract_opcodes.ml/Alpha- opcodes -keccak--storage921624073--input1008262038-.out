@@ -15,10 +15,10 @@ trace
     [ 0xb6e16d27ac5ab427a7f68900ac5559ce272dc6c37c82b3e052246c82244c50e4 ]
   - location: 10 (just consumed gas: 0.010)
     [ (Some 0xb6e16d27ac5ab427a7f68900ac5559ce272dc6c37c82b3e052246c82244c50e4) ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ {}
       (Some 0xb6e16d27ac5ab427a7f68900ac5559ce272dc6c37c82b3e052246c82244c50e4) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair {}
             (Some 0xb6e16d27ac5ab427a7f68900ac5559ce272dc6c37c82b3e052246c82244c50e4)) ]
 

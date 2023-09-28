@@ -13,18 +13,18 @@ trace
     [ (Left (Pair 15 2)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 15 2) ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ 15
       2 ]
-  - location: 18 (just consumed gas: 0.128)
+  - location: 18 (just consumed gas: 0.130)
     [ 60 ]
   - location: 15 (just consumed gas: 0.025)
     [ 60 ]
   - location: 22 (just consumed gas: 0.010)
     [ (Some 60) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ {}
       (Some 60) ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ (Pair {} (Some 60)) ]
 

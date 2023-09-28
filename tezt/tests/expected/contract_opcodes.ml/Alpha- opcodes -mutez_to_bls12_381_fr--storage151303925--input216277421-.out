@@ -11,10 +11,10 @@ trace
     [ (Pair 257 0x0000000000000000000000000000000000000000000000000000000000000000) ]
   - location: 7 (just consumed gas: 0.010)
     [ 257 ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 1
       257 ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ 257
       1 ]
   - location: 12 (just consumed gas: 0.080)
@@ -25,14 +25,14 @@ trace
     [ (Pair 257 0) ]
   - location: 20 (just consumed gas: 0.010)
     [ 257 ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ 0x0100000000000000000000000000000000000000000000000000000000000000
       257 ]
   - location: 24 (just consumed gas: 0.267)
     [ 0x0101000000000000000000000000000000000000000000000000000000000000 ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ {}
       0x0101000000000000000000000000000000000000000000000000000000000000 ]
-  - location: 27 (just consumed gas: 0.010)
+  - location: 27 (just consumed gas: 0.015)
     [ (Pair {} 0x0101000000000000000000000000000000000000000000000000000000000000) ]
 

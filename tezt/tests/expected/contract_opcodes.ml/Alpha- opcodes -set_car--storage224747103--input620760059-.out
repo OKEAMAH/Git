@@ -9,7 +9,7 @@ big_map diff
 trace
   - location: 9 (just consumed gas: 10.806)
     [ (Pair "world" "hello" 0) ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ (Pair "world" "hello" 0)
       (Pair "world" "hello" 0) ]
   - location: 10 (just consumed gas: 0.010)
@@ -19,10 +19,10 @@ trace
     [ (Pair "world" "hello" 0) ]
   - location: 13 (just consumed gas: 0.010)
     [ "world" ]
-  - location: 11 (just consumed gas: 0.035)
+  - location: 11 (just consumed gas: 0.040)
     [ (Pair "hello" 0)
       "world" ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ (Pair "hello" 0)
       (Pair "hello" 0)
       "world" ]
@@ -36,14 +36,14 @@ trace
   - location: 18 (just consumed gas: 0.010)
     [ 0
       "world" ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ "world"
       0 ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ (Pair "world" 0) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       (Pair "world" 0) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} "world" 0) ]
 

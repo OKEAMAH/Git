@@ -11,25 +11,25 @@ trace
     [ (Pair (Pair (Pair (Pair (Pair 1 2) 3) 4) 5) 0) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair (Pair (Pair (Pair 1 2) 3) 4) 5) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Pair (Pair (Pair 1 2) 3) 4)
       5 ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ (Pair (Pair 1 2) 3)
       4
       5 ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair 1 2)
       3
       4
       5 ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ 1
       2
       3
       4
       5 ]
-  - location: 20 (just consumed gas: 0.057)
+  - location: 20 (just consumed gas: 0.064)
     [ 5
       1
       2
@@ -51,11 +51,11 @@ trace
     [ 4 ]
   - location: 27 (just consumed gas: 0.010)
     [  ]
-  - location: 22 (just consumed gas: 0.035)
+  - location: 22 (just consumed gas: 0.040)
     [ 5 ]
-  - location: 28 (just consumed gas: 0.010)
+  - location: 28 (just consumed gas: 0.015)
     [ {}
       5 ]
-  - location: 30 (just consumed gas: 0.010)
+  - location: 30 (just consumed gas: 0.015)
     [ (Pair {} 5) ]
 

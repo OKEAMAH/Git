@@ -8,19 +8,19 @@ big_map diff
   New map(4) of type (big_map string nat)
   Set map(4)["foo"] to 1
 trace
-  - location: 12 (just consumed gas: 10.681)
+  - location: 12 (just consumed gas: 10.756)
     [ (Pair "bar" { Elt "foo" 1 } None) ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ "bar"
       (Pair { Elt "foo" 1 } None) ]
   - location: 13 (just consumed gas: 0.010)
     [ (Pair { Elt "foo" 1 } None) ]
   - location: 15 (just consumed gas: 0.010)
     [ { Elt "foo" 1 } ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ { Elt "foo" 1 }
       { Elt "foo" 1 } ]
-  - location: 13 (just consumed gas: 0.035)
+  - location: 13 (just consumed gas: 0.040)
     [ "bar"
       { Elt "foo" 1 }
       { Elt "foo" 1 } ]
@@ -30,14 +30,14 @@ trace
   - location: 18 (just consumed gas: 0.010)
     [ (Some False)
       { Elt "foo" 1 } ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ { Elt "foo" 1 }
       (Some False) ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ (Pair { Elt "foo" 1 } (Some False)) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "foo" 1 } (Some False)) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} { Elt "foo" 1 } (Some False)) ]
 

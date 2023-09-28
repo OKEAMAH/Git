@@ -11,16 +11,16 @@ trace
     [ (Pair (Pair 0 8) None) ]
   - location: 10 (just consumed gas: 0.010)
     [ (Pair 0 8) ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ 0
       8 ]
   - location: 12 (just consumed gas: 0.035)
     [ 8 ]
   - location: 13 (just consumed gas: 0.010)
     [ (Some 8) ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ {}
       (Some 8) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Pair {} (Some 8)) ]
 

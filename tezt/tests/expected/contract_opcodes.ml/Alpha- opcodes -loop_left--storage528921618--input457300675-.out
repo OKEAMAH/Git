@@ -11,19 +11,19 @@ trace
     [ (Pair {} { "" }) ]
   - location: 9 (just consumed gas: 0.010)
     [ {} ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ {}
       {} ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ {}
       {} ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair {} {}) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Left (Pair {} {})) ]
   - location: 41 (just consumed gas: 0.020)
     [ (Pair {} {}) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ (Pair {} {})
       (Pair {} {}) ]
   - location: 20 (just consumed gas: 0.010)
@@ -33,7 +33,7 @@ trace
     [ (Pair {} {}) ]
   - location: 23 (just consumed gas: 0.010)
     [ {} ]
-  - location: 21 (just consumed gas: 0.035)
+  - location: 21 (just consumed gas: 0.040)
     [ {}
       {} ]
   - location: 24 (just consumed gas: 0.010)
@@ -44,9 +44,9 @@ trace
     [ (Right {}) ]
   - location: 41 (just consumed gas: 0.035)
     [ {} ]
-  - location: 41 (just consumed gas: 0.010)
+  - location: 41 (just consumed gas: 0.015)
     [ {}
       {} ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Pair {} {}) ]
 

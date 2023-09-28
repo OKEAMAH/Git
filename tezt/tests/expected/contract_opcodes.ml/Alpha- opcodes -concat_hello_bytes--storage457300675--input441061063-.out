@@ -13,16 +13,16 @@ trace
     [ { 0xcd } ]
   - location: 10 (just consumed gas: 0.050)
     [ 0xcd ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ 0xff
       0xcd ]
   - location: 15 (just consumed gas: 0.046)
     [ 0xffcd ]
-  - location: 10 (just consumed gas: 0.066)
+  - location: 10 (just consumed gas: 0.072)
     [ { 0xffcd } ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ {}
       { 0xffcd } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair {} { 0xffcd }) ]
 

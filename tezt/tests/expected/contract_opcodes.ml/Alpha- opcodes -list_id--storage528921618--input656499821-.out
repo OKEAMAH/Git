@@ -11,9 +11,9 @@ trace
     [ (Pair { "1" ; "2" ; "3" } { "" }) ]
   - location: 9 (just consumed gas: 0.010)
     [ { "1" ; "2" ; "3" } ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ {}
       { "1" ; "2" ; "3" } ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ (Pair {} { "1" ; "2" ; "3" }) ]
 

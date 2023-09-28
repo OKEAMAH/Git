@@ -11,7 +11,7 @@ trace
     [ (Pair (Pair "1970-01-01T00:00:01Z" "1970-01-01T00:00:00Z") 111) ]
   - location: 9 (just consumed gas: 0.010)
     [ (Pair "1970-01-01T00:00:01Z" "1970-01-01T00:00:00Z") ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ (Pair "1970-01-01T00:00:01Z" "1970-01-01T00:00:00Z")
       (Pair "1970-01-01T00:00:01Z" "1970-01-01T00:00:00Z") ]
   - location: 11 (just consumed gas: 0.010)
@@ -21,14 +21,14 @@ trace
     [ (Pair "1970-01-01T00:00:01Z" "1970-01-01T00:00:00Z") ]
   - location: 14 (just consumed gas: 0.010)
     [ "1970-01-01T00:00:00Z" ]
-  - location: 12 (just consumed gas: 0.035)
+  - location: 12 (just consumed gas: 0.040)
     [ "1970-01-01T00:00:01Z"
       "1970-01-01T00:00:00Z" ]
   - location: 15 (just consumed gas: 0.035)
     [ 1 ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ {}
       1 ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair {} 1) ]
 

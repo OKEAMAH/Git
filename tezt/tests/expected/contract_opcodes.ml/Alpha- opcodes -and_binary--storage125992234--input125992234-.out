@@ -11,14 +11,14 @@ trace
     [ (Pair Unit Unit) ]
   - location: 7 (just consumed gas: 0.010)
     [  ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 5 ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ 6
       5 ]
   - location: 14 (just consumed gas: 0.035)
     [ 4 ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ 4
       4 ]
   - location: 20 (just consumed gas: 0.035)
@@ -29,14 +29,14 @@ trace
     [  ]
   - location: 22 (just consumed gas: 0.025)
     [  ]
-  - location: 28 (just consumed gas: 0.010)
+  - location: 28 (just consumed gas: 0.015)
     [ 6 ]
-  - location: 31 (just consumed gas: 0.010)
+  - location: 31 (just consumed gas: 0.015)
     [ 5
       6 ]
   - location: 34 (just consumed gas: 0.035)
     [ 4 ]
-  - location: 35 (just consumed gas: 0.010)
+  - location: 35 (just consumed gas: 0.015)
     [ 4
       4 ]
   - location: 40 (just consumed gas: 0.035)
@@ -47,14 +47,14 @@ trace
     [  ]
   - location: 42 (just consumed gas: 0.025)
     [  ]
-  - location: 48 (just consumed gas: 0.010)
+  - location: 48 (just consumed gas: 0.015)
     [ 12 ]
-  - location: 51 (just consumed gas: 0.010)
+  - location: 51 (just consumed gas: 0.015)
     [ -1
       12 ]
   - location: 54 (just consumed gas: 0.035)
     [ 12 ]
-  - location: 55 (just consumed gas: 0.010)
+  - location: 55 (just consumed gas: 0.015)
     [ 12
       12 ]
   - location: 60 (just consumed gas: 0.035)
@@ -65,14 +65,14 @@ trace
     [  ]
   - location: 62 (just consumed gas: 0.025)
     [  ]
-  - location: 68 (just consumed gas: 0.010)
+  - location: 68 (just consumed gas: 0.015)
     [ 12 ]
-  - location: 71 (just consumed gas: 0.010)
+  - location: 71 (just consumed gas: 0.015)
     [ -5
       12 ]
   - location: 74 (just consumed gas: 0.035)
     [ 8 ]
-  - location: 75 (just consumed gas: 0.010)
+  - location: 75 (just consumed gas: 0.015)
     [ 8
       8 ]
   - location: 80 (just consumed gas: 0.035)
@@ -83,11 +83,11 @@ trace
     [  ]
   - location: 82 (just consumed gas: 0.025)
     [  ]
-  - location: 88 (just consumed gas: 0.010)
+  - location: 88 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 89 (just consumed gas: 0.010)
+  - location: 89 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 91 (just consumed gas: 0.010)
+  - location: 91 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

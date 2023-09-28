@@ -11,11 +11,11 @@ trace
     [ (Pair Unit 9999999) ]
   - location: 7 (just consumed gas: 0.010)
     [  ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 10 ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ {}
       10 ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ (Pair {} 10) ]
 

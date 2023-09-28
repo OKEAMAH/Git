@@ -17,33 +17,33 @@ trace
     [ (Pair Unit None) ]
   - location: 8 (just consumed gas: 0.010)
     [  ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ 50000
       Unit ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ None
       50000
       Unit ]
-  - location: 13 (just consumed gas: 0.716)
+  - location: 13 (just consumed gas: 0.852)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000002d08603000000001c02000000170500036c0501036c050202000000080317053d036d034200000002030b
       "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm" ]
   - location: 25 (just consumed gas: 0.010)
     [ "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm" ]
   - location: 27 (just consumed gas: 0.010)
     [ (Some "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm") ]
-  - location: 28 (just consumed gas: 0.010)
+  - location: 28 (just consumed gas: 0.015)
     [ {}
       (Some "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm") ]
-  - location: 25 (just consumed gas: 0.035)
+  - location: 25 (just consumed gas: 0.040)
     [ 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000002d08603000000001c02000000170500036c0501036c050202000000080317053d036d034200000002030b
       {}
       (Some "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm") ]
-  - location: 30 (just consumed gas: 0.010)
+  - location: 30 (just consumed gas: 0.025)
     [ { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000002d08603000000001c02000000170500036c0501036c050202000000080317053d036d034200000002030b }
       (Some "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm") ]
-  - location: 31 (just consumed gas: 0.010)
+  - location: 31 (just consumed gas: 0.015)
     [ (Pair { 0x011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600000002d08603000000001c02000000170500036c0501036c050202000000080317053d036d034200000002030b }
             (Some "KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm")) ]
 

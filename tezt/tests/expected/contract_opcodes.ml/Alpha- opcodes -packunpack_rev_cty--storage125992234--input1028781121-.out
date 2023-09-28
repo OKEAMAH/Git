@@ -7,7 +7,7 @@ emitted operations
 big_map diff
   
 trace
-  - location: 28 (just consumed gas: 255.382)
+  - location: 28 (just consumed gas: 255.646)
     [ (Pair (Pair "edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav"
                   Unit
                   "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
@@ -30,7 +30,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 29 (just consumed gas: 0.010)
+  - location: 29 (just consumed gas: 0.015)
     [ (Pair "edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav"
             Unit
             "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
@@ -74,7 +74,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 33 (just consumed gas: 0.010)
+  - location: 33 (just consumed gas: 0.015)
     [ "edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav"
       (Pair Unit
             "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
@@ -85,7 +85,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 31 (just consumed gas: 0.035)
+  - location: 31 (just consumed gas: 0.040)
     [ "edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav"
       "edpkuBknW28nW72KG6RoHtYW7p12T6GKc7nAbwYX5m8Wd9sDVC9yav"
       (Pair Unit
@@ -175,7 +175,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 35 (just consumed gas: 0.035)
+  - location: 35 (just consumed gas: 0.040)
     [ 0x050a00000021004798d2cc98473d7e250c898885718afd2e4efbcb1a1595ab9730761ed830de0f
       0x050a00000021004798d2cc98473d7e250c898885718afd2e4efbcb1a1595ab9730761ed830de0f
       (Pair Unit
@@ -229,7 +229,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 58 (just consumed gas: 0.010)
+  - location: 58 (just consumed gas: 0.015)
     [ (Pair Unit
             "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
             (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
@@ -269,7 +269,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ Unit
       (Pair "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
             (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
@@ -279,7 +279,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 60 (just consumed gas: 0.035)
+  - location: 60 (just consumed gas: 0.040)
     [ Unit
       Unit
       (Pair "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
@@ -361,7 +361,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 64 (just consumed gas: 0.035)
+  - location: 64 (just consumed gas: 0.040)
     [ 0x05030b
       0x05030b
       (Pair "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
@@ -410,7 +410,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 87 (just consumed gas: 0.010)
+  - location: 87 (just consumed gas: 0.015)
     [ (Pair "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
             (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
             { Unit }
@@ -446,7 +446,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 91 (just consumed gas: 0.010)
+  - location: 91 (just consumed gas: 0.015)
     [ "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
       (Pair (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
             { Unit }
@@ -455,7 +455,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 89 (just consumed gas: 0.035)
+  - location: 89 (just consumed gas: 0.040)
     [ "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
       "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7"
       (Pair (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
@@ -529,7 +529,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 93 (just consumed gas: 0.035)
+  - location: 93 (just consumed gas: 0.040)
     [ 0x050a0000004049d47dba27bd76208b092f3e500f64818920c817491b8b9094f28c2c2b9c6721b257b8878ce47182122b8ea84aeacd84a8aa28cb1f1fe48a26355a7bca4b8306
       0x050a0000004049d47dba27bd76208b092f3e500f64818920c817491b8b9094f28c2c2b9c6721b257b8878ce47182122b8ea84aeacd84a8aa28cb1f1fe48a26355a7bca4b8306
       (Pair (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
@@ -573,7 +573,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 116 (just consumed gas: 0.010)
+  - location: 116 (just consumed gas: 0.015)
     [ (Pair (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
             { Unit }
             { True }
@@ -605,7 +605,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 120 (just consumed gas: 0.010)
+  - location: 120 (just consumed gas: 0.015)
     [ (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
       (Pair { Unit }
             { True }
@@ -613,7 +613,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 118 (just consumed gas: 0.035)
+  - location: 118 (just consumed gas: 0.040)
     [ (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
       (Some "edsigthTzJ8X7MPmNeEwybRAvdxS1pupqcM5Mk4uCuyZAe7uEk68YpuGDeViW8wSXMrCi5CwoNgqs8V2w8ayB5dMJzrYCHhD8C7")
       (Pair { Unit }
@@ -679,7 +679,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 122 (just consumed gas: 0.035)
+  - location: 122 (just consumed gas: 0.040)
     [ 0x0505090a0000004049d47dba27bd76208b092f3e500f64818920c817491b8b9094f28c2c2b9c6721b257b8878ce47182122b8ea84aeacd84a8aa28cb1f1fe48a26355a7bca4b8306
       0x0505090a0000004049d47dba27bd76208b092f3e500f64818920c817491b8b9094f28c2c2b9c6721b257b8878ce47182122b8ea84aeacd84a8aa28cb1f1fe48a26355a7bca4b8306
       (Pair { Unit }
@@ -718,7 +718,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 146 (just consumed gas: 0.010)
+  - location: 146 (just consumed gas: 0.015)
     [ (Pair { Unit }
             { True }
             (Pair 19 10)
@@ -746,14 +746,14 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 150 (just consumed gas: 0.010)
+  - location: 150 (just consumed gas: 0.015)
     [ { Unit }
       (Pair { True }
             (Pair 19 10)
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 148 (just consumed gas: 0.035)
+  - location: 148 (just consumed gas: 0.040)
     [ { Unit }
       { Unit }
       (Pair { True }
@@ -811,7 +811,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 152 (just consumed gas: 0.035)
+  - location: 152 (just consumed gas: 0.040)
     [ 0x050200000002030b
       0x050200000002030b
       (Pair { True }
@@ -845,7 +845,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 176 (just consumed gas: 0.010)
+  - location: 176 (just consumed gas: 0.015)
     [ (Pair { True }
             (Pair 19 10)
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
@@ -869,13 +869,13 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 180 (just consumed gas: 0.010)
+  - location: 180 (just consumed gas: 0.015)
     [ { True }
       (Pair (Pair 19 10)
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 178 (just consumed gas: 0.035)
+  - location: 178 (just consumed gas: 0.040)
     [ { True }
       { True }
       (Pair (Pair 19 10)
@@ -901,7 +901,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 185 (just consumed gas: 0.674)
+  - location: 185 (just consumed gas: 0.748)
     [ (Some { True })
       (Pair (Pair 19 10)
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
@@ -925,7 +925,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 182 (just consumed gas: 0.035)
+  - location: 182 (just consumed gas: 0.040)
     [ 0x050200000002030a
       0x050200000002030a
       (Pair (Pair 19 10)
@@ -954,7 +954,7 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 206 (just consumed gas: 0.010)
+  - location: 206 (just consumed gas: 0.015)
     [ (Pair (Pair 19 10)
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
@@ -974,12 +974,12 @@ trace
             (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 210 (just consumed gas: 0.010)
+  - location: 210 (just consumed gas: 0.015)
     [ (Pair 19 10)
       (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 208 (just consumed gas: 0.035)
+  - location: 208 (just consumed gas: 0.040)
     [ (Pair 19 10)
       (Pair 19 10)
       (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
@@ -1021,7 +1021,7 @@ trace
       (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 212 (just consumed gas: 0.035)
+  - location: 212 (just consumed gas: 0.040)
     [ 0x0507070013000a
       0x0507070013000a
       (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
@@ -1045,7 +1045,7 @@ trace
     [ (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 237 (just consumed gas: 0.010)
+  - location: 237 (just consumed gas: 0.015)
     [ (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK })
@@ -1061,10 +1061,10 @@ trace
     [ (Pair (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
             { Elt 0 "foo" ; Elt 1 "bar" }
             { PACK }) ]
-  - location: 241 (just consumed gas: 0.010)
+  - location: 241 (just consumed gas: 0.015)
     [ (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
-  - location: 239 (just consumed gas: 0.035)
+  - location: 239 (just consumed gas: 0.040)
     [ (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
       (Left "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
@@ -1090,7 +1090,7 @@ trace
   - location: 257 (just consumed gas: 0.722)
     [ 0x0505050a0000001500bdfe3885e846fdea23c9acbe3bb1cfcca9c03e4a
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
-  - location: 243 (just consumed gas: 0.035)
+  - location: 243 (just consumed gas: 0.040)
     [ 0x0505050a0000001500bdfe3885e846fdea23c9acbe3bb1cfcca9c03e4a
       0x0505050a0000001500bdfe3885e846fdea23c9acbe3bb1cfcca9c03e4a
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
@@ -1104,7 +1104,7 @@ trace
     [ (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
   - location: 262 (just consumed gas: 0.025)
     [ (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
-  - location: 268 (just consumed gas: 0.010)
+  - location: 268 (just consumed gas: 0.015)
     [ (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK })
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
   - location: 269 (just consumed gas: 0.010)
@@ -1112,10 +1112,10 @@ trace
       (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
   - location: 270 (just consumed gas: 0.010)
     [ (Pair { Elt 0 "foo" ; Elt 1 "bar" } { PACK }) ]
-  - location: 272 (just consumed gas: 0.010)
+  - location: 272 (just consumed gas: 0.015)
     [ { Elt 0 "foo" ; Elt 1 "bar" }
       { PACK } ]
-  - location: 270 (just consumed gas: 0.035)
+  - location: 270 (just consumed gas: 0.040)
     [ { Elt 0 "foo" ; Elt 1 "bar" }
       { Elt 0 "foo" ; Elt 1 "bar" }
       { PACK } ]
@@ -1129,7 +1129,7 @@ trace
   - location: 276 (just consumed gas: 1.467)
     [ 0x050200000018070400000100000003666f6f070400010100000003626172
       { PACK } ]
-  - location: 277 (just consumed gas: 1.610)
+  - location: 277 (just consumed gas: 1.800)
     [ (Some { Elt 0 "foo" ; Elt 1 "bar" })
       { PACK } ]
   - location: 282 (just consumed gas: 0.010)
@@ -1141,7 +1141,7 @@ trace
   - location: 288 (just consumed gas: 1.467)
     [ 0x050200000018070400000100000003666f6f070400010100000003626172
       { PACK } ]
-  - location: 274 (just consumed gas: 0.035)
+  - location: 274 (just consumed gas: 0.040)
     [ 0x050200000018070400000100000003666f6f070400010100000003626172
       0x050200000018070400000100000003666f6f070400010100000003626172
       { PACK } ]
@@ -1155,7 +1155,7 @@ trace
     [ { PACK } ]
   - location: 293 (just consumed gas: 0.025)
     [ { PACK } ]
-  - location: 299 (just consumed gas: 0.010)
+  - location: 299 (just consumed gas: 0.015)
     [ { PACK }
       { PACK } ]
   - location: 300 (just consumed gas: 0.597)
@@ -1173,7 +1173,7 @@ trace
     [ { PACK } ]
   - location: 315 (just consumed gas: 0.597)
     [ 0x050200000002030c ]
-  - location: 301 (just consumed gas: 0.035)
+  - location: 301 (just consumed gas: 0.040)
     [ 0x050200000002030c
       0x050200000002030c ]
   - location: 318 (just consumed gas: 0.035)
@@ -1184,11 +1184,11 @@ trace
     [  ]
   - location: 320 (just consumed gas: 0.025)
     [  ]
-  - location: 326 (just consumed gas: 0.010)
+  - location: 326 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 327 (just consumed gas: 0.010)
+  - location: 327 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 329 (just consumed gas: 0.010)
+  - location: 329 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

@@ -13,21 +13,21 @@ trace
     [  ]
   - location: 10 (just consumed gas: 0.300)
     [ {} ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "world"
       {} ]
   - location: 16 (just consumed gas: 0.010)
     [ (Some "world")
       {} ]
-  - location: 17 (just consumed gas: 0.010)
+  - location: 17 (just consumed gas: 0.015)
     [ "hello"
       (Some "world")
       {} ]
-  - location: 20 (just consumed gas: 0.055)
+  - location: 20 (just consumed gas: 0.136)
     [ { Elt "hello" "world" } ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       { Elt "hello" "world" } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} { Elt "hello" "world" }) ]
 

@@ -17,11 +17,11 @@ trace
     [ "b" ]
   - location: 10 (just consumed gas: 0.055)
     [ "c" ]
-  - location: 10 (just consumed gas: 0.069)
+  - location: 10 (just consumed gas: 0.096)
     [ { "a" ; "b" ; "c" } ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ {}
       { "a" ; "b" ; "c" } ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ (Pair {} { "a" ; "b" ; "c" }) ]
 

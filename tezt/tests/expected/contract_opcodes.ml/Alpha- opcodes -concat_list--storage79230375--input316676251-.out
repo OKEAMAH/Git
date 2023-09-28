@@ -11,109 +11,109 @@ trace
     [ (Pair { "Hello" ; " " ; "World" ; "!" } "") ]
   - location: 8 (just consumed gas: 0.010)
     [ { "Hello" ; " " ; "World" ; "!" } ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ ""
       { "Hello" ; " " ; "World" ; "!" } ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ { "Hello" ; " " ; "World" ; "!" }
       "" ]
   - location: 13 (just consumed gas: 0.030)
     [ "Hello"
       "" ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ ""
       "Hello" ]
   - location: 16 (just consumed gas: 0.010)
     [ "Hello" ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ {}
       "Hello" ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ "Hello"
       {} ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.025)
     [ { "Hello" } ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ ""
       { "Hello" } ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.025)
     [ { "" ; "Hello" } ]
   - location: 23 (just consumed gas: 0.122)
     [ "Hello" ]
   - location: 13 (just consumed gas: 0.025)
     [ " "
       "Hello" ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ "Hello"
       " " ]
   - location: 16 (just consumed gas: 0.010)
     [ " " ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ {}
       " " ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ " "
       {} ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.025)
     [ { " " } ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ "Hello"
       { " " } ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.025)
     [ { "Hello" ; " " } ]
   - location: 23 (just consumed gas: 0.123)
     [ "Hello " ]
   - location: 13 (just consumed gas: 0.025)
     [ "World"
       "Hello " ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ "Hello "
       "World" ]
   - location: 16 (just consumed gas: 0.010)
     [ "World" ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ {}
       "World" ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ "World"
       {} ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.025)
     [ { "World" } ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ "Hello "
       { "World" } ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.025)
     [ { "Hello " ; "World" } ]
   - location: 23 (just consumed gas: 0.125)
     [ "Hello World" ]
   - location: 13 (just consumed gas: 0.025)
     [ "!"
       "Hello World" ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ "Hello World"
       "!" ]
   - location: 16 (just consumed gas: 0.010)
     [ "!" ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ {}
       "!" ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ "!"
       {} ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.025)
     [ { "!" } ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ "Hello World"
       { "!" } ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.025)
     [ { "Hello World" ; "!" } ]
   - location: 23 (just consumed gas: 0.126)
     [ "Hello World!" ]
   - location: 13 (just consumed gas: 0.035)
     [ "Hello World!" ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       "Hello World!" ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} "Hello World!") ]
 

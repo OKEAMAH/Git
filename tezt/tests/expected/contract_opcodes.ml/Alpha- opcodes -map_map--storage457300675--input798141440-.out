@@ -9,24 +9,24 @@ big_map diff
 trace
   - location: 9 (just consumed gas: 9.038)
     [ (Pair 10 {}) ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ 10
       {} ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ {}
       10 ]
-  - location: 11 (just consumed gas: 0.060)
+  - location: 11 (just consumed gas: 0.065)
     [ {}
       10 ]
   - location: 18 (just consumed gas: 0.010)
     [ 10 ]
   - location: 20 (just consumed gas: 0.010)
     [  ]
-  - location: 18 (just consumed gas: 0.035)
+  - location: 18 (just consumed gas: 0.040)
     [ {} ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       {} ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} {}) ]
 

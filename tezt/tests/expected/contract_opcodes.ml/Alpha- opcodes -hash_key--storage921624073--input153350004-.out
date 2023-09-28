@@ -15,9 +15,9 @@ trace
     [ "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k" ]
   - location: 10 (just consumed gas: 0.010)
     [ (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k") ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ {}
       (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k") ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair {} (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k")) ]
 

@@ -13,7 +13,7 @@ trace
     [ (Right (Pair 8 1)) ]
   - location: 15 (just consumed gas: 0.010)
     [ (Pair 8 1) ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ 8
       1 ]
   - location: 21 (just consumed gas: 0.045)
@@ -22,9 +22,9 @@ trace
     [ 4 ]
   - location: 22 (just consumed gas: 0.010)
     [ (Some 4) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ {}
       (Some 4) ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ (Pair {} (Some 4)) ]
 

@@ -11,27 +11,27 @@ trace
     [ (Pair (Left (Left 0)) Unit) ]
   - location: 13 (just consumed gas: 0.010)
     [  ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi%A" ]
   - location: 15 (just consumed gas: 0.526)
     [ 0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041 ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi"
       0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041 ]
   - location: 17 (just consumed gas: 0.516)
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600
       0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041 ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600
       0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600
       0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041 ]
   - location: 19 (just consumed gas: 0.010)
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600
       0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041 ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ 0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041
       0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600 ]
-  - location: 19 (just consumed gas: 0.035)
+  - location: 19 (just consumed gas: 0.040)
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600
       0x050a00000017011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe60041
       0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600 ]
@@ -45,7 +45,7 @@ trace
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600 ]
   - location: 26 (just consumed gas: 0.025)
     [ 0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600 ]
-  - location: 32 (just consumed gas: 0.010)
+  - location: 32 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi"
       0x050a00000016011d23c1d3d2f8a4ea5e8784b8f7ecf2ad304c0fe600 ]
   - location: 33 (just consumed gas: 0.516)
@@ -59,35 +59,35 @@ trace
     [  ]
   - location: 38 (just consumed gas: 0.025)
     [  ]
-  - location: 44 (just consumed gas: 0.010)
+  - location: 44 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi%A" ]
   - location: 48 (just consumed gas: 0.010)
     [  ]
-  - location: 49 (just consumed gas: 0.010)
+  - location: 49 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi%B" ]
   - location: 53 (just consumed gas: 0.010)
     [  ]
-  - location: 54 (just consumed gas: 0.010)
+  - location: 54 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi%maybe_C" ]
   - location: 60 (just consumed gas: 0.010)
     [  ]
-  - location: 61 (just consumed gas: 0.010)
+  - location: 61 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi%Z" ]
   - location: 65 (just consumed gas: 0.010)
     [  ]
-  - location: 66 (just consumed gas: 0.010)
+  - location: 66 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi" ]
   - location: 76 (just consumed gas: 0.010)
     [  ]
-  - location: 77 (just consumed gas: 0.010)
+  - location: 77 (just consumed gas: 0.055)
     [ "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi" ]
   - location: 87 (just consumed gas: 0.010)
     [  ]
-  - location: 88 (just consumed gas: 0.010)
+  - location: 88 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 89 (just consumed gas: 0.010)
+  - location: 89 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 91 (just consumed gas: 0.010)
+  - location: 91 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

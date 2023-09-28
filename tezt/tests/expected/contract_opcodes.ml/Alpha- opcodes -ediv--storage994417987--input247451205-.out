@@ -11,10 +11,10 @@ trace
     [ (Pair (Pair 10 0) None None None None) ]
   - location: 25 (just consumed gas: 0.010)
     [ (Pair 10 0) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair 10 0)
       (Pair 10 0) ]
-  - location: 27 (just consumed gas: 0.010)
+  - location: 27 (just consumed gas: 0.015)
     [ 10
       0
       (Pair 10 0) ]
@@ -28,21 +28,21 @@ trace
   - location: 31 (just consumed gas: 0.020)
     [ 0
       (Pair 10 0) ]
-  - location: 29 (just consumed gas: 0.035)
+  - location: 29 (just consumed gas: 0.040)
     [ 10
       0
       (Pair 10 0) ]
   - location: 32 (just consumed gas: 0.163)
     [ None
       (Pair 10 0) ]
-  - location: 33 (just consumed gas: 0.010)
+  - location: 33 (just consumed gas: 0.015)
     [ (Pair 10 0)
       None ]
-  - location: 34 (just consumed gas: 0.010)
+  - location: 34 (just consumed gas: 0.015)
     [ (Pair 10 0)
       (Pair 10 0)
       None ]
-  - location: 35 (just consumed gas: 0.010)
+  - location: 35 (just consumed gas: 0.015)
     [ 10
       0
       (Pair 10 0)
@@ -56,16 +56,16 @@ trace
     [ None
       (Pair 10 0)
       None ]
-  - location: 38 (just consumed gas: 0.010)
+  - location: 38 (just consumed gas: 0.015)
     [ (Pair 10 0)
       None
       None ]
-  - location: 39 (just consumed gas: 0.010)
+  - location: 39 (just consumed gas: 0.015)
     [ (Pair 10 0)
       (Pair 10 0)
       None
       None ]
-  - location: 40 (just consumed gas: 0.010)
+  - location: 40 (just consumed gas: 0.015)
     [ 10
       0
       (Pair 10 0)
@@ -81,7 +81,7 @@ trace
       (Pair 10 0)
       None
       None ]
-  - location: 41 (just consumed gas: 0.035)
+  - location: 41 (just consumed gas: 0.040)
     [ 10
       0
       (Pair 10 0)
@@ -92,12 +92,12 @@ trace
       (Pair 10 0)
       None
       None ]
-  - location: 45 (just consumed gas: 0.010)
+  - location: 45 (just consumed gas: 0.015)
     [ (Pair 10 0)
       None
       None
       None ]
-  - location: 46 (just consumed gas: 0.010)
+  - location: 46 (just consumed gas: 0.015)
     [ 10
       0
       None
@@ -108,28 +108,28 @@ trace
       None
       None
       None ]
-  - location: 49 (just consumed gas: 0.023)
+  - location: 49 (just consumed gas: 0.024)
     [ None
       None ]
-  - location: 52 (just consumed gas: 0.010)
+  - location: 52 (just consumed gas: 0.015)
     [ (Pair None None) ]
-  - location: 49 (just consumed gas: 0.045)
+  - location: 49 (just consumed gas: 0.055)
     [ None
       None
       (Pair None None) ]
   - location: 53 (just consumed gas: 0.010)
     [ None
       (Pair None None) ]
-  - location: 55 (just consumed gas: 0.010)
+  - location: 55 (just consumed gas: 0.015)
     [ (Pair None None None) ]
-  - location: 53 (just consumed gas: 0.035)
+  - location: 53 (just consumed gas: 0.040)
     [ None
       (Pair None None None) ]
-  - location: 56 (just consumed gas: 0.010)
+  - location: 56 (just consumed gas: 0.015)
     [ (Pair None None None None) ]
-  - location: 57 (just consumed gas: 0.010)
+  - location: 57 (just consumed gas: 0.015)
     [ {}
       (Pair None None None None) ]
-  - location: 59 (just consumed gas: 0.010)
+  - location: 59 (just consumed gas: 0.015)
     [ (Pair {} None None None None) ]
 

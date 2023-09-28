@@ -9,19 +9,19 @@ big_map diff
 trace
   - location: 8 (just consumed gas: 5.822)
     [ (Pair { 0xcd ; 0xef ; 0x00 } 0x00ab) ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ { 0xcd ; 0xef ; 0x00 }
       0x00ab ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ 0x00ab
       { 0xcd ; 0xef ; 0x00 } ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.025)
     [ { 0x00ab ; 0xcd ; 0xef ; 0x00 } ]
   - location: 11 (just consumed gas: 0.142)
     [ 0x00abcdef00 ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ {}
       0x00abcdef00 ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ (Pair {} 0x00abcdef00) ]
 

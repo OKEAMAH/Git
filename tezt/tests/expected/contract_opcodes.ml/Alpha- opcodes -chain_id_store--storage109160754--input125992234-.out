@@ -11,13 +11,13 @@ trace
     [ (Pair Unit (Some "NetXdQprcVkpaWU")) ]
   - location: 8 (just consumed gas: 0.010)
     [  ]
-  - location: 9 (just consumed gas: 0.015)
+  - location: 9 (just consumed gas: 0.020)
     [ "NetXynUjJNZm7wi" ]
   - location: 10 (just consumed gas: 0.010)
     [ (Some "NetXynUjJNZm7wi") ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ {}
       (Some "NetXynUjJNZm7wi") ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair {} (Some "NetXynUjJNZm7wi")) ]
 

@@ -11,17 +11,17 @@ trace
     [ (Pair Unit Unit) ]
   - location: 7 (just consumed gas: 0.010)
     [ Unit ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 2
       Unit ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ 2
       2
       Unit ]
   - location: 14 (just consumed gas: 0.035)
     [ 4
       Unit ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ 4
       4
       Unit ]
@@ -35,17 +35,17 @@ trace
     [ Unit ]
   - location: 22 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 28 (just consumed gas: 0.010)
+  - location: 28 (just consumed gas: 0.015)
     [ 2
       Unit ]
-  - location: 31 (just consumed gas: 0.010)
+  - location: 31 (just consumed gas: 0.015)
     [ 2
       2
       Unit ]
   - location: 34 (just consumed gas: 0.035)
     [ 4
       Unit ]
-  - location: 35 (just consumed gas: 0.010)
+  - location: 35 (just consumed gas: 0.015)
     [ 4
       4
       Unit ]
@@ -59,17 +59,17 @@ trace
     [ Unit ]
   - location: 42 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 48 (just consumed gas: 0.010)
+  - location: 48 (just consumed gas: 0.015)
     [ 2
       Unit ]
-  - location: 51 (just consumed gas: 0.010)
+  - location: 51 (just consumed gas: 0.015)
     [ 2
       2
       Unit ]
   - location: 54 (just consumed gas: 0.035)
     [ 4
       Unit ]
-  - location: 55 (just consumed gas: 0.010)
+  - location: 55 (just consumed gas: 0.015)
     [ 4
       4
       Unit ]
@@ -83,17 +83,17 @@ trace
     [ Unit ]
   - location: 62 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 68 (just consumed gas: 0.010)
+  - location: 68 (just consumed gas: 0.015)
     [ 2
       Unit ]
-  - location: 71 (just consumed gas: 0.010)
+  - location: 71 (just consumed gas: 0.015)
     [ 2
       2
       Unit ]
   - location: 74 (just consumed gas: 0.035)
     [ 4
       Unit ]
-  - location: 75 (just consumed gas: 0.010)
+  - location: 75 (just consumed gas: 0.015)
     [ 4
       4
       Unit ]
@@ -107,17 +107,17 @@ trace
     [ Unit ]
   - location: 82 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 88 (just consumed gas: 0.010)
+  - location: 88 (just consumed gas: 0.015)
     [ 2
       Unit ]
-  - location: 91 (just consumed gas: 0.010)
+  - location: 91 (just consumed gas: 0.015)
     [ 2
       2
       Unit ]
   - location: 94 (just consumed gas: 0.035)
     [ 4
       Unit ]
-  - location: 95 (just consumed gas: 0.010)
+  - location: 95 (just consumed gas: 0.015)
     [ 4
       4
       Unit ]
@@ -131,17 +131,17 @@ trace
     [ Unit ]
   - location: 102 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 108 (just consumed gas: 0.010)
+  - location: 108 (just consumed gas: 0.015)
     [ 60
       Unit ]
-  - location: 111 (just consumed gas: 0.010)
+  - location: 111 (just consumed gas: 0.015)
     [ "2019-09-09T12:08:37Z"
       60
       Unit ]
   - location: 114 (just consumed gas: 0.037)
     [ "2019-09-09T12:09:37Z"
       Unit ]
-  - location: 115 (just consumed gas: 0.010)
+  - location: 115 (just consumed gas: 0.015)
     [ "2019-09-09T12:09:37Z"
       "2019-09-09T12:09:37Z"
       Unit ]
@@ -155,17 +155,17 @@ trace
     [ Unit ]
   - location: 122 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 128 (just consumed gas: 0.010)
+  - location: 128 (just consumed gas: 0.015)
     [ "2019-09-09T12:08:37Z"
       Unit ]
-  - location: 131 (just consumed gas: 0.010)
+  - location: 131 (just consumed gas: 0.015)
     [ 60
       "2019-09-09T12:08:37Z"
       Unit ]
   - location: 134 (just consumed gas: 0.037)
     [ "2019-09-09T12:09:37Z"
       Unit ]
-  - location: 135 (just consumed gas: 0.010)
+  - location: 135 (just consumed gas: 0.015)
     [ "2019-09-09T12:09:37Z"
       "2019-09-09T12:09:37Z"
       Unit ]
@@ -179,17 +179,17 @@ trace
     [ Unit ]
   - location: 142 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 148 (just consumed gas: 0.010)
+  - location: 148 (just consumed gas: 0.015)
     [ 1000
       Unit ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ 1000
       1000
       Unit ]
   - location: 154 (just consumed gas: 0.020)
     [ 2000
       Unit ]
-  - location: 155 (just consumed gas: 0.010)
+  - location: 155 (just consumed gas: 0.015)
     [ 2000
       2000
       Unit ]
@@ -203,9 +203,9 @@ trace
     [ Unit ]
   - location: 162 (just consumed gas: 0.025)
     [ Unit ]
-  - location: 168 (just consumed gas: 0.010)
+  - location: 168 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 170 (just consumed gas: 0.010)
+  - location: 170 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

@@ -35367,7 +35367,7 @@ Well typed (Gas remaining: 1039982.522 units remaining)	michelson_test_scripts/m
          /* [ list operation : option address ] */ ;
          PAIR
          /* [ pair (list operation) (option address) ] */ } }
-Well typed (Gas remaining: 1039991.454 units remaining)	michelson_test_scripts/mini_scenarios/view_registers_callers.tz
+Well typed (Gas remaining: 1039991.056 units remaining)	michelson_test_scripts/mini_scenarios/view_registers_callers.tz
 { parameter unit ;
   storage (list address) ;
   code { CDR
@@ -35389,7 +35389,7 @@ Well typed (Gas remaining: 1039991.454 units remaining)	michelson_test_scripts/m
          IF_CONS
            { DIP { DROP /* [] */ } /* [ address ] */ ; SOME /* [ option address ] */ }
            { NONE address /* [ option address ] */ } } }
-Well typed (Gas remaining: 1039960.608 units remaining)	michelson_test_scripts/mini_scenarios/viewable.tz
+Well typed (Gas remaining: 1039958.639 units remaining)	michelson_test_scripts/mini_scenarios/viewable.tz
 { parameter nat ;
   storage nat ;
   code { CAR
@@ -45804,7 +45804,7 @@ Well typed (Gas remaining: 1039992.030 units remaining)	michelson_test_scripts/o
          /* [ list operation : option address ] */ ;
          PAIR
          /* [ pair (list operation) (option address) ] */ } }
-Well typed (Gas remaining: 1039991.039 units remaining)	michelson_test_scripts/opcodes/create_contract_with_view.tz
+Well typed (Gas remaining: 1039990.849 units remaining)	michelson_test_scripts/opcodes/create_contract_with_view.tz
 { parameter unit ;
   storage (option address) ;
   code { /* [ pair unit unit ] */
@@ -48928,7 +48928,7 @@ Well typed (Gas remaining: 1039997.469 units remaining)	michelson_test_scripts/o
          /* [ list operation : nat ] */ ;
          PAIR
          /* [ pair (list operation) nat ] */ } }
-Well typed (Gas remaining: 1039956.190 units remaining)	michelson_test_scripts/opcodes/sets.tz
+Well typed (Gas remaining: 1039953.159 units remaining)	michelson_test_scripts/opcodes/sets.tz
 { parameter unit ;
   storage unit ;
   code { DROP
@@ -50350,7 +50350,7 @@ Well typed (Gas remaining: 1039994.017 units remaining)	michelson_test_scripts/o
          /* [ list operation : bool ] */ ;
          PAIR
          /* [ pair (list operation) bool ] */ } }
-Well typed (Gas remaining: 1039988.594 units remaining)	michelson_test_scripts/opcodes/view_rec.tz
+Well typed (Gas remaining: 1039988.404 units remaining)	michelson_test_scripts/opcodes/view_rec.tz
 { parameter unit ;
   storage unit ;
   view "loop"
@@ -50380,7 +50380,7 @@ Well typed (Gas remaining: 1039988.594 units remaining)	michelson_test_scripts/o
          /* [ list operation : unit ] */ ;
          PAIR
          /* [ pair (list operation) unit ] */ } }
-Well typed (Gas remaining: 1039948.512 units remaining)	michelson_test_scripts/opcodes/view_toplevel_lib.tz
+Well typed (Gas remaining: 1039946.537 units remaining)	michelson_test_scripts/opcodes/view_toplevel_lib.tz
 { parameter nat ;
   storage nat ;
   code { CAR

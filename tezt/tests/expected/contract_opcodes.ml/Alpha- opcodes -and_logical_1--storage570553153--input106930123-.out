@@ -11,14 +11,14 @@ trace
     [ (Pair (Pair False True) False) ]
   - location: 9 (just consumed gas: 0.010)
     [ (Pair False True) ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ False
       True ]
   - location: 11 (just consumed gas: 0.010)
     [ False ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ {}
       False ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ (Pair {} False) ]
 

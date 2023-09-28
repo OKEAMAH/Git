@@ -24,9 +24,9 @@ trace
     [ 0x0507070080acd2c6a501070700bcc485a30b0022 ]
   - location: 13 (just consumed gas: 0.452)
     [ 0x95a69fcbbf773989333dc9b31e246575812dbea19d25089f83a2aeeea16ab4bc ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ {}
       0x95a69fcbbf773989333dc9b31e246575812dbea19d25089f83a2aeeea16ab4bc ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Pair {} 0x95a69fcbbf773989333dc9b31e246575812dbea19d25089f83a2aeeea16ab4bc) ]
 

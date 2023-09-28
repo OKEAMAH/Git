@@ -17,9 +17,9 @@ trace
     [ (Left "a") ]
   - location: 12 (just consumed gas: 0.025)
     [ (Left "a") ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Left "a") ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} (Left "a")) ]
 

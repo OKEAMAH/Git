@@ -11,13 +11,13 @@ trace
     [ (Pair (Pair 1 4 2 Unit) Unit) ]
   - location: 11 (just consumed gas: 0.010)
     [ (Pair 1 4 2 Unit) ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ (Pair 1 4 2 Unit)
       (Pair 1 4 2 Unit) ]
   - location: 13 (just consumed gas: 0.010)
     [ 1
       (Pair 1 4 2 Unit) ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ 1
       1
       (Pair 1 4 2 Unit) ]
@@ -31,13 +31,13 @@ trace
     [ (Pair 1 4 2 Unit) ]
   - location: 21 (just consumed gas: 0.025)
     [ (Pair 1 4 2 Unit) ]
-  - location: 27 (just consumed gas: 0.010)
+  - location: 27 (just consumed gas: 0.015)
     [ (Pair 1 4 2 Unit)
       (Pair 1 4 2 Unit) ]
   - location: 28 (just consumed gas: 0.020)
     [ 1
       (Pair 1 4 2 Unit) ]
-  - location: 30 (just consumed gas: 0.010)
+  - location: 30 (just consumed gas: 0.015)
     [ 1
       1
       (Pair 1 4 2 Unit) ]
@@ -51,13 +51,13 @@ trace
     [ (Pair 1 4 2 Unit) ]
   - location: 37 (just consumed gas: 0.025)
     [ (Pair 1 4 2 Unit) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Pair 1 4 2 Unit)
       (Pair 1 4 2 Unit) ]
   - location: 44 (just consumed gas: 0.021)
     [ 4
       (Pair 1 4 2 Unit) ]
-  - location: 46 (just consumed gas: 0.010)
+  - location: 46 (just consumed gas: 0.015)
     [ 4
       4
       (Pair 1 4 2 Unit) ]
@@ -71,13 +71,13 @@ trace
     [ (Pair 1 4 2 Unit) ]
   - location: 53 (just consumed gas: 0.025)
     [ (Pair 1 4 2 Unit) ]
-  - location: 59 (just consumed gas: 0.010)
+  - location: 59 (just consumed gas: 0.015)
     [ (Pair 1 4 2 Unit)
       (Pair 1 4 2 Unit) ]
   - location: 60 (just consumed gas: 0.022)
     [ 2
       (Pair 1 4 2 Unit) ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ 2
       2
       (Pair 1 4 2 Unit) ]
@@ -91,13 +91,13 @@ trace
     [ (Pair 1 4 2 Unit) ]
   - location: 69 (just consumed gas: 0.025)
     [ (Pair 1 4 2 Unit) ]
-  - location: 75 (just consumed gas: 0.010)
+  - location: 75 (just consumed gas: 0.015)
     [ (Pair 1 4 2 Unit)
       (Pair 1 4 2 Unit) ]
   - location: 76 (just consumed gas: 0.023)
     [ Unit
       (Pair 1 4 2 Unit) ]
-  - location: 78 (just consumed gas: 0.010)
+  - location: 78 (just consumed gas: 0.015)
     [ Unit
       Unit
       (Pair 1 4 2 Unit) ]
@@ -113,11 +113,11 @@ trace
     [ (Pair 1 4 2 Unit) ]
   - location: 89 (just consumed gas: 0.010)
     [  ]
-  - location: 90 (just consumed gas: 0.010)
+  - location: 90 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 91 (just consumed gas: 0.010)
+  - location: 91 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 93 (just consumed gas: 0.010)
+  - location: 93 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

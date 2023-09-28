@@ -7,15 +7,15 @@ emitted operations
 big_map diff
   
 trace
-  - location: 9 (just consumed gas: 9.673)
+  - location: 9 (just consumed gas: 9.863)
     [ (Pair 15 { Elt "bar" 5 ; Elt "foo" 1 }) ]
-  - location: 9 (just consumed gas: 0.010)
+  - location: 9 (just consumed gas: 0.015)
     [ 15
       { Elt "bar" 5 ; Elt "foo" 1 } ]
-  - location: 10 (just consumed gas: 0.010)
+  - location: 10 (just consumed gas: 0.015)
     [ { Elt "bar" 5 ; Elt "foo" 1 }
       15 ]
-  - location: 11 (just consumed gas: 0.067)
+  - location: 11 (just consumed gas: 0.072)
     [ (Pair "bar" 5)
       15 ]
   - location: 13 (just consumed gas: 0.010)
@@ -23,17 +23,17 @@ trace
       15 ]
   - location: 14 (just consumed gas: 0.010)
     [ 15 ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ 15
       15 ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ 5
       15
       15 ]
   - location: 17 (just consumed gas: 0.035)
     [ 20
       15 ]
-  - location: 11 (just consumed gas: 0.150)
+  - location: 11 (just consumed gas: 0.231)
     [ (Pair "foo" 1)
       15 ]
   - location: 13 (just consumed gas: 0.010)
@@ -41,28 +41,28 @@ trace
       15 ]
   - location: 14 (just consumed gas: 0.010)
     [ 15 ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ 15
       15 ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ 1
       15
       15 ]
   - location: 17 (just consumed gas: 0.035)
     [ 16
       15 ]
-  - location: 11 (just consumed gas: 0.160)
+  - location: 11 (just consumed gas: 0.269)
     [ { Elt "bar" 20 ; Elt "foo" 16 }
       15 ]
   - location: 18 (just consumed gas: 0.010)
     [ 15 ]
   - location: 20 (just consumed gas: 0.010)
     [  ]
-  - location: 18 (just consumed gas: 0.035)
+  - location: 18 (just consumed gas: 0.040)
     [ { Elt "bar" 20 ; Elt "foo" 16 } ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ {}
       { Elt "bar" 20 ; Elt "foo" 16 } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair {} { Elt "bar" 20 ; Elt "foo" 16 }) ]
 

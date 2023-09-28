@@ -11,14 +11,14 @@ trace
     [ (Pair Unit Unit) ]
   - location: 7 (just consumed gas: 0.010)
     [  ]
-  - location: 8 (just consumed gas: 0.010)
+  - location: 8 (just consumed gas: 0.015)
     [ 0x05 ]
-  - location: 11 (just consumed gas: 0.010)
+  - location: 11 (just consumed gas: 0.015)
     [ 0x06
       0x05 ]
   - location: 14 (just consumed gas: 0.035)
     [ 0x04 ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ 0x04
       0x04 ]
   - location: 20 (just consumed gas: 0.035)
@@ -29,14 +29,14 @@ trace
     [  ]
   - location: 22 (just consumed gas: 0.025)
     [  ]
-  - location: 28 (just consumed gas: 0.010)
+  - location: 28 (just consumed gas: 0.015)
     [ 0x0005 ]
-  - location: 31 (just consumed gas: 0.010)
+  - location: 31 (just consumed gas: 0.015)
     [ 0x0106
       0x0005 ]
   - location: 34 (just consumed gas: 0.036)
     [ 0x0004 ]
-  - location: 35 (just consumed gas: 0.010)
+  - location: 35 (just consumed gas: 0.015)
     [ 0x0004
       0x0004 ]
   - location: 40 (just consumed gas: 0.035)
@@ -47,14 +47,14 @@ trace
     [  ]
   - location: 42 (just consumed gas: 0.025)
     [  ]
-  - location: 48 (just consumed gas: 0.010)
+  - location: 48 (just consumed gas: 0.015)
     [ 0x05 ]
-  - location: 51 (just consumed gas: 0.010)
+  - location: 51 (just consumed gas: 0.015)
     [ 0x0106
       0x05 ]
   - location: 54 (just consumed gas: 0.035)
     [ 0x04 ]
-  - location: 55 (just consumed gas: 0.010)
+  - location: 55 (just consumed gas: 0.015)
     [ 0x04
       0x04 ]
   - location: 60 (just consumed gas: 0.035)
@@ -65,11 +65,11 @@ trace
     [  ]
   - location: 62 (just consumed gas: 0.025)
     [  ]
-  - location: 68 (just consumed gas: 0.010)
+  - location: 68 (just consumed gas: 0.015)
     [ Unit ]
-  - location: 69 (just consumed gas: 0.010)
+  - location: 69 (just consumed gas: 0.015)
     [ {}
       Unit ]
-  - location: 71 (just consumed gas: 0.010)
+  - location: 71 (just consumed gas: 0.015)
     [ (Pair {} Unit) ]
 

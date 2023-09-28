@@ -18,13 +18,13 @@ trace
     [ {} ]
   - location: 13 (just consumed gas: 0.010)
     [  ]
-  - location: 11 (just consumed gas: 0.035)
+  - location: 11 (just consumed gas: 0.040)
     [ 4 ]
   - location: 9 (just consumed gas: 0.025)
     [ 4 ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ {}
       4 ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ (Pair {} 4) ]
 

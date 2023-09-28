@@ -8,9 +8,9 @@ big_map diff
   New map(4) of type (big_map string string)
   Set map(4)["hello"] to "hi"
 trace
-  - location: 12 (just consumed gas: 12.330)
+  - location: 12 (just consumed gas: 12.405)
     [ (Pair "hello" { Elt "hello" "hi" } None) ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ (Pair "hello" { Elt "hello" "hi" } None)
       (Pair "hello" { Elt "hello" "hi" } None) ]
   - location: 13 (just consumed gas: 0.010)
@@ -22,25 +22,25 @@ trace
     [ (Pair { Elt "hello" "hi" } None) ]
   - location: 18 (just consumed gas: 0.010)
     [ { Elt "hello" "hi" } ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ { Elt "hello" "hi" }
       { Elt "hello" "hi" } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hello"
       { Elt "hello" "hi" }
       { Elt "hello" "hi" } ]
   - location: 20 (just consumed gas: 0.757)
     [ (Some "hi")
       { Elt "hello" "hi" } ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ { Elt "hello" "hi" }
       (Some "hi") ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.015)
     [ (Pair { Elt "hello" "hi" } (Some "hi")) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "hello" "hi" } (Some "hi")) ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ (Pair {} { Elt "hello" "hi" } (Some "hi")) ]
 
 
@@ -53,9 +53,9 @@ big_map diff
   New map(4) of type (big_map string string)
   Set map(4)["hello"] to "hi"
 trace
-  - location: 12 (just consumed gas: 12.280)
+  - location: 12 (just consumed gas: 12.355)
     [ (Pair "" { Elt "hello" "hi" } None) ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ (Pair "" { Elt "hello" "hi" } None)
       (Pair "" { Elt "hello" "hi" } None) ]
   - location: 13 (just consumed gas: 0.010)
@@ -67,25 +67,25 @@ trace
     [ (Pair { Elt "hello" "hi" } None) ]
   - location: 18 (just consumed gas: 0.010)
     [ { Elt "hello" "hi" } ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ { Elt "hello" "hi" }
       { Elt "hello" "hi" } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ ""
       { Elt "hello" "hi" }
       { Elt "hello" "hi" } ]
   - location: 20 (just consumed gas: 0.701)
     [ None
       { Elt "hello" "hi" } ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ { Elt "hello" "hi" }
       None ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.015)
     [ (Pair { Elt "hello" "hi" } None) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "hello" "hi" } None) ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ (Pair {} { Elt "hello" "hi" } None) ]
 
 
@@ -99,9 +99,9 @@ big_map diff
   Set map(4)["2"] to "two"
   Set map(4)["1"] to "one"
 trace
-  - location: 12 (just consumed gas: 13.247)
+  - location: 12 (just consumed gas: 13.422)
     [ (Pair "1" { Elt "1" "one" ; Elt "2" "two" } None) ]
-  - location: 12 (just consumed gas: 0.010)
+  - location: 12 (just consumed gas: 0.015)
     [ (Pair "1" { Elt "1" "one" ; Elt "2" "two" } None)
       (Pair "1" { Elt "1" "one" ; Elt "2" "two" } None) ]
   - location: 13 (just consumed gas: 0.010)
@@ -113,25 +113,25 @@ trace
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } None) ]
   - location: 18 (just consumed gas: 0.010)
     [ { Elt "1" "one" ; Elt "2" "two" } ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       { Elt "1" "one" ; Elt "2" "two" } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "1"
       { Elt "1" "one" ; Elt "2" "two" }
       { Elt "1" "one" ; Elt "2" "two" } ]
   - location: 20 (just consumed gas: 0.712)
     [ (Some "one")
       { Elt "1" "one" ; Elt "2" "two" } ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       (Some "one") ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } (Some "one")) ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" ; Elt "2" "two" } (Some "one")) ]
-  - location: 25 (just consumed gas: 0.010)
+  - location: 25 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "one" ; Elt "2" "two" } (Some "one")) ]
 
 
@@ -145,29 +145,29 @@ big_map diff
   Set map(4)["2"] to "two"
   Set map(4)["1"] to "one"
 trace
-  - location: 15 (just consumed gas: 11.738)
+  - location: 15 (just consumed gas: 11.913)
     [ (Pair {} { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ {}
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
   - location: 19 (just consumed gas: 0.070)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "one" ; Elt "2" "two" } Unit) ]
 
 
@@ -181,17 +181,17 @@ big_map diff
   Set map(4)["2"] to "two"
   Set map(4)["1"] to "two"
 trace
-  - location: 15 (just consumed gas: 12.163)
+  - location: 15 (just consumed gas: 12.419)
     [ (Pair { Elt "1" (Some "two") } { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ { Elt "1" (Some "two") }
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ { Elt "1" (Some "two") }
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
@@ -199,23 +199,23 @@ trace
     [ (Pair "1" (Some "two"))
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ "1"
       (Some "two")
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 22 (just consumed gas: 0.727)
+  - location: 22 (just consumed gas: 0.827)
     [ { Elt "1" "two" ; Elt "2" "two" }
       Unit ]
   - location: 19 (just consumed gas: 0.035)
     [ { Elt "1" "two" ; Elt "2" "two" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "two" ; Elt "2" "two" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "two" ; Elt "2" "two" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "two" ; Elt "2" "two" } Unit) ]
 
 
@@ -230,17 +230,17 @@ big_map diff
   Set map(4)["3"] to "three"
   Set map(4)["1"] to "one"
 trace
-  - location: 15 (just consumed gas: 12.183)
+  - location: 15 (just consumed gas: 12.439)
     [ (Pair { Elt "3" (Some "three") } { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ { Elt "3" (Some "three") }
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ { Elt "3" (Some "three") }
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
@@ -248,23 +248,23 @@ trace
     [ (Pair "3" (Some "three"))
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ "3"
       (Some "three")
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 22 (just consumed gas: 0.727)
+  - location: 22 (just consumed gas: 0.827)
     [ { Elt "1" "one" ; Elt "2" "two" ; Elt "3" "three" }
       Unit ]
   - location: 19 (just consumed gas: 0.035)
     [ { Elt "1" "one" ; Elt "2" "two" ; Elt "3" "three" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" ; Elt "3" "three" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" ; Elt "2" "two" ; Elt "3" "three" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "one" ; Elt "2" "two" ; Elt "3" "three" } Unit) ]
 
 
@@ -279,17 +279,17 @@ big_map diff
   Unset map(4)["3"]
   Set map(4)["1"] to "one"
 trace
-  - location: 15 (just consumed gas: 12.018)
+  - location: 15 (just consumed gas: 12.274)
     [ (Pair { Elt "3" None } { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ { Elt "3" None }
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ { Elt "3" None }
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
@@ -297,23 +297,23 @@ trace
     [ (Pair "3" None)
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ "3"
       None
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 22 (just consumed gas: 0.727)
+  - location: 22 (just consumed gas: 0.827)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
   - location: 19 (just consumed gas: 0.035)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "one" ; Elt "2" "two" } Unit) ]
 
 
@@ -327,17 +327,17 @@ big_map diff
   Unset map(4)["2"]
   Set map(4)["1"] to "one"
 trace
-  - location: 15 (just consumed gas: 12.018)
+  - location: 15 (just consumed gas: 12.274)
     [ (Pair { Elt "2" None } { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ { Elt "2" None }
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ { Elt "2" None }
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
@@ -345,23 +345,23 @@ trace
     [ (Pair "2" None)
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ "2"
       None
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 22 (just consumed gas: 0.727)
+  - location: 22 (just consumed gas: 0.827)
     [ { Elt "1" "one" }
       Unit ]
   - location: 19 (just consumed gas: 0.035)
     [ { Elt "1" "one" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "one" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "one" } Unit) ]
 
 
@@ -375,17 +375,17 @@ big_map diff
   Set map(4)["2"] to "two"
   Set map(4)["1"] to "two"
 trace
-  - location: 15 (just consumed gas: 12.163)
+  - location: 15 (just consumed gas: 12.419)
     [ (Pair { Elt "1" (Some "two") } { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 15 (just consumed gas: 0.010)
+  - location: 15 (just consumed gas: 0.015)
     [ { Elt "1" (Some "two") }
       (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
   - location: 16 (just consumed gas: 0.010)
     [ (Pair { Elt "1" "one" ; Elt "2" "two" } Unit) ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ { Elt "1" (Some "two") }
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
@@ -393,23 +393,23 @@ trace
     [ (Pair "1" (Some "two"))
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ "1"
       (Some "two")
       { Elt "1" "one" ; Elt "2" "two" }
       Unit ]
-  - location: 22 (just consumed gas: 0.727)
+  - location: 22 (just consumed gas: 0.827)
     [ { Elt "1" "two" ; Elt "2" "two" }
       Unit ]
   - location: 19 (just consumed gas: 0.035)
     [ { Elt "1" "two" ; Elt "2" "two" }
       Unit ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "two" ; Elt "2" "two" } Unit) ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ {}
       (Pair { Elt "1" "two" ; Elt "2" "two" } Unit) ]
-  - location: 26 (just consumed gas: 0.010)
+  - location: 26 (just consumed gas: 0.015)
     [ (Pair {} { Elt "1" "two" ; Elt "2" "two" } Unit) ]
 
 
@@ -424,27 +424,27 @@ big_map diff
 trace
   - location: 13 (just consumed gas: 8.184)
     [ (Pair "hello" None {}) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "hello"
       (Pair None {}) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair None {}) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ None
       {} ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hello"
       None
       {} ]
-  - location: 17 (just consumed gas: 0.792)
+  - location: 17 (just consumed gas: 0.859)
     [ None
       {} ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair None {}) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair None {}) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} None {}) ]
 
 
@@ -459,27 +459,27 @@ big_map diff
 trace
   - location: 13 (just consumed gas: 8.284)
     [ (Pair "hello" (Some 4) {}) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "hello"
       (Pair (Some 4) {}) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair (Some 4) {}) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Some 4)
       {} ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hello"
       (Some 4)
       {} ]
-  - location: 17 (just consumed gas: 0.792)
+  - location: 17 (just consumed gas: 0.859)
     [ None
       { Elt "hello" 4 } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair None { Elt "hello" 4 }) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair None { Elt "hello" 4 }) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} None { Elt "hello" 4 }) ]
 
 
@@ -492,29 +492,29 @@ big_map diff
   New map(4) of type (big_map string nat)
   Unset map(4)["hello"]
 trace
-  - location: 13 (just consumed gas: 9.218)
+  - location: 13 (just consumed gas: 9.293)
     [ (Pair "hello" None { Elt "hello" 4 }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "hello"
       (Pair None { Elt "hello" 4 }) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair None { Elt "hello" 4 }) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ None
       { Elt "hello" 4 } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hello"
       None
       { Elt "hello" 4 } ]
-  - location: 17 (just consumed gas: 0.796)
+  - location: 17 (just consumed gas: 0.887)
     [ (Some 4)
       {} ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair (Some 4) {}) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair (Some 4) {}) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} (Some 4) {}) ]
 
 
@@ -527,29 +527,29 @@ big_map diff
   New map(4) of type (big_map string nat)
   Set map(4)["hello"] to 5
 trace
-  - location: 13 (just consumed gas: 9.318)
+  - location: 13 (just consumed gas: 9.393)
     [ (Pair "hello" (Some 5) { Elt "hello" 4 }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "hello"
       (Pair (Some 5) { Elt "hello" 4 }) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair (Some 5) { Elt "hello" 4 }) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Some 5)
       { Elt "hello" 4 } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hello"
       (Some 5)
       { Elt "hello" 4 } ]
-  - location: 17 (just consumed gas: 0.796)
+  - location: 17 (just consumed gas: 0.887)
     [ (Some 4)
       { Elt "hello" 5 } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair (Some 4) { Elt "hello" 5 }) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair (Some 4) { Elt "hello" 5 }) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} (Some 4) { Elt "hello" 5 }) ]
 
 
@@ -563,29 +563,29 @@ big_map diff
   Set map(4)["hello"] to 4
   Set map(4)["hi"] to 5
 trace
-  - location: 13 (just consumed gas: 9.288)
+  - location: 13 (just consumed gas: 9.363)
     [ (Pair "hi" (Some 5) { Elt "hello" 4 }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "hi"
       (Pair (Some 5) { Elt "hello" 4 }) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair (Some 5) { Elt "hello" 4 }) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ (Some 5)
       { Elt "hello" 4 } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "hi"
       (Some 5)
       { Elt "hello" 4 } ]
-  - location: 17 (just consumed gas: 0.763)
+  - location: 17 (just consumed gas: 0.854)
     [ None
       { Elt "hello" 4 ; Elt "hi" 5 } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair None { Elt "hello" 4 ; Elt "hi" 5 }) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair None { Elt "hello" 4 ; Elt "hi" 5 }) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} None { Elt "hello" 4 ; Elt "hi" 5 }) ]
 
 
@@ -599,29 +599,29 @@ big_map diff
   Set map(4)["2"] to 2
   Unset map(4)["1"]
 trace
-  - location: 13 (just consumed gas: 10.080)
+  - location: 13 (just consumed gas: 10.255)
     [ (Pair "1" None { Elt "1" 1 ; Elt "2" 2 }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "1"
       (Pair None { Elt "1" 1 ; Elt "2" 2 }) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair None { Elt "1" 1 ; Elt "2" 2 }) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ None
       { Elt "1" 1 ; Elt "2" 2 } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "1"
       None
       { Elt "1" 1 ; Elt "2" 2 } ]
-  - location: 17 (just consumed gas: 0.751)
+  - location: 17 (just consumed gas: 0.842)
     [ (Some 1)
       { Elt "2" 2 } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair (Some 1) { Elt "2" 2 }) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair (Some 1) { Elt "2" 2 }) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} (Some 1) { Elt "2" 2 }) ]
 
 
@@ -635,29 +635,29 @@ big_map diff
   Set map(4)["2"] to 2
   Unset map(4)["1"]
 trace
-  - location: 13 (just consumed gas: 10.080)
+  - location: 13 (just consumed gas: 10.255)
     [ (Pair "1" None { Elt "1" 1 ; Elt "2" 2 }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ "1"
       (Pair None { Elt "1" 1 ; Elt "2" 2 }) ]
   - location: 14 (just consumed gas: 0.010)
     [ (Pair None { Elt "1" 1 ; Elt "2" 2 }) ]
-  - location: 16 (just consumed gas: 0.010)
+  - location: 16 (just consumed gas: 0.015)
     [ None
       { Elt "1" 1 ; Elt "2" 2 } ]
-  - location: 14 (just consumed gas: 0.035)
+  - location: 14 (just consumed gas: 0.040)
     [ "1"
       None
       { Elt "1" 1 ; Elt "2" 2 } ]
-  - location: 17 (just consumed gas: 0.751)
+  - location: 17 (just consumed gas: 0.842)
     [ (Some 1)
       { Elt "2" 2 } ]
-  - location: 18 (just consumed gas: 0.010)
+  - location: 18 (just consumed gas: 0.015)
     [ (Pair (Some 1) { Elt "2" 2 }) ]
-  - location: 19 (just consumed gas: 0.010)
+  - location: 19 (just consumed gas: 0.015)
     [ {}
       (Pair (Some 1) { Elt "2" 2 }) ]
-  - location: 21 (just consumed gas: 0.010)
+  - location: 21 (just consumed gas: 0.015)
     [ (Pair {} (Some 1) { Elt "2" 2 }) ]
 
 
@@ -672,9 +672,9 @@ big_map diff
   New map(4) of type (big_map string string)
   Set map(4)["2"] to "two"
 trace
-  - location: 43 (just consumed gas: 59.608)
+  - location: 43 (just consumed gas: 59.758)
     [ (Pair (Left Unit) (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Left Unit)
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.010)
@@ -686,22 +686,22 @@ trace
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
   - location: 48 (just consumed gas: 0.025)
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
-  - location: 54 (just consumed gas: 0.010)
+  - location: 54 (just consumed gas: 0.015)
     [ { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 55 (just consumed gas: 0.010)
+  - location: 55 (just consumed gas: 0.015)
     [ { Elt "2" "two" }
       { Elt "1" "one" } ]
-  - location: 56 (just consumed gas: 0.010)
+  - location: 56 (just consumed gas: 0.015)
     [ (Pair { Elt "2" "two" } { Elt "1" "one" }) ]
   - location: 57 (just consumed gas: 0.010)
     [ (Left (Pair { Elt "2" "two" } { Elt "1" "one" })) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Left (Pair { Elt "2" "two" } { Elt "1" "one" })) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Left (Pair { Elt "2" "two" } { Elt "1" "one" })) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Left (Pair { Elt "2" "two" } { Elt "1" "one" }))) ]
 
 
@@ -716,10 +716,10 @@ big_map diff
   New map(4) of type (big_map string string)
   Set map(4)["3"] to "three"
 trace
-  - location: 43 (just consumed gas: 62.906)
+  - location: 43 (just consumed gas: 63.206)
     [ (Pair (Right (Left (Left (Pair { Elt "3" "three" } { Elt "4" "four" }))))
             (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Right (Left (Left (Pair { Elt "3" "three" } { Elt "4" "four" }))))
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.010)
@@ -728,7 +728,7 @@ trace
   - location: 60 (just consumed gas: 0.010)
     [ (Left (Pair { Elt "3" "three" } { Elt "4" "four" }))
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))
       (Left (Pair { Elt "3" "three" } { Elt "4" "four" })) ]
   - location: 63 (just consumed gas: 0.010)
@@ -737,10 +737,10 @@ trace
     [ (Left (Pair { Elt "3" "three" } { Elt "4" "four" })) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Left (Pair { Elt "3" "three" } { Elt "4" "four" })) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Left (Pair { Elt "3" "three" } { Elt "4" "four" })) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Left (Pair { Elt "3" "three" } { Elt "4" "four" }))) ]
 
 
@@ -752,9 +752,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 43 (just consumed gas: 60.248)
+  - location: 43 (just consumed gas: 60.398)
     [ (Pair (Right (Left (Right Unit))) (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Right (Left (Right Unit)))
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.010)
@@ -763,7 +763,7 @@ trace
   - location: 60 (just consumed gas: 0.010)
     [ (Right Unit)
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))
       (Right Unit) ]
   - location: 63 (just consumed gas: 0.010)
@@ -772,10 +772,10 @@ trace
     [ (Right Unit) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Right Unit) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Right Unit) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Right Unit)) ]
 
 
@@ -792,7 +792,7 @@ big_map diff
 trace
   - location: 43 (just consumed gas: 58.380)
     [ (Pair (Right (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" })))) (Right Unit)) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Right (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" }))))
       (Right Unit) ]
   - location: 44 (just consumed gas: 0.010)
@@ -812,9 +812,9 @@ trace
     [ Unit ]
   - location: 76 (just consumed gas: 0.010)
     [  ]
-  - location: 67 (just consumed gas: 0.035)
+  - location: 67 (just consumed gas: 0.040)
     [ (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" }) ]
-  - location: 77 (just consumed gas: 0.010)
+  - location: 77 (just consumed gas: 0.015)
     [ { Pair "foo" "bar" }
       { Pair "gaz" "baz" } ]
   - location: 78 (just consumed gas: 0.010)
@@ -822,7 +822,7 @@ trace
   - location: 80 (just consumed gas: 0.300)
     [ {}
       { Pair "gaz" "baz" } ]
-  - location: 78 (just consumed gas: 0.035)
+  - location: 78 (just consumed gas: 0.040)
     [ { Pair "foo" "bar" }
       {}
       { Pair "gaz" "baz" } ]
@@ -830,7 +830,7 @@ trace
     [ (Pair "foo" "bar")
       {}
       { Pair "gaz" "baz" } ]
-  - location: 85 (just consumed gas: 0.010)
+  - location: 85 (just consumed gas: 0.015)
     [ "foo"
       "bar"
       {}
@@ -843,18 +843,18 @@ trace
     [ (Some "bar")
       {}
       { Pair "gaz" "baz" } ]
-  - location: 86 (just consumed gas: 0.035)
+  - location: 86 (just consumed gas: 0.040)
     [ "foo"
       (Some "bar")
       {}
       { Pair "gaz" "baz" } ]
-  - location: 89 (just consumed gas: 0.747)
+  - location: 89 (just consumed gas: 0.822)
     [ { Elt "foo" "bar" }
       { Pair "gaz" "baz" } ]
   - location: 83 (just consumed gas: 0.035)
     [ { Elt "foo" "bar" }
       { Pair "gaz" "baz" } ]
-  - location: 90 (just consumed gas: 0.010)
+  - location: 90 (just consumed gas: 0.015)
     [ { Pair "gaz" "baz" }
       { Elt "foo" "bar" } ]
   - location: 91 (just consumed gas: 0.010)
@@ -862,7 +862,7 @@ trace
   - location: 93 (just consumed gas: 0.300)
     [ {}
       { Elt "foo" "bar" } ]
-  - location: 91 (just consumed gas: 0.035)
+  - location: 91 (just consumed gas: 0.040)
     [ { Pair "gaz" "baz" }
       {}
       { Elt "foo" "bar" } ]
@@ -870,7 +870,7 @@ trace
     [ (Pair "gaz" "baz")
       {}
       { Elt "foo" "bar" } ]
-  - location: 98 (just consumed gas: 0.010)
+  - location: 98 (just consumed gas: 0.015)
     [ "gaz"
       "baz"
       {}
@@ -883,21 +883,21 @@ trace
     [ (Some "baz")
       {}
       { Elt "foo" "bar" } ]
-  - location: 99 (just consumed gas: 0.035)
+  - location: 99 (just consumed gas: 0.040)
     [ "gaz"
       (Some "baz")
       {}
       { Elt "foo" "bar" } ]
-  - location: 102 (just consumed gas: 0.747)
+  - location: 102 (just consumed gas: 0.822)
     [ { Elt "gaz" "baz" }
       { Elt "foo" "bar" } ]
   - location: 96 (just consumed gas: 0.035)
     [ { Elt "gaz" "baz" }
       { Elt "foo" "bar" } ]
-  - location: 103 (just consumed gas: 0.010)
+  - location: 103 (just consumed gas: 0.015)
     [ { Elt "foo" "bar" }
       { Elt "gaz" "baz" } ]
-  - location: 104 (just consumed gas: 0.010)
+  - location: 104 (just consumed gas: 0.015)
     [ (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }) ]
   - location: 105 (just consumed gas: 0.010)
     [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })) ]
@@ -907,10 +907,10 @@ trace
     [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))) ]
 
 
@@ -926,10 +926,10 @@ big_map diff
   Set map(4)["3"] to "three"
   Set map(4)["1"] to "one"
 trace
-  - location: 43 (just consumed gas: 60.518)
+  - location: 43 (just consumed gas: 60.668)
     [ (Pair (Right (Right (Right (Left { Pair "3" "three" }))))
             (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Right (Right (Right (Left { Pair "3" "three" }))))
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.010)
@@ -950,10 +950,10 @@ trace
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
   - location: 113 (just consumed gas: 0.025)
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
-  - location: 119 (just consumed gas: 0.010)
+  - location: 119 (just consumed gas: 0.015)
     [ { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 110 (just consumed gas: 0.035)
+  - location: 110 (just consumed gas: 0.040)
     [ { Pair "3" "three" }
       { Elt "1" "one" }
       { Elt "2" "two" } ]
@@ -961,7 +961,7 @@ trace
     [ (Pair "3" "three")
       { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 122 (just consumed gas: 0.010)
+  - location: 122 (just consumed gas: 0.015)
     [ "3"
       "three"
       { Elt "1" "one" }
@@ -974,18 +974,18 @@ trace
     [ (Some "three")
       { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 123 (just consumed gas: 0.035)
+  - location: 123 (just consumed gas: 0.040)
     [ "3"
       (Some "three")
       { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 126 (just consumed gas: 0.727)
+  - location: 126 (just consumed gas: 0.827)
     [ { Elt "1" "one" ; Elt "3" "three" }
       { Elt "2" "two" } ]
   - location: 120 (just consumed gas: 0.035)
     [ { Elt "1" "one" ; Elt "3" "three" }
       { Elt "2" "two" } ]
-  - location: 127 (just consumed gas: 0.010)
+  - location: 127 (just consumed gas: 0.015)
     [ (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" }) ]
   - location: 128 (just consumed gas: 0.010)
     [ (Left (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" })) ]
@@ -997,10 +997,10 @@ trace
     [ (Left (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Left (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" })) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Left (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" })) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Left (Pair { Elt "1" "one" ; Elt "3" "three" } { Elt "2" "two" }))) ]
 
 
@@ -1015,10 +1015,10 @@ big_map diff
   New map(4) of type (big_map string string)
   Unset map(4)["1"]
 trace
-  - location: 43 (just consumed gas: 60.253)
+  - location: 43 (just consumed gas: 60.403)
     [ (Pair (Right (Right (Right (Right { "1" }))))
             (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Right (Right (Right (Right { "1" }))))
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.010)
@@ -1039,10 +1039,10 @@ trace
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
   - location: 134 (just consumed gas: 0.025)
     [ (Pair { Elt "1" "one" } { Elt "2" "two" }) ]
-  - location: 140 (just consumed gas: 0.010)
+  - location: 140 (just consumed gas: 0.015)
     [ { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 131 (just consumed gas: 0.035)
+  - location: 131 (just consumed gas: 0.040)
     [ { "1" }
       { Elt "1" "one" }
       { Elt "2" "two" } ]
@@ -1053,22 +1053,22 @@ trace
   - location: 143 (just consumed gas: 0.010)
     [ { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 145 (just consumed gas: 0.010)
+  - location: 145 (just consumed gas: 0.015)
     [ None
       { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 143 (just consumed gas: 0.035)
+  - location: 143 (just consumed gas: 0.040)
     [ "1"
       None
       { Elt "1" "one" }
       { Elt "2" "two" } ]
-  - location: 147 (just consumed gas: 0.727)
+  - location: 147 (just consumed gas: 0.827)
     [ {}
       { Elt "2" "two" } ]
   - location: 141 (just consumed gas: 0.035)
     [ {}
       { Elt "2" "two" } ]
-  - location: 148 (just consumed gas: 0.010)
+  - location: 148 (just consumed gas: 0.015)
     [ (Pair {} { Elt "2" "two" }) ]
   - location: 149 (just consumed gas: 0.010)
     [ (Left (Pair {} { Elt "2" "two" })) ]
@@ -1080,9 +1080,9 @@ trace
     [ (Left (Pair {} { Elt "2" "two" })) ]
   - location: 44 (just consumed gas: 0.025)
     [ (Left (Pair {} { Elt "2" "two" })) ]
-  - location: 151 (just consumed gas: 0.010)
+  - location: 151 (just consumed gas: 0.015)
     [ {}
       (Left (Pair {} { Elt "2" "two" })) ]
-  - location: 153 (just consumed gas: 0.010)
+  - location: 153 (just consumed gas: 0.015)
     [ (Pair {} (Left (Pair {} { Elt "2" "two" }))) ]
 

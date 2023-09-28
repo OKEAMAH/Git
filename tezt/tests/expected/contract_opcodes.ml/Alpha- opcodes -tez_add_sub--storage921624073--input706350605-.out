@@ -11,10 +11,10 @@ trace
     [ (Pair (Pair 2310000 1010000) None) ]
   - location: 12 (just consumed gas: 0.010)
     [ (Pair 2310000 1010000) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair 2310000 1010000)
       (Pair 2310000 1010000) ]
-  - location: 14 (just consumed gas: 0.010)
+  - location: 14 (just consumed gas: 0.015)
     [ (Pair 2310000 1010000)
       (Pair 2310000 1010000)
       (Pair 2310000 1010000) ]
@@ -28,7 +28,7 @@ trace
   - location: 18 (just consumed gas: 0.010)
     [ 1010000
       (Pair 2310000 1010000) ]
-  - location: 16 (just consumed gas: 0.035)
+  - location: 16 (just consumed gas: 0.040)
     [ 2310000
       1010000
       (Pair 2310000 1010000) ]
@@ -37,7 +37,7 @@ trace
       (Pair 2310000 1010000) ]
   - location: 20 (just consumed gas: 0.010)
     [ (Pair 2310000 1010000) ]
-  - location: 22 (just consumed gas: 0.010)
+  - location: 22 (just consumed gas: 0.015)
     [ (Pair 2310000 1010000)
       (Pair 2310000 1010000) ]
   - location: 23 (just consumed gas: 0.010)
@@ -47,25 +47,25 @@ trace
     [ (Pair 2310000 1010000) ]
   - location: 26 (just consumed gas: 0.010)
     [ 1010000 ]
-  - location: 24 (just consumed gas: 0.035)
+  - location: 24 (just consumed gas: 0.040)
     [ 2310000
       1010000 ]
-  - location: 27 (just consumed gas: 0.015)
+  - location: 27 (just consumed gas: 0.020)
     [ (Some 1300000) ]
   - location: 29 (just consumed gas: 0.010)
     [ 1300000 ]
   - location: 29 (just consumed gas: 0.025)
     [ 1300000 ]
-  - location: 20 (just consumed gas: 0.035)
+  - location: 20 (just consumed gas: 0.040)
     [ 3320000
       1300000 ]
-  - location: 35 (just consumed gas: 0.010)
+  - location: 35 (just consumed gas: 0.015)
     [ (Pair 3320000 1300000) ]
   - location: 36 (just consumed gas: 0.010)
     [ (Some (Pair 3320000 1300000)) ]
-  - location: 37 (just consumed gas: 0.010)
+  - location: 37 (just consumed gas: 0.015)
     [ {}
       (Some (Pair 3320000 1300000)) ]
-  - location: 39 (just consumed gas: 0.010)
+  - location: 39 (just consumed gas: 0.015)
     [ (Pair {} (Some (Pair 3320000 1300000))) ]
 

@@ -11,7 +11,7 @@ trace
     [ (Pair (Pair { "B" ; "B" ; "asdf" ; "C" } { "B" ; "C" ; "asdf" }) None) ]
   - location: 12 (just consumed gas: 0.010)
     [ (Pair { "B" ; "B" ; "asdf" ; "C" } { "B" ; "C" ; "asdf" }) ]
-  - location: 13 (just consumed gas: 0.010)
+  - location: 13 (just consumed gas: 0.015)
     [ (Pair { "B" ; "B" ; "asdf" ; "C" } { "B" ; "C" ; "asdf" })
       (Pair { "B" ; "B" ; "asdf" ; "C" } { "B" ; "C" ; "asdf" }) ]
   - location: 14 (just consumed gas: 0.010)
@@ -21,14 +21,14 @@ trace
     [ (Pair { "B" ; "B" ; "asdf" ; "C" } { "B" ; "C" ; "asdf" }) ]
   - location: 17 (just consumed gas: 0.010)
     [ { "B" ; "C" ; "asdf" } ]
-  - location: 15 (just consumed gas: 0.035)
+  - location: 15 (just consumed gas: 0.040)
     [ { "B" ; "B" ; "asdf" ; "C" }
       { "B" ; "C" ; "asdf" } ]
   - location: 18 (just consumed gas: 0.300)
     [ {}
       { "B" ; "B" ; "asdf" ; "C" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 20 (just consumed gas: 0.010)
+  - location: 20 (just consumed gas: 0.015)
     [ { "B" ; "B" ; "asdf" ; "C" }
       {}
       { "B" ; "C" ; "asdf" } ]
@@ -36,10 +36,10 @@ trace
     [ "B"
       {}
       { "B" ; "C" ; "asdf" } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair "B" {})
       { "B" ; "C" ; "asdf" } ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ (Pair "B" {})
       (Pair "B" {})
       { "B" ; "C" ; "asdf" } ]
@@ -53,31 +53,31 @@ trace
   - location: 28 (just consumed gas: 0.010)
     [ {}
       { "B" ; "C" ; "asdf" } ]
-  - location: 26 (just consumed gas: 0.035)
+  - location: 26 (just consumed gas: 0.040)
     [ "B"
       {}
       { "B" ; "C" ; "asdf" } ]
-  - location: 29 (just consumed gas: 0.010)
+  - location: 29 (just consumed gas: 0.015)
     [ True
       "B"
       {}
       { "B" ; "C" ; "asdf" } ]
-  - location: 32 (just consumed gas: 0.010)
+  - location: 32 (just consumed gas: 0.015)
     [ "B"
       True
       {}
       { "B" ; "C" ; "asdf" } ]
-  - location: 33 (just consumed gas: 0.050)
+  - location: 33 (just consumed gas: 0.124)
     [ { "B" }
       { "B" ; "C" ; "asdf" } ]
   - location: 21 (just consumed gas: 0.025)
     [ "B"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair "B" { "B" })
       { "B" ; "C" ; "asdf" } ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ (Pair "B" { "B" })
       (Pair "B" { "B" })
       { "B" ; "C" ; "asdf" } ]
@@ -91,31 +91,31 @@ trace
   - location: 28 (just consumed gas: 0.010)
     [ { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 26 (just consumed gas: 0.035)
+  - location: 26 (just consumed gas: 0.040)
     [ "B"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 29 (just consumed gas: 0.010)
+  - location: 29 (just consumed gas: 0.015)
     [ True
       "B"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 32 (just consumed gas: 0.010)
+  - location: 32 (just consumed gas: 0.015)
     [ "B"
       True
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 33 (just consumed gas: 0.050)
+  - location: 33 (just consumed gas: 0.146)
     [ { "B" }
       { "B" ; "C" ; "asdf" } ]
   - location: 21 (just consumed gas: 0.025)
     [ "asdf"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair "asdf" { "B" })
       { "B" ; "C" ; "asdf" } ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ (Pair "asdf" { "B" })
       (Pair "asdf" { "B" })
       { "B" ; "C" ; "asdf" } ]
@@ -129,31 +129,31 @@ trace
   - location: 28 (just consumed gas: 0.010)
     [ { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 26 (just consumed gas: 0.035)
+  - location: 26 (just consumed gas: 0.040)
     [ "asdf"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 29 (just consumed gas: 0.010)
+  - location: 29 (just consumed gas: 0.015)
     [ True
       "asdf"
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 32 (just consumed gas: 0.010)
+  - location: 32 (just consumed gas: 0.015)
     [ "asdf"
       True
       { "B" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 33 (just consumed gas: 0.051)
+  - location: 33 (just consumed gas: 0.146)
     [ { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
   - location: 21 (just consumed gas: 0.025)
     [ "C"
       { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 23 (just consumed gas: 0.010)
+  - location: 23 (just consumed gas: 0.015)
     [ (Pair "C" { "B" ; "asdf" })
       { "B" ; "C" ; "asdf" } ]
-  - location: 24 (just consumed gas: 0.010)
+  - location: 24 (just consumed gas: 0.015)
     [ (Pair "C" { "B" ; "asdf" })
       (Pair "C" { "B" ; "asdf" })
       { "B" ; "C" ; "asdf" } ]
@@ -167,49 +167,49 @@ trace
   - location: 28 (just consumed gas: 0.010)
     [ { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 26 (just consumed gas: 0.035)
+  - location: 26 (just consumed gas: 0.040)
     [ "C"
       { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 29 (just consumed gas: 0.010)
+  - location: 29 (just consumed gas: 0.015)
     [ True
       "C"
       { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 32 (just consumed gas: 0.010)
+  - location: 32 (just consumed gas: 0.015)
     [ "C"
       True
       { "B" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 33 (just consumed gas: 0.050)
+  - location: 33 (just consumed gas: 0.146)
     [ { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
   - location: 21 (just consumed gas: 0.035)
     [ { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 34 (just consumed gas: 0.010)
+  - location: 34 (just consumed gas: 0.015)
     [ True
       { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" } ]
-  - location: 37 (just consumed gas: 0.010)
+  - location: 37 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       True
       { "B" ; "C" ; "asdf" } ]
-  - location: 38 (just consumed gas: 0.010)
+  - location: 38 (just consumed gas: 0.015)
     [ (Pair { "B" ; "C" ; "asdf" } True)
       { "B" ; "C" ; "asdf" } ]
-  - location: 39 (just consumed gas: 0.010)
+  - location: 39 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 40 (just consumed gas: 0.030)
     [ "B"
       (Pair { "B" ; "C" ; "asdf" } True) ]
-  - location: 42 (just consumed gas: 0.010)
+  - location: 42 (just consumed gas: 0.015)
     [ (Pair "B" { "B" ; "C" ; "asdf" } True) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Pair "B" { "B" ; "C" ; "asdf" } True)
       (Pair "B" { "B" ; "C" ; "asdf" } True) ]
-  - location: 44 (just consumed gas: 0.010)
+  - location: 44 (just consumed gas: 0.015)
     [ (Pair "B" { "B" ; "C" ; "asdf" } True)
       (Pair "B" { "B" ; "C" ; "asdf" } True)
       (Pair "B" { "B" ; "C" ; "asdf" } True) ]
@@ -232,14 +232,14 @@ trace
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 55 (just consumed gas: 0.010)
     [ True ]
-  - location: 51 (just consumed gas: 0.035)
+  - location: 51 (just consumed gas: 0.040)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 56 (just consumed gas: 0.010)
+  - location: 56 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
       True ]
-  - location: 46 (just consumed gas: 0.035)
+  - location: 46 (just consumed gas: 0.040)
     [ "B"
       { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
@@ -251,30 +251,30 @@ trace
   - location: 58 (just consumed gas: 0.010)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 60 (just consumed gas: 0.010)
+  - location: 60 (just consumed gas: 0.015)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 58 (just consumed gas: 0.035)
+  - location: 58 (just consumed gas: 0.040)
     [ True
       True
       { "B" ; "C" ; "asdf" } ]
   - location: 61 (just consumed gas: 0.010)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 63 (just consumed gas: 0.010)
+  - location: 63 (just consumed gas: 0.015)
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 40 (just consumed gas: 0.025)
     [ "C"
       (Pair { "B" ; "C" ; "asdf" } True) ]
-  - location: 42 (just consumed gas: 0.010)
+  - location: 42 (just consumed gas: 0.015)
     [ (Pair "C" { "B" ; "C" ; "asdf" } True) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Pair "C" { "B" ; "C" ; "asdf" } True)
       (Pair "C" { "B" ; "C" ; "asdf" } True) ]
-  - location: 44 (just consumed gas: 0.010)
+  - location: 44 (just consumed gas: 0.015)
     [ (Pair "C" { "B" ; "C" ; "asdf" } True)
       (Pair "C" { "B" ; "C" ; "asdf" } True)
       (Pair "C" { "B" ; "C" ; "asdf" } True) ]
@@ -297,14 +297,14 @@ trace
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 55 (just consumed gas: 0.010)
     [ True ]
-  - location: 51 (just consumed gas: 0.035)
+  - location: 51 (just consumed gas: 0.040)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 56 (just consumed gas: 0.010)
+  - location: 56 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
       True ]
-  - location: 46 (just consumed gas: 0.035)
+  - location: 46 (just consumed gas: 0.040)
     [ "C"
       { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
@@ -316,30 +316,30 @@ trace
   - location: 58 (just consumed gas: 0.010)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 60 (just consumed gas: 0.010)
+  - location: 60 (just consumed gas: 0.015)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 58 (just consumed gas: 0.035)
+  - location: 58 (just consumed gas: 0.040)
     [ True
       True
       { "B" ; "C" ; "asdf" } ]
   - location: 61 (just consumed gas: 0.010)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 63 (just consumed gas: 0.010)
+  - location: 63 (just consumed gas: 0.015)
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 40 (just consumed gas: 0.025)
     [ "asdf"
       (Pair { "B" ; "C" ; "asdf" } True) ]
-  - location: 42 (just consumed gas: 0.010)
+  - location: 42 (just consumed gas: 0.015)
     [ (Pair "asdf" { "B" ; "C" ; "asdf" } True) ]
-  - location: 43 (just consumed gas: 0.010)
+  - location: 43 (just consumed gas: 0.015)
     [ (Pair "asdf" { "B" ; "C" ; "asdf" } True)
       (Pair "asdf" { "B" ; "C" ; "asdf" } True) ]
-  - location: 44 (just consumed gas: 0.010)
+  - location: 44 (just consumed gas: 0.015)
     [ (Pair "asdf" { "B" ; "C" ; "asdf" } True)
       (Pair "asdf" { "B" ; "C" ; "asdf" } True)
       (Pair "asdf" { "B" ; "C" ; "asdf" } True) ]
@@ -362,14 +362,14 @@ trace
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 55 (just consumed gas: 0.010)
     [ True ]
-  - location: 51 (just consumed gas: 0.035)
+  - location: 51 (just consumed gas: 0.040)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 56 (just consumed gas: 0.010)
+  - location: 56 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
       True ]
-  - location: 46 (just consumed gas: 0.035)
+  - location: 46 (just consumed gas: 0.040)
     [ "asdf"
       { "B" ; "C" ; "asdf" }
       { "B" ; "C" ; "asdf" }
@@ -381,20 +381,20 @@ trace
   - location: 58 (just consumed gas: 0.010)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 60 (just consumed gas: 0.010)
+  - location: 60 (just consumed gas: 0.015)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 58 (just consumed gas: 0.035)
+  - location: 58 (just consumed gas: 0.040)
     [ True
       True
       { "B" ; "C" ; "asdf" } ]
   - location: 61 (just consumed gas: 0.010)
     [ True
       { "B" ; "C" ; "asdf" } ]
-  - location: 62 (just consumed gas: 0.010)
+  - location: 62 (just consumed gas: 0.015)
     [ { "B" ; "C" ; "asdf" }
       True ]
-  - location: 63 (just consumed gas: 0.010)
+  - location: 63 (just consumed gas: 0.015)
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
   - location: 40 (just consumed gas: 0.035)
     [ (Pair { "B" ; "C" ; "asdf" } True) ]
@@ -402,9 +402,9 @@ trace
     [ True ]
   - location: 65 (just consumed gas: 0.010)
     [ (Some True) ]
-  - location: 66 (just consumed gas: 0.010)
+  - location: 66 (just consumed gas: 0.015)
     [ {}
       (Some True) ]
-  - location: 68 (just consumed gas: 0.010)
+  - location: 68 (just consumed gas: 0.015)
     [ (Pair {} (Some True)) ]
 
