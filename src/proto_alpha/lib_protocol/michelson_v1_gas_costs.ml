@@ -31,6 +31,10 @@ module S = Saturation_repr
 
 (** Hand-edited/written cost functions *)
 
+(* ------------------------------------------------------------------------ *)
+
+(* Michelson opcodes must charge their memory allocation on the stacks *)
+
 let cost_N_IAbs_int = cost_N_IAbs_int_synthesized
 
 let cost_N_IAdd_bls12_381_fr = cost_N_IAdd_bls12_381_fr_synthesized
