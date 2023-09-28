@@ -90,7 +90,8 @@ function process_bench_record(record, acc) {
             benchmark_name: record.benchmark_name
         })
     }
-    if (!isNaN(record.nb_tx)) acc.block_finalization.push({ benchmark_name: record.benchmark_name, nb_tx: record.nb_tx, size: record.inbox_size })
+    if (!isNaN(record.nb_tx)) acc.block_finalization.push(record)
+    // next line with nb of ticks correspond to previous stored record
     if (!isNaN(record.block_finalize)) acc.block_finalization.at(-1).block_finalize = record.block_finalize
 }
 
