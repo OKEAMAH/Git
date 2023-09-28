@@ -33,7 +33,7 @@ module S = Saturation_repr
 
 (* ------------------------------------------------------------------------ *)
 
-(* Michelson opcodes must charge their memory allocation on the stacks *)
+(* Michelson opcodes must also charge for their memory allocation on the stacks *)
 
 let cost_N_IAbs_int = cost_N_IAbs_int_synthesized
 
@@ -517,42 +517,57 @@ let cost_N_IDupN size =
    used since they should contain the partial carbonation.
 *)
 
-(* model N_IContract *)
-(* Generated code: let time = 741.243807166 in let alloc = 16. in max time alloc *)
-(* Most computation of [741.24] happens in [parse_contract_for_script], which is
-   carbonated.
+(* model interpreter/N_IContract_synthesized *)
+(* Generated code: let time = 741.243807166 in let alloc = 16. in max time alloc
 
-   We estimate the pure runtime cost of the opcode is [30], which changes the code to:
+   Most computation of [741.24] happens in [parse_contract_for_script], which is
+   carbonated. We estimate the pure runtime cost of the opcode is [30], which
+   changes the code to:
+
    let time = 30 in let alloc = 16. in max time alloc
 *)
 let cost_N_IContract = S.safe_int 30
 
-(* model N_ICreate_contract *)
-(* Generated code: let time = 864.643807166 in let alloc = 196. in max time alloc *)
-(* Most computation of [864.64] happens in [create_contract], which is carbonated.
+(* model interpreter/N_ICreate_contract_synthesized *)
+(* Generated code: let time = 864.643807166 in let alloc = 196. in max time alloc
+
+   Most computation of [864.64] happens in [create_contract], which is carbonated.
    We estimate the pure runtime cost of the opcode is [60], which changes the code to:
 
    let time = 60. in let alloc = 196. in max time alloc
 *)
 let cost_N_ICreate_contract = S.safe_int 196
 
-(* model N_ITransfer_tokens *)
-(* Generated code: let time = 264.8271. in let alloc = 120. in max time alloc *)
-(* Most computation of [264.8271] happens in [transfer], which is carbonated.
+(* model interpreter/N_ITransfer_tokens_synthesized *)
+(* Generated code: let time = 264.8271. in let alloc = 120. in max time alloc
+
+   Most computation of [264.8271] happens in [transfer], which is carbonated.
    We estimate the pure runtime cost of the opcode is [60], which changes the code to:
 
    let time = 60. in let alloc = 120. in max time alloc
 *)
 let cost_N_ITransfer_tokens = S.safe_int 120
 
-(* model IEmit *)
-(* Generated code: let time = 308.970473833 in let alloc = 124. in max time alloc *)
-(* Most computation of [308.97] happens in [emit_event], which is carbonated.
+(* model interpreter/N_IEmit_synthesized *)
+(* Generated code: let time = 308.970473833 in let alloc = 124. in max time alloc
+
+   Most computation of [308.97] happens in [emit_event], which is carbonated.
    We estimate the pure runtime cost of the opcode is [30], which changes the code to:
 
    let time = 30. in let alloc = 124. in max time alloc
 *)
 let cost_N_IEmit = S.safe_int 124
+
+(* model interpreter/N_IUnpack_synthesized *)
+(* Generated code: let time = 278.760542675 in let alloc = 8. in max time alloc
+
+   We do not use the generated code since it is a partially carbonated instruciton.
+   Cost of Unpack pays two integer comparisons, and a Bytes slice
+ *)
+let cost_N_IUnpack total_bytes =
+  let open S.Syntax in
+  let total_bytes = S.safe_int total_bytes in
+  S.safe_int 260 + (total_bytes lsr 1)
 
 (* --------------------------------------------------------------------- *)
 
@@ -580,11 +595,3 @@ let cost_N_IConcat_string total_bytes =
 let cost_N_IConcat_bytes total_bytes =
   let open S.Syntax in
   S.safe_int 100 + (total_bytes lsr 1)
-
-(* A partially carbonated instruction,
-   so its model does not correspond to this function *)
-(* Cost of Unpack pays two integer comparisons, and a Bytes slice *)
-let cost_N_IUnpack total_bytes =
-  let open S.Syntax in
-  let total_bytes = S.safe_int total_bytes in
-  S.safe_int 260 + (total_bytes lsr 1)
