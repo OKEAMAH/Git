@@ -563,7 +563,7 @@ let cost_N_IEmit = S.safe_int 124
 
    We do not use the generated code since it is a partially carbonated instruciton.
    Cost of Unpack pays two integer comparisons, and a Bytes slice
- *)
+*)
 let cost_N_IUnpack total_bytes =
   let open S.Syntax in
   let total_bytes = S.safe_int total_bytes in
