@@ -58,11 +58,15 @@ function check_transaction_record(record, acc) {
     if (isNaN(record.signature_verification_ticks)) record_error(acc, record, `missing signature verification ticks`)
     if (isNaN(record.estimated_ticks)) record_error(acc, record, `missing estimated ticks`)
     if (record.status.includes(`OK`)) {
-        if (isNaN(record.store_transaction_object_ticks)) record_error(acc, record, `missing storing ticks`)
+        if (isNaN(record.store_transaction_object_ticks)) record_error(acc, record, `missing tx storing ticks`)
+        if (isNaN(record.store_receipt_ticks)) record_error(acc, record, `missing receipt storing ticks`)
+        if (isNaN(record.register_tx_ticks)) record_error(acc, record, `missing register ticks`)
+
         if (isNaN(record.gas_cost)) record_error(acc, record, `missing gas`)
         if (isNaN(record.run_transaction_ticks)) record_error(acc, record, `missing execution ticks`)
         if (isNaN(record.sputnik_runtime_ticks)) record_error(acc, record, `missing sputnik ticks`)
-        if (isNaN(record.tx_size)) record_error(acc, record, `missing size`)
+        if (isNaN(record.tx_size)) record_error(acc, record, `missing tx size`)
+        if (isNaN(record.receipt_size)) record_error(acc, record, `missing receipt size`)
         if (!record.status.includes(`true`)) record_error(acc, record, `${record.status}`)
     } else {
         record_error(acc, record, `${record.status}`)
