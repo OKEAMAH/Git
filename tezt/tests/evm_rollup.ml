@@ -345,6 +345,19 @@ let set_storage_version_in_config (`Config instrs) =
        {value = "0000000000000000"; to_ = "/evm/storage_version"}
     :: instrs)
 
+let set_batch_every_block sc_rollup_node =
+  Log.info
+    "Setting batcher for %s to batch every block"
+    (Sc_rollup_node.name sc_rollup_node) ;
+  Sc_rollup_node.Config_file.update sc_rollup_node @@ fun config ->
+  let open JSON in
+  update
+    "batcher"
+    (put
+       ( "min_batch_elements",
+         JSON.annotate ~origin:"batch-every-block" (`Float 9999999.) ))
+    config
+
 let setup_evm_kernel ?config ?kernel_installee
     ?(originator_key = Constant.bootstrap1.public_key_hash)
     ?(rollup_operator_key = Constant.bootstrap1.public_key_hash)
@@ -418,6 +431,8 @@ let setup_evm_kernel ?config ?kernel_installee
       ~src:originator_key
       client
   in
+  let* _ = Sc_rollup_node.config_init sc_rollup_node sc_rollup_address in
+  set_batch_every_block sc_rollup_node ;
   let* () =
     Sc_rollup_node.run sc_rollup_node sc_rollup_address ["--log-kernel-debug"]
   in
