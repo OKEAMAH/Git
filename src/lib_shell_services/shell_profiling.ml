@@ -13,7 +13,7 @@ let rpc_server_profiler = unplugged ()
 let may_start_block =
   let last_block = ref None in
   fun b ->
-    let sec () = Format.asprintf "block_validation(%a)" Block_hash.pp b in
+    let sec () = Format.asprintf "%a" Block_hash.pp b in
     match !last_block with
     | None ->
         let s = sec () in
