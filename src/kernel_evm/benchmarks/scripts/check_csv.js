@@ -7,6 +7,7 @@
 let fs = require('fs')
 let analysis = require("./analysis/analysis")
 let graphs = require("./analysis/graph")
+let sanity = require("./analysis/sanity")
 let { parse } = require('csv-parse')
 
 var args = process.argv.slice(2)
@@ -22,11 +23,13 @@ const filename = args[0]
 const cast_value = function (value, context) {
     if (context.header) return value
     if (context.column === 'benchmark_name') return value
+    if (context.column === 'status') return value
     return parseInt(value)
 }
 const processFile = async () => {
     const acc = analysis.init_analysis()
     const graph_acc = graphs.init_graphs()
+    const sanity_acc = sanity.init_sanity()
     const parser = fs
         .createReadStream(`${filename}`)
         .pipe(parse({
@@ -37,15 +40,17 @@ const processFile = async () => {
         }))
     for await (const record of parser) {
         // Work with each record
+        sanity.check_record(sanity_acc, record)
         analysis.process_record(record, acc)
         graphs.process_record(record, graph_acc)
     }
-    return { analysis: acc, graphs: graph_acc }
+    return { analysis: acc, graphs: graph_acc, sanity: sanity_acc }
 }
 
 (async () => {
     const infos = await processFile()
     let exit_status = analysis.check_result(infos.analysis)
+    sanity.print_summary(infos.sanity)
     await graphs.draw_tick_per_gas(infos.graphs)
     process.exit(exit_status)
 })()

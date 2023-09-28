@@ -69,6 +69,7 @@ function run_profiler(path) {
 
         childProcess.stdout.on('data', (data) => {
             const output = data.toString();
+            console.log(output)
             const profiler_output_path_regex = /Profiling result can be found in (.+)/;
             const profiler_output_path_match = output.match(profiler_output_path_regex);
             const profiler_output_path_result = profiler_output_path_match
@@ -353,6 +354,7 @@ benchmark_scripts = [
     "benchmarks/scenarios/solidity_by_example/bench_counter.js",
     "benchmarks/scenarios/solidity_by_example/bench_create_contract.js",
     "benchmarks/scenarios/solidity_by_example/bench_delegatecall.js",
+
     "benchmarks/scenarios/solidity_by_example/bench_enum.js",
     "benchmarks/scenarios/solidity_by_example/bench_event.js",
     "benchmarks/scenarios/solidity_by_example/bench_function_modifier.js",
