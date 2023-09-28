@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::{apply::TransactionReceiptInfo, inbox::Transaction};
+use crate::apply::TransactionReceiptInfo;
+use crate::inbox::TransactionContent;
 use tezos_ethereum::tx_common::EthereumTransactionCommon;
 
 /// Tick model constants
@@ -55,8 +56,8 @@ pub mod constants {
     pub const MAX_TRANSACTION_GAS_LIMIT: u64 = MAX_ALLOWED_TICKS / TICKS_PER_GAS;
 }
 
-pub fn estimate_ticks_for_transaction(transaction: &Transaction) -> u64 {
-    match &transaction.content {
+pub fn estimate_ticks_for_transaction(transaction: &TransactionContent) -> u64 {
+    match &transaction {
         crate::inbox::TransactionContent::Deposit(_) => ticks_of_deposit(),
         crate::inbox::TransactionContent::Ethereum(eth) => ticks_of_gas(eth.gas_limit),
     }
@@ -72,7 +73,10 @@ pub fn ticks_of_gas(gas: u64) -> u64 {
 }
 
 /// Check that a transaction can fit inside the tick limit
-pub fn estimate_would_overflow(estimated_ticks: u64, transaction: &Transaction) -> bool {
+pub fn estimate_would_overflow(
+    estimated_ticks: u64,
+    transaction: &TransactionContent,
+) -> bool {
     estimate_ticks_for_transaction(transaction).saturating_add(estimated_ticks)
         > constants::MAX_ALLOWED_TICKS
 }
@@ -87,10 +91,10 @@ pub fn ticks_of_invalid_transaction() -> u64 {
 }
 
 pub fn ticks_of_valid_transaction(
-    transaction: &Transaction,
+    transaction: &TransactionContent,
     receipt_info: &TransactionReceiptInfo,
 ) -> u64 {
-    match &transaction.content {
+    match &transaction {
         crate::inbox::TransactionContent::Ethereum(eth) => {
             ticks_of_valid_transaction_ethereum(eth, receipt_info)
         }

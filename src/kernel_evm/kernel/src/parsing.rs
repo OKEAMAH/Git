@@ -5,7 +5,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::inbox::{Deposit, KernelUpgrade, Transaction, TransactionContent};
+use crate::inbox::{Deposit, KernelUpgrade, TransactionContent};
 use primitive_types::{H160, U256};
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_ethereum::{
@@ -68,7 +68,7 @@ pub const UPGRADE_NONCE_SIZE: usize = 2;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Input {
-    SimpleTransaction(Box<Transaction>),
+    SimpleTransaction(Box<TransactionContent>),
     Deposit(Deposit),
     Upgrade(KernelUpgrade),
     NewChunkedTransaction {
@@ -102,14 +102,10 @@ pub type RollupType = MichelsonPair<
 
 impl InputResult {
     fn parse_simple_transaction(bytes: &[u8]) -> Self {
-        // Next 32 bytes is the transaction hash.
-        let (tx_hash, remaining) = parsable!(split_at(bytes, 32));
-        let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok()); // Remaining bytes is the rlp encoded transaction.
-        let tx: EthereumTransactionCommon = parsable!(remaining.try_into().ok());
-        InputResult::Input(Input::SimpleTransaction(Box::new(Transaction {
-            tx_hash,
-            content: TransactionContent::Ethereum(tx),
-        })))
+        let tx: EthereumTransactionCommon = parsable!(bytes.try_into().ok());
+        InputResult::Input(Input::SimpleTransaction(Box::new(
+            TransactionContent::Ethereum(tx),
+        )))
     }
 
     fn parse_new_chunked_transaction(bytes: &[u8]) -> Self {

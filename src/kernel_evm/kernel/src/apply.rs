@@ -18,7 +18,7 @@ use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 use crate::error::Error;
-use crate::inbox::{Deposit, Transaction, TransactionContent};
+use crate::inbox::{Deposit, TransactionContent};
 use crate::indexable_storage::IndexableStorage;
 use crate::storage::index_account;
 use crate::CONFIG;
@@ -27,16 +27,16 @@ use crate::CONFIG;
 // transaction receipt and transaction object making. The functions
 // `make_receipt_info` and `make_object_info` use these functions to build
 // the associated infos.
-impl Transaction {
+impl TransactionContent {
     fn to(&self) -> Option<H160> {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(Deposit { receiver, .. }) => Some(*receiver),
             TransactionContent::Ethereum(transaction) => transaction.to,
         }
     }
 
     fn data(&self) -> Vec<u8> {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(_) => vec![],
             TransactionContent::Ethereum(transaction) => transaction.data.clone(),
         }
@@ -45,7 +45,7 @@ impl Transaction {
     // This function returns effective_gas_price
     // For more details see the first paragraph here https://eips.ethereum.org/EIPS/eip-1559#specification
     fn gas_price(&self, block_base_fee_per_gas: U256) -> U256 {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(Deposit { gas_price, .. }) => *gas_price,
             TransactionContent::Ethereum(transaction) => {
                 let priority_fee_per_gas = U256::min(
@@ -58,21 +58,21 @@ impl Transaction {
     }
 
     fn value(&self) -> U256 {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(Deposit { amount, .. }) => *amount,
             TransactionContent::Ethereum(transaction) => transaction.value,
         }
     }
 
     fn nonce(&self) -> U256 {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(_) => U256::zero(),
             TransactionContent::Ethereum(transaction) => transaction.nonce,
         }
     }
 
     fn signature(&self) -> Option<TxSignature> {
-        match &self.content {
+        match &self {
             TransactionContent::Deposit(_) => None,
             TransactionContent::Ethereum(transaction) => transaction.signature.clone(),
         }
@@ -119,7 +119,8 @@ fn make_receipt_info(
 
 #[inline(always)]
 fn make_object_info(
-    transaction: &Transaction,
+    tx_hash: TransactionHash,
+    transaction: &TransactionContent,
     from: H160,
     index: u32,
     gas_used: U256,
@@ -129,7 +130,7 @@ fn make_object_info(
         from,
         gas_used,
         gas_price: transaction.gas_price(block_base_fee_per_gas),
-        hash: transaction.tx_hash,
+        hash: tx_hash,
         input: transaction.data(),
         nonce: transaction.nonce(),
         to: transaction.to(),
@@ -299,20 +300,20 @@ pub fn apply_transaction<Host: Runtime>(
     host: &mut Host,
     block_constants: &BlockConstants,
     precompiles: &PrecompileBTreeMap<Host>,
-    transaction: &Transaction,
+    transaction: &TransactionContent,
     index: u32,
     evm_account_storage: &mut EthereumAccountStorage,
     accounts_index: &mut IndexableStorage,
 ) -> Result<Option<(TransactionReceiptInfo, TransactionObjectInfo)>, Error> {
     let to = transaction.to();
-    let apply_result = match &transaction.content {
+    let apply_result = match &transaction {
         TransactionContent::Ethereum(tx) => apply_ethereum_transaction_common(
             host,
             block_constants,
             precompiles,
             evm_account_storage,
             tx,
-            transaction.tx_hash,
+            transaction,
         ),
         TransactionContent::Deposit(deposit) => {
             apply_deposit(host, evm_account_storage, deposit)
@@ -325,13 +326,8 @@ pub fn apply_transaction<Host: Runtime>(
                 log!(host, Debug, "Transaction executed, outcome: {:?}", outcome);
             }
 
-            let receipt_info = make_receipt_info(
-                transaction.tx_hash,
-                index,
-                execution_outcome,
-                caller,
-                to,
-            );
+            let receipt_info =
+                make_receipt_info(transaction, index, execution_outcome, caller, to);
             let object_info = make_object_info(
                 transaction,
                 caller,

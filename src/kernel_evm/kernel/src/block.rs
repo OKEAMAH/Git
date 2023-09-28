@@ -184,8 +184,8 @@ pub fn produce<Host: Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::block_in_progress::TxQueue;
     use crate::blueprint::{Blueprint, QueueElement};
-    use crate::inbox::Transaction;
     use crate::inbox::TransactionContent;
     use crate::inbox::TransactionContent::Ethereum;
     use crate::retrieve_chain_id;
@@ -198,17 +198,16 @@ mod tests {
         account_path, init_account_storage, EthereumAccountStorage,
     };
     use primitive_types::{H160, H256, U256};
-    use std::collections::VecDeque;
     use std::ops::Rem;
     use std::str::FromStr;
     use tezos_ethereum::transaction::{
-        TransactionHash, TransactionStatus, TransactionType, TRANSACTION_HASH_SIZE,
+        TransactionStatus, TransactionType, TRANSACTION_HASH_SIZE,
     };
     use tezos_ethereum::tx_common::EthereumTransactionCommon;
     use tezos_ethereum::tx_signature::TxSignature;
     use tezos_smart_rollup_mock::MockHost;
 
-    fn blueprint(transactions: Vec<Transaction>) -> QueueElement {
+    fn blueprint(transactions: Vec<TransactionContent>) -> QueueElement {
         QueueElement::Blueprint(Blueprint { transactions })
     }
 
@@ -351,18 +350,9 @@ mod tests {
         host: &mut MockHost,
         evm_account_storage: &mut EthereumAccountStorage,
     ) {
-        let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
-        let tx_hash_1 = [1; TRANSACTION_HASH_SIZE];
-
         let transactions = vec![
-            Transaction {
-                tx_hash: tx_hash_0,
-                content: Ethereum(dummy_eth_transaction_zero()),
-            },
-            Transaction {
-                tx_hash: tx_hash_1,
-                content: Ethereum(dummy_eth_transaction_one()),
-            },
+            Ethereum(dummy_eth_transaction_zero()),
+            Ethereum(dummy_eth_transaction_one()),
         ];
 
         let queue = Queue {
@@ -397,12 +387,9 @@ mod tests {
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
 
-        let invalid_tx = Transaction {
-            tx_hash,
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let invalid_tx = Ethereum(dummy_eth_transaction_zero());
 
-        let transactions: Vec<Transaction> = vec![invalid_tx];
+        let transactions: Vec<TransactionContent> = vec![invalid_tx];
         let queue = Queue {
             proposals: vec![blueprint(transactions)],
             kernel_upgrade: None,
@@ -422,12 +409,9 @@ mod tests {
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
 
-        let valid_tx = Transaction {
-            tx_hash,
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let valid_tx = Ethereum(dummy_eth_transaction_zero());
 
-        let transactions: Vec<Transaction> = vec![valid_tx];
+        let transactions: Vec<TransactionContent> = vec![valid_tx];
         let queue = Queue {
             proposals: vec![blueprint(transactions)],
             kernel_upgrade: None,
@@ -460,12 +444,9 @@ mod tests {
             H160::from_str("af1276cbb260bb13deddb4209ae99ae6e497f446").unwrap(),
             tx.caller().unwrap()
         );
-        let valid_tx = Transaction {
-            tx_hash,
-            content: Ethereum(dummy_eth_transaction_deploy()),
-        };
+        let valid_tx = Ethereum(dummy_eth_transaction_deploy());
 
-        let transactions: Vec<Transaction> = vec![valid_tx];
+        let transactions: Vec<TransactionContent> = vec![valid_tx];
         let queue = Queue {
             proposals: vec![blueprint(transactions)],
             kernel_upgrade: None,
@@ -516,21 +497,15 @@ mod tests {
     fn test_several_valid_proposals() {
         let mut host = MockHost::default();
 
-        let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
-        let tx_hash_1 = [1; TRANSACTION_HASH_SIZE];
+        let transaction_0 = Ethereum(dummy_eth_transaction_zero());
 
-        let transaction_0 = vec![Transaction {
-            tx_hash: tx_hash_0,
-            content: Ethereum(dummy_eth_transaction_zero()),
-        }];
-
-        let transaction_1 = vec![Transaction {
-            tx_hash: tx_hash_1,
-            content: Ethereum(dummy_eth_transaction_one()),
-        }];
+        let transaction_1 = Ethereum(dummy_eth_transaction_one());
 
         let queue = Queue {
-            proposals: vec![blueprint(transaction_0), blueprint(transaction_1)],
+            proposals: vec![
+                blueprint(vec![transaction_0]),
+                blueprint(vec![transaction_1]),
+            ],
             kernel_upgrade: None,
         };
 
@@ -563,14 +538,8 @@ mod tests {
         let tx_hash_1 = [1; TRANSACTION_HASH_SIZE];
 
         let transactions = vec![
-            Transaction {
-                tx_hash: tx_hash_0,
-                content: Ethereum(dummy_eth_transaction_zero()),
-            },
-            Transaction {
-                tx_hash: tx_hash_1,
-                content: Ethereum(dummy_eth_transaction_one()),
-            },
+            Ethereum(dummy_eth_transaction_zero()),
+            Ethereum(dummy_eth_transaction_one()),
         ];
 
         let queue = Queue {
@@ -617,10 +586,7 @@ mod tests {
     fn test_replay_attack() {
         let mut host = MockHost::default();
 
-        let tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let tx = Ethereum(dummy_eth_transaction_zero());
 
         let transactions = vec![tx.clone(), tx];
 
@@ -656,10 +622,7 @@ mod tests {
         let mut host = MockHost::default();
         let accounts_index = init_account_index().unwrap();
 
-        let tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let tx = Ethereum(dummy_eth_transaction_zero());
 
         let transactions = vec![tx];
 
@@ -689,10 +652,7 @@ mod tests {
         let mut host = MockHost::default();
         let accounts_index = init_account_index().unwrap();
 
-        let tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let tx = Ethereum(dummy_eth_transaction_zero());
 
         let transactions = vec![tx];
 
@@ -730,10 +690,7 @@ mod tests {
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
 
-        let tx = Transaction {
-            tx_hash,
-            content: Ethereum(dummy_eth_transaction_zero()),
-        };
+        let tx = Ethereum(dummy_eth_transaction_zero());
 
         let transactions = vec![tx];
 
@@ -795,7 +752,7 @@ mod tests {
     }
 
     fn compute_block<MockHost: Runtime>(
-        transactions: VecDeque<Transaction>,
+        transactions: TxQueue,
         host: &mut MockHost,
         mut evm_account_storage: EthereumAccountStorage,
     ) -> BlockInProgress {
@@ -835,10 +792,7 @@ mod tests {
         );
 
         // tx is valid because correct nonce and account provisionned
-        let valid_tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: TransactionContent::Ethereum(dummy_eth_transaction_deploy()),
-        };
+        let valid_tx = Ethereum(dummy_eth_transaction_deploy());
 
         let transactions = vec![valid_tx].into();
 
@@ -868,15 +822,10 @@ mod tests {
         let evm_account_storage = init_account_storage().unwrap();
 
         // tx is invalid because wrong nonce
-        let valid_tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: TransactionContent::Ethereum(
-                dummy_eth_transaction_deploy_from_nonce_and_pk(
-                    42,
-                    "e922354a3e5902b5ac474f3ff08a79cff43533826b8f451ae2190b65a9d26158",
-                ),
-            ),
-        };
+        let valid_tx = Ethereum(dummy_eth_transaction_deploy_from_nonce_and_pk(
+            42,
+            "e922354a3e5902b5ac474f3ff08a79cff43533826b8f451ae2190b65a9d26158",
+        ));
 
         let transactions = vec![valid_tx].into();
 
@@ -914,10 +863,8 @@ mod tests {
         );
 
         // tx is valid because correct nonce and account provisionned
-        let valid_tx = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: TransactionContent::Ethereum(dummy_eth_transaction_zero()),
-        };
+        let valid_tx = Ethereum(dummy_eth_transaction_zero());
+
         let transactions = vec![valid_tx].into();
 
         // init block in progress
@@ -986,10 +933,7 @@ mod tests {
 
         // Prepare a invalid transaction, i.e. with not enough funds.
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
-        let transaction = Transaction {
-            tx_hash,
-            content: Ethereum(tx),
-        };
+        let transaction = Ethereum(tx);
         let queue = Queue {
             proposals: vec![blueprint(vec![transaction])],
             kernel_upgrade: None,
@@ -1012,13 +956,8 @@ mod tests {
 
     /// A queue that should produce 1 block with an invalid transaction
     fn almost_empty_queue() -> Queue {
-        let tx_hash = [0; TRANSACTION_HASH_SIZE];
-
         // transaction should be invalid
-        let tx = Transaction {
-            tx_hash,
-            content: Ethereum(dummy_eth_transaction_one()),
-        };
+        let tx = Ethereum(dummy_eth_transaction_one());
 
         let transactions = vec![tx];
 
@@ -1082,18 +1021,8 @@ mod tests {
         .unwrap()
     }
 
-    fn hash_from_nonce(nonce: u64) -> TransactionHash {
-        let nonce = u64::to_le_bytes(nonce);
-        let mut hash = [0; 32];
-        hash[..8].copy_from_slice(&nonce);
-        hash
-    }
-
-    fn dummy_transaction(nonce: u64) -> Transaction {
-        Transaction {
-            tx_hash: hash_from_nonce(nonce),
-            content: TransactionContent::Ethereum(dummy_eth(nonce)),
-        }
+    fn dummy_transaction(nonce: u64) -> TransactionContent {
+        TransactionContent::Ethereum(dummy_eth(nonce))
     }
 
     const TOO_MANY_TRANSACTIONS: u64 = 500;

@@ -8,7 +8,7 @@ use crate::apply::{TransactionObjectInfo, TransactionReceiptInfo};
 use crate::current_timestamp;
 use crate::error::Error;
 use crate::error::TransferError::CumulativeGasUsedOverflow;
-use crate::inbox::Transaction;
+use crate::inbox::TransactionContent;
 use crate::storage;
 use crate::tick_model;
 use anyhow::Context;
@@ -24,13 +24,15 @@ use tezos_ethereum::transaction::{
 use tezos_ethereum::Bloom;
 use tezos_smart_rollup_host::runtime::Runtime;
 
+pub type TxQueue = VecDeque<TransactionContent>;
+
 #[derive(Debug, PartialEq, Clone)]
 /// Container for all data needed during block computation
 pub struct BlockInProgress {
     /// block number
     pub number: U256,
     /// queue containing the transactions to execute
-    tx_queue: VecDeque<Transaction>,
+    tx_queue: TxQueue,
     /// list of transactions executed without issue
     valid_txs: Vec<[u8; TRANSACTION_HASH_SIZE]>,
     /// gas accumulator
@@ -62,7 +64,7 @@ impl Encodable for BlockInProgress {
     }
 }
 
-fn append_queue(stream: &mut rlp::RlpStream, queue: &VecDeque<Transaction>) {
+fn append_queue(stream: &mut rlp::RlpStream, queue: &TxQueue) {
     stream.begin_list(queue.len());
     for transaction in queue {
         stream.append(transaction);
@@ -87,7 +89,7 @@ impl Decodable for BlockInProgress {
 
         let mut it = decoder.iter();
         let number: U256 = decode_field(&next(&mut it)?, "number")?;
-        let tx_queue: VecDeque<Transaction> = decode_queue(&next(&mut it)?)?;
+        let tx_queue: TxQueue = decode_queue(&next(&mut it)?)?;
         let valid_txs: Vec<[u8; TRANSACTION_HASH_SIZE]> =
             decode_valid_txs(&next(&mut it)?)?;
         let cumulative_gas: U256 = decode_field(&next(&mut it)?, "cumulative_gas")?;
@@ -125,13 +127,15 @@ fn decode_valid_txs(
     Ok(valid_txs)
 }
 
-fn decode_queue(decoder: &rlp::Rlp<'_>) -> Result<VecDeque<Transaction>, DecoderError> {
+fn decode_queue(
+    decoder: &rlp::Rlp<'_>,
+) -> Result<VecDeque<TransactionContent>, DecoderError> {
     if !decoder.is_list() {
         return Err(DecoderError::RlpExpectedToBeList);
     }
     let mut queue = VecDeque::with_capacity(decoder.item_count()?);
     for item in decoder.iter() {
-        let tx: Transaction = item.as_val()?;
+        let tx: TransactionContent = item.as_val()?;
         queue.push_back(tx);
     }
     Ok(queue)
@@ -146,7 +150,7 @@ impl BlockInProgress {
         number: U256,
         parent_hash: H256,
         gas_price: U256,
-        transactions: VecDeque<Transaction>,
+        transactions: VecDeque<TransactionContent>,
         estimated_ticks: u64,
     ) -> Self {
         Self {
@@ -170,7 +174,7 @@ impl BlockInProgress {
     pub fn new(
         number: U256,
         gas_price: U256,
-        transactions: VecDeque<Transaction>,
+        transactions: VecDeque<TransactionContent>,
     ) -> BlockInProgress {
         Self::new_with_ticks(number, H256::zero(), gas_price, transactions, 0u64)
     }
@@ -203,7 +207,7 @@ impl BlockInProgress {
 
     pub fn register_valid_transaction<Host: Runtime>(
         &mut self,
-        transaction: &Transaction,
+        transaction: &TransactionContent,
         object_info: TransactionObjectInfo,
         receipt_info: TransactionReceiptInfo,
         host: &mut Host,
@@ -219,7 +223,7 @@ impl BlockInProgress {
             tick_model::ticks_of_valid_transaction(transaction, &receipt_info);
 
         // register transaction as done
-        self.valid_txs.push(transaction.tx_hash);
+        self.valid_txs.push(receipt_info.tx_hash);
         self.index += 1;
 
         // store info
@@ -249,7 +253,7 @@ impl BlockInProgress {
         Ok(new_block)
     }
 
-    pub fn pop_tx(&mut self) -> Option<Transaction> {
+    pub fn pop_tx(&mut self) -> Option<TransactionContent> {
         self.tx_queue.pop_front()
     }
 
@@ -349,7 +353,7 @@ impl BlockInProgress {
 mod tests {
 
     use super::BlockInProgress;
-    use crate::inbox::{Deposit, Transaction, TransactionContent};
+    use crate::inbox::{Deposit, TransactionContent};
     use primitive_types::{H160, H256, U256};
     use rlp::{Decodable, Encodable, Rlp};
     use tezos_ethereum::{
@@ -382,23 +386,17 @@ mod tests {
         }
     }
 
-    fn dummy_tx_eth(i: u8) -> Transaction {
-        Transaction {
-            tx_hash: [i; TRANSACTION_HASH_SIZE],
-            content: TransactionContent::Ethereum(dummy_etc(i)),
-        }
+    fn dummy_tx_eth(i: u8) -> TransactionContent {
+        TransactionContent::Ethereum(dummy_etc(i))
     }
 
-    fn dummy_tx_deposit(i: u8) -> Transaction {
+    fn dummy_tx_deposit(i: u8) -> TransactionContent {
         let deposit = Deposit {
             amount: U256::from(i),
             gas_price: U256::from(i),
             receiver: H160::from([i; 20]),
         };
-        Transaction {
-            tx_hash: [i; TRANSACTION_HASH_SIZE],
-            content: TransactionContent::Deposit(deposit),
-        }
+        TransactionContent::Deposit(deposit)
     }
 
     #[test]

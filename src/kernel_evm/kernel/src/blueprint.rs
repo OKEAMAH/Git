@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::block_in_progress::BlockInProgress;
-use crate::inbox::{read_inbox, KernelUpgrade, Transaction, TransactionContent};
+use crate::inbox::{read_inbox, KernelUpgrade, TransactionContent};
 use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
 use primitive_types::U256;
 use tezos_crypto_rs::hash::ContractKt1Hash;
@@ -14,7 +14,7 @@ use tezos_smart_rollup_host::runtime::Runtime;
 
 /// The blueprint of a block is a list of transactions.
 pub struct Blueprint {
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<TransactionContent>,
 }
 pub enum QueueElement {
     Blueprint(Blueprint),
@@ -37,7 +37,7 @@ impl Queue {
         }
     }
 
-    pub fn add(queue: &mut Queue, transactions: Vec<Transaction>) {
+    pub fn add(queue: &mut Queue, transactions: Vec<TransactionContent>) {
         queue
             .proposals
             .push(QueueElement::Blueprint(Blueprint { transactions }))
@@ -45,17 +45,17 @@ impl Queue {
 }
 
 fn filter_invalid_transactions(
-    transactions: Vec<Transaction>,
+    transactions: Vec<TransactionContent>,
     chain_id: U256,
-) -> Vec<Transaction> {
-    let filter_chain_id = |transaction: &Transaction| match &transaction.content {
+) -> Vec<TransactionContent> {
+    let filter_chain_id = |transaction: &TransactionContent| match &transaction {
         TransactionContent::Deposit(_) => true,
         TransactionContent::Ethereum(transaction) => {
             U256::eq(&transaction.chain_id, &chain_id)
         }
     };
 
-    let filter_max_gas_limit = |transaction: &Transaction| match &transaction.content {
+    let filter_max_gas_limit = |transaction: &TransactionContent| match &transaction {
         TransactionContent::Deposit(_) => true,
         TransactionContent::Ethereum(transaction) => {
             transaction.gas_limit <= MAX_TRANSACTION_GAS_LIMIT
@@ -91,9 +91,7 @@ mod tests {
     use super::*;
     use crate::inbox::TransactionContent::Ethereum;
     use primitive_types::{H160, U256};
-    use tezos_ethereum::{
-        transaction::TRANSACTION_HASH_SIZE, tx_common::EthereumTransactionCommon,
-    };
+    use tezos_ethereum::tx_common::EthereumTransactionCommon;
 
     fn address_from_str(s: &str) -> Option<H160> {
         let data = &hex::decode(s).unwrap();
@@ -121,25 +119,17 @@ mod tests {
         let chain_id = U256::one();
 
         let valid_content = Ethereum(EthereumTransactionCommon { chain_id, ..tx() });
-        let valid_transaction = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: valid_content,
-        };
 
         let invalid_content = Ethereum(EthereumTransactionCommon {
             chain_id: U256::from(1312321),
             ..tx()
         });
-        let invalid_transaction = Transaction {
-            tx_hash: [1; TRANSACTION_HASH_SIZE],
-            content: invalid_content,
-        };
 
         let filtered_transactions = filter_invalid_transactions(
-            vec![valid_transaction.clone(), invalid_transaction],
+            vec![valid_content.clone(), invalid_content],
             chain_id,
         );
-        assert_eq!(vec![valid_transaction], filtered_transactions)
+        assert_eq!(vec![valid_content], filtered_transactions)
     }
 
     #[test]
@@ -148,24 +138,16 @@ mod tests {
             gas_limit: MAX_TRANSACTION_GAS_LIMIT,
             ..tx()
         });
-        let valid_transaction = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: valid_content,
-        };
 
         let invalid_content = Ethereum(EthereumTransactionCommon {
             gas_limit: MAX_TRANSACTION_GAS_LIMIT + 1,
             ..tx()
         });
-        let invalid_transaction = Transaction {
-            tx_hash: [0; TRANSACTION_HASH_SIZE],
-            content: invalid_content,
-        };
 
         let filtered_transactions = filter_invalid_transactions(
-            vec![valid_transaction.clone(), invalid_transaction],
+            vec![valid_content.clone(), invalid_content],
             U256::one(),
         );
-        assert_eq!(vec![valid_transaction], filtered_transactions)
+        assert_eq!(vec![valid_content], filtered_transactions)
     }
 }
