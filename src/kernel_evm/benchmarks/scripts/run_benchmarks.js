@@ -289,7 +289,16 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         });
     }
     // row conserning all runs
-    unaccounted_ticks = sumArray(kernel_run_ticks) - sumArray(run_transaction_ticks) - sumArray(signature_verification_ticks) - sumArray(store_transaction_object_ticks) - sumArray(fetch_blueprint_ticks)
+
+    //
+    unaccounted_ticks =
+        sumArray(kernel_run_ticks)
+        - sumArray(fetch_blueprint_ticks)
+        - sumArray(run_transaction_ticks)
+        - sumArray(signature_verification_ticks)
+        - sumArray(run_benchmark_result.register_tx_ticks)
+        - run_benchmark_result.block_finalize[0]
+
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         unaccounted_ticks,
