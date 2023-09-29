@@ -10,7 +10,6 @@
             octez-shell-libs.protocol-updater
             ; TODO tezos/tezos#2170: adapt next line(s)
             tezos-protocol-genesis.embedded-protocol
-            tezos-protocol-016-PtMumbai.embedded-protocol
             tezos-protocol-017-PtNairob.embedded-protocol
             tezos-protocol-018-Proxford.embedded-protocol
             tezos-protocol-alpha.embedded-protocol
