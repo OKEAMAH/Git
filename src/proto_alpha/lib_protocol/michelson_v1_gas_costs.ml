@@ -403,7 +403,7 @@ let cost_N_ISapling_verify_update_with_blake2b size1 size2 bound_data =
      let time = if size = 0 then 140. else 220. in
      let alloc = if size = 0 then 225.986577181 else 510.013245033 in
      max time alloc *)
-let cost_N_IApply rec_flag = if rec_flag then S.safe_int 220 else S.safe_int 510
+let cost_N_IApply rec_flag = if rec_flag then S.safe_int 510 else S.safe_int 220
 
 (* N_KMap_enter_body
    Removed conversion of [size] for optimization *)
