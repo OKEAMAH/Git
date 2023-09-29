@@ -397,17 +397,25 @@ mod tests {
             }
             Input::NewChunkedTransaction {
                 tx_hash,
+                next_chunk_hash,
                 num_chunks,
             } => {
                 // New chunked transaction tag
                 buffer.push(1);
                 buffer.extend_from_slice(&tx_hash);
+                buffer.extend_from_slice(&next_chunk_hash);
                 buffer.extend_from_slice(&u16::to_le_bytes(num_chunks))
             }
-            Input::TransactionChunk { tx_hash, i, data } => {
+            Input::TransactionChunk {
+                tx_hash,
+                next_chunk_hash,
+                i,
+                data,
+            } => {
                 // Transaction chunk tag
                 buffer.push(2);
                 buffer.extend_from_slice(&tx_hash);
+                buffer.extend_from_slice(&next_chunk_hash);
                 buffer.extend_from_slice(&u16::to_le_bytes(i));
                 buffer.extend_from_slice(&data);
             }
@@ -417,11 +425,15 @@ mod tests {
     }
 
     fn make_chunked_transactions(tx_hash: TransactionHash, data: Vec<u8>) -> Vec<Input> {
+        // TODO: REMOVE PLACEHOLDER
+        let next_chunk_hash = [0; TRANSACTION_HASH_SIZE];
+
         let mut chunks: Vec<Input> = data
             .chunks(MAX_SIZE_PER_CHUNK)
             .enumerate()
             .map(|(i, bytes)| Input::TransactionChunk {
                 tx_hash,
+                next_chunk_hash,
                 i: i as u16,
                 data: bytes.to_vec(),
             })
@@ -430,6 +442,7 @@ mod tests {
 
         let new_chunked_transaction = Input::NewChunkedTransaction {
             tx_hash,
+            next_chunk_hash,
             num_chunks: number_of_chunks,
         };
 
@@ -538,14 +551,18 @@ mod tests {
     // the first `NewChunkedTransaction` should be considered.
     fn recreate_chunked_transaction() {
         let mut host = MockHost::default();
+        // TODO: REMOVE PLACEHOLDER
+        let next_chunk_hash = [0; TRANSACTION_HASH_SIZE];
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
         let new_chunk1 = Input::NewChunkedTransaction {
             tx_hash,
+            next_chunk_hash,
             num_chunks: 2,
         };
         let new_chunk2 = Input::NewChunkedTransaction {
             tx_hash,
+            next_chunk_hash,
             num_chunks: 42,
         };
 
@@ -588,10 +605,12 @@ mod tests {
         let chunk = match chunk {
             Input::TransactionChunk {
                 tx_hash,
+                next_chunk_hash,
                 i: _,
                 data,
             } => Input::TransactionChunk {
                 tx_hash,
+                next_chunk_hash,
                 i: out_of_bound_i,
                 data,
             },
