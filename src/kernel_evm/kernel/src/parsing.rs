@@ -344,7 +344,7 @@ impl InputResult {
         };
 
         match InboxMessage::<RollupType>::parse(bytes) {
-            Ok((_remaing, message)) => match message {
+            Ok((_remaining, message)) => match message {
                 InboxMessage::External(message) => {
                     Self::parse_external(message, &smart_rollup_address)
                 }

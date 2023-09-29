@@ -187,6 +187,7 @@ pub fn read_input<Host: Runtime>(
 fn handle_transaction_chunk<Host: Runtime>(
     host: &mut Host,
     tx_hash: TransactionHash,
+    next_chunk_hash: TransactionHash,
     i: u16,
     data: Vec<u8>,
 ) -> Result<Option<Transaction>, Error> {
@@ -218,8 +219,14 @@ fn handle_transaction_chunk<Host: Runtime>(
     };
     // When the transaction is stored in the storage, it returns the full transaction
     // if `data` was the missing chunk.
-    if let Some(data) = crate::storage::store_transaction_chunk(host, &tx_hash, i, data)?
-    {
+    if let Some(data) = crate::storage::store_transaction_chunk(
+        host,
+        &tx_hash,
+        &next_chunk_hash,
+        num_chunks,
+        i,
+        data,
+    )? {
         if let Ok(tx) = EthereumTransactionCommon::from_bytes(&data) {
             let content = TransactionContent::Ethereum(tx);
             return Ok(Some(Transaction { tx_hash, content }));
@@ -291,10 +298,23 @@ pub fn read_inbox<Host: Runtime>(
             }
             InputResult::Input(Input::NewChunkedTransaction {
                 tx_hash,
+                next_chunk_hash,
                 num_chunks,
-            }) => crate::storage::create_chunked_transaction(host, &tx_hash, num_chunks)?,
-            InputResult::Input(Input::TransactionChunk { tx_hash, i, data }) => {
-                if let Some(tx) = handle_transaction_chunk(host, tx_hash, i, data)? {
+            }) => crate::storage::create_chunked_transaction(
+                host,
+                &tx_hash,
+                &next_chunk_hash,
+                num_chunks,
+            )?,
+            InputResult::Input(Input::TransactionChunk {
+                tx_hash,
+                next_chunk_hash,
+                i,
+                data,
+            }) => {
+                if let Some(tx) =
+                    handle_transaction_chunk(host, tx_hash, next_chunk_hash, i, data)?
+                {
                     res.transactions.push(tx)
                 }
             }
