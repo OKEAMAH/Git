@@ -4,4 +4,5 @@ ocaml-check:
     - .build
   needs: [trigger]
   script:
+    - ./scripts/remove-old-protocols.sh
     - dune build @check
