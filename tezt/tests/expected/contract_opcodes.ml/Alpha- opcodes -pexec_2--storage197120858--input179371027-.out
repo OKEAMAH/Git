@@ -20,14 +20,14 @@ trace
     [ 4
       { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL }
       { 0 ; 1 ; 2 ; 3 } ]
-  - location: 24 (just consumed gas: 0.771)
+  - location: 24 (just consumed gas: 0.481)
     [ { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } }
       { 0 ; 1 ; 2 ; 3 } ]
   - location: 25 (just consumed gas: 0.015)
     [ 3
       { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } }
       { 0 ; 1 ; 2 ; 3 } ]
-  - location: 28 (just consumed gas: 0.771)
+  - location: 28 (just consumed gas: 0.481)
     [ { PUSH int 3 ;
         PAIR ;
         { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }

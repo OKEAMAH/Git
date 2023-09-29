@@ -22,7 +22,7 @@ trace
   - location: 17 (just consumed gas: 0.010)
     [ 14
       { UNPAIR ; ADD } ]
-  - location: 19 (just consumed gas: 0.771)
+  - location: 19 (just consumed gas: 0.481)
     [ { PUSH nat 14 ; PAIR ; { UNPAIR ; ADD } } ]
   - location: 17 (just consumed gas: 0.040)
     [ 38
