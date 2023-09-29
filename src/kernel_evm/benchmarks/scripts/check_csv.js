@@ -10,6 +10,16 @@ let graphs = require("./analysis/graph")
 let sanity = require("./analysis/sanity")
 let { parse } = require('csv-parse')
 
+const commander = require('commander');
+
+commander
+    .usage('[OPTIONS] <file.csv>')
+    .option('--ignore-sanity-check', 'Ignore the sanity check on data.')
+    .parse(process.argv);
+
+if (commander.args.length < 1) {
+    commander.help()
+}
 var args = process.argv.slice(2)
 
 if (args.length == 0) {
@@ -19,7 +29,7 @@ if (args.length == 0) {
 
 
 
-const filename = args[0]
+const filename = commander.args[0]
 const cast_value = function (value, context) {
     if (context.header) return value
     if (context.column === 'benchmark_name') return value
@@ -50,6 +60,6 @@ const processFile = async () => {
 (async () => {
     const infos = await processFile()
     let exit_status = analysis.check_result(infos.analysis)
-    sanity.print_summary(infos.sanity)
+    if (!commander.opts().ignoreSanityCheck) sanity.print_summary(infos.sanity)
     process.exit(exit_status)
 })()
