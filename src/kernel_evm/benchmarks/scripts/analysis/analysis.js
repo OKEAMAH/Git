@@ -6,6 +6,7 @@ const { is_transfer, is_create, is_transaction, BASE_GAS } = require('./utils')
 const tx_register = require('./tx_register')
 const fetch = require('./fetch')
 const block_finalization = require('./block_finalization')
+const tx_overhead = require('./tx_overhead')
 
 const number_formatter_compact = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'long' });
 const number_formatter = Intl.NumberFormat('en', {});
@@ -28,7 +29,8 @@ function init_analysis() {
         kernel_runs: [],
         fetch_data: [],
         tx_register: [],
-        block_finalization: []
+        block_finalization: [],
+        tx_overhead: []
 
     };
     return empty
@@ -47,6 +49,10 @@ function print_analysis(infos) {
     console.info(`Block Finalization Analysis`)
     console.info(`----------------------------------`)
     let error_finalize = block_finalization.print_analysis(infos)
+    console.info(`-------------------------------------------------------`)
+    console.info(`Transaction Overhead Analysis`)
+    console.info(`----------------------------------`)
+    tx_overhead.print_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Kernels infos`)
     console.info(`----------------------------------`)
@@ -96,6 +102,8 @@ function process_bench_record(record, acc) {
 
 function process_transaction_record(record, acc) {
     acc.signatures.push(record.signature_verification_ticks)
+    if (!isNaN(record.tx_size) && !isNaN(record.sputnik_runtime_ticks) && !isNaN(record.run_transaction_ticks))
+        acc.tx_overhead.push(record)
     if (!isNaN(record.tx_size) && !isNaN(record.store_transaction_object_ticks))
         acc.tx_register.push(record)
 
