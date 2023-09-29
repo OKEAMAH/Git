@@ -19,10 +19,12 @@ use crate::block_in_progress::BlockInProgress;
 use crate::error::{Error, StorageError};
 use crate::parsing::UPGRADE_NONCE_SIZE;
 use rlp::{Decodable, Encodable, Rlp};
+use sha3::{Digest, Keccak256};
 use tezos_ethereum::block::L2Block;
 use tezos_ethereum::rlp_helpers::FromRlpBytes;
 use tezos_ethereum::transaction::{
     TransactionHash, TransactionObject, TransactionReceipt, TransactionStatus,
+    TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::wei::Wei;
 
@@ -363,12 +365,19 @@ pub fn store_transaction_object<Host: Runtime>(
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
 const CHUNKED_TRANSACTION_NUM_CHUNKS: RefPath = RefPath::assert_from(b"/num_chunks");
+const NEXT_CHUNKED_HASH: RefPath = RefPath::assert_from(b"/next_chunk_path");
 
 pub fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath, Error> {
     let hash = hex::encode(tx_hash);
     let raw_chunked_transaction_path: Vec<u8> = format!("/{}", hash).into();
     let chunked_transaction_path = OwnedPath::try_from(raw_chunked_transaction_path)?;
     concat(&CHUNKED_TRANSACTIONS, &chunked_transaction_path).map_err(Error::from)
+}
+
+fn next_chunk_hash_path(
+    chunked_transaction_path: &OwnedPath,
+) -> Result<OwnedPath, Error> {
+    concat(chunked_transaction_path, &NEXT_CHUNKED_HASH).map_err(Error::from)
 }
 
 fn chunked_transaction_num_chunks_path(
@@ -393,7 +402,8 @@ fn is_transaction_complete<Host: Runtime>(
 ) -> Result<bool, Error> {
     let n_subkeys = host.store_count_subkeys(chunked_transaction_path)? as u16;
     // `n_subkeys` includes the key `num_chunks`
-    Ok(n_subkeys > num_chunks)
+    // minus one = minus the next chunk hash path key
+    Ok(n_subkeys - 1 > num_chunks)
 }
 
 fn chunked_transaction_num_chunks_by_path<Host: Runtime>(
@@ -486,25 +496,58 @@ pub fn remove_chunked_transaction<Host: Runtime>(
     remove_chunked_transaction_by_path(host, &chunked_transaction_path)
 }
 
+fn read_next_chunk_hash<Host: Runtime>(
+    host: &mut Host,
+    tx_hash: &TransactionHash,
+) -> Result<TransactionHash, Error> {
+    let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
+    let next_chunk_hash_path = next_chunk_hash_path(&chunked_transaction_path)?;
+
+    let next_chunk_hash = host
+        .store_read_all(&next_chunk_hash_path)
+        .map_err(Error::from)?;
+
+    next_chunk_hash
+        .try_into()
+        .map_err(|_| Error::InvalidConversion)
+}
+
 /// Store the transaction chunk in the storage. Returns the full transaction
 /// if the last chunk to store is the last missing chunk.
 pub fn store_transaction_chunk<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
+    next_chunk_hash: &TransactionHash,
+    num_chunks: u16,
     i: u16,
     data: Vec<u8>,
 ) -> Result<Option<Vec<u8>>, Error> {
+    let data_hash: [u8; TRANSACTION_HASH_SIZE] = Keccak256::digest(&data).into();
+    let current_chunk_hash = read_next_chunk_hash(host, tx_hash)?;
+
+    if data_hash != current_chunk_hash {
+        // Corrupted data is vanished.
+        return Ok(None);
+    }
+
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
-    let num_chunks =
-        chunked_transaction_num_chunks_by_path(host, &chunked_transaction_path)?;
 
     // Store the new transaction chunk.
     let transaction_chunk_path = transaction_chunk_path(&chunked_transaction_path, i)?;
     store_transaction_chunk_data(host, &transaction_chunk_path, data)?;
 
+    let next_chunk_hash_path = next_chunk_hash_path(&chunked_transaction_path)?;
+    if i < num_chunks - 1 {
+        // Store the next valid chunk hash to ensure integrity.
+        host.store_write_all(&next_chunk_hash_path, next_chunk_hash)
+            .map_err(Error::from)?;
+    }
+
     // If the chunk was the last one, we gather all the chunks and remove the
     // sub elements.
     if is_transaction_complete(host, &chunked_transaction_path, num_chunks)? {
+        host.store_delete(&next_chunk_hash_path)
+            .map_err(Error::from)?;
         let data = get_full_transaction(host, &chunked_transaction_path, num_chunks)?;
         host.store_delete(&chunked_transaction_path)?;
         Ok(Some(data))
@@ -516,6 +559,7 @@ pub fn store_transaction_chunk<Host: Runtime>(
 pub fn create_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
+    next_chunk_hash: &TransactionHash,
     num_chunks: u16,
 ) -> Result<(), Error> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
@@ -537,6 +581,10 @@ pub fn create_chunked_transaction<Host: Runtime>(
         );
         return Ok(());
     }
+
+    let next_chunk_hash_path = next_chunk_hash_path(&chunked_transaction_path)?;
+    host.store_write_all(&next_chunk_hash_path, next_chunk_hash)
+        .map_err(Error::from)?;
 
     host.store_write(
         &chunked_transaction_num_chunks_path,
