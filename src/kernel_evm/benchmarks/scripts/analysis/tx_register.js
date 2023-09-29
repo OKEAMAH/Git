@@ -5,15 +5,16 @@ const fs = require('fs');
 const csv = require('csv-stringify/sync');
 const utils = require("./utils")
 const OUTPUT = 'register_tx_data.csv'
-const MODEL_OBJ = { intercept: 500000, coef: 36523 }
-const MODEL_RECEIPT = { intercept: 500000, coef: 36523 }
+const MODEL_OBJ = { intercept: 200000, coef: 880 }
+const MODEL_RECEIPT = { intercept: 200000, coef: 960 }
+const MODEL_LOGBLOOM = { intercept: 600000, coef: 100 }
 
 function predict_obj(model, x) {
     return model.intercept + model.coef * x
 }
 
 function predict_register(datum) {
-    return predict_obj(MODEL_OBJ, datum.tx_size) + predict_obj(MODEL_RECEIPT, datum.receipt_size)
+    return predict_obj(MODEL_OBJ, datum.tx_size) + predict_obj(MODEL_RECEIPT, datum.receipt_size) + predict_obj(MODEL_LOGBLOOM, datum.receipt_size)
 }
 
 //[record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
@@ -37,7 +38,7 @@ function print_analysis(infos) {
         columns: ["benchmark_name", "receipt_size", "store_receipt_ticks"]
     }))
 
-    console.log(`current model: Y = ${MODEL_OBJ.intercept} + ${MODEL_OBJ.coef} * nbtx `)
+    console.log(`current model: Y = ${MODEL_OBJ.intercept} + ${MODEL_OBJ.coef} * size + ${MODEL_RECEIPT.intercept} + ${MODEL_RECEIPT.coef} * receipt size  + ${MODEL_LOGBLOOM.intercept} + ${MODEL_LOGBLOOM.coef} * receipt size`)
     return utils.print_summary_errors(infos.tx_register, datum => { return datum.register_tx_ticks - predict_register(datum) })
 }
 
