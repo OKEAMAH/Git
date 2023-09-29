@@ -102,11 +102,12 @@ function run_profiler(path) {
             if (tx_status.length != estimated_ticks_per_tx.length) {
                 console.log(new Error("Tx status array length (" + tx_status.length + ") != estimated ticks per tx array length (" + estimated_ticks_per_tx.length + ")"));
             }
-            if (tx_status.length != tx_size.length) {
-                console.log(new Error("Tx status array length (" + tx_status.length + ") != size of tx array length (" + tx_size.length + ")"));
+            let nb_tx_OK = tx_status.filter(status => status.includes("OK")).length
+            if (nb_tx_OK != tx_size.length) {
+                console.log(new Error("Missing tx size value (expected: " + nb_tx_OK + ", actual: " + tx_size.length + ")"));
             }
-            if (tx_status.length != receipt_size.length) {
-                console.log(new Error("Missing receipt size value (expected " + tx_status.length + ", actual" + receipt_size.length + ")"));
+            if (nb_tx_OK != receipt_size.length) {
+                console.log(new Error("Missing receipt size value (expected: " + nb_tx_OK + ", actual: " + receipt_size.length + ")"));
             }
             resolve({
                 profiler_output_path,
@@ -226,6 +227,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
 
     console.log(`Number of transactions: ${tx_status.length}`)
     run_time_index = 0;
+    gas_cost_index = 0;
     for (var j = 0; j < tx_status.length; j++) {
         let basic_info_row = {
             benchmark_name,
@@ -233,11 +235,28 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             status: tx_status[j],
             estimated_ticks: estimated_ticks_per_tx[j],
         }
-        if (tx_status[j].includes("OK")) {
-            sputnik_runtime_tick = (gas_costs[j] > 21000) ? sputnik_runtime_ticks[run_time_index++] : 0
+        if (tx_status[j].includes("OK_UNKNOWN")) {
+            // no outcome because couldn't prepay: no gas_cost, no runtime
             rows.push(
                 {
-                    gas_cost: gas_costs[j],
+                    run_transaction_ticks: run_transaction_ticks[j],
+                    sputnik_runtime_ticks: 0,
+                    store_transaction_object_ticks: store_transaction_object_ticks[j],
+                    store_receipt_ticks: run_benchmark_result.store_receipt_ticks[j],
+                    receipt_size: run_benchmark_result.receipt_size[j],
+                    tx_size: tx_size[j],
+                    register_tx_ticks: run_benchmark_result.register_tx_ticks[j],
+                    ...basic_info_row
+                });
+
+        }
+        else if (tx_status[j].includes("OK")) {
+            // sputnik runtime called only if not a transfer
+            sputnik_runtime_tick = (gas_costs[gas_cost_index] > 21000) ? sputnik_runtime_ticks[run_time_index++] : 0
+
+            rows.push(
+                {
+                    gas_cost: gas_costs[gas_cost_index],
                     run_transaction_ticks: run_transaction_ticks[j],
                     sputnik_runtime_ticks: sputnik_runtime_tick,
                     store_transaction_object_ticks: store_transaction_object_ticks[j],
@@ -247,6 +266,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
                     register_tx_ticks: run_benchmark_result.register_tx_ticks[j],
                     ...basic_info_row
                 });
+            gas_cost_index += 1;
         } else {
             // we can expect no gas cost, no storage of the tx object, and no run transaction, but there will be signature verification
             // invalide transaction detected: ERROR_NONCE and ERROR_SIGNATURE, in both case `caller` is called.
@@ -359,67 +379,73 @@ async function run_all_benchmarks(benchmark_scripts) {
 
 benchmark_scripts = [
     "benchmarks/bench_storage_1.js",
-    // "benchmarks/bench_storage_2.js",
-    // "benchmarks/bench_transfers_1.js",
-    // "benchmarks/bench_transfers_2.js",
-    // "benchmarks/bench_transfers_3.js",
-    // "benchmarks/bench_keccak.js",
-    // "benchmarks/bench_verifySignature.js",
-    // "benchmarks/bench_erc20tok.js",
-    // "benchmarks/bench_read_info.js",
+    "benchmarks/bench_storage_2.js",
+    "benchmarks/bench_transfers_1.js",
+    "benchmarks/bench_transfers_2.js",
+    "benchmarks/bench_transfers_3.js",
+    "benchmarks/bench_keccak.js",
+    "benchmarks/bench_verifySignature.js",
+    "benchmarks/bench_erc20tok.js",
+    "benchmarks/bench_read_info.js",
 
-    // "benchmarks/scenarios/solidity_by_example/bench_abi_decode.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_abi_encode.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_array.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_assembly_error.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_assembly_loop.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_assembly_variable.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_bitwise_op.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_counter.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_create_contract.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_delegatecall.js",
+    "benchmarks/scenarios/solidity_by_example/bench_abi_decode.js",
+    "benchmarks/scenarios/solidity_by_example/bench_abi_encode.js",
+    "benchmarks/scenarios/solidity_by_example/bench_array.js",
+    "benchmarks/scenarios/solidity_by_example/bench_assembly_error.js",
+    "benchmarks/scenarios/solidity_by_example/bench_assembly_loop.js",
+    "benchmarks/scenarios/solidity_by_example/bench_assembly_variable.js",
+    "benchmarks/scenarios/solidity_by_example/bench_bitwise_op.js",
+    "benchmarks/scenarios/solidity_by_example/bench_counter.js",
 
-    // "benchmarks/scenarios/solidity_by_example/bench_enum.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_event.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_function_modifier.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_function_selector.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_immutable.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_mapping.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_payable.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_send_ether.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_struct.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_ether_wallet.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_multi_sig_wallet.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_merkle_tree.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_iterable_map.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_erc721.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_bytecode_contract.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_create2.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_minimal_proxy.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_upgradeable_proxy.js",
-    // "benchmarks/scenarios/solidity_by_example/bench_binary_exponentiation.js",
-    // "benchmarks/bench_erc1155.js",
-    // "benchmarks/bench_creates_erc20.js",
-    // "benchmarks/bench_creates_erc1155.js",
+    "benchmarks/scenarios/solidity_by_example/bench_create_contract.js",
 
-    // "benchmarks/bench_linear_transfers.js 0",
-    // "benchmarks/bench_linear_transfers.js 5",
-    // "benchmarks/bench_linear_transfers.js 10",
-    // "benchmarks/bench_linear_transfers.js 15",
-    // "benchmarks/bench_linear_transfers.js 20",
-    // "benchmarks/bench_linear_transfers.js 25",
-    // "benchmarks/bench_linear_transfers.js 30",
+    "benchmarks/scenarios/solidity_by_example/bench_delegatecall.js",
 
-    // "benchmarks/bench_linear_erc20.js 0",
-    // "benchmarks/bench_linear_erc20.js 5",
-    // "benchmarks/bench_linear_erc20.js 10",
-    // "benchmarks/bench_linear_erc20.js 15",
-    // "benchmarks/bench_linear_erc20.js 20",
-    // "benchmarks/bench_linear_erc20.js 25",
-    // "benchmarks/bench_linear_erc20.js 30",
+    "benchmarks/scenarios/solidity_by_example/bench_enum.js",
+    "benchmarks/scenarios/solidity_by_example/bench_event.js",
+    "benchmarks/scenarios/solidity_by_example/bench_function_modifier.js",
+    "benchmarks/scenarios/solidity_by_example/bench_function_selector.js",
+    "benchmarks/scenarios/solidity_by_example/bench_immutable.js",
+    "benchmarks/scenarios/solidity_by_example/bench_mapping.js",
+    "benchmarks/scenarios/solidity_by_example/bench_payable.js",
+    "benchmarks/scenarios/solidity_by_example/bench_send_ether.js",
+    "benchmarks/scenarios/solidity_by_example/bench_struct.js",
+    "benchmarks/scenarios/solidity_by_example/bench_ether_wallet.js",
 
-    // "benchmarks/bench_loop_progressive.js",
-    // "benchmarks/bench_loop_expensive.js",
+    "benchmarks/scenarios/solidity_by_example/bench_multi_sig_wallet.js",
+
+    "benchmarks/scenarios/solidity_by_example/bench_merkle_tree.js",
+
+    "benchmarks/scenarios/solidity_by_example/bench_iterable_map.js",
+    "benchmarks/scenarios/solidity_by_example/bench_erc721.js",
+
+    "benchmarks/scenarios/solidity_by_example/bench_bytecode_contract.js",
+    "benchmarks/scenarios/solidity_by_example/bench_create2.js",
+    "benchmarks/scenarios/solidity_by_example/bench_minimal_proxy.js",
+    "benchmarks/scenarios/solidity_by_example/bench_upgradeable_proxy.js",
+    "benchmarks/scenarios/solidity_by_example/bench_binary_exponentiation.js",
+    "benchmarks/bench_erc1155.js",
+    "benchmarks/bench_creates_erc20.js",
+    "benchmarks/bench_creates_erc1155.js",
+
+    "benchmarks/bench_linear_transfers.js 0",
+    "benchmarks/bench_linear_transfers.js 5",
+    "benchmarks/bench_linear_transfers.js 10",
+    "benchmarks/bench_linear_transfers.js 15",
+    "benchmarks/bench_linear_transfers.js 20",
+    "benchmarks/bench_linear_transfers.js 25",
+    "benchmarks/bench_linear_transfers.js 30",
+
+    "benchmarks/bench_linear_erc20.js 0",
+    "benchmarks/bench_linear_erc20.js 5",
+    "benchmarks/bench_linear_erc20.js 10",
+    "benchmarks/bench_linear_erc20.js 15",
+    "benchmarks/bench_linear_erc20.js 20",
+    "benchmarks/bench_linear_erc20.js 25",
+    "benchmarks/bench_linear_erc20.js 30",
+
+    "benchmarks/bench_loop_progressive.js",
+    "benchmarks/bench_loop_expensive.js",
 
 ]
 
