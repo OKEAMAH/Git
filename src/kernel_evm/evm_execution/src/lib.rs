@@ -130,6 +130,16 @@ where
 {
     log!(host, Info, "Going to run an Ethereum transaction\n  - from address: {}\n  - to address: {:?}", caller, address);
 
+    if let Some(_) = address {
+        if call_data.is_empty() {
+            log!(host, Debug, "profiling: Transaction type: TRANSFER");
+        } else {
+            log!(host, Debug, "profiling: Transaction type: CALL");
+        }
+    } else {
+        log!(host, Debug, "profiling: Transaction type: CREATE");
+    }
+
     let mut handler = handler::EvmHandler::<'_, Host>::new(
         host,
         evm_account_storage,
