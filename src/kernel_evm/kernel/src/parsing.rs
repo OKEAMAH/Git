@@ -75,10 +75,12 @@ pub enum Input {
     Upgrade(KernelUpgrade),
     NewChunkedTransaction {
         tx_hash: TransactionHash,
+        next_chunk_hash: TransactionHash,
         num_chunks: u16,
     },
     TransactionChunk {
         tx_hash: TransactionHash,
+        next_chunk_hash: TransactionHash,
         i: u16,
         data: Vec<u8>,
     },
@@ -124,14 +126,19 @@ impl InputResult {
 
     fn parse_new_chunked_transaction(bytes: &[u8]) -> Self {
         // Next 32 bytes is the transaction hash.
-        let (tx_hash, remaining) = parsable!(split_at(bytes, 32));
+        let (tx_hash, chunk_hash) = parsable!(split_at(bytes, TRANSACTION_HASH_SIZE));
         let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok());
+        // Next 32 bytes is the next chunk hash.
+        let (chunk_hash, remaining) =
+            parsable!(split_at(chunk_hash, TRANSACTION_HASH_SIZE));
+        let next_chunk_hash: TransactionHash = parsable!(chunk_hash.try_into().ok());
         // Next 2 bytes is the number of chunks.
         let (num_chunks, remaining) = parsable!(split_at(remaining, 2));
         let num_chunks = u16::from_le_bytes(num_chunks.try_into().unwrap());
         if remaining.is_empty() {
             Self::Input(Input::NewChunkedTransaction {
                 tx_hash,
+                next_chunk_hash,
                 num_chunks,
             })
         } else {
@@ -141,13 +148,18 @@ impl InputResult {
 
     fn parse_transaction_chunk(bytes: &[u8]) -> Self {
         // Next 32 bytes is the transaction hash.
-        let (tx_hash, remaining) = parsable!(split_at(bytes, 32));
+        let (tx_hash, chunk_hash) = parsable!(split_at(bytes, TRANSACTION_HASH_SIZE));
         let tx_hash: TransactionHash = parsable!(tx_hash.try_into().ok());
+        // Next 32 bytes is the next chunk hash.
+        let (chunk_hash, remaining) =
+            parsable!(split_at(chunk_hash, TRANSACTION_HASH_SIZE));
+        let next_chunk_hash: TransactionHash = parsable!(chunk_hash.try_into().ok());
         // Next 2 bytes is the index.
         let (i, remaining) = parsable!(split_at(remaining, 2));
         let i = u16::from_le_bytes(i.try_into().unwrap());
         Self::Input(Input::TransactionChunk {
             tx_hash,
+            next_chunk_hash,
             i,
             data: remaining.to_vec(),
         })
