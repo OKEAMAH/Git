@@ -1136,15 +1136,15 @@ module Scripts = struct
       receipt ie. metadata containing balance updates, consumed gas,
       application success or failure, etc. *)
   let run_operation_service rpc_ctxt params (packed_operation, chain_id) =
-    let open Lwt_result_syntax in
+    let open Environment.Error_monad.Lwt_result_syntax in
     let {Services_registration.context; block_header; _} = rpc_ctxt in
     let*? () =
+      let open Environment.Error_monad.Result_syntax in
       match packed_operation.protocol_data with
       | Operation_data {contents = Single (Preattestation _); _}
       | Operation_data {contents = Single (Attestation _); _}
       | Operation_data {contents = Single (Dal_attestation _); _} ->
-          Environment.Error_monad.Result_syntax.tzfail
-            Run_operation_does_not_support_consensus_operations
+          tzfail Run_operation_does_not_support_consensus_operations
       | _ -> Result_syntax.return_unit
     in
     let oph = Operation.hash_packed packed_operation in
@@ -1228,7 +1228,7 @@ module Scripts = struct
   let default_balance = Tez.of_mutez_exn 4_000_000_000_000L
 
   let register () =
-    let open Lwt_result_syntax in
+    let open Environment.Error_monad.Lwt_result_syntax in
     let originate_dummy_contract ctxt script balance =
       let ctxt = Origination_nonce.init ctxt Operation_hash.zero in
       let*? ctxt, dummy_contract_hash =
@@ -1416,9 +1416,7 @@ module Scripts = struct
       let* {views; _}, _ = parse_toplevel ctxt expr in
       let*? view_name = Script_string.of_string view in
       match Script_map.get view_name views with
-      | None ->
-          Environment.Error_monad.tzfail
-            (View_helpers.View_not_found (contract, view))
+      | None -> tzfail (View_helpers.View_not_found (contract, view))
       | Some Script_typed_ir.{input_ty; output_ty; _} ->
           return (input_ty, output_ty)
     in
@@ -4156,10 +4154,10 @@ module Staking = struct
     else return_none
 
   let check_delegate_registered ctxt pkh =
-    let open Lwt_result_syntax in
+    let open Environment.Error_monad.Lwt_result_syntax in
     let*! result = Delegate.registered ctxt pkh in
     if result then return_unit
-    else Environment.Error_monad.tzfail (Delegate_services.Not_registered pkh)
+    else tzfail (Delegate_services.Not_registered pkh)
 
   let register () =
     Registration.register1 ~chunked:true S.stakers (fun ctxt pkh () () ->
@@ -4243,7 +4241,8 @@ let register () =
   Dal.register () ;
   Staking.register () ;
   Registration.register0 ~chunked:false S.current_level (fun ctxt q () ->
-      if q.offset < 0l then Environment.Error_monad.tzfail Negative_level_offset
+      if q.offset < 0l then
+        Environment.Error_monad.Lwt_result_syntax.tzfail Negative_level_offset
       else
         Lwt.return
           (Level.from_raw_with_offset
