@@ -1248,7 +1248,7 @@ module Make
       match request with
       | Request.Flush (hash, event, live_blocks, live_operations) ->
           Profiler.stop () ;
-          let bh = Block_hash.to_short_b58check hash in
+          let bh = Block_hash.to_b58check hash in
           Format.kasprintf Profiler.record "head:%s" bh ;
           Requests.on_advertise pv.shell ;
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/1727
@@ -1341,7 +1341,7 @@ module Make
       let open Lwt_result_syntax in
       let chain_store = Distributed_db.chain_store chain_db in
       let*! head = Store.Chain.current_head chain_store in
-      let bh = Block_hash.to_short_b58check (Store.Block.hash head) in
+      let bh = Block_hash.to_b58check (Store.Block.hash head) in
       Format.kasprintf Profiler.record "head:%s" bh ;
       let*! mempool = Store.Chain.mempool chain_store in
       let*! live_blocks, live_operations =
