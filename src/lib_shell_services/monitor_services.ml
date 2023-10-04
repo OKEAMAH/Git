@@ -130,6 +130,21 @@ module S = struct
            (req "operations" (list (list (dynamic_size Operation.encoding)))))
       Tezos_rpc.Path.(path / "full_validated_blocks")
 
+  let validated_blocks =
+    Tezos_rpc.Service.get_service
+      ~description:
+        "Monitor all blocks that were successfully validated by the node but \
+         are not applied nor stored yet, disregarding whether they are going \
+         to be selected as the new head or not. This RPC returns the blocks \
+         header and hash"
+      ~query:validated_or_apply_blocks_query
+      ~output:
+        (obj3
+           (req "chain_id" Chain_id.encoding)
+           (req "hash" Block_hash.encoding)
+           (req "header" (dynamic_size Block_header.encoding)))
+      Tezos_rpc.Path.(path / "validated_blocks")
+
   let full_applied_blocks =
     Tezos_rpc.Service.get_service
       ~description:
@@ -145,6 +160,20 @@ module S = struct
            (req "header" (dynamic_size Block_header.encoding))
            (req "operations" (list (list (dynamic_size Operation.encoding)))))
       Tezos_rpc.Path.(path / "full_applied_blocks")
+
+  let applied_blocks =
+    Tezos_rpc.Service.get_service
+      ~description:
+        "Monitor all blocks that are successfully applied and stored by the \
+         node, disregarding whether they were selected as the new head or \
+         not.This RPC returns the blocks header and hash"
+      ~query:validated_or_apply_blocks_query
+      ~output:
+        (obj3
+           (req "chain_id" Chain_id.encoding)
+           (req "hash" Block_hash.encoding)
+           (req "header" (dynamic_size Block_header.encoding)))
+      Tezos_rpc.Path.(path / "applied_blocks")
 
   let heads_query =
     let open Tezos_rpc.Query in
@@ -232,10 +261,40 @@ let full_validated_blocks ctxt ?(chains = [`Main]) ?(protocols = [])
     end)
     ()
 
+let validated_blocks ctxt ?(chains = [`Main]) ?(protocols = [])
+    ?(next_protocols = []) () =
+  make_streamed_call
+    S.validated_blocks
+    ctxt
+    ()
+    (object
+       method chains = chains
+
+       method protocols = protocols
+
+       method next_protocols = next_protocols
+    end)
+    ()
+
 let full_applied_blocks ctxt ?(chains = [`Main]) ?(protocols = [])
     ?(next_protocols = []) () =
   make_streamed_call
     S.full_applied_blocks
+    ctxt
+    ()
+    (object
+       method chains = chains
+
+       method protocols = protocols
+
+       method next_protocols = next_protocols
+    end)
+    ()
+
+let applied_blocks ctxt ?(chains = [`Main]) ?(protocols = [])
+    ?(next_protocols = []) () =
+  make_streamed_call
+    S.applied_blocks
     ctxt
     ()
     (object
