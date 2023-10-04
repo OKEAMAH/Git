@@ -96,6 +96,7 @@ variables:
 # manual and non-manual jobs.
 stages:
   - trigger
+  - client-libs # TODO: this cannot stay here, it will be moved back to the bottom
   - sanity
   - build
   - test
@@ -107,7 +108,7 @@ stages:
   - publish_release
   - publish_package_gitlab
   - manual
-  - client-libs
+
 
 
 # Trigger
@@ -133,6 +134,8 @@ trigger:
     # Check that the Alpine version of the trigger job's image
     # corresponds to the value in scripts/version.sh.
     - ./scripts/ci/check_alpine_version.sh
+
+
 
 include:
   # /!\ These rules should be be mutually exclusive and kept in sync
