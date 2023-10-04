@@ -246,7 +246,11 @@ let monitor_valid_proposals cctxt ~chain ?cache () =
   let open Lwt_result_syntax in
   let next_protocols = [Protocol.hash] in
   let* block_stream, stopper =
-    Monitor_services.validated_blocks cctxt ~chains:[chain] ~next_protocols ()
+    Monitor_services.full_validated_blocks
+      cctxt
+      ~chains:[chain]
+      ~next_protocols
+      ()
   in
   let stream =
     let map (_chain_id, block_hash, block_header, operations) =

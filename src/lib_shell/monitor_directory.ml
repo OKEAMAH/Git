@@ -117,7 +117,7 @@ let build_rpc_directory ~(commit_info : Node_version.commit_info) validator
       in
       let next () = Lwt_stream.get stream in
       Tezos_rpc.Answer.return_stream {next; shutdown}) ;
-  gen_register0 Monitor_services.S.applied_blocks (fun q () ->
+  gen_register0 Monitor_services.S.full_applied_blocks (fun q () ->
       let block_stream, stopper = Store.global_block_watcher store in
       let shutdown () = Lwt_watcher.shutdown stopper in
       let in_chains (chain_store, _block) =
@@ -174,7 +174,7 @@ let build_rpc_directory ~(commit_info : Node_version.commit_info) validator
       in
       let next () = Lwt_stream.get stream in
       Tezos_rpc.Answer.return_stream {next; shutdown}) ;
-  gen_register0 Monitor_services.S.validated_blocks (fun q () ->
+  gen_register0 Monitor_services.S.full_validated_blocks (fun q () ->
       let* chains =
         match q#chains with
         | [] ->

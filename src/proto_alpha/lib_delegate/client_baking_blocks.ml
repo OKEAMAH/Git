@@ -151,7 +151,12 @@ end
 let monitor_applied_blocks cctxt ?chains ?protocols ~next_protocols () =
   let open Lwt_result_syntax in
   let* block_stream, stop =
-    Monitor_services.applied_blocks cctxt ?chains ?protocols ?next_protocols ()
+    Monitor_services.full_applied_blocks
+      cctxt
+      ?chains
+      ?protocols
+      ?next_protocols
+      ()
   in
   return
     ( Lwt_stream.map_s

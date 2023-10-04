@@ -851,7 +851,7 @@ module Make (E : MENV) = struct
   let monitor_validated_blocks () =
     Directory.register
       Directory.empty
-      Tezos_shell_services.Monitor_services.S.validated_blocks
+      Tezos_shell_services.Monitor_services.S.full_validated_blocks
       (fun () q () ->
         let chain =
           match List.hd q#chains with None -> `Main | Some chain -> chain

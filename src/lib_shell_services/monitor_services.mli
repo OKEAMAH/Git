@@ -53,12 +53,12 @@ val legacy_valid_blocks :
   tzresult
   Lwt.t
 
-(** Call RPC GET /monitor/validated_blocks
+(** Call RPC GET /monitor/full_validated_blocks
 
   - Default [chains] is [Main].
   - Default [protocols] is [[]].
   - Default [next_protocols] is [[]]. *)
-val validated_blocks :
+val full_validated_blocks :
   #streamed ->
   ?chains:Chain_services.chain list ->
   ?protocols:Protocol_hash.t list ->
@@ -70,12 +70,12 @@ val validated_blocks :
   tzresult
   Lwt.t
 
-(** Call RPC GET /monitor/applied_blocks
+(** Call RPC GET /monitor/full_applied_blocks
 
   - Default [chains] is [Main].
   - Default [protocols] is [[]].
   - Default [next_protocols] is [[]]. *)
-val applied_blocks :
+val full_applied_blocks :
   #streamed ->
   ?chains:Chain_services.chain list ->
   ?protocols:Protocol_hash.t list ->
@@ -128,12 +128,12 @@ module S : sig
       (Chain_id.t * Block_hash.t) * Block_header.t )
     Tezos_rpc.Service.t
 
-  (** Define RPC GET /monitor/validated_blocks
+  (** Define RPC GET /monitor/full_validated_blocks
 
   - Default [chains] is [Main].
   - Default [protocols] is [[]].
   - Default [next_protocols] is [[]]. *)
-  val validated_blocks :
+  val full_validated_blocks :
     ( [`GET],
       unit,
       unit,
@@ -144,12 +144,12 @@ module S : sig
       Chain_id.t * Block_hash.t * Block_header.t * Operation.t list list )
     Tezos_rpc.Service.t
 
-  (** Define RPC GET /monitor/applied_blocks
+  (** Define RPC GET /monitor/full_applied_blocks
 
   - Default [chains] is [Main].
   - Default [protocols] is [[]].
   - Default [next_protocols] is [[]]. *)
-  val applied_blocks :
+  val full_applied_blocks :
     ( [`GET],
       unit,
       unit,

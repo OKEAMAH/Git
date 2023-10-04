@@ -129,7 +129,7 @@ module Make (Hooks : Mocked_services_hooks) = struct
   let monitor_validated_blocks =
     Directory.gen_register0
       Directory.empty
-      Monitor_services.S.validated_blocks
+      Monitor_services.S.full_validated_blocks
       (fun _next_protocol _ ->
         Tezos_rpc.Answer.return_stream (Hooks.monitor_validated_blocks ()))
 
