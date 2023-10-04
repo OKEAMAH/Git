@@ -1,4 +1,6 @@
 mod rollup;
+mod util;
+
 use rollup::kernel::kernel_entry;
 use tezos_smart_rollup::{kernel_entry, prelude::Runtime};
 
