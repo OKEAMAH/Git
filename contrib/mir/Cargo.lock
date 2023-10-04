@@ -649,6 +649,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "tezos-smart-rollup",
+ "tezos-smart-rollup-host",
  "tezos-smart-rollup-mock",
 ]
 
