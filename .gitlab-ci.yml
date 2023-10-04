@@ -96,6 +96,7 @@ variables:
 # manual and non-manual jobs.
 stages:
   - trigger
+  - client-libs # TODO: this cannot stay here, it will be moved back to the bottom
   - sanity
   - build
   - test
@@ -107,7 +108,7 @@ stages:
   - publish_release
   - publish_package_gitlab
   - manual
-  - client-libs
+
 
 
 # Trigger
