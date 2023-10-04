@@ -360,7 +360,7 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
     | Some new_proposal ->
         Option.iter (fun _ -> Profiler.stop ()) !last_proposal ;
         Profiler.record
-          (Block_hash.to_short_b58check new_proposal.Baking_state.block.hash) ;
+          (Block_hash.to_b58check new_proposal.Baking_state.block.hash) ;
         last_proposal := Some new_proposal.Baking_state.block.hash ;
         if !should_shutdown then return_unit
         else
