@@ -68,6 +68,14 @@ Node
 
 - Add logs at ``Info`` level about the disconnection reasons in the p2p section.
 
+- **Breaking change** ``GET /monitor/applied_blocks`` and ``GET
+  /monitor/validated_blocks`` RPCs does not return block operations anymore.
+
+- Add ``GET /monitor/full_applied_blocks`` and ``GET
+  /monitor/full_validated_blocks`` these RPCs are similar to ``GET
+  /monitor/applied_blocks`` and ``GET /monitor/validated_blocks`` but returns
+  block operations as long as block header and hash.
+
 Client
 ------
 
