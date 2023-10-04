@@ -688,4 +688,100 @@ let operation_and_block_validation ~executors =
         manager_kinds)
     protocols
 
-let register ~executors () = operation_and_block_validation ~executors
+let test_attestation_delay ~executors ~protocol =
+  Long_test.register
+    ~__FILE__
+    ~title:"Consensus injection delay"
+    ~tags:
+      [
+        "pipelining";
+        "baker";
+        "consensus";
+        "preattestation";
+        "attestation";
+        "injection";
+      ]
+    ~executors
+    ~timeout:(Minutes 10)
+  @@ fun () ->
+  let last_level = 10 in
+  let measurement = "consensus_injection_time" in
+  let field = "time" in
+  let tags kind = [("consensus_kind", kind)] in
+  let tags_preatt = tags "preattestation" in
+  let tags_att = tags "attestation" in
+  let* parameter_file =
+    (* Set the consensus threshold to the committee size, ie. require
+       (pre)attestations from **all** delegates to have a
+       (pre)quorum. *)
+    let parameters = JSON.parse_file (Protocol.parameter_file protocol) in
+    let consensus_committee_size =
+      JSON.(parameters |-> "consensus_committee_size" |> as_int)
+    in
+    Protocol.write_parameter_file
+      ~base:(Right (protocol, None))
+      [(["consensus_threshold"], `Int consensus_committee_size)]
+  in
+  let* node, client =
+    Client.init_with_protocol
+      `Client
+      ~protocol
+      ~parameter_file
+      ~timestamp:Now
+      ()
+  in
+  let block_injections = Array.make last_level None in
+  let on_block_injection Baker.{name = _; value; timestamp} =
+    let level = JSON.(value |-> "level" |> as_int) in
+    let round = JSON.(value |-> "round" |> as_int) in
+    if round > 0 then Log.info "Unexpected block injection with round=%d" round
+    else if level < last_level then
+      match block_injections.(level) with
+      | Some tmstp ->
+          Log.error "Already have a timestamp %f for level %d block" tmstp level
+      | None ->
+          Log.debug "Level %d block injected." level ;
+          block_injections.(level) <- Some timestamp
+  in
+  let on_consensus_injection kind (event : Baker.event) =
+    let level = JSON.(event.value |-> "level" |> as_int) in
+    let round = JSON.(event.value |-> "round" |> as_int) in
+    if round = 0 && level < last_level then
+      match block_injections.(level) with
+      | None ->
+          Log.warn "no timestamp found for injection of level %d block" level
+      | Some tmstp ->
+          let time = event.timestamp -. tmstp in
+          Log.debug "%s time: %f" kind time ;
+          let data_point =
+            InfluxDB.data_point
+              ~tags:[("consensus_kind", kind)]
+              measurement
+              (field, Float time)
+          in
+          Long_test.add_data_point data_point
+  in
+  let handler event =
+    match event.Baker.name with
+    | "block_injected.v0" -> on_block_injection event
+    | "preattestation_injected.v0" ->
+        on_consensus_injection "preattestation" event
+    | "attestation_injected.v0" -> on_consensus_injection "attestation" event
+    | _ -> ()
+  in
+  let* baker = Baker.init ~protocol node client in
+  Baker.on_event baker handler ;
+  (* Baker.log_block_injection ~color:Log.Color.FG.yellow baker ; *)
+  (* Baker.log_shortened_events baker ; *)
+  let* (_ : int) = Node.wait_for_level node last_level in
+  let* () = Long_test.check_regression ~tags:tags_preatt measurement field in
+  Long_test.check_regression ~tags:tags_att measurement "time"
+
+(* [13:28:15.018] [baker1] block_injected.v0: {"block":"BLU82TC3TH","level":3,"round":0,"delegate":"bootstrap4"} *)
+(* [13:28:15.018] [baker1] Block injected at level 3 round 0 for bootstrap4. *)
+(* [13:28:15.030] [baker1] preattestation_injected.v0: {"ophash":"oov2og6bGU","delegate":"bootstrap1","level":3,"round":0} *)
+(* [13:28:15.059] [baker1] attestation_injected.v0: {"ophash":"opZU9osnUq","delegate":"bootstrap4","level":3,"round":0} *)
+
+let register ~executors () =
+  operation_and_block_validation ~executors ;
+  test_attestation_delay ~executors ~protocol:Alpha

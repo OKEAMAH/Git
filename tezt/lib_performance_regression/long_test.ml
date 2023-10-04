@@ -702,11 +702,30 @@ let check_regression ?(previous_count = 10) ?(minimum_previous_count = 3)
   match current_values with
   | [] -> unit
   | _ :: _ -> (
-      let current_value =
+      let current_value, name =
         match check with
-        | Mean -> Statistics.mean current_values
-        | Median -> Statistics.median current_values
+        | Mean -> (Statistics.mean current_values, "mean")
+        | Median -> (Statistics.median current_values, "median")
       in
+      let tags_str =
+        match tags with
+        | [] -> ""
+        | _ ->
+            "["
+            ^ (List.map (fun (k, v) -> sf "%S = %S" k v) tags
+              |> String.concat ", ")
+            ^ "]"
+      in
+
+      Log.info
+        ~color:Log.Color.FG.green
+        "New measurement: %s(%S%s.%S) = %g"
+        name
+        measurement
+        tags_str
+        field
+        current_value ;
+
       let get_previous stats handle_values =
         let* values =
           get_previous_stats
@@ -738,22 +757,13 @@ let check_regression ?(previous_count = 10) ?(minimum_previous_count = 3)
         get_previous_with_stddev stats
         @@ fun (previous_count, previous_value) ->
         if current_value > previous_value *. (1. +. margin) then
-          let tags =
-            match tags with
-            | [] -> ""
-            | _ ->
-                "["
-                ^ (List.map (fun (k, v) -> sf "%S = %S" k v) tags
-                  |> String.concat ", ")
-                ^ "]"
-          in
           alert
             "New measurement: %s(%S%s.%S) = %g\n\
              Previous %d measurements: %s = %g\n\
              Difference: +%d%% (alert threshold: %d%%)"
             name
             measurement
-            tags
+            tags_str
             field
             current_value
             previous_count
