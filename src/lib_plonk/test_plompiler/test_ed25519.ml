@@ -30,13 +30,14 @@ open Helpers
 (** Test Vectors from RFC 8032, Section 7.1
    https://www.rfc-editor.org/rfc/rfc8032.txt *)
 let test_vectors =
-  (* sk, pk, msg, sign *)
+  (* sk, pk, msg, sign, h *)
   [
     ( "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7",
       "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025",
       "af82",
-      "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a"
-    );
+      "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a",
+      (*       "09bfb4ff1993f38f2ef65699934a8b64c0325867f858059b95bca199f78dc09e544857aeb4abddc6e35660da2867ab5963135ffef60d242dbfce0a85fbc362bf" *)
+      "060ab51a60e3f1ceb60549479b152ae2f4a41d9dd8da0f6c3ef2892d51118e95" );
   ]
 
 module P = struct
@@ -98,7 +99,7 @@ module P = struct
 
   let tests_ed25519 () =
     List.iter
-      (fun (sk, pk, msg, sign) ->
+      (fun (sk, pk, msg, sign, _h) ->
         let sk = bytes_of_hex sk in
         let msg = bytes_of_hex msg in
         let pk = bytes_of_hex pk |> P.point_of_compressed_bytes_exn in
@@ -128,21 +129,29 @@ module Ed25519 (L : LIB) = struct
 
   let bytes_of_hex = Plompiler.Utils.bytes_of_hex
 
-  let test_verify_circuit pk msg signature () =
+  let test_verify_circuit pk msg signature h () =
     let msg = Bytes.input_bytes ~le:true msg in
+    let h = Bytes.input_bytes ~le:false h in
     with_label ~label:"Ed25519.test_verify"
     @@ let* pk = input ~kind:`Public @@ V.Encoding.pk_encoding.input pk in
        let* msg = input msg in
+       let* h = input h in
+       (*        let* h_be = *)
+       (*          ret @@ to_list *)
+       (*          @@ Plompiler.Utils.bool_list_change_endianness (of_list h) *)
+       (*        in *)
+       (*        debug "h" h >* debug "h_be" h_be *)
+       (*        >* *)
        let* signature =
          input @@ V.Encoding.signature_encoding.input signature
        in
        let signature = V.Encoding.signature_encoding.decode signature in
        with_label ~label:"Ed25519.test_with_bool_check"
-       @@ with_bool_check (V.verify msg pk signature)
+       @@ with_bool_check (V.verify msg pk signature h)
 
   let tests_ed25519_verify =
     List.map
-      (fun (_sk, pk, msg, sign) ->
+      (fun (_sk, pk, msg, sign, h) ->
         let msg = bytes_of_hex msg in
         let pk = bytes_of_hex pk |> P.point_of_compressed_bytes_exn in
         let sign = bytes_of_hex sign in
@@ -150,11 +159,12 @@ module Ed25519 (L : LIB) = struct
           Stdlib.Bytes.sub sign 0 32 |> P.point_of_compressed_bytes_exn
         in
         let sign_s = Stdlib.Bytes.sub sign 32 32 |> P.scalar_of_bytes_exn in
+        let h = bytes_of_hex h in
         test
           ~valid:true
           ~name:"Ed25519.test_verify_circuit"
-          ~flamegraph:false
-          (test_verify_circuit pk msg {r = sign_r; s = sign_s}))
+          ~flamegraph:true
+          (test_verify_circuit pk msg {r = sign_r; s = sign_s} h))
       test_vectors
 
   let tests = tests_ed25519_verify
@@ -164,8 +174,8 @@ let tests =
   [
     Alcotest.test_case "P" `Quick P.test;
     Alcotest.test_case "Ed25519" `Slow (to_test (module Ed25519 : Test));
-    (*     Alcotest.test_case *)
-    (*       "Ed25519 plonk" *)
-    (*       `Slow *)
-    (*       (to_test ~plonk:(module Plonk.Main_protocol) (module Ed25519 : Test)); *)
+    Alcotest.test_case
+      "Ed25519 plonk"
+      `Slow
+      (to_test ~plonk:(module Plonk.Main_protocol) (module Ed25519 : Test));
   ]

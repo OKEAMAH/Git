@@ -209,7 +209,8 @@ module Ed25519 = struct
       val signature_encoding : (P.signature, signature, pk * bool list) encoding
     end
 
-    val verify : Bytes.tl repr -> pk repr -> signature -> bool repr t
+    val verify :
+      Bytes.tl repr -> pk repr -> signature -> Bytes.tl repr -> bool repr t
   end =
   functor
     (L : LIB)
@@ -237,24 +238,30 @@ module Ed25519 = struct
             (obj2_encoding point_encoding (atomic_list_encoding bool_encoding))
       end
 
-      (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-      let compute_h msg pk r =
-        (* Ed25519 works with little-endian representation
-           but SHA-512 with big-endian one *)
-        let bytes_change_endianness b =
-          ret @@ to_list (Utils.bool_list_change_endianness (of_list b))
-        in
-        with_label ~label:"Ed25519.compute_h"
-        @@ let* r_bytes = to_compressed_bytes r in
-           let* pk_bytes = to_compressed_bytes pk in
-           let* r_pk_msg =
-             bytes_change_endianness @@ Bytes.concat [|msg; pk_bytes; r_bytes|]
-           in
-           let* h = H.digest r_pk_msg in
-           bytes_change_endianness h
+      (*       (\* h <- H (compressed (R) || compressed (pk) || msg ) *\) *)
+      (*       let compute_h msg pk r = *)
+      (*         (\* Ed25519 works with little-endian representation *)
+      (*            but SHA-512 with big-endian one *\) *)
+      (*         let bytes_change_endianness b = *)
+      (*           ret @@ to_list (Utils.bool_list_change_endianness (of_list b)) *)
+      (*         in *)
+      (*         with_label ~label:"Ed25519.compute_h" *)
+      (*         @@ let* r_bytes = to_compressed_bytes r in *)
+      (*            let* pk_bytes = to_compressed_bytes pk in *)
+      (*            let* r_pk_msg = *)
+      (*              bytes_change_endianness @@ Bytes.concat [|msg; pk_bytes; r_bytes|] *)
+      (*            in *)
+      (*            let* h = H.digest r_pk_msg in *)
+      (*            bytes_change_endianness h *)
+
+      let pad_with_zeros len s =
+        let* b_false = Bool.constant false in
+        let zeros = List.init (len - Bytes.length s) (fun _i -> b_false) in
+        ret @@ to_list (of_list s @ zeros)
 
       (* the fact that pk & r are on curve is enforced by point encodings *)
-      let verify msg pk signature =
+      let verify msg pk signature h_modq =
+        ignore msg ;
         let {r; s} = signature in
         (* range_check checks if x is in [0; 2^n), n = 253 *)
         (* s <= Curve.Scalar.order - 1 <==> 0 <= Curve.Scalar.order - 1 - s *)
@@ -269,16 +276,24 @@ module Ed25519 = struct
         in
         Num.range_check ~nb_bits:253 order_minus_s
         >* with_label ~label:"Ed25519.verify"
-           @@ (* h <- H (compressed (R) || compressed (pk) || msg ) *)
-           let* h = compute_h msg pk r in
+           (* h <- H (compressed (R) || compressed (pk) || msg ) *)
+           (*            let* h = compute_h msg pk r in *)
            (* NOTE: we do not reduce a result of compute_h modulo Curve.Scalar.order *)
-           with_label ~label:"Ed25519.scalar_mul"
+           @@ with_label ~label:"Ed25519.scalar_mul"
            (* we can use multi_scalar_mul once h is reduced:
               [s]G =?= R + [h]pk <==> R =?= [s]G - [h]pk *)
            @@ let* base_point in
-              let* sg = scalar_mul s base_point in
-              let* hpk = scalar_mul h pk in
-              let* rhpk = add r hpk in
-              with_label ~label:"Ed25519.check" @@ equal sg rhpk
+              (*               let* sg = scalar_mul s base_point in *)
+              (*               let* hpk = scalar_mul h_modq pk in *)
+              (*               let* rhpk = add r hpk in *)
+              (*               with_label ~label:"Ed25519.check" @@ equal sg rhpk *)
+              let* pk_neg = negate pk in
+              let max_len = max (Bytes.length s) (Bytes.length h_modq) in
+              let* s = pad_with_zeros max_len s in
+              let* h_modq = pad_with_zeros max_len h_modq in
+              let scalars = to_list [s; h_modq] in
+              let points = to_list [base_point; pk_neg] in
+              let* sghpk = multi_scalar_mul scalars points in
+              with_label ~label:"EdDSA.check" @@ equal r sghpk
     end
 end
