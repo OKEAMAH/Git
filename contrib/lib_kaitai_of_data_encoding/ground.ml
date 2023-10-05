@@ -121,7 +121,7 @@ let z_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "has_more_than_single_byte";
+          id = "has_more";
           dataType =
             DataType.(
               NumericType
@@ -157,7 +157,7 @@ let z_type =
                        operand =
                          CastToType
                            {
-                             value = Name "has_more_than_single_byte";
+                             value = Name "has_more";
                              typeName =
                                {
                                  absolute = true;
