@@ -308,7 +308,7 @@ let%expect_test "test big numbers translation" =
           type: n_chunk
           repeat: until
           repeat-until: not (_.has_more).as<bool>
-          if: not (_.has_more_than_single_byte).as<bool>
+          if: not has_more_than_single_byte.as<bool>
       n_chunk:
         seq:
         - id: has_more

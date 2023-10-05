@@ -157,12 +157,7 @@ let z_type =
                        operand =
                          CastToType
                            {
-                             value =
-                               Attribute
-                                 {
-                                   value = Name "_";
-                                   attr = "has_more_than_single_byte";
-                                 };
+                             value = Name "has_more_than_single_byte";
                              typeName =
                                {
                                  absolute = true;
