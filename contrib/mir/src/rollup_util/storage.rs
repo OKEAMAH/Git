@@ -119,3 +119,62 @@ where
     host.store_write_all(path, content.as_ref())
         .unwrap_or_else(|err| panic_with_runtime_err!(err))
 }
+
+#[cfg(test)]
+mod test_storage {
+    use tezos_smart_rollup_host::path::RefPath;
+    use tezos_smart_rollup_mock::MockHost;
+
+    use super::*;
+
+    mod operations_on_values {
+
+        use super::*;
+
+        const PATH: RefPath<'_> = RefPath::assert_from(b"/key/1");
+
+        #[test]
+        fn basic_write_all_and_read_all() {
+            let mut host = MockHost::default();
+            write_all(&mut host, &PATH, "val");
+            assert_eq!(read_all(&host, &PATH), Some(b"val".to_vec()));
+        }
+
+        #[test]
+        fn getting_absent_elements() {
+            let host = MockHost::default();
+            assert_eq!(read_all(&host, &PATH), None);
+        }
+
+        #[test]
+        fn overwritting_value() {
+            let mut host = MockHost::default();
+            write_all(&mut host, &PATH, "val");
+            write_all(&mut host, &PATH, "val2");
+            assert_eq!(read_all(&host, &PATH), Some(b"val2".to_vec()));
+        }
+    }
+
+    mod operations_on_subtrees {
+        use super::*;
+
+        const VAL_PATH: RefPath<'_> = RefPath::assert_from(b"/rollup/key/0");
+        const DIR_PATH: RefPath<'_> = RefPath::assert_from(b"/rollup/key");
+
+        #[test]
+        fn directory_is_not_seen_as_value() {
+            let mut host = MockHost::default();
+            write_all(&mut host, &DIR_PATH, "dir");
+            assert_eq!(read_all(&host, &VAL_PATH), None);
+        }
+
+        #[test]
+        fn can_have_folder_and_value_simultaneously() {
+            let mut host = MockHost::default();
+            write_all(&mut host, &VAL_PATH, "val");
+            write_all(&mut host, &DIR_PATH, "dir");
+            assert_eq!(read_all(&host, &VAL_PATH), Some(b"val".to_vec()));
+            assert_eq!(read_all(&host, &DIR_PATH), Some(b"dir".to_vec()));
+        }
+    }
+}
