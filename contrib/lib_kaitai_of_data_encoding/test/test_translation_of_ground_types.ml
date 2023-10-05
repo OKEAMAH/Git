@@ -271,10 +271,10 @@ let%expect_test "test big numbers translation" =
         - id: n
           type: n_chunk
           repeat: until
-          repeat-until: not (_.continue).as<bool>
+          repeat-until: not (_.has_more).as<bool>
       n_chunk:
         seq:
-        - id: continue
+        - id: has_more
           type: b1be
         - id: payload
           type: b7be
@@ -298,7 +298,7 @@ let%expect_test "test big numbers translation" =
     types:
       z:
         seq:
-        - id: continue
+        - id: has_more
           type: b1be
         - id: sign
           type: b1be
@@ -306,9 +306,12 @@ let%expect_test "test big numbers translation" =
           type: b6be
         - id: tail
           type: n_chunk
+          repeat: until
+          repeat-until: not (_.has_more).as<bool>
+          if: not has_more.as<bool>
       n_chunk:
         seq:
-        - id: continue
+        - id: has_more
           type: b1be
         - id: payload
           type: b7be

@@ -29,6 +29,10 @@ open Kaitai.Types
 module Enum = struct
   type assoc = (string * Kaitai.Types.EnumSpec.t) list
 
+  let bool_false_name = "false"
+
+  let bool_true_name = "true"
+
   let bool =
     ( "bool",
       EnumSpec.
@@ -36,9 +40,12 @@ module Enum = struct
           path = [];
           map =
             [
-              (0, EnumValueSpec.{name = "false"; doc = Helpers.default_doc_spec});
+              ( 0,
+                EnumValueSpec.
+                  {name = bool_false_name; doc = Helpers.default_doc_spec} );
               ( 255,
-                EnumValueSpec.{name = "true"; doc = Helpers.default_doc_spec} );
+                EnumValueSpec.
+                  {name = bool_true_name; doc = Helpers.default_doc_spec} );
             ];
         } )
 end
@@ -55,7 +62,7 @@ let n_chunk_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "continue";
+          id = "has_more";
           dataType =
             DataType.(
               NumericType
@@ -89,7 +96,7 @@ let n_seq_attr =
                  operand =
                    CastToType
                      {
-                       value = Attribute {value = Name "_"; attr = "continue"};
+                       value = Attribute {value = Name "_"; attr = "has_more"};
                        typeName =
                          {absolute = true; names = ["bool"]; isArray = false};
                      };
@@ -114,7 +121,7 @@ let z_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "continue";
+          id = "has_more";
           dataType =
             DataType.(
               NumericType
@@ -142,7 +149,6 @@ let z_type =
           dataType = DataType.(ComplexDataType (UserType n_chunk_type));
           cond =
             {
-              Helpers.cond_no_cond with
               ifExpr =
                 Some
                   (UnaryOp
@@ -151,8 +157,25 @@ let z_type =
                        operand =
                          CastToType
                            {
+                             value = Name "has_more";
+                             typeName =
+                               {
+                                 absolute = true;
+                                 names = ["bool"];
+                                 isArray = false;
+                               };
+                           };
+                     });
+              repeat =
+                RepeatUntil
+                  (UnaryOp
+                     {
+                       op = Not;
+                       operand =
+                         CastToType
+                           {
                              value =
-                               Attribute {value = Name "_"; attr = "continue"};
+                               Attribute {value = Name "_"; attr = "has_more"};
                              typeName =
                                {
                                  absolute = true;

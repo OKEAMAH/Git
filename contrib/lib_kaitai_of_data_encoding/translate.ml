@@ -113,10 +113,6 @@ let rec seq_field_of_data_encoding :
       let id = match tid_gen with None -> id | Some tid_gen -> tid_gen () in
       seq_field_of_data_encoding enums types e id tid_gen
   | Tups {kind = _; left; right} ->
-      (* This case corresponds to a [tup*] combinator being called inside a
-         [tup*] combinator. It's probably never used, but it's still a valid use
-         of data-encoding. Note that we erase the information that there is an
-         extraneous [tup*] in the encoding. *)
       let tid_gen =
         match tid_gen with
         | None -> Some (Helpers.mk_tid_gen id)
@@ -160,6 +156,16 @@ let rec seq_field_of_data_encoding :
         }
       in
       (enums, types, [attr])
+  | Obj f -> seq_field_of_field enums types f
+  | Objs {kind = _; left; right} ->
+      let enums, types, left =
+        seq_field_of_data_encoding enums types left id None
+      in
+      let enums, types, right =
+        seq_field_of_data_encoding enums types right id None
+      in
+      let seq = left @ right in
+      (enums, types, seq)
   | Dynamic_size {kind; encoding} ->
       (* TODO: special case for [encoding=Bytes] and [encoding=String] *)
       let len_id = "len_" ^ id in
@@ -233,6 +239,176 @@ let rec seq_field_of_data_encoding :
           in
           (enums, types, [attr]))
   | _ -> failwith "Not implemented"
+
+and seq_field_of_field :
+    type a.
+    Ground.Enum.assoc ->
+    Ground.Type.assoc ->
+    a DataEncoding.field ->
+    Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
+ fun enums types f ->
+  match f with
+  | Req {name; encoding; title; description} -> (
+      let id = escape_id name in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id None
+      in
+      let description =
+        match (title, description) with
+        | None, None -> None
+        | None, (Some _ as s) | (Some _ as s), None -> s
+        | Some t, Some d -> Some (t ^ ": " ^ d)
+      in
+      match attrs with
+      | [] -> failwith "Not supported"
+      | [attr] ->
+          ( enums,
+            types,
+            [
+              {
+                attr with
+                doc = {Helpers.default_doc_spec with summary = description};
+              };
+            ] )
+      | _ :: _ :: _ as attrs ->
+          let attr =
+            {
+              Helpers.default_attr_spec with
+              id;
+              dataType =
+                DataType.(
+                  ComplexDataType
+                    (UserType
+                       (Helpers.class_spec_of_attrs
+                          ~encoding_name:id
+                          ?description
+                          ~enums:[]
+                          ~types:[]
+                          ~instances:[]
+                          attrs)));
+            }
+          in
+          (enums, types, [attr]))
+  | Opt {name; kind = _; encoding; title; description} -> (
+      let cond_id = escape_id (name ^ "_tag") in
+      let enums, types, cond_attr =
+        seq_field_of_data_encoding enums types DataEncoding.bool cond_id None
+      in
+      let cond_attr =
+        match cond_attr with
+        | [cond_attr] -> cond_attr
+        | [] | _ :: _ :: _ -> assert false
+      in
+      let cond =
+        {
+          Helpers.cond_no_cond with
+          ifExpr =
+            Some
+              Ast.(
+                Compare
+                  {
+                    left = Name cond_id;
+                    ops = Eq;
+                    right =
+                      EnumByLabel
+                        {
+                          enumName = fst Ground.Enum.bool;
+                          label = Ground.Enum.bool_true_name;
+                          inType =
+                            {
+                              absolute = true;
+                              names = [fst Ground.Enum.bool];
+                              isArray = false;
+                            };
+                        };
+                  });
+        }
+      in
+      let id = escape_id name in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id None
+      in
+      let description =
+        match (title, description) with
+        | None, None -> None
+        | None, (Some _ as s) | (Some _ as s), None -> s
+        | Some t, Some d -> Some (t ^ ": " ^ d)
+      in
+      match attrs with
+      | [] -> failwith "Not supported"
+      | [attr] ->
+          ( enums,
+            types,
+            [
+              cond_attr;
+              {
+                attr with
+                doc = {Helpers.default_doc_spec with summary = description};
+                cond;
+              };
+            ] )
+      | _ :: _ :: _ as attrs ->
+          let attr =
+            {
+              Helpers.default_attr_spec with
+              id;
+              cond;
+              dataType =
+                DataType.(
+                  ComplexDataType
+                    (UserType
+                       (Helpers.class_spec_of_attrs
+                          ~encoding_name:id
+                          ?description
+                          ~enums:[]
+                          ~types:[]
+                          ~instances:[]
+                          attrs)));
+            }
+          in
+          (enums, types, [cond_attr; attr]))
+  | Dft {name; encoding; default = _; title; description} -> (
+      (* NOTE: in binary format Dft is the same as Req *)
+      let id = escape_id name in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id None
+      in
+      let description =
+        match (title, description) with
+        | None, None -> None
+        | None, (Some _ as s) | (Some _ as s), None -> s
+        | Some t, Some d -> Some (t ^ ": " ^ d)
+      in
+      match attrs with
+      | [] -> failwith "Not supported"
+      | [attr] ->
+          ( enums,
+            types,
+            [
+              {
+                attr with
+                doc = {Helpers.default_doc_spec with summary = description};
+              };
+            ] )
+      | _ :: _ :: _ as attrs ->
+          let attr =
+            {
+              Helpers.default_attr_spec with
+              id;
+              dataType =
+                DataType.(
+                  ComplexDataType
+                    (UserType
+                       (Helpers.class_spec_of_attrs
+                          ~encoding_name:id
+                          ?description
+                          ~enums:[]
+                          ~types:[]
+                          ~instances:[]
+                          attrs)));
+            }
+          in
+          (enums, types, [attr]))
 
 let from_data_encoding :
     type a.

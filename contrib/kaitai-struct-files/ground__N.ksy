@@ -8,10 +8,10 @@ types:
     - id: n
       type: n_chunk
       repeat: until
-      repeat-until: not (_.continue).as<bool>
+      repeat-until: not (_.has_more).as<bool>
   n_chunk:
     seq:
-    - id: continue
+    - id: has_more
       type: b1be
     - id: payload
       type: b7be
