@@ -441,6 +441,7 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   in
 
   let* _ = wait_for_publish_execute_whitelist_update rollup_node in
+  let* _ = Sc_rollup_node.unsafe_wait_sync rollup_node in
   unit
 
 let register ~testnet =
