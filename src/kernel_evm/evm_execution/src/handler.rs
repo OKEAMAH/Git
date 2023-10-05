@@ -238,6 +238,18 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             })
     }
 
+    /// Check if an address has zero code, ie, the address is empty
+    fn is_empty(&mut self, address: H160) -> Result<bool, EthereumError> {
+        let Some(account) = self.get_account(address) else {
+            return Ok(true);
+        };
+
+        account
+            .code_size(self.borrow_host())
+            .map(|s| s == U256::zero())
+            .map_err(EthereumError::from)
+    }
+
     /// Returns true if there is a static transaction in progress, otherwise
     /// return false.
     fn is_static(&self) -> bool {
@@ -450,9 +462,9 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             apparent_value: value,
         };
 
-        // TODO: check that target address isn't already in use (must contain no code and a zero
-        // nonce)
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4865
+        if !self.is_empty(address)? {
+            return Ok((ExitReason::Error(ExitError::CreateCollision), None, vec![]));
+        }
 
         if let Err(error) = self.execute_transfer(caller, address, value) {
             log!(
