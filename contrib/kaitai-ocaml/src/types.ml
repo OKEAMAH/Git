@@ -115,6 +115,10 @@ module Ast = struct
         Format.sprintf "%s[%s]" (to_string value) (to_string idx)
     | CastToType {value; typeName} ->
         Format.sprintf "%s.as<%s>" (to_string value) (typeId_to_string typeName)
+    | EnumByLabel {enumName; label; inType} ->
+        (* TODO: don't ignore inType *)
+        ignore inType ;
+        Format.sprintf "%s::%s" enumName label
     | _ -> failwith "not implemented (ast)"
 end
 

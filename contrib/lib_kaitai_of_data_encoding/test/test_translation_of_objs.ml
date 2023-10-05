@@ -130,6 +130,7 @@ let%expect_test "test objs with opt and dft fields" =
           enum: bool
         - id: two
           type: u2
+          if: (two_tag == bool::true)
       one:
         meta:
           id: one
@@ -140,6 +141,7 @@ let%expect_test "test objs with opt and dft fields" =
           enum: bool
         - id: one
           type: u1
+          if: (one_tag == bool::true)
           enum: bool
         - id: two
           type: u1
@@ -162,8 +164,15 @@ let%expect_test "test objs with opt and dft fields and doc" =
       ~encoding_name:"objreqdftdoc"
       Data_encoding.(
         obj2
-          (req "one" (obj2 (opt ~title:"Foo" ~description:"Foo here there some
-          text" "one" bool) (dft ~title:"Barrrr.bar" "two" uint8 0)))
+          (req
+             "one"
+             (obj2
+                (opt
+                   ~title:"Foo"
+                   ~description:"Foo here there some text"
+                   "one"
+                   bool)
+                (dft ~title:"Barrrr.bar" "two" uint8 0)))
           (req ~description:"The actual payload of the whole thing" "two" bool))
   in
   print_endline (Kaitai.Print.print s) ;
@@ -183,8 +192,9 @@ let%expect_test "test objs with opt and dft fields and doc" =
           enum: bool
         - id: one
           type: u1
+          if: (one_tag == bool::true)
           enum: bool
-          doc: ! "Foo: Foo here there some\n          text"
+          doc: ! 'Foo: Foo here there some text'
         - id: two
           type: u1
           doc: Barrrr.bar

@@ -280,10 +280,10 @@ and seq_field_of_field :
                     left = Name cond_id;
                     ops = Eq;
                     right =
-                      EnumById
+                      EnumByLabel
                         {
                           enumName = fst Ground.Enum.bool;
-                          id = Name Ground.Enum.bool_true_name;
+                          label = Ground.Enum.bool_true_name;
                           inType =
                             {
                               absolute = true;

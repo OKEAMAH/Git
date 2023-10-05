@@ -1,0 +1,272 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+
+    <title>Id014PtkathmaFa12TokenTransfer format specification</title>
+  </head>
+  <body>
+           <div class="container">
+  <h1>Id014PtkathmaFa12TokenTransfer format specification</h1>
+
+      
+<a name='type-id_014__ptkathma__fa1__2__token_transfer'></a>
+<h1>Type: Id014PtkathmaFa12TokenTransfer</h1>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>token_contract</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-token_contract">TokenContract</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>destination</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-destination">Destination</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>amount</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-z">Z</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>tez__amount_tag</td>
+<td>u1→Bool</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>tez__amount</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-tez__amount">TezAmount</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>fee_tag</td>
+<td>u1→Bool</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>fee</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-fee">Fee</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>gas__limit_tag</td>
+<td>u1→Bool</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>gas__limit</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>storage__limit_tag</td>
+<td>u1→Bool</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>storage__limit</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-z">Z</a></td>
+<td></td>
+</tr>
+</table>
+<a name='enum-id_014__ptkathma__fa1__2__token_transfer-bool'></a>
+<h2>Enum: bool</h2>
+
+<table class="table">
+<tr>
+<th>ID</th><th>Name</th><th>Note</th>
+</tr>
+<tr>
+<td>0</td><td>false</td><td></td></tr>
+</tr>
+<tr>
+<td>255</td><td>true</td><td></td></tr>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-n'></a>
+<h2>Type: N</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>n</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-n_chunk">NChunk</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-token_contract'></a>
+<h2>Type: TokenContract</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_token_contract</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>token_contract</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-tez__amount'></a>
+<h2>Type: TezAmount</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_tez__amount</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>tez__amount</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-n_chunk'></a>
+<h2>Type: NChunk</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>continue</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:1</td>
+<td>...</td>
+<td>payload</td>
+<td>b7</td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-destination'></a>
+<h2>Type: Destination</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_destination</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>destination</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-z'></a>
+<h2>Type: Z</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>continue</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:1</td>
+<td>...</td>
+<td>sign</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:2</td>
+<td>...</td>
+<td>payload</td>
+<td>b6</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>...</td>
+<td>tail</td>
+<td><a href="#type-id_014__ptkathma__fa1__2__token_transfer-n_chunk">NChunk</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_014__ptkathma__fa1__2__token_transfer-fee'></a>
+<h2>Type: Fee</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_fee</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>fee</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+  </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+  </body>
+</html>
+      

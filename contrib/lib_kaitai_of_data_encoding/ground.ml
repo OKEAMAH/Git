@@ -62,7 +62,7 @@ let n_chunk_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "continue";
+          id = "has_more";
           dataType =
             DataType.(
               NumericType
@@ -96,7 +96,7 @@ let n_seq_attr =
                  operand =
                    CastToType
                      {
-                       value = Attribute {value = Name "_"; attr = "continue"};
+                       value = Attribute {value = Name "_"; attr = "has_more"};
                        typeName =
                          {absolute = true; names = ["bool"]; isArray = false};
                      };
@@ -121,7 +121,7 @@ let z_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "continue";
+          id = "has_more";
           dataType =
             DataType.(
               NumericType
@@ -159,7 +159,7 @@ let z_type =
                          CastToType
                            {
                              value =
-                               Attribute {value = Name "_"; attr = "continue"};
+                               Attribute {value = Name "_"; attr = "has_more"};
                              typeName =
                                {
                                  absolute = true;

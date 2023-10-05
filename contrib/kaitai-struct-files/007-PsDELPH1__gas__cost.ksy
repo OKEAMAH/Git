@@ -4,7 +4,7 @@ meta:
 types:
   z:
     seq:
-    - id: continue
+    - id: has_more
       type: b1be
     - id: sign
       type: b1be
@@ -12,9 +12,10 @@ types:
       type: b6be
     - id: tail
       type: n_chunk
+      if: not (_.has_more).as<bool>
   n_chunk:
     seq:
-    - id: continue
+    - id: has_more
       type: b1be
     - id: payload
       type: b7be
