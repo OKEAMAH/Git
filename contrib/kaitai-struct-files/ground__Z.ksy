@@ -5,7 +5,7 @@ doc: Arbitrary precision integers
 types:
   z:
     seq:
-    - id: has_more
+    - id: has_more_than_single_byte
       type: b1be
     - id: sign
       type: b1be
@@ -13,7 +13,9 @@ types:
       type: b6be
     - id: tail
       type: n_chunk
-      if: not (_.has_more).as<bool>
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+      if: not (_.has_more_than_single_byte).as<bool>
   n_chunk:
     seq:
     - id: has_more

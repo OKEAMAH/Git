@@ -121,7 +121,7 @@ let z_type =
       [
         {
           Helpers.default_attr_spec with
-          id = "has_more";
+          id = "has_more_than_single_byte";
           dataType =
             DataType.(
               NumericType
@@ -149,9 +149,30 @@ let z_type =
           dataType = DataType.(ComplexDataType (UserType n_chunk_type));
           cond =
             {
-              Helpers.cond_no_cond with
               ifExpr =
                 Some
+                  (UnaryOp
+                     {
+                       op = Not;
+                       operand =
+                         CastToType
+                           {
+                             value =
+                               Attribute
+                                 {
+                                   value = Name "_";
+                                   attr = "has_more_than_single_byte";
+                                 };
+                             typeName =
+                               {
+                                 absolute = true;
+                                 names = ["bool"];
+                                 isArray = false;
+                               };
+                           };
+                     });
+              repeat =
+                RepeatUntil
                   (UnaryOp
                      {
                        op = Not;
