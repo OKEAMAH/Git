@@ -425,7 +425,6 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
       ~whitelist:[operator1.public_key_hash]
       client
   in
-  let _level = Node.get_level node in
   let* rollup_node =
     setup_l2_node ~operator:operator1.alias client node rollup_address
   in
