@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   sapling__wallet__full_viewing_key:
-    meta:
-      id: sapling__wallet__full_viewing_key
-      endian: be
     seq:
     - id: ak
       size: 32

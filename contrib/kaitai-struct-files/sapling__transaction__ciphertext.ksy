@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   payload_enc:
-    meta:
-      id: payload_enc
-      endian: be
     seq:
     - id: len_payload_enc
       type: s4

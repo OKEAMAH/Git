@@ -3,14 +3,8 @@ meta:
   endian: be
 types:
   id_016__ptmumbai__block_header__alpha__signed_contents:
-    meta:
-      id: id_016__ptmumbai__block_header__alpha__signed_contents
-      endian: be
     types:
       id_016__ptmumbai__block_header__alpha__unsigned_contents:
-        meta:
-          id: id_016__ptmumbai__block_header__alpha__unsigned_contents
-          endian: be
         seq:
         - id: value_hash
           size: 32

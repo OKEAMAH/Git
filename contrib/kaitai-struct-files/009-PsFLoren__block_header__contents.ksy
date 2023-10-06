@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   id_009__psfloren__block_header__alpha__unsigned_contents:
-    meta:
-      id: id_009__psfloren__block_header__alpha__unsigned_contents
-      endian: be
     seq:
     - id: priority
       type: u2

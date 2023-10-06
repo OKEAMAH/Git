@@ -3,23 +3,14 @@ meta:
   endian: be
 types:
   id_013__ptjakart__scripted__contracts:
-    meta:
-      id: id_013__ptjakart__scripted__contracts
-      endian: be
     types:
       storage:
-        meta:
-          id: storage
-          endian: be
         seq:
         - id: len_storage
           type: s4
         - id: storage
           size: len_storage
       code:
-        meta:
-          id: code
-          endian: be
         seq:
         - id: len_code
           type: s4

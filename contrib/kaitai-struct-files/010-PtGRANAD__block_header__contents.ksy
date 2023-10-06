@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   id_010__ptgranad__block_header__alpha__unsigned_contents:
-    meta:
-      id: id_010__ptgranad__block_header__alpha__unsigned_contents
-      endian: be
     seq:
     - id: priority
       type: u2

@@ -3,36 +3,24 @@ meta:
   endian: be
 types:
   fee:
-    meta:
-      id: fee
-      endian: be
     seq:
     - id: len_fee
       type: s4
     - id: fee
       size: len_fee
   tez__amount:
-    meta:
-      id: tez__amount
-      endian: be
     seq:
     - id: len_tez__amount
       type: s4
     - id: tez__amount
       size: len_tez__amount
   destination:
-    meta:
-      id: destination
-      endian: be
     seq:
     - id: len_destination
       type: s4
     - id: destination
       size: len_destination
   token_contract:
-    meta:
-      id: token_contract
-      endian: be
     seq:
     - id: len_token_contract
       type: s4

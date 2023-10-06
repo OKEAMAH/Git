@@ -4,9 +4,6 @@ meta:
 doc: The identifier for a p2p connection. It includes an address and a port number.
 types:
   p2p_address:
-    meta:
-      id: p2p_address
-      endian: be
     doc: An address for locating peers.
     seq:
     - id: len_p2p_address

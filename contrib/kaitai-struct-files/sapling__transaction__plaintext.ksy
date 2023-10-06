@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   memo:
-    meta:
-      id: memo
-      endian: be
     seq:
     - id: len_memo
       type: s4

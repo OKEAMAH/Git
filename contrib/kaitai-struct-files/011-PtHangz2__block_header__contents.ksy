@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   id_011__pthangz2__block_header__alpha__unsigned_contents:
-    meta:
-      id: id_011__pthangz2__block_header__alpha__unsigned_contents
-      endian: be
     seq:
     - id: priority
       type: u2

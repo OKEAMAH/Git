@@ -119,9 +119,6 @@ let%expect_test "test objs with opt and dft fields" =
       endian: be
     types:
       three:
-        meta:
-          id: three
-          endian: be
         seq:
         - id: one
           type: s8
@@ -132,9 +129,6 @@ let%expect_test "test objs with opt and dft fields" =
           type: u2
           if: (two_tag == bool::true)
       one:
-        meta:
-          id: one
-          endian: be
         seq:
         - id: one_tag
           type: u1
@@ -183,9 +177,6 @@ let%expect_test "test objs with opt and dft fields and doc" =
       endian: be
     types:
       one:
-        meta:
-          id: one
-          endian: be
         seq:
         - id: one_tag
           type: u1

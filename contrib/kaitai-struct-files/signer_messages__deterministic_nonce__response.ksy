@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   deterministic_nonce:
-    meta:
-      id: deterministic_nonce
-      endian: be
     seq:
     - id: len_deterministic_nonce
       type: s4

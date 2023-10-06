@@ -6,9 +6,6 @@ doc: ! >-
   version)
 types:
   distributed_db_version__name:
-    meta:
-      id: distributed_db_version__name
-      endian: be
     doc: A name for the distributed DB protocol
     seq:
     - id: len_distributed_db_version__name

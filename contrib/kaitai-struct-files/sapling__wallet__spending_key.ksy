@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   sapling__wallet__expanded_spending_key:
-    meta:
-      id: sapling__wallet__expanded_spending_key
-      endian: be
     seq:
     - id: ask
       size: 32

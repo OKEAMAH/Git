@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   deterministic_nonce_hash:
-    meta:
-      id: deterministic_nonce_hash
-      endian: be
     seq:
     - id: len_deterministic_nonce_hash
       type: s4

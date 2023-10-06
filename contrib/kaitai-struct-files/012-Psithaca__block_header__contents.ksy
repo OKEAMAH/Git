@@ -3,9 +3,6 @@ meta:
   endian: be
 types:
   id_012__psithaca__block_header__alpha__unsigned_contents:
-    meta:
-      id: id_012__psithaca__block_header__alpha__unsigned_contents
-      endian: be
     seq:
     - id: value_hash
       size: 32

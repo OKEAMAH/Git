@@ -77,7 +77,6 @@ let n_chunk_type =
                 (Int_type (BitsType {width = 7; bit_endian = BigBitEndidan})));
         };
       ];
-    isTopLevel = false;
   }
 
 let n_seq_attr =
@@ -111,7 +110,6 @@ let n_type =
     (Helpers.default_class_spec ~encoding_name:"n" ())
     with
     seq = [n_seq_attr];
-    isTopLevel = false;
   }
 
 let z_type =
@@ -187,7 +185,6 @@ let z_type =
             };
         };
       ];
-    isTopLevel = false;
   }
 
 module Type = struct

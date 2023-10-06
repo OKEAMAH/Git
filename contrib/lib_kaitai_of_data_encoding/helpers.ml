@@ -57,7 +57,7 @@ let default_class_spec ~encoding_name ?description () =
       fileName = None;
       path = [];
       meta = default_meta_spec ~encoding_name;
-      isTopLevel = true;
+      isTopLevel = false;
       doc = {default_doc_spec with summary = description};
       toStringExpr = None;
       params = [];
@@ -88,8 +88,8 @@ let types_field_from_attr_seq base attributes =
   in
   List.fold_left add_uniq_assoc base types
 
-let class_spec_of_attrs ~encoding_name ?description ?(enums = []) ?(types = [])
-    ?(instances = []) attrs =
+let class_spec_of_attrs ~encoding_name ?description ?(top_level = false)
+    ?(enums = []) ?(types = []) ?(instances = []) attrs =
   let types = types_field_from_attr_seq types attrs in
   {
     (default_class_spec ~encoding_name ?description ()) with
@@ -97,6 +97,7 @@ let class_spec_of_attrs ~encoding_name ?description ?(enums = []) ?(types = [])
     enums;
     types;
     instances;
+    isTopLevel = top_level;
   }
 
 let default_instance_spec ~id value =

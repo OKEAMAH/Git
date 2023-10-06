@@ -474,6 +474,7 @@ let from_data_encoding :
         seq_field_of_data_encoding [] [] encoding id None
       in
       Helpers.class_spec_of_attrs
+        ~top_level:true
         ~encoding_name
         ?description
         ~enums
@@ -485,6 +486,7 @@ let from_data_encoding :
         seq_field_of_data_encoding [] [] encoding encoding_name None
       in
       Helpers.class_spec_of_attrs
+        ~top_level:true
         ~encoding_name
         ?description
         ~enums
