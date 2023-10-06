@@ -127,6 +127,21 @@ let rec seq_field_of_data_encoding :
       let size_id = "len_" ^ id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       (enums, types, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
+  | Padded (encoding, pad) ->
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id tid_gen
+      in
+      let pad_attr =
+        let id = id ^ "_padding" in
+        let doc =
+          {
+            Helpers.default_doc_spec with
+            summary = Some "This field is for padding, ignore";
+          }
+        in
+        {(Ground.Attr.bytes ~id (Fixed pad)) with doc}
+      in
+      (enums, types, attrs @ [pad_attr])
   | N ->
       let types = Helpers.add_uniq_assoc types Ground.Type.n_chunk in
       let types = Helpers.add_uniq_assoc types Ground.Type.n in
