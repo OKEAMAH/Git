@@ -7,6 +7,13 @@ find . ! -path "./_opam/*" -name "*.opam" -exec opam lint {} +;
 
 make check-linting
 
+# Check that new ml(i) files have a MIT-SPDX license header.
+git diff-tree --no-commit-id --name-only -r --diff-filter=A \
+    "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-master}" HEAD |
+    grep '\.ml\(i\|\)$' |
+    xargs ocaml scripts/check_license/main.ml --verbose --mit-spdx
+echo "OCaml file license headers OK!"
+
 # python checks
 make check-python-linting
 make check-python-typecheck
