@@ -126,6 +126,9 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
     | Get_balance.Input (Some (address, _block_param)) ->
         let* balance = Rollup_node_rpc.balance address in
         return (Get_balance.Output (Ok balance))
+    | Get_storage_at.Input (Some (address, position, _block_param)) ->
+        let* value = Rollup_node_rpc.storage_at address position in
+        return (Get_storage_at.Output (Ok value))
     | Block_number.Input _ ->
         let* block_number = Rollup_node_rpc.current_block_number () in
         return (Block_number.Output (Ok block_number))
@@ -153,7 +156,9 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
     | Get_code.Input (Some (address, _)) ->
         let* code = Rollup_node_rpc.code address in
         return (Get_code.Output (Ok code))
-    | Gas_price.Input _ -> return (Gas_price.Output (Ok Mockup.gas_price))
+    | Gas_price.Input (Some ()) ->
+        let* base_fee = Rollup_node_rpc.base_fee_per_gas () in
+        return (Gas_price.Output (Ok base_fee))
     | Get_transaction_count.Input (Some (address, _)) ->
         let* nonce = Rollup_node_rpc.nonce address in
         return (Get_transaction_count.Output (Ok nonce))

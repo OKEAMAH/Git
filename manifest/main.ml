@@ -166,7 +166,7 @@ let ipaddr =
   external_lib
     ~js_compatible:true
     "ipaddr"
-    V.(at_least "5.0.0" && less_than "6.0.0")
+    V.(at_least "5.3.0" && less_than "6.0.0")
 
 let ipaddr_unix = external_sublib ipaddr "ipaddr.unix"
 
@@ -2578,6 +2578,7 @@ let tezt_ethereum =
       [
         tezt_lib |> open_ |> open_ ~m:"Base";
         tezt_performance_regression |> open_;
+        octez_crypto;
       ]
     ~release_status:Unreleased
 
@@ -4382,6 +4383,23 @@ let octez_node_config =
         octez_validation |> open_;
       ]
 
+let octez_rpc_process =
+  public_lib
+    "octez-rpc-process"
+    ~path:"src/lib_rpc_process"
+    ~synopsis:"Tezos: RPC process"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives" |> open_;
+        octez_base_unix |> open_;
+        octez_node_config |> open_;
+        octez_rpc_http |> open_;
+        octez_rpc_http_server |> open_;
+        lwt_unix;
+        lwt_exit;
+        prometheus_app;
+      ]
+
 let octez_crawler =
   public_lib
     "octez-crawler"
@@ -4431,6 +4449,7 @@ let octez_smart_rollup_lib =
         octez_stdlib_unix |> open_;
         octez_crypto |> open_;
         octez_crypto_dal;
+        yaml;
       ]
 
 let octez_smart_rollup_node_lib =
@@ -6473,6 +6492,11 @@ let hash = Protocol.hash
         (sf "octez_smart_rollup_node_%s" short_hash)
         ~path:(path // "lib_sc_rollup_node")
         ~opam:(sf "octez-smart-rollup-node-%s" short_hash)
+        ~synopsis:
+          (sf
+             "Protocol specific (for %s) library for smart rollup node"
+             name_dash)
+        ~linkall:true
         ~deps:
           [
             octez_base |> open_ |> open_ ~m:"TzPervasives"
@@ -6522,29 +6546,8 @@ let hash = Protocol.hash
     in
     let _octez_sc_rollup_node_test =
       only_if (active && N.(number >= 016)) @@ fun () ->
-      let helpers =
-        private_lib
-          (sf "octez_smart_rollup_node_%s_test_helpers" short_hash)
-          ~path:(path // "lib_sc_rollup_node/test/helpers")
-          ~opam:"tezos-sc-rollup-node-test"
-          ~deps:
-            [
-              octez_base |> open_ ~m:"TzPervasives"
-              |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-              main |> open_;
-              parameters |> if_some |> open_;
-              client |> if_some |> open_;
-              octez_test_helpers |> open_;
-              qcheck_alcotest;
-              qcheck_core;
-              logs_lwt;
-              octez_sc_rollup_layer2 |> if_some |> open_;
-              octez_sc_rollup_node |> if_some |> open_;
-              alcotezt;
-            ]
-      in
       tezt
-        ["canary"; "test_octez_conversions"]
+        ["serialized_proofs"; "test_octez_conversions"]
         ~path:(path // "lib_sc_rollup_node/test")
         ~opam:"tezos-sc-rollup-node-test"
         ~synopsis:"Tests for the smart rollup node library"
@@ -6558,7 +6561,6 @@ let hash = Protocol.hash
             octez_sc_rollup_layer2 |> if_some |> open_;
             octez_sc_rollup_node |> if_some |> open_;
             alcotezt;
-            helpers |> open_;
           ]
     in
     let octez_sc_rollup_client =
@@ -6598,30 +6600,6 @@ let hash = Protocol.hash
             main |> open_;
             octez_sc_rollup_client |> if_some |> open_;
             octez_version_value;
-          ]
-    in
-    let _sc_rollup_node =
-      only_if (active && N.(number >= 016)) @@ fun () ->
-      public_exe
-        (sf "octez-smart-rollup-node-%s" short_hash)
-        ~internal_name:(sf "main_sc_rollup_node_%s" name_underscore)
-        ~path:(path // "bin_sc_rollup_node")
-        ~synopsis:"Tezos/Protocol: protocol specific Smart rollup node"
-        ~release_status:executable_release_status
-        ~with_macos_security_framework:true
-        ~deps:
-          [
-            octez_base |> open_ |> open_ ~m:"TzPervasives"
-            |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
-            octez_clic;
-            main |> open_;
-            octez_shell_services |> open_;
-            octez_client_base |> open_;
-            octez_client_base_unix |> open_;
-            octez_client_commands |> open_;
-            client |> if_some |> open_;
-            octez_smart_rollup_node_lib |> open_;
-            octez_sc_rollup_node |> if_some |> open_;
           ]
     in
     let tx_rollup =
@@ -7392,6 +7370,9 @@ let simulation_scenario_lib =
          octez_base_unix;
          octez_client_base |> open_;
          octez_client_base_unix |> open_;
+         octez_store |> open_;
+         octez_store_shared |> open_;
+         octez_context |> open_;
        ]
       @ List.flatten proto_deps)
     ~modules:("sigs" :: proto_tools)
@@ -7562,7 +7543,7 @@ let _octez_node =
     ~deps:
       ([
          octez_base |> open_ ~m:"TzPervasives" |> open_;
-         octez_base_unix;
+         octez_base_unix |> open_;
          octez_version;
          octez_version_value;
          octez_node_config |> open_;
@@ -7570,6 +7551,7 @@ let _octez_node =
          octez_shell_services |> open_;
          octez_rpc_http |> open_;
          octez_rpc_http_server |> open_;
+         octez_rpc_process |> open_;
          octez_p2p |> open_;
          octez_shell |> open_;
          octez_store |> open_;
@@ -8082,7 +8064,7 @@ let _octez_smart_rollup_node =
     ~internal_name:"main_smart_rollup_node"
     ~path:"src/bin_smart_rollup_node"
     ~synopsis:"Octez: Smart rollup node"
-    ~release_status:Experimental
+    ~release_status:Released
     ~linkall:true
     ~with_macos_security_framework:true
     ~deps:
@@ -8098,6 +8080,61 @@ let _octez_smart_rollup_node =
          octez_smart_rollup_node_lib |> open_;
        ]
       @ protocol_deps)
+
+let _octez_smart_rollup_node_lib_tests =
+  let protocol_deps =
+    let deps_for_protocol protocol =
+      let is_optional =
+        match (Protocol.status protocol, Protocol.number protocol) with
+        | Active, V _ -> false
+        | (Frozen | Overridden | Not_mainnet), _ | Active, (Alpha | Other) ->
+            true
+      in
+      let targets =
+        List.filter_map Fun.id [Protocol.octez_sc_rollup_node protocol]
+      in
+      if is_optional then List.map optional targets else targets
+    in
+    List.map deps_for_protocol Protocol.all |> List.flatten
+  in
+  let helpers =
+    private_lib
+      "octez_smart_rollup_node_test_helpers"
+      ~path:"src/lib_smart_rollup_node/test/helpers"
+      ~opam:""
+      ~deps:
+        ([
+           octez_base |> open_ ~m:"TzPervasives"
+           |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
+           octez_test_helpers |> open_;
+           qcheck_alcotest;
+           qcheck_core;
+           logs_lwt;
+           alcotezt;
+           octez_client_base_unix |> open_;
+           octez_smart_rollup_lib |> open_;
+           octez_smart_rollup_node_lib |> open_;
+         ]
+        @ protocol_deps)
+  in
+  tezt
+    ["canary"; "test_context_gc"]
+    ~path:"src/lib_smart_rollup_node/test/"
+    ~opam:"tezos-smart-rollup-node-lib-test"
+    ~synopsis:"Tests for the smart rollup node library"
+    ~with_macos_security_framework:true
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives"
+        |> open_ ~m:"TzPervasives.Error_monad.Legacy_monad_globals";
+        octez_stdlib_unix |> open_;
+        octez_test_helpers |> open_;
+        octez_layer2_store |> open_;
+        octez_smart_rollup_lib |> open_;
+        octez_smart_rollup_node_lib |> open_;
+        helpers |> open_;
+        alcotezt;
+      ]
 
 let _octez_scoru_wasm_debugger =
   public_exe

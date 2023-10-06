@@ -321,7 +321,7 @@ module Maintenance = struct
     Test.register
       ~__FILE__
       ~title:"p2p-maintenance-init-expected_connections"
-      ~tags:["p2p"; "node"; "maintenance"]
+      ~tags:["p2p"; "node"; "maintenance"; Tag.memory_4k]
     @@ fun () ->
     (* Connections values evaluated from --connections option. *)
     let min_connections = expected_connections / 2 in
@@ -345,11 +345,21 @@ module Maintenance = struct
       max_target
       max_threshold
       max_connections ;
-    let* target_node = Node.init [Connections expected_connections] in
+    (* TODO: https://gitlab.com/tezos/tezos/-/issues/6442
+       This test launches 10 nodes and consumes a large amount of memory.
+       To reduce memory consumption each node launches its RPC server locally.
+       A better way to reduce memory consumption would be to use nodes that
+       only have the p2p layer. *)
+    let* target_node =
+      Node.init ~rpc_local:true [Connections expected_connections]
+    in
     let* target_client = Client.init ~endpoint:(Node target_node) () in
     Log.info "Target created." ;
     let nodes =
-      Cluster.create max_connections [Connections (max_connections - 1)]
+      Cluster.create
+        max_connections
+        ~rpc_local:true
+        [Connections (max_connections - 1)]
     in
     Cluster.clique nodes ;
     let* () = Cluster.start ~public:true nodes in
@@ -568,7 +578,7 @@ module Swap = struct
     Test.register
       ~__FILE__
       ~title:"p2p-swap-disable"
-      ~tags:["p2p"; "node"; "swap"]
+      ~tags:["p2p"; "node"; "swap"; Tag.memory_4k]
     @@ fun () ->
     (* Since we try to verify that something does not happen, we need
        to find when we consider having waited enough time to consider
@@ -1219,7 +1229,7 @@ module P2p_stat = struct
     Test.register
       ~__FILE__
       ~title:"Test [octez-admin-client p2p stat]"
-      ~tags:["p2p"; "connections"; "p2p_stat"]
+      ~tags:["p2p"; "connections"; "p2p_stat"; Tag.memory_3k]
     @@ fun () ->
     let num_nodes = 5 in
     Log.info "Start a clique of %d nodes" num_nodes ;

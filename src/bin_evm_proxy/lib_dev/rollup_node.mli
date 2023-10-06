@@ -110,6 +110,9 @@ module type S = sig
   (** [chain_id ()] returns chain id defined by the rollup. *)
   val chain_id : unit -> Ethereum_types.quantity tzresult Lwt.t
 
+  (** [base_fee_per_gas ()] returns base fee defined by the rollup. *)
+  val base_fee_per_gas : unit -> Ethereum_types.quantity tzresult Lwt.t
+
   (** [kernel_version ()] returns the internal kernel version (i.e the commit hash where
         the kernel was compiled). *)
   val kernel_version : unit -> string tzresult Lwt.t
@@ -128,6 +131,13 @@ module type S = sig
 
   (** [is_tx_valid tx_raw] checks if the transaction is valid. Checks if the nonce is correct. *)
   val is_tx_valid : Ethereum_types.hex -> (unit, string) result tzresult Lwt.t
+
+  (** [storage_at address pos] returns the value at index [pos] of the
+      account [address]'s storage. *)
+  val storage_at :
+    Ethereum_types.address ->
+    Ethereum_types.quantity ->
+    Ethereum_types.hex tzresult Lwt.t
 end
 
 (** Instantiate a module of type {!S} that communicates with a rollup

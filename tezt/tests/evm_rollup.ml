@@ -818,6 +818,15 @@ let loop =
     bin = kernel_inputs_path ^ "/loop.bin";
   }
 
+(** The info for the "mapping_storage.sol" contract.
+    See [src\kernel_evm\solidity_examples] *)
+let mapping_storage =
+  {
+    label = "mappingStorage";
+    abi = kernel_inputs_path ^ "/mapping_storage_abi.json";
+    bin = kernel_inputs_path ^ "/mapping_storage.bin";
+  }
+
 (** Test that the contract creation works.  *)
 let test_l2_deploy_simple_storage =
   Protocol.register_test
@@ -1116,17 +1125,20 @@ let ensure_block_integrity ~block_result evm_setup =
   assert (block.transactions = block_result.transactions) ;
   unit
 
-let latest_block evm_setup =
+let get_block_by_number ?(full_tx_objects = false) evm_setup block_param =
   let* latest_block =
     Evm_proxy_server.(
       call_evm_rpc
         evm_setup.evm_proxy_server
         {
           method_ = "eth_getBlockByNumber";
-          parameters = `A [`String "latest"; `Bool false];
+          parameters = `A [`String block_param; `Bool full_tx_objects];
         })
   in
   return @@ (latest_block |> Evm_proxy_server.extract_result |> Block.of_json)
+
+let latest_block ?(full_tx_objects = false) evm_setup =
+  get_block_by_number ~full_tx_objects evm_setup "latest"
 
 type transfer_result = {
   sender_balance_before : Wei.t;
@@ -2665,6 +2677,31 @@ let test_rpc_sendRawTransaction_invalid_chain_id =
       ~error_msg:"The transaction should fail") ;
   unit
 
+let tez_kernelVersion evm_proxy_server =
+  let* json =
+    Evm_proxy_server.call_evm_rpc
+      evm_proxy_server
+      Evm_proxy_server.{method_ = "tez_kernelVersion"; parameters = `Null}
+  in
+  return JSON.(json |-> "result" |> as_string)
+
+let test_kernel_upgrade_version_change =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "upgrade"; "version"]
+    ~title:"Kernel version changes after an upgrade"
+  @@ fun protocol ->
+  let scenario_prior ~evm_setup =
+    tez_kernelVersion evm_setup.evm_proxy_server
+  in
+  let scenario_after ~evm_setup ~sanity_check:old =
+    let* new_ = tez_kernelVersion evm_setup.evm_proxy_server in
+    Check.((old <> new_) string)
+      ~error_msg:"The kernel version must change after an upgrade" ;
+    unit
+  in
+  gen_kernel_migration_test ~scenario_prior ~scenario_after protocol
+
 let register_evm_migration ~protocols =
   test_kernel_migration protocols ;
   test_deposit_before_and_after_migration protocols ;
@@ -2958,6 +2995,92 @@ let test_cover_fees =
   in
   check_for_receipt 6
 
+let test_rpc_gasPrice =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "gas_price"]
+    ~title:"RPC methods eth_gasPrice"
+  @@ fun protocol ->
+  let* {evm_proxy_server; _} = setup_past_genesis ~admin:None protocol in
+  let expected_gas_price = 21_000l in
+  let* gas_price =
+    Evm_proxy_server.(
+      let* price =
+        call_evm_rpc
+          evm_proxy_server
+          {method_ = "eth_gasPrice"; parameters = `A []}
+      in
+      return JSON.(price |-> "result" |> as_int64))
+  in
+  Check.((gas_price = Int64.of_int32 expected_gas_price) int64)
+    ~error_msg:"Expected %R, but got %L" ;
+  unit
+
+let send_foo_mapping_storage contract_address sender
+    {sc_rollup_node; node; client; endpoint; _} =
+  let call_foo (sender : Eth_account.t) =
+    Eth_cli.contract_send
+      ~source_private_key:sender.private_key
+      ~endpoint
+      ~abi_label:mapping_storage.label
+      ~address:contract_address
+      ~method_call:"foo()"
+  in
+  wait_for_application ~sc_rollup_node ~node ~client (call_foo sender) ()
+
+let test_rpc_getStorageAt =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "get_storage_at"]
+    ~title:"RPC methods eth_getStorageAt"
+  @@ fun protocol ->
+  (* setup *)
+  let* ({endpoint; evm_proxy_server; _} as evm_setup) =
+    setup_past_genesis ~admin:None protocol
+  in
+  let sender = Eth_account.bootstrap_accounts.(0) in
+  (* deploy contract *)
+  let* address, _tx = deploy ~contract:mapping_storage ~sender evm_setup in
+  (* Example from
+      https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_getstorageat
+  *)
+  let expected_value0 = 1234 in
+  let expected_value1 = 5678 in
+
+  (* set values *)
+  let* tx = send_foo_mapping_storage address sender evm_setup in
+  let* () = check_tx_succeeded ~endpoint ~tx in
+  let* hex_value =
+    Evm_proxy_server.(
+      let* value =
+        call_evm_rpc
+          evm_proxy_server
+          {
+            method_ = "eth_getStorageAt";
+            parameters = `A [`String address; `String "0x0"; `String "latest"];
+          }
+      in
+      return JSON.(value |-> "result" |> as_string))
+  in
+  Check.((Helpers.no_0x hex_value = hex_256_of expected_value0) string)
+    ~error_msg:"Expected %R, but got %L" ;
+  let pos = Helpers.mapping_position sender.address 1 in
+  let* hex_value =
+    Evm_proxy_server.(
+      let* value =
+        call_evm_rpc
+          evm_proxy_server
+          {
+            method_ = "eth_getStorageAt";
+            parameters = `A [`String address; `String pos; `String "latest"];
+          }
+      in
+      return JSON.(value |-> "result" |> as_string))
+  in
+  Check.((Helpers.no_0x hex_value = hex_256_of expected_value1) string)
+    ~error_msg:"Expected %R, but got %L" ;
+  unit
+
 let register_evm_proxy_server ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_proxy_server_connection protocols ;
@@ -2998,6 +3121,7 @@ let register_evm_proxy_server ~protocols =
   test_kernel_upgrade_wrong_rollup_address protocols ;
   test_kernel_upgrade_no_administrator protocols ;
   test_kernel_upgrade_failing_migration protocols ;
+  test_kernel_upgrade_version_change protocols ;
   test_check_kernel_upgrade_nonce protocols ;
   test_rpc_sendRawTransaction protocols ;
   test_deposit_dailynet protocols ;
@@ -3011,7 +3135,9 @@ let register_evm_proxy_server ~protocols =
   test_rpc_getUncleCountByBlock protocols ;
   test_rpc_getUncleByBlockArgAndIndex protocols ;
   test_simulation_eip2200 protocols ;
-  test_cover_fees protocols
+  test_cover_fees protocols ;
+  test_rpc_gasPrice protocols ;
+  test_rpc_getStorageAt protocols
 
 let register ~protocols =
   register_evm_proxy_server ~protocols ;

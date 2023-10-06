@@ -103,6 +103,8 @@ module Durable_storage_path = struct
 
   let chain_id = EVM.make "/chain_id"
 
+  let base_fee_per_gas = EVM.make "/base_fee_per_gas"
+
   let kernel_version = EVM.make "/kernel_version"
 
   let upgrade_nonce = EVM.make "/upgrade_nonce"
@@ -116,6 +118,8 @@ module Durable_storage_path = struct
 
     let code = "/code"
 
+    let storage = "/storage"
+
     let account (Address (Hex s)) = accounts ^ "/" ^ s
 
     let balance address = account address ^ balance
@@ -123,6 +127,8 @@ module Durable_storage_path = struct
     let nonce address = account address ^ nonce
 
     let code address = account address ^ code
+
+    let storage address index = account address ^ storage ^ "/" ^ index
   end
 
   module Block = struct
@@ -420,6 +426,12 @@ module RPC = struct
   let chain_id base () =
     inspect_durable_and_decode base Durable_storage_path.chain_id decode_number
 
+  let base_fee_per_gas base () =
+    inspect_durable_and_decode
+      base
+      Durable_storage_path.base_fee_per_gas
+      decode_number
+
   let kernel_version base () =
     inspect_durable_and_decode
       base
@@ -505,6 +517,25 @@ module RPC = struct
         }
     in
     Simulation.is_tx_valid r
+
+  let storage_at base address (Qty pos) =
+    let open Lwt_result_syntax in
+    let pad32left0 s =
+      let open Ethereum_types in
+      (* Strip 0x *)
+      let (Hex s) = hex_of_string s in
+      let len = String.length s in
+      (* This is a Hex string of 32 bytes, therefore the length is 64 *)
+      String.make (64 - len) '0' ^ s
+    in
+    let index = Z.format "#x" pos |> pad32left0 in
+    let key = Durable_storage_path.Accounts.storage address index in
+    let+ answer = call_service ~base durable_state_value () {key} () in
+    match answer with
+    | Some bytes ->
+        Bytes.to_string bytes |> Hex.of_string |> Hex.show
+        |> Ethereum_types.hex_of_string
+    | None -> Ethereum_types.Hex (pad32left0 "0")
 end
 
 module type S = sig
@@ -544,6 +575,8 @@ module type S = sig
 
   val chain_id : unit -> Ethereum_types.quantity tzresult Lwt.t
 
+  val base_fee_per_gas : unit -> Ethereum_types.quantity tzresult Lwt.t
+
   val kernel_version : unit -> string tzresult Lwt.t
 
   val upgrade_nonce : unit -> int tzresult Lwt.t
@@ -554,6 +587,11 @@ module type S = sig
     Ethereum_types.call -> Ethereum_types.quantity tzresult Lwt.t
 
   val is_tx_valid : Ethereum_types.hex -> (unit, string) result tzresult Lwt.t
+
+  val storage_at :
+    Ethereum_types.address ->
+    Ethereum_types.quantity ->
+    Ethereum_types.hex tzresult Lwt.t
 end
 
 module Make (Base : sig
@@ -585,6 +623,8 @@ end) : S = struct
 
   let chain_id = RPC.chain_id Base.base
 
+  let base_fee_per_gas = RPC.base_fee_per_gas Base.base
+
   let kernel_version = RPC.kernel_version Base.base
 
   let upgrade_nonce = RPC.upgrade_nonce Base.base
@@ -594,4 +634,6 @@ end) : S = struct
   let estimate_gas = RPC.estimate_gas Base.base
 
   let is_tx_valid = RPC.is_tx_valid Base.base
+
+  let storage_at = RPC.storage_at Base.base
 end

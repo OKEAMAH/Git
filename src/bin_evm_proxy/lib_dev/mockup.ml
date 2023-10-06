@@ -66,6 +66,8 @@ let code _ =
 (* Gas limit must be at least 21000 *)
 let gas_price = qty_f @@ Z.of_int 21000
 
+let base_fee_per_gas () = return gas_price
+
 let transaction_counter = ref 0
 
 let transaction_count () = qty_f @@ Z.of_int !transaction_counter
@@ -152,6 +154,8 @@ let estimate_gas _ = Lwt_result_syntax.return gas_price
 let smart_rollup_address = return "foo"
 
 let balance _addr = return balance
+
+let storage_at _addr _pos = return (Ethereum_types.Hex (String.make 64 '0'))
 
 let nonce _addr = return (transaction_count ())
 
