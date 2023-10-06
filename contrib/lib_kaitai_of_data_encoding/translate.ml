@@ -229,6 +229,8 @@ let rec seq_field_of_data_encoding :
         | `Uint8 -> Ground.Attr.uint8 ~id:len_id
       in
       (enums, types, [len_attr; attr])
+  | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
+      seq_field_of_data_encoding enums types encoding id tid_gen
   | Describe {encoding; id; description; title} -> (
       let id = escape_id id in
       let description =
