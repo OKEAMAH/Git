@@ -23,9 +23,9 @@ let%expect_test "test fixed size list translation" =
       seq:
       - id: list_of_uint8
         type: u1
-        repeat: expr
-        repeat-expr: 5 
   seq:
   - id: list_of_uint8
-    type: list_of_uint8_entries    
+    type: list_of_uint8_entries
+    repeat: expr
+    repeat-expr: 5
   |}]
