@@ -16,6 +16,7 @@ use tezos_smart_rollup::{
 use tezos_smart_rollup_encoding::michelson::MichelsonInt;
 
 use super::types::IncomingTransferParam;
+use crate::rollup_util::storage;
 
 pub type Error = String;
 
@@ -39,25 +40,13 @@ pub fn process_internal_message(
 }
 
 pub fn call_fibonacci(host: &mut impl Runtime, param: usize) -> Result<(), Error> {
-    let is_storage_empty = host
-        .store_has(STORAGE_PATH)
-        .map_err(|err| err.to_string())?
-        .is_none();
-    let storage = if is_storage_empty {
-        0
-    } else {
-        free_form_bytes_to_number(
-            host.store_read_all(STORAGE_PATH)
-                .map_err(|err| err.to_string())?
-                .as_ref(),
-        )
-    };
-    // ↑ That's pretty painful, MR with a higher-level API is on the way
+    let storage = storage::read_all(host, STORAGE_PATH)
+        .as_deref()
+        .map_or(0, free_form_bytes_to_number);
 
     let new_storage = run_fibonacci(param, storage)?;
 
-    host.store_write_all(STORAGE_PATH, &new_storage.to_le_bytes())
-        .map_err(|err| err.to_string())?;
+    storage::write_all(host, STORAGE_PATH, &new_storage.to_le_bytes());
     debug_msg!(host, "Computation successful, storage updated");
     Ok(())
 }
