@@ -891,29 +891,23 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~adaptive_issuance_enable
       };
   }
 
-type previous_protocol = Genesis of Parameters_repr.t | Oxford_018
+type previous_protocol = Genesis of Parameters_repr.t | Nairobi_017
 
 let check_and_update_protocol_version ctxt =
-  let open Lwt_result_syntax in
-  let* previous_proto, ctxt =
-    let*! bytes_opt = Context.find ctxt version_key in
-    match bytes_opt with
-    | None ->
-        failwith "Internal error: un-initialized context in check_first_block."
-    | Some bytes ->
-        let s = Bytes.to_string bytes in
-        if Compare.String.(s = Constants_repr.version_value) then
-          failwith "Internal error: previously initialized context."
-        else if Compare.String.(s = "genesis") then
-          let+ param, ctxt = get_proto_param ctxt in
-          (Genesis param, ctxt)
-        else if Compare.String.(s = "oxford_018") then return (Oxford_018, ctxt)
-        else Lwt.return @@ storage_error (Incompatible_protocol_version s)
-  in
-  let*! ctxt =
-    Context.add ctxt version_key (Bytes.of_string Constants_repr.version_value)
-  in
-  return (previous_proto, ctxt)
+  (Context.find ctxt version_key >>= function
+   | None ->
+       failwith "Internal error: un-initialized context in check_first_block."
+   | Some bytes ->
+       let s = Bytes.to_string bytes in
+       if Compare.String.(s = Constants_repr.version_value) then
+         failwith "Internal error: previously initialized context."
+       else if Compare.String.(s = "genesis") then
+         get_proto_param ctxt >|=? fun (param, ctxt) -> (Genesis param, ctxt)
+       else if Compare.String.(s = "nairobi_017") then return (Nairobi_017, ctxt)
+       else Lwt.return @@ storage_error (Incompatible_protocol_version s))
+  >>=? fun (previous_proto, ctxt) ->
+  Context.add ctxt version_key (Bytes.of_string Constants_repr.version_value)
+  >|= fun ctxt -> ok (previous_proto, ctxt)
 
 (* only for the migration *)
 let[@warning "-32"] get_previous_protocol_constants ctxt =
@@ -946,32 +940,57 @@ let[@warning "-32"] get_previous_protocol_constants ctxt =
    encoding directly in a way which is compatible with the previous
    protocol. However, by doing so, you do not change the value of
    these constants inside the context. *)
-let prepare_first_block ~level ~timestamp _chain_id ctxt =
-  let open Lwt_result_syntax in
-  let* previous_proto, ctxt = check_and_update_protocol_version ctxt in
-  let* ctxt =
-    match previous_proto with
-    | Genesis param ->
-        let*? first_level = Raw_level_repr.of_int32 level in
-        let cycle_era =
+let prepare_first_block ~level ~timestamp chain_id ctxt =
+  check_and_update_protocol_version ctxt >>=? fun (previous_proto, ctxt) ->
+  (match previous_proto with
+  | Genesis param ->
+      Raw_level_repr.of_int32 level >>?= fun first_level ->
+      let cycle_era =
+        {
+          Level_repr.first_level;
+          first_cycle = Cycle_repr.root;
+          blocks_per_cycle = param.constants.blocks_per_cycle;
+          blocks_per_commitment = param.constants.blocks_per_commitment;
+        }
+      in
+      Level_repr.create_cycle_eras [cycle_era] >>?= fun cycle_eras ->
+      set_cycle_eras ctxt cycle_eras >>=? fun ctxt ->
+      add_constants ctxt param.constants >|= ok
+  | Nairobi_017 ->
+      get_previous_protocol_constants ctxt >>= fun c ->
+      let cryptobox_parameters =
+        {
+          Dal.page_size = c.dal.cryptobox_parameters.page_size;
+          number_of_shards = c.dal.cryptobox_parameters.number_of_shards;
+          slot_size = c.dal.cryptobox_parameters.slot_size;
+          redundancy_factor = c.dal.cryptobox_parameters.redundancy_factor;
+        }
+      in
+      let dal =
+        Constants_parametric_repr.
           {
             Level_repr.first_level;
             first_cycle = Cycle_repr.root;
             blocks_per_cycle = param.constants.blocks_per_cycle;
             blocks_per_commitment = param.constants.blocks_per_commitment;
           }
-        in
-        let*? cycle_eras = Level_repr.create_cycle_eras [cycle_era] in
-        let* ctxt = set_cycle_eras ctxt cycle_eras in
-        let*! result = add_constants ctxt param.constants in
-        return result
-    | Oxford_018 ->
-        let*! c = get_previous_protocol_constants ctxt in
-        let*? max_bonus =
-          Issuance_bonus_repr.migrate_max_bonus_from_O_to_P
-            c.adaptive_issuance.adaptive_rewards_params.max_bonus
-        in
-
+      in
+      (* When stitching from Oxford and after, [Raw_level_repr.root]
+         should be replaced by the previous value, that is
+         [c.reveal_activation_level.*]. *)
+      let reveal_activation_level :
+          Constants_parametric_repr.sc_rollup_reveal_activation_level =
+        {
+          raw_data = {blake2B = Raw_level_repr.root};
+          metadata = Raw_level_repr.root;
+          dal_page =
+            (if c.dal.feature_enable then Raw_level_repr.root
+            else if dal.feature_enable then
+              (* First level of the protocol with dal activated. *)
+              Raw_level_repr.of_int32_exn (Int32.succ level)
+            else
+              (* Deactivate the reveal if the dal is not enabled. *)
+              
         let cryptobox_parameters =
           {
             Dal.page_size = c.dal.cryptobox_parameters.page_size;
@@ -997,25 +1016,25 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
         let reveal_activation_level :
             Constants_parametric_repr.sc_rollup_reveal_activation_level =
           {
-            raw_data =
-              {blake2B = c.sc_rollup.reveal_activation_level.raw_data.blake2B};
-            metadata = c.sc_rollup.reveal_activation_level.metadata;
-            dal_page =
-              (if c.dal.feature_enable then
-               c.sc_rollup.reveal_activation_level.dal_page
-              else if dal.feature_enable then
-                (* First level of the protocol with dal activated. *)
-                Raw_level_repr.of_int32_exn (Int32.succ level)
-              else
-                (* Deactivate the reveal if the dal is not enabled.
+            enable = c.zk_rollup.enable;
+            origination_size = c.zk_rollup.origination_size;
+            min_pending_to_process = c.zk_rollup.min_pending_to_process;
+            max_ticket_payload_size = c.tx_rollup.max_ticket_payload_size;
+          }
+      in
 
-                   assert (not (c.dal.feature_enable || dal.feature_enable))
-
-                   We set the activation level to [pred max_int] to deactivate
-                   the feature. The [pred] is needed to not trigger an encoding
-                   exception with the value [Int32.int_min] (see
-                   tezt/tests/mockup.ml). *)
-                Raw_level_repr.of_int32_exn Int32.(pred max_int));
+      let adaptive_rewards_params =
+        Constants_parametric_repr.
+          {
+            issuance_ratio_min = Q.(5 // 10000) (* 0.05% *);
+            issuance_ratio_max = Q.(1 // 20) (* 5% *);
+            max_bonus = 50_000_000_000_000L (* 5% *);
+            growth_rate =
+              115_740_740L
+              (* 0.01 * [bonus_unit] / second_per_day
+                 For each % and each day, grows the bonus by 0.01% *);
+            center_dz = Q.(1 // 2) (* 50% *);
+            radius_dz = Q.(1 // 50) (* 2% *);
           }
         in
         let sc_rollup =
@@ -1054,40 +1073,108 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
             }
         in
 
-        let issuance_weights =
-          Constants_parametric_repr.
-            {
-              base_total_issued_per_minute =
-                c.issuance_weights.base_total_issued_per_minute;
-              baking_reward_fixed_portion_weight =
-                c.issuance_weights.baking_reward_fixed_portion_weight;
-              baking_reward_bonus_weight =
-                c.issuance_weights.baking_reward_bonus_weight;
-              attesting_reward_weight =
-                c.issuance_weights.attesting_reward_weight;
-              liquidity_baking_subsidy_weight =
-                c.issuance_weights.liquidity_baking_subsidy_weight;
-              seed_nonce_revelation_tip_weight =
-                c.issuance_weights.seed_nonce_revelation_tip_weight;
-              vdf_revelation_tip_weight =
-                c.issuance_weights.vdf_revelation_tip_weight;
-            }
-        in
+      let adaptive_issuance =
+        Constants_parametric_repr.
+          {
+            global_limit_of_staking_over_baking = 5;
+            edge_of_staking_over_delegation = 2;
+            launch_ema_threshold =
+              (if Chain_id.equal Constants_repr.mainnet_id chain_id then
+               (* 80% of the max ema (which is 2 billion) *) 1_600_000_000l
+              else (* 5% for testnets *) 100_000_000l);
+            adaptive_rewards_params;
+          }
+      in
 
-        let adaptive_rewards_params =
-          Constants_parametric_repr.
-            {
-              issuance_ratio_min =
-                c.adaptive_issuance.adaptive_rewards_params.issuance_ratio_min;
-              issuance_ratio_max =
-                c.adaptive_issuance.adaptive_rewards_params.issuance_ratio_max;
-              max_bonus;
-              (* 0.01% per 1% per day *)
-              growth_rate = Q.(1 // 100);
-              center_dz = c.adaptive_issuance.adaptive_rewards_params.center_dz;
-              radius_dz = c.adaptive_issuance.adaptive_rewards_params.radius_dz;
-            }
+      let issuance_weights =
+        let c_gen =
+          Constants_repr.Generated.generate
+            ~consensus_committee_size:c.consensus_committee_size
         in
+        c_gen.issuance_weights
+      in
+
+      let percentage_of_frozen_deposits_slashed_per_double_attestation =
+        100
+        * c.ratio_of_frozen_deposits_slashed_per_double_attestation.numerator
+        / c.ratio_of_frozen_deposits_slashed_per_double_attestation.denominator
+      in
+      let percentage_of_frozen_deposits_slashed_per_double_baking =
+        let double_baking_punishment_times_100 =
+          Int64.mul 100L (Tez_repr.to_mutez c.double_baking_punishment)
+        in
+        let percentage_rounded_down =
+          Int64.div
+            double_baking_punishment_times_100
+            (Tez_repr.to_mutez c.minimal_stake)
+        in
+        Int64.to_int percentage_rounded_down
+      in
+      let limit_of_delegation_over_baking =
+        (100 / c.frozen_deposits_percentage) - 1
+      in
+      let minimal_frozen_stake =
+        Tez_repr.(
+          div_exn
+            (mul_exn c.minimal_stake (limit_of_delegation_over_baking + 1))
+            100)
+      in
+      let constants =
+        Constants_parametric_repr.
+          {
+            preserved_cycles = c.preserved_cycles;
+            blocks_per_cycle = c.blocks_per_cycle;
+            blocks_per_commitment = c.blocks_per_commitment;
+            nonce_revelation_threshold = c.nonce_revelation_threshold;
+            blocks_per_stake_snapshot = c.blocks_per_stake_snapshot;
+            cycles_per_voting_period = c.cycles_per_voting_period;
+            hard_gas_limit_per_operation = c.hard_gas_limit_per_operation;
+            hard_gas_limit_per_block = c.hard_gas_limit_per_block;
+            proof_of_work_threshold = c.proof_of_work_threshold;
+            minimal_stake = c.minimal_stake;
+            minimal_frozen_stake;
+            vdf_difficulty = c.vdf_difficulty;
+            origination_size = c.origination_size;
+            max_operations_time_to_live = c.max_operations_time_to_live;
+            issuance_weights;
+            cost_per_byte = c.cost_per_byte;
+            hard_storage_limit_per_operation =
+              c.hard_storage_limit_per_operation;
+            quorum_min = c.quorum_min;
+            quorum_max = c.quorum_max;
+            min_proposal_quorum = c.min_proposal_quorum;
+            liquidity_baking_toggle_ema_threshold =
+              c.liquidity_baking_toggle_ema_threshold;
+            minimal_block_delay = c.minimal_block_delay;
+            delay_increment_per_round = c.delay_increment_per_round;
+            consensus_committee_size = c.consensus_committee_size;
+            consensus_threshold = c.consensus_threshold;
+            minimal_participation_ratio = c.minimal_participation_ratio;
+            max_slashing_period = c.max_slashing_period;
+            limit_of_delegation_over_baking;
+            percentage_of_frozen_deposits_slashed_per_double_baking;
+            percentage_of_frozen_deposits_slashed_per_double_attestation;
+            (* The `testnet_dictator` should absolutely be None on mainnet *)
+            testnet_dictator = c.testnet_dictator;
+            initial_seed = c.initial_seed;
+            cache_script_size = c.cache_script_size;
+            cache_stake_distribution_cycles = c.cache_stake_distribution_cycles;
+            cache_sampler_state_cycles = c.cache_sampler_state_cycles;
+            dal;
+            sc_rollup;
+            zk_rollup;
+            adaptive_issuance;
+          }
+      in
+      add_constants ctxt constants >>= fun ctxt -> return ctxt)
+  >>=? fun ctxt ->
+  prepare
+    ctxt
+    ~level
+    ~predecessor_timestamp:timestamp
+    ~timestamp
+    ~adaptive_issuance_enable:false
+  >|=? fun ctxt -> (previous_proto, ctxt)
 
         let adaptive_issuance =
           Constants_parametric_repr.

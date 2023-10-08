@@ -109,6 +109,137 @@ let patch_script ctxt (address, hash, patched_code) =
         address ;
       return ctxt
 
+(** Converts {Storage.Stake.Staking_balance} from {Tez_repr} to
+    {Stake_repr.Full}.  Remove me in P. *)
+let migrate_staking_balance_for_o ctxt =
+  let open Lwt_result_syntax in
+  let convert ctxt delegate staking_balance =
+    let delegate_contract = Contract_repr.Implicit delegate in
+    let* {current_amount = own_frozen; initial_amount = _} =
+      Frozen_deposits_storage.get ctxt delegate_contract
+    in
+    let delegated =
+      Tez_repr.sub_opt staking_balance own_frozen
+      |> Option.value ~default:Tez_repr.zero
+    in
+    let staked_frozen = Tez_repr.zero in
+    return
+      (Full_staking_balance_repr.make ~own_frozen ~staked_frozen ~delegated)
+  in
+  Storage.Stake.Staking_balance_up_to_Nairobi.fold
+    ctxt
+    ~order:`Undefined
+    ~init:(ok ctxt)
+    ~f:(fun delegate staking_balance ctxt ->
+      let*? ctxt in
+      let* stake = convert ctxt delegate staking_balance in
+      Storage.Stake.Staking_balance.update ctxt delegate stake)
+
+(** Clear staking balance snapshots to avoid storing legacy values.
+    This should do nothing if the migration happens at a cycle
+    boundary, which is usually the case.
+*)
+let clear_staking_balance_snapshots_for_o ctxt =
+  let open Lwt_result_syntax in
+  let*! ctxt =
+    Storage.Stake.Staking_balance_up_to_Nairobi.Snapshot.clear ctxt
+  in
+  Storage.Stake.Last_snapshot.update ctxt 0
+
+(** Converts {Storage.Stake.Total_active_stake} and
+    {Storage.Stake.Selected_distribution_for_cycle} from {Tez_repr} to
+    {Stake_repr}.
+    Remove me in P. *)
+let migrate_stake_distribution_for_o ctxt =
+  let open Lwt_result_syntax in
+  let convert =
+    let limit_of_delegation_over_baking =
+      Constants_storage.limit_of_delegation_over_baking ctxt
+    in
+    fun old_stake ->
+      let frozen =
+        Tez_repr.div_exn old_stake (limit_of_delegation_over_baking + 1)
+      in
+      match Tez_repr.sub_opt old_stake frozen with
+      | Some weighted_delegated -> Stake_repr.make ~frozen ~weighted_delegated
+      | None ->
+          Stake_repr.make ~frozen:old_stake ~weighted_delegated:Tez_repr.zero
+  in
+  let* ctxt =
+    Storage.Stake.Total_active_stake_up_to_Nairobi.fold
+      ctxt
+      ~order:`Undefined
+      ~init:(ok ctxt)
+      ~f:(fun cycle stake ctxt ->
+        let*? ctxt in
+        let stake = convert stake in
+        Storage.Stake.Total_active_stake.update ctxt cycle stake)
+  in
+  Storage.Stake.Selected_distribution_for_cycle_up_to_Nairobi.fold
+    ctxt
+    ~order:`Undefined
+    ~init:(ok ctxt)
+    ~f:(fun cycle distr ctxt ->
+      let*? ctxt in
+      let distr = List.map (fun (pkh, stake) -> (pkh, convert stake)) distr in
+      Storage.Stake.Selected_distribution_for_cycle.update ctxt cycle distr)
+
+(** Initializes the total supply when migrating from N to O
+    Uses an estimation of the total supply at the activation of O.
+    This value can be refined at the beginning of P to have a
+    perfectly accurate ammount on mainnet.
+
+    Remove me in P. *)
+let initialize_total_supply_for_o chain_id ctxt =
+  let open Lwt_syntax in
+  if Chain_id.equal Constants_repr.mainnet_id chain_id then
+    (* We only estimate the total supply in mainnet *)
+    (* around 967_000_000 tz (current estimated supply)
+       + 43_000_000 tz (yearly issuance) * 70 (days from activation) / 365 *)
+    Storage.Contract.Total_supply.add
+      ctxt
+      (Tez_repr.of_mutez_exn 975_000_000_000_000L)
+  else
+    (* If not on mainnet, iterate over all accounts and get an accurate total supply *)
+    let* total_supply =
+      Storage.Contract.fold
+        ctxt
+        ~order:`Undefined
+        ~f:(fun contract acc ->
+          let* full_balance =
+            Contract_storage.For_RPC.get_full_balance ctxt contract
+          in
+          match full_balance with
+          | Ok full_balance ->
+              return @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
+          | _ -> return acc)
+        ~init:Tez_repr.zero
+    in
+    Storage.Contract.Total_supply.add ctxt total_supply
+
+let migrate_pending_consensus_keys_for_o ctxt =
+  let open Lwt_result_syntax in
+  Storage.Delegates.fold
+    ctxt
+    ~order:`Undefined
+    ~init:ctxt
+    ~f:(fun delegate ctxt ->
+      let delegate = Contract_repr.Implicit delegate in
+      let*! pending_cks =
+        Storage.Contract.Pending_consensus_keys_up_to_Nairobi.bindings
+          (ctxt, delegate)
+      in
+      List.fold_left_s
+        (fun ctxt (cycle, pk) ->
+          let*! ctxt =
+            Storage.Pending_consensus_keys.add (ctxt, cycle) delegate pk
+          in
+          Storage.Contract.Pending_consensus_keys_up_to_Nairobi.remove
+            (ctxt, delegate)
+            cycle)
+        ctxt
+        pending_cks)
+
 let prepare_first_block chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
   let open Lwt_result_syntax in
@@ -137,88 +268,83 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
             ctxt
             Signature.Public_key_hash.Set.empty
         in
-        let*! ctxt = Storage.Contract.Total_supply.add ctxt Tez_repr.zero in
-        let* ctxt = Storage.Block_round.init ctxt Round_repr.zero in
+        Storage.Contract.Total_supply.add ctxt Tez_repr.zero >>= fun ctxt ->
+        Storage.Block_round.init ctxt Round_repr.zero >>=? fun ctxt ->
         let init_commitment (ctxt, balance_updates)
             Commitment_repr.{blinded_public_key_hash; amount} =
-          let* ctxt, new_balance_updates =
-            Token.transfer
-              ctxt
-              `Initial_commitments
-              (`Collected_commitments blinded_public_key_hash)
-              amount
-          in
+          Token.transfer
+            ctxt
+            `Initial_commitments
+            (`Collected_commitments blinded_public_key_hash)
+            amount
+          >>=? fun (ctxt, new_balance_updates) ->
           return (ctxt, new_balance_updates @ balance_updates)
         in
-        let* ctxt, commitments_balance_updates =
-          List.fold_left_es init_commitment (ctxt, []) param.commitments
-        in
-        let* ctxt = Storage.Stake.Last_snapshot.init ctxt 0 in
-        let* ctxt =
-          Seed_storage.init ?initial_seed:param.constants.initial_seed ctxt
-        in
-        let* ctxt = Contract_storage.init ctxt in
-        let* ctxt, bootstrap_balance_updates =
-          Bootstrap_storage.init
-            ctxt
-            ~typecheck_smart_contract
-            ~typecheck_smart_rollup
-            ?no_reward_cycles:param.no_reward_cycles
-            param.bootstrap_accounts
-            param.bootstrap_contracts
-            param.bootstrap_smart_rollups
-        in
-        let* ctxt = Delegate_cycles.init_first_cycles ctxt in
-        let* ctxt =
-          Vote_storage.init
-            ctxt
-            ~start_position:(Level_storage.current ctxt).level_position
-        in
-        let* ctxt = Vote_storage.update_listings ctxt in
+        List.fold_left_es init_commitment (ctxt, []) param.commitments
+        >>=? fun (ctxt, commitments_balance_updates) ->
+        Storage.Stake.Last_snapshot.init ctxt 0 >>=? fun ctxt ->
+        Seed_storage.init ?initial_seed:param.constants.initial_seed ctxt
+        >>=? fun ctxt ->
+        Contract_storage.init ctxt >>=? fun ctxt ->
+        Bootstrap_storage.init
+          ctxt
+          ~typecheck_smart_contract
+          ~typecheck_smart_rollup
+          ?no_reward_cycles:param.no_reward_cycles
+          param.bootstrap_accounts
+          param.bootstrap_contracts
+          param.bootstrap_smart_rollups
+        >>=? fun (ctxt, bootstrap_balance_updates) ->
+        Delegate_cycles.init_first_cycles ctxt >>=? fun ctxt ->
+        Vote_storage.init
+          ctxt
+          ~start_position:(Level_storage.current ctxt).level_position
+        >>=? fun ctxt ->
+        Vote_storage.update_listings ctxt >>=? fun ctxt ->
         (* Must be called after other originations since it unsets the origination nonce. *)
-        let* ctxt, operation_results =
-          Liquidity_baking_migration.init
-            ctxt
-            ~typecheck:typecheck_smart_contract
-        in
-        let* ctxt =
-          Storage.Pending_migration.Operation_results.init
-            ctxt
-            operation_results
-        in
-        let* ctxt = Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt in
-        let* ctxt = Adaptive_issuance_storage.init ctxt in
+        Liquidity_baking_migration.init ctxt ~typecheck:typecheck_smart_contract
+        >>=? fun (ctxt, operation_results) ->
+        Storage.Pending_migration.Operation_results.init ctxt operation_results
+        >>=? fun ctxt ->
+        Sc_rollup_inbox_storage.init_inbox ~predecessor ctxt >>=? fun ctxt ->
+        Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
         return (ctxt, commitments_balance_updates @ bootstrap_balance_updates)
-    | Oxford_018
+    | Nairobi_017
     (* Please update [next_protocol] and [previous_protocol] in
        [tezt/lib_tezos/protocol.ml] when you update this value. *) ->
         (* TODO (#2704): possibly handle attestations for migration block (in bakers);
            if that is done, do not set Storage.Tenderbake.First_level_of_protocol.
            /!\ this storage is also use to add the smart rollup
                inbox migration message. see `sc_rollup_inbox_storage`. *)
-        let*? level = Raw_level_repr.of_int32 level in
-        let* ctxt =
-          Storage.Tenderbake.First_level_of_protocol.update ctxt level
-        in
+        Raw_level_repr.of_int32 level >>?= fun level ->
+        Storage.Tenderbake.First_level_of_protocol.update ctxt level
+        >>=? fun ctxt ->
+        Storage.Tenderbake.Endorsement_branch.find ctxt >>=? fun opt ->
+        Storage.Tenderbake.Endorsement_branch.remove ctxt >>= fun ctxt ->
+        Storage.Tenderbake.Attestation_branch.add_or_remove ctxt opt
+        >>= fun ctxt ->
+        Storage.Tenderbake.Forbidden_delegates.init
+          ctxt
+          Signature.Public_key_hash.Set.empty
+        >>=? fun ctxt ->
+        migrate_staking_balance_for_o ctxt >>=? fun ctxt ->
+        clear_staking_balance_snapshots_for_o ctxt >>=? fun ctxt ->
+        migrate_stake_distribution_for_o ctxt >>=? fun ctxt ->
+        initialize_total_supply_for_o chain_id ctxt >>= fun ctxt ->
+        Remove_zero_amount_ticket_migration_for_o.remove_zero_ticket_entries
+          ctxt
+        >>= fun ctxt ->
+        Adaptive_issuance_storage.init ctxt >>=? fun ctxt ->
+        migrate_pending_consensus_keys_for_o ctxt >>= fun ctxt ->
         (* Migration of refutation games needs to be kept for each protocol. *)
-        let* ctxt =
-          Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
-        in
-        let* ctxt =
-          Adaptive_issuance_storage
-          .migrate_adaptive_issuance_storages_from_O_to_P
-            ctxt
-        in
-        return (ctxt, [])
+        Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
+        >>=? fun ctxt -> return (ctxt, [])
   in
-  let* ctxt =
-    List.fold_left_es patch_script ctxt Legacy_script_patches.addresses_to_patch
-  in
-  let*? balance_updates = Receipt_repr.group_balance_updates balance_updates in
-  let*! ctxt =
-    Storage.Pending_migration.Balance_updates.add ctxt balance_updates
-  in
-  return ctxt
+  List.fold_left_es patch_script ctxt Legacy_script_patches.addresses_to_patch
+  >>=? fun ctxt ->
+  Receipt_repr.group_balance_updates balance_updates >>?= fun balance_updates ->
+  Storage.Pending_migration.Balance_updates.add ctxt balance_updates
+  >>= fun ctxt -> return ctxt
 
 let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
   let open Lwt_result_syntax in
