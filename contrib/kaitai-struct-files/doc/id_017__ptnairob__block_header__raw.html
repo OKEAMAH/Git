@@ -1,0 +1,192 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+
+    <title>Id017PtnairobBlockHeaderRaw format specification</title>
+  </head>
+  <body>
+           <div class="container">
+  <h1>Id017PtnairobBlockHeaderRaw format specification</h1>
+
+      
+<a name='type-id_017__ptnairob__block_header__raw'></a>
+<h1>Type: Id017PtnairobBlockHeaderRaw</h1>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>block_header</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header">BlockHeader</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header'></a>
+<h2>Type: BlockHeader</h2>
+
+<p>Block header: Block header. It contains both shell and protocol specific data.</p>
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>block_header__shell</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header-block_header__shell">BlockHeaderShell</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>protocol_data</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header-block_header__shell'></a>
+<h3>Type: BlockHeaderShell</h3>
+
+<p>Shell header: Block header's shell-related content. It contains information such as the block level, its predecessor and timestamp.</p>
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>level</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>proto</td>
+<td>u1</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>...</td>
+<td>block_hash</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>37</td>
+<td>...</td>
+<td>timestamp__protocol</td>
+<td>s8be</td>
+<td></td>
+</tr>
+<tr>
+<td>45</td>
+<td>...</td>
+<td>validation_pass</td>
+<td>u1</td>
+<td></td>
+</tr>
+<tr>
+<td>46</td>
+<td>...</td>
+<td>operation_list_list_hash</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>78</td>
+<td>...</td>
+<td>fitness</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness">Fitness</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>context_hash</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness'></a>
+<h4>Type: Fitness</h4>
+
+<p>Block fitness: The fitness, or score, of a block, that allow the Tezos to decide which chain is the best. A fitness value is a list of byte sequences. They are compared as follows: shortest lists are smaller; lists of the same length are compared according to the lexicographical order.</p>
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_fitness</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>fitness</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness">Fitness</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness'></a>
+<h5>Type: Fitness</h5>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>fitness</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness-fitness_entries">FitnessEntries</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness-fitness_entries'></a>
+<h6>Type: FitnessEntries</h6>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>fitness__elem</td>
+<td><a href="#type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness-fitness_entries-fitness__elem">FitnessElem</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_017__ptnairob__block_header__raw-block_header-block_header__shell-fitness-fitness-fitness_entries-fitness__elem'></a>
+<h7>Type: FitnessElem</h7>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_fitness__elem</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>fitness__elem</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+  </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+  </body>
+</html>
+      

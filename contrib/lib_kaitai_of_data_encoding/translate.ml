@@ -203,6 +203,34 @@ let rec seq_field_of_data_encoding :
         }
       in
       (enums, types, [attr])
+  | List {length_limit = No_limit; length_encoding = None; elts} ->
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types elts id tid_gen
+      in
+      let attr =
+        {
+          Helpers.default_attr_spec with
+          id;
+          dataType =
+            DataType.(
+              ComplexDataType
+                (UserType
+                   {
+                     (Helpers.class_spec_of_attrs
+                        ~encoding_name:(id ^ "_entries")
+                        ~enums:[]
+                        ~types:[]
+                        ~instances:[]
+                        attrs)
+                     with
+                     isTopLevel = false;
+                   }));
+          size = None;
+          (* TODO: [(size_of_type elts) * limit ] ? *)
+          cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+        }
+      in
+      (enums, types, [attr])
   | Obj f -> seq_field_of_field enums types f
   | Objs {kind = _; left; right} ->
       let enums, types, left =
