@@ -66,6 +66,11 @@ let%expect_test "test dynamic size list translation" =
     id: list_of_uint8
     endian: be
   types:
+    list_of_uint8:
+      seq:
+      - id: list_of_uint8
+        type: list_of_uint8_entries
+        repeat: eos
     list_of_uint8_entries:
       seq:
       - id: list_of_uint8
@@ -74,6 +79,6 @@ let%expect_test "test dynamic size list translation" =
   - id: len_list_of_uint8
     type: s4
   - id: list_of_uint8
-    type: list_of_uint8_entries
+    type: list_of_uint8
     size: len_list_of_uint8
   |}]

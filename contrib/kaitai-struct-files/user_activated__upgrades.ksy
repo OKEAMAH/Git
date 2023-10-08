@@ -4,17 +4,16 @@ meta:
 doc: ! 'User activated upgrades: at given level, switch to given protocol.'
 types:
   user_activated__upgrades:
-    types:
-      user_activated__upgrades_entries:
-        seq:
-        - id: level
-          type: s4
-        - id: protocol_hash
-          size: 32
     seq:
     - id: user_activated__upgrades
       type: user_activated__upgrades_entries
       repeat: eos
+  user_activated__upgrades_entries:
+    seq:
+    - id: level
+      type: s4
+    - id: protocol_hash
+      size: 32
 seq:
 - id: len_user_activated__upgrades
   type: s4

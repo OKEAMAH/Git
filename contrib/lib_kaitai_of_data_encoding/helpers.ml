@@ -75,17 +75,25 @@ let add_uniq_assoc mappings ((k, v) as mapping) =
       else raise (Invalid_argument "Mappings.add: duplicate keys")
 
 let types_field_from_attr_seq base attributes =
-  let types =
-    List.filter_map
+  let rec types_from_attr_seq attributes =
+    List.concat_map
       (fun {AttrSpec.dataType; _} ->
         match dataType with
         | DataType.ComplexDataType (UserType class_spec) -> (
             match class_spec.meta.id with
-            | Some id -> Some (id, class_spec)
+            | Some id ->
+                let types = types_from_attr_seq class_spec.seq in
+                types
+                @ [
+                    ( id,
+                      (* We remove [types] field from the class_spec to avoid nested types printing. *)
+                      {class_spec with types = []} );
+                  ]
             | None -> failwith "User defined type has no name")
-        | _ -> None)
+        | _ -> [])
       attributes
   in
+  let types = types_from_attr_seq attributes in
   List.fold_left add_uniq_assoc base types
 
 let class_spec_of_attrs ~encoding_name ?description ?(top_level = false)

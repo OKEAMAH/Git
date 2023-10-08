@@ -4,13 +4,6 @@ meta:
 doc: Output of a transaction
 types:
   sapling__transaction__ciphertext:
-    types:
-      payload_enc:
-        seq:
-        - id: len_payload_enc
-          type: s4
-        - id: payload_enc
-          size: len_payload_enc
     seq:
     - id: sapling__transaction__commitment_value
       size: 32
@@ -24,6 +17,12 @@ types:
       size: 80
     - id: nonce_out
       size: 24
+  payload_enc:
+    seq:
+    - id: len_payload_enc
+      type: s4
+    - id: payload_enc
+      size: len_payload_enc
 seq:
 - id: sapling__transaction__commitment
   size: 32
