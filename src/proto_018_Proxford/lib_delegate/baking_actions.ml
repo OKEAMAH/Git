@@ -171,6 +171,34 @@ and round_update = {
 
 type t = action
 
+let artificial_delay_opt =
+  let v = Sys.getenv_opt "SIGN_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing signature artifical delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let sign_with_artificial_delay sign_f =
+  let open Lwt_syntax in
+  match artificial_delay_opt with
+  | None -> sign_f ()
+  | Some d ->
+      Baking_profiler.record_s
+        (Format.sprintf "sign with minimum %.2fs delay" d)
+      @@ fun () ->
+      let sign_t = sign_f () in
+      let delay_t = Lwt_unix.sleep d in
+      let sign_ignored_result_t =
+        let* _ = sign_t in
+        return_unit
+      in
+      let* () = Lwt.join [delay_t; sign_ignored_result_t] in
+      sign_t
+
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Inject_block {kind; _} -> (
@@ -411,8 +439,11 @@ let forge_signed_block ~state_recorder ~updated_state block_to_bake state =
       state.global_state.constants.parametric
   in
   let* signed_block_header =
-    Baking_profiler.record_s "sign block header" @@ fun () ->
-    sign_block_header state consensus_key unsigned_block_header
+    let sign () =
+      Baking_profiler.record_s "sign block header" @@ fun () ->
+      sign_block_header state consensus_key unsigned_block_header
+    in
+    sign_with_artificial_delay sign
   in
   let* () =
     match seed_nonce_opt with
@@ -630,13 +661,16 @@ let inject_consensus_vote state preattestations kind =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   let* signed_operations =
-    Baking_profiler.record_s
-      (Format.sprintf
-         "sign consensus votes: %s"
-         (match kind with
-         | `Preattestation -> "preattestation"
-         | `Attestation -> "attestation"))
-      (fun () -> sign_consensus_votes state preattestations kind)
+    let sign () =
+      Baking_profiler.record_s
+        (Format.sprintf
+           "sign consensus votes: %s"
+           (match kind with
+           | `Preattestation -> "preattestation"
+           | `Attestation -> "attestation"))
+        (fun () -> sign_consensus_votes state preattestations kind)
+    in
+    sign_with_artificial_delay sign
   in
   (* TODO: add a RPC to inject multiple operations *)
   let fail_inject_event, injected_event =
