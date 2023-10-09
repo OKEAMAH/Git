@@ -83,34 +83,6 @@ module type M = sig
   val logger : RPC_client_unix.logger option
 end
 
-let artificial_delay =
-  lazy
-    (let v = Sys.getenv_opt "SIGN_DELAY" in
-     Option.bind v (fun s ->
-         match float_of_string_opt s with
-         | None ->
-             Format.eprintf
-               "Error while parsing signature artifical delay '%s': ignoring.@."
-               s ;
-             None
-         | Some d -> Some d))
-
-let wrap_signer_with_delay (module S : Client_keys.SIGNER) :
-    (module Client_keys.SIGNER) =
-  (module struct
-    include S
-
-    let sign ?watermark sk_uri b =
-      let open Lwt_result_syntax in
-      let* sign_result = S.sign ?watermark sk_uri b in
-      let*! () =
-        match Lazy.force artificial_delay with
-        | None -> Lwt.return_unit
-        | Some delay -> Lwt_unix.sleep delay
-      in
-      return sign_result
-  end)
-
 let setup_remote_signer (module C : M) client_config
     (rpc_config : RPC_client_unix.config) parsed_config_file =
   let module Remote_params = struct
@@ -150,16 +122,14 @@ let setup_remote_signer (module C : M) client_config
   in
   let module Socket = Tezos_signer_backends_unix.Socket.Make (Remote_params) in
   Client_keys.register_signer
-    (wrap_signer_with_delay
-       (module Tezos_signer_backends.Encrypted.Make (struct
-         let cctxt = (client_config :> Client_context.io_wallet)
-       end))) ;
+    (module Tezos_signer_backends.Encrypted.Make (struct
+      let cctxt = (client_config :> Client_context.io_wallet)
+    end)) ;
   Client_keys.register_aggregate_signer
     (module Tezos_signer_backends.Encrypted.Make_aggregate (struct
       let cctxt = (client_config :> Client_context.io_wallet)
     end)) ;
-  Client_keys.register_signer
-    (wrap_signer_with_delay (module Tezos_signer_backends.Unencrypted)) ;
+  Client_keys.register_signer (module Tezos_signer_backends.Unencrypted) ;
   Client_keys.register_aggregate_signer
     (module Tezos_signer_backends.Unencrypted.Aggregate) ;
   Client_keys.register_signer
