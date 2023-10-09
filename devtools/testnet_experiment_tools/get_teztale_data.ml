@@ -11,8 +11,10 @@
      ./_build/default/devtools/testnet_experiment_tools/get_teztale_data.exe \
      canonical_chain_query \
      --db-path <db-path>
+     [ --print "true" | "false" ]
    Requirements:
      <db-path> - path to the teztale database
+     [<print>] - whether we want to print the resulting canonical chain
    Description:
      This file contains the tool for querying the teztale database.
      The queries that it provides are:
@@ -35,6 +37,7 @@ type error +=
   | Caqti_database_connection of string
   | Canonical_chain_query of string
   | Canonical_chain_head of string
+  | Wrong_printing
 
 let () =
   register_error_kind
@@ -73,7 +76,16 @@ let () =
     ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical chain head")
     Data_encoding.(obj1 (req "arg" string))
     (function Canonical_chain_head s -> Some s | _ -> None)
-    (fun s -> Canonical_chain_head s)
+    (fun s -> Canonical_chain_head s) ;
+  register_error_kind
+    `Permanent
+    ~id:"safety_checker.wrong_printing"
+    ~title:"Print argument must be \"true\" or \"false\""
+    ~description:"Invalid printing argument"
+    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected boolean printing value")
+    Data_encoding.empty
+    (function Wrong_printing -> Some () | _ -> None)
+    (fun () -> Wrong_printing)
 
 (* Aggregators *)
 
@@ -174,9 +186,35 @@ let get_head_level db_pool =
   | Error e -> tzfail (Canonical_chain_head (Caqti_error.show e))
   | Ok head_level_ref -> return !head_level_ref
 
+(* Printing *)
+
+let print_canonical_chain map =
+  let find_key_by_value map x =
+    let result_key = ref None in
+    Canonical_Chain_Map.iter
+      (fun key _ ->
+        if Canonical_Chain_Map.find key map = Some x then result_key := Some key)
+      map ;
+    !result_key
+  in
+
+  let rec process_block current_block =
+    match find_key_by_value map (Some current_block) with
+    | None -> ()
+    | Some next_block ->
+        Format.printf " --> %s@," (string_of_int next_block) ;
+        process_block next_block
+  in
+
+  match find_key_by_value map None with
+  | None -> Format.printf "No canonical chain found"
+  | Some first_block ->
+      Format.printf "%s" (string_of_int first_block) ;
+      process_block first_block
+
 (* Commands *)
 
-let canonical_chain_command db_path =
+let canonical_chain_command db_path print_result =
   let open Lwt_result_syntax in
   let db_uri = Uri.of_string ("sqlite3:" ^ db_path) in
   match Caqti_lwt.connect_pool db_uri with
@@ -198,6 +236,7 @@ let canonical_chain_command db_path =
 
       (* 4. Populate the canonical_chain table *)
       let* () =
+        if print_result then print_canonical_chain map ;
         Canonical_Chain_Map.iter_es
           (fun id predecessor ->
             let id_str = string_of_int id in
@@ -221,6 +260,18 @@ let db_arg =
       if Sys.file_exists db_path then return db_path
       else tzfail (Db_path db_path) )
 
+let print_arg =
+  let open Lwt_result_syntax in
+  default_arg
+    ~doc:"Print query result"
+    ~long:"print"
+    ~placeholder:"print"
+    ~default:"false"
+    (parameter (fun _ s ->
+         match s with
+         | "true" | "false" -> return (bool_of_string s)
+         | _ -> tzfail Wrong_printing))
+
 let commands =
   let open Lwt_result_syntax in
   [
@@ -231,11 +282,11 @@ let commands =
           title = "Command for querying the teztale db for canonical chain";
         }
       ~desc:"Canonical chain query."
-      (args1 db_arg)
+      (args2 db_arg print_arg)
       (fixed ["canonical_chain_query"])
-      (fun db_path _cctxt ->
+      (fun (db_path, print_result) _cctxt ->
         match db_path with
-        | Some db_path -> canonical_chain_command db_path
+        | Some db_path -> canonical_chain_command db_path print_result
         | None -> tzfail (Db_path ""));
   ]
 
