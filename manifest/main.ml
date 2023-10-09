@@ -7463,6 +7463,8 @@ let _get_teztale_data =
         octez_clic;
         caqti_lwt;
         caqti_dynload;
+        octez_client_base |> open_;
+        octez_client_base_unix |> open_;
       ]
     ~modules:["get_teztale_data"]
 

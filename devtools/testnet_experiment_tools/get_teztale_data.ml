@@ -31,11 +31,49 @@ module Canonical_Chain_Map = Map.Make (Int)
 (* Errors *)
 
 type error +=
-  | Caqti_database_connection of Caqti_error.load
-  | Canonical_chain_creation of Caqti_error.t
-  | Canonical_chain_retrieval of Caqti_error.t
-  | Canonical_chain_insertion of Caqti_error.t
-  | Canonical_chain_head of Caqti_error.t
+  | Db_path of string
+  | Caqti_database_connection of string
+  | Canonical_chain_query of string
+  | Canonical_chain_head of string
+
+let () =
+  register_error_kind
+    `Permanent
+    ~id:"get_teztale_data.db_path"
+    ~title:"Teztale database path provided was invalid"
+    ~description:"Teztale database path must be valid"
+    ~pp:(fun ppf s ->
+      Format.fprintf ppf "Expected valid path to teztale db, got %s" s)
+    Data_encoding.(obj1 (req "arg" string))
+    (function Db_path s -> Some s | _ -> None)
+    (fun s -> Db_path s) ;
+  register_error_kind
+    `Permanent
+    ~id:"get_teztale_data.caqti_database_connection"
+    ~title:"Connection to teztale db failed"
+    ~description:"Connection to teztale db must be achieved"
+    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected to connect to teztale db")
+    Data_encoding.(obj1 (req "arg" string))
+    (function Caqti_database_connection s -> Some s | _ -> None)
+    (fun s -> Caqti_database_connection s) ;
+  register_error_kind
+    `Permanent
+    ~id:"safety_checker.canonical_chain_query"
+    ~title:"Failed to create canonical_chain table"
+    ~description:"canonical_chain table must be created"
+    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical_chain table")
+    Data_encoding.(obj1 (req "arg" string))
+    (function Canonical_chain_query s -> Some s | _ -> None)
+    (fun s -> Canonical_chain_query s) ;
+  register_error_kind
+    `Permanent
+    ~id:"safety_checker.canonical_chain_head"
+    ~title:"Failed to obtain the head of the canonical chain"
+    ~description:"Canonical chain head is required"
+    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical chain head")
+    Data_encoding.(obj1 (req "arg" string))
+    (function Canonical_chain_head s -> Some s | _ -> None)
+    (fun s -> Canonical_chain_head s)
 
 (* Aggregators *)
 
@@ -82,7 +120,7 @@ let get_canonical_chain db_pool max_level =
       db_pool
   in
   match map with
-  | Error e -> tzfail (Canonical_chain_retrieval e)
+  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
   | Ok map -> return map
 
 let create_canonical_chain_table db_pool =
@@ -99,7 +137,7 @@ let create_canonical_chain_table db_pool =
       db_pool
   in
   match result with
-  | Error e -> tzfail (Canonical_chain_creation e)
+  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
   | Ok () -> return_unit
 
 let insert_canonical_chain_entry db_pool id predecessor =
@@ -116,7 +154,7 @@ let insert_canonical_chain_entry db_pool id predecessor =
       db_pool
   in
   match result with
-  | Error e -> tzfail (Canonical_chain_insertion e)
+  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
   | Ok () -> return_unit
 
 let get_head_level db_pool =
@@ -133,7 +171,7 @@ let get_head_level db_pool =
       db_pool
   in
   match head_level_ref with
-  | Error e -> tzfail (Canonical_chain_head e)
+  | Error e -> tzfail (Canonical_chain_head (Caqti_error.show e))
   | Ok head_level_ref -> return !head_level_ref
 
 (* Commands *)
@@ -142,7 +180,7 @@ let canonical_chain_command db_path =
   let open Lwt_result_syntax in
   let db_uri = Uri.of_string ("sqlite3:" ^ db_path) in
   match Caqti_lwt.connect_pool db_uri with
-  | Error e -> tzfail (Caqti_database_connection e)
+  | Error e -> tzfail (Caqti_database_connection (Caqti_error.show e))
   | Ok db_pool ->
       (* 1. Create canonical_table in teztale db *)
       let* () = create_canonical_chain_table db_pool in
@@ -159,7 +197,7 @@ let canonical_chain_command db_path =
       in
 
       (* 4. Populate the canonical_chain table *)
-      let* result =
+      let* () =
         Canonical_Chain_Map.iter_es
           (fun id predecessor ->
             let id_str = string_of_int id in
@@ -169,7 +207,7 @@ let canonical_chain_command db_path =
             insert_canonical_chain_entry db_pool id_str predecessor_str)
           map
       in
-      return result
+      return_unit
 
 (* Arguments *)
 
@@ -179,32 +217,61 @@ let db_arg =
     ~doc:"Teztale db path"
     ~long:"db-path"
     ~placeholder:"db-path"
-    ( parameter @@ fun () db_path ->
+    ( parameter @@ fun _ctxt db_path ->
       if Sys.file_exists db_path then return db_path
-      else failwith "%s does not exist" db_path )
+      else tzfail (Db_path db_path) )
 
 let commands =
+  let open Lwt_result_syntax in
   [
     command
       ~group:
         {
           name = "devtools";
-          title = "Command for querying the teztale db for canonical chain.";
+          title = "Command for querying the teztale db for canonical chain";
         }
       ~desc:"Canonical chain query."
       (args1 db_arg)
       (fixed ["canonical_chain_query"])
-      (fun db_path () ->
+      (fun db_path _cctxt ->
         match db_path with
         | Some db_path -> canonical_chain_command db_path
-        | None -> failwith "No database path provided");
+        | None -> tzfail (Db_path ""));
   ]
 
-let run () =
-  let argv = Sys.argv |> Array.to_list |> List.tl |> Option.value ~default:[] in
-  Tezos_clic.dispatch commands () argv
+module Custom_client_config : Client_main_run.M = struct
+  type t = unit
+
+  let default_base_dir = "/tmp"
+
+  let global_options () = args1 @@ constant ()
+
+  let parse_config_args ctx argv =
+    let open Lwt_result_syntax in
+    let* (), remaining =
+      Tezos_clic.parse_global_options (global_options ()) ctx argv
+    in
+    let open Client_config in
+    return (default_parsed_config_args, remaining)
+
+  let default_chain = `Main
+
+  let default_block = `Head 0
+
+  let default_daily_logs_path = None
+
+  let default_media_type = Tezos_rpc_http.Media_type.Command_line.Binary
+
+  let other_registrations = None
+
+  let clic_commands ~base_dir:_ ~config_commands:_ ~builtin_commands:_
+      ~other_commands:_ ~require_auth:_ =
+    commands
+
+  let logger = None
+end
 
 let () =
-  match Lwt_main.run (run ()) with
-  | Ok () -> ()
-  | Error trace -> Format.printf "ERROR: %a%!" Error_monad.pp_print_trace trace
+  let open Lwt_result_syntax in
+  let select_commands _ctx _ = return commands in
+  Client_main_run.run (module Custom_client_config) ~select_commands
