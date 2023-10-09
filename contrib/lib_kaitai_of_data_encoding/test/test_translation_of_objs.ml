@@ -200,3 +200,36 @@ let%expect_test "test objs with opt and dft fields and doc" =
       type: u1
       enum: bool
       doc: The actual payload of the whole thing |}]
+
+let%expect_test "test nested object translation" =
+  let open Data_encoding in
+  let protocol_hash_encoding = obj1 (req "protocol_hash" bytes) in
+  let encoding =
+    obj2
+      (req "replaced_protocol" protocol_hash_encoding)
+      (req "replacement_protocol" protocol_hash_encoding)
+  in
+  let s =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:"nested_objects"
+      encoding
+  in
+  print_endline (Kaitai.Print.print s) ;
+  [%expect
+    {|
+  meta:
+    id: nested_objects
+    endian: be
+  types:
+    protocol_hash:
+      seq:
+      - id: len_protocol_hash
+        type: s4
+      - id: protocol_hash
+        size: len_protocol_hash
+  seq:
+  - id: replaced_protocol
+    type: protocol_hash
+  - id: replacement_protocol
+    type: protocol_hash
+  |}]

@@ -11,7 +11,7 @@ types:
     - id: seed_nonce_hash_tag
       type: u1
       enum: bool
-    - id: cycle_nonce
+    - id: seed_nonce_hash
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_escape_vote

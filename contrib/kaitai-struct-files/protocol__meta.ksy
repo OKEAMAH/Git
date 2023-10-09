@@ -27,14 +27,14 @@ seq:
 - id: hash_tag
   type: u1
   enum: bool
-- id: protocol_hash
+- id: hash
   size: 32
   if: (hash_tag == bool::true)
   doc: Used to force the hash of the protocol
 - id: expected_env_version_tag
   type: u1
   enum: bool
-- id: protocol__environment_version
+- id: expected_env_version
   type: u2
   if: (expected_env_version_tag == bool::true)
 - id: modules

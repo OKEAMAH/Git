@@ -5,9 +5,9 @@ doc: ! 'User activated protocol overrides: activate a protocol instead of anothe
 types:
   user_activated__protocol_overrides_entries:
     seq:
-    - id: protocol_hash
+    - id: replaced_protocol
       size: 32
-    - id: protocol_hash
+    - id: replacement_protocol
       size: 32
 seq:
 - id: len_user_activated__protocol_overrides

@@ -7,7 +7,7 @@ types:
     seq:
     - id: level
       type: s4
-    - id: protocol_hash
+    - id: replacement_protocol
       size: 32
 seq:
 - id: len_user_activated__upgrades

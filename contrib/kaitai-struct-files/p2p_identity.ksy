@@ -11,7 +11,7 @@ seq:
 - id: peer_id_tag
   type: u1
   enum: bool
-- id: crypto_box__public_key_hash
+- id: peer_id
   size: 16
   if: (peer_id_tag == bool::true)
 - id: public_key

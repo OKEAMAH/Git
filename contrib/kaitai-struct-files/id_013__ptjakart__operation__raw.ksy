@@ -4,7 +4,7 @@ meta:
 types:
   operation:
     seq:
-    - id: block_hash
+    - id: operation__shell_header
       size: 32
       doc: An operation's shell header.
     - id: data

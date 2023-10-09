@@ -3,5 +3,5 @@ meta:
   endian: be
 doc: An operation's shell header.
 seq:
-- id: block_hash
+- id: branch
   size: 32

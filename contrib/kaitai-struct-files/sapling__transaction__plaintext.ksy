@@ -9,11 +9,11 @@ types:
     - id: memo
       size: len_memo
 seq:
-- id: sapling__wallet__diversifier
+- id: diversifier
   size: 11
 - id: amount
   type: s8
-- id: sapling__transaction__rcm
+- id: rcm
   size: 32
 - id: memo
   type: memo

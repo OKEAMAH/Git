@@ -3,9 +3,9 @@ meta:
   endian: be
 doc: Input of a transaction
 seq:
-- id: sapling__transaction__commitment_value
+- id: cv
   size: 32
-- id: sapling__transaction__nullifier
+- id: nf
   size: 32
 - id: rk
   size: 32

@@ -5,9 +5,9 @@ doc: Output of a transaction
 types:
   sapling__transaction__ciphertext:
     seq:
-    - id: sapling__transaction__commitment_value
+    - id: cv
       size: 32
-    - id: sapling__dh__epk
+    - id: epk
       size: 32
     - id: payload_enc
       type: payload_enc
@@ -24,9 +24,9 @@ types:
     - id: payload_enc
       size: len_payload_enc
 seq:
-- id: sapling__transaction__commitment
+- id: cm
   size: 32
 - id: proof_o
   size: 192
-- id: sapling__transaction__ciphertext
+- id: ciphertext
   type: sapling__transaction__ciphertext

@@ -14,7 +14,7 @@ enums:
     0: false
     255: true
 seq:
-- id: p2p_address
+- id: addr
   type: p2p_address
   doc: An address for locating peers.
 - id: port_tag

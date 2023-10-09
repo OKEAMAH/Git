@@ -12,7 +12,7 @@ types:
     - id: distributed_db_version__name
       size: len_distributed_db_version__name
 seq:
-- id: distributed_db_version__name
+- id: chain_name
   type: distributed_db_version__name
   doc: A name for the distributed DB protocol
 - id: distributed_db_version

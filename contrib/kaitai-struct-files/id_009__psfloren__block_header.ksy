@@ -15,7 +15,7 @@ types:
     seq:
     - id: id_009__psfloren__block_header__alpha__unsigned_contents
       type: id_009__psfloren__block_header__alpha__unsigned_contents
-    - id: signature__v0
+    - id: signature
       size: 64
   id_009__psfloren__block_header__alpha__unsigned_contents:
     seq:
@@ -26,7 +26,7 @@ types:
     - id: seed_nonce_hash_tag
       type: u1
       enum: bool
-    - id: cycle_nonce
+    - id: seed_nonce_hash
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
   block_header__shell:
@@ -35,14 +35,14 @@ types:
       type: s4
     - id: proto
       type: u1
-    - id: block_hash
+    - id: predecessor
       size: 32
-    - id: timestamp__protocol
+    - id: timestamp
       type: s8
       doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
     - id: validation_pass
       type: u1
-    - id: operation_list_list_hash
+    - id: operations_hash
       size: 32
     - id: fitness
       type: fitness
@@ -51,7 +51,7 @@ types:
         decide which chain is the best. A fitness value is a list of byte sequences.
         They are compared as follows: shortest lists are smaller; lists of the same
         length are compared according to the lexicographical order.
-    - id: context_hash
+    - id: context
       size: 32
   fitness:
     seq:

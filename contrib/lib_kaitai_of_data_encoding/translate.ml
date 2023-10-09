@@ -72,7 +72,7 @@ let redirect_if_many :
  fun types attrs fattr id ->
   match attrs with
   | [] -> failwith "Not supported"
-  | [attr] -> (types, fattr attr)
+  | [attr] -> (types, {(fattr attr) with id})
   | _ :: _ :: _ as attrs ->
       let ((_, user_type) as type_) =
         (id, Helpers.class_spec_of_attrs ~id attrs)

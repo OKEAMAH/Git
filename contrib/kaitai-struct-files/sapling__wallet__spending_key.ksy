@@ -19,7 +19,7 @@ seq:
   size: 4
 - id: chain_code
   size: 32
-- id: sapling__wallet__expanded_spending_key
+- id: expsk
   type: sapling__wallet__expanded_spending_key
 - id: dk
   size: 32

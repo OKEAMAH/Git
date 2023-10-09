@@ -46,7 +46,7 @@ enums:
     0: false
     255: true
 seq:
-- id: protocol__environment_version
+- id: expected_env_version
   type: u2
 - id: components
   type: components

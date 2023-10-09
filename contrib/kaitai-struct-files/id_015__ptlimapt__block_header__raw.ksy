@@ -17,14 +17,14 @@ types:
       type: s4
     - id: proto
       type: u1
-    - id: block_hash
+    - id: predecessor
       size: 32
-    - id: timestamp__protocol
+    - id: timestamp
       type: s8
       doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
     - id: validation_pass
       type: u1
-    - id: operation_list_list_hash
+    - id: operations_hash
       size: 32
     - id: fitness
       type: fitness
@@ -33,7 +33,7 @@ types:
         decide which chain is the best. A fitness value is a list of byte sequences.
         They are compared as follows: shortest lists are smaller; lists of the same
         length are compared according to the lexicographical order.
-    - id: context_hash
+    - id: context
       size: 32
   fitness:
     seq:

@@ -4,7 +4,7 @@ meta:
 types:
   id_017__ptnairob__block_header__alpha__unsigned_contents:
     seq:
-    - id: value_hash
+    - id: payload_hash
       size: 32
     - id: payload_round
       type: s4
@@ -13,10 +13,10 @@ types:
     - id: seed_nonce_hash_tag
       type: u1
       enum: bool
-    - id: cycle_nonce
+    - id: seed_nonce_hash
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
-    - id: id_017__ptnairob__liquidity_baking_toggle_vote
+    - id: liquidity_baking_toggle_vote
       type: s1
   block_header__shell:
     seq:
@@ -24,14 +24,14 @@ types:
       type: s4
     - id: proto
       type: u1
-    - id: block_hash
+    - id: predecessor
       size: 32
-    - id: timestamp__protocol
+    - id: timestamp
       type: s8
       doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
     - id: validation_pass
       type: u1
-    - id: operation_list_list_hash
+    - id: operations_hash
       size: 32
     - id: fitness
       type: fitness
@@ -40,7 +40,7 @@ types:
         decide which chain is the best. A fitness value is a list of byte sequences.
         They are compared as follows: shortest lists are smaller; lists of the same
         length are compared according to the lexicographical order.
-    - id: context_hash
+    - id: context
       size: 32
   fitness:
     seq:
