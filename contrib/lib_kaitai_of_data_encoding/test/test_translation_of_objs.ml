@@ -27,7 +27,7 @@
 let%expect_test "test obj translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"simple_obj"
+      ~id:"simple_obj"
       Data_encoding.(obj2 (req "one" bool) (req "two" uint8))
   in
   print_endline (Kaitai.Print.print s) ;
@@ -51,7 +51,7 @@ let%expect_test "test obj translation" =
 let%expect_test "test long obj translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"long_obj"
+      ~id:"long_obj"
       Data_encoding.(
         obj5
           (req "one" bool)
@@ -87,7 +87,7 @@ let%expect_test "test long obj translation" =
 let%expect_test "test obj1 translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"obj1"
+      ~id:"obj1"
       Data_encoding.(obj1 (req "mono" uint8))
   in
   print_endline (Kaitai.Print.print s) ;
@@ -104,7 +104,7 @@ let%expect_test "test obj1 translation" =
 let%expect_test "test objs with opt and dft fields" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"objreqdft"
+      ~id:"objreqdft"
       Data_encoding.(
         obj3
           (req "one" (obj2 (opt "one" bool) (dft "two" uint8 0)))
@@ -155,7 +155,7 @@ let%expect_test "test objs with opt and dft fields" =
 let%expect_test "test objs with opt and dft fields and doc" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"objreqdftdoc"
+      ~id:"objreqdftdoc"
       Data_encoding.(
         obj2
           (req

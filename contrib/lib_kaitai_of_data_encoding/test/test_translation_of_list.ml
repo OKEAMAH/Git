@@ -9,7 +9,7 @@
 let%expect_test "test fixed size list translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"list_of_uint8"
+      ~id:"list_of_uint8"
       Data_encoding.(Fixed.list 5 uint8)
   in
   print_endline (Kaitai.Print.print s) ;
@@ -28,7 +28,7 @@ let%expect_test "test fixed size list translation" =
 let%expect_test "test variable size list translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"list_of_uint8"
+      ~id:"list_of_uint8"
       Data_encoding.(Variable.list uint8)
   in
   print_endline (Kaitai.Print.print s) ;
@@ -46,7 +46,7 @@ let%expect_test "test variable size list translation" =
 let%expect_test "test dynamic size list translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"list_of_uint8"
+      ~id:"list_of_uint8"
       Data_encoding.(list uint8)
   in
   print_endline (Kaitai.Print.print s) ;

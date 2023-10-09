@@ -27,7 +27,7 @@
 let%expect_test "test small range" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"small_range"
+      ~id:"small_range"
       Data_encoding.(ranged_int 0 13)
   in
   print_endline (Kaitai.Print.print s) ;
@@ -46,7 +46,7 @@ let%expect_test "test small range" =
 let%expect_test "test bigger range" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"b_range"
+      ~id:"b_range"
       Data_encoding.(ranged_int 0 1025)
   in
   print_endline (Kaitai.Print.print s) ;
@@ -65,7 +65,7 @@ let%expect_test "test bigger range" =
 let%expect_test "test biggest range" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"bb_range"
+      ~id:"bb_range"
       Data_encoding.(ranged_int (-22299) 29290)
   in
   print_endline (Kaitai.Print.print s) ;
@@ -85,7 +85,7 @@ let%expect_test "test biggest range" =
 let%expect_test "test float range" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~encoding_name:"float_range"
+      ~id:"float_range"
       Data_encoding.(ranged_float (-22299.01) 3333333.33333)
   in
   print_endline (Kaitai.Print.print s) ;

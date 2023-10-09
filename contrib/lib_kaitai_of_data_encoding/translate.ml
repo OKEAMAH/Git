@@ -200,7 +200,7 @@ let rec seq_field_of_data_encoding :
             let elt_id = id ^ "_entries" in
             ( elt_id,
               {
-                (Helpers.class_spec_of_attrs ~encoding_name:elt_id attrs) with
+                (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
                 isTopLevel = false;
               } )
           in
@@ -208,8 +208,7 @@ let rec seq_field_of_data_encoding :
           (* TODO: Move this to [combinators.ml] as a helper. *)
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               dataType = DataType.(ComplexDataType (UserType user_type));
               size = None;
               (* TODO: [(size_of_type elts) * limit ] ? *)
@@ -244,15 +243,14 @@ let rec seq_field_of_data_encoding :
             let elt_id = id ^ "_entries" in
             ( elt_id,
               {
-                (Helpers.class_spec_of_attrs ~encoding_name:elt_id attrs) with
+                (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
                 isTopLevel = false;
               } )
           in
           let types = Helpers.add_uniq_assoc types type_ in
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               dataType = DataType.(ComplexDataType (UserType user_type));
               size = None;
               (* TODO: [(size_of_type elts) * limit ] ? *)
@@ -277,13 +275,12 @@ let rec seq_field_of_data_encoding :
         seq_field_of_data_encoding enums types encoding id tid_gen
       in
       let ((_, user_type) as type_) =
-        (id, Helpers.class_spec_of_attrs ~encoding_name:id attrs)
+        (id, Helpers.class_spec_of_attrs ~id attrs)
       in
       let types = Helpers.add_uniq_assoc types type_ in
       let attr =
         {
-          Helpers.default_attr_spec with
-          id;
+          (Helpers.default_attr_spec ~id) with
           dataType = DataType.(ComplexDataType (UserType user_type));
           size = Some (Ast.Name len_id);
         }
@@ -322,15 +319,12 @@ let rec seq_field_of_data_encoding :
             ] )
       | _ :: _ :: _ as attrs ->
           let ((_, user_type) as type_) =
-            ( id,
-              Helpers.class_spec_of_attrs ~encoding_name:id ?description attrs
-            )
+            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
           in
           let types = Helpers.add_uniq_assoc types type_ in
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               dataType = DataType.(ComplexDataType (UserType user_type));
             }
           in
@@ -369,15 +363,12 @@ and seq_field_of_field :
             ] )
       | _ :: _ :: _ as attrs ->
           let ((_, user_type) as type_) =
-            ( id,
-              Helpers.class_spec_of_attrs ~encoding_name:id ?description attrs
-            )
+            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
           in
           let types = Helpers.add_uniq_assoc types type_ in
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               dataType = DataType.(ComplexDataType (UserType user_type));
             }
           in
@@ -442,15 +433,12 @@ and seq_field_of_field :
             ] )
       | _ :: _ :: _ as attrs ->
           let ((_, user_type) as type_) =
-            ( id,
-              Helpers.class_spec_of_attrs ~encoding_name:id ?description attrs
-            )
+            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
           in
           let types = Helpers.add_uniq_assoc types type_ in
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               cond;
               dataType = DataType.(ComplexDataType (UserType user_type));
             }
@@ -481,28 +469,22 @@ and seq_field_of_field :
             ] )
       | _ :: _ :: _ as attrs ->
           let ((_, user_type) as type_) =
-            ( id,
-              Helpers.class_spec_of_attrs ~encoding_name:id ?description attrs
-            )
+            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
           in
           let types = Helpers.add_uniq_assoc types type_ in
           let attr =
             {
-              Helpers.default_attr_spec with
-              id;
+              (Helpers.default_attr_spec ~id) with
               dataType = DataType.(ComplexDataType (UserType user_type));
             }
           in
           (enums, types, [attr]))
 
 let from_data_encoding :
-    type a.
-    encoding_name:string ->
-    ?description:string ->
-    a DataEncoding.t ->
-    ClassSpec.t =
- fun ~encoding_name ?description encoding ->
-  let encoding_name = escape_id encoding_name in
+    type a. id:string -> ?description:string -> a DataEncoding.t -> ClassSpec.t
+    =
+ fun ~id ?description encoding ->
+  let encoding_name = escape_id id in
   match encoding.encoding with
   | Describe {encoding; description; id; _} ->
       (* TODO: accumulate descriptions rather than replace it *)
@@ -511,7 +493,7 @@ let from_data_encoding :
       in
       Helpers.class_spec_of_attrs
         ~top_level:true
-        ~encoding_name
+        ~id:encoding_name
         ?description
         ~enums
         ~types
@@ -523,7 +505,7 @@ let from_data_encoding :
       in
       Helpers.class_spec_of_attrs
         ~top_level:true
-        ~encoding_name
+        ~id:encoding_name
         ?description
         ~enums
         ~types
