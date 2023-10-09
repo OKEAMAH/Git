@@ -11,10 +11,10 @@
      ./_build/default/devtools/testnet_experiment_tools/get_teztale_data.exe \
      canonical_chain_query \
      --db-path <db-path>
-     [ --print "true" | "false" ]
+     [ --print ]
    Requirements:
      <db-path> - path to the teztale database
-     [<print>] - whether we want to print the resulting canonical chain
+     [<print>] - if this flag is set, we print the result of the query
    Description:
      This file contains the tool for querying the teztale database.
      The queries that it provides are:
@@ -37,7 +37,6 @@ type error +=
   | Caqti_database_connection of string
   | Canonical_chain_query of string
   | Canonical_chain_head of string
-  | Wrong_printing
 
 let () =
   register_error_kind
@@ -76,16 +75,7 @@ let () =
     ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical chain head")
     Data_encoding.(obj1 (req "arg" string))
     (function Canonical_chain_head s -> Some s | _ -> None)
-    (fun s -> Canonical_chain_head s) ;
-  register_error_kind
-    `Permanent
-    ~id:"get_teztale_data.wrong_printing"
-    ~title:"Print argument must be \"true\" or \"false\""
-    ~description:"Invalid printing argument"
-    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected boolean printing value")
-    Data_encoding.empty
-    (function Wrong_printing -> Some () | _ -> None)
-    (fun () -> Wrong_printing)
+    (fun s -> Canonical_chain_head s)
 
 (* Aggregators. *)
 
@@ -267,16 +257,11 @@ let db_arg =
       else tzfail (Db_path db_path) )
 
 let print_arg =
-  let open Lwt_result_syntax in
-  default_arg
-    ~doc:"Print query result"
+  Tezos_clic.switch
+    ~short:'p'
     ~long:"print"
-    ~placeholder:"print"
-    ~default:"false"
-    (parameter (fun _ s ->
-         match s with
-         | "true" | "false" -> return (bool_of_string s)
-         | _ -> tzfail Wrong_printing))
+    ~doc:"If print flag is set, the result of the query will be printed."
+    ()
 
 let commands =
   let open Lwt_result_syntax in
