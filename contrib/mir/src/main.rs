@@ -35,7 +35,8 @@ mod tests {
     #[test]
     fn interpret_test_expect_success() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let ast = typechecker::typecheck(ast, &mut Gas::default(), &mut stk![Type::Nat]).unwrap();
+        let ast =
+            typechecker::typecheck(ast, &mut Gas::default(), &mut Some(stk![Type::Nat])).unwrap();
         let mut istack = stk![Value::NumberValue(10)];
         let mut gas = Gas::default();
         assert!(interpreter::interpret(&ast, &mut gas, &mut istack).is_ok());
@@ -46,7 +47,7 @@ mod tests {
     fn interpret_mutez_push_add() {
         let ast = parser::parse("{ PUSH mutez 100; PUSH mutez 500; ADD }").unwrap();
         let mut gas = Gas::default();
-        let ast = typechecker::typecheck(ast, &mut gas, &mut stk![]).unwrap();
+        let ast = typechecker::typecheck(ast, &mut gas, &mut Some(stk![])).unwrap();
         let mut istack = stk![];
         assert!(interpreter::interpret(&ast, &mut gas, &mut istack).is_ok());
         assert_eq!(istack, stk![Value::NumberValue(600)]);
@@ -55,7 +56,8 @@ mod tests {
     #[test]
     fn interpret_test_gas_consumption() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let ast = typechecker::typecheck(ast, &mut Gas::default(), &mut stk![Type::Nat]).unwrap();
+        let ast =
+            typechecker::typecheck(ast, &mut Gas::default(), &mut Some(stk![Type::Nat])).unwrap();
         let mut istack = stk![Value::NumberValue(5)];
         let mut gas = Gas::new(1359);
         report_gas(&mut gas, |gas| {
@@ -67,7 +69,8 @@ mod tests {
     #[test]
     fn interpret_test_gas_out_of_gas() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let ast = typechecker::typecheck(ast, &mut Gas::default(), &mut stk![Type::Nat]).unwrap();
+        let ast =
+            typechecker::typecheck(ast, &mut Gas::default(), &mut Some(stk![Type::Nat])).unwrap();
         let mut istack = stk![Value::NumberValue(5)];
         let mut gas = Gas::new(1);
         assert_eq!(
@@ -79,15 +82,15 @@ mod tests {
     #[test]
     fn typecheck_test_expect_success() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let mut stack = stk![Type::Nat];
+        let mut stack = Some(stk![Type::Nat]);
         assert!(typechecker::typecheck(ast, &mut Gas::default(), &mut stack).is_ok());
-        assert_eq!(stack, stk![Type::Int]);
+        assert_eq!(stack, Some(stk![Type::Int]));
     }
 
     #[test]
     fn typecheck_gas() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let mut stack = stk![Type::Nat];
+        let mut stack = Some(stk![Type::Nat]);
         let mut gas = Gas::new(11460);
         report_gas(&mut gas, |gas| {
             assert!(typechecker::typecheck(ast, gas, &mut stack).is_ok());
@@ -98,7 +101,7 @@ mod tests {
     #[test]
     fn typecheck_out_of_gas() {
         let ast = parser::parse(&FIBONACCI_SRC).unwrap();
-        let mut stack = stk![Type::Nat];
+        let mut stack = Some(stk![Type::Nat]);
         let mut gas = Gas::new(1000);
         assert_eq!(
             typechecker::typecheck(ast, &mut gas, &mut stack),
@@ -109,7 +112,7 @@ mod tests {
     #[test]
     fn typecheck_test_expect_fail() {
         let ast = parser::parse(&FIBONACCI_ILLTYPED_SRC).unwrap();
-        let mut stack = stk![Type::Nat];
+        let mut stack = Some(stk![Type::Nat]);
         assert_eq!(
             typechecker::typecheck(ast, &mut Gas::default(), &mut stack),
             Err(typechecker::TcError::StackTooShort)

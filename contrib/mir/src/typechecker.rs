@@ -40,14 +40,17 @@ pub fn typecheck(
 fn typecheck_instruction(
     i: ParsedInstruction,
     gas: &mut Gas,
-    stack: &mut TypeStack,
+    stack_opt: &mut TypeStack,
 ) -> Result<TypecheckedInstruction, TcError> {
     use Instruction as I;
     use Type as T;
 
-    if stack.is_failed() {
-        return Err(TcError::FailNotInTail);
-    }
+    let stack: &mut Stack<Type> = match stack_opt {
+        Some(s) => s,
+        None => {
+            return Err(TcError::FailNotInTail);
+        }
+    };
 
     gas.consume(gas::tc_cost::INSTR_STEP)?;
 
@@ -76,11 +79,13 @@ fn typecheck_instruction(
             // Here we split off the protected portion of the stack, typecheck the code with the
             // remaining unprotected part, then append the protected portion back on top.
             let mut protected = stack.split_off(protected_height);
-            let nested = typecheck(nested, gas, stack)?;
-            if stack.is_failed() {
-                return Err(TcError::FailNotInTail);
-            }
-            stack.append(&mut protected);
+            let nested = typecheck(nested, gas, stack_opt)?;
+            match stack_opt {
+                None => return Err(TcError::FailNotInTail),
+                Some(stack) => {
+                    stack.append(&mut protected);
+                }
+            };
             I::Dip(opt_height, nested)
         }
         I::Drop(opt_height) => {
@@ -112,15 +117,15 @@ fn typecheck_instruction(
             Some(T::Bool) => {
                 // Clone the stack so that we have a copy to run one branch on.
                 // We can run the other branch on the live stack.
-                let mut t_stack: TypeStack = stack.clone();
-                let nested_t = typecheck(nested_t, gas, &mut t_stack)?;
-                let nested_f = typecheck(nested_f, gas, stack)?;
+                let mut t_stack_opt: TypeStack = Some(stack.clone());
+                let nested_t = typecheck(nested_t, gas, &mut t_stack_opt)?;
+                let nested_f = typecheck(nested_f, gas, stack_opt)?;
                 // If both stacks are same after typecheck, all is good.
-                ensure_stacks_eq(gas, &t_stack, &stack)?;
-                // Replace stack with other branche's stack if it's failed, as
-                // one branch might've been successful.
-                if stack.is_failed() {
-                    *stack = t_stack;
+                ensure_stack_opts_eq(gas, &mut t_stack_opt, stack_opt)?;
+                if stack_opt.is_none() {
+                    // Replace stack with other branche's stack if it's failed, as
+                    // one branch might've been successful.
+                    *stack_opt = t_stack_opt
                 }
                 I::If(nested_t, nested_f)
             }
@@ -133,21 +138,29 @@ fn typecheck_instruction(
             }
             _ => return Err(TcError::GenericTcError),
         },
-        I::Loop(nested) => match stack.as_slice() {
+        I::Loop(nested) => {
+            let mut live = stack.clone();
             // Check if top is bool and bind the tail to `t`.
-            [t @ .., T::Bool] => {
-                let mut live: TypeStack = TopIsLast::from(t).0;
-                // Clone the tail and typecheck the nested body using it.
-                let nested = typecheck(nested, gas, &mut live)?;
-                // If the starting stack and result stack match
-                // then the typecheck is complete. pop the bool
-                // off the original stack to form the final result.
-                ensure_stacks_eq(gas, &live, &stack)?;
-                stack.pop();
-                I::Loop(nested)
-            }
-            _ => return Err(TcError::GenericTcError),
-        },
+            match stack.pop() {
+                Some(T::Bool) => {}
+                _ => return Err(TcError::GenericTcError),
+            };
+            let nested = typecheck(nested, gas, stack_opt)?;
+            match stack_opt {
+                None => {
+                    live.pop();
+                    *stack_opt = Some(live)
+                }
+                Some(stack) => {
+                    // If the starting stack and result stack match
+                    // then the typecheck is complete. pop the bool
+                    // off the original stack to form the final result.
+                    ensure_stacks_eq(gas, &live, &stack)?;
+                    stack.pop();
+                }
+            };
+            I::Loop(nested)
+        }
         I::Push(t, v) => {
             typecheck_value(gas, &t, &v)?;
             stack.push(t.to_owned());
@@ -160,8 +173,7 @@ fn typecheck_instruction(
         }
         I::Failwith => {
             ensure_stack_len(stack, 1)?;
-            stack.pop();
-            stack.fail();
+            *stack_opt = None;
             I::Failwith
         }
     })
@@ -184,7 +196,7 @@ fn typecheck_value(gas: &mut Gas, t: &Type, v: &Value) -> Result<(), TcError> {
 
 /// Ensures type stack is at least of the required length, otherwise returns
 /// `Err(StackTooShort)`.
-fn ensure_stack_len(stack: &TypeStack, l: usize) -> Result<(), TcError> {
+fn ensure_stack_len(stack: &Stack<Type>, l: usize) -> Result<(), TcError> {
     if stack.len() >= l {
         Ok(())
     } else {
@@ -194,18 +206,33 @@ fn ensure_stack_len(stack: &TypeStack, l: usize) -> Result<(), TcError> {
 
 /// Ensures two type stacks compare equal, otherwise returns
 /// `Err(StacksNotEqual)`. If runs out of gas, returns `Err(OutOfGas)` instead.
-///
-/// Failed stacks compare equal with anything.
-fn ensure_stacks_eq(gas: &mut Gas, stack1: &TypeStack, stack2: &TypeStack) -> Result<(), TcError> {
-    if stack1.is_failed() || stack2.is_failed() {
-        return Ok(());
-    }
+fn ensure_stacks_eq(
+    gas: &mut Gas,
+    stack1: &Stack<Type>,
+    stack2: &Stack<Type>,
+) -> Result<(), TcError> {
     if stack1.len() != stack2.len() {
         return Err(TcError::StacksNotEqual);
     }
     for (ty1, ty2) in stack1.iter().zip(stack2.iter()) {
         ensure_ty_eq(gas, ty1, ty2)?;
     }
+    Ok(())
+}
+
+/// Ensures two optional type stacks compare equal, otherwise returns
+/// `Err(StacksNotEqual)`. If runs out of gas, returns `Err(OutOfGas)` instead.
+///
+/// Failed stacks (represented as None) compare equal with anything
+fn ensure_stack_opts_eq<'a>(
+    gas: &mut Gas,
+    stack1: &'a mut TypeStack,
+    stack2: &'a mut TypeStack,
+) -> Result<(), TcError> {
+    match (stack1, stack2) {
+        (Some(s1), Some(s2)) => ensure_stacks_eq(gas, &s1, &s2)?,
+        _ => {}
+    };
     Ok(())
 }
 
@@ -226,8 +253,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_dup() {
-        let mut stack = stk![Type::Nat];
-        let expected_stack = stk![Type::Nat, Type::Nat];
+        let mut stack = Some(stk![Type::Nat]);
+        let expected_stack = Some(stk![Type::Nat, Type::Nat]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Dup(Some(1)), &mut gas, &mut stack),
@@ -239,8 +266,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_dup_n() {
-        let mut stack = stk![Type::Int, Type::Nat];
-        let expected_stack = stk![Type::Int, Type::Nat, Type::Int];
+        let mut stack = Some(stk![Type::Int, Type::Nat]);
+        let expected_stack = Some(stk![Type::Int, Type::Nat, Type::Int]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Dup(Some(2)), &mut gas, &mut stack),
@@ -252,8 +279,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_swap() {
-        let mut stack = stk![Type::Nat, Type::Int];
-        let expected_stack = stk![Type::Int, Type::Nat];
+        let mut stack = Some(stk![Type::Nat, Type::Int]);
+        let expected_stack = Some(stk![Type::Int, Type::Nat]);
         let mut gas = Gas::new(10000);
         assert_eq!(typecheck_instruction(Swap, &mut gas, &mut stack), Ok(Swap));
         assert_eq!(stack, expected_stack);
@@ -262,8 +289,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_int() {
-        let mut stack = stk![Type::Nat];
-        let expected_stack = stk![Type::Int];
+        let mut stack = Some(stk![Type::Nat]);
+        let expected_stack = Some(stk![Type::Int]);
         let mut gas = Gas::new(10000);
         assert_eq!(typecheck_instruction(Int, &mut gas, &mut stack), Ok(Int));
         assert_eq!(stack, expected_stack);
@@ -272,8 +299,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_drop() {
-        let mut stack = stk![Type::Nat];
-        let expected_stack = stk![];
+        let mut stack = Some(stk![Type::Nat]);
+        let expected_stack = Some(stk![]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck(vec![Drop(None)], &mut gas, &mut stack),
@@ -285,8 +312,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_drop_n() {
-        let mut stack = stk![Type::Nat, Type::Int];
-        let expected_stack = stk![];
+        let mut stack = Some(stk![Type::Nat, Type::Int]);
+        let expected_stack = Some(stk![]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Drop(Some(2)), &mut gas, &mut stack),
@@ -298,8 +325,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_push() {
-        let mut stack = stk![Type::Nat];
-        let expected_stack = stk![Type::Nat, Type::Int];
+        let mut stack = Some(stk![Type::Nat]);
+        let expected_stack = Some(stk![Type::Nat, Type::Int]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Push(Type::Int, Value::NumberValue(1)), &mut gas, &mut stack),
@@ -311,8 +338,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_gt() {
-        let mut stack = stk![Type::Int];
-        let expected_stack = stk![Type::Bool];
+        let mut stack = Some(stk![Type::Int]);
+        let expected_stack = Some(stk![Type::Bool]);
         let mut gas = Gas::new(10000);
         assert_eq!(typecheck_instruction(Gt, &mut gas, &mut stack), Ok(Gt));
         assert_eq!(stack, expected_stack);
@@ -321,8 +348,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_dip() {
-        let mut stack = stk![Type::Int, Type::Bool];
-        let expected_stack = stk![Type::Int, Type::Nat, Type::Bool];
+        let mut stack = Some(stk![Type::Int, Type::Bool]);
+        let expected_stack = Some(stk![Type::Int, Type::Nat, Type::Bool]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(
@@ -338,8 +365,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_add_int_int() {
-        let mut stack = stk![Type::Int, Type::Int];
-        let expected_stack = stk![Type::Int];
+        let mut stack = Some(stk![Type::Int, Type::Int]);
+        let expected_stack = Some(stk![Type::Int]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Add(()), &mut gas, &mut stack),
@@ -351,8 +378,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_add_nat_nat() {
-        let mut stack = stk![Type::Nat, Type::Nat];
-        let expected_stack = stk![Type::Nat];
+        let mut stack = Some(stk![Type::Nat, Type::Nat]);
+        let expected_stack = Some(stk![Type::Nat]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Add(()), &mut gas, &mut stack),
@@ -364,8 +391,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_add_mutez_mutez() {
-        let mut stack = stk![Type::Mutez, Type::Mutez];
-        let expected_stack = stk![Type::Mutez];
+        let mut stack = Some(stk![Type::Mutez, Type::Mutez]);
+        let expected_stack = Some(stk![Type::Mutez]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(Add(()), &mut gas, &mut stack),
@@ -377,8 +404,8 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop() {
-        let mut stack = stk![Type::Int, Type::Bool];
-        let expected_stack = stk![Type::Int];
+        let mut stack = Some(stk![Type::Int, Type::Bool]);
+        let expected_stack = Some(stk![Type::Int]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(
@@ -394,7 +421,7 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop_stacks_not_equal_length() {
-        let mut stack = stk![Type::Int, Type::Bool];
+        let mut stack = Some(stk![Type::Int, Type::Bool]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(
@@ -409,7 +436,7 @@ mod typecheck_tests {
 
     #[test]
     fn test_loop_stacks_not_equal_types() {
-        let mut stack = stk![Type::Int, Type::Bool];
+        let mut stack = Some(stk![Type::Int, Type::Bool]);
         let mut gas = Gas::new(10000);
         assert_eq!(
             typecheck_instruction(
@@ -425,7 +452,7 @@ mod typecheck_tests {
     #[test]
     fn test_failwith() {
         assert_eq!(
-            typecheck_instruction(Failwith, &mut Gas::default(), &mut stk![Type::Int]),
+            typecheck_instruction(Failwith, &mut Gas::default(), &mut Some(stk![Type::Int])),
             Ok(Failwith)
         );
     }
@@ -435,7 +462,11 @@ mod typecheck_tests {
         macro_rules! test_fail {
             ($code:expr) => {
                 assert_eq!(
-                    typecheck(parse($code).unwrap(), &mut Gas::default(), &mut stk![]),
+                    typecheck(
+                        parse($code).unwrap(),
+                        &mut Gas::default(),
+                        &mut Some(stk![])
+                    ),
                     Err(TcError::FailNotInTail)
                 );
             };
@@ -444,7 +475,12 @@ mod typecheck_tests {
         test_fail!("{ PUSH int 1; DIP { PUSH int 1; FAILWITH } }");
         macro_rules! test_ok {
             ($code:expr) => {
-                assert!(typecheck(parse($code).unwrap(), &mut Gas::default(), &mut stk![]).is_ok());
+                assert!(typecheck(
+                    parse($code).unwrap(),
+                    &mut Gas::default(),
+                    &mut Some(stk![])
+                )
+                .is_ok());
             };
         }
         test_ok!("{ PUSH bool True; IF { PUSH int 1; FAILWITH } { PUSH int 1 }; GT }");

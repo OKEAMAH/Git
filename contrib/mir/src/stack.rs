@@ -10,7 +10,7 @@ use std::slice::SliceIndex;
 
 use crate::ast::*;
 
-pub type TypeStack = Stack<Type>;
+pub type TypeStack = Option<Stack<Type>>;
 pub type IStack = Stack<Value>;
 
 /// Construct a `Stack` with the given content. Note that stack top is the
@@ -27,7 +27,6 @@ pub(crate) use stk;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Stack<T> {
     data: Vec<T>,
-    failed: bool,
 }
 
 impl<T> Stack<T> {
@@ -40,10 +39,7 @@ impl<T> Stack<T> {
     /// directly. Last `Vec` element will end up on the top of the stack. O(1)
     /// complexity.
     fn stack_from_vec(data: Vec<T>) -> Self {
-        Stack {
-            data,
-            failed: false,
-        }
+        Stack { data }
     }
 
     /// Convert stack index to vec index.
@@ -53,21 +49,11 @@ impl<T> Stack<T> {
     }
 
     fn data(&self) -> &Vec<T> {
-        assert!(!self.failed);
         &self.data
     }
 
     fn data_mut(&mut self) -> &mut Vec<T> {
-        assert!(!self.failed);
         &mut self.data
-    }
-
-    pub fn is_failed(&self) -> bool {
-        self.failed
-    }
-
-    pub fn fail(&mut self) -> () {
-        self.failed = true;
     }
 
     /// Push an element onto the top of the stack.
@@ -374,22 +360,5 @@ mod tests {
         let mut stk = stk![1, 2, 3, 4, 5];
         stk[2] = 42;
         assert_eq!(stk, stk![1, 2, 42, 4, 5]);
-    }
-
-    #[test]
-    fn fail_stack() {
-        let mut stk = stk![1, 2, 3, 4, 5];
-        assert!(!stk.is_failed());
-        stk.fail();
-        assert!(stk.is_failed());
-    }
-
-    #[test]
-    #[should_panic(expected = "assertion failed: !self.failed")]
-    fn fail_stack_access() {
-        let mut stk = stk![1, 2, 3, 4, 5];
-        stk.fail();
-        assert!(stk.is_failed());
-        stk.pop();
     }
 }
