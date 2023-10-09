@@ -218,6 +218,7 @@ let wait_for_publish_execute_whitelist_update node =
     node
     "sc_rollup_node_publish_execute_whitelist_update.v0"
   @@ fun json ->
+  Printf.eprintf "\npublish exectute whitelist update: %s\n" (JSON.encode json) ;
   let hash = JSON.(json |-> "hash" |> as_string) in
   let outbox_level = JSON.(json |-> "outbox_level" |> as_int) in
   let index = JSON.(json |-> "message_index" |> as_int) in
@@ -407,11 +408,17 @@ let simple_use_case_rollup ~(testnet : unit -> Testnet.t) () =
 
 
 let private_rollup ~(testnet : unit -> Testnet.t) () =
+  let ch = open_out "out2" in
+
+  Printf.fprintf ch "hello\n@." ;
+  Out_channel.flush ch ;
+
   let testnet = testnet () in
   let min_balance = Tez.(of_mutez_int 11_000_000_000) in
   let* client, node = Helpers.setup_octez_node ~testnet () in
   let* operator1 = Client.gen_and_show_keys client in
   let* operator2 = Client.gen_and_show_keys client in
+
   let* () =
     Lwt.join
       [
@@ -431,17 +438,182 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   let rollup_client =
     Sc_rollup_client.create ~protocol:Protocol.Alpha rollup_node
   in
+  let* res =
+    Node.RPC.(
+      call node
+      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
+           rollup_address)
+  in
+  let fmtr = Format.pp_print_list Format.pp_print_string in
+  Printf.printf
+    "\nnew whitelist : %s\n"
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Printf.fprintf
+    ch
+    "\nnew whitelist : %s@."
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+
+  (*let* _ = Node.wait_for
+      node
+      "head_increment.v0"
+    @@ fun json ->
+    Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
+    (*let hash = JSON.(json |-> "hash" |> as_string) in
+    let outbox_level = JSON.(json |-> "outbox_level" |> as_int) in
+    let index = JSON.(json |-> "message_index" |> as_int) in
+    Some (hash, outbox_level, index)*) Some () in*)
+  (*let* hash =
+      Node.wait_for node "head_increment.v0" @@ fun json ->
+      (*Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;*)
+      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
+      Some hash
+    in
+
+    let* res =
+      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
+    in
+    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
+  Out_channel.flush ch ;
+
+  (***********)
   let*! payload =
     Sc_rollup_client.encode_json_outbox_msg rollup_client
-    @@ `O [("whitelist", `A [`String operator2.public_key_hash])]
+    @@ `O
+         [
+           ( "whitelist",
+             `A
+               [
+                 `String operator2.public_key_hash;
+                 `String operator1.public_key_hash;
+               ] );
+         ]
   in
 
   let* () =
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
 
+  (*let* hash =
+      Node.wait_for node "head_increment.v0" @@ fun json ->
+      Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
+      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
+      Some hash
+    in
+
+    let* res =
+      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
+    in
+    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
   let* _ = wait_for_publish_execute_whitelist_update rollup_node in
+  let* level = Node.get_level node in
+  let* _ = Node.wait_for_level node (level + 5) in
+  let* res =
+    Node.RPC.(
+      call node
+      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
+           rollup_address)
+  in
+  let fmtr = Format.pp_print_list Format.pp_print_string in
+  Printf.printf
+    "\nnew whitelist : %s\n"
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Printf.fprintf
+    ch
+    "\nnew whitelist : %s@."
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Out_channel.flush ch ;
+
+  (***********)
+  let*! payload =
+    Sc_rollup_client.encode_json_outbox_msg rollup_client
+    @@ `O [("whitelist", `Null)]
+  in
+
+  let* () =
+    send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
+  in
+
+  (*let* hash =
+      Node.wait_for node "head_increment.v0" @@ fun json ->
+      Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
+      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
+      Some hash
+    in
+
+    let* res =
+      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
+    in
+    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
+  let* _ = wait_for_publish_execute_whitelist_update rollup_node in
+  let* level = Node.get_level node in
+  let* _ = Node.wait_for_level node (level + 5) in
+  let* res =
+    Node.RPC.(
+      call node
+      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
+           rollup_address)
+  in
+  let fmtr = Format.pp_print_list Format.pp_print_string in
+  Printf.printf
+    "\nnew whitelist : %s\n"
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Printf.fprintf
+    ch
+    "\nnew whitelist : %s@."
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Out_channel.flush ch ;
+
+  (***********)
+  let*! payload =
+    Sc_rollup_client.encode_json_outbox_msg rollup_client
+    @@ `O
+         [
+           ( "whitelist",
+             `A
+               [
+                 `String operator2.public_key_hash;
+                 `String operator1.public_key_hash;
+               ] );
+         ]
+  in
+
+  let* () =
+    send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
+  in
+
+  (*let* hash =
+      Node.wait_for node "head_increment.v0" @@ fun json ->
+      Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
+      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
+      Some hash
+    in
+
+    let* res =
+      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
+    in
+    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
+  let* _ = wait_for_publish_execute_whitelist_update rollup_node in
+  let* level = Node.get_level node in
+  let* _ = Node.wait_for_level node (level + 5) in
+  let* res =
+    Node.RPC.(
+      call node
+      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
+           rollup_address)
+  in
+  let fmtr = Format.pp_print_list Format.pp_print_string in
+  Printf.printf
+    "\nnew whitelist : %s\n"
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Printf.fprintf
+    ch
+    "\nnew whitelist : %s@."
+    (Format.asprintf "%a" fmtr @@ Option.get res) ;
+  Out_channel.flush ch ;
+
   let* _ = Sc_rollup_node.unsafe_wait_sync rollup_node in
+
+  close_out ch ;
   unit
 
 let register ~testnet =
