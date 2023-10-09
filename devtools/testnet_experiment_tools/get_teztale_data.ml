@@ -26,11 +26,11 @@ open Tezos_clic
 
 let block_finality = 2
 
-(* Data Structures *)
+(* Data Structures. *)
 
 module Canonical_Chain_Map = Map.Make (Int)
 
-(* Errors *)
+(* Errors. *)
 
 type error +=
   | Db_path of string
@@ -61,7 +61,7 @@ let () =
     (fun s -> Caqti_database_connection s) ;
   register_error_kind
     `Permanent
-    ~id:"safety_checker.canonical_chain_query"
+    ~id:"get_teztale_data.canonical_chain_query"
     ~title:"Failed to create canonical_chain table"
     ~description:"canonical_chain table must be created"
     ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical_chain table")
@@ -70,7 +70,7 @@ let () =
     (fun s -> Canonical_chain_query s) ;
   register_error_kind
     `Permanent
-    ~id:"safety_checker.canonical_chain_head"
+    ~id:"get_tezale_data.canonical_chain_head"
     ~title:"Failed to obtain the head of the canonical chain"
     ~description:"Canonical chain head is required"
     ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical chain head")
