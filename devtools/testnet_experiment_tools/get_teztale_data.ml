@@ -184,12 +184,9 @@ let get_head_level db_pool =
 
 let print_canonical_chain map =
   let find_key_by_value map x =
-    let result_key = ref None in
-    Canonical_Chain_Map.iter
-      (fun key _ ->
-        if Canonical_Chain_Map.find key map = Some x then result_key := Some key)
-      map ;
-    !result_key
+    Canonical_Chain_Map.filter (fun _ value -> value = x) map
+    |> Canonical_Chain_Map.to_seq |> List.of_seq
+    |> fun lst -> List.nth lst 0 |> Option.map fst
   in
 
   let rec process_block current_block =
