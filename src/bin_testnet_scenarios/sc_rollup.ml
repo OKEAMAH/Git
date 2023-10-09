@@ -25,7 +25,7 @@
 
 let originate_new_rollup ?(alias = "rollup")
     ?(boot_sector = Constant.wasm_echo_kernel_boot_sector)
-    ?(parameters_ty = "bytes") ~src client =
+    ?(parameters_ty = "bytes") ?whitelist ~src client =
   let* rollup =
     Client.Sc_rollup.originate
       ~force:true
@@ -37,6 +37,7 @@ let originate_new_rollup ?(alias = "rollup")
       ~parameters_ty
       ~boot_sector
       ~burn_cap:(Tez.of_int 2)
+      ?whitelist
   in
   Log.info "Rollup %s originated" rollup ;
   return rollup
@@ -402,6 +403,45 @@ let simple_use_case_rollup ~(testnet : unit -> Testnet.t) () =
     in
     return (level, next_send_where)
   in
+
+
+
+let private_rollup ~(testnet : unit -> Testnet.t) () =
+  let testnet = testnet () in
+  let min_balance = Tez.(of_mutez_int 11_000_000_000) in
+  let* client, node = Helpers.setup_octez_node ~testnet () in
+  let* operator1 = Client.gen_and_show_keys client in
+  let* operator2 = Client.gen_and_show_keys client in
+  let* () =
+    Lwt.join
+      [
+        Helpers.wait_for_funded_key node client min_balance operator1;
+        Helpers.wait_for_funded_key node client min_balance operator2;
+      ]
+  in
+  let* rollup_address =
+    originate_new_rollup
+      ~src:operator2.alias
+      ~whitelist:[operator1.public_key_hash]
+      client
+  in
+  let _level = Node.get_level node in
+  let* rollup_node =
+    setup_l2_node ~operator:operator1.alias client node rollup_address
+  in
+  let rollup_client =
+    Sc_rollup_client.create ~protocol:Protocol.Alpha rollup_node
+  in
+  let*! payload =
+    Sc_rollup_client.encode_json_outbox_msg rollup_client
+    @@ `O [("whitelist", `A [`String operator2.public_key_hash])]
+  in
+
+  let* () =
+    send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
+  in
+
+  let* _ = wait_for_publish_execute_whitelist_update rollup_node in
   unit
 
 let register ~testnet =
@@ -415,3 +455,8 @@ let register ~testnet =
     ~title:"Simple rollup use case"
     ~tags:["rollup"; "accuser"; "node"; "batcher"]
     (simple_use_case_rollup ~testnet)
+ Test.register
+    ~__FILE__
+    ~title:"Private rollup"
+    ~tags:["private"; "whitelist"]
+    (private_rollup ~testnet)
