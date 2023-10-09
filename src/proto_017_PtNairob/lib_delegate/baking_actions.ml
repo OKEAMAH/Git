@@ -152,6 +152,28 @@ and round_update = {
 
 type t = action
 
+let artificial_delay_opt =
+  let v = Sys.getenv_opt "SIGN_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing signature artifical delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let apply_artificial_delay () =
+  let opt =
+    Option.map
+      (fun d ->
+        Baking_profiler.record_s
+          (Format.sprintf "sign delay (%s)" (string_of_float d))
+        @@ fun () -> Lwt.bind (Lwt_unix.sleep d) (fun () -> return_unit))
+      artificial_delay_opt
+  in
+  Option.value ~default:return_unit opt
+
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Inject_block _ -> Format.fprintf fmt "inject block"
@@ -358,6 +380,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
+  let* () = apply_artificial_delay () in
   Baking_profiler.record_s "sign block header" (fun () ->
       sign_block_header state consensus_key unsigned_block_header)
   >>=? fun signed_block_header ->
@@ -468,6 +491,7 @@ let sign_preendorsements state preendorsements =
 let inject_preendorsements state ~preendorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
+  apply_artificial_delay () >>=? fun () ->
   Baking_profiler.record_s "sign preendorsements" (fun () ->
       sign_preendorsements state preendorsements)
   >>=? fun signed_operations ->
@@ -615,6 +639,7 @@ let sign_dal_attestations state attestations =
 let inject_endorsements state ~endorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
+  apply_artificial_delay () >>=? fun () ->
   Baking_profiler.record_s "sign endorsements" (fun () ->
       sign_endorsements state endorsements)
   >>=? fun signed_operations ->

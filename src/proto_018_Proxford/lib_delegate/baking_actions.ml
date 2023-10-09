@@ -166,6 +166,28 @@ and round_update = {
 
 type t = action
 
+let artificial_delay_opt =
+  let v = Sys.getenv_opt "SIGN_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing signature artifical delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let apply_artificial_delay () =
+  let opt =
+    Option.map
+      (fun d ->
+        Baking_profiler.record_s
+          (Format.sprintf "sign delay (%s)" (string_of_float d))
+        @@ fun () -> Lwt.bind (Lwt_unix.sleep d) (fun () -> return_unit))
+      artificial_delay_opt
+  in
+  Option.value ~default:return_unit opt
+
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Inject_block _ -> Format.fprintf fmt "inject block"
@@ -403,6 +425,7 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
       state.global_state.constants.parametric
   in
   let* signed_block_header =
+    let* () = apply_artificial_delay () in
     Baking_profiler.record_s "sign block header" @@ fun () ->
     sign_block_header state consensus_key unsigned_block_header
   in
@@ -526,6 +549,7 @@ let inject_preattestations state ~preattestations =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   let* signed_operations =
+    let* () = apply_artificial_delay () in
     Baking_profiler.record_s "sign preattestations" @@ fun () ->
     sign_preattestations state ~preattestations
   in
@@ -693,6 +717,7 @@ let inject_attestations state ~attestations =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   let* signed_operations =
+    let* () = apply_artificial_delay () in
     Baking_profiler.record_s "sign attestations" @@ fun () ->
     sign_attestations state attestations
   in
