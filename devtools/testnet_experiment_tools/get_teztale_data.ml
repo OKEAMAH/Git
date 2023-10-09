@@ -54,7 +54,8 @@ let () =
     ~id:"get_teztale_data.caqti_database_connection"
     ~title:"Connection to teztale db failed"
     ~description:"Connection to teztale db must be achieved"
-    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected to connect to teztale db")
+    ~pp:(fun ppf s ->
+      Format.fprintf ppf "Expected to connect to teztale db: %s" s)
     Data_encoding.(obj1 (req "arg" string))
     (function Caqti_database_connection s -> Some s | _ -> None)
     (fun s -> Caqti_database_connection s) ;
@@ -63,7 +64,7 @@ let () =
     ~id:"get_teztale_data.canonical_chain_query"
     ~title:"Failed to create canonical_chain table"
     ~description:"canonical_chain table must be created"
-    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical_chain table")
+    ~pp:(fun ppf s -> Format.fprintf ppf "Expected canonical_chain table: %s" s)
     Data_encoding.(obj1 (req "arg" string))
     (function Canonical_chain_query s -> Some s | _ -> None)
     (fun s -> Canonical_chain_query s) ;
@@ -72,7 +73,7 @@ let () =
     ~id:"get_tezale_data.canonical_chain_head"
     ~title:"Failed to obtain the head of the canonical chain"
     ~description:"Canonical chain head is required"
-    ~pp:(fun ppf _ -> Format.fprintf ppf "Expected canonical chain head")
+    ~pp:(fun ppf s -> Format.fprintf ppf "Expected canonical chain head: %s" s)
     Data_encoding.(obj1 (req "arg" string))
     (function Canonical_chain_head s -> Some s | _ -> None)
     (fun s -> Canonical_chain_head s)
