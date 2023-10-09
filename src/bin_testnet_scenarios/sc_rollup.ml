@@ -445,12 +445,13 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
            rollup_address)
   in
   let fmtr = Format.pp_print_list Format.pp_print_string in
+  (* TODO: Log.info *)
   Printf.printf
     "\nnew whitelist : %s\n"
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Printf.fprintf
     ch
-    "\nnew whitelist : %s@."
+    "\nnew whitelist : %s\n"
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
 
   (*let* _ = Node.wait_for
@@ -493,6 +494,9 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
 
+  Printf.fprintf ch "\nsend text message\n" ;
+  Out_channel.flush ch ;
+
   (*let* hash =
       Node.wait_for node "head_increment.v0" @@ fun json ->
       Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
@@ -519,7 +523,7 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Printf.fprintf
     ch
-    "\nnew whitelist : %s@."
+    "\nnew whitelist : %s\n"
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Out_channel.flush ch ;
 
@@ -532,6 +536,8 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   let* () =
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
+  Printf.fprintf ch "\nsend text message\n" ;
+  Out_channel.flush ch ;
 
   (*let* hash =
       Node.wait_for node "head_increment.v0" @@ fun json ->
@@ -559,12 +565,21 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Printf.fprintf
     ch
-    "\nnew whitelist : %s@."
+    "\nnew whitelist : %s\n"
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Out_channel.flush ch ;
 
   (***********)
+  (* On origine rollup avec une whitelist (1 element), lancer noeud avec operateur, effectue commitment sur rollup jusqu'a maj whitelist.
+     Lancer 2e noeud (suit le seul rollup) avec operateur 2 et mq les 2 operateurs sont stakes (soumis commitment au L1 et met en jeu 10000 tez, a un niveau donne on verifie que les deux operateur stakent le meme commitment))
+     sur le rollup (RPC L1 donne hash du commitment staké),
+     puis mode public, lancer 3e noeud avec 3e operateur et le 3e qui n *)
+  Printf.fprintf ch "\ninvalid op\n" ;
+  Out_channel.flush ch ;
+  (*Node.RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment => commitment hash , montrer egalite des commitment hash *)
+
   let*! payload =
+          (* ici ;'operation n'est pas prise en compte car rollup public *)
     Sc_rollup_client.encode_json_outbox_msg rollup_client
     @@ `O
          [
@@ -580,6 +595,8 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   let* () =
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
+  Printf.fprintf ch "\nsend text message\n" ;
+  Out_channel.flush ch ;
 
   (*let* hash =
       Node.wait_for node "head_increment.v0" @@ fun json ->
@@ -592,9 +609,18 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
       Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
     in
     Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
-  let* _ = wait_for_publish_execute_whitelist_update rollup_node in
-  let* level = Node.get_level node in
-  let* _ = Node.wait_for_level node (level + 5) in
+  (* commitment tous les x sur mondaynet, premier commitment message whitelist update, attendre block pour commitment (challenge_window_in_blocks+) suivant, puis lancer nouvelles mise a jour
+   test plus rapide car quand on cemente commitment car sinon une seule maj est executee*)
+
+  (* => soumettre premier message de whitelist update au bloc N *)
+  (* attendre [commitemnet_period] blocs soumettre deuxieme message de whitelist update qui rend le rollup public *)
+  (* attend exec du whitelist update, logs, puis attendre exec deuxieme update whitelist *)
+  (* lancer 3e rollup node pour voir qu'il avance, soit on le fait committer sur un des commitments -> wait LPC, verifier cote L1 que les trois operateurs stakent sur le meme dernier commitment via RPC node, donne dernier commitement stake par un operateur Node.RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment *)
+
+  let* _ = wait_for_publish_execute_whitelist_update rollup_node and*
+  Sc_rollup_node.wait_for "include" @@ json -> 
+  (*let rec loop () = 
+          fold (let* _=  Node.wait_for_level "head_increment" in Node.RPC.get_chain_block_context_)*)
   let* res =
     Node.RPC.(
       call node
@@ -607,7 +633,7 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Printf.fprintf
     ch
-    "\nnew whitelist : %s@."
+    "\nnew whitelist : %s\n"
     (Format.asprintf "%a" fmtr @@ Option.get res) ;
   Out_channel.flush ch ;
 
