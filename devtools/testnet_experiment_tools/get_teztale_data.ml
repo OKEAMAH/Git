@@ -28,7 +28,7 @@ let block_finality = 2
 
 (* Data Structures. *)
 
-module Canonical_Chain_Map = Map.Make (Int)
+module Canonical_chain_map = Map.Make (Int)
 
 (* Errors. *)
 
@@ -80,7 +80,7 @@ let () =
 (* Aggregators. *)
 
 let add_canonical_chain_row (id, predecessor) acc =
-  Canonical_Chain_Map.add id predecessor acc
+  Canonical_chain_map.add id predecessor acc
 
 let add_max_level level acc =
   acc := Some level ;
@@ -118,7 +118,7 @@ let get_canonical_chain db_pool max_level =
           canonical_chain_request
           add_canonical_chain_row
           max_level
-          Canonical_Chain_Map.empty)
+          Canonical_chain_map.empty)
       db_pool
   in
   match map with
@@ -184,8 +184,8 @@ let get_head_level db_pool =
 
 let print_canonical_chain map =
   let find_key_by_value map x =
-    Canonical_Chain_Map.filter (fun _ value -> value = x) map
-    |> Canonical_Chain_Map.to_seq |> List.of_seq
+    Canonical_chain_map.filter (fun _ value -> value = x) map
+    |> Canonical_chain_map.to_seq |> List.of_seq
     |> fun lst -> List.nth lst 0 |> Option.map fst
   in
 
@@ -229,7 +229,7 @@ let canonical_chain_command db_path print_result =
       let* () =
         let counter = ref 0 in
         if print_result then print_canonical_chain map ;
-        Canonical_Chain_Map.iter_es
+        Canonical_chain_map.iter_es
           (fun id predecessor ->
             let id_str = string_of_int id in
             let predecessor_str =
