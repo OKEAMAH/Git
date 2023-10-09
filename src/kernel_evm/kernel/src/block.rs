@@ -260,7 +260,7 @@ mod tests {
     }
 
     const DUMMY_CHAIN_ID: U256 = U256::one();
-    const DUMMY_BASE_FEE_PER_GAS: u64 = 21000u64;
+    const DUMMY_BASE_FEE_PER_GAS: u64 = 1u64;
 
     fn dummy_eth_gen_transaction(
         nonce: U256,

@@ -1556,7 +1556,7 @@ mod test {
     }
 
     fn dummy_first_block() -> BlockConstants {
-        BlockConstants::first_block(U256::zero(), U256::one(), U256::from(21000))
+        BlockConstants::first_block(U256::zero(), U256::one(), U256::one())
     }
 
     #[test]
@@ -2301,8 +2301,7 @@ mod test {
     #[test]
     fn return_hash_of_zero_for_unavailable_block() {
         let mut mock_runtime = MockHost::default();
-        let block =
-            BlockConstants::first_block(U256::zero(), U256::one(), U256::from(21000));
+        let block = BlockConstants::first_block(U256::zero(), U256::one(), U256::one());
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_account_storage().unwrap();
         let config = Config::london();

@@ -1763,8 +1763,7 @@ mod test {
         let chain_id = U256::from(42);
         let mut chain_id_bytes = [0u8; 32];
         chain_id.to_big_endian(&mut chain_id_bytes);
-        let block =
-            BlockConstants::first_block(U256::zero(), chain_id, U256::from(21000));
+        let block = BlockConstants::first_block(U256::zero(), chain_id, U256::one());
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
         let target = H160::from_low_u64_be(117u64);

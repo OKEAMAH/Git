@@ -54,7 +54,7 @@ mod upgrade;
 pub const CHAIN_ID: u32 = 1337;
 
 // Minimal base fee per gas
-pub const BASE_FEE_PER_GAS: u32 = 21_000;
+pub const BASE_FEE_PER_GAS: u32 = 1;
 
 /// The configuration for the EVM execution.
 pub const CONFIG: Config = Config::london();
