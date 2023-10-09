@@ -2,6 +2,12 @@ meta:
   id: id_013__ptjakart__fa1__2__token_transfer
   endian: be
 types:
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
   fee:
     seq:
     - id: len_fee
@@ -14,24 +20,6 @@ types:
       type: s4
     - id: tez__amount
       size: len_tez__amount
-  destination:
-    seq:
-    - id: len_destination
-      type: s4
-    - id: destination
-      size: len_destination
-  token_contract:
-    seq:
-    - id: len_token_contract
-      type: s4
-    - id: token_contract
-      size: len_token_contract
-  n:
-    seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
   z:
     seq:
     - id: has_more
@@ -51,6 +39,18 @@ types:
       type: b1be
     - id: payload
       type: b7be
+  destination:
+    seq:
+    - id: len_destination
+      type: s4
+    - id: destination
+      size: len_destination
+  token_contract:
+    seq:
+    - id: len_token_contract
+      type: s4
+    - id: token_contract
+      size: len_token_contract
 enums:
   bool:
     0: false

@@ -9,82 +9,63 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
 
-    <title>Id007Psdelph1Script format specification</title>
+    <title>UserActivatedUpgrades format specification</title>
   </head>
   <body>
            <div class="container">
-  <h1>Id007Psdelph1Script format specification</h1>
+  <h1>UserActivatedUpgrades format specification</h1>
 
       
-<a name='type-id_007__psdelph1__script'></a>
-<h1>Type: Id007Psdelph1Script</h1>
+<a name='type-user_activated__upgrades'></a>
+<h1>Type: UserActivatedUpgrades</h1>
 
+<p>User activated upgrades: at given level, switch to given protocol.</p>
 <table class="table">
 <tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
 <tr>
 <td>0</td>
 <td>...</td>
-<td>id_007__psdelph1__scripted__contracts</td>
-<td><a href="#type-id_007__psdelph1__script-id_007__psdelph1__scripted__contracts">Id007Psdelph1ScriptedContracts</a></td>
-<td></td>
-</tr>
-</table>
-<a name='type-id_007__psdelph1__script-id_007__psdelph1__scripted__contracts'></a>
-<h2>Type: Id007Psdelph1ScriptedContracts</h2>
-
-<table class="table">
-<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
-<tr>
-<td>0</td>
-<td>...</td>
-<td>code</td>
-<td><a href="#type-id_007__psdelph1__script-code">Code</a></td>
-<td></td>
-</tr>
-<tr>
-<td>???</td>
-<td>...</td>
-<td>storage</td>
-<td><a href="#type-id_007__psdelph1__script-storage">Storage</a></td>
-<td></td>
-</tr>
-</table>
-<a name='type-id_007__psdelph1__script-storage'></a>
-<h2>Type: Storage</h2>
-
-<table class="table">
-<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
-<tr>
-<td>0</td>
-<td>...</td>
-<td>len_storage</td>
+<td>len_user_activated__upgrades</td>
 <td>s4be</td>
 <td></td>
 </tr>
 <tr>
 <td>4</td>
 <td>...</td>
-<td>storage</td>
-<td></td>
+<td>user_activated__upgrades</td>
+<td><a href="#type-user_activated__upgrades-user_activated__upgrades">UserActivatedUpgrades</a></td>
 <td></td>
 </tr>
 </table>
-<a name='type-id_007__psdelph1__script-code'></a>
-<h2>Type: Code</h2>
+<a name='type-user_activated__upgrades-user_activated__upgrades'></a>
+<h2>Type: UserActivatedUpgrades</h2>
 
 <table class="table">
 <tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
 <tr>
 <td>0</td>
 <td>...</td>
-<td>len_code</td>
+<td>user_activated__upgrades</td>
+<td><a href="#type-user_activated__upgrades-user_activated__upgrades_entries">UserActivatedUpgradesEntries</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-user_activated__upgrades-user_activated__upgrades_entries'></a>
+<h2>Type: UserActivatedUpgradesEntries</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>level</td>
 <td>s4be</td>
 <td></td>
 </tr>
 <tr>
 <td>4</td>
 <td>...</td>
-<td>code</td>
+<td>protocol_hash</td>
 <td></td>
 <td></td>
 </tr>
