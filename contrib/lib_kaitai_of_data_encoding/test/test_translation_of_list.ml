@@ -18,9 +18,14 @@ let%expect_test "test fixed size list translation" =
   meta:
     id: list_of_uint8
     endian: be
+  types:
+    list_of_uint8_entries:
+      seq:
+      - id: list_of_uint8_elt
+        type: u1
   seq:
-  - id: list_of_uint8_elt
-    type: u1
+  - id: list_of_uint8
+    type: list_of_uint8_entries
     repeat: expr
     repeat-expr: 5
   |}]
@@ -37,9 +42,14 @@ let%expect_test "test variable size list translation" =
   meta:
     id: list_of_uint8
     endian: be
+  types:
+    list_of_uint8_entries:
+      seq:
+      - id: list_of_uint8_entries
+        type: u1
   seq:
-  - id: list_of_uint8_elt
-    type: u1
+  - id: list_of_uint8
+    type: list_of_uint8_entries
     repeat: eos
   |}]
 
@@ -56,15 +66,15 @@ let%expect_test "test dynamic size list translation" =
     id: list_of_uint8
     endian: be
   types:
-    list_of_uint8:
+    list_of_uint8_entries:
       seq:
-      - id: list_of_uint8_elt
+      - id: list_of_uint8_entries
         type: u1
-        repeat: eos
   seq:
   - id: len_list_of_uint8
     type: s4
   - id: list_of_uint8
-    type: list_of_uint8
+    type: list_of_uint8_entries
     size: len_list_of_uint8
+    repeat: eos
   |}]

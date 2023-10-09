@@ -6,7 +6,6 @@ doc: ! >-
   version)
 types:
   distributed_db_version__name:
-    doc: A name for the distributed DB protocol
     seq:
     - id: len_distributed_db_version__name
       type: s4
@@ -15,7 +14,10 @@ types:
 seq:
 - id: distributed_db_version__name
   type: distributed_db_version__name
+  doc: A name for the distributed DB protocol
 - id: distributed_db_version
   type: u2
+  doc: A version number for the distributed DB protocol
 - id: p2p_version
   type: u2
+  doc: A version number for the p2p layer.

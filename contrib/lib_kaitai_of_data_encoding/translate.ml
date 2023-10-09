@@ -57,6 +57,36 @@ open Kaitai.Types
    than the public module [Data_encoding.Encoding]. *)
 module DataEncoding = Data_encoding__Encoding
 
+let summary ~title ~description =
+  match (title, description) with
+  | None, None -> None
+  | None, (Some _ as s) | (Some _ as s), None -> s
+  | Some t, Some d -> Some (t ^ ": " ^ d)
+
+let redirect_if_many :
+    Ground.Type.assoc ->
+    AttrSpec.t list ->
+    (AttrSpec.t -> AttrSpec.t) ->
+    string ->
+    Ground.Type.assoc * AttrSpec.t =
+ fun types attrs fattr id ->
+  match attrs with
+  | [] -> failwith "Not supported"
+  | [attr] -> (types, fattr attr)
+  | _ :: _ :: _ as attrs ->
+      let ((_, user_type) as type_) =
+        (id, Helpers.class_spec_of_attrs ~id attrs)
+      in
+      let types = Helpers.add_uniq_assoc types type_ in
+      let attr =
+        fattr
+          {
+            (Helpers.default_attr_spec ~id) with
+            dataType = DataType.(ComplexDataType (UserType user_type));
+          }
+      in
+      (types, attr)
+
 let rec seq_field_of_data_encoding :
     type a.
     Ground.Enum.assoc ->
@@ -173,91 +203,49 @@ let rec seq_field_of_data_encoding :
       in
       let seq = left @ right in
       (enums, types, seq)
-  | List {length_limit = Exactly limit; length_encoding = None; elts} -> (
+  | List {length_limit = Exactly limit; length_encoding = None; elts} ->
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      match attrs with
-      | [] -> failwith "Not supported (list of empties)"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              {
-                attr with
-                size = None;
-                (* TODO: [(size_of_type elts) * limit ] ? *)
-                cond =
-                  {
-                    Helpers.cond_no_cond with
-                    repeat = RepeatExpr (Ast.IntNum limit);
-                  };
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            let elt_id = id ^ "_entries" in
-            ( elt_id,
-              {
-                (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
-                isTopLevel = false;
-              } )
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          (* TODO: Move this to [combinators.ml] as a helper. *)
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-              size = None;
-              (* TODO: [(size_of_type elts) * limit ] ? *)
-              cond =
-                {
-                  Helpers.cond_no_cond with
-                  repeat = RepeatExpr (Ast.IntNum limit);
-                };
-            }
-          in
-          (enums, types, [attr]))
-  | List {length_limit = No_limit; length_encoding = None; elts} -> (
-      let elt_id = id ^ "_elt" in
+      let id_entries = id ^ "_entries" in
+      let ((_, user_type) as type_) =
+        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
+      in
+      let types = Helpers.add_uniq_assoc types type_ in
+      let attr =
+        {
+          (Helpers.default_attr_spec ~id) with
+          dataType = DataType.(ComplexDataType (UserType user_type));
+          cond =
+            {Helpers.cond_no_cond with repeat = RepeatExpr (Ast.IntNum limit)};
+        }
+      in
+      (enums, types, [attr])
+  | List {length_limit = No_limit; length_encoding = None; elts} ->
+      let elt_id = id ^ "_entries" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      match attrs with
-      | [] -> failwith "Not supported (list of empties)"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              {
-                attr with
-                size = None;
-                (* TODO: [(size_of_type elts) * limit ] ? *)
-                cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            let elt_id = id ^ "_entries" in
-            ( elt_id,
-              {
-                (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
-                isTopLevel = false;
-              } )
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-              size = None;
-              (* TODO: [(size_of_type elts) * limit ] ? *)
-              cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-            }
-          in
-          (enums, types, [attr]))
+      let ((_, user_type) as type_) =
+        let elt_id = id ^ "_entries" in
+        ( elt_id,
+          {
+            (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
+            isTopLevel = false;
+          } )
+      in
+      let types = Helpers.add_uniq_assoc types type_ in
+      let attr =
+        {
+          (Helpers.default_attr_spec ~id) with
+          dataType = DataType.(ComplexDataType (UserType user_type));
+          size = None;
+          (* TODO: [(size_of_type elts) * limit ] ? *)
+          cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+        }
+      in
+      (enums, types, [attr])
   | Obj f -> seq_field_of_field enums types f
   | Objs {kind = _; left; right} ->
       let enums, types, left =
@@ -269,22 +257,7 @@ let rec seq_field_of_data_encoding :
       let seq = left @ right in
       (enums, types, seq)
   | Dynamic_size {kind; encoding} ->
-      (* TODO: special case for [encoding=Bytes] and [encoding=String] *)
       let len_id = "len_" ^ id in
-      let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
-      in
-      let ((_, user_type) as type_) =
-        (id, Helpers.class_spec_of_attrs ~id attrs)
-      in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        {
-          (Helpers.default_attr_spec ~id) with
-          dataType = DataType.(ComplexDataType (UserType user_type));
-          size = Some (Ast.Name len_id);
-        }
-      in
       let len_attr =
         match kind with
         | `N -> failwith "Not implemented"
@@ -292,43 +265,33 @@ let rec seq_field_of_data_encoding :
         | `Uint16 -> Ground.Attr.uint16 ~id:len_id
         | `Uint8 -> Ground.Attr.uint8 ~id:len_id
       in
-      (enums, types, [len_attr; attr])
-  | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
-      seq_field_of_data_encoding enums types encoding id tid_gen
-  | Describe {encoding; id; description; title} -> (
-      let id = escape_id id in
-      let description =
-        match (title, description) with
-        | None, None -> None
-        | None, (Some _ as s) | (Some _ as s), None -> s
-        | Some t, Some d -> Some (t ^ ": " ^ d)
-      in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id tid_gen
       in
-      match attrs with
-      | [] -> failwith "Not supported"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              {
-                attr with
-                doc = {Helpers.default_doc_spec with summary = description};
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-            }
-          in
-          (enums, types, [attr]))
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr -> {attr with size = Some (Ast.Name len_id)})
+          id
+      in
+      (enums, types, [len_attr; attr])
+  | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
+      seq_field_of_data_encoding enums types encoding id tid_gen
+  | Describe {encoding; id; description; title} ->
+      let id = escape_id id in
+      let summary = summary ~title ~description in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id tid_gen
+      in
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr -> Helpers.merge_summaries attr summary)
+          id
+      in
+      (enums, types, [attr])
   | _ -> failwith "Not implemented"
 
 and seq_field_of_field :
@@ -339,41 +302,21 @@ and seq_field_of_field :
     Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
  fun enums types f ->
   match f with
-  | Req {name; encoding; title; description} -> (
+  | Req {name; encoding; title; description} ->
       let id = escape_id name in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id None
       in
-      let description =
-        match (title, description) with
-        | None, None -> None
-        | None, (Some _ as s) | (Some _ as s), None -> s
-        | Some t, Some d -> Some (t ^ ": " ^ d)
+      let summary = summary ~title ~description in
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr -> Helpers.merge_summaries attr summary)
+          id
       in
-      match attrs with
-      | [] -> failwith "Not supported"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              {
-                attr with
-                doc = {Helpers.default_doc_spec with summary = description};
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-            }
-          in
-          (enums, types, [attr]))
-  | Opt {name; kind = _; encoding; title; description} -> (
+      (enums, types, [attr])
+  | Opt {name; kind = _; encoding; title; description} ->
       let cond_id = escape_id (name ^ "_tag") in
       let enums, types, cond_attr =
         seq_field_of_data_encoding enums types DataEncoding.bool cond_id None
@@ -412,73 +355,30 @@ and seq_field_of_field :
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id None
       in
-      let description =
-        match (title, description) with
-        | None, None -> None
-        | None, (Some _ as s) | (Some _ as s), None -> s
-        | Some t, Some d -> Some (t ^ ": " ^ d)
+      let summary = summary ~title ~description in
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr -> {(Helpers.merge_summaries attr summary) with cond})
+          id
       in
-      match attrs with
-      | [] -> failwith "Not supported"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              cond_attr;
-              {
-                attr with
-                doc = {Helpers.default_doc_spec with summary = description};
-                cond;
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              cond;
-              dataType = DataType.(ComplexDataType (UserType user_type));
-            }
-          in
-          (enums, types, [cond_attr; attr]))
-  | Dft {name; encoding; default = _; title; description} -> (
+      (enums, types, [cond_attr; attr])
+  | Dft {name; encoding; default = _; title; description} ->
       (* NOTE: in binary format Dft is the same as Req *)
       let id = escape_id name in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id None
       in
-      let description =
-        match (title, description) with
-        | None, None -> None
-        | None, (Some _ as s) | (Some _ as s), None -> s
-        | Some t, Some d -> Some (t ^ ": " ^ d)
+      let summary = summary ~title ~description in
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr -> Helpers.merge_summaries attr summary)
+          id
       in
-      match attrs with
-      | [] -> failwith "Not supported"
-      | [attr] ->
-          ( enums,
-            types,
-            [
-              {
-                attr with
-                doc = {Helpers.default_doc_spec with summary = description};
-              };
-            ] )
-      | _ :: _ :: _ as attrs ->
-          let ((_, user_type) as type_) =
-            (id, Helpers.class_spec_of_attrs ~id ?description attrs)
-          in
-          let types = Helpers.add_uniq_assoc types type_ in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-            }
-          in
-          (enums, types, [attr]))
+      (enums, types, [attr])
 
 let from_data_encoding :
     type a. id:string -> ?description:string -> a DataEncoding.t -> ClassSpec.t

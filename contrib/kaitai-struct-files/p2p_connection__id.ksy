@@ -4,7 +4,6 @@ meta:
 doc: The identifier for a p2p connection. It includes an address and a port number.
 types:
   p2p_address:
-    doc: An address for locating peers.
     seq:
     - id: len_p2p_address
       type: s4
@@ -17,6 +16,7 @@ enums:
 seq:
 - id: p2p_address
   type: p2p_address
+  doc: An address for locating peers.
 - id: port_tag
   type: u1
   enum: bool
