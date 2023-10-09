@@ -195,7 +195,7 @@ let rejection_with_proof ~(testnet : unit -> Testnet.t) () =
      result? *)
   unit
 
-let send_message_client ?hooks ?(src = Constant.bootstrap2.alias) client msg =
+let send_message_client ?hooks ~src client msg =
   Client.Sc_rollup.send_message ?hooks ~src ~msg client
 
 let to_text_messages_arg msgs =
@@ -206,10 +206,10 @@ let to_hex_messages_arg msgs =
   let json = Ezjsonm.list Ezjsonm.string msgs in
   "hex:" ^ Ezjsonm.to_string ~minify:true json
 
-let send_text_messages ?(format = `Raw) ?hooks ?src client msgs =
+let send_text_messages ?(format = `Raw) ?hooks ~src client msgs =
   match format with
-  | `Raw -> send_message_client ?hooks ?src client (to_text_messages_arg msgs)
-  | `Hex -> send_message_client ?hooks ?src client (to_hex_messages_arg msgs)
+  | `Raw -> send_message_client ?hooks ~src client (to_text_messages_arg msgs)
+  | `Hex -> send_message_client ?hooks ~src client (to_hex_messages_arg msgs)
 
 (** Wait for the [sc_rollup_node_publish_execute_whitelist_update]
     event from the rollup node. *)
