@@ -446,8 +446,20 @@ module Make_s
     let to_handle = (op, classification) :: to_replace in
     let mempool =
       match classification with
-      | `Validated -> Mempool.cons_valid op.hash mempool
-      | `Branch_refused _ | `Branch_delayed _ | `Refused _ | `Outdated _ ->
+      | `Validated ->
+          Profiler.mark ["valid operation"] ;
+          Mempool.cons_valid op.hash mempool
+      | `Branch_refused _ ->
+          Profiler.mark ["branch_refused operation"] ;
+          mempool
+      | `Branch_delayed _ ->
+          Profiler.mark ["branch_delayed operation"] ;
+          mempool
+      | `Refused _ ->
+          Profiler.mark ["refused operation"] ;
+          mempool
+      | `Outdated _ ->
+          Profiler.mark ["outdated operation"] ;
           mempool
     in
     return (v_state, mempool, to_handle)
@@ -473,12 +485,18 @@ module Make_s
     let open Lwt_syntax in
     let* r =
       Pending_ops.fold_es
-        (fun _prio oph op (acc_validation_state, acc_mempool, limit) ->
+        (fun prio oph op (acc_validation_state, acc_mempool, limit) ->
           if limit <= 0 then
             (* Using Error as an early-return mechanism *)
             Lwt.return_error (acc_validation_state, acc_mempool)
-          else (
-            Profiler.mark ["operation classified"] ;
+          else
+            let section =
+              match prio with
+              | `High -> "classify consensus operation "
+              | `Medium -> "classify voting/anonymous operation"
+              | `Low _ -> "classify manager operation"
+            in
+            Profiler.aggregate_s section @@ fun () ->
             shell.pending <- Pending_ops.remove oph shell.pending ;
             let* new_validation_state, new_mempool, to_handle =
               classify_operation
@@ -490,7 +508,7 @@ module Make_s
             in
             let+ () = Events.(emit operation_reclassified) oph in
             List.iter (handle_classification ~notifier shell) to_handle ;
-            Ok (new_validation_state, new_mempool, limit - 1)))
+            Ok (new_validation_state, new_mempool, limit - 1))
         shell.pending
         (state, Mempool.empty, shell.parameters.limits.operations_batch_size)
     in
@@ -507,6 +525,7 @@ module Make_s
     let open Lwt_syntax in
     if Mempool.is_empty delta_mempool then Lwt.return_unit
     else
+      Profiler.aggregate_s "advertise mempool" @@ fun () ->
       (* We only advertise newly classified operations. *)
       let mempool_to_advertise =
         Mempool.{delta_mempool with known_valid = delta_mempool.known_valid}
@@ -534,6 +553,7 @@ module Make_s
     else
       let* () = Events.(emit processing_operations) () in
       let* validation_state, delta_mempool =
+        Profiler.aggregate_s "classify pending operations" @@ fun () ->
         classify_pending_operations
           ~notifier
           pv.shell
@@ -616,8 +636,10 @@ module Make_s
     let on_arrived (pv : types_state) oph op : (unit, Empty.t) result Lwt.t =
       let open Lwt_syntax in
       pv.shell.fetching <- Operation_hash.Set.remove oph pv.shell.fetching ;
-      if already_handled ~origin:Events.Arrived pv.shell oph then return_ok_unit
+      if already_handled ~origin:Events.Arrived pv.shell oph then
+        Profiler.aggregate_s "already handled" @@ fun () -> return_ok_unit
       else
+        Profiler.aggregate_f "not already handled" @@ fun () ->
         match Parser.parse oph op with
         | Error _ ->
             let* () = Events.(emit unparsable_operation) oph in
@@ -781,6 +803,7 @@ module Make_s
       pv.shell.timestamp <- timestamp_system ;
       let timestamp = Time.System.to_protocol timestamp_system in
       let* validation_state =
+        Profiler.aggregate_s "flush state" @@ fun () ->
         pv.shell.parameters.tools.flush
           ~head:new_predecessor
           ~timestamp
@@ -804,6 +827,7 @@ module Make_s
       let*! new_pending_operations, nb_pending =
         Operation_hash.Map.fold_s
           (fun _oph op (pending, nb_pending) ->
+            Profiler.aggregate_s "flushed operations" @@ fun () ->
             let*! v =
               pre_filter pv ~notifier:(mk_notifier pv.operation_stream) op
             in
@@ -1248,8 +1272,8 @@ module Make
       match request with
       | Request.Flush (hash, event, live_blocks, live_operations) ->
           Profiler.stop () ;
-          let bh = Block_hash.to_short_b58check hash in
-          Format.kasprintf Profiler.record "head:%s" bh ;
+          let bh = Block_hash.to_b58check hash in
+          Format.kasprintf Profiler.record "%s" bh ;
           Requests.on_advertise pv.shell ;
           (* TODO: https://gitlab.com/tezos/tezos/-/issues/1727
              Rebase the advertisement instead. *)
@@ -1341,8 +1365,8 @@ module Make
       let open Lwt_result_syntax in
       let chain_store = Distributed_db.chain_store chain_db in
       let*! head = Store.Chain.current_head chain_store in
-      let bh = Block_hash.to_short_b58check (Store.Block.hash head) in
-      Format.kasprintf Profiler.record "head:%s" bh ;
+      let bh = Block_hash.to_b58check (Store.Block.hash head) in
+      Format.kasprintf Profiler.record "%s" bh ;
       let*! mempool = Store.Chain.mempool chain_store in
       let*! live_blocks, live_operations =
         Store.Chain.live_blocks chain_store
