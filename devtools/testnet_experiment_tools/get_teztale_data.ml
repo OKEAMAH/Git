@@ -79,7 +79,7 @@ let () =
     (fun s -> Canonical_chain_head s) ;
   register_error_kind
     `Permanent
-    ~id:"safety_checker.wrong_printing"
+    ~id:"get_teztale_data.wrong_printing"
     ~title:"Print argument must be \"true\" or \"false\""
     ~description:"Invalid printing argument"
     ~pp:(fun ppf _ -> Format.fprintf ppf "Expected boolean printing value")
@@ -87,7 +87,7 @@ let () =
     (function Wrong_printing -> Some () | _ -> None)
     (fun () -> Wrong_printing)
 
-(* Aggregators *)
+(* Aggregators. *)
 
 let add_canonical_chain_row (id, predecessor) acc =
   Canonical_Chain_Map.add id predecessor acc
@@ -141,7 +141,10 @@ let create_canonical_chain_table db_pool =
     Caqti_request.Infix.(Caqti_type.(unit ->. unit))
       {| CREATE TABLE IF NOT EXISTS canonical_chain(
          id INTEGER PRIMARY KEY,
-         predecessor INTEGER ) |}
+         block_id INTEGER ,
+         predecessor INTEGER,
+         FOREIGN KEY (block_id) REFERENCES blocks(id),
+         FOREIGN KEY (predecessor) REFERENCES blocks(predecessor)) |}
   in
   let*! result =
     Caqti_lwt.Pool.use
@@ -152,19 +155,20 @@ let create_canonical_chain_table db_pool =
   | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
   | Ok () -> return_unit
 
-let insert_canonical_chain_entry db_pool id predecessor =
+let insert_canonical_chain_entry db_pool counter id predecessor =
   let open Lwt_result_syntax in
   let query =
-    Caqti_request.Infix.(Caqti_type.(tup2 string string ->. unit))
-      {| INSERT INTO canonical_chain(id, predecessor) 
-         VALUES ($1, $2) ON CONFLICT DO NOTHING |}
+    Caqti_request.Infix.(Caqti_type.(tup3 string string string ->. unit))
+      {| INSERT INTO canonical_chain(id, block_id, predecessor) 
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING |}
   in
   let*! result =
     Caqti_lwt.Pool.use
       (fun (module Db : Caqti_lwt.CONNECTION) ->
-        Db.exec query (id, predecessor))
+        Db.exec query (string_of_int counter, id, predecessor))
       db_pool
   in
+
   match result with
   | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
   | Ok () -> return_unit
@@ -186,7 +190,7 @@ let get_head_level db_pool =
   | Error e -> tzfail (Canonical_chain_head (Caqti_error.show e))
   | Ok head_level_ref -> return !head_level_ref
 
-(* Printing *)
+(* Printing. *)
 
 let print_canonical_chain map =
   let find_key_by_value map x =
@@ -212,7 +216,7 @@ let print_canonical_chain map =
       Format.printf "%s" (string_of_int first_block) ;
       process_block first_block
 
-(* Commands *)
+(* Commands. *)
 
 let canonical_chain_command db_path print_result =
   let open Lwt_result_syntax in
@@ -236,6 +240,7 @@ let canonical_chain_command db_path print_result =
 
       (* 4. Populate the canonical_chain table *)
       let* () =
+        let counter = ref 0 in
         if print_result then print_canonical_chain map ;
         Canonical_Chain_Map.iter_es
           (fun id predecessor ->
@@ -243,12 +248,13 @@ let canonical_chain_command db_path print_result =
             let predecessor_str =
               Option.value ~default:"N/A" (Option.map string_of_int predecessor)
             in
-            insert_canonical_chain_entry db_pool id_str predecessor_str)
+            counter := !counter + 1 ;
+            insert_canonical_chain_entry db_pool !counter id_str predecessor_str)
           map
       in
       return_unit
 
-(* Arguments *)
+(* Arguments. *)
 
 let db_arg =
   let open Lwt_result_syntax in
