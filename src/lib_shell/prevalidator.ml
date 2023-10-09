@@ -446,8 +446,20 @@ module Make_s
     let to_handle = (op, classification) :: to_replace in
     let mempool =
       match classification with
-      | `Validated -> Mempool.cons_valid op.hash mempool
-      | `Branch_refused _ | `Branch_delayed _ | `Refused _ | `Outdated _ ->
+      | `Validated ->
+          Profiler.mark ["valid operation"] ;
+          Mempool.cons_valid op.hash mempool
+      | `Branch_refused _ ->
+          Profiler.mark ["branch_refused operation"] ;
+          mempool
+      | `Branch_delayed _ ->
+          Profiler.mark ["branch_delayed operation"] ;
+          mempool
+      | `Refused _ ->
+          Profiler.mark ["refused operation"] ;
+          mempool
+      | `Outdated _ ->
+          Profiler.mark ["outdated operation"] ;
           mempool
     in
     return (v_state, mempool, to_handle)
@@ -477,8 +489,8 @@ module Make_s
           if limit <= 0 then
             (* Using Error as an early-return mechanism *)
             Lwt.return_error (acc_validation_state, acc_mempool)
-          else (
-            Profiler.mark ["operation classified"] ;
+          else
+            Profiler.aggregate_s "classify operation" @@ fun () ->
             shell.pending <- Pending_ops.remove oph shell.pending ;
             let* new_validation_state, new_mempool, to_handle =
               classify_operation
@@ -490,7 +502,7 @@ module Make_s
             in
             let+ () = Events.(emit operation_reclassified) oph in
             List.iter (handle_classification ~notifier shell) to_handle ;
-            Ok (new_validation_state, new_mempool, limit - 1)))
+            Ok (new_validation_state, new_mempool, limit - 1))
         shell.pending
         (state, Mempool.empty, shell.parameters.limits.operations_batch_size)
     in
@@ -534,6 +546,7 @@ module Make_s
     else
       let* () = Events.(emit processing_operations) () in
       let* validation_state, delta_mempool =
+        Profiler.aggregate_s "classify pending operations" @@ fun () ->
         classify_pending_operations
           ~notifier
           pv.shell
@@ -616,8 +629,10 @@ module Make_s
     let on_arrived (pv : types_state) oph op : (unit, Empty.t) result Lwt.t =
       let open Lwt_syntax in
       pv.shell.fetching <- Operation_hash.Set.remove oph pv.shell.fetching ;
-      if already_handled ~origin:Events.Arrived pv.shell oph then return_ok_unit
+      if already_handled ~origin:Events.Arrived pv.shell oph then
+        Profiler.aggregate_s "already handled" @@ fun () -> return_ok_unit
       else
+        Profiler.aggregate_f "not already handled" @@ fun () ->
         match Parser.parse oph op with
         | Error _ ->
             let* () = Events.(emit unparsable_operation) oph in
@@ -804,6 +819,7 @@ module Make_s
       let*! new_pending_operations, nb_pending =
         Operation_hash.Map.fold_s
           (fun _oph op (pending, nb_pending) ->
+            Profiler.aggregate_s "flushed operations" @@ fun () ->
             let*! v =
               pre_filter pv ~notifier:(mk_notifier pv.operation_stream) op
             in
