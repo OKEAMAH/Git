@@ -1,8 +1,9 @@
 {
     "protocol": "alpha",
-    "network": "https://teztnets.xyz/mondaynet-2023-10-02",
+    "network": "https://teztnets.xyz/mondaynet-2023-10-09",
+    "snapshot": "https://snapshots.eu.tzinit.org/mondaynet/rolling",
     "client-dir": "../tezos-data-dir/tezos-client",
-    "data-dir": "../tezos-data-dir/tezos-node-mondaynet-2023-10-02",
+    "data-dir": "../tezos-data-dir/tezos-node-mondaynet-2023-10-09",
     "rollup" :
     {
         "preimages-dir": "../tezos-data-dir/preimages-dir",

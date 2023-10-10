@@ -393,6 +393,18 @@ let run ({node_ctxt; configuration; plugin; _} as state) =
     let*? () =
       match whitelist with
       | Some whitelist ->
+          Printf.eprintf
+            "\nwhitelistNOW=%s\n"
+            (Format.asprintf
+               "%a"
+               (Format.pp_print_list Signature.Public_key_hash.pp)
+               whitelist) ;
+          Printf.printf
+            "\nwhitelistNOW=%s\n"
+            (Format.asprintf
+               "%a"
+               (Format.pp_print_list Signature.Public_key_hash.pp)
+               whitelist) ;
           Node_context.check_op_in_whitelist_or_bailout_mode node_ctxt whitelist
       | None -> Result_syntax.return_unit
     in
