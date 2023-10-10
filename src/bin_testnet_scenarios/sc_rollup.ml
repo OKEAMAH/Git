@@ -71,7 +71,13 @@ let setup_l2_node ?(mode = Sc_rollup_node.Operator) ?runner ?name ?loser_mode
   in
   let* _ = Sc_rollup_node.config_init ?loser_mode rollup_node rollup in
   Log.info "Starting a smart rollup node to track %s" rollup ;
-  let* () = Sc_rollup_node.run rollup_node rollup ["--log-kernel-debug"] in
+  let* () =
+    Sc_rollup_node.run
+      ~event_level:`Debug
+      rollup_node
+      rollup
+      ["--log-kernel-debug"]
+  in
   let* () = Sc_rollup_node.wait_for_ready rollup_node in
   Log.info "Smart rollup node started." ;
   return rollup_node
@@ -406,6 +412,11 @@ let simple_use_case_rollup ~(testnet : unit -> Testnet.t) () =
   unit
 
 let private_rollup ~(testnet : unit -> Testnet.t) () =
+  let wait_for_lpc_updated rollup_node =
+    Sc_rollup_node.wait_for rollup_node "sc_rollup_node_lpc_updated.v0"
+    @@ fun json -> JSON.(json |-> "hash" |> as_string_opt)
+  in
+
   let testnet = testnet () in
   let min_balance = Tez.(of_mutez_int 11_000_000_000) in
   let* client, node = Helpers.setup_octez_node ~testnet () in
@@ -449,45 +460,10 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
       rollup_address
   in
 
-  (*let* _operator_node3 =
-      setup_l2_node
-        ~name:"rollup-operator3"
-        ~mode:Sc_rollup_node.Operator
-        ~operator:operator3.alias
-        testnet
-        client
-        node
-        rollup_address
-    in*)
   let rollup_client =
     Sc_rollup_client.create ~protocol:Protocol.Alpha rollup_node
   in
 
-  (*let* level = Node.get_level node in
-
-    let wait_sync node =
-      let* _level = Sc_rollup_node.wait_sync ~timeout:30. node in
-      unit
-    in
-    let sync_all () = Lwt.join [wait_sync rollup_node] in
-    let* () = sync_all () in
-    let* _level = Node.wait_for_level node (level + 4) in*)
-  let smart_rollup_commitment_period_in_blocks = 20 in
-
-  (* commitment tous les x sur mondaynet, premier commitment message whitelist update, attendre block pour commitment (challenge_window_in_blocks+) suivant, puis lancer nouvelles mise a jour
-     test plus rapide car quand on cemente commitment car sinon une seule maj est executee*)
-
-  (* => soumettre premier message de whitelist update au bloc N *)
-  (* attendre [commitemnet_period] blocs soumettre deuxieme message de whitelist update qui rend le rollup public *)
-  (* attend exec du whitelist update, logs, puis attendre exec deuxieme update whitelist *)
-  (* lancer 3e rollup node pour voir qu'il avance, soit on le fait committer sur un des commitments -> wait LPC, verifier cote L1 que les trois operateurs stakent sur le meme dernier commitment via RPC node, donne dernier commitement stake par un operateur Node.RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment *)
-
-  (* On origine rollup avec une whitelist (1 element), lancer noeud avec operateur, effectue commitment sur rollup jusqu'a maj whitelist.
-      Lancer 2e noeud (suit le seul rollup) avec operateur 2 et mq les 2 operateurs sont stakes (soumis commitment au L1 et met en jeu 10000 tez, a un niveau donne on verifie que les deux operateur stakent le meme commitment))
-      sur le rollup (RPC L1 donne hash du commitment staké),
-      puis mode public, lancer 3e noeud avec 3e operateur et le 3e qui n *)
-
-  (*Node.RPC.get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment => commitment hash , montrer egalite des commitment hash *)
   let* res =
     Node.RPC.(
       call node
@@ -495,81 +471,44 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
            rollup_address)
   in
   let fmtr = Format.pp_print_list Format.pp_print_string in
-  (* TODO: Log.info *)
+
   Log.info "whitelist: %a" fmtr (Option.get res) ;
 
-  (*let* _ = Node.wait_for
-      node
-      "head_increment.v0"
-    @@ fun json ->
-    Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
-    (*let hash = JSON.(json |-> "hash" |> as_string) in
-    let outbox_level = JSON.(json |-> "outbox_level" |> as_int) in
-    let index = JSON.(json |-> "message_index" |> as_int) in
-    Some (hash, outbox_level, index)*) Some () in*)
-  (*let* hash =
-      Node.wait_for node "head_increment.v0" @@ fun json ->
-      (*Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;*)
-      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
-      Some hash
-    in
-
-    let* res =
-      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
-    in
-    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
-
-  (***********)
-  let*! payload =
-    Sc_rollup_client.encode_json_outbox_msg rollup_client
-    @@ `O
-         [
-           ( "whitelist",
-             `A
-               [
-                 `String operator2.public_key_hash;
-                 `String operator1.public_key_hash;
-               ] );
-         ]
-  in
-
   let* () =
+    let*! payload =
+      Sc_rollup_client.encode_json_outbox_msg rollup_client
+      @@ `O
+           [
+             ( "whitelist",
+               `A
+                 [
+                   `String operator1.public_key_hash;
+                   `String operator2.public_key_hash;
+                 ] );
+           ]
+    in
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
+  let* _hash = wait_for_lpc_updated rollup_node in
 
-  (*let* hash =
-      Node.wait_for node "head_increment.v0" @@ fun json ->
-      Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
-      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
-      Some hash
+  let* () =
+    let*! payload =
+      Sc_rollup_client.encode_json_outbox_msg rollup_client
+      @@ `O [("whitelist", `Null)]
     in
+    send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
+  in
+  let* _hash = wait_for_lpc_updated rollup_node in
 
-    let* res =
-      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
-    in
-    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
   let* _ = wait_for_publish_execute_whitelist_update rollup_node
   and* _block_hash =
-    Sc_rollup_node.wait_for rollup_node "included.v0" (fun json ->
-        Log.info "included: %s" (JSON.encode json) ;
-
-        Some JSON.(json |-> "block" |> as_string))
-  in
-
-  (*let* block = Node.RPC.(call node (get_chain_block ~block:block_hash ())) in
-    Log.info "block': %s" (JSON.encode block) ;*)
-
-  (*let* () =
-      Sc_rollup_node.wait_for rollup_node "included.v0" @@ fun json ->
-      Log.info "\ninclude: %s\n" (JSON.encode json) ;
-      Some ()
-    in*)
-
-  (*let* level = Node.get_level node in
-    let* _ = Node.wait_for_level node (level + 5) in*)
-  let* level = Node.get_level node in
-  let* _level =
-    Node.wait_for_level node (level + smart_rollup_commitment_period_in_blocks)
+    Sc_rollup_node.wait_for
+      rollup_node
+      "sc_rollup_daemon_included_successful_operation.v0"
+    @@ fun json ->
+    if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
+      JSON.(json |-> "block" |> as_string_opt)
+    else None
   in
 
   let* res =
@@ -581,7 +520,9 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   let fmtr = Format.pp_print_list Format.pp_print_string in
   Log.info "whitelist update: %a" fmtr (Option.get res) ;
 
-  let* _operator_node2 =
+  let* () = Sc_rollup_node.kill rollup_node in
+
+  let* rollup_node2 =
     setup_l2_node
       ~name:"rollup-operator2"
       ~mode:Sc_rollup_node.Operator
@@ -592,94 +533,58 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
       rollup_address
   in
 
-  let* level = Node.get_level node in
-  let* _level = Node.wait_for_level node (level + 5) in
-
-  let* res =
-    Node.RPC.(
-      call
-        node
-        (get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment
-           ~sc_rollup:rollup_address
-           operator1.public_key_hash))
-  in
-
-  let* res2 =
-    Node.RPC.(
-      call
-        node
-        (get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment
-           ~sc_rollup:rollup_address
-           operator2.public_key_hash))
-  in
-  Log.info "res1: %s" (JSON.encode res) ;
-  Log.info "res2: %s" (JSON.encode res2) ;
-  assert (
-    JSON.(res |-> "hash" |> as_string) = JSON.(res2 |-> "hash" |> as_string)) ;
-
-  (***********)
-  let*! payload =
-    Sc_rollup_client.encode_json_outbox_msg rollup_client
-    @@ `O [("whitelist", `Null)]
-  in
-
-  let* () =
-    send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
-  in
-
-  (*let* hash =
-      Node.wait_for node "head_increment.v0" @@ fun json ->
-      Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
-      let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
-      Some hash
-    in
-
-    let* res =
-      Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
-    in
-    Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
-  let* _ = wait_for_publish_execute_whitelist_update rollup_node
+  let* _ = wait_for_publish_execute_whitelist_update rollup_node2
   and* _block_hash =
-    Sc_rollup_node.wait_for rollup_node "included.v0" (fun json ->
-        Log.info "included: %s" (JSON.encode json) ;
-        Some JSON.(json |-> "block" |> as_string))
+    Sc_rollup_node.wait_for
+      rollup_node2
+      "sc_rollup_daemon_included_successful_operation.v0"
+    @@ fun json ->
+    if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
+      JSON.(json |-> "block" |> as_string_opt)
+    else None
   in
-  let* level = Node.get_level node in
-  let* _level =
-    Node.wait_for_level node (level + smart_rollup_commitment_period_in_blocks)
-  in
+  let* hash = wait_for_lpc_updated rollup_node2 in
 
-  let* res =
-    Node.RPC.(
-      call node
-      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
-           rollup_address)
+  let* json_commitment =
+    Client.RPC.call client
+    @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_commitment
+         ~sc_rollup:rollup_address
+         ~hash
+         ()
   in
-  let fmtr = Format.pp_print_list Format.pp_print_string in
-  let () =
-    match res with
-    | None -> Log.info "whitelist public!!"
-    | Some res -> Log.info "whitelist not public!!! %a" fmtr res
+  let commitment =
+    Option.get @@ Sc_rollup_client.commitment_from_json json_commitment
   in
-  let* level = Node.get_level node in
-  let* _level =
-    Node.wait_for_level node (level + smart_rollup_commitment_period_in_blocks)
+  let* () =
+    let ({compressed_state; inbox_level; predecessor; number_of_ticks}
+          : Sc_rollup_client.commitment) =
+      commitment
+    in
+    let*! () =
+      Client.Sc_rollup.publish_commitment
+        ~wait:"2"
+        ~src:operator1.alias
+        ~sc_rollup:rollup_address
+        ~compressed_state
+        ~inbox_level
+        ~predecessor
+        ~number_of_ticks
+        client
+    in
+    let*! () =
+      Client.Sc_rollup.publish_commitment
+        ~wait:"2"
+        ~src:operator3.alias
+        ~sc_rollup:rollup_address
+        ~compressed_state
+        ~inbox_level
+        ~predecessor
+        ~number_of_ticks
+        client
+    in
+    unit
   in
-
-  let* _operator_node3 =
-    setup_l2_node
-      ~name:"rollup-operator3"
-      ~mode:Sc_rollup_node.Operator
-      ~operator:operator3.alias
-      testnet
-      client
-      node
-      rollup_address
-  in
-  let* level = Node.get_level node in
-  let* _level = Node.wait_for_level node (level + 10) in
-
-  let* res =
+  let* res1 =
     Node.RPC.(
       call
         node
@@ -704,57 +609,26 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
            ~sc_rollup:rollup_address
            operator3.public_key_hash))
   in
-  Log.info "res1': %s" (JSON.encode res) ;
-  Log.info "res2': %s" (JSON.encode res2) ;
-  Log.info "res3': %s" (JSON.encode res3) ;
+  Log.info "res1: %s" (JSON.encode res1) ;
+  Log.info "res2: %s" (JSON.encode res2) ;
+  Log.info "res3: %s" (JSON.encode res3) ;
   assert (
-    JSON.(res |-> "hash" |> as_string) = JSON.(res2 |-> "hash" |> as_string)) ;
+    JSON.(res1 |-> "hash" |> as_string) = JSON.(res2 |-> "hash" |> as_string)) ;
   assert (
-    JSON.(res3 |-> "hash" |> as_string) = JSON.(res2 |-> "hash" |> as_string)) ;
+    JSON.(res1 |-> "hash" |> as_string) = JSON.(res3 |-> "hash" |> as_string)) ;
 
-  (***********)
-  (*let*! payload =
-      (* ici ;'operation n'est pas prise en compte car rollup public *)
-      Sc_rollup_client.encode_json_outbox_msg rollup_client
-      @@ `O
-           [
-             ( "whitelist",
-               `A
-                 [
-                   `String operator2.public_key_hash;
-                   `String operator1.public_key_hash;
-                 ] );
-           ]
-    in
-
-    let* () =
-      send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
-    in
-
-    (*let* hash =
-        Node.wait_for node "head_increment.v0" @@ fun json ->
-        Printf.eprintf "\nhead increment: %s\n" (JSON.encode json) ;
-        let hash = JSON.(json |-> "view" |-> "hash" |> as_string) in
-        Some hash
-      in
-
-      let* res =
-        Node.RPC.(call node @@ get_chain_block_operations ~block:hash ())
-      in
-      Printf.eprintf "\nres=%s\n" (JSON.encode res) ;*)
-    (* and*
-       Sc_rollup_node.wait_for "include" @@ json -> *)
-    (*let rec loop () =
-            fold (let* _=  Node.wait_for_level "head_increment" in Node.RPC.get_chain_block_context_)*)
-    let* res =
-      Node.RPC.(
-        call node
-        @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
-             rollup_address)
-    in
-    let fmtr = Format.pp_print_list Format.pp_print_string in
-    Log.info "whitelist: %a" fmtr (Option.get res) ;*)
-  let* _ = Sc_rollup_node.unsafe_wait_sync rollup_node in
+  let* res =
+    Node.RPC.(
+      call node
+      @@ get_chain_block_context_smart_rollups_smart_rollup_whitelist
+           rollup_address)
+  in
+  let fmtr = Format.pp_print_list Format.pp_print_string in
+  let () =
+    match res with
+    | None -> Log.info "whitelist public!!"
+    | Some res -> Log.info "whitelist not public!!! %a" fmtr res
+  in
 
   unit
 
