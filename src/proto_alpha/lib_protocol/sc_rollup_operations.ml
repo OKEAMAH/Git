@@ -550,9 +550,17 @@ let execute_outbox_message_whitelist_update (ctxt : t) ~rollup ~whitelist
     ~outbox_level ~message_index =
   let open Lwt_result_syntax in
   let* ctxt, is_private = Sc_rollup.Whitelist.is_private ctxt rollup in
-  if is_private then
+  if is_private then (
     match whitelist with
     | Some whitelist ->
+        Stdlib.Printf.eprintf
+          "\nexecute outbox message whitelist update: private=%b, %s\n"
+          is_private
+          (Format.asprintf "%a" Sc_rollup.Whitelist.pp whitelist) ;
+        Stdlib.Printf.printf
+          "\nexecute outbox message whitelist update: private=%b, %s\n"
+          is_private
+          (Format.asprintf "%a" Sc_rollup.Whitelist.pp whitelist) ;
         (* The whitelist update fails with an empty list. *)
         let*? () =
           error_when
@@ -606,6 +614,12 @@ let execute_outbox_message_whitelist_update (ctxt : t) ~rollup ~whitelist
             },
             ctxt )
     | None ->
+        Stdlib.Printf.eprintf
+          "\nexecute outbox message whitelist update: private=%b, make public\n"
+          is_private ;
+        Stdlib.Printf.printf
+          "\nexecute outbox message whitelist update: private=%b, make public\n"
+          is_private ;
         let* ctxt, _freed_size = Sc_rollup.Whitelist.make_public ctxt rollup in
         return
           ( {
@@ -614,7 +628,7 @@ let execute_outbox_message_whitelist_update (ctxt : t) ~rollup ~whitelist
               operations = [];
               whitelist_update = Some Public;
             },
-            ctxt )
+            ctxt ))
   else tzfail Sc_rollup_errors.Sc_rollup_is_public
 
 let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
@@ -661,6 +675,14 @@ let execute_outbox_message ctxt ~validate_and_decode_output_proof rollup
     | Sc_rollup_management_protocol.Atomic_transaction_batch {transactions} ->
         execute_outbox_message_transaction ctxt ~transactions ~rollup
     | Sc_rollup_management_protocol.Whitelist_update whitelist ->
+        let _ =
+          match whitelist with
+          | Some w ->
+              Stdlib.Printf.eprintf
+                "\nexecute outbox message: %s\n"
+                (Format.asprintf "%a" Sc_rollup.Whitelist.pp w)
+          | None -> Stdlib.Printf.eprintf "\nexecute outbox message: none\n"
+        in
         let is_enabled = Constants.sc_rollup_private_enable ctxt in
         if is_enabled then
           execute_outbox_message_whitelist_update

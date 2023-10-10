@@ -77,6 +77,8 @@ let check_access_to_private_rollup ctxt rollup staker =
 let find_whitelist_uncarbonated ctxt rollup_address =
   let open Lwt_result_syntax in
   let* _, is_private = is_private ctxt rollup_address in
+  Stdlib.Printf.eprintf "\nIS PRIVATE§: %b\n" is_private ;
+  Stdlib.Printf.printf "\nIS PRIVATE§: %b\n" is_private ;
   if is_private then
     let*! elts =
       Storage.Sc_rollup.Whitelist.fold_keys_unaccounted
