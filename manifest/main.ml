@@ -5158,6 +5158,7 @@ end = struct
             ("test_storage_functions", true);
             ("test_storage", true);
             ("test_token", true);
+            ("test_lol", N.(number >= 019));
           ]
           |> conditional_list
         in
