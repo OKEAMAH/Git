@@ -223,15 +223,15 @@ let rec seq_field_of_data_encoding :
       in
       (enums, types, [attr])
   | List {length_limit = No_limit; length_encoding = None; elts} ->
-      let elt_id = id ^ "_entries" in
+      let elt_id = id ^ "_elt" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
+      let id_entries = id ^ "_entries" in
       let ((_, user_type) as type_) =
-        let elt_id = id ^ "_entries" in
-        ( elt_id,
+        ( id_entries,
           {
-            (Helpers.class_spec_of_attrs ~id:elt_id attrs) with
+            (Helpers.class_spec_of_attrs ~id:id_entries attrs) with
             isTopLevel = false;
           } )
       in

@@ -45,7 +45,7 @@ let%expect_test "test variable size list translation" =
   types:
     list_of_uint8_entries:
       seq:
-      - id: list_of_uint8_entries
+      - id: list_of_uint8_elt
         type: u1
   seq:
   - id: list_of_uint8
@@ -68,7 +68,7 @@ let%expect_test "test dynamic size list translation" =
   types:
     list_of_uint8_entries:
       seq:
-      - id: list_of_uint8_entries
+      - id: list_of_uint8_elt
         type: u1
   seq:
   - id: len_list_of_uint8

@@ -12,7 +12,7 @@ types:
       repeat: eos
   cache_layout_entries:
     seq:
-    - id: cache_layout_entries
+    - id: cache_layout_elt
       type: s8
 seq:
 - id: proof_of_work_nonce_size

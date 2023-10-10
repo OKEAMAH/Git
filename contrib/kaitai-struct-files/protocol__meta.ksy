@@ -15,10 +15,10 @@ types:
       repeat: eos
   modules_entries:
     seq:
-    - id: len_modules_entries
+    - id: len_modules_elt
       type: s4
-    - id: modules_entries
-      size: len_modules_entries
+    - id: modules_elt
+      size: len_modules_elt
 enums:
   bool:
     0: false
