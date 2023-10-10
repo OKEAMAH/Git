@@ -229,11 +229,7 @@ let rec seq_field_of_data_encoding :
       in
       let id_entries = id ^ "_entries" in
       let ((_, user_type) as type_) =
-        ( id_entries,
-          {
-            (Helpers.class_spec_of_attrs ~id:id_entries attrs) with
-            isTopLevel = false;
-          } )
+        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
       in
       let types = Helpers.add_uniq_assoc types type_ in
       let attr =
