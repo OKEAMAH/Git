@@ -1,0 +1,403 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+
+    <title>Id010PtgranadConstantsParametric format specification</title>
+  </head>
+  <body>
+           <div class="container">
+  <h1>Id010PtgranadConstantsParametric format specification</h1>
+
+      
+<a name='type-id_010__ptgranad__constants__parametric'></a>
+<h1>Type: Id010PtgranadConstantsParametric</h1>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>preserved_cycles</td>
+<td>u1</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>...</td>
+<td>blocks_per_cycle</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>...</td>
+<td>blocks_per_commitment</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td>...</td>
+<td>blocks_per_roll_snapshot</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td>...</td>
+<td>blocks_per_voting_period</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td>...</td>
+<td>time_between_blocks</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-time_between_blocks">TimeBetweenBlocks</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>endorsers_per_block</td>
+<td>u2be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>hard_gas_limit_per_operation</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-z">Z</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>hard_gas_limit_per_block</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-z">Z</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>proof_of_work_threshold</td>
+<td>s8be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>tokens_per_roll</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>michelson_maximum_type_size</td>
+<td>u2be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>seed_nonce_revelation_tip</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>origination_size</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>block_security_deposit</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>endorsement_security_deposit</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>baking_reward_per_endorsement</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-baking_reward_per_endorsement">BakingRewardPerEndorsement</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>endorsement_reward</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-endorsement_reward">EndorsementReward</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>cost_per_byte</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>hard_storage_limit_per_operation</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-z">Z</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>quorum_min</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>quorum_max</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>min_proposal_quorum</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>initial_endorsers</td>
+<td>u2be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>delay_per_missing_endorsement</td>
+<td>s8be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>minimal_block_delay</td>
+<td>s8be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>liquidity_baking_subsidy</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>liquidity_baking_sunset_level</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>???</td>
+<td>...</td>
+<td>liquidity_baking_escape_ema_threshold</td>
+<td>s4be</td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-time_between_blocks_entries'></a>
+<h2>Type: TimeBetweenBlocksEntries</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>time_between_blocks_elt</td>
+<td>s8be</td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-n'></a>
+<h2>Type: N</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>n</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n_chunk">NChunk</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-time_between_blocks'></a>
+<h2>Type: TimeBetweenBlocks</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_time_between_blocks</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>time_between_blocks</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-time_between_blocks_entries">TimeBetweenBlocksEntries</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-endorsement_reward'></a>
+<h2>Type: EndorsementReward</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_endorsement_reward</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>endorsement_reward</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-endorsement_reward_entries">EndorsementRewardEntries</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-endorsement_reward_entries'></a>
+<h2>Type: EndorsementRewardEntries</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>id_010__ptgranad__mutez</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-baking_reward_per_endorsement'></a>
+<h2>Type: BakingRewardPerEndorsement</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>len_baking_reward_per_endorsement</td>
+<td>s4be</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>...</td>
+<td>baking_reward_per_endorsement</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-baking_reward_per_endorsement_entries">BakingRewardPerEndorsementEntries</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-n_chunk'></a>
+<h2>Type: NChunk</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>has_more</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:1</td>
+<td>...</td>
+<td>payload</td>
+<td>b7</td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-z'></a>
+<h2>Type: Z</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>has_more</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:1</td>
+<td>...</td>
+<td>sign</td>
+<td>BitsType1(BigBitEndian)</td>
+<td></td>
+</tr>
+<tr>
+<td>0:2</td>
+<td>...</td>
+<td>payload</td>
+<td>b6</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>...</td>
+<td>tail</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n_chunk">NChunk</a></td>
+<td></td>
+</tr>
+</table>
+<a name='type-id_010__ptgranad__constants__parametric-baking_reward_per_endorsement_entries'></a>
+<h2>Type: BakingRewardPerEndorsementEntries</h2>
+
+<table class="table">
+<tr><th>Offset</th><th>Size</th><th>ID</th><th>Type</th><th>Note</th></tr>
+<tr>
+<td>0</td>
+<td>...</td>
+<td>id_010__ptgranad__mutez</td>
+<td><a href="#type-id_010__ptgranad__constants__parametric-n">N</a></td>
+<td></td>
+</tr>
+</table>
+
+  </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+  </body>
+</html>
+      

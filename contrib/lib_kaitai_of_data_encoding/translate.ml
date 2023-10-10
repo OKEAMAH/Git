@@ -290,6 +290,9 @@ let rec seq_field_of_data_encoding :
           id
       in
       (enums, types, [attr])
+  | Check_size {limit = _; encoding} ->
+      (* TODO: Add a guard for check size.*)
+      seq_field_of_data_encoding enums types encoding id tid_gen
   | _ -> failwith "Not implemented"
 
 and seq_field_of_field :
