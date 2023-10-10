@@ -231,7 +231,14 @@ let rec seq_field_of_data_encoding :
               (* TODO: [(size_of_type elts) * limit ] ? *)
               cond = {Helpers.cond_no_cond with repeat = RepeatEos};
             }
-        | At_most _max_length -> failwith "?max_length not yet supported"
+        | At_most _max_length ->
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType = DataType.(ComplexDataType (UserType user_type));
+              size = None;
+              (* TODO: Add max length guard *)
+              cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+            }
         | Exactly exact_length ->
             {
               (Helpers.default_attr_spec ~id) with
