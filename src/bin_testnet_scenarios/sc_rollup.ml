@@ -498,7 +498,6 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     in
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
-  let* _hash = wait_for_lpc_updated rollup_node in
 
   let* _ = wait_for_publish_execute_whitelist_update rollup_node
   and* _block_hash =
