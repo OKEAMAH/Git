@@ -446,8 +446,12 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
            rollup_address)
   in
   let fmtr = Format.pp_print_list Format.pp_print_string in
-  (* TODO: Log.info *)
-  Log.info "whitelist: %a" fmtr (Option.get res) ;
+
+  let () =
+    match res with
+    | None -> Log.info "rollup public!!"
+    | Some res -> Log.info "rollup not public!!! %a" fmtr res
+  in
 
   let* rollup_node =
     setup_l2_node
@@ -472,7 +476,11 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   in
   let fmtr = Format.pp_print_list Format.pp_print_string in
 
-  Log.info "whitelist: %a" fmtr (Option.get res) ;
+  let () =
+    match res with
+    | None -> Log.info "Public rollup"
+    | Some res -> Log.info "Private rollup: %a" fmtr res
+  in
 
   let* () =
     let*! payload =
@@ -499,16 +507,21 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
     send_text_messages ~src:operator1.alias ~format:`Hex client [payload]
   in
 
-  let* _ = wait_for_publish_execute_whitelist_update rollup_node
-  and* _block_hash =
-    Sc_rollup_node.wait_for
-      rollup_node
-      "sc_rollup_daemon_included_successful_operation.v0"
-    @@ fun json ->
-    if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
-      JSON.(json |-> "block" |> as_string_opt)
-    else None
+  let* _ =
+    wait_for_publish_execute_whitelist_update rollup_node
+    (*and* _block_hash =
+        Sc_rollup_node.wait_for
+          rollup_node
+          "sc_rollup_daemon_included_successful_operation.v0"
+        @@ fun json ->
+        if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
+          JSON.(json |-> "block" |> as_string_opt)
+        else None
+      in*)
   in
+
+  let* level = Node.get_level node in
+  let* _level = Node.wait_for_level node (level + 20) in
 
   let* res =
     Node.RPC.(
@@ -517,7 +530,11 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
            rollup_address)
   in
   let fmtr = Format.pp_print_list Format.pp_print_string in
-  Log.info "whitelist update: %a" fmtr (Option.get res) ;
+  let () =
+    match res with
+    | None -> Log.info "Public rollup"
+    | Some res -> Log.info "Private rollup: %a" fmtr res
+  in
 
   let* () = Sc_rollup_node.kill rollup_node in
 
@@ -532,17 +549,20 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
       rollup_address
   in
 
-  let* _ = wait_for_publish_execute_whitelist_update rollup_node2
-  and* _block_hash =
-    Sc_rollup_node.wait_for
-      rollup_node2
-      "sc_rollup_daemon_included_successful_operation.v0"
-    @@ fun json ->
-    if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
-      JSON.(json |-> "block" |> as_string_opt)
-    else None
+  let* _ =
+    wait_for_publish_execute_whitelist_update rollup_node2
+    (*and* _block_hash =
+      Sc_rollup_node.wait_for
+        rollup_node2
+        "sc_rollup_daemon_included_successful_operation.v0"
+      @@ fun json ->
+      if JSON.(json |-> "kind" |> as_string) = "execute_outbox_message" then
+        JSON.(json |-> "block" |> as_string_opt)
+      else None*)
   in
   let* hash = wait_for_lpc_updated rollup_node2 in
+  let* level = Node.get_level node in
+  let* _level = Node.wait_for_level node (level + 20) in
 
   let* json_commitment =
     Client.RPC.call client
@@ -625,8 +645,8 @@ let private_rollup ~(testnet : unit -> Testnet.t) () =
   let fmtr = Format.pp_print_list Format.pp_print_string in
   let () =
     match res with
-    | None -> Log.info "whitelist public!!"
-    | Some res -> Log.info "whitelist not public!!! %a" fmtr res
+    | None -> Log.info "Public rollup"
+    | Some res -> Log.info "Private rollup: %a" fmtr res
   in
 
   unit
