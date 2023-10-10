@@ -203,7 +203,7 @@ let rec seq_field_of_data_encoding :
       in
       let seq = left @ right in
       (enums, types, seq)
-  | List {length_limit = Exactly limit; length_encoding = None; elts} ->
+  | List {length_limit; length_encoding = None; elts} ->
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
@@ -214,32 +214,26 @@ let rec seq_field_of_data_encoding :
       in
       let types = Helpers.add_uniq_assoc types type_ in
       let attr =
-        {
-          (Helpers.default_attr_spec ~id) with
-          dataType = DataType.(ComplexDataType (UserType user_type));
-          cond =
-            {Helpers.cond_no_cond with repeat = RepeatExpr (Ast.IntNum limit)};
-        }
-      in
-      (enums, types, [attr])
-  | List {length_limit = No_limit; length_encoding = None; elts} ->
-      let elt_id = id ^ "_elt" in
-      let enums, types, attrs =
-        seq_field_of_data_encoding enums types elts elt_id tid_gen
-      in
-      let id_entries = id ^ "_entries" in
-      let ((_, user_type) as type_) =
-        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
-      in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        {
-          (Helpers.default_attr_spec ~id) with
-          dataType = DataType.(ComplexDataType (UserType user_type));
-          size = None;
-          (* TODO: [(size_of_type elts) * limit ] ? *)
-          cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-        }
+        match length_limit with
+        | No_limit ->
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType = DataType.(ComplexDataType (UserType user_type));
+              size = None;
+              (* TODO: [(size_of_type elts) * limit ] ? *)
+              cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+            }
+        | At_most _max_length -> failwith "?max_length not yet supported"
+        | Exactly exact_length ->
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType = DataType.(ComplexDataType (UserType user_type));
+              cond =
+                {
+                  Helpers.cond_no_cond with
+                  repeat = RepeatExpr (Ast.IntNum exact_length);
+                };
+            }
       in
       (enums, types, [attr])
   | Obj f -> seq_field_of_field enums types f
