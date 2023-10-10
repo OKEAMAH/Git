@@ -1083,12 +1083,12 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         in
 
         let percentage_of_frozen_deposits_slashed_per_double_attestation =
-          100
-          * c.ratio_of_frozen_deposits_slashed_per_double_attestation.numerator
-          / c.ratio_of_frozen_deposits_slashed_per_double_attestation
-              .denominator
+          Int_percentage.of_ratio_bounded
+            c.ratio_of_frozen_deposits_slashed_per_double_attestation
         in
-        let percentage_of_frozen_deposits_slashed_per_double_baking = 7 in
+        let percentage_of_frozen_deposits_slashed_per_double_baking =
+          Int_percentage.p7
+        in
         let limit_of_delegation_over_baking =
           (100 / c.frozen_deposits_percentage) - 1
         in

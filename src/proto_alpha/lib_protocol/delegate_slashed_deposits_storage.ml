@@ -72,7 +72,7 @@ let punish_double_signing ~get ~set ~get_percentage ctxt delegate
   assert (Compare.Bool.(get slashed = false)) ;
   let updated_slashed = set slashed in
   let delegate_contract = Contract_repr.Implicit delegate in
-  let slashing_percentage = get_percentage ctxt in
+  let slashing_percentage = ((get_percentage ctxt : Int_percentage.t) :> int) in
   let preserved_cycles = Constants_storage.preserved_cycles ctxt in
   let global_limit_of_staking_over_baking =
     Constants_storage.adaptive_issuance_global_limit_of_staking_over_baking ctxt
