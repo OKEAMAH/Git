@@ -485,12 +485,18 @@ module Make_s
     let open Lwt_syntax in
     let* r =
       Pending_ops.fold_es
-        (fun _prio oph op (acc_validation_state, acc_mempool, limit) ->
+        (fun prio oph op (acc_validation_state, acc_mempool, limit) ->
           if limit <= 0 then
             (* Using Error as an early-return mechanism *)
             Lwt.return_error (acc_validation_state, acc_mempool)
           else
-            Profiler.aggregate_s "classify operation" @@ fun () ->
+            let label =
+              match prio with
+              | `High -> "classify consensus operation "
+              | `Medium -> "classify voting/anonymous operation"
+              | `Low _ -> "classify manager operation"
+            in
+            Profiler.aggregate_s label @@ fun () ->
             shell.pending <- Pending_ops.remove oph shell.pending ;
             let* new_validation_state, new_mempool, to_handle =
               classify_operation
