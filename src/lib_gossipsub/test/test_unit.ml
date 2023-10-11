@@ -2110,6 +2110,7 @@ let test_scoring_p4 rng _limits parameters =
   let peer = Stdlib.List.hd peers in
   let topic = "topic" in
   (* build mesh with one peer *)
+  let parameters = {parameters with valid = (fun _ _ -> `Invalid)} in
   let state =
     init_state
       ~rng
@@ -2120,11 +2121,6 @@ let test_scoring_p4 rng _limits parameters =
       ~to_subscribe:(fun _ -> true)
       ()
   in
-  (* We remember the old validity function so we can recover it later.
-     We must recover the validity function as it is shared between the tests. *)
-  let validity_function_before = !Validity_hook.validity in
-  (* set validity function so all messages are invalid *)
-  Validity_hook.set (fun _ _ -> `Invalid) ;
   (* peer sends us three invalid messages *)
   let state =
     Stdlib.List.init 3 (fun _i -> ())
@@ -2156,7 +2152,6 @@ let test_scoring_p4 rng _limits parameters =
       (invalid_message_deliveries_weight *. (3.0 *. 0.9) *. (3.0 *. 0.9))
     peer
     state ;
-  Validity_hook.set validity_function_before ;
   unit
 
 (** Test for P5 (Application-Specific).

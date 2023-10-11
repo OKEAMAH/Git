@@ -27,7 +27,8 @@ open Tezos_gossipsub
 open Gossipsub_intf
 module Milliseconds = Test_gossipsub_shared.Milliseconds
 
-let parameters = {peer_filter = (fun _peer _action -> true)}
+let parameters =
+  {peer_filter = (fun _peer _action -> true); valid = (fun _ _ -> `Valid)}
 
 (* This is to use a seed with Tezt. *)
 let rng =

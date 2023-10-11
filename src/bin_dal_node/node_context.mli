@@ -52,18 +52,31 @@ type status = Ready of ready_ctxt | Starting
     field are available through accessors *)
 type t
 
+module Cryptoboxes : sig
+  type t
+
+  val set : t -> int32 -> Cryptobox.t -> unit
+
+  val find : t -> int32 -> Cryptobox.t option
+
+  val init : unit -> t
+end
+
 (** [init config store gs_worker transport_layer cctx] creates a [t] with a
     status set to [Starting] using the given dal node configuration [config],
     node store [store], gossipsub worker instance [gs_worker], transport layer
     instance [transport_layer], and tezos node client context [cctx]. *)
 val init :
   Configuration_file.t ->
+  Cryptoboxes.t ->
   Store.node_store ->
   Gossipsub.Worker.t ->
   Gossipsub.Transport_layer.t ->
   Tezos_rpc.Context.generic ->
   Metrics.t ->
   t
+
+val cryptoboxes : t -> Cryptoboxes.t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready

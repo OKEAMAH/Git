@@ -30,6 +30,28 @@ type head_info = {
   level : int32;
 }
 
+module Cryptoboxes = struct
+  module Map = Map.Make (struct
+    include Int32
+  end)
+
+  type t = Cryptobox.t Map.t ref
+
+  let set t level cryptobox = t := Map.add level cryptobox !t
+
+  let find t level =
+    let candidate =
+      (* We search for the cryptobox from the most recent level to the least recent one. *)
+      Map.bindings !t |> List.rev
+      |> List.iter_e (fun (candidate_level, cryptobox) ->
+             (* We stop the search once we have found the first level below the candidate one. *)
+             if candidate_level < level then Error cryptobox else Ok ())
+    in
+    match candidate with Error cryptobox -> Some cryptobox | Ok () -> None
+
+  let init () = ref Map.empty
+end
+
 type ready_ctxt = {
   cryptobox : Cryptobox.t;
   proto_parameters : Dal_plugin.proto_parameters;
@@ -43,6 +65,7 @@ type status = Ready of ready_ctxt | Starting
 
 type t = {
   mutable status : status;
+  cryptoboxes : Cryptoboxes.t;
   config : Configuration_file.t;
   store : Store.node_store;
   tezos_node_cctxt : Tezos_rpc.Context.generic;
@@ -54,7 +77,10 @@ type t = {
   metrics_server : Metrics.t;
 }
 
-let init config store gs_worker transport_layer cctxt metrics_server =
+let cryptoboxes {cryptoboxes; _} = cryptoboxes
+
+let init config cryptoboxes store gs_worker transport_layer cctxt metrics_server
+    =
   let neighbors_cctxts =
     List.map
       (fun Configuration_file.{addr; port} ->
@@ -66,6 +92,7 @@ let init config store gs_worker transport_layer cctxt metrics_server =
   in
   {
     status = Starting;
+    cryptoboxes;
     config;
     store;
     tezos_node_cctxt = cctxt;

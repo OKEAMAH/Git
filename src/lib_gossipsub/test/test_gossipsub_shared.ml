@@ -107,16 +107,6 @@ module Time = struct
   let reset () = t := Milliseconds.zero
 end
 
-(* Hook used to check message validity. By default,
-   all messages are valid. *)
-module Validity_hook = struct
-  let validity = ref (fun _msg _msg_id -> `Valid)
-
-  let set f = validity := f
-
-  let apply msg msg_id = !validity msg msg_id
-end
-
 module Automaton_config :
   AUTOMATON_CONFIG
     with type Time.t = Milliseconds.t
@@ -163,8 +153,6 @@ module Automaton_config :
 
     module Message = struct
       include String_iterable
-
-      let valid msg msg_id = Validity_hook.apply msg msg_id
     end
   end
 end

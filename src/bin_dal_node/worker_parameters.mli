@@ -28,4 +28,6 @@ open Gs_interface
 
 val limits : (Topic.t, peer, message_id, Span.t) Gossipsub_intf.limits
 
-val peer_filter_parameters : (peer, message_id) Gossipsub_intf.parameters
+val peer_filter_parameters :
+  Node_context.Cryptoboxes.t ->
+  (peer, message, message_id) Gossipsub_intf.parameters

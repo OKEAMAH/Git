@@ -57,7 +57,7 @@ module Make (C : AUTOMATON_CONFIG) :
 
   type nonrec limits = (Topic.t, Peer.t, Message_id.t, span) limits
 
-  type nonrec parameters = (Peer.t, Message_id.t) parameters
+  type nonrec parameters = (Peer.t, Message.t, Message_id.t) parameters
 
   type add_peer = {direct : bool; outbound : bool; peer : Peer.t}
 
@@ -529,6 +529,8 @@ module Make (C : AUTOMATON_CONFIG) :
     let scores state = state.scores
 
     let peer_filter state = state.parameters.peer_filter
+
+    let valid state = state.parameters.valid
 
     let message_cache state = state.message_cache
 
@@ -1096,7 +1098,8 @@ module Make (C : AUTOMATON_CONFIG) :
   module Receive_message = struct
     let check_valid sender topic message message_id =
       let open Monad.Syntax in
-      match Message.valid message message_id with
+      let*! valid in
+      match valid message message_id with
       | `Valid -> unit
       | `Unknown ->
           (* FIXME https://gitlab.com/tezos/tezos/-/issues/5486
