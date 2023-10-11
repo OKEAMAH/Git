@@ -1088,17 +1088,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
           / c.ratio_of_frozen_deposits_slashed_per_double_attestation
               .denominator
         in
-        let percentage_of_frozen_deposits_slashed_per_double_baking =
-          let double_baking_punishment_times_100 =
-            Int64.mul 100L (Tez_repr.to_mutez c.double_baking_punishment)
-          in
-          let percentage_rounded_down =
-            Int64.div
-              double_baking_punishment_times_100
-              (Tez_repr.to_mutez c.minimal_stake)
-          in
-          Int64.to_int percentage_rounded_down
-        in
+        let percentage_of_frozen_deposits_slashed_per_double_baking = 7 in
         let limit_of_delegation_over_baking =
           (100 / c.frozen_deposits_percentage) - 1
         in
