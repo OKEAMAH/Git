@@ -135,7 +135,7 @@ let punish_double_signing ~get ~set ~get_percentage ctxt delegate
   let slash_history =
     Storage.Slashed_deposits_history.add
       level.cycle
-      (slashing_percentage :> int)
+      slashing_percentage
       slash_history
   in
   let*! ctxt =

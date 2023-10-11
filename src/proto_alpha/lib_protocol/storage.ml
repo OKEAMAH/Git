@@ -161,9 +161,7 @@ module Missed_attestations_info = struct
 end
 
 module Slashed_deposits_history = struct
-  type slashed_percentage = int
-
-  let slashed_percentage_encoding = Data_encoding.uint8
+  type slashed_percentage = Int_percentage.t
 
   (* invariant: sorted list *)
   type t = (Cycle_repr.t * slashed_percentage) list
@@ -173,12 +171,12 @@ module Slashed_deposits_history = struct
     list
       (obj2
          (req "cycle" Cycle_repr.encoding)
-         (req "slashed_percentage" slashed_percentage_encoding))
+         (req "slashed_percentage" Int_percentage.encoding))
 
   let add cycle percentage history =
     let rec loop rev_prefix = function
       | (c, p) :: tl when Cycle_repr.(cycle = c) ->
-          let p = Compare.Int.min 100 (p + percentage) in
+          let p = Int_percentage.add_bounded p percentage in
           (* cycle found, do not change the order *)
           List.rev_append rev_prefix ((c, p) :: tl)
       | ((c, _) as hd) :: tl when Cycle_repr.(cycle > c) ->

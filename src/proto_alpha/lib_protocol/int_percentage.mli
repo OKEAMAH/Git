@@ -12,6 +12,8 @@ val encoding : t Data_encoding.t
 
 val of_ratio_bounded : Ratio_repr.t -> t
 
+val add_bounded : t -> t -> t
+
 (** Constants *)
 
 val p7 : t
