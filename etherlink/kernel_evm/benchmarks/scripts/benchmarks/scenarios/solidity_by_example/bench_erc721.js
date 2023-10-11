@@ -12,7 +12,7 @@ let player1 = require('../../players/player1.json');
 let player2 = require('../../players/player2.json');
 
 let mint = contract.interface.encodeFunctionData("mint", [player1.addr, 10]);
-let approve = contract.interface.encodeFunctionData("approve", [player1.addr ,10]);
+let approve = contract.interface.encodeFunctionData("approve", [player2.addr ,10]);
 let transfer = contract.interface.encodeFunctionData("transferFrom", [player1.addr, player2.addr ,10]);
 let burn = contract.interface.encodeFunctionData("burn", [10]);
 
