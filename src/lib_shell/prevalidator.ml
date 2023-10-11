@@ -796,6 +796,7 @@ module Make_s
       pv.shell.timestamp <- timestamp_system ;
       let timestamp = Time.System.to_protocol timestamp_system in
       let* validation_state =
+        Profiler.aggregate_s "flush state" @@ fun () ->
         pv.shell.parameters.tools.flush
           ~head:new_predecessor
           ~timestamp
