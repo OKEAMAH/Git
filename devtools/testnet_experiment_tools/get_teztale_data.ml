@@ -5,30 +5,38 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* TODO: fail nicely in case canonical_chain table was not created in advance *)
+(* TODO: Add printing for reorganised_blocks command *)
+(* TODO: Add documentation for functions *)
+(* TODO: Refactor more *)
+
 (* Teztale querying tool
    ------------------------
    Invocation:
-     ./_build/default/devtools/testnet_experiment_tools/get_teztale_data.exe \
+   1. ./_build/default/devtools/testnet_experiment_tools/get_teztale_data.exe \
      canonical_chain_query \
      --db-path <db-path>
      [ --print ]
+   2. ./_build/default/devtools/testnet_experiment_tools/get_teztale_data.exe \
+     reorganised_blocks_query \
+     --db-path <db-path>
    Requirements:
      <db-path> - path to the teztale database
      [<print>] - if this flag is set, we print the result of the query
    Description:
      This file contains the tool for querying the teztale database.
      The queries that it provides are:
-     - get_canonical_chain : get table (id, predecessor) of block ids in the
-     increasing order as they appear in the canonical chain from the db.
+     - canonical_chain_query : get table (id, block_id, predecessor) of block ids in the
+     increasing order as they appear in the canonical chain from the db;
+     - reorganised_blocks_query : get table (id, block_id, level, round) of block ids
+     which are not part of the canonical chain, together with more detailed info.
 *)
 
 open Tezos_clic
+open Teztale_sql_queries
+module Query_Map = Map.Make (Int)
 
-let block_finality = 2
-
-(* Data Structures. *)
-
-module Canonical_chain_map = Map.Make (Int)
+let group = {name = "devtools"; title = "Command for querying the teztale db"}
 
 (* Errors. *)
 
@@ -36,6 +44,7 @@ type error +=
   | Db_path of string
   | Caqti_database_connection of string
   | Canonical_chain_query of string
+  | Reorganised_blocks_query of string
   | Canonical_chain_head of string
 
 let () =
@@ -70,6 +79,16 @@ let () =
     (fun s -> Canonical_chain_query s) ;
   register_error_kind
     `Permanent
+    ~id:"get_teztale_data.reorganised_blocks_query"
+    ~title:"Failed to create reorganised_blocks table"
+    ~description:"reorganised_blocks table must be created"
+    ~pp:(fun ppf s ->
+      Format.fprintf ppf "Expected reorganised_blocks table: %s" s)
+    Data_encoding.(obj1 (req "arg" string))
+    (function Reorganised_blocks_query s -> Some s | _ -> None)
+    (fun s -> Reorganised_blocks_query s) ;
+  register_error_kind
+    `Permanent
     ~id:"get_tezale_data.canonical_chain_head"
     ~title:"Failed to obtain the head of the canonical chain"
     ~description:"Canonical chain head is required"
@@ -81,112 +100,67 @@ let () =
 (* Aggregators. *)
 
 let add_canonical_chain_row (id, predecessor) acc =
-  Canonical_chain_map.add id predecessor acc
+  Query_Map.add id predecessor acc
 
-let add_max_level level acc =
-  acc := Some level ;
+let add_reorganised_blocks_row (id, level, round) acc =
+  Query_Map.add id (level, round) acc
+
+let add_head_id id acc =
+  acc := Some id ;
   acc
 
-(* Queries *)
-
-let get_canonical_chain db_pool max_level =
+let get_head_id db_pool =
   let open Lwt_result_syntax in
-  let query =
-    {| WITH canonical_chain AS (
-          SELECT id, predecessor
-          FROM blocks
-          WHERE level = ?
-
-          UNION ALL
-
-          SELECT b.id, b.predecessor
-          FROM canonical_chain c
-          JOIN blocks b ON c.predecessor = b.id
-       )
-
-       SELECT id, predecessor
-       FROM canonical_chain
-       ORDER BY id ASC |}
+  let*! head_id_ref =
+    Caqti_lwt.Pool.use
+      (fun (module Db : Caqti_lwt.CONNECTION) ->
+        Db.fold get_canonical_chain_head_id_query add_head_id () (ref None))
+      db_pool
   in
-  let canonical_chain_request =
-    Caqti_request.Infix.(Caqti_type.int ->* Caqti_type.(tup2 int (option int)))
-      query
-  in
+  match head_id_ref with
+  | Error e -> tzfail (Canonical_chain_head (Caqti_error.show e))
+  | Ok head_id_ref -> return !head_id_ref
+
+let get_entries db_pool query add_to_map empty_map head_id query_error =
+  let open Lwt_result_syntax in
   let*! map =
     Caqti_lwt.Pool.use
       (fun (module Db : Caqti_lwt.CONNECTION) ->
-        Db.fold
-          canonical_chain_request
-          add_canonical_chain_row
-          max_level
-          Canonical_chain_map.empty)
+        Db.fold query add_to_map head_id empty_map)
       db_pool
   in
   match map with
-  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
+  | Error e -> tzfail (query_error (Caqti_error.show e))
   | Ok map -> return map
 
-let create_canonical_chain_table db_pool =
+let create_table db_pool create_table_query query_error =
   let open Lwt_result_syntax in
-  let query =
-    Caqti_request.Infix.(Caqti_type.(unit ->. unit))
-      {| CREATE TABLE IF NOT EXISTS canonical_chain(
-         id INTEGER PRIMARY KEY,
-         block_id INTEGER ,
-         predecessor INTEGER,
-         FOREIGN KEY (block_id) REFERENCES blocks(id),
-         FOREIGN KEY (predecessor) REFERENCES blocks(predecessor)) |}
-  in
   let*! result =
     Caqti_lwt.Pool.use
-      (fun (module Db : Caqti_lwt.CONNECTION) -> Db.exec query ())
+      (fun (module Db : Caqti_lwt.CONNECTION) -> Db.exec create_table_query ())
       db_pool
   in
   match result with
-  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
+  | Error e -> tzfail (query_error (Caqti_error.show e))
   | Ok () -> return_unit
 
-let insert_canonical_chain_entry db_pool counter id predecessor =
+let insert_entry db_pool query entry query_error =
   let open Lwt_result_syntax in
-  let query =
-    Caqti_request.Infix.(Caqti_type.(tup3 string string string ->. unit))
-      {| INSERT INTO canonical_chain(id, block_id, predecessor) 
-         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING |}
-  in
   let*! result =
     Caqti_lwt.Pool.use
-      (fun (module Db : Caqti_lwt.CONNECTION) ->
-        Db.exec query (string_of_int counter, id, predecessor))
+      (fun (module Db : Caqti_lwt.CONNECTION) -> Db.exec query entry)
       db_pool
   in
-
   match result with
-  | Error e -> tzfail (Canonical_chain_query (Caqti_error.show e))
+  | Error e -> tzfail (query_error (Caqti_error.show e))
   | Ok () -> return_unit
-
-let get_head_level db_pool =
-  let open Lwt_result_syntax in
-  let query = {| SELECT MAX(level)
-                 FROM blocks |} in
-  let get_head_level_request =
-    Caqti_request.Infix.(Caqti_type.unit ->* Caqti_type.int) query
-  in
-  let*! head_level_ref =
-    Caqti_lwt.Pool.use
-      (fun (module Db : Caqti_lwt.CONNECTION) ->
-        Db.fold get_head_level_request add_max_level () (ref None))
-      db_pool
-  in
-  match head_level_ref with
-  | Error e -> tzfail (Canonical_chain_head (Caqti_error.show e))
-  | Ok head_level_ref -> return !head_level_ref
 
 (* Printing. *)
 
 let print_canonical_chain map =
   let find_key_by_value map x =
-    Canonical_chain_map.filter (fun _ value -> value = x) map
-    |> Canonical_chain_map.to_seq |> List.of_seq
+    Query_Map.filter (fun _ value -> value = x) map
+    |> Query_Map.to_seq |> List.of_seq
     |> fun lst -> List.nth lst 0 |> Option.map fst
   in
 
@@ -206,41 +180,83 @@ let print_canonical_chain map =
 
 (* Commands. *)
 
-let canonical_chain_command db_path print_result =
+let connect_db db_path =
   let open Lwt_result_syntax in
   let db_uri = Uri.of_string ("sqlite3:" ^ db_path) in
   match Caqti_lwt.connect_pool db_uri with
   | Error e -> tzfail (Caqti_database_connection (Caqti_error.show e))
-  | Ok db_pool ->
-      (* 1. Create canonical_table in teztale db *)
-      let* () = create_canonical_chain_table db_pool in
+  | Ok db_pool -> return db_pool
 
-      (* 2. Obtain the head level of the canonical chain *)
-      let* head_level = get_head_level db_pool in
+let canonical_chain_command db_path print_result =
+  let open Lwt_result_syntax in
+  let* db_pool = connect_db db_path in
+  (* 1. Create canonical_chain table in teztale db *)
+  let* () =
+    create_table db_pool create_canonical_chain_table_query (fun e ->
+        Canonical_chain_query e)
+  in
 
-      (* 3. Retrieve the entries which form the canonical chain
-            Use head_level - 2 because the blockchain has finality 2 *)
-      let* map =
-        get_canonical_chain
-          db_pool
-          (Option.value ~default:0 head_level - block_finality)
-      in
+  (* 2. Obtain the head id of the canonical chain *)
+  let* head_id = get_head_id db_pool in
 
-      (* 4. Populate the canonical_chain table *)
-      let* () =
-        let counter = ref 0 in
-        if print_result then print_canonical_chain map ;
-        Canonical_chain_map.iter_es
-          (fun id predecessor ->
-            let id_str = string_of_int id in
-            let predecessor_str =
-              Option.value ~default:"N/A" (Option.map string_of_int predecessor)
-            in
-            counter := !counter + 1 ;
-            insert_canonical_chain_entry db_pool !counter id_str predecessor_str)
-          map
-      in
-      return_unit
+  (* 3. Retrieve the entries which form the canonical chain *)
+  let* map =
+    get_entries
+      db_pool
+      get_canonical_chain_entries_query
+      add_canonical_chain_row
+      Query_Map.empty
+      (Option.value ~default:0 head_id)
+      (fun e -> Canonical_chain_query e)
+  in
+
+  (* 4. Populate the canonical_chain table *)
+  let counter = ref 0 in
+  if print_result then print_canonical_chain map ;
+  Query_Map.iter_es
+    (fun id predecessor ->
+      counter := !counter + 1 ;
+      insert_entry
+        db_pool
+        insert_canonical_chain_entry_query
+        (!counter, id, Option.value ~default:(-1) predecessor)
+        (fun e -> Canonical_chain_query e))
+    map
+
+let reorganised_blocks_command db_path =
+  let open Lwt_result_syntax in
+  let* db_pool = connect_db db_path in
+  (* 1. Create reorganised_blocks table in teztale db *)
+  let* () =
+    create_table db_pool create_reorganised_blocks_table_query (fun e ->
+        Reorganised_blocks_query e)
+  in
+
+  (* 2. Obtain the head id of the canonical chain *)
+  let* head_id = get_head_id db_pool in
+
+  (* 3. Retrieve the entries which form the reorganised blocks *)
+  let* map =
+    get_entries
+      db_pool
+      get_reorganised_blocks_entries_query
+      add_reorganised_blocks_row
+      Query_Map.empty
+      (Option.value ~default:0 head_id)
+      (fun e -> Reorganised_blocks_query e)
+  in
+
+  (* 4. Populate the reorganised_blocks table *)
+  let counter = ref 0 in
+  Query_Map.iter_es
+    (fun id (level, round) ->
+      counter := !counter + 1 ;
+      insert_entry
+        db_pool
+        insert_reorganised_blocks_entry_query
+        (!counter, id, level, round)
+        (fun e -> Reorganised_blocks_query e))
+    map
 
 (* Arguments. *)
 
@@ -265,17 +281,22 @@ let commands =
   let open Lwt_result_syntax in
   [
     command
-      ~group:
-        {
-          name = "devtools";
-          title = "Command for querying the teztale db for canonical chain";
-        }
+      ~group
       ~desc:"Canonical chain query."
       (args2 db_arg print_arg)
       (fixed ["canonical_chain_query"])
       (fun (db_path, print_result) _cctxt ->
         match db_path with
         | Some db_path -> canonical_chain_command db_path print_result
+        | None -> tzfail (Db_path ""));
+    command
+      ~group
+      ~desc:"Reorganised blocks query."
+      (args1 db_arg)
+      (fixed ["reorganised_blocks_query"])
+      (fun db_path _cctxt ->
+        match db_path with
+        | Some db_path -> reorganised_blocks_command db_path
         | None -> tzfail (Db_path ""));
   ]
 
