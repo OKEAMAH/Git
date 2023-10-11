@@ -10,6 +10,12 @@ while read l ; do
     ../../octez-codec $l | tee $tmp2
     (diff $tmp1 $tmp2 && echo "OK") || (echo "KO" ; $((bad++)))
 done <<EOF
+decode ground.Z from 1A
+decode ground.N from e4f8a0f184d9e4ed87c546
+decode ground.Z from e4f8a0f184d9e4ed87c546
+encode ground.Z from "26"
+encode ground.N from "83278392328328938273892"
+encode ground.Z from "-41639196164164469136932"
 encode ground.int64 from "437918234"
 encode ground.int64 from "0"
 encode ground.int64 from "1"
