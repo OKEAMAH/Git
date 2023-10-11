@@ -48,6 +48,7 @@
   Bitset
   Bounded_history_repr
   Context_binary_proof
+  Ratio_repr
   Michelson_v1_primitives
   Slot_repr
   Cycle_repr
@@ -57,7 +58,6 @@
   Staking_pseudotoken_repr
   Period_repr
   Time_repr
-  Ratio_repr
   Round_repr
   Block_payload_repr
   Fixed_point_repr
@@ -335,6 +335,7 @@
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli
+  ratio_repr.ml ratio_repr.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
@@ -344,7 +345,6 @@
   staking_pseudotoken_repr.ml staking_pseudotoken_repr.mli
   period_repr.ml period_repr.mli
   time_repr.ml time_repr.mli
-  ratio_repr.ml ratio_repr.mli
   round_repr.ml round_repr.mli
   block_payload_repr.ml block_payload_repr.mli
   fixed_point_repr.ml fixed_point_repr.mli
@@ -627,6 +627,7 @@
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli
+  ratio_repr.ml ratio_repr.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
@@ -636,7 +637,6 @@
   staking_pseudotoken_repr.ml staking_pseudotoken_repr.mli
   period_repr.ml period_repr.mli
   time_repr.ml time_repr.mli
-  ratio_repr.ml ratio_repr.mli
   round_repr.ml round_repr.mli
   block_payload_repr.ml block_payload_repr.mli
   fixed_point_repr.ml fixed_point_repr.mli
@@ -903,6 +903,7 @@
   bitset.ml bitset.mli
   bounded_history_repr.ml bounded_history_repr.mli
   context_binary_proof.ml context_binary_proof.mli
+  ratio_repr.ml ratio_repr.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
@@ -912,7 +913,6 @@
   staking_pseudotoken_repr.ml staking_pseudotoken_repr.mli
   period_repr.ml period_repr.mli
   time_repr.ml time_repr.mli
-  ratio_repr.ml ratio_repr.mli
   round_repr.ml round_repr.mli
   block_payload_repr.ml block_payload_repr.mli
   fixed_point_repr.ml fixed_point_repr.mli
