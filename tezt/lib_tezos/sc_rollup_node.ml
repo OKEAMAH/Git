@@ -216,7 +216,7 @@ let spawn_command sc_node args =
     sc_node.path
   @@ make_arguments sc_node @ args
 
-let common_node_args ?loser_mode sc_node =
+let common_node_args ~loser_mode ~allow_degraded sc_node =
   [
     "--data-dir";
     data_dir sc_node;
@@ -226,6 +226,7 @@ let common_node_args ?loser_mode sc_node =
     string_of_int @@ rpc_port sc_node;
   ]
   @ (match loser_mode with None -> [] | Some mode -> ["--loser-mode"; mode])
+  @ (if allow_degraded then [] else ["--no-degraded"])
   @
   match sc_node.persistent_state.dal_node with
   | None -> []
@@ -238,20 +239,22 @@ let common_node_args ?loser_mode sc_node =
       in
       ["--dal-node"; endpoint]
 
-let node_args ?loser_mode sc_node rollup_address =
+let node_args ~loser_mode ~allow_degraded sc_node rollup_address =
   let mode = string_of_mode sc_node.persistent_state.mode in
   ( mode,
     ["for"; rollup_address; "with"; "operators"]
     @ operators_params sc_node
-    @ common_node_args ?loser_mode sc_node )
+    @ common_node_args ~loser_mode ~allow_degraded sc_node )
 
-let legacy_node_args ?loser_mode sc_node rollup_address =
+let legacy_node_args ~loser_mode ~allow_degraded sc_node rollup_address =
   let mode = string_of_mode sc_node.persistent_state.mode in
   ["--mode"; mode; "--rollup"; rollup_address]
-  @ common_node_args ?loser_mode sc_node
+  @ common_node_args ~loser_mode ~allow_degraded sc_node
 
 let spawn_config_init sc_node ?(force = false) ?loser_mode rollup_address =
-  let mode, args = node_args ?loser_mode sc_node rollup_address in
+  let mode, args =
+    node_args ~loser_mode ~allow_degraded:true sc_node rollup_address
+  in
   spawn_command sc_node @@ ["init"; mode; "config"] @ args
   @ if force then ["--force"] else []
 
@@ -317,7 +320,7 @@ let wait_for_ready sc_node =
       let promise, resolver = Lwt.task () in
       sc_node.persistent_state.pending_ready <-
         resolver :: sc_node.persistent_state.pending_ready ;
-      check_event sc_node "smart_rollup_node_is_ready.v0" promise
+      check_event sc_node "sc_rollup_node_is_ready.v0" promise
 
 let update_level sc_node current_level =
   (match sc_node.status with
@@ -350,7 +353,7 @@ let wait_for_level ?timeout sc_node level =
       check_event
         ?timeout
         sc_node
-        "sc_rollup_node_layer_1_new_head_processed.v0"
+        "smart_rollup_node_daemon_new_head_processed.v0"
         ~where:("level >= " ^ string_of_int level)
         promise
 
@@ -373,10 +376,10 @@ let wait_sync ?path_client sc_node ~timeout =
 let handle_event sc_node {name; value; timestamp = _} =
   match name with
   | "smart_rollup_node_is_ready.v0" -> set_ready sc_node
-  | "sc_rollup_node_layer_1_new_head_processed.v0" ->
+  | "smart_rollup_node_daemon_new_head_processed.v0" ->
       let level = JSON.(value |-> "level" |> as_int) in
       update_level sc_node level
-  | "sc_rollup_node_layer_1_new_heads_processed.v0" ->
+  | "smart_rollup_node_daemon_new_heads_processed.v0" ->
       let level = JSON.(value |-> "to" |> as_int) in
       update_level sc_node level
   | _ -> ()
@@ -453,14 +456,19 @@ let do_runlike_command ?event_level ?event_sections_levels node arguments =
     ~on_terminate
 
 let run ?(legacy = false) ?(restart = false) ?mode ?event_level
-    ?event_sections_levels ?loser_mode node rollup_address extra_arguments =
+    ?event_sections_levels ~loser_mode ~allow_degraded node rollup_address
+    extra_arguments =
   let* () = if restart then terminate node else return () in
   let cmd =
     if legacy then
-      let args = legacy_node_args ?loser_mode node rollup_address in
+      let args =
+        legacy_node_args ~loser_mode ~allow_degraded node rollup_address
+      in
       ["run"] @ args @ extra_arguments
     else
-      let default_mode, args = node_args ?loser_mode node rollup_address in
+      let default_mode, args =
+        node_args ~loser_mode ~allow_degraded node rollup_address
+      in
       let final_mode =
         match mode with Some m -> string_of_mode m | None -> default_mode
       in
@@ -469,7 +477,8 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
   do_runlike_command ?event_level ?event_sections_levels node cmd
 
 let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
-    ?(wait_ready = true) node rollup_address arguments =
+    ?(allow_degraded = false) ?(wait_ready = true) node rollup_address arguments
+    =
   let* () =
     run
       ?legacy
@@ -477,7 +486,8 @@ let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
       ?mode
       ?event_level
       ?event_sections_levels
-      ?loser_mode
+      ~loser_mode
+      ~allow_degraded
       node
       rollup_address
       arguments
@@ -485,18 +495,21 @@ let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
   let* () = if wait_ready then wait_for_ready node else unit in
   return ()
 
-let run_sequencer ?event_level ?event_sections_levels ?(wait_ready = true) node
-    rollup_address extra_arguments =
+let run_sequencer ?event_level ?event_sections_levels ?(allow_degraded = false)
+    ?(wait_ready = true) node rollup_address extra_arguments =
   let cmd =
     ["run"; "for"; rollup_address; "with"; "operator"]
-    @ operators_params node @ common_node_args node @ extra_arguments
+    @ operators_params node
+    @ common_node_args ~loser_mode:None ~allow_degraded node
+    @ extra_arguments
   in
   let* () = do_runlike_command ?event_level ?event_sections_levels node cmd in
   let* () = if wait_ready then wait_for_ready node else unit in
   return ()
 
-let spawn_run node rollup_address extra_arguments =
-  let mode, args = node_args node rollup_address in
+let spawn_run ?loser_mode ?(allow_degraded = false) node rollup_address
+    extra_arguments =
+  let mode, args = node_args ~loser_mode ~allow_degraded node rollup_address in
   spawn_command node (["run"; mode] @ args @ extra_arguments)
 
 let change_node_and_restart ?event_level sc_rollup_node rollup_address node =

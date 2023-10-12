@@ -22,7 +22,7 @@ types:
       size: len_tez__amount
   z:
     seq:
-    - id: has_more
+    - id: has_tail
       type: b1be
     - id: sign
       type: b1be
@@ -32,7 +32,7 @@ types:
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-      if: not has_more.as<bool>
+      if: has_tail.as<bool>
   n_chunk:
     seq:
     - id: has_more

@@ -306,8 +306,9 @@ let update_ema ctxt ~vote =
   let open Constants_storage in
   let+ ctxt, launch_cycle =
     if
-      Per_block_votes_repr.Adaptive_issuance_launch_EMA.(
-        new_ema < adaptive_issuance_launch_ema_threshold ctxt)
+      (not (Constants_storage.adaptive_issuance_activation_vote_enable ctxt))
+      || Per_block_votes_repr.Adaptive_issuance_launch_EMA.(
+           new_ema < adaptive_issuance_launch_ema_threshold ctxt)
     then return (ctxt, launch_cycle)
     else
       match launch_cycle with
@@ -323,28 +324,6 @@ let update_ema ctxt ~vote =
           (ctxt, Some cycle)
   in
   (ctxt, launch_cycle, new_ema)
-
-let migrate_adaptive_issuance_storages_from_O_to_P ctxt =
-  let open Lwt_result_syntax in
-  let* activation = Storage.Adaptive_issuance.Activation.get ctxt in
-  let edge_of_staking_over_delegation =
-    Int64.of_int
-      (Constants_storage.adaptive_issuance_edge_of_staking_over_delegation ctxt)
-  in
-  match activation with
-  | None -> return ctxt
-  | Some activation_cycle ->
-      (* Distributions selected at the end of cycle C will be used for cycle
-         C+1+Preserved_cycles, so AI weighting only takes effect
-         preserved_cycles+1 after AI activation cycle. *)
-      let cycle_of_first_distribution_set_after_activation =
-        Cycle_repr.(
-          add (succ activation_cycle) (Constants_storage.preserved_cycles ctxt))
-      in
-      Stake_storage.migrate_storage_to_weighted_value_for_O_to_P
-        ctxt
-        (Stake_repr.migrate_stake_from_O_to_P ~edge_of_staking_over_delegation)
-        ~from_cycle:cycle_of_first_distribution_set_after_activation
 
 module For_RPC = struct
   let get_reward_coeff = get_reward_coeff

@@ -7,8 +7,12 @@
 - Upgrade SputnikVM to version 0.39.1 and `primitive_types` to version 0.12.1 (!10043)
 - Upgrade ethereum crate to version 0.14.0
 - Store the `base_gas_per_fee` and use a default value of 21000. (!10234)
+- Transaction can no longer be overwritten nor reincluded (implicit transaction size limit now
+  becomes ~1200 chunks). (!10337)
 
 ### EVM Node
+
+- Remove `mockup` mode previously used for internal testing only. (!10406)
 
 ### Bug fixes
 
@@ -18,6 +22,8 @@
 ### Breaking changes
 
 ### Internal
+
+- Indexes of accounts are now correctly checked, they are no longer duplicated. (!10395)
 
 ## Version fc06d63568b1be253088ff5d6e422fd80ed3d2c2
 
@@ -82,6 +88,7 @@
 - Make it possible for any precompiled contract to generate withdrawals. (!9910)
 - A precompiled contract for withdrawing funds at address 0x00...20. (!10022)
 - Remove artificial minimal gas cost for simulation. (!10169)
+- Remove POW related fields from L2 blocks. (!10421)
 
 ## Version 4c111dcae061bea6c3616429a0ea1262ce6c174f
 

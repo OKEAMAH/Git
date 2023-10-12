@@ -24,6 +24,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Types = Tezos_dal_node_services.Types
+
 (** This module defines the data structures used to instantiate the Octez P2P
     library. More exactly, it exposes:
 
@@ -46,22 +48,19 @@ type px_peer = {point : P2p_point.Id.t; peer : P2p_peer.Id.t}
     {!P2p_peer.Id.t} elements in [px] are augmented by their {!P2p_point.Id.t}
     counterpart. *)
 type p2p_message =
-  | Graft of {topic : Gs_interface.topic}
+  | Graft of {topic : Types.Topic.t}
   | Prune of {
-      topic : Gs_interface.topic;
+      topic : Types.Topic.t;
       px : px_peer Seq.t;
       backoff : Gs_interface.Span.t;
     }
-  | IHave of {
-      topic : Gs_interface.topic;
-      message_ids : Gs_interface.message_id list;
-    }
+  | IHave of {topic : Types.Topic.t; message_ids : Gs_interface.message_id list}
   | IWant of {message_ids : Gs_interface.message_id list}
-  | Subscribe of {topic : Gs_interface.topic}
-  | Unsubscribe of {topic : Gs_interface.topic}
+  | Subscribe of {topic : Types.Topic.t}
+  | Unsubscribe of {topic : Types.Topic.t}
   | Message_with_header of {
       message : Gs_interface.message;
-      topic : Gs_interface.topic;
+      topic : Types.Topic.t;
       message_id : Gs_interface.message_id;
     }
 
@@ -72,10 +71,12 @@ type peer_metadata = unit
     their public net addresses and ports on which they can be reached. The
     {!advertised_net_port} is not mandatory, as it is already sent via the first
     P2P message after a connection is authenticated. But, we decide to duplicate
-    the information here for consistency. *)
+    the information here for consistency. The [is_bootstrap_peer] indicates
+    whether the remote peer has a bootstrap profile or not. *)
 type connection_metadata = {
   advertised_net_addr : P2p_addr.t option;
   advertised_net_port : int option;
+  is_bootstrap_peer : bool;
 }
 
 (** A P2P message config is parameterized by the network's name. *)

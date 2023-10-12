@@ -46,7 +46,6 @@ type error +=
   | Staking_to_delegate_that_refuses_external_staking
   | Stake_modification_with_no_delegate_set
   | Invalid_nonzero_transaction_amount of Tez.t
-  | Invalid_unstake_request_amount of {requested_amount : Z.t}
   | Invalid_staking_parameters_sender
 
 let () =
@@ -272,23 +271,6 @@ let () =
     (fun amount -> Invalid_nonzero_transaction_amount amount) ;
   register_error_kind
     `Permanent
-    ~id:"operations.invalid_unstake_request_amount"
-    ~title:"Invalid unstake request amount"
-    ~description:"The unstake requested amount is negative or too large."
-    ~pp:(fun ppf requested_amount ->
-      Format.fprintf
-        ppf
-        "The unstake requested amount, %a, is negative or too large."
-        Z.pp_print
-        requested_amount)
-    Data_encoding.(obj1 (req "requested_amount" z))
-    (function
-      | Invalid_unstake_request_amount {requested_amount} ->
-          Some requested_amount
-      | _ -> None)
-    (fun requested_amount -> Invalid_unstake_request_amount {requested_amount}) ;
-  register_error_kind
-    `Permanent
     ~id:"operations.invalid_staking_parameters_sender"
     ~title:"Invalid staking parameters sender"
     ~description:"The staking parameters can only be set by delegates."
@@ -429,27 +411,12 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
       in
       return (ctxt, result, [])
 
-let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
-    ~before_operation =
+let apply_unstake ~ctxt ~sender ~amount ~destination ~before_operation =
   let open Lwt_result_syntax in
-  let*? () =
-    error_when Tez.(amount <> zero) (Invalid_nonzero_transaction_amount amount)
-  in
   let*? () =
     error_unless
       Signature.Public_key_hash.(sender = destination)
       Invalid_self_transaction_destination
-  in
-  let requested_amount_opt =
-    if Z.fits_int64 requested_amount then
-      Tez.of_mutez (Z.to_int64 requested_amount)
-    else None
-  in
-  let*? requested_amount =
-    match requested_amount_opt with
-    | None ->
-        Result_syntax.tzfail (Invalid_unstake_request_amount {requested_amount})
-    | Some requested_amount -> Ok requested_amount
   in
   let sender_contract = Contract.Implicit sender in
   let*? ctxt = Gas.consume ctxt Adaptive_issuance_costs.find_delegate_cost in
@@ -458,7 +425,7 @@ let apply_unstake ~ctxt ~sender ~amount ~requested_amount ~destination
   | None -> tzfail Stake_modification_with_no_delegate_set
   | Some delegate ->
       let* ctxt, balance_updates =
-        Staking.request_unstake ctxt ~sender_contract ~delegate requested_amount
+        Staking.request_unstake ctxt ~sender_contract ~delegate amount
       in
       let result =
         Transaction_to_contract_result
@@ -1087,19 +1054,15 @@ let apply_manager_operation :
                 ~destination:pkh
                 ~before_operation:ctxt_before_op
           | "unstake" ->
-              let* requested_amount, ctxt =
-                Script_ir_translator.parse_data
-                  ~elab_conf
-                  ctxt
-                  ~allow_forged:false
-                  Script_typed_ir.int_t
-                  (Micheline.root parameters)
+              let* () =
+                fail_unless
+                  (Script.is_unit parameters)
+                  (Script_interpreter.Bad_contract_parameter source_contract)
               in
               apply_unstake
                 ~ctxt
                 ~sender:source
                 ~amount
-                ~requested_amount:(Script_int.to_zint requested_amount)
                 ~destination:pkh
                 ~before_operation:ctxt_before_op
           | "finalize_unstake" ->

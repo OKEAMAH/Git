@@ -287,11 +287,11 @@ module Make (Parameters : PARAMETERS) = struct
       Injector_events.Make (Parameters) (Tags) (POperation) (Inj_operation)
         (Request)
 
-    let emit1 e state x = emit e (state.signer.pkh, state.tags, x)
+    let emit1 e state x = emit e (state.signer.alias, state.tags, x)
 
-    let emit2 e state x y = emit e (state.signer.pkh, state.tags, x, y)
+    let emit2 e state x y = emit e (state.signer.alias, state.tags, x, y)
 
-    let emit3 e state x y z = emit e (state.signer.pkh, state.tags, x, y, z)
+    let emit3 e state x y z = emit e (state.signer.alias, state.tags, x, y, z)
   end
 
   let last_head_encoding =
@@ -328,11 +328,11 @@ module Make (Parameters : PARAMETERS) = struct
     in
     (* Warn of corrupted files but don't fail *)
     let warn file error =
-      Event.(emit corrupted_operation_on_disk) (signer.pkh, tags, file, error)
+      Event.(emit corrupted_operation_on_disk) (signer.alias, tags, file, error)
     in
     let warn_unreadable = Some warn in
     let emit_event_loaded kind nb =
-      Event.(emit loaded_from_disk) (signer.pkh, tags, nb, kind)
+      Event.(emit loaded_from_disk) (signer.alias, tags, nb, kind)
     in
     let* queue =
       Op_queue.load_from_disk
@@ -358,7 +358,6 @@ module Make (Parameters : PARAMETERS) = struct
       emit_event_loaded "injected_operations"
       @@ Injected_operations.length injected_operations
     in
-
     let* included_operations =
       Included_operations.load_from_disk
         ~warn_unreadable
@@ -453,6 +452,11 @@ module Make (Parameters : PARAMETERS) = struct
   (** Mark operations as injected (in [oph]). *)
   let add_injected_operations state oph ~injection_level operations =
     let open Lwt_result_syntax in
+    let*! () =
+      Event.(emit1 injected_ops)
+        state
+        (List.map (fun (_, o) -> o.Inj_operation.operation) operations)
+    in
     let infos =
       List.map
         (fun (op_index, op) -> (op.Inj_operation.hash, {op; oph; op_index}))
@@ -1039,10 +1043,7 @@ module Make (Parameters : PARAMETERS) = struct
     reorganization so there will be no need to re-inject them anymore. *)
   let register_confirmed_level state confirmed_level =
     let open Lwt_result_syntax in
-    let*! () =
-      Event.(emit confirmed_level)
-        (state.signer.pkh, state.tags, confirmed_level)
-    in
+    let*! () = Event.(emit1 confirmed_level) state confirmed_level in
     Included_in_blocks.iter_es
       (fun block {level = inclusion_level; _} ->
         if
@@ -1273,11 +1274,7 @@ module Make (Parameters : PARAMETERS) = struct
 
     let on_completion w r _ st =
       let state = Worker.state w in
-      match Request.view r with
-      | Request.View (Add_pending _ | New_tezos_head _) ->
-          Event.(emit2 request_completed_debug) state (Request.view r) st
-      | View Inject ->
-          Event.(emit2 request_completed_notice) state (Request.view r) st
+      Event.(emit2 request_completed_debug) state (Request.view r) st
 
     let on_no_request _ = Lwt.return_unit
 

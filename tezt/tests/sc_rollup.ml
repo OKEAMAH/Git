@@ -223,21 +223,21 @@ let check_l1_block_contains ~kind ~what ?(extra = fun _ -> true) block =
 
 (** Wait for the rollup node to detect a conflict *)
 let wait_for_conflict_detected sc_node =
-  Sc_rollup_node.wait_for sc_node "sc_rollup_node_conflict_detected.v0"
+  Sc_rollup_node.wait_for sc_node "smart_rollup_node_conflict_detected.v0"
   @@ fun json ->
   let our_hash = JSON.(json |-> "our_commitment_hash" |> as_string) in
   Some (our_hash, json)
 
 (** Wait for the rollup node to detect a timeout *)
 let wait_for_timeout_detected sc_node =
-  Sc_rollup_node.wait_for sc_node "sc_rollup_node_timeout_detected.v0"
+  Sc_rollup_node.wait_for sc_node "smart_rollup_node_timeout_detected.v0"
   @@ fun json ->
   let other = JSON.(json |> as_string) in
   Some other
 
 (** Wait for the rollup node to compute a dissection *)
 let wait_for_computed_dissection sc_node =
-  Sc_rollup_node.wait_for sc_node "sc_rollup_node_computed_dissection.v0"
+  Sc_rollup_node.wait_for sc_node "smart_rollup_node_computed_dissection.v0"
   @@ fun json ->
   let opponent = JSON.(json |-> "opponent" |> as_string) in
   Some (opponent, json)
@@ -781,7 +781,9 @@ let wait_for_injecting_event ?(tags = []) ?count node =
 (** Wait for the [sc_rollup_node_publish_commitment] event from the
     rollup node. *)
 let wait_for_publish_commitment node =
-  Sc_rollup_node.wait_for node "sc_rollup_node_publish_commitment.v0"
+  Sc_rollup_node.wait_for
+    node
+    "smart_rollup_node_commitment_publish_commitment.v0"
   @@ fun json ->
   let hash = JSON.(json |-> "hash" |> as_string) in
   let level = JSON.(json |-> "level" |> as_int) in
@@ -792,7 +794,7 @@ let wait_for_publish_commitment node =
 let wait_for_publish_execute_whitelist_update node =
   Sc_rollup_node.wait_for
     node
-    "sc_rollup_node_publish_execute_whitelist_update.v0"
+    "smart_rollup_node_publish_execute_whitelist_update.v0"
   @@ fun json ->
   let hash = JSON.(json |-> "hash" |> as_string) in
   let outbox_level = JSON.(json |-> "outbox_level" |> as_int) in
@@ -804,7 +806,7 @@ let wait_for_publish_execute_whitelist_update node =
 let wait_for_included_successful_operation node ~operation_kind =
   Sc_rollup_node.wait_for
     node
-    "sc_rollup_daemon_included_successful_operation.v0"
+    "smart_rollup_node_daemon_included_successful_operation.v0"
   @@ fun json ->
   if JSON.(json |-> "kind" |> as_string) = operation_kind then Some () else None
 
@@ -1197,7 +1199,9 @@ let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client
     Returns the level at which the lpc was updated. *)
 let bake_until_lpc_updated ?hook ?at_least ?timeout client sc_rollup_node =
   let event =
-    Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_node_lpc_updated.v0"
+    Sc_rollup_node.wait_for
+      sc_rollup_node
+      "smart_rollup_node_commitment_lpc_updated.v0"
     @@ fun json -> JSON.(json |-> "level" |> as_int_opt)
   in
   bake_until_event ?hook ?at_least ?timeout client sc_rollup_node event
@@ -2784,8 +2788,10 @@ let _test_reinject_failed_commitment ~protocol:_ ~kind =
       ~default_operator:Constant.bootstrap5.public_key_hash
   in
   Log.info "Run two honest rollup nodes." ;
-  let* () = Sc_rollup_node.run sc_rollup_node1 sc_rollup []
-  and* () = Sc_rollup_node.run sc_rollup_node2 sc_rollup [] in
+  let* () = Sc_rollup_node.run ~event_level:`Debug sc_rollup_node1 sc_rollup []
+  and* () =
+    Sc_rollup_node.run ~event_level:`Debug sc_rollup_node2 sc_rollup []
+  in
   Log.info "Add messages and advance L1 to trigger commitment." ;
   (* We bake one extra block to allow for the injection of the commitment and
      another block to allow for reinjection of the commitment that has the out
@@ -2960,7 +2966,10 @@ let test_reveals_fails_on_wrong_hash =
   let () = close_out cout in
 
   let error_promise =
-    Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_daemon_error.v0" (fun e ->
+    Sc_rollup_node.wait_for
+      sc_rollup_node
+      "smart_rollup_node_daemon_error.v0"
+      (fun e ->
         let id = JSON.(e |=> 0 |-> "id" |> as_string) in
         if id =~ rex "wrong_hash_of_reveal_preimage" then Some () else None)
   in
@@ -2987,9 +2996,14 @@ let test_reveals_fails_on_unknown_hash =
   let unknown_hash =
     "0027782d2a7020be332cc42c4e66592ec50305f559a4011981f1d5af81428ecafe"
   in
-  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
+  let* () =
+    Sc_rollup_node.run ~allow_degraded:true sc_rollup_node sc_rollup []
+  in
   let error_promise =
-    Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_daemon_error.v0" (fun e ->
+    Sc_rollup_node.wait_for
+      sc_rollup_node
+      "smart_rollup_node_daemon_error.v0"
+      (fun e ->
         let id = JSON.(e |=> 0 |-> "id" |> as_string) in
         if id =~ rex "could_not_open_reveal_preimage_file" then Some ()
         else None)
@@ -3060,7 +3074,10 @@ let test_reveals_above_4k =
   let () = output_string cout data in
   let () = close_out cout in
   let error_promise =
-    Sc_rollup_node.wait_for sc_rollup_node "sc_rollup_daemon_error.v0" (fun e ->
+    Sc_rollup_node.wait_for
+      sc_rollup_node
+      "smart_rollup_node_daemon_error.v0"
+      (fun e ->
         let id = JSON.(e |=> 0 |-> "id" |> as_string) in
         if id =~ rex "could_not_encode_raw_data" then Some () else None)
   in
@@ -3238,11 +3255,13 @@ type refutation_scenario_parameters = {
   reset_honest_on : (string * int * Sc_rollup_node.mode option) list;
   bad_reveal_at : int list;
   priority : [`Priority_honest | `Priority_loser | `No_priority];
+  allow_degraded : bool;
 }
 
 let refutation_scenario_parameters ?(loser_modes = []) ~final_level
     ?(empty_levels = []) ?(stop_loser_at = []) ?(reset_honest_on = [])
-    ?(bad_reveal_at = []) ?(priority = `No_priority) inputs =
+    ?(bad_reveal_at = []) ?(priority = `No_priority) ?(allow_degraded = false)
+    inputs =
   {
     loser_modes;
     inputs;
@@ -3252,6 +3271,7 @@ let refutation_scenario_parameters ?(loser_modes = []) ~final_level
     reset_honest_on;
     bad_reveal_at;
     priority;
+    allow_degraded;
   }
 
 let remove_state_from_dissection dissection =
@@ -3289,6 +3309,7 @@ let test_refutation_scenario_aux ~(mode : Sc_rollup_node.mode) ~kind
       reset_honest_on;
       bad_reveal_at;
       priority;
+      allow_degraded;
     } protocol sc_rollup_node sc_client1 sc_rollup_address node client =
   let bootstrap1_key = Constant.bootstrap1.public_key_hash in
   let loser_keys =
@@ -3361,7 +3382,12 @@ let test_refutation_scenario_aux ~(mode : Sc_rollup_node.mode) ~kind
     if priority = `Priority_honest then
       prioritize_refute_operations sc_rollup_node ;
     let* () =
-      Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup_address []
+      Sc_rollup_node.run
+        ~event_level:`Debug
+        ~allow_degraded
+        sc_rollup_node
+        sc_rollup_address
+        []
     in
     return
       [
@@ -3398,7 +3424,12 @@ let test_refutation_scenario_aux ~(mode : Sc_rollup_node.mode) ~kind
         in
         if priority = `Priority_loser then
           prioritize_refute_operations loser_sc_rollup_node ;
-        Sc_rollup_node.run loser_sc_rollup_node ~loser_mode sc_rollup_address [])
+        Sc_rollup_node.run
+          loser_sc_rollup_node
+          ~loser_mode
+          ~allow_degraded
+          sc_rollup_address
+          [])
     @@ List.combine loser_modes loser_sc_rollup_nodes
   in
 
@@ -3709,7 +3740,7 @@ let test_refutation protocols ~kind =
               (inputs_for 10)
               ~final_level:80
               ~reset_honest_on:
-                [("sc_rollup_node_conflict_detected.v0", 2, None)]
+                [("smart_rollup_node_conflict_detected.v0", 2, None)]
               ~priority:`Priority_honest );
           ( "degraded_new",
             refutation_scenario_parameters
@@ -3722,6 +3753,7 @@ let test_refutation protocols ~kind =
                   (* Commitment for inbox 7 will be made at level 12 and published
                      at level 14 *);
                 ]
+              ~allow_degraded:true
               ~priority:`Priority_honest );
           ( "degraded_ongoing",
             refutation_scenario_parameters
@@ -3729,6 +3761,7 @@ let test_refutation protocols ~kind =
               (inputs_for 7)
               ~final_level:80
               ~bad_reveal_at:[21]
+              ~allow_degraded:true
               ~priority:`Priority_honest );
           ( "parallel_games_0",
             refutation_scenario_parameters
@@ -3823,15 +3856,15 @@ let l1_level_event level tezos_node _rollup_node =
   unit
 
 let published_commitment_event ~inbox_level _tezos_node rollup_node =
-  Sc_rollup_node.wait_for rollup_node "sc_rollup_node_lpc_updated.v0"
+  Sc_rollup_node.wait_for
+    rollup_node
+    "smart_rollup_node_commitment_lpc_updated.v0"
   @@ fun json ->
   let level = JSON.(json |-> "level" |> as_int) in
   if level >= inbox_level then Some () else None
 
 let commitment_computed_event ~inbox_level _tezos_node rollup_node =
-  Sc_rollup_node.wait_for
-    rollup_node
-    "sc_rollup_node_commitment_process_head.v0"
+  Sc_rollup_node.wait_for rollup_node "smart_rollup_node_commitment_compute.v0"
   @@ fun json ->
   let level = JSON.as_int json in
   if level >= inbox_level then Some () else None
@@ -3919,7 +3952,7 @@ let test_bailout_refutation protocols =
        (inputs_for 10)
        ~final_level:80
        ~reset_honest_on:
-         [("sc_rollup_node_conflict_detected.v0", 2, Some Bailout)]
+         [("smart_rollup_node_conflict_detected.v0", 2, Some Bailout)]
        ~priority:`Priority_honest)
     protocols
 
@@ -4413,7 +4446,7 @@ let test_interrupt_rollup_node =
   let processing_promise =
     Sc_rollup_node.wait_for
       sc_rollup_node
-      "sc_rollup_daemon_process_head.v0"
+      "smart_rollup_node_daemon_process_head.v0"
       (fun _ -> Some ())
   in
   let* () = bake_levels 15 client in
@@ -4950,7 +4983,9 @@ let test_rpcs ~kind
       description = "RPC API should work and be stable";
     }
   @@ fun protocol sc_rollup_node sc_client sc_rollup node client ->
-  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
+  let* () =
+    Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup []
+  in
   (* Smart rollup address endpoint test *)
   let*! sc_rollup_address =
     Sc_rollup_client.rpc_get ~hooks sc_client ["global"; "smart_rollup_address"]
@@ -6108,7 +6143,7 @@ let test_rollup_whitelist_update ~kind =
     ~commitment_period
     ~challenge_window
     ~operator:Constant.bootstrap1.public_key_hash
-  @@ fun _protocol rollup_node rollup_client rollup_addr _node client ->
+  @@ fun _protocol rollup_node rollup_client rollup_addr node client ->
   let encode_whitelist_msg whitelist =
     Sc_rollup_client.encode_json_outbox_msg rollup_client
     @@ `O [("whitelist", `A (List.map (fun pkh -> `String pkh) whitelist))]
@@ -6208,6 +6243,18 @@ let test_rollup_whitelist_update ~kind =
       rollup_addr
   in
   let* () = Client.bake_for_and_wait client in
+  Log.info
+    "Start a new rollup node with an operator that was not in the whitelist to \
+     ensure it can catch up" ;
+  let rollup_node2 =
+    Sc_rollup_node.create
+      Operator
+      node
+      ~base_dir:(Client.base_dir client)
+      ~default_operator:Constant.bootstrap3.alias
+  in
+  let* () = Sc_rollup_node.run rollup_node2 rollup_addr [] in
+  let* _level = Sc_rollup_node.wait_sync ~timeout:30. rollup_node2 in
   unit
 
 let test_rollup_whitelist_outdated_update ~kind =
@@ -6373,12 +6420,12 @@ let bailout_mode_not_publish ~kind =
   and* () =
     Sc_rollup_node.wait_for
       sc_rollup_node
-      "sc_rollup_node_recover_bond.v0"
+      "smart_rollup_node_recover_bond.v0"
       (Fun.const (Some ()))
   and* () =
     Sc_rollup_node.wait_for
       sc_rollup_node
-      "sc_rollup_daemon_exit_bailout_mode.v0"
+      "smart_rollup_node_daemon_exit_bailout_mode.v0"
       (Fun.const (Some ()))
   and* exit_error = Sc_rollup_node.wait sc_rollup_node in
   let* lcc_hash, _level =

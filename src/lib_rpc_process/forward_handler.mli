@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Nomadic Labs. <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,39 +23,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Simple = struct
-  include Internal_event.Simple
-
-  let section = [Protocol.name; "sc_rollup_node"; "layer_1"]
-
-  let starting =
-    declare_0
-      ~section
-      ~name:"sc_rollup_node_layer_1_starting"
-      ~msg:"Starting layer 1 tracker of the smart rollup node"
-      ~level:Notice
-      ()
-
-  let stopping =
-    declare_0
-      ~section
-      ~name:"sc_rollup_node_layer_1_stopping"
-      ~msg:"Stopping layer 1 tracker of the smart rollup node"
-      ~level:Notice
-      ()
-
-  let switched_new_head =
-    declare_2
-      ~section
-      ~name:"sc_rollup_node_layer_1_new_head"
-      ~msg:"Layer 1 node has switched to head {hash} at level {level}"
-      ~level:Notice
-      ("hash", Block_hash.encoding)
-      ("level", Data_encoding.int32)
-end
-
-let starting = Simple.(emit starting)
-
-let stopping = Simple.(emit stopping)
-
-let switched_new_head hash level = Simple.(emit switched_new_head (hash, level))
+(** [callback server socket_path] redirects all the traffic received by the given
+    [server] to the socket determined by [socket_path] if it fails to be resolved locally. *)
+val callback : RPC_server.server -> string -> RPC_server.callback

@@ -72,11 +72,11 @@ val add_uniq_assoc : (string * 'a) list -> string * 'a -> (string * 'a) list
 (** [class_spec_of_attrs ~id ?description ?enums ?instances attrs]
     returns a [ClassSpec.t] for the seq [attrs].
 
-    @param ~id is added to meta section as [id].
+    @param [~id] is added to meta section as [id].
     @param [?description] is used as [doc] section [summary].
     @param [?top_level] is used as [isTopLevel] (defaults to [false])
-    @param ?enums is added to class specification if present.
-    @param ?instances is added to class specification if present. *)
+    @param [?enums] is added to class specification if present.
+    @param [?instances] is added to class specification if present. *)
 val class_spec_of_attrs :
   id:string ->
   ?description:string ->

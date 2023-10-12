@@ -31,11 +31,6 @@
 (** Below, we expose the main types needed for the integration with the existing
     DAL node alongside their encodings. *)
 
-type topic = Gs_interface.topic = {
-  slot_index : int;
-  pkh : Signature.Public_key_hash.t;
-}
-
 type message_id = Gs_interface.message_id = {
   commitment : Cryptobox.Commitment.t;
   level : int32;
@@ -51,8 +46,6 @@ type message = Gs_interface.message = {
 
 type peer = Gs_interface.peer
 
-val topic_encoding : topic Data_encoding.t
-
 val message_id_encoding : message_id Data_encoding.t
 
 val message_encoding : message Data_encoding.t
@@ -63,7 +56,7 @@ val message_encoding : message Data_encoding.t
 module Worker : sig
   module Config :
     module type of Gs_interface.Worker_config
-      with type GS.Topic.t = topic
+      with type GS.Topic.t = Types.Topic.t
        and type GS.Message_id.t = message_id
        and type GS.Message.t = message
        and type GS.Peer.t = peer
@@ -74,7 +67,7 @@ module Worker : sig
 
   include
     Gossipsub_intf.WORKER
-      with type GS.Topic.t = topic
+      with type GS.Topic.t = Types.Topic.t
        and type GS.Message_id.t = message_id
        and type GS.Message.t = message
        and type GS.Peer.t = peer
@@ -100,11 +93,13 @@ module Transport_layer : sig
 
   type t
 
-  (** [create ~network_name config limits] create a new instance of type
-      {!t}. It is a wrapper on top of {!P2p.create}. *)
+  (** [create ~network_name ~is_bootstrap_peer ~public_addr config limits]
+      creates a new instance of type {!t}. It is a wrapper on top of
+      {!P2p.create}. *)
   val create :
     network_name:string ->
     public_addr:P2p_point.Id.t ->
+    is_bootstrap_peer:bool ->
     P2p.config ->
     P2p_limits.t ->
     t tzresult Lwt.t

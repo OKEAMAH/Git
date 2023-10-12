@@ -53,7 +53,7 @@ module Events = struct
       ~level:Info
       ~pp1:GS.Topic.pp
       ~pp2:GS.Message_id.pp
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
       ("message_id", message_id_encoding)
 
   let join =
@@ -63,7 +63,7 @@ module Events = struct
       ~msg:"Process Join {topic}"
       ~level:Info
       ~pp1:GS.Topic.pp
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
 
   let leave =
     declare_1
@@ -72,20 +72,21 @@ module Events = struct
       ~msg:"Process Leave {topic}"
       ~level:Info
       ~pp1:GS.Topic.pp
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
 
   let new_connection =
-    declare_3
+    declare_4
       ~section
       ~name:(prefix "new_connection")
       ~msg:
         "Process New_connection from/to {peer} (direct={direct}, \
-         outbound={outbound})"
+         outbound={outbound}, bootstrap={bootstrap})"
       ~level:Notice
       ~pp1:P2p_peer.Id.pp
       ("peer", P2p_peer.Id.encoding)
       ("direct", bool)
       ("outbound", bool)
+      ("bootstrap", bool)
 
   let disconnection =
     declare_1
@@ -108,7 +109,7 @@ module Events = struct
       ~pp2:GS.Topic.pp
       ~pp3:GS.Message_id.pp
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
       ("message_id", message_id_encoding)
 
   let subscribe =
@@ -120,7 +121,7 @@ module Events = struct
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
 
   let unsubscribe =
     declare_2
@@ -131,7 +132,7 @@ module Events = struct
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
 
   let graft =
     declare_2
@@ -142,7 +143,7 @@ module Events = struct
       ~pp1:P2p_peer.Id.pp
       ~pp2:GS.Topic.pp
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
 
   let prune =
     declare_4
@@ -155,7 +156,7 @@ module Events = struct
       ~pp3:Span.pp
       ~pp4:(Format.pp_print_list P2p_peer.Id.pp)
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
       ("backoff", span_encoding)
       ("px", list P2p_peer.Id.encoding)
 
@@ -170,7 +171,7 @@ module Events = struct
       ~pp2:GS.Topic.pp
       ~pp3:(Format.pp_print_list GS.Message_id.pp)
       ("peer", P2p_peer.Id.encoding)
-      ("topic", topic_encoding)
+      ("topic", Types.Topic.encoding)
       ("message_ids", list message_id_encoding)
 
   let iwant =
@@ -197,8 +198,8 @@ let event =
       | Leave topic -> emit leave topic)
   | P2P_input event -> (
       match event with
-      | New_connection {peer; direct; outbound} ->
-          emit new_connection (peer, direct, outbound)
+      | New_connection {peer; direct; outbound; bootstrap} ->
+          emit new_connection (peer, direct, outbound, bootstrap)
       | Disconnection {peer} -> emit disconnection peer
       | In_message {from_peer; p2p_message} -> (
           match p2p_message with

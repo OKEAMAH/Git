@@ -967,9 +967,8 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
         return result
     | Oxford_018 ->
         let*! c = get_previous_protocol_constants ctxt in
-        let*? max_bonus =
-          Issuance_bonus_repr.migrate_max_bonus_from_O_to_P
-            c.adaptive_issuance.adaptive_rewards_params.max_bonus
+        let max_bonus =
+          Issuance_bonus_repr.max_bonus_parameter_of_Q_exn Q.(5 // 100)
         in
 
         let cryptobox_parameters =
@@ -990,6 +989,16 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
               blocks_per_epoch = c.dal.blocks_per_epoch;
               cryptobox_parameters;
             }
+        in
+        (* This test prevents the activation of the protocol if the
+           set of parameters given for the DAL is invalid. *)
+        let*? () =
+          if dal.feature_enable then
+            match Dal.make cryptobox_parameters with
+            | Ok _cryptobox -> ok ()
+            | Error (`Fail explanation) ->
+                error (Dal_errors_repr.Dal_cryptobox_error {explanation})
+          else ok ()
         in
         (* When stitching from Oxford and after, [Raw_level_repr.root]
            should be replaced by the previous value, that is
@@ -1098,6 +1107,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
                 c.adaptive_issuance.edge_of_staking_over_delegation;
               launch_ema_threshold = c.adaptive_issuance.launch_ema_threshold;
               adaptive_rewards_params;
+              activation_vote_enable = false;
             }
         in
 

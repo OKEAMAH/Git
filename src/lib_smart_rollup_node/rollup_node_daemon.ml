@@ -106,7 +106,9 @@ let process_unseen_head ({node_ctxt; _} as state) ~catching_up ~predecessor
     when_ (Node_context.dal_supported node_ctxt) @@ fun () ->
     Plugin.Dal_slots_tracker.process_head node_ctxt (Layer1.head_of_header head)
   in
-  let* () = Plugin.L1_processing.process_l1_block_operations node_ctxt head in
+  let* () =
+    Plugin.L1_processing.process_l1_block_operations ~catching_up node_ctxt head
+  in
   (* Avoid storing and publishing commitments if the head is not final. *)
   (* Avoid triggering the pvm execution if this has been done before for
      this head. *)
@@ -415,7 +417,8 @@ let run ({node_ctxt; configuration; plugin; _} as state) =
   in
   let error_to_degraded_mode e =
     let*! () = Daemon_event.error e in
-    degraded_refutation_mode state
+    if node_ctxt.config.no_degraded then fatal_error_exit e
+    else degraded_refutation_mode state
   in
   let handle_preimage_not_found e =
     (* When running/initialising a rollup node with missing preimages

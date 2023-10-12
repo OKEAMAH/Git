@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Nomadic Labs. <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,23 +23,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/4621
+let socket_forwarding_dns = "octez-node-unix-socket"
 
-   Move types from Services.Types to this module.
-*)
+let socket_forwarding_uri = Format.sprintf "http://%s" socket_forwarding_dns
 
-(** Data kind stored in DAL. *)
-type kind = Commitment | Header_status | Slot_id | Slot | Profile
+let build_socket_redirection_ctx socket_path =
+  let resolver =
+    let h = Stdlib.Hashtbl.create 1 in
+    Stdlib.Hashtbl.add h socket_forwarding_dns (`Unix_domain_socket socket_path) ;
+    Resolver_lwt_unix.static h
+  in
+  Cohttp_lwt_unix.Client.custom_ctx ~resolver ()
 
-let kind_encoding : kind Data_encoding.t =
-  Data_encoding.string_enum
-    [
-      ("commitment", Commitment);
-      ("header_status", Header_status);
-      ("slot_id", Slot_id);
-      ("slot", Slot);
-      ("profile", Profile);
-    ]
-
-let kind_to_string data_kind =
-  Data_encoding.Binary.to_string_exn kind_encoding data_kind
+let callback server socket_path =
+  let callback (conn : Cohttp_lwt_unix.Server.conn) req body =
+    Tezos_rpc_http_server.RPC_server.resto_callback server conn req body
+  in
+  let forwarding_endpoint = Uri.of_string socket_forwarding_uri in
+  let on_forwarding req =
+    Rpc_process_event.(emit forwarding_rpc (Cohttp.Request.resource req))
+  in
+  let ctx = build_socket_redirection_ctx socket_path in
+  RPC_middleware.proxy_server_query_forwarder
+    ~ctx
+    ~on_forwarding
+    forwarding_endpoint
+    callback

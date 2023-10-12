@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Nomadic Labs. <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,13 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module defines functions that emit the events used by the layer 1 chain
-    (see {!Layer}). *)
+(** Type for the rpc process parameters received from the node *)
+type t = {
+  rpc : Config_file.rpc;
+  rpc_comm_socket_path : string;
+  internal_events : Tezos_base.Internal_event_config.t;
+  node_version : Tezos_version.Node_version.t;
+}
 
-val starting : unit -> unit Lwt.t
-
-val stopping : unit -> unit Lwt.t
-
-(** [switched_new_head hash level] emits the event that the layer 1 has notified
-    a new head with [hash] at some given [level]. *)
-val switched_new_head : Block_hash.t -> int32 -> unit Lwt.t
+(** Encoding for parameters type {!t} *)
+val parameters_encoding : t Data_encoding.t

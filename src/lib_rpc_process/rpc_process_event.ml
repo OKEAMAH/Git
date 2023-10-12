@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Nomadic Labs. <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,11 +23,25 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Data kind stored in DAL. *)
-type kind = Commitment | Header_status | Slot_id | Slot | Profile
+include Internal_event.Simple
 
-(** Encoding for values of type {!kind}. *)
-val kind_encoding : kind Data_encoding.t
+let section = ["rpc-process"]
 
-(** Convert the given value of type {!kind} to a raw string. *)
-val kind_to_string : kind -> string
+let starting_rpc_server =
+  declare_4
+    ~section
+    ~name:"starting_rpc_server"
+    ~msg:"starting RPC server on {host}:{port} (acl = {acl_policy})"
+    ~level:Notice
+    ("host", Data_encoding.string)
+    ("port", Data_encoding.uint16)
+    ("tls", Data_encoding.bool)
+    ("acl_policy", Data_encoding.string)
+
+let forwarding_rpc =
+  declare_1
+    ~section
+    ~name:"forwarding_rpc"
+    ~msg:"forwarding to the node : {uri}"
+    ~level:Debug
+    ("uri", Data_encoding.string)

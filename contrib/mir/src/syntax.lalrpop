@@ -10,6 +10,7 @@ use std::str::FromStr;
 use lalrpop_util::ParseError;
 
 use crate::ast::*;
+use crate::parser::validate_unescape_string;
 
 grammar;
 
@@ -18,18 +19,44 @@ match {
   _
 }
 
-number: i32 = <s:r"([+-]?)[0-9]+"> =>? i32::from_str(s)
+number: i128 = <s:r"([+-]?)[0-9]+"> =>? i128::from_str(s)
   .map_err(|_| ParseError::User { error : "parsing of numeric literal failed." } );
 
-usize: usize = {
-  <n:number> =>? usize::try_from(n)
-    .map_err(|_| ParseError::User { error : "argument is out of range." } )
-}
+u10: u16 = <s:r"([+-]?)[0-9]+"> =>? {
+    let res = u16::from_str(s)
+      .map_err(|_| ParseError::User { error : "Expected a natural from 0 to 1023 inclusive" } )?;
+    if res >= 1024 {
+      return Err(ParseError::User {
+        error: "Expected a natural from 0 to 1023 inclusive"
+      });
+    }
+    Ok(res)
+  };
 
-type_: Type = {
+pub string: String = <r#""(?:\\.|[^\\"])*""#> =>? validate_unescape_string(<>);
+
+atomic_type: Type = {
   "int"  => Type::Int,
   "nat"  => Type::Nat,
   "bool" => Type::Bool,
+  "mutez" => Type::Mutez,
+  "string" => Type::String,
+  "unit" => Type::Unit,
+}
+
+pair_args: Type = {
+    type_expr => <>,
+    type_expr pair_args => Type::new_pair(<>)
+}
+
+composite_type: Type = {
+    r"pair" <type_expr> <pair_args> => Type::new_pair(<>),
+}
+
+type_expr: Type = {
+    atomic_type => <>,
+    "(" <composite_type> ")" => <>,
+    "(" <type_expr> ")" => <>,
 }
 
 boolean: bool = {
@@ -38,26 +65,48 @@ boolean: bool = {
 }
 
 use Value::*;
-value: Value = {
+atomic_value: Value = {
   <n:number> => NumberValue(n),
-  <b:boolean> => BooleanValue(b)
+  <b:boolean> => BooleanValue(b),
+  <string> => StringValue(<>),
+  "Unit" => UnitValue,
+}
+
+pair_val_args: Value = {
+  value_expr => <>,
+  value_expr pair_val_args => Value::new_pair(<>)
+}
+
+composite_value: Value = {
+  "Pair" <value_expr> <pair_val_args> => Value::new_pair(<>),
+}
+
+value_expr: Value = {
+  atomic_value => <>,
+  "(" <composite_value> ")" => <>,
+  "(" <value_expr> ")" => <>,
 }
 
 use Instruction::*;
-instruction: Instruction = {
-  "PUSH" <t:type_> <v:value> => Push(t, v),
+instruction: ParsedInstruction = {
+  "PUSH" <type_expr> <value_expr> => Push(<>),
   "INT" => Int,
   "GT" => Gt,
   "LOOP" <ib: instructionBlock> => Loop(ib),
-  "DIP" <n:usize?> <ib: instructionBlock> => Dip(n, ib),
-  "ADD" => Add,
-  "DROP" <n:usize?> => Drop(n),
+  "DIP" <n:u10?> <ib: instructionBlock> => Dip(n, ib),
+  "ADD" => Add(()),
+  "DROP" <n:u10?> => Drop(n),
   "SWAP" => Swap,
   "IF" <t: instructionBlock> <f: instructionBlock> => If(t, f),
-  "DUP" <n:usize?> => Dup(n),
+  "DUP" <n:u10?> => Dup(n),
+  "FAILWITH" => Failwith,
+  "UNIT" => Unit,
+  "CAR" => Car,
+  "CDR" => Cdr,
+  "PAIR" => Pair,
 }
 
-instructionSeq: Vec<Instruction> = {
+instructionSeq: Vec<ParsedInstruction> = {
   <mut ib:(<instruction>";")*><i:instruction?> => {
     // A sequence of instruction-followed-by-a-semicolon matched by
     // `(<instruction>";")*` resulting in `Vec<instruction>` and bound to `ib`,
@@ -76,6 +125,6 @@ instructionSeq: Vec<Instruction> = {
   }
 }
 
-pub instructionBlock: InstructionBlock = {
+pub instructionBlock: ParsedInstructionBlock = {
   "{" <is:instructionSeq> "}" => is,
 }

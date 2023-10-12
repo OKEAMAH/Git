@@ -115,7 +115,7 @@ let z_type =
     seq =
       [
         {
-          (Helpers.default_attr_spec ~id:"has_more") with
+          (Helpers.default_attr_spec ~id:"has_tail") with
           dataType =
             DataType.(
               NumericType
@@ -142,20 +142,11 @@ let z_type =
             {
               ifExpr =
                 Some
-                  (UnaryOp
+                  (CastToType
                      {
-                       op = Not;
-                       operand =
-                         CastToType
-                           {
-                             value = Name "has_more";
-                             typeName =
-                               {
-                                 absolute = true;
-                                 names = ["bool"];
-                                 isArray = false;
-                               };
-                           };
+                       value = Name "has_tail";
+                       typeName =
+                         {absolute = true; names = ["bool"]; isArray = false};
                      });
               repeat =
                 RepeatUntil

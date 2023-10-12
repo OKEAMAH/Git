@@ -339,7 +339,9 @@ pub fn store_transaction_receipt<Host: Runtime>(
     let mut transaction_hashes_index = init_transaction_hashes_index()?;
     index_transaction_hash(host, &receipt.hash, &mut transaction_hashes_index)?;
     let receipt_path = receipt_path(&receipt.hash)?;
-    host.store_write_all(&receipt_path, &receipt.rlp_bytes())?;
+    let src: &[u8] = &receipt.rlp_bytes();
+    log!(host, Debug, "Storing receipt of size {}", src.len());
+    host.store_write_all(&receipt_path, src)?;
     Ok(())
 }
 
@@ -348,12 +350,20 @@ pub fn store_transaction_object<Host: Runtime>(
     object: &TransactionObject,
 ) -> Result<(), Error> {
     let object_path = object_path(&object.hash)?;
-    host.store_write_all(&object_path, &object.rlp_bytes())?;
+    let encoded: &[u8] = &object.rlp_bytes();
+    log!(
+        host,
+        Debug,
+        "Storing transaction object of size {}",
+        encoded.len()
+    );
+    host.store_write_all(&object_path, encoded)?;
     Ok(())
 }
 
 const CHUNKED_TRANSACTIONS: RefPath = RefPath::assert_from(b"/chunked_transactions");
 const CHUNKED_TRANSACTION_NUM_CHUNKS: RefPath = RefPath::assert_from(b"/num_chunks");
+const CHUNKED_HASHES: RefPath = RefPath::assert_from(b"/chunk_hashes");
 
 pub fn chunked_transaction_path(tx_hash: &TransactionHash) -> Result<OwnedPath, Error> {
     let hash = hex::encode(tx_hash);
@@ -366,6 +376,17 @@ fn chunked_transaction_num_chunks_path(
     chunked_transaction_path: &OwnedPath,
 ) -> Result<OwnedPath, Error> {
     concat(chunked_transaction_path, &CHUNKED_TRANSACTION_NUM_CHUNKS).map_err(Error::from)
+}
+
+pub fn chunked_hash_transaction_path(
+    chunked_hash: &[u8],
+    chunked_transaction_path: &OwnedPath,
+) -> Result<OwnedPath, Error> {
+    let hash = hex::encode(chunked_hash);
+    let raw_chunked_hash_key: Vec<u8> = format!("/{}", hash).into();
+    let chunked_hash_key = OwnedPath::try_from(raw_chunked_hash_key)?;
+    let chunked_hash_path = concat(&CHUNKED_HASHES, &chunked_hash_key)?;
+    concat(chunked_transaction_path, &chunked_hash_path).map_err(Error::from)
 }
 
 pub fn transaction_chunk_path(
@@ -383,8 +404,8 @@ fn is_transaction_complete<Host: Runtime>(
     num_chunks: u16,
 ) -> Result<bool, Error> {
     let n_subkeys = host.store_count_subkeys(chunked_transaction_path)? as u16;
-    // `n_subkeys` includes the key `num_chunks`
-    Ok(n_subkeys > num_chunks)
+    // `n_subkeys` includes `num_chunks` and `chunk_hashes` keys
+    Ok(n_subkeys >= num_chunks + 2)
 }
 
 fn chunked_transaction_num_chunks_by_path<Host: Runtime>(
@@ -508,10 +529,9 @@ pub fn create_chunked_transaction<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
     num_chunks: u16,
+    chunk_hashes: Vec<TransactionHash>,
 ) -> Result<(), Error> {
     let chunked_transaction_path = chunked_transaction_path(tx_hash)?;
-    let chunked_transaction_num_chunks_path =
-        chunked_transaction_num_chunks_path(&chunked_transaction_path)?;
 
     // A new chunked transaction creates the `../<tx_hash>/num_chunks`, if there
     // is at least one key, it was already created.
@@ -529,12 +549,21 @@ pub fn create_chunked_transaction<Host: Runtime>(
         return Ok(());
     }
 
+    let chunked_transaction_num_chunks_path =
+        chunked_transaction_num_chunks_path(&chunked_transaction_path)?;
     host.store_write(
         &chunked_transaction_num_chunks_path,
         &u16::to_le_bytes(num_chunks),
         0,
-    )
-    .map_err(Error::from)
+    )?;
+
+    for chunk_hash in chunk_hashes.iter() {
+        let chunk_hash_path =
+            chunked_hash_transaction_path(chunk_hash, &chunked_transaction_path)?;
+        host.store_write(&chunk_hash_path, &[0], 0)?
+    }
+
+    Ok(())
 }
 
 pub fn store_chain_id<Host: Runtime>(
@@ -779,7 +808,14 @@ pub fn store_block_in_progress<Host: Runtime>(
     host: &mut Host,
     block: &BlockInProgress,
 ) -> Result<(), anyhow::Error> {
-    host.store_write_all(&EVM_BLOCK_IN_PROGRESS, &block.rlp_bytes())
+    let bytes: &[u8] = &block.rlp_bytes();
+    log!(
+        host,
+        Debug,
+        "Storing Block in Progress of size {}",
+        bytes.len()
+    );
+    host.store_write_all(&EVM_BLOCK_IN_PROGRESS, bytes)
         .context("Failed to store BlockInProgress")
 }
 
@@ -789,6 +825,12 @@ pub fn read_block_in_progress<Host: Runtime>(
     let bytes = host
         .store_read_all(&EVM_BLOCK_IN_PROGRESS)
         .context("Failed to read stored BlockInProgress")?;
+    log!(
+        host,
+        Debug,
+        "Reading Block in Progress of size {}",
+        bytes.len()
+    );
     let decoder = Rlp::new(bytes.as_slice());
     BlockInProgress::decode(&decoder).context("Failed to decode stored BlockInProgress")
 }

@@ -24,16 +24,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module type PRINTABLE = sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-end
-
 module type ITERABLE = sig
   type t
 
-  include Compare.S with type t := t
+  include COMPARABLE with type t := t
 
   include PRINTABLE with type t := t
 
@@ -1080,7 +1074,12 @@ module type WORKER = sig
       layer. *)
   type p2p_input =
     | In_message of {from_peer : GS.Peer.t; p2p_message : p2p_message}
-    | New_connection of {peer : GS.Peer.t; direct : bool; outbound : bool}
+    | New_connection of {
+        peer : GS.Peer.t;
+        direct : bool;
+        outbound : bool;
+        bootstrap : bool;
+      }
     | Disconnection of {peer : GS.Peer.t}
 
   (** The different kinds of input events that could be received from the
@@ -1158,4 +1157,6 @@ module type WORKER = sig
 
   (** Pretty-printer for values of type {!app_output}. *)
   val pp_app_output : Format.formatter -> app_output -> unit
+
+  val state : t -> GS.Introspection.view
 end

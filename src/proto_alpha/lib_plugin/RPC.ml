@@ -28,7 +28,6 @@
 open Protocol
 open Environment
 open Alpha_context
-open Environment.Error_monad
 
 type version = Version_0 | Version_1
 
@@ -616,7 +615,7 @@ module Scripts = struct
       let rec unparse_stack :
           type a s.
           (a, s) Script_typed_ir.stack_ty * (a * s) ->
-          Script.expr list tzresult Lwt.t = function
+          Script.expr list Environment.Error_monad.tzresult Lwt.t = function
         | Bot_t, (EmptyCell, EmptyCell) -> return_nil
         | Item_t (ty, rest_ty), (v, rest) ->
             let* data, _ctxt =
@@ -653,7 +652,7 @@ module Scripts = struct
                 (fun (old_ctxt, l) (Log (ctxt, loc, stack, stack_ty)) ->
                   let consumed_gas = Gas.consumed ~since:old_ctxt ~until:ctxt in
                   let* stack =
-                    trace
+                    Environment.Error_monad.trace
                       Plugin_errors.Cannot_serialize_log
                       (unparse_stack ctxt (stack, stack_ty))
                   in
@@ -688,20 +687,19 @@ module Scripts = struct
       legacy:bool ->
       context ->
       Script.expr * Script.expr ->
-      context tzresult Lwt.t =
+      context Environment.Error_monad.tzresult Lwt.t =
     let open Lwt_result_syntax in
     fun ~legacy ctxt (data, exp_ty) ->
-      let*? res, ctxt =
-        record_trace
+      let*? Ex_ty exp_ty, ctxt =
+        Environment.Error_monad.record_trace
           (Script_tc_errors.Ill_formed_type (None, exp_ty, 0))
-          (Gas_monad.run ctxt
-          @@ Script_ir_translator.parse_passable_ty
-               ~legacy
-               (Micheline.root exp_ty))
+          (Script_ir_translator.parse_passable_ty
+             ctxt
+             ~legacy
+             (Micheline.root exp_ty))
       in
-      let*? (Ex_ty exp_ty) = res in
       let+ _, ctxt =
-        trace_eval
+        Environment.Error_monad.trace_eval
           (fun () ->
             let exp_ty = Script_ir_unparser.serialize_ty_for_error exp_ty in
             Script_tc_errors.Ill_typed_data (None, data, exp_ty))
@@ -813,23 +811,22 @@ module Scripts = struct
         context ->
         legacy:bool ->
         (Script.node * Script.node) list ->
-        (ex_stack * context) tzresult Lwt.t =
+        (ex_stack * context) Environment.Error_monad.tzresult Lwt.t =
       let open Lwt_result_syntax in
       fun ctxt ~legacy l ->
         match l with
         | [] -> return (Ex_stack (Bot_t, EmptyCell, EmptyCell), ctxt)
         | (ty_node, data_node) :: l ->
-            let*? res, ctxt =
-              Gas_monad.run ctxt
-              @@ Script_ir_translator.parse_ty
-                   ~legacy
-                   ~allow_lazy_storage:true
-                   ~allow_operation:true
-                   ~allow_contract:true
-                   ~allow_ticket:true
-                   ty_node
+            let*? Ex_ty ty, ctxt =
+              Script_ir_translator.parse_ty
+                ctxt
+                ~legacy
+                ~allow_lazy_storage:true
+                ~allow_operation:true
+                ~allow_contract:true
+                ~allow_ticket:true
+                ty_node
             in
-            let*? (Ex_ty ty) = res in
             let elab_conf = elab_conf ~legacy () in
             let* x, ctxt =
               Script_ir_translator.parse_data
@@ -849,16 +846,16 @@ module Scripts = struct
         (a, s) Script_typed_ir.stack_ty ->
         a ->
         s ->
-        ((Script.expr * Script.expr) list * context) tzresult Lwt.t =
+        ((Script.expr * Script.expr) list * context)
+        Environment.Error_monad.tzresult
+        Lwt.t =
       let open Lwt_result_syntax in
       let loc = Micheline.dummy_location in
       fun ctxt unparsing_mode sty x st ->
         match (sty, x, st) with
         | Bot_t, EmptyCell, EmptyCell -> return ([], ctxt)
         | Item_t (ty, sty), x, (y, st) ->
-            let*? ty_node, ctxt =
-              Gas_monad.run_pure ctxt @@ Script_ir_unparser.unparse_ty ~loc ty
-            in
+            let*? ty_node, ctxt = Script_ir_unparser.unparse_ty ~loc ctxt ty in
             let* data_node, ctxt =
               Script_ir_translator.unparse_data ctxt unparsing_mode ty x
             in
@@ -1036,13 +1033,14 @@ module Scripts = struct
       | ILog (_, _, _, _, instr) ->
           Format.fprintf fmt "log/%a" pp_instr_name instr
 
-  type error += Run_operation_does_not_support_consensus_operations
+  type Environment.Error_monad.error +=
+    | Run_operation_does_not_support_consensus_operations
 
   let () =
     let description =
       "The run_operation RPC does not support consensus operations."
     in
-    register_error_kind
+    Environment.Error_monad.register_error_kind
       `Permanent
       ~id:"run_operation_does_not_support_consensus_operations"
       ~title:"Run operation does not support consensus operations"
@@ -1068,7 +1066,7 @@ module Scripts = struct
       | Operation_data {contents = Single (Preattestation _); _}
       | Operation_data {contents = Single (Attestation _); _}
       | Operation_data {contents = Single (Dal_attestation _); _} ->
-          Result_syntax.tzfail
+          Environment.Error_monad.Result_syntax.tzfail
             Run_operation_does_not_support_consensus_operations
       | _ -> Result_syntax.return_unit
     in
@@ -1211,23 +1209,19 @@ module Scripts = struct
       let ctxt = Gas.set_unlimited ctxt in
       let legacy = false in
       let open Script_ir_translator in
-      let* {arg_type; _}, (_ctxt : context) = parse_toplevel ctxt expr in
-      let*? original_type_expr =
-        Gas_monad.run_unaccounted
-        @@
-        let open Gas_monad.Syntax in
-        let* (Ex_parameter_ty_and_entrypoints {arg_type; entrypoints}) =
-          parse_parameter_ty_and_entrypoints ~legacy arg_type
-        in
-        let+ (Ex_ty_cstr {original_type_expr; _}) =
-          Script_ir_translator.find_entrypoint
-            ~error_details:(Informative ())
-            arg_type
-            entrypoints
-            entrypoint
-        in
-        original_type_expr
+      let* {arg_type; _}, ctxt = parse_toplevel ctxt expr in
+      let*? Ex_parameter_ty_and_entrypoints {arg_type; entrypoints}, _ =
+        parse_parameter_ty_and_entrypoints ctxt ~legacy arg_type
       in
+      let*? r, _ctxt =
+        Gas_monad.run ctxt
+        @@ Script_ir_translator.find_entrypoint
+             ~error_details:(Informative ())
+             arg_type
+             entrypoints
+             entrypoint
+      in
+      let*? (Ex_ty_cstr {original_type_expr; _}) = r in
       return @@ Micheline.strip_locations original_type_expr
     in
     let script_view_type ctxt contract expr view =
@@ -1236,7 +1230,9 @@ module Scripts = struct
       let* {views; _}, _ = parse_toplevel ctxt expr in
       let*? view_name = Script_string.of_string view in
       match Script_map.get view_name views with
-      | None -> tzfail (View_helpers.View_not_found (contract, view))
+      | None ->
+          Environment.Error_monad.tzfail
+            (View_helpers.View_not_found (contract, view))
       | Some Script_typed_ir.{input_ty; output_ty; _} ->
           return (input_ty, output_ty)
     in
@@ -1413,7 +1409,8 @@ module Scripts = struct
           Option.fold
             ~some:Result_syntax.return
             ~none:
-              (Result_syntax.tzfail View_helpers.Viewed_contract_has_no_script)
+              (Environment.Error_monad.Result_syntax.tzfail
+                 View_helpers.Viewed_contract_has_no_script)
             script_opt
         in
         let*? decoded_script = Script_repr.(force_decode script.code) in
@@ -1676,11 +1673,9 @@ module Scripts = struct
           | None -> Gas.set_unlimited ctxt
           | Some gas -> Gas.set_limit ctxt gas
         in
-        let*? res, ctxt =
-          Gas_monad.run ctxt
-          @@ parse_packable_ty ~legacy:true (Micheline.root typ)
+        let*? Ex_ty typ, ctxt =
+          parse_packable_ty ctxt ~legacy:true (Micheline.root typ)
         in
-        let*? (Ex_ty typ) = res in
         let* data, ctxt =
           parse_data
             ctxt
@@ -1698,9 +1693,8 @@ module Scripts = struct
         let open Script_ir_translator in
         let legacy = Option.value ~default:false legacy in
         let ctxt = Gas.set_unlimited ctxt in
-        let*? (Ex_ty typ) =
-          Gas_monad.run_unaccounted
-          @@ Script_ir_translator.parse_any_ty ~legacy (Micheline.root typ)
+        let*? Ex_ty typ, ctxt =
+          Script_ir_translator.parse_any_ty ctxt ~legacy (Micheline.root typ)
         in
         let* data, ctxt =
           parse_data
@@ -1742,11 +1736,19 @@ module Scripts = struct
             (Micheline.root script)
         in
         normalized) ;
-    Registration.register0 ~chunked:true S.normalize_type (fun _ctxt () typ ->
+    Registration.register0 ~chunked:true S.normalize_type (fun ctxt () typ ->
         let open Script_typed_ir in
-        let*? (Ex_ty typ) =
-          Gas_monad.run_unaccounted
-          @@ Script_ir_translator.parse_any_ty ~legacy:true (Micheline.root typ)
+        let ctxt = Gas.set_unlimited ctxt in
+        (* Unfortunately, Script_ir_translator.parse_any_ty is not exported *)
+        let*? Ex_ty typ, _ctxt =
+          Script_ir_translator.parse_ty
+            ctxt
+            ~legacy:true
+            ~allow_lazy_storage:true
+            ~allow_operation:true
+            ~allow_contract:true
+            ~allow_ticket:true
+            (Micheline.root typ)
         in
         let normalized = Unparse_types.unparse_ty ~loc:() typ in
         return @@ Micheline.strip_locations normalized) ;
@@ -1770,10 +1772,9 @@ module Scripts = struct
         let ctxt = Gas.set_unlimited ctxt in
         let legacy = false in
         let open Script_ir_translator in
-        let* {arg_type; _}, (_ctxt : context) = parse_toplevel ctxt expr in
-        let*? (Ex_parameter_ty_and_entrypoints {arg_type; entrypoints}) =
-          Gas_monad.run_unaccounted
-          @@ parse_parameter_ty_and_entrypoints ~legacy arg_type
+        let* {arg_type; _}, ctxt = parse_toplevel ctxt expr in
+        let*? Ex_parameter_ty_and_entrypoints {arg_type; entrypoints}, _ =
+          parse_parameter_ty_and_entrypoints ctxt ~legacy arg_type
         in
         return
         @@
@@ -2231,9 +2232,11 @@ module Big_map = struct
         match types with
         | None -> raise Not_found
         | Some (_, value_type) -> (
-            let*? (Ex_ty value_type) =
-              Gas_monad.run_unaccounted
-              @@ parse_big_map_value_ty ~legacy:true (Micheline.root value_type)
+            let*? Ex_ty value_type, ctxt =
+              parse_big_map_value_ty
+                ctxt
+                ~legacy:true
+                (Micheline.root value_type)
             in
             let* _ctxt, value = Big_map.get_opt ctxt id key in
             match value with
@@ -3207,7 +3210,7 @@ module Parse = struct
         op.proto
     with
     | Some protocol_data -> return {shell = op.shell; protocol_data}
-    | None -> tzfail Plugin_errors.Cannot_parse_operation
+    | None -> Environment.Error_monad.error Plugin_errors.Cannot_parse_operation
 
   let register () =
     let open Lwt_result_syntax in
@@ -3831,7 +3834,8 @@ module Staking = struct
   let check_delegate_registered ctxt pkh =
     Delegate.registered ctxt pkh >>= function
     | true -> return_unit
-    | false -> tzfail (Delegate_services.Not_registered pkh)
+    | false ->
+        Environment.Error_monad.tzfail (Delegate_services.Not_registered pkh)
 
   let register () =
     Registration.register1 ~chunked:true S.stakers (fun ctxt pkh () () ->
@@ -3914,7 +3918,7 @@ let register () =
   Dal.register () ;
   Staking.register () ;
   Registration.register0 ~chunked:false S.current_level (fun ctxt q () ->
-      if q.offset < 0l then tzfail Negative_level_offset
+      if q.offset < 0l then Environment.Error_monad.tzfail Negative_level_offset
       else
         Lwt.return
           (Level.from_raw_with_offset
