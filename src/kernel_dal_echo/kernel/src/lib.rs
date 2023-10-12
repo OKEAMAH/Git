@@ -51,8 +51,8 @@ fn process_slot(
 pub fn entry(host: &mut impl Runtime) {
     // we use the current sandbox parameters
     let attestation_lag = 4;
-    let slot_size = 32768;
-    let page_size = 128;
+    let slot_size = 16384;
+    let page_size = 4096;
     let num_pages = slot_size / page_size;
 
     match host.read_input() {
