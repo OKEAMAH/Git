@@ -177,16 +177,22 @@ let artificial_delay_opt =
           None
       | Some d -> Some d)
 
-let apply_artificial_delay () =
-  let opt =
-    Option.map
-      (fun d ->
-        Baking_profiler.record_s
-          (Format.sprintf "sign delay (%s)" (string_of_float d))
-        @@ fun () -> Lwt.bind (Lwt_unix.sleep d) (fun () -> return_unit))
-      artificial_delay_opt
-  in
-  Option.value ~default:return_unit opt
+let sign_with_artificial_delay sign_f =
+  let open Lwt_syntax in
+  match artificial_delay_opt with
+  | None -> sign_f ()
+  | Some d ->
+      Baking_profiler.record_s
+        (Format.sprintf "sign with minimum %.2fs delay" d)
+      @@ fun () ->
+      let sign_t = sign_f () in
+      let delay_t = Lwt_unix.sleep d in
+      let sign_ignored_result_t =
+        let* _ = sign_t in
+        return_unit
+      in
+      let* () = Lwt.join [delay_t; sign_ignored_result_t] in
+      sign_t
 
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
@@ -425,9 +431,11 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
       state.global_state.constants.parametric
   in
   let* signed_block_header =
-    let* () = apply_artificial_delay () in
-    Baking_profiler.record_s "sign block header" @@ fun () ->
-    sign_block_header state consensus_key unsigned_block_header
+    let sign () =
+      Baking_profiler.record_s "sign block header" @@ fun () ->
+      sign_block_header state consensus_key unsigned_block_header
+    in
+    sign_with_artificial_delay sign
   in
   let* () =
     match seed_nonce_opt with
@@ -549,9 +557,11 @@ let inject_preattestations state ~preattestations =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   let* signed_operations =
-    let* () = apply_artificial_delay () in
-    Baking_profiler.record_s "sign preattestations" @@ fun () ->
-    sign_preattestations state ~preattestations
+    let sign () =
+      Baking_profiler.record_s "sign preattestations" @@ fun () ->
+      sign_preattestations state ~preattestations
+    in
+    sign_with_artificial_delay sign
   in
   (* TODO: add a RPC to inject multiple operations *)
   Baking_profiler.record_s "injecting preattestations" @@ fun () ->
@@ -720,9 +730,11 @@ let inject_attestations state ~attestations =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
   let* signed_operations =
-    let* () = apply_artificial_delay () in
-    Baking_profiler.record_s "sign attestations" @@ fun () ->
-    sign_attestations state attestations
+    let sign () =
+      Baking_profiler.record_s "sign attestations" @@ fun () ->
+      sign_attestations state attestations
+    in
+    sign_with_artificial_delay sign
   in
   (* TODO: add a RPC to inject multiple operations *)
   Baking_profiler.record_s "injecting attestations" @@ fun () ->
