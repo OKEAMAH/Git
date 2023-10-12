@@ -94,14 +94,6 @@ ground.bytes test
     type: s4
   - id: ground__bytes
     size: len_ground__bytes
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
 ground.string test
   $ ./codec.exe dump kaitai for ground.string
   meta:
@@ -112,14 +104,6 @@ ground.string test
     type: s4
   - id: ground__string
     size: len_ground__string
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
 ground.N test
   $ ./codec.exe dump kaitai for ground.N
   meta:
@@ -142,14 +126,6 @@ ground.N test
   seq:
   - id: ground__n
     type: n
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
 ground.Z test
   $ ./codec.exe dump kaitai for ground.Z
   meta:
@@ -179,11 +155,3 @@ ground.Z test
   seq:
   - id: ground__z
     type: z
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master
-<<<<<<< HEAD
-||||||| 6df094d33c
-=======
->>>>>>> master

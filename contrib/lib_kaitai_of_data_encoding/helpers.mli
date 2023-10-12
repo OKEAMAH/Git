@@ -56,7 +56,7 @@ val default_meta_spec : id:string -> MetaSpec.t
 
 (** [default_class_spec ~id] builds an default (empty) [ClassSpec.t].
 
-    @param ~id is added to meta section as [id].
+    @param [~id] is added to meta section as [id].
     @param [?description] is added into [doc] section as [summary]. *)
 val default_class_spec : id:string -> ?description:string -> unit -> ClassSpec.t
 
@@ -76,6 +76,7 @@ val add_uniq_assoc : (string * 'a) list -> string * 'a -> (string * 'a) list
     @param [?description] is used as [doc] section [summary].
     @param [?top_level] is used as [isTopLevel] (defaults to [false])
     @param [?enums] is added to class specification if present.
+    @param [?types] is added to class specification if present.
     @param [?instances] is added to class specification if present. *)
 val class_spec_of_attrs :
   id:string ->

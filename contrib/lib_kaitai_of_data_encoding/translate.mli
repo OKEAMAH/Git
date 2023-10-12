@@ -31,7 +31,7 @@ val escape_id : string -> string
 (** [from_data_encoding ~id ?description encoding] generates a
     formal description of [encoding] as a kaitai [ClassSpec].
 
-    @param [id] is escaped (no need to call [escape_id] and added to the "meta"
+    @param [id] is escaped (no need to call [escape_id]) and added to the "meta"
     section of the class-spec.
 
     @param [?description] is added to the "doc" section of the class-spec.  *)

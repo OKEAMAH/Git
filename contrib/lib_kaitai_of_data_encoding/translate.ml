@@ -420,7 +420,6 @@ let from_data_encoding :
   let encoding_name = escape_id id in
   match encoding.encoding with
   | Describe {encoding; description; id; _} ->
-      (* TODO: accumulate descriptions rather than replace it *)
       let enums, types, attrs =
         seq_field_of_data_encoding [] [] encoding id None
       in
