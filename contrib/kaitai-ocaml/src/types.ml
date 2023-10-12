@@ -115,6 +115,7 @@ module Ast = struct
     | Subscript {value; idx} ->
         Format.sprintf "%s[%s]" (to_string value) (to_string idx)
     | CastToType {value; typeName} ->
+        (* TODO: here and other cases: https://gitlab.com/tezos/tezos/-/issues/6487 *)
         Format.sprintf "%s.as<%s>" (to_string value) (typeId_to_string typeName)
     | EnumByLabel {enumName; label; inType} ->
         (* TODO: don't ignore inType *)

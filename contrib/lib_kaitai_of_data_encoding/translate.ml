@@ -205,18 +205,33 @@ let rec seq_field_of_data_encoding :
       (enums, types, seq)
   | List {length_limit = At_most _max_length; length_encoding = Some le; elts}
     ->
-      (* TODO: Add a guard for [?max_length]. *)
       let length_id = "number_of_elements_in_" ^ id in
-      let enums, types, attrs =
+      let enums, types, length_attrs =
         seq_field_of_data_encoding enums types le length_id tid_gen
       in
-      (* TODO: Big number length size not yet supported. *)
-      let () = assert (List.length attrs = 1) in
+      (* TODO: Big number length size not yet supported. We expect
+               [`Uint30/16/8] to produce only one attribute. *)
+      let () = assert (List.length length_attrs = 1) in
+      let elt_id = id ^ "_elt" in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types elts length_id tid_gen
+        seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      let types, attr = redirect_if_many types attrs Fun.id id in
-      (enums, types, attrs @ [attr])
+      let id_entries = id ^ "_entries" in
+      let ((_, user_type) as type_) =
+        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
+      in
+      let types = Helpers.add_uniq_assoc types type_ in
+      let attr =
+        {
+          (Helpers.default_attr_spec ~id) with
+          dataType = DataType.(ComplexDataType (UserType user_type));
+          size = None;
+          (* TODO: Add max length guard *)
+          cond =
+            {Helpers.cond_no_cond with repeat = RepeatExpr (Ast.Name length_id)};
+        }
+      in
+      (enums, types, length_attrs @ [attr])
   | List
       {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
     ->
