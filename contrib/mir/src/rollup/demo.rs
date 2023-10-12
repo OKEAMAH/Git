@@ -100,9 +100,13 @@ mod test_message_processing {
 
     #[test]
     fn test_external_message_processing_on_samples() {
+        // 0th value of the Fibonacci sequence is 0.
         test_on_sample(b"\x00", b"\0\0\0\0\0\0\0\0");
+        // 1st value of the Fibonacci sequence is 1.
         test_on_sample(b"\x01", b"\x01\0\0\0\0\0\0\0");
+        // 10th value of the Fibonacci sequence is 55.
         test_on_sample(&[10], &[55, 0, 0, 0, 0, 0, 0, 0]);
+        // 15th value of the Fibonacci sequence is 610 = 98 + 2*256.
         test_on_sample(&[15], &[98, 2, 0, 0, 0, 0, 0, 0]);
     }
 
