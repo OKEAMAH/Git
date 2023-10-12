@@ -5276,6 +5276,7 @@ end = struct
             ("test_tx_rollup_l2", N.(number >= 015 && number <= 016));
             ("test_adaptive_issuance", N.(number >= 018));
             ("test_adaptive_issuance_ema", N.(number >= 018));
+            ("test_percentage", N.(number >= 019));
           ]
           |> conditional_list
         in
