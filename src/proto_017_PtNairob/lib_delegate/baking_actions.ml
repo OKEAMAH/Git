@@ -163,16 +163,22 @@ let artificial_delay_opt =
           None
       | Some d -> Some d)
 
-let apply_artificial_delay () =
-  let opt =
-    Option.map
-      (fun d ->
-        Baking_profiler.record_s
-          (Format.sprintf "sign delay (%s)" (string_of_float d))
-        @@ fun () -> Lwt.bind (Lwt_unix.sleep d) (fun () -> return_unit))
-      artificial_delay_opt
-  in
-  Option.value ~default:return_unit opt
+let sign_with_artificial_delay sign_f =
+  let open Lwt_syntax in
+  match artificial_delay_opt with
+  | None -> sign_f ()
+  | Some d ->
+      Baking_profiler.record_s
+        (Format.sprintf "sign with minimum %.2fs delay" d)
+      @@ fun () ->
+      let sign_t = sign_f () in
+      let delay_t = Lwt_unix.sleep d in
+      let sign_ignored_result_t =
+        let* _ = sign_t in
+        return_unit
+      in
+      let* () = Lwt.join [delay_t; sign_ignored_result_t] in
+      sign_t
 
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
@@ -380,10 +386,11 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
-  let* () = apply_artificial_delay () in
-  Baking_profiler.record_s "sign block header" (fun () ->
-      sign_block_header state consensus_key unsigned_block_header)
-  >>=? fun signed_block_header ->
+  let sign () =
+    Baking_profiler.record_s "sign block header" @@ fun () ->
+    sign_block_header state consensus_key unsigned_block_header
+  in
+  sign_with_artificial_delay sign >>=? fun signed_block_header ->
   (match seed_nonce_opt with
   | None ->
       (* Nothing to do *)
@@ -472,8 +479,11 @@ let sign_preendorsements state preendorsements =
            Operation.unsigned_encoding
            unsigned_operation
        in
-       Baking_profiler.record_s "signing preendorsement" @@ fun () ->
-       Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
+       let sign () =
+         Baking_profiler.record_s "signing preendorsement" @@ fun () ->
+         Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
+       in
+       sign_with_artificial_delay sign
       else
         fail (Baking_highwatermarks.Block_previously_preendorsed {round; level}))
       >>= function
@@ -491,10 +501,11 @@ let sign_preendorsements state preendorsements =
 let inject_preendorsements state ~preendorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  apply_artificial_delay () >>=? fun () ->
-  Baking_profiler.record_s "sign preendorsements" (fun () ->
-      sign_preendorsements state preendorsements)
-  >>=? fun signed_operations ->
+  let sign () =
+    Baking_profiler.record_s "sign preendorsements" @@ fun () ->
+    sign_preendorsements state preendorsements
+  in
+  sign_with_artificial_delay sign >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   Baking_profiler.record_s "injecting preendorsements" @@ fun () ->
   List.iter_ep
@@ -639,10 +650,11 @@ let sign_dal_attestations state attestations =
 let inject_endorsements state ~endorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  apply_artificial_delay () >>=? fun () ->
-  Baking_profiler.record_s "sign endorsements" (fun () ->
-      sign_endorsements state endorsements)
-  >>=? fun signed_operations ->
+  let sign () =
+    Baking_profiler.record_s "sign endorsements" @@ fun () ->
+    sign_endorsements state endorsements
+  in
+  sign_with_artificial_delay sign >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   Baking_profiler.record_s "injecting endorsements" @@ fun () ->
   List.iter_ep
