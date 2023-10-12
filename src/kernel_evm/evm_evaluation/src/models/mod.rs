@@ -83,10 +83,16 @@ pub struct TestSuit(pub BTreeMap<String, TestUnit>);
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct TestUnit {
+    pub _info: Info,
     pub env: UnitEnv,
     pub pre: HashMap<B160, AccountInfo>,
     pub post: BTreeMap<SpecName, Vec<Test>>,
     pub transaction: TransactionParts,
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize)]
+pub struct Info {
+    pub source: String,
 }
 
 /// State test indexed state result deserialization.

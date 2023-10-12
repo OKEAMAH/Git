@@ -13,7 +13,7 @@ use tezos_smart_rollup_mock::MockHost;
 
 use hex_literal::hex;
 use primitives::{HashMap, SpecId, B160, B256};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::models::{Env, SpecName, TestSuit};
@@ -88,6 +88,7 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
     .into();
 
     for (name, unit) in suit.0.into_iter() {
+        println!("Source is: {}", unit._info.source);
         println!("Running unit test: {}", name);
         let mut host = MockHost::default();
         let precompiles = precompile_set::<MockHost>();
@@ -213,6 +214,8 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
                 pay_for_gas,
             ) {
                 Ok(execution_outcome_opt) => {
+                    println!("\nNo filler file for {:?}", path);
+
                     let outcome_status = match execution_outcome_opt {
                         Some(execution_outcome) => {
                             if execution_outcome.is_success {
@@ -223,6 +226,7 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
                         }
                         None => "[INVALID]",
                     };
+
                     println!("\nOutcome status: {}", outcome_status);
                     println!("\n=======> OK! <=======\n")
                 }
