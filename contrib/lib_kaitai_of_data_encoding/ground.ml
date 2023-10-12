@@ -65,14 +65,14 @@ let n_chunk_type =
           dataType =
             DataType.(
               NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndidan})));
+                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
         };
         {
           (Helpers.default_attr_spec ~id:"payload") with
           dataType =
             DataType.(
               NumericType
-                (Int_type (BitsType {width = 7; bit_endian = BigBitEndidan})));
+                (Int_type (BitsType {width = 7; bit_endian = BigBitEndian})));
         };
       ];
   }
@@ -119,21 +119,21 @@ let z_type =
           dataType =
             DataType.(
               NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndidan})));
+                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
         };
         {
           (Helpers.default_attr_spec ~id:"sign") with
           dataType =
             DataType.(
               NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndidan})));
+                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
         };
         {
           (Helpers.default_attr_spec ~id:"payload") with
           dataType =
             DataType.(
               NumericType
-                (Int_type (BitsType {width = 6; bit_endian = BigBitEndidan})));
+                (Int_type (BitsType {width = 6; bit_endian = BigBitEndian})));
         };
         {
           (Helpers.default_attr_spec ~id:"tail") with

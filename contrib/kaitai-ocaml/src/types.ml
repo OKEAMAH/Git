@@ -131,9 +131,9 @@ type processExpr =
   | ProcessCustom
 
 module BitEndianness = struct
-  type t = LittleBitEndian | BigBitEndidan
+  type t = LittleBitEndian | BigBitEndian
 
-  let to_string = function LittleBitEndian -> "le" | BigBitEndidan -> "be"
+  let to_string = function LittleBitEndian -> "le" | BigBitEndian -> "be"
 end
 
 module Endianness = struct
