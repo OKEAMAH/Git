@@ -109,6 +109,18 @@ let patch_script ctxt (address, hash, patched_code) =
         address ;
       return ctxt
 
+(* This removes snapshots and moves the current [staking_balance] one level
+   up. *)
+let migrate_staking_balance_for_p ctxt =
+  let open Lwt_result_syntax in
+  let* staking_balance_tree =
+    Raw_context.get_tree ctxt ["staking_balance"; "current"]
+  in
+  let*! ctxt =
+    Raw_context.add_tree ctxt ["staking_balance"] staking_balance_tree
+  in
+  return ctxt
+
 let prepare_first_block chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
   let open Lwt_result_syntax in
@@ -200,6 +212,7 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         let* ctxt =
           Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
         in
+        let* ctxt = migrate_staking_balance_for_p ctxt in
         return (ctxt, [])
   in
   let* ctxt =
