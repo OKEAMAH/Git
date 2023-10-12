@@ -525,6 +525,7 @@ module Make_s
     let open Lwt_syntax in
     if Mempool.is_empty delta_mempool then Lwt.return_unit
     else
+      Profiler.aggregate_s "advertise mempool" @@ fun () ->
       (* We only advertise newly classified operations. *)
       let mempool_to_advertise =
         Mempool.{delta_mempool with known_valid = delta_mempool.known_valid}
