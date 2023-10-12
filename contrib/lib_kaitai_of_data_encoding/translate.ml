@@ -203,10 +203,20 @@ let rec seq_field_of_data_encoding :
       in
       let seq = left @ right in
       (enums, types, seq)
-  | List
-      {length_limit = At_most _max_length; length_encoding = Some _le; elts = _}
+  | List {length_limit = At_most _max_length; length_encoding = Some le; elts}
     ->
-      failwith "list_with_length combinator not yet supported"
+      (* TODO: Add a guard for [?max_length]. *)
+      let length_id = "number_of_elements_in_" ^ id in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types le length_id tid_gen
+      in
+      (* TODO: Big number length size not yet supported. *)
+      let () = assert (List.length attrs = 1) in
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types elts length_id tid_gen
+      in
+      let types, attr = redirect_if_many types attrs Fun.id id in
+      (enums, types, attrs @ [attr])
   | List
       {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
     ->

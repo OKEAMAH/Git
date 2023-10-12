@@ -129,3 +129,63 @@ let%expect_test "test variable size list with max length" =
     type: list_with_length_entries
     repeat: eos
   |}]
+
+(* TODO: ?max_length guard is missing. *)
+let%expect_test "test list with length" =
+  let s =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:"list_with_length"
+      Data_encoding.(list_with_length `Uint30 uint8)
+  in
+  print_endline (Kaitai.Print.print s) ;
+  [%expect
+    {|
+  meta:
+    id: list_with_length
+    endian: be
+  seq:
+  - id: number_of_elements_in_list_with_length
+    type: u1
+  - id: list_with_length
+    type: u1
+  |}]
+
+(* TODO: ?max_length guard is missing. *)
+let%expect_test "test list with length" =
+  let s =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:"list_with_length"
+      Data_encoding.(list_with_length `Uint8 uint8)
+  in
+  print_endline (Kaitai.Print.print s) ;
+  [%expect
+    {|
+  meta:
+    id: list_with_length
+    endian: be
+  seq:
+  - id: number_of_elements_in_list_with_length
+    type: u1
+  - id: list_with_length
+    type: u1
+  |}]
+
+(* TODO: ?max_length guard is missing. *)
+let%expect_test "test list with length" =
+  let s =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:"list_with_length"
+      Data_encoding.(list_with_length `Uint16 uint8)
+  in
+  print_endline (Kaitai.Print.print s) ;
+  [%expect
+    {|
+  meta:
+    id: list_with_length
+    endian: be
+  seq:
+  - id: number_of_elements_in_list_with_length
+    type: u1
+  - id: list_with_length
+    type: u1
+  |}]
