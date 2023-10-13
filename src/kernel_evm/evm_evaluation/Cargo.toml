@@ -28,3 +28,5 @@ primitives = { package = "revm-primitives", version = "1.1.2", features = [
 # wasm32-unknown-unknown target is not supported by default
 # the following line is needed for the current workspace 
 getrandom = { version = "0.2", features = ["js"] }
+serde_yaml = "0.9.25"
+anyhow = "1.0"
