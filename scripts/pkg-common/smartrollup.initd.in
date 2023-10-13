@@ -38,7 +38,6 @@ nodeip=127.0.0.1
 rpcport=8732
 othercliopts_smartrollup=""
 
-[ -r /etc/octez/node.conf ] && . /etc/octez/node.conf
 [ -r /etc/octez/smartrollup.conf ] && . /etc/octez/smartrollup.conf
 
 [ -z "$endpoint" ] && endpoint="http://$nodeip:$rpcport"
