@@ -42,10 +42,10 @@ if ! [ -f "$codeowners" ]; then
 fi
 
 tezt() {
-    if ! [ -f "${root_dir}"_build/default/tezt/tests/main.exe ]; then
-        dune exec "${root_dir}"tezt/tests/main.exe -- "$@"
+    if ! [ -f "${root_dir}"/_build/default/tezt/tests/main.exe ]; then
+        ( cd "${root_dir}" && dune exec tezt/tests/main.exe -- "$@" )
     else
-        "${root_dir}"_build/default/tezt/tests/main.exe "$@"
+        "${root_dir}"/_build/default/tezt/tests/main.exe "$@"
     fi
 }
 
