@@ -1802,7 +1802,6 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false)
   let blocks_per_cycle =
     Option.value ~default:default_constants.blocks_per_cycle blocks_per_cycle
   in
-  let blocks_per_stake_snapshot = blocks_per_cycle in
   let issuance_weights =
     Protocol.Alpha_context.Constants.Parametric.
       {
@@ -1839,7 +1838,6 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false)
     cost_per_byte;
     adaptive_issuance;
     blocks_per_cycle;
-    blocks_per_stake_snapshot;
   }
 
 (** Initialization of scenarios with 3 cases:
