@@ -112,7 +112,7 @@ tests matched by any of the tags or the path prefixes associated to
 the test.
 
 
-For instance, a valid `CODEOWNERS.json` is:
+For instance, a valid `TESTOWNERS.json` is:
 
 ```json
 {
