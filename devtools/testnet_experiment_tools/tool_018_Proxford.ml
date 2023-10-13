@@ -53,7 +53,16 @@ class wrap_silent_memory_client (t : Client_context.full) :
     method! with_lock f = f ()
   end
 
-let load_client_context (cctxt : Protocol_client_context.full) =
+type ctxt_kind =
+  | Wrapped of Protocol_client_context.full
+  | Generic of Client_context.full
+
+let load_client_context (cctxt : ctxt_kind) =
+  let cctxt =
+    match cctxt with
+    | Wrapped x -> x
+    | Generic cctxt -> new Protocol_client_context.wrap_full cctxt
+  in
   let module DelegateMap = Signature.Public_key_hash.Map in
   let module Consensus_key_set = Set.Make (struct
     type t = Signature.Public_key.t * Signature.Public_key_hash.t
@@ -318,7 +327,7 @@ let sync_node (cctxt : Client_context.full) ?round_duration_target () =
     check_round_duration cctxt ?round_duration_target ()
   in
   Format.printf "Loading faked delegate keys@." ;
-  let* () = load_client_context cctxt in
+  let* () = load_client_context (Wrapped cctxt) in
   let* delegates = get_delegates cctxt in
   let* block_stream, current_proposal, stopper =
     get_current_proposal cctxt ()
@@ -954,6 +963,8 @@ let patch_block_time ctxt ~head_level ~block_time_target =
   return ctxt
 
 module Tool : Sigs.PROTO_TOOL = struct
+  let extract_client_context cctxt = load_client_context (Generic cctxt)
+
   let sync_node = sync_node
 
   let start_injector = start_injector
