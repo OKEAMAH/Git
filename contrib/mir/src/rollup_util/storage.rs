@@ -112,8 +112,11 @@ pub fn read_all(host: &impl Runtime, path: &impl Path) -> Option<Vec<u8>> {
 ///
 /// This is a high-level function. It is dedicated for writing entire,
 /// possibly large, values, but does not allow writing only a slice of data.
-pub fn write_all(host: &mut impl Runtime, path: &impl Path, content: &[u8]) {
-    host.store_write_all(path, content)
+pub fn write_all<T>(host: &mut impl Runtime, path: &impl Path, content: &T)
+where
+    T: AsRef<[u8]> + ?Sized,
+{
+    host.store_write_all(path, content.as_ref())
         .unwrap_or_else(|err| panic_with_runtime_err!(err))
 }
 
