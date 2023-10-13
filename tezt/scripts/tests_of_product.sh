@@ -8,14 +8,26 @@ root_dir="$(dirname "$tezt_dir")"
 
 if [ -n "${TRACE:-}" ]; then set -x; fi
 
+codeowners=${tezt_dir}/TESTOWNERS.json
+products() {
+    jq -r 'keys|join(", ")' < "$codeowners"
+}
+
 usage() {
     cat <<EOF
 Usage: $0 PRODUCT [PRODUCT ...]
 
-Prints the list of Tezt tests associated with PRODUCT(s).  Tests are
-printed in the TSV format used by Tezt's '--list-tsv', with an
-additional initial column containing the product name.
+Prints the list of Tezt tests associated with PRODUCT(s) as defined in
+'${codeowners#"$root_dir"/}'. Tests are printed in the TSV format used by Tezt's
+'--list-tsv', with an additional initial column containing the product
+name.
 EOF
+    products=$(products)
+    if [ -n "$products" ]; then
+        echo
+        echo "The defined set of products are: $products."
+    fi
+
     exit 1
 }
 
@@ -42,8 +54,7 @@ while [ "$#" -gt 0 ]; do
     shift
 
     if ! jq -e --arg product "$product" 'has($product)' < "$codeowners" > /dev/null ; then
-        products=$(jq -r 'keys|join(", ")' < "$codeowners")
-        echo "No product '$product' defined. Defined products: $products"
+        echo "No product '$product' defined. Defined products: $(products)"
         exit 1
     fi
 
