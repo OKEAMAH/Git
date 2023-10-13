@@ -197,3 +197,9 @@ include:
 
   # tezos-rust-sdk
   - local: .gitlab/ci/jobs/contrib/tezos_rust_sdk.yml
+
+  # kaitai-struct-files
+  - local: .gitlab/ci/jobs/contrib/kaitai_struct_files.yml
+
+  # tezos-rust-sdk
+  - local: .gitlab/ci/jobs/contrib/tezos_rust_sdk.yml
