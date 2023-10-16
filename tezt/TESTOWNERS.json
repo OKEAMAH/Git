@@ -12,7 +12,7 @@
         "path_prefixes": []
     },
     "etherlink": {
-        "tags": [],
+        "tags": ["refutation"],
         "path_prefixes": []
     }
 }
