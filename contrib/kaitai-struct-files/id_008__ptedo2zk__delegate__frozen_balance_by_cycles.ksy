@@ -7,10 +7,17 @@ types:
     - id: cycle
       type: s4
     - id: deposit
-      type: n
+      type: id_008__ptedo2zk__mutez
+      size: 10
     - id: fees
-      type: n
+      type: id_008__ptedo2zk__mutez
+      size: 10
     - id: rewards
+      type: id_008__ptedo2zk__mutez
+      size: 10
+  id_008__ptedo2zk__mutez:
+    seq:
+    - id: id_008__ptedo2zk__mutez
       type: n
   n:
     seq:

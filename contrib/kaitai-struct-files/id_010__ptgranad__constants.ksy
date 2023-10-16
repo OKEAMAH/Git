@@ -13,7 +13,8 @@ types:
   endorsement_reward_entries:
     seq:
     - id: id_010__ptgranad__mutez
-      type: n
+      type: id_010__ptgranad__mutez
+      size: 10
   baking_reward_per_endorsement:
     seq:
     - id: len_baking_reward_per_endorsement
@@ -23,6 +24,11 @@ types:
       size: len_baking_reward_per_endorsement
       repeat: eos
   baking_reward_per_endorsement_entries:
+    seq:
+    - id: id_010__ptgranad__mutez
+      type: id_010__ptgranad__mutez
+      size: 10
+  id_010__ptgranad__mutez:
     seq:
     - id: id_010__ptgranad__mutez
       type: n
@@ -95,23 +101,28 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: tokens_per_roll
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: michelson_maximum_type_size
   type: u2
 - id: seed_nonce_revelation_tip
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: origination_size
   type: s4
 - id: block_security_deposit
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: endorsement_security_deposit
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: baking_reward_per_endorsement
   type: baking_reward_per_endorsement
 - id: endorsement_reward
   type: endorsement_reward
 - id: cost_per_byte
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: hard_storage_limit_per_operation
   type: z
 - id: quorum_min
@@ -127,7 +138,8 @@ seq:
 - id: minimal_block_delay
   type: s8
 - id: liquidity_baking_subsidy
-  type: n
+  type: id_010__ptgranad__mutez
+  size: 10
 - id: liquidity_baking_sunset_level
   type: s4
 - id: liquidity_baking_escape_ema_threshold

@@ -2,6 +2,10 @@ meta:
   id: id_006__pscartha__delegate__frozen_balance
   endian: be
 types:
+  id_006__pscartha__mutez:
+    seq:
+    - id: id_006__pscartha__mutez
+      type: n
   n:
     seq:
     - id: n
@@ -16,8 +20,11 @@ types:
       type: b7be
 seq:
 - id: deposit
-  type: n
+  type: id_006__pscartha__mutez
+  size: 10
 - id: fees
-  type: n
+  type: id_006__pscartha__mutez
+  size: 10
 - id: rewards
-  type: n
+  type: id_006__pscartha__mutez
+  size: 10

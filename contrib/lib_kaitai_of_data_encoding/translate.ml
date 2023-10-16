@@ -322,9 +322,23 @@ let rec seq_field_of_data_encoding :
           id
       in
       (enums, types, [attr])
-  | Check_size {limit = _; encoding} ->
-      (* TODO: Add a guard for check size.*)
-      seq_field_of_data_encoding enums types encoding id tid_gen
+  | Check_size {limit; encoding} ->
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id tid_gen
+      in
+      let ((_, user_type) as type_) =
+        (id, Helpers.class_spec_of_attrs ~id attrs)
+      in
+      let checked_size_id = id ^ "_with_checked_size" in
+      let types = Helpers.add_uniq_assoc types type_ in
+      let attr =
+        {
+          (Helpers.default_attr_spec ~id:checked_size_id) with
+          dataType = DataType.(ComplexDataType (UserType user_type));
+          size = Some (Ast.IntNum limit);
+        }
+      in
+      (enums, types, [attr])
   | _ -> failwith "Not implemented"
 
 and seq_field_of_field :

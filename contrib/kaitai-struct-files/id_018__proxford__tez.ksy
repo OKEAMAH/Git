@@ -2,6 +2,10 @@ meta:
   id: id_018__proxford__tez
   endian: be
 types:
+  id_018__proxford__mutez:
+    seq:
+    - id: id_018__proxford__mutez
+      type: n
   n:
     seq:
     - id: n
@@ -16,4 +20,5 @@ types:
       type: b7be
 seq:
 - id: id_018__proxford__mutez
-  type: n
+  type: id_018__proxford__mutez
+  size: 10

@@ -2,6 +2,10 @@ meta:
   id: id_012__psithaca__tez
   endian: be
 types:
+  id_012__psithaca__mutez:
+    seq:
+    - id: id_012__psithaca__mutez
+      type: n
   n:
     seq:
     - id: n
@@ -16,4 +20,5 @@ types:
       type: b7be
 seq:
 - id: id_012__psithaca__mutez
-  type: n
+  type: id_012__psithaca__mutez
+  size: 10

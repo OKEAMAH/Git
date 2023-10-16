@@ -93,6 +93,11 @@ let%expect_test "test dynamic size list with max length" =
     id: list_with_length
     endian: be
   types:
+    list_with_length:
+      seq:
+      - id: list_with_length
+        type: list_with_length_entries
+        repeat: eos
     list_with_length_entries:
       seq:
       - id: list_with_length_elt
@@ -101,9 +106,8 @@ let%expect_test "test dynamic size list with max length" =
   - id: len_list_with_length
     type: s4
   - id: list_with_length
-    type: list_with_length_entries
+    type: list_with_length
     size: len_list_with_length
-    repeat: eos
   |}]
 
 (* TODO: ?max_length guard is missing. *)
@@ -111,7 +115,7 @@ let%expect_test "test variable size list with max length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
       ~id:"list_with_length"
-      Data_encoding.(Variable.list ?max_length:(Some 5) uint8)
+      Data_encoding.(Variable.list ?max_length:(Some 5) int32)
   in
   print_endline (Kaitai.Print.print s) ;
   [%expect
@@ -120,14 +124,19 @@ let%expect_test "test variable size list with max length" =
     id: list_with_length
     endian: be
   types:
+    list_with_length:
+      seq:
+      - id: list_with_length
+        type: list_with_length_entries
+        repeat: eos
     list_with_length_entries:
       seq:
       - id: list_with_length_elt
-        type: u1
+        type: s4
   seq:
-  - id: list_with_length
-    type: list_with_length_entries
-    repeat: eos
+  - id: list_with_length_with_checked_size
+    type: list_with_length
+    size: 20
   |}]
 
 (* TODO: ?max_length guard is missing. *)

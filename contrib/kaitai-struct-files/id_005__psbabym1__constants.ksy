@@ -2,6 +2,10 @@ meta:
   id: id_005__psbabym1__constants
   endian: be
 types:
+  id_005__psbabym1__mutez:
+    seq:
+    - id: id_005__psbabym1__mutez
+      type: n
   n:
     seq:
     - id: n
@@ -71,23 +75,30 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: tokens_per_roll
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: michelson_maximum_type_size
   type: u2
 - id: seed_nonce_revelation_tip
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: origination_size
   type: s4
 - id: block_security_deposit
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: endorsement_security_deposit
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: block_reward
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: endorsement_reward
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: cost_per_byte
-  type: n
+  type: id_005__psbabym1__mutez
+  size: 10
 - id: hard_storage_limit_per_operation
   type: z
 - id: test_chain_duration
