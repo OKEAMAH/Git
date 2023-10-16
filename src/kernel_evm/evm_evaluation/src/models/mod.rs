@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 mod deserializer;
-mod yaml_filler;
+pub mod yaml_filler;
 
 use bytes::Bytes;
 use primitive_types::U256;

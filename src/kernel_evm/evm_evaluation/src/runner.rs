@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::models::{Env, SpecName, TestSuit};
+use crate::models::yaml_filler::{read_filler, Filler};
 
 fn u256_to_h256(value: &U256) -> H256 {
     let mut ret = H256::zero();
@@ -88,7 +89,6 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
     .into();
 
     for (name, unit) in suit.0.into_iter() {
-        println!("Source is: {}", unit._info.source);
         println!("Running unit test: {}", name);
         let mut host = MockHost::default();
         let precompiles = precompile_set::<MockHost>();
@@ -214,7 +214,23 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
                 pay_for_gas,
             ) {
                 Ok(execution_outcome_opt) => {
-                    println!("\nNo filler file for {:?}", path);
+                    println!("Source is: {}", unit._info.source);
+
+                    let filler_source = unit._info.source.clone();
+
+                    if filler_source.ends_with("yml") {
+                        let path = "./tests/".to_owned() + &filler_source;
+
+                        println!("Reading yaml filler: {}", path);
+                        let yml = read_filler(&path);
+
+                        match yml {
+                            Ok(_) => println!("[YAML-FILLER-OK]... read ok"),
+                            Err(err) => println!("[YAML-FILLER-ERROR]... read error: {:?}", err),
+                        }
+                    } else {
+                        println!("Not a yaml filler: {}", filler_source);
+                    }
 
                     let outcome_status = match execution_outcome_opt {
                         Some(execution_outcome) => {
