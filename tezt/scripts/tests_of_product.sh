@@ -9,6 +9,11 @@ root_dir="$(dirname "$tezt_dir")"
 if [ -n "${TRACE:-}" ]; then set -x; fi
 
 testowners=${tezt_dir}/TESTOWNERS.json
+if ! [ -f "$testowners" ]; then
+    echo "Expected to find TESTOWNERS.json in ${tezt_dir}."
+    exit 1
+fi
+
 products() {
     jq -r 'keys|join(", ")' < "$testowners"
 }
@@ -33,12 +38,6 @@ EOF
 
 if [ "${1:-}" = "--help" ] || [ "$#" -lt 1 ] ; then
     usage
-fi
-
-testowners=${tezt_dir}/TESTOWNERS.json
-if ! [ -f "$testowners" ]; then
-    echo "No TESTOWNERS.json"
-    exit 1
 fi
 
 tezt() {
