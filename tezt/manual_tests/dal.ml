@@ -159,8 +159,8 @@ let scenario_on_teztnet =
     in
     (* prepare directories *)
     let working_dir = working_dir //> teztnet_network_day in
-    let data_l1 = working_dir //> "layer-1" in
-    let dal_producer = working_dir //> "dal-producer" in
+    let data_l1 = working_dir //> "layer1-data" in
+    let dal_producer = working_dir //> "dal-data" in
     let wallet = working_dir //> "wallet" in
 
     (* Start L1 node and wait until it's bootstrapped *)
