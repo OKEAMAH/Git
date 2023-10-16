@@ -73,13 +73,12 @@ let dal_distribution () =
 (** Start a layer 1 node on the given network, with the given data-dir and
     rpc-port if any. *)
 let start_layer_1_node ~network ?data_dir ?rpc_port ?net_port () =
-  let node = Node.create ?data_dir ?rpc_port ?net_port [] in
-  let* () =
-    Node.config_reset
-      node
-      [Network network; Synchronisation_threshold 1; Expected_pow 26]
+  let arguments =
+    [Node.Network network; Synchronisation_threshold 1; Expected_pow 26]
   in
-  let* () = Node.run node [] in
+  let node = Node.create ?data_dir ?rpc_port ?net_port arguments in
+  let* () = Node.config_reset node arguments in
+  let* () = Node.run node arguments in
   let* () = Node.wait_for_ready node in
   return node
 
