@@ -372,7 +372,7 @@ module Helpers = struct
       (Dal_node.rpc_port dal_node)
 
   let pad n message =
-    let padding = String.make n '\000' in
+    let padding = String.make n '.' in
     message ^ padding
 
   type slot = string
@@ -383,13 +383,15 @@ module Helpers = struct
       pad (slot_size - actual_slot_size) slot
     else slot
 
-  let content_of_slot slot =
-    (* We make the assumption that the content of a slot (for test
-       purpose only) does not contain two `\000` in a row. This
-       invariant is ensured by [make_slot]. *)
-    String.split_on_char '\000' slot
-    |> List.filter (fun str -> not (str = String.empty))
-    |> String.concat "\000"
+  let content_of_slot slot = slot
+  (*
+     (* We make the assumption that the content of a slot (for test
+        purpose only) does not contain two `\000` in a row. This
+        invariant is ensured by [make_slot]. *)
+     String.split_on_char '\000' slot
+     |> List.filter (fun str -> not (str = String.empty))
+     |> String.concat "\000"
+  *)
 
   let make_cryptobox
       ?(on_error =

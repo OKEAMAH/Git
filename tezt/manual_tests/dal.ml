@@ -248,9 +248,14 @@ let slots_injector_scenario ?publisher_sk ~airdropper_alias client dal_node
   let slot_size = dal_parameters.cryptobox.slot_size in
   (* Endless loop that injects slots *)
   let rec loop level =
-    let slot =
+    let _slot =
       sf "slot=%d/payload=%d" slot_index level |> Helpers.make_slot ~slot_size
     in
+    let slot =
+      "Hello, this is the smarter Smart Rollup that supports DAL "
+      |> Helpers.make_slot ~slot_size
+    in
+    Format.eprintf "@.@.@.%S@.@.@." (Helpers.content_of_slot slot) ;
     let* commitment, proof =
       Helpers.store_slot dal_node ~with_proof:true slot
     in
