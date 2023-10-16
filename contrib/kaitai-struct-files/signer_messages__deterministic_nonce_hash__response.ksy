@@ -4,10 +4,10 @@ meta:
 types:
   deterministic_nonce_hash:
     seq:
-    - id: len_deterministic_nonce_hash
+    - id: size_of_deterministic_nonce_hash
       type: s4
     - id: deterministic_nonce_hash
-      size: len_deterministic_nonce_hash
+      size: size_of_deterministic_nonce_hash
 seq:
 - id: deterministic_nonce_hash
   type: deterministic_nonce_hash

@@ -32,9 +32,9 @@ types:
     - id: payload
       type: b7be
 seq:
-- id: len_id_007__psdelph1__delegate__frozen_balance_by_cycles
+- id: size_of_id_007__psdelph1__delegate__frozen_balance_by_cycles
   type: s4
 - id: id_007__psdelph1__delegate__frozen_balance_by_cycles
   type: id_007__psdelph1__delegate__frozen_balance_by_cycles_entries
-  size: len_id_007__psdelph1__delegate__frozen_balance_by_cycles
+  size: size_of_id_007__psdelph1__delegate__frozen_balance_by_cycles
   repeat: eos

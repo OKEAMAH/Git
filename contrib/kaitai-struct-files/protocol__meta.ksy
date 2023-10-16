@@ -7,18 +7,18 @@ doc: ! >-
 types:
   modules:
     seq:
-    - id: len_modules
+    - id: size_of_modules
       type: s4
     - id: modules
       type: modules_entries
-      size: len_modules
+      size: size_of_modules
       repeat: eos
   modules_entries:
     seq:
-    - id: len_modules_elt
+    - id: size_of_modules_elt
       type: s4
     - id: modules_elt
-      size: len_modules_elt
+      size: size_of_modules_elt
 enums:
   bool:
     0: false

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: An address for locating peers.
 seq:
-- id: len_p2p_address
+- id: size_of_p2p_address
   type: s4
 - id: p2p_address
-  size: len_p2p_address
+  size: size_of_p2p_address

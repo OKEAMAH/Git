@@ -4,30 +4,20 @@ meta:
 types:
   endorsement_reward:
     seq:
-    - id: len_endorsement_reward
+    - id: size_of_endorsement_reward
       type: s4
     - id: endorsement_reward
-      type: endorsement_reward_entries
-      size: len_endorsement_reward
-      repeat: eos
-  endorsement_reward_entries:
-    seq:
-    - id: id_011__pthangz2__mutez
       type: id_011__pthangz2__mutez
-      size: 10
+      size: size_of_endorsement_reward
+      repeat: eos
   baking_reward_per_endorsement:
     seq:
-    - id: len_baking_reward_per_endorsement
+    - id: size_of_baking_reward_per_endorsement
       type: s4
     - id: baking_reward_per_endorsement
-      type: baking_reward_per_endorsement_entries
-      size: len_baking_reward_per_endorsement
-      repeat: eos
-  baking_reward_per_endorsement_entries:
-    seq:
-    - id: id_011__pthangz2__mutez
       type: id_011__pthangz2__mutez
-      size: 10
+      size: size_of_baking_reward_per_endorsement
+      repeat: eos
   id_011__pthangz2__mutez:
     seq:
     - id: id_011__pthangz2__mutez
@@ -59,28 +49,20 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks
+    - id: size_of_time_between_blocks
       type: s4
     - id: time_between_blocks
-      type: time_between_blocks_entries
-      size: len_time_between_blocks
-      repeat: eos
-  time_between_blocks_entries:
-    seq:
-    - id: time_between_blocks_elt
       type: s8
+      size: size_of_time_between_blocks
+      repeat: eos
   cache_layout:
     seq:
-    - id: len_cache_layout
+    - id: size_of_cache_layout
       type: s4
     - id: cache_layout
-      type: cache_layout_entries
-      size: len_cache_layout
-      repeat: eos
-  cache_layout_entries:
-    seq:
-    - id: cache_layout_elt
       type: s8
+      size: size_of_cache_layout
+      repeat: eos
 seq:
 - id: proof_of_work_nonce_size
   type: u1

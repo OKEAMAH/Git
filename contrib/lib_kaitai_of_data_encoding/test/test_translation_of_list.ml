@@ -18,14 +18,9 @@ let%expect_test "test fixed size list translation" =
   meta:
     id: list_of_uint8
     endian: be
-  types:
-    list_of_uint8_entries:
-      seq:
-      - id: list_of_uint8_elt
-        type: u1
   seq:
-  - id: list_of_uint8
-    type: list_of_uint8_entries
+  - id: list_of_uint8_entries
+    type: u1
     repeat: expr
     repeat-expr: 5
   |}]
@@ -42,14 +37,9 @@ let%expect_test "test variable size list translation" =
   meta:
     id: list_of_uint8
     endian: be
-  types:
-    list_of_uint8_entries:
-      seq:
-      - id: list_of_uint8_elt
-        type: u1
   seq:
-  - id: list_of_uint8
-    type: list_of_uint8_entries
+  - id: list_of_uint8_entries
+    type: u1
     repeat: eos
   |}]
 
@@ -65,17 +55,12 @@ let%expect_test "test dynamic size list translation" =
   meta:
     id: list_of_uint8
     endian: be
-  types:
-    list_of_uint8_entries:
-      seq:
-      - id: list_of_uint8_elt
-        type: u1
   seq:
-  - id: len_list_of_uint8
+  - id: size_of_list_of_uint8
     type: s4
   - id: list_of_uint8
-    type: list_of_uint8_entries
-    size: len_list_of_uint8
+    type: u1
+    size: size_of_list_of_uint8
     repeat: eos
   |}]
 
@@ -95,19 +80,15 @@ let%expect_test "test dynamic size list with max length" =
   types:
     list_with_length:
       seq:
-      - id: list_with_length
-        type: list_with_length_entries
-        repeat: eos
-    list_with_length_entries:
-      seq:
-      - id: list_with_length_elt
+      - id: list_with_length_entries
         type: u1
+        repeat: eos
   seq:
-  - id: len_list_with_length
+  - id: size_of_list_with_length
     type: s4
   - id: list_with_length
     type: list_with_length
-    size: len_list_with_length
+    size: size_of_list_with_length
   |}]
 
 (* TODO: ?max_length guard is missing. *)
@@ -126,13 +107,9 @@ let%expect_test "test variable size list with max length" =
   types:
     list_with_length:
       seq:
-      - id: list_with_length
-        type: list_with_length_entries
-        repeat: eos
-    list_with_length_entries:
-      seq:
-      - id: list_with_length_elt
+      - id: list_with_length_entries
         type: s4
+        repeat: eos
   seq:
   - id: list_with_length_with_checked_size
     type: list_with_length
@@ -152,16 +129,11 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
-  types:
-    list_with_length_entries:
-      seq:
-      - id: list_with_length_elt
-        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: s4
-  - id: list_with_length
-    type: list_with_length_entries
+  - id: list_with_length_entries
+    type: u1
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]
@@ -179,16 +151,11 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
-  types:
-    list_with_length_entries:
-      seq:
-      - id: list_with_length_elt
-        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: u1
-  - id: list_with_length
-    type: list_with_length_entries
+  - id: list_with_length_entries
+    type: u1
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]
@@ -206,16 +173,11 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
-  types:
-    list_with_length_entries:
-      seq:
-      - id: list_with_length_elt
-        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: u2
-  - id: list_with_length
-    type: list_with_length_entries
+  - id: list_with_length_entries
+    type: u1
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]

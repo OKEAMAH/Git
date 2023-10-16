@@ -4,16 +4,12 @@ meta:
 types:
   cache_layout:
     seq:
-    - id: len_cache_layout
+    - id: size_of_cache_layout
       type: s4
     - id: cache_layout
-      type: cache_layout_entries
-      size: len_cache_layout
-      repeat: eos
-  cache_layout_entries:
-    seq:
-    - id: cache_layout_elt
       type: s8
+      size: size_of_cache_layout
+      repeat: eos
 seq:
 - id: proof_of_work_nonce_size
   type: u1

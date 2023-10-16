@@ -10,16 +10,16 @@ types:
       type: storage
   storage:
     seq:
-    - id: len_storage
+    - id: size_of_storage
       type: s4
     - id: storage
-      size: len_storage
+      size: size_of_storage
   code:
     seq:
-    - id: len_code
+    - id: size_of_code
       type: s4
     - id: code
-      size: len_code
+      size: size_of_code
 seq:
 - id: id_016__ptmumbai__scripted__contracts
   type: id_016__ptmumbai__scripted__contracts

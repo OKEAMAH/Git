@@ -28,22 +28,18 @@ types:
       size: 32
   fitness:
     seq:
-    - id: len_fitness
+    - id: size_of_fitness
       type: s4
     - id: fitness
-      type: fitness_entries
-      size: len_fitness
-      repeat: eos
-  fitness_entries:
-    seq:
-    - id: fitness__elem
       type: fitness__elem
+      size: size_of_fitness
+      repeat: eos
   fitness__elem:
     seq:
-    - id: len_fitness__elem
+    - id: size_of_fitness__elem
       type: s4
     - id: fitness__elem
-      size: len_fitness__elem
+      size: size_of_fitness__elem
 seq:
 - id: block_header__shell
   type: block_header__shell

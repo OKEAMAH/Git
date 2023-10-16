@@ -4,10 +4,10 @@ meta:
 types:
   deterministic_nonce:
     seq:
-    - id: len_deterministic_nonce
+    - id: size_of_deterministic_nonce
       type: s4
     - id: deterministic_nonce
-      size: len_deterministic_nonce
+      size: size_of_deterministic_nonce
 seq:
 - id: deterministic_nonce
   type: deterministic_nonce

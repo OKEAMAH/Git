@@ -33,16 +33,12 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks
+    - id: size_of_time_between_blocks
       type: s4
     - id: time_between_blocks
-      type: time_between_blocks_entries
-      size: len_time_between_blocks
-      repeat: eos
-  time_between_blocks_entries:
-    seq:
-    - id: time_between_blocks_elt
       type: s8
+      size: size_of_time_between_blocks
+      repeat: eos
 seq:
 - id: preserved_cycles
   type: u1

@@ -10,9 +10,9 @@ types:
     - id: replacement_protocol
       size: 32
 seq:
-- id: len_user_activated__upgrades
+- id: size_of_user_activated__upgrades
   type: s4
 - id: user_activated__upgrades
   type: user_activated__upgrades_entries
-  size: len_user_activated__upgrades
+  size: size_of_user_activated__upgrades
   repeat: eos

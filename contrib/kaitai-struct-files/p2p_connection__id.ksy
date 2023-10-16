@@ -5,10 +5,10 @@ doc: The identifier for a p2p connection. It includes an address and a port numb
 types:
   p2p_address:
     seq:
-    - id: len_p2p_address
+    - id: size_of_p2p_address
       type: s4
     - id: p2p_address
-      size: len_p2p_address
+      size: size_of_p2p_address
 enums:
   bool:
     0: false

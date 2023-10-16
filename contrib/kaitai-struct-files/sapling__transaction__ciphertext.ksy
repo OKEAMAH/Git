@@ -4,10 +4,10 @@ meta:
 types:
   payload_enc:
     seq:
-    - id: len_payload_enc
+    - id: size_of_payload_enc
       type: s4
     - id: payload_enc
-      size: len_payload_enc
+      size: size_of_payload_enc
 seq:
 - id: cv
   size: 32

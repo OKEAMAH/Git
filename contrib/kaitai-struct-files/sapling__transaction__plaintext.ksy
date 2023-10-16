@@ -4,10 +4,10 @@ meta:
 types:
   memo:
     seq:
-    - id: len_memo
+    - id: size_of_memo
       type: s4
     - id: memo
-      size: len_memo
+      size: size_of_memo
 seq:
 - id: diversifier
   size: 11

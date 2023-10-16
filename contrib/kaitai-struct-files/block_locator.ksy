@@ -3,17 +3,13 @@ meta:
   endian: be
 doc: ! "A sparse block locator \xE0 la Bitcoin"
 types:
-  history_entries:
-    seq:
-    - id: block_hash
-      size: 32
   current_head:
     seq:
-    - id: len_current_head
+    - id: size_of_current_head
       type: s4
     - id: current_head
       type: block_header
-      size: len_current_head
+      size: size_of_current_head
       doc: ! 'Block header: Block header. It contains both shell and protocol specific
         data.'
   block_header:
@@ -51,25 +47,21 @@ types:
       size: 32
   fitness:
     seq:
-    - id: len_fitness
+    - id: size_of_fitness
       type: s4
     - id: fitness
-      type: fitness_entries
-      size: len_fitness
-      repeat: eos
-  fitness_entries:
-    seq:
-    - id: fitness__elem
       type: fitness__elem
+      size: size_of_fitness
+      repeat: eos
   fitness__elem:
     seq:
-    - id: len_fitness__elem
+    - id: size_of_fitness__elem
       type: s4
     - id: fitness__elem
-      size: len_fitness__elem
+      size: size_of_fitness__elem
 seq:
 - id: current_head
   type: current_head
 - id: history
-  type: history_entries
+  size: 32
   repeat: eos

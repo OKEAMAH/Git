@@ -5,11 +5,11 @@ doc: The environment a protocol relies on and the components a protocol is made 
 types:
   components:
     seq:
-    - id: len_components
+    - id: size_of_components
       type: s4
     - id: components
       type: components_entries
-      size: len_components
+      size: size_of_components
       repeat: eos
   components_entries:
     seq:
@@ -25,22 +25,22 @@ types:
       type: implementation
   implementation:
     seq:
-    - id: len_implementation
+    - id: size_of_implementation
       type: s4
     - id: implementation
-      size: len_implementation
+      size: size_of_implementation
   interface:
     seq:
-    - id: len_interface
+    - id: size_of_interface
       type: s4
     - id: interface
-      size: len_interface
+      size: size_of_interface
   name:
     seq:
-    - id: len_name
+    - id: size_of_name
       type: s4
     - id: name
-      size: len_name
+      size: size_of_name
 enums:
   bool:
     0: false

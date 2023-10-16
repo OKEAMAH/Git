@@ -202,64 +202,60 @@ let rec seq_field_of_data_encoding :
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      let id_entries = id ^ "_entries" in
-      let ((_, user_type) as type_) =
-        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
-      in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        {
-          (Helpers.default_attr_spec ~id) with
-          dataType = DataType.(ComplexDataType (UserType user_type));
-          size = None;
-          (* TODO: Add max length guard *)
-          cond =
-            {Helpers.cond_no_cond with repeat = RepeatExpr (Ast.Name length_id)};
-        }
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr ->
+            {
+              attr with
+              cond =
+                {
+                  Helpers.cond_no_cond with
+                  repeat = RepeatExpr (Ast.Name length_id);
+                };
+            })
+          (id ^ "_entries")
       in
       (enums, types, length_attrs @ [attr])
   | List
       {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
     ->
+      (* TODO: comment expalining why assert false *)
       assert false
   | List {length_limit; length_encoding = None; elts} ->
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      let id_entries = id ^ "_entries" in
-      let ((_, user_type) as type_) =
-        (id_entries, Helpers.class_spec_of_attrs ~id:id_entries attrs)
-      in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        match length_limit with
-        | No_limit ->
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-              size = None;
-              (* TODO: [(size_of_type elts) * limit ] ? *)
-              cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-            }
-        | At_most _max_length ->
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-              size = None;
-              (* TODO: Add max length guard *)
-              cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-            }
-        | Exactly exact_length ->
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = DataType.(ComplexDataType (UserType user_type));
-              cond =
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr ->
+            match length_limit with
+            | No_limit ->
                 {
-                  Helpers.cond_no_cond with
-                  repeat = RepeatExpr (Ast.IntNum exact_length);
-                };
-            }
+                  attr with
+                  (* TODO: [(size_of_type elts) * limit ] ? *)
+                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+                }
+            | At_most _max_length ->
+                {
+                  attr with
+                  (* TODO: Add max length guard *)
+                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+                }
+            | Exactly exact_length ->
+                {
+                  attr with
+                  cond =
+                    {
+                      Helpers.cond_no_cond with
+                      repeat = RepeatExpr (Ast.IntNum exact_length);
+                    };
+                })
+          (id ^ "_entries")
       in
       (enums, types, [attr])
   | Obj f -> seq_field_of_field enums types f

@@ -7,10 +7,10 @@ doc: ! >-
 types:
   distributed_db_version__name:
     seq:
-    - id: len_distributed_db_version__name
+    - id: size_of_distributed_db_version__name
       type: s4
     - id: distributed_db_version__name
-      size: len_distributed_db_version__name
+      size: size_of_distributed_db_version__name
 seq:
 - id: chain_name
   type: distributed_db_version__name

@@ -19,10 +19,10 @@ types:
       size: 24
   payload_enc:
     seq:
-    - id: len_payload_enc
+    - id: size_of_payload_enc
       type: s4
     - id: payload_enc
-      size: len_payload_enc
+      size: size_of_payload_enc
 seq:
 - id: cm
   size: 32

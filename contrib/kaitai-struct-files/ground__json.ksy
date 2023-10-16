@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: JSON values
 seq:
-- id: len_ground__json
+- id: size_of_ground__json
   type: s4
 - id: ground__json
-  size: len_ground__json
+  size: size_of_ground__json
