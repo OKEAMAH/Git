@@ -205,10 +205,10 @@ let%expect_test "test nested object translation" =
   types:
     protocol_hash:
       seq:
-      - id: len_protocol_hash
+      - id: size_of_protocol_hash
         type: s4
       - id: protocol_hash
-        size: len_protocol_hash
+        size: size_of_protocol_hash
   seq:
   - id: replaced_protocol
     type: protocol_hash

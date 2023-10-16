@@ -90,20 +90,20 @@ ground.bytes test
     id: ground__bytes
     endian: be
   seq:
-  - id: len_ground__bytes
+  - id: size_of_ground__bytes
     type: s4
   - id: ground__bytes
-    size: len_ground__bytes
+    size: size_of_ground__bytes
 ground.string test
   $ ./codec.exe dump kaitai for ground.string
   meta:
     id: ground__string
     endian: be
   seq:
-  - id: len_ground__string
+  - id: size_of_ground__string
     type: s4
   - id: ground__string
-    size: len_ground__string
+    size: size_of_ground__string
 ground.N test
   $ ./codec.exe dump kaitai for ground.N
   meta:

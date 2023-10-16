@@ -45,6 +45,10 @@ let summary ~title ~description =
   | None, (Some _ as s) | (Some _ as s), None -> s
   | Some t, Some d -> Some (t ^ ": " ^ d)
 
+(* when an encoding has id [x],
+   then the attr for its size has id [size_id_of_id x] *)
+let size_id_of_id id = "size_of_" ^ id
+
 let redirect_if_many :
     Ground.Type.assoc ->
     AttrSpec.t list ->
@@ -130,13 +134,13 @@ let rec seq_field_of_data_encoding :
   | Bytes (`Fixed n, _) -> (enums, types, [Ground.Attr.bytes ~id (Fixed n)])
   | Bytes (`Variable, _) -> (enums, types, [Ground.Attr.bytes ~id Variable])
   | Dynamic_size {kind; encoding = {encoding = Bytes (`Variable, _); _}} ->
-      let size_id = "len_" ^ id in
+      let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       (enums, types, [size_attr; Ground.Attr.bytes ~id (Dynamic size_id)])
   | String (`Fixed n, _) -> (enums, types, [Ground.Attr.string ~id (Fixed n)])
   | String (`Variable, _) -> (enums, types, [Ground.Attr.string ~id Variable])
   | Dynamic_size {kind; encoding = {encoding = String (`Variable, _); _}} ->
-      let size_id = "len_" ^ id in
+      let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       (enums, types, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
   | Padded (encoding, pad) ->
@@ -269,13 +273,13 @@ let rec seq_field_of_data_encoding :
       let seq = left @ right in
       (enums, types, seq)
   | Dynamic_size {kind; encoding} ->
-      let len_id = "len_" ^ id in
-      let len_attr =
+      let size_id = size_id_of_id id in
+      let size_attr =
         match kind with
         | `N -> failwith "Not implemented"
-        | `Uint30 -> Ground.Attr.uint30 ~id:len_id
-        | `Uint16 -> Ground.Attr.uint16 ~id:len_id
-        | `Uint8 -> Ground.Attr.uint8 ~id:len_id
+        | `Uint30 -> Ground.Attr.uint30 ~id:size_id
+        | `Uint16 -> Ground.Attr.uint16 ~id:size_id
+        | `Uint8 -> Ground.Attr.uint8 ~id:size_id
       in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id tid_gen
@@ -284,10 +288,10 @@ let rec seq_field_of_data_encoding :
         redirect_if_many
           types
           attrs
-          (fun attr -> {attr with size = Some (Ast.Name len_id)})
+          (fun attr -> {attr with size = Some (Ast.Name size_id)})
           id
       in
-      (enums, types, [len_attr; attr])
+      (enums, types, [size_attr; attr])
   | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
       seq_field_of_data_encoding enums types encoding id tid_gen
   | Describe {encoding; id; description; title} ->
