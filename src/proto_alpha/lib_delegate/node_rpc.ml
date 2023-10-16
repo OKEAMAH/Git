@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -30,7 +31,12 @@ open Baking_state
 module Block_services = Block_services.Make (Protocol) (Protocol)
 module Events = Baking_events.Node_rpc
 
-module Profiler = (val Profiler.wrap Baking_profiler.node_rpc_profiler)
+module Profiler = struct
+  include (val Profiler.wrap Baking_profiler.node_rpc_profiler)
+
+  let reset_block_section =
+    Baking_profiler.create_reset_block_section Baking_profiler.node_rpc_profiler
+end
 
 let inject_block cctxt ?(force = false) ~chain signed_block_header operations =
   let signed_shell_header_bytes =
@@ -295,9 +301,8 @@ let monitor_valid_proposals cctxt ~chain ?cache () =
   in
   let stream =
     let map (_chain_id, block_hash, block_header, operations) =
-      Profiler.record_s
-        ("received valid proposal " ^ Block_hash.to_short_b58check block_hash)
-      @@ fun () ->
+      Profiler.reset_block_section block_hash ;
+      Profiler.record_s "received valid proposal" @@ fun () ->
       let*! map_result =
         proposal cctxt ?cache ~operations ~chain block_hash block_header
       in
@@ -319,9 +324,8 @@ let monitor_heads cctxt ~chain ?cache () =
   in
   let stream =
     let map (block_hash, block_header) =
-      Profiler.record_s
-        ("received new head " ^ Block_hash.to_short_b58check block_hash)
-      @@ fun () ->
+      Profiler.reset_block_section block_hash ;
+      Profiler.record_s "received new head" @@ fun () ->
       let*! map_result = proposal cctxt ?cache ~chain block_hash block_header in
       match map_result with
       | Ok proposal -> Lwt.return_some proposal
