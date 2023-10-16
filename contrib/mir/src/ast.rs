@@ -20,6 +20,7 @@ pub enum Type {
     String,
     Unit,
     Pair(Box<Type>, Box<Type>),
+    Option(Box<Type>),
 }
 
 impl Type {
@@ -34,11 +35,16 @@ impl Type {
             Type::String => 1,
             Type::Unit => 1,
             Type::Pair(l, r) => 1 + l.size_for_gas() + r.size_for_gas(),
+            Type::Option(x) => 1 + x.size_for_gas(),
         }
     }
 
     pub fn new_pair(l: Self, r: Self) -> Self {
         Self::Pair(Box::new(l), Box::new(r))
+    }
+
+    pub fn new_option(x: Self) -> Self {
+        Self::Option(Box::new(x))
     }
 }
 
@@ -49,11 +55,38 @@ pub enum Value {
     StringValue(String),
     UnitValue,
     PairValue(Box<Value>, Box<Value>),
+    OptionValue(Option<Box<Value>>),
 }
 
 impl Value {
     pub fn new_pair(l: Self, r: Self) -> Self {
         Self::PairValue(Box::new(l), Box::new(r))
+    }
+
+    pub fn new_option(x: Option<Self>) -> Self {
+        Self::OptionValue(x.map(Box::new))
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum TypedValue {
+    Int(i128),
+    Nat(u128),
+    Mutez(i64),
+    Bool(bool),
+    String(String),
+    Unit,
+    Pair(Box<TypedValue>, Box<TypedValue>),
+    Option(Option<Box<TypedValue>>),
+}
+
+impl TypedValue {
+    pub fn new_pair(l: Self, r: Self) -> Self {
+        Self::Pair(Box::new(l), Box::new(r))
+    }
+
+    pub fn new_option(x: Option<Self>) -> Self {
+        Self::Option(x.map(Box::new))
     }
 }
 
@@ -61,6 +94,7 @@ pub type ParsedInstructionBlock = Vec<ParsedInstruction>;
 
 pub trait Stage {
     type AddMeta;
+    type PushValue;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -71,15 +105,18 @@ pub enum Instruction<T: Stage> {
     Dup(Option<u16>),
     Gt,
     If(Vec<Instruction<T>>, Vec<Instruction<T>>),
+    IfNone(Vec<Instruction<T>>, Vec<Instruction<T>>),
     Int,
     Loop(Vec<Instruction<T>>),
-    Push(Type, Value),
+    Push(T::PushValue),
     Swap,
     Failwith,
     Unit,
     Car,
     Cdr,
     Pair,
+    /// `ISome` because `Some` is already taken
+    ISome,
 }
 
 pub type ParsedAST = Vec<ParsedInstruction>;

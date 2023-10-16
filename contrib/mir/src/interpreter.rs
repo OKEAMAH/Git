@@ -13,7 +13,7 @@ use crate::stack::*;
 pub enum InterpretError {
     OutOfGas,
     MutezOverflow,
-    FailedWith(Value),
+    FailedWith(TypedValue),
 }
 
 impl From<OutOfGas> for InterpretError {
@@ -46,41 +46,40 @@ fn interpret_one(
     gas: &mut Gas,
     stack: &mut IStack,
 ) -> Result<(), InterpretError> {
-    use Instruction::*;
-    use Value::*;
+    use Instruction as I;
+    use TypedValue as V;
 
     match i {
-        Add(overload) => match overload {
-            // NB: branches are temporarily unified because representation is
-            // the same, this is subject to change.
-            overloads::Add::IntInt | overloads::Add::NatNat => match stack.as_slice() {
-                [.., NumberValue(o2), NumberValue(o1)] => {
+        I::Add(overload) => match overload {
+            overloads::Add::IntInt => match stack.as_slice() {
+                [.., V::Int(o2), V::Int(o1)] => {
                     gas.consume(interpret_cost::add_int(*o1, *o2)?)?;
                     let sum = *o1 + *o2;
-                    stack.drop_top(2);
-                    stack.push(NumberValue(sum));
+                    stack.pop();
+                    stack[0] = V::Int(sum);
+                }
+                _ => unreachable_state(),
+            },
+            overloads::Add::NatNat => match stack.as_slice() {
+                [.., V::Nat(o2), V::Nat(o1)] => {
+                    gas.consume(interpret_cost::add_int(*o1, *o2)?)?;
+                    let sum = *o1 + *o2;
+                    stack.pop();
+                    stack[0] = V::Nat(sum);
                 }
                 _ => unreachable_state(),
             },
             overloads::Add::MutezMutez => match stack.as_slice() {
-                [.., NumberValue(o2), NumberValue(o1)] => {
-                    use crate::typechecker::MAX_TEZ;
-
+                [.., V::Mutez(o2), V::Mutez(o1)] => {
                     gas.consume(interpret_cost::ADD_TEZ)?;
-                    if (*o1 > MAX_TEZ) || (*o2 > MAX_TEZ) {
-                        return Err(InterpretError::MutezOverflow);
-                    }
-                    let sum = *o1 + *o2;
-                    if sum > MAX_TEZ {
-                        return Err(InterpretError::MutezOverflow);
-                    }
-                    stack.drop_top(2);
-                    stack.push(NumberValue(sum));
+                    let sum = o1.checked_add(*o2).ok_or(InterpretError::MutezOverflow)?;
+                    stack.pop();
+                    stack[0] = V::Mutez(sum);
                 }
                 _ => unreachable_state(),
             },
         },
-        Dip(opt_height, nested) => {
+        I::Dip(opt_height, nested) => {
             gas.consume(interpret_cost::dip(*opt_height)?)?;
             let protected_height: u16 = opt_height.unwrap_or(1);
             let mut protected = stack.split_off(protected_height as usize);
@@ -88,28 +87,28 @@ fn interpret_one(
             gas.consume(interpret_cost::undip(protected_height)?)?;
             stack.append(&mut protected);
         }
-        Drop(opt_height) => {
+        I::Drop(opt_height) => {
             gas.consume(interpret_cost::drop(*opt_height)?)?;
             let drop_height: usize = opt_height.unwrap_or(1) as usize;
             stack.drop_top(drop_height);
         }
-        Dup(opt_height) => {
+        I::Dup(opt_height) => {
             gas.consume(interpret_cost::dup(*opt_height)?)?;
             let dup_height: usize = opt_height.unwrap_or(1) as usize;
             stack.push(stack[dup_height - 1].clone());
         }
-        Gt => {
+        I::Gt => {
             gas.consume(interpret_cost::GT)?;
             match stack.as_slice() {
-                [.., NumberValue(i)] => {
-                    stack[0] = BooleanValue(*i > 0);
+                [.., V::Int(i)] => {
+                    stack[0] = V::Bool(*i > 0);
                 }
                 _ => unreachable_state(),
             }
         }
-        If(nested_t, nested_f) => {
+        I::If(nested_t, nested_f) => {
             gas.consume(interpret_cost::IF)?;
-            if let Some(BooleanValue(b)) = stack.pop() {
+            if let Some(V::Bool(b)) = stack.pop() {
                 if b {
                     interpret(nested_t, gas, stack)?;
                 } else {
@@ -119,17 +118,33 @@ fn interpret_one(
                 unreachable_state();
             }
         }
-        Instruction::Int => match stack.as_slice() {
-            [.., NumberValue(_)] => gas.consume(interpret_cost::INT_NAT)?,
+        I::IfNone(when_none, when_some) => {
+            gas.consume(interpret_cost::IF_NONE)?;
+            match stack.pop() {
+                Some(V::Option(x)) => match x {
+                    Some(x) => {
+                        stack.push(*x);
+                        interpret(when_some, gas, stack)?
+                    }
+                    None => interpret(when_none, gas, stack)?,
+                },
+                _ => unreachable_state(),
+            }
+        }
+        I::Int => match stack.as_slice() {
+            [.., V::Nat(i)] => {
+                gas.consume(interpret_cost::INT_NAT)?;
+                stack[0] = V::Int(*i as _);
+            }
             _ => {
                 unreachable_state();
             }
         },
-        Loop(nested) => {
+        I::Loop(nested) => {
             gas.consume(interpret_cost::LOOP_ENTER)?;
             loop {
                 gas.consume(interpret_cost::LOOP)?;
-                if let Some(BooleanValue(b)) = stack.pop() {
+                if let Some(V::Bool(b)) = stack.pop() {
                     if b {
                         interpret(nested, gas, stack)?;
                     } else {
@@ -141,40 +156,47 @@ fn interpret_one(
                 }
             }
         }
-        Push(_, v) => {
+        I::Push(v) => {
             gas.consume(interpret_cost::PUSH)?;
             stack.push(v.clone());
         }
-        Swap => {
+        I::Swap => {
             gas.consume(interpret_cost::SWAP)?;
             stack.swap(0, 1);
         }
-        Failwith => match stack.pop() {
+        I::Failwith => match stack.pop() {
             Some(x) => return Err(InterpretError::FailedWith(x)),
             None => unreachable_state(),
         },
-        Unit => {
+        I::Unit => {
             gas.consume(interpret_cost::UNIT)?;
-            stack.push(Value::UnitValue);
+            stack.push(V::Unit);
         }
-        Car => {
+        I::Car => {
             gas.consume(interpret_cost::CAR)?;
             match stack.pop() {
-                Some(Value::PairValue(l, _)) => stack.push(*l),
+                Some(V::Pair(l, _)) => stack.push(*l),
                 _ => unreachable_state(),
             }
         }
-        Cdr => {
+        I::Cdr => {
             gas.consume(interpret_cost::CDR)?;
             match stack.pop() {
-                Some(Value::PairValue(_, r)) => stack.push(*r),
+                Some(V::Pair(_, r)) => stack.push(*r),
                 _ => unreachable_state(),
             }
         }
-        Pair => {
+        I::Pair => {
             gas.consume(interpret_cost::PAIR)?;
             match (stack.pop(), stack.pop()) {
-                (Some(l), Some(r)) => stack.push(Value::new_pair(l, r)),
+                (Some(l), Some(r)) => stack.push(V::new_pair(l, r)),
+                _ => unreachable_state(),
+            }
+        }
+        I::ISome => {
+            gas.consume(interpret_cost::SOME)?;
+            match stack.pop() {
+                v @ Some(..) => stack.push(V::new_option(v)),
                 _ => unreachable_state(),
             }
         }
@@ -186,12 +208,12 @@ fn interpret_one(
 mod interpreter_tests {
     use super::*;
     use Instruction::*;
-    use Value::*;
+    use TypedValue as V;
 
     #[test]
     fn test_add() {
-        let mut stack = stk![NumberValue(10), NumberValue(20)];
-        let expected_stack = stk![NumberValue(30)];
+        let mut stack = stk![V::Nat(10), V::Nat(20)];
+        let expected_stack = stk![V::Nat(30)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Add(overloads::Add::NatNat), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -199,16 +221,16 @@ mod interpreter_tests {
 
     #[test]
     fn test_add_mutez() {
-        let mut stack = stk![NumberValue(2i128.pow(62)), NumberValue(20)];
+        let mut stack = stk![V::Mutez(2i64.pow(62)), V::Mutez(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Add(overloads::Add::MutezMutez), &mut gas, &mut stack).is_ok());
         assert_eq!(gas.milligas(), Gas::default().milligas() - 20);
-        assert_eq!(stack, stk![NumberValue(2i128.pow(62) + 20)]);
+        assert_eq!(stack, stk![V::Mutez(2i64.pow(62) + 20)]);
         assert_eq!(
             interpret_one(
                 &Add(overloads::Add::MutezMutez),
                 &mut gas,
-                &mut stk![NumberValue(2i128.pow(62)), NumberValue(2i128.pow(62))]
+                &mut stk![V::Mutez(2i64.pow(62)), V::Mutez(2i64.pow(62))]
             ),
             Err(InterpretError::MutezOverflow)
         );
@@ -216,7 +238,10 @@ mod interpreter_tests {
             interpret_one(
                 &Add(overloads::Add::MutezMutez),
                 &mut gas,
-                &mut stk![NumberValue(2i128.pow(63) - 1), NumberValue(1)]
+                &mut stk![
+                    V::Mutez((2u64.pow(63) - 1).try_into().unwrap()),
+                    V::Mutez(1)
+                ]
             ),
             Err(InterpretError::MutezOverflow)
         );
@@ -224,7 +249,10 @@ mod interpreter_tests {
             interpret_one(
                 &Add(overloads::Add::MutezMutez),
                 &mut gas,
-                &mut stk![NumberValue(1), NumberValue(2i128.pow(63) - 1)]
+                &mut stk![
+                    V::Mutez(1),
+                    V::Mutez((2u64.pow(63) - 1).try_into().unwrap())
+                ]
             ),
             Err(InterpretError::MutezOverflow)
         );
@@ -232,8 +260,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_dip() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(25), NumberValue(10)];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(25), V::Nat(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Dip(None, vec![Add(overloads::Add::NatNat)]),
@@ -246,17 +274,17 @@ mod interpreter_tests {
 
     #[test]
     fn test_dip2() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(5), NumberValue(10)];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(5), V::Nat(10)];
         let mut gas = Gas::default();
-        assert!(interpret_one(&Dip(Some(2), vec![Drop(None)]), &mut gas, &mut stack,).is_ok());
+        assert!(interpret_one(&Dip(Some(2), vec![Drop(None)]), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
     }
 
     #[test]
     fn test_drop() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), NumberValue(5)];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20), V::Nat(5)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Drop(None), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -264,8 +292,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_drop2() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20)];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Drop(Some(2)), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -273,13 +301,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_dup() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![
-            NumberValue(20),
-            NumberValue(5),
-            NumberValue(10),
-            NumberValue(10),
-        ];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20), V::Nat(5), V::Nat(10), V::Nat(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Dup(None), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -287,13 +310,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_dup2() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), NumberValue(10)];
-        let expected_stack = stk![
-            NumberValue(20),
-            NumberValue(5),
-            NumberValue(10),
-            NumberValue(5),
-        ];
+        let mut stack = stk![V::Nat(20), V::Nat(5), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20), V::Nat(5), V::Nat(10), V::Nat(5)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Dup(Some(2)), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -301,8 +319,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_gt() {
-        let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), BooleanValue(true)];
+        let mut stack = stk![V::Int(20), V::Int(10)];
+        let expected_stack = stk![V::Int(20), V::Bool(true)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Gt, &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -310,8 +328,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_if_t() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20)];
+        let mut stack = stk![V::Int(20), V::Int(5), V::Bool(true)];
+        let expected_stack = stk![V::Int(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &If(vec![Drop(None)], vec![Add(overloads::Add::IntInt)]),
@@ -324,8 +342,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_if_f() {
-        let mut stack = stk![NumberValue(20), NumberValue(5), BooleanValue(false)];
-        let expected_stack = stk![NumberValue(25)];
+        let mut stack = stk![V::Int(20), V::Int(5), V::Bool(false)];
+        let expected_stack = stk![V::Int(25)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &If(vec![Drop(None)], vec![Add(overloads::Add::IntInt)]),
@@ -338,8 +356,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_int() {
-        let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), NumberValue(10)];
+        let mut stack = stk![V::Nat(20), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20), V::Int(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Int, &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -347,23 +365,23 @@ mod interpreter_tests {
 
     #[test]
     fn test_push() {
-        let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(20), NumberValue(10), NumberValue(0)];
+        let mut stack = stk![V::Nat(20), V::Nat(10)];
+        let expected_stack = stk![V::Nat(20), V::Nat(10), V::Nat(0)];
         let mut gas = Gas::default();
-        assert!(interpret_one(&Push(Type::Nat, NumberValue(0)), &mut gas, &mut stack).is_ok());
+        assert!(interpret_one(&Push(V::Nat(0)), &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
     }
 
     #[test]
     fn test_loop_0() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(false)];
-        let expected_stack = stk![NumberValue(20), NumberValue(10)];
+        let mut stack = stk![V::Nat(20), V::Nat(10), V::Bool(false)];
+        let expected_stack = stk![V::Nat(20), V::Nat(10)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Loop(vec![
-                Push(Type::Nat, NumberValue(1)),
+                Push(V::Nat(1)),
                 Add(overloads::Add::NatNat),
-                Push(Type::Bool, BooleanValue(false))
+                Push(V::Bool(false))
             ]),
             &mut gas,
             &mut stack,
@@ -374,14 +392,14 @@ mod interpreter_tests {
 
     #[test]
     fn test_loop_1() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20), NumberValue(11)];
+        let mut stack = stk![V::Nat(20), V::Nat(10), V::Bool(true)];
+        let expected_stack = stk![V::Nat(20), V::Nat(11)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Loop(vec![
-                Push(Type::Nat, NumberValue(1)),
+                Push(V::Nat(1)),
                 Add(overloads::Add::NatNat),
-                Push(Type::Bool, BooleanValue(false))
+                Push(V::Bool(false))
             ]),
             &mut gas,
             &mut stack,
@@ -392,12 +410,12 @@ mod interpreter_tests {
 
     #[test]
     fn test_loop_many() {
-        let mut stack = stk![NumberValue(20), NumberValue(10), BooleanValue(true)];
-        let expected_stack = stk![NumberValue(20), NumberValue(0)];
+        let mut stack = stk![V::Nat(20), V::Int(10), V::Bool(true)];
+        let expected_stack = stk![V::Nat(20), V::Int(0)];
         let mut gas = Gas::default();
         assert!(interpret_one(
             &Loop(vec![
-                Push(Type::Int, NumberValue(-1)),
+                Push(V::Int(-1)),
                 Add(overloads::Add::IntInt),
                 Dup(None),
                 Gt
@@ -411,8 +429,8 @@ mod interpreter_tests {
 
     #[test]
     fn test_swap() {
-        let mut stack = stk![NumberValue(20), NumberValue(10)];
-        let expected_stack = stk![NumberValue(10), NumberValue(20)];
+        let mut stack = stk![V::Nat(20), V::Int(10)];
+        let expected_stack = stk![V::Int(10), V::Nat(20)];
         let mut gas = Gas::default();
         assert!(interpret_one(&Swap, &mut gas, &mut stack).is_ok());
         assert_eq!(stack, expected_stack);
@@ -421,8 +439,8 @@ mod interpreter_tests {
     #[test]
     fn test_failwith() {
         assert_eq!(
-            interpret_one(&Failwith, &mut Gas::default(), &mut stk![NumberValue(20)]),
-            Err(InterpretError::FailedWith(NumberValue(20)))
+            interpret_one(&Failwith, &mut Gas::default(), &mut stk![V::Nat(20)]),
+            Err(InterpretError::FailedWith(V::Nat(20)))
         );
     }
 
@@ -431,27 +449,23 @@ mod interpreter_tests {
         let mut stack = stk![];
         assert_eq!(
             interpret(
-                &vec![Push(Type::String, Value::StringValue("foo".to_owned()))],
+                &vec![Push(V::String("foo".to_owned()))],
                 &mut Gas::default(),
                 &mut stack
             ),
             Ok(())
         );
-        assert_eq!(stack, stk![Value::StringValue("foo".to_owned())]);
+        assert_eq!(stack, stk![V::String("foo".to_owned())]);
     }
 
     #[test]
     fn push_unit_value() {
         let mut stack = stk![];
         assert_eq!(
-            interpret(
-                &vec![Push(Type::Unit, Value::UnitValue)],
-                &mut Gas::default(),
-                &mut stack
-            ),
+            interpret(&vec![Push(V::Unit)], &mut Gas::default(), &mut stack),
             Ok(())
         );
-        assert_eq!(stack, stk![Value::UnitValue]);
+        assert_eq!(stack, stk![V::Unit]);
     }
 
     #[test]
@@ -459,7 +473,7 @@ mod interpreter_tests {
         let mut stack = stk![];
         let mut gas = Gas::default();
         assert!(interpret(&vec![Unit], &mut gas, &mut stack).is_ok());
-        assert_eq!(stack, stk![Value::UnitValue]);
+        assert_eq!(stack, stk![V::Unit]);
         assert_eq!(
             gas.milligas(),
             Gas::default().milligas() - interpret_cost::UNIT - interpret_cost::INTERPRET_RET
@@ -471,24 +485,38 @@ mod interpreter_tests {
         let mut stack = stk![];
         let mut gas = Gas::default();
         assert!(interpret(
-            &vec![Push(
-                Type::new_pair(Type::Int, Type::new_pair(Type::Nat, Type::Bool)),
-                Value::new_pair(
-                    Value::NumberValue(-5),
-                    Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
-                )
-            )],
+            &vec![Push(V::new_pair(
+                V::Int(-5),
+                V::new_pair(V::Nat(3), V::Bool(false))
+            ))],
             &mut gas,
             &mut stack
         )
         .is_ok());
         assert_eq!(
             stack,
-            stk![Value::new_pair(
-                Value::NumberValue(-5),
-                Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
+            stk![V::new_pair(
+                V::Int(-5),
+                V::new_pair(V::Nat(3), V::Bool(false))
             )]
         );
+        assert_eq!(
+            gas.milligas(),
+            Gas::default().milligas() - interpret_cost::PUSH - interpret_cost::INTERPRET_RET
+        );
+    }
+
+    #[test]
+    fn push_option() {
+        let mut stack = stk![];
+        let mut gas = Gas::default();
+        assert!(interpret(
+            &vec![Push(V::new_option(Some(V::Int(-5))))],
+            &mut gas,
+            &mut stack
+        )
+        .is_ok());
+        assert_eq!(stack, stk![V::new_option(Some(V::Int(-5)))]);
         assert_eq!(
             gas.milligas(),
             Gas::default().milligas() - interpret_cost::PUSH - interpret_cost::INTERPRET_RET
@@ -501,20 +529,17 @@ mod interpreter_tests {
         let mut gas = Gas::default();
         assert!(interpret(
             &vec![
-                Push(
-                    Type::new_pair(Type::Int, Type::new_pair(Type::Nat, Type::Bool)),
-                    Value::new_pair(
-                        Value::NumberValue(-5),
-                        Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
-                    )
-                ),
+                Push(V::new_pair(
+                    V::Int(-5),
+                    V::new_pair(V::Nat(3), V::Bool(false))
+                )),
                 Car
             ],
             &mut gas,
             &mut stack
         )
         .is_ok());
-        assert_eq!(stack, stk![Value::NumberValue(-5)]);
+        assert_eq!(stack, stk![V::Int(-5)]);
         assert_eq!(
             gas.milligas(),
             Gas::default().milligas()
@@ -530,20 +555,17 @@ mod interpreter_tests {
         let mut gas = Gas::default();
         assert!(interpret(
             &vec![
-                Push(
-                    Type::new_pair(Type::new_pair(Type::Nat, Type::Bool), Type::Int),
-                    Value::new_pair(
-                        Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false)),
-                        Value::NumberValue(-5),
-                    )
-                ),
+                Push(V::new_pair(
+                    V::new_pair(V::Nat(3), V::Bool(false)),
+                    V::Int(-5),
+                )),
                 Cdr
             ],
             &mut gas,
             &mut stack
         )
         .is_ok());
-        assert_eq!(stack, stk![Value::NumberValue(-5)]);
+        assert_eq!(stack, stk![V::Int(-5)]);
         assert_eq!(
             gas.milligas(),
             Gas::default().milligas()
@@ -553,29 +575,67 @@ mod interpreter_tests {
         );
     }
 
+    #[test]
     fn pair() {
-        let mut stack = stk![Value::NumberValue(42), Value::BooleanValue(false)]; // NB: bool is top
+        let mut stack = stk![V::Nat(42), V::Bool(false)]; // NB: bool is top
         assert!(interpret(&vec![Pair], &mut Gas::default(), &mut stack).is_ok());
-        assert_eq!(
-            stack,
-            stk![Value::new_pair(
-                Value::BooleanValue(false),
-                Value::NumberValue(42),
-            )]
-        );
+        assert_eq!(stack, stk![V::new_pair(V::Bool(false), V::Nat(42))]);
     }
 
     #[test]
     fn pair_car() {
-        let mut stack = stk![Value::NumberValue(42), Value::BooleanValue(false)]; // NB: bool is top
+        let mut stack = stk![V::Nat(42), V::Bool(false)]; // NB: bool is top
         assert!(interpret(&vec![Pair, Car], &mut Gas::default(), &mut stack).is_ok());
-        assert_eq!(stack, stk![Value::BooleanValue(false)]);
+        assert_eq!(stack, stk![V::Bool(false)]);
     }
 
     #[test]
     fn pair_cdr() {
-        let mut stack = stk![Value::NumberValue(42), Value::BooleanValue(false)]; // NB: bool is top
+        let mut stack = stk![V::Nat(42), V::Bool(false)]; // NB: bool is top
         assert!(interpret(&vec![Pair, Cdr], &mut Gas::default(), &mut stack).is_ok());
-        assert_eq!(stack, stk![Value::NumberValue(42)]);
+        assert_eq!(stack, stk![V::Nat(42)]);
+    }
+
+    #[test]
+    fn if_none_1() {
+        let code = vec![IfNone(vec![Push(TypedValue::Int(5))], vec![])];
+        // with Some
+        let mut stack = stk![V::new_option(Some(V::Int(42)))];
+        let mut gas = Gas::default();
+        assert_eq!(interpret(&code, &mut gas, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(42)]);
+        assert_eq!(
+            gas.milligas(),
+            Gas::default().milligas() - interpret_cost::IF_NONE - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
+    fn if_none_2() {
+        let code = vec![IfNone(vec![Push(TypedValue::Int(5))], vec![])];
+        // with None
+        let mut stack = stk![V::new_option(None)];
+        let mut gas = Gas::default();
+        assert_eq!(interpret(&code, &mut gas, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(5)]);
+        assert_eq!(
+            gas.milligas(),
+            Gas::default().milligas()
+                - interpret_cost::IF_NONE
+                - interpret_cost::PUSH
+                - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
+    fn some() {
+        let mut stack = stk![V::Int(5)];
+        let mut gas = Gas::default();
+        assert!(interpret(&vec![ISome], &mut gas, &mut stack).is_ok());
+        assert_eq!(stack, stk![V::new_option(Some(V::Int(5)))]);
+        assert_eq!(
+            gas.milligas(),
+            Gas::default().milligas() - interpret_cost::SOME - interpret_cost::INTERPRET_RET
+        );
     }
 }

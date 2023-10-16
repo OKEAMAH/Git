@@ -1,4 +1,3 @@
-
 KSYS:=$(shell find . -name \*.ksy -print)
 HTMLS:=$(patsubst %.ksy,doc/%.html,$(KSYS))
 

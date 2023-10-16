@@ -2316,6 +2316,36 @@ let test_rpc_getTransactionByBlockNumberAndIndex =
     ~title:"RPC method eth_getTransactionByBlockNumberAndIndex"
   @@ test_rpc_getTransactionByBlockArgAndIndex ~by:`Number
 
+let test_validation_result =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "simulate"]
+    ~title:
+      "Ensure validation returns appropriate address for a given transaction."
+  @@ fun protocol ->
+  let* {sc_rollup_client; _} = setup_past_genesis ~admin:None protocol in
+  let tx =
+    "f867808080940000000000000000000000000000000000000000880de0b6b3a764000080820a95a0ed19fdcb200e950226eec84d2790bed3af7339c4be1a272023ddddfcc00d2db0a04fb15e1c4d2826e0d53431262a1b8d3e7accfce1325f632eb127db8a1b6d5f41"
+  in
+  let simulation_msg = "ff0101" ^ tx in
+  let*! simulation_result =
+    Sc_rollup_client.simulate
+      ~insight_requests:
+        [
+          `Durable_storage_key ["evm"; "simulation_status"];
+          `Durable_storage_key ["evm"; "simulation_result"];
+        ]
+      sc_rollup_client
+      [Hex.to_string @@ `Hex "ff"; Hex.to_string @@ `Hex simulation_msg]
+  in
+  let expected_insights =
+    [Some "01"; Some "9dcb74adb59a1eb4590a5aa4f71455c35e0933a0"]
+  in
+  Check.(
+    (simulation_result.insights = expected_insights) (list @@ option string))
+    ~error_msg:"Expected result %R, but got %L" ;
+  unit
+
 type storage_migration_results = {
   transfer_result : transfer_result;
   block_result : Block.t;
@@ -2577,7 +2607,7 @@ let test_rpc_sendRawTransaction_nonce_too_high =
   Protocol.register_test
     ~__FILE__
     ~tags:["evm"; "nonce"]
-    ~title:"Returns an error if the nonce is too high."
+    ~title:"Accepts transactions with nonce too high."
   @@ fun protocol ->
   let* {evm_proxy_server; _} = setup_past_genesis ~admin:None protocol in
   (* Nonce: 1 *)
@@ -2585,10 +2615,8 @@ let test_rpc_sendRawTransaction_nonce_too_high =
     "0xf86c01825208831e8480940000000000000000000000000000000000000000888ac7230489e8000080820a95a0a349864bedc9b84aea88cda197e96538c62c242286ead58eb7180a611f850237a01206525ff16ae5b708ee02b362f9b4d7565e0d7e9b4c536d7ef7dec81cda3ac7"
   in
   let* result = send_raw_transaction evm_proxy_server raw_tx in
-  let error_message = Result.get_error result in
   Check.(
-    ((error_message = "Nonce too high.") string)
-      ~error_msg:"The transaction should fail") ;
+    ((Result.is_ok result = true) bool) ~error_msg:"The transaction should fail") ;
   unit
 
 let test_deposit_before_and_after_migration =
@@ -3192,7 +3220,8 @@ let register_evm_proxy_server ~protocols =
   test_cover_fees protocols ;
   test_rpc_gasPrice protocols ;
   test_rpc_getStorageAt protocols ;
-  test_accounts_double_indexing protocols
+  test_accounts_double_indexing protocols ;
+  test_validation_result protocols
 
 let register ~protocols =
   register_evm_proxy_server ~protocols ;

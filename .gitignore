@@ -71,8 +71,16 @@ __pycache__
 /_coverage_output/*.coverage
 /_coverage_report
 
+contrib/kaitai-struct-files/doc
+
 *.install
 .merlin
+
+*.deb
+*.rpm
+scripts/pkg-common/baker-binaries
+scripts/pkg-common/smartrollup-binaries
+scripts/pkg-common/client-binaries
 
 *~
 \#*\#

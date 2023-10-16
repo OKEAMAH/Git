@@ -91,6 +91,7 @@ pub mod interpret_cost {
     pub const DUP: u32 = 10;
     pub const GT: u32 = 10;
     pub const IF: u32 = 10;
+    pub const IF_NONE: u32 = 10;
     pub const LOOP: u32 = 10;
     pub const SWAP: u32 = 10;
     pub const INT_NAT: u32 = 10;
@@ -100,6 +101,7 @@ pub mod interpret_cost {
     pub const CAR: u32 = 10;
     pub const CDR: u32 = 10;
     pub const PAIR: u32 = 10;
+    pub const SOME: u32 = 10;
 
     pub const INTERPRET_RET: u32 = 15; // corresponds to KNil in the Tezos protocol
     pub const LOOP_ENTER: u32 = 10; // corresponds to KLoop_in in the Tezos protocol
@@ -149,7 +151,7 @@ pub mod interpret_cost {
         mb_n.map_or(Ok(DUP), dupn)
     }
 
-    pub fn add_int(i1: i128, i2: i128) -> Result<u32, OutOfGas> {
+    pub fn add_int<T>(i1: T, i2: T) -> Result<u32, OutOfGas> {
         // NB: eventually when using BigInts, use BigInt::bits() &c
         use std::mem::size_of_val;
         // max is copied from the Tezos protocol, ostensibly adding two big ints depends on

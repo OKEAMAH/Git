@@ -167,9 +167,8 @@ struct TxValidation {
 }
 
 enum TxValidationOutcome {
-    Valid,
+    Valid(H160),
     NonceTooLow,
-    NonceTooHigh,
     NotCorrectSignature,
     InvalidChainId,
     GasLimitTooHigh,
@@ -199,10 +198,6 @@ impl TxValidation {
         if tx.nonce < caller_nonce {
             return Ok(TxValidationOutcome::NonceTooLow);
         }
-        // Check if the nonce is too high
-        if tx.nonce > caller_nonce {
-            return Ok(TxValidationOutcome::NonceTooHigh);
-        }
         // Check if the chain id is correct
         if tx.chain_id != chain_id {
             return Ok(TxValidationOutcome::InvalidChainId);
@@ -211,7 +206,7 @@ impl TxValidation {
         if tx.gas_limit > MAX_TRANSACTION_GAS_LIMIT {
             return Ok(TxValidationOutcome::GasLimitTooHigh);
         }
-        Ok(TxValidationOutcome::Valid)
+        Ok(TxValidationOutcome::Valid(caller))
     }
 }
 
@@ -357,14 +352,13 @@ fn store_tx_validation_outcome<Host: Runtime>(
     outcome: TxValidationOutcome,
 ) -> Result<(), anyhow::Error> {
     match outcome {
-        TxValidationOutcome::Valid => storage::store_simulation_status(host, true),
+        TxValidationOutcome::Valid(caller) => {
+            storage::store_simulation_status(host, true)?;
+            storage::store_simulation_result(host, Some(caller.to_fixed_bytes().to_vec()))
+        }
         TxValidationOutcome::NonceTooLow => {
             storage::store_simulation_status(host, false)?;
             storage::store_simulation_result(host, Some(b"Nonce too low.".to_vec()))
-        }
-        TxValidationOutcome::NonceTooHigh => {
-            storage::store_simulation_status(host, false)?;
-            storage::store_simulation_result(host, Some(b"Nonce too high.".to_vec()))
         }
         TxValidationOutcome::NotCorrectSignature => {
             storage::store_simulation_status(host, false)?;

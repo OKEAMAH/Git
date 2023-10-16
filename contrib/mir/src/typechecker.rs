@@ -5,6 +5,8 @@
 /*                                                                            */
 /******************************************************************************/
 
+use std::num::TryFromIntError;
+
 use crate::ast::*;
 use crate::gas;
 use crate::gas::{Gas, OutOfGas};
@@ -23,6 +25,12 @@ pub enum TcError {
 impl From<OutOfGas> for TcError {
     fn from(_: OutOfGas) -> Self {
         TcError::OutOfGas
+    }
+}
+
+impl From<TryFromIntError> for TcError {
+    fn from(_: TryFromIntError) -> Self {
+        TcError::GenericTcError
     }
 }
 
@@ -126,6 +134,25 @@ fn typecheck_instruction(
             }
             _ => return Err(TcError::GenericTcError),
         },
+        I::IfNone(when_none, when_some) => match stack.pop() {
+            // Check if top is option 'ty
+            Some(T::Option(ty)) => {
+                // Clone the some_stack as we need to push a type on top of it
+                let mut some_stack: TypeStack = stack.clone();
+                some_stack.push(*ty);
+                let when_none = typecheck(when_none, gas, stack)?;
+                let when_some = typecheck(when_some, gas, &mut some_stack)?;
+                // If both stacks are same after typecheck, all is good.
+                ensure_stacks_eq(gas, &some_stack, &stack)?;
+                // Replace stack with other branche's stack if it's failed, as
+                // one branch might've been successful.
+                if stack.is_failed() {
+                    *stack = some_stack;
+                }
+                I::IfNone(when_none, when_some)
+            }
+            _ => return Err(TcError::GenericTcError),
+        },
         I::Int => match stack.pop() {
             Some(T::Nat) => {
                 stack.push(Type::Int);
@@ -148,10 +175,10 @@ fn typecheck_instruction(
             }
             _ => return Err(TcError::GenericTcError),
         },
-        I::Push(t, v) => {
-            typecheck_value(gas, &t, &v)?;
+        I::Push((t, v)) => {
+            let v = typecheck_value(gas, &t, v)?;
             stack.push(t.to_owned());
-            I::Push(t, v)
+            I::Push(v)
         }
         I::Swap => {
             ensure_stack_len(stack, 2)?;
@@ -192,29 +219,42 @@ fn typecheck_instruction(
                 _ => return Err(TcError::GenericTcError),
             }
         }
+        I::ISome => match stack.pop() {
+            Some(ty) => {
+                stack.push(T::new_option(ty));
+                I::ISome
+            }
+            _ => return Err(TcError::StackTooShort),
+        },
     })
 }
 
-pub const MAX_TEZ: i128 = 2i128.pow(63) - 1;
-
-fn typecheck_value(gas: &mut Gas, t: &Type, v: &Value) -> Result<(), TcError> {
+fn typecheck_value(gas: &mut Gas, t: &Type, v: Value) -> Result<TypedValue, TcError> {
     use Type::*;
+    use TypedValue as TV;
     use Value::*;
     gas.consume(gas::tc_cost::VALUE_STEP)?;
-    match (t, v) {
-        (Nat, NumberValue(n)) if *n >= 0 => Ok(()),
-        (Int, NumberValue(_)) => Ok(()),
-        (Bool, BooleanValue(_)) => Ok(()),
-        (Mutez, NumberValue(n)) if *n >= 0 && *n <= MAX_TEZ => Ok(()),
-        (String, StringValue(_)) => Ok(()),
-        (Unit, UnitValue) => Ok(()),
+    Ok(match (t, v) {
+        (Nat, NumberValue(n)) => TV::Nat(n.try_into()?),
+        (Int, NumberValue(n)) => TV::Int(n),
+        (Bool, BooleanValue(b)) => TV::Bool(b),
+        (Mutez, NumberValue(n)) if n >= 0 => TV::Mutez(n.try_into()?),
+        (String, StringValue(s)) => TV::String(s),
+        (Unit, UnitValue) => TV::Unit,
         (Pair(tl, tr), PairValue(vl, vr)) => {
-            typecheck_value(gas, tl, vl)?;
-            typecheck_value(gas, tr, vr)?;
-            Ok(())
+            let l = typecheck_value(gas, tl, *vl)?;
+            let r = typecheck_value(gas, tr, *vr)?;
+            TV::new_pair(l, r)
         }
-        _ => Err(TcError::GenericTcError),
-    }
+        (Option(ty), OptionValue(v)) => match v {
+            Some(v) => {
+                let v = typecheck_value(gas, ty, *v)?;
+                TV::new_option(Some(v))
+            }
+            None => TV::new_option(None),
+        },
+        _ => return Err(TcError::GenericTcError),
+    })
 }
 
 /// Ensures type stack is at least of the required length, otherwise returns
@@ -337,8 +377,12 @@ mod typecheck_tests {
         let expected_stack = stk![Type::Nat, Type::Int];
         let mut gas = Gas::new(10000);
         assert_eq!(
-            typecheck_instruction(Push(Type::Int, Value::NumberValue(1)), &mut gas, &mut stack),
-            Ok(Push(Type::Int, Value::NumberValue(1)))
+            typecheck_instruction(
+                Push((Type::Int, Value::NumberValue(1))),
+                &mut gas,
+                &mut stack
+            ),
+            Ok(Push(TypedValue::Int(1)))
         );
         assert_eq!(stack, expected_stack);
         assert_eq!(gas.milligas(), 10000 - 440 - 100);
@@ -365,7 +409,7 @@ mod typecheck_tests {
                 &mut gas,
                 &mut stack,
             ),
-            Ok(Dip(Some(1), vec![Push(Type::Nat, Value::NumberValue(6))]))
+            Ok(Dip(Some(1), vec![Push(TypedValue::Nat(6))]))
         );
         assert_eq!(stack, expected_stack);
         assert_eq!(gas.milligas(), 10000 - 440 - 440 - 100 - 50);
@@ -421,7 +465,7 @@ mod typecheck_tests {
                 &mut gas,
                 &mut stack
             ),
-            Ok(Loop(vec![Push(Type::Bool, Value::BooleanValue(true))]))
+            Ok(Loop(vec![Push(TypedValue::Bool(true))]))
         );
         assert_eq!(stack, expected_stack);
         assert_eq!(gas.milligas(), 10000 - 440 - 440 - 100 - 60 * 2);
@@ -495,9 +539,9 @@ mod typecheck_tests {
             typecheck_value(
                 &mut Gas::default(),
                 &Type::String,
-                &Value::StringValue("foo".to_owned())
+                Value::StringValue("foo".to_owned())
             ),
-            Ok(())
+            Ok(TypedValue::String("foo".to_owned()))
         )
     }
 
@@ -510,10 +554,7 @@ mod typecheck_tests {
                 &mut Gas::default(),
                 &mut stack
             ),
-            Ok(vec![Push(
-                Type::String,
-                Value::StringValue("foo".to_owned())
-            )])
+            Ok(vec![Push(TypedValue::String("foo".to_owned()))])
         );
         assert_eq!(stack, stk![Type::String]);
     }
@@ -527,7 +568,7 @@ mod typecheck_tests {
                 &mut Gas::default(),
                 &mut stack
             ),
-            Ok(vec![Push(Type::Unit, Value::UnitValue)])
+            Ok(vec![Push(TypedValue::Unit)])
         );
         assert_eq!(stack, stk![Type::Unit]);
     }
@@ -551,13 +592,10 @@ mod typecheck_tests {
                 &mut Gas::default(),
                 &mut stack
             ),
-            Ok(vec![Push(
-                Type::new_pair(Type::Int, Type::new_pair(Type::Nat, Type::Bool)),
-                Value::new_pair(
-                    Value::NumberValue(-5),
-                    Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
-                )
-            )])
+            Ok(vec![Push(TypedValue::new_pair(
+                TypedValue::Int(-5),
+                TypedValue::new_pair(TypedValue::Nat(3), TypedValue::Bool(false))
+            ))])
         );
         assert_eq!(
             stack,
@@ -566,6 +604,20 @@ mod typecheck_tests {
                 Type::new_pair(Type::Nat, Type::Bool)
             )]
         );
+    }
+
+    #[test]
+    fn push_option_value() {
+        let mut stack = stk![];
+        assert_eq!(
+            typecheck(
+                parse("{ PUSH (option nat) (Some 3) }").unwrap(),
+                &mut Gas::default(),
+                &mut stack
+            ),
+            Ok(vec![Push(TypedValue::new_option(Some(TypedValue::Nat(3))))])
+        );
+        assert_eq!(stack, stk![Type::new_option(Type::Nat)]);
     }
 
     #[test]
@@ -578,13 +630,10 @@ mod typecheck_tests {
                 &mut stack
             ),
             Ok(vec![
-                Push(
-                    Type::new_pair(Type::Int, Type::new_pair(Type::Nat, Type::Bool)),
-                    Value::new_pair(
-                        Value::NumberValue(-5),
-                        Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
-                    )
-                ),
+                Push(TypedValue::new_pair(
+                    TypedValue::Int(-5),
+                    TypedValue::new_pair(TypedValue::Nat(3), TypedValue::Bool(false))
+                )),
                 Car
             ])
         );
@@ -601,13 +650,10 @@ mod typecheck_tests {
                 &mut stack
             ),
             Ok(vec![
-                Push(
-                    Type::new_pair(Type::Int, Type::new_pair(Type::Nat, Type::Bool)),
-                    Value::new_pair(
-                        Value::NumberValue(-5),
-                        Value::new_pair(Value::NumberValue(3), Value::BooleanValue(false))
-                    )
-                ),
+                Push(TypedValue::new_pair(
+                    TypedValue::Int(-5),
+                    TypedValue::new_pair(TypedValue::Nat(3), TypedValue::Bool(false))
+                )),
                 Cdr
             ])
         );
@@ -650,5 +696,29 @@ mod typecheck_tests {
             Ok(vec![Pair, Cdr])
         );
         assert_eq!(stack, stk![Type::Int]);
+    }
+
+    #[test]
+    fn if_none() {
+        let mut stack = stk![Type::new_option(Type::Int)];
+        assert_eq!(
+            typecheck(
+                parse("{ IF_NONE { PUSH int 5; } {} }").unwrap(),
+                &mut Gas::default(),
+                &mut stack
+            ),
+            Ok(vec![IfNone(vec![Push(TypedValue::Int(5))], vec![])])
+        );
+        assert_eq!(stack, stk![Type::Int]);
+    }
+
+    #[test]
+    fn some() {
+        let mut stack = stk![Type::Int];
+        assert_eq!(
+            typecheck(parse("{ SOME }").unwrap(), &mut Gas::default(), &mut stack),
+            Ok(vec![ISome])
+        );
+        assert_eq!(stack, stk![Type::new_option(Type::Int)]);
     }
 }

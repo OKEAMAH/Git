@@ -5193,6 +5193,7 @@ end = struct
             ("test_gas_properties", true);
             ("test_sampler", N.(number >= 012));
             ("test_script_comparison", true);
+            ("test_script_roundtrip", N.(number >= 019));
             ("test_tez_repr", true);
             ("test_tx_rollup_l2_encoding", N.(number >= 013 && number <= 016));
             ("test_bitset", N.(number >= 013));
@@ -7451,6 +7452,26 @@ let _safety_checker =
     ~bisect_ppx:No
     ~linkall:true
 
+let _get_teztale_data =
+  private_exe
+    "get_teztale_data"
+    ~path:("devtools" // "testnet_experiment_tools")
+    ~synopsis:"Script to obtain missed attestations from experiment"
+    ~bisect_ppx:No
+    ~with_macos_security_framework:true
+    ~release_status:Unreleased
+    ~opam:""
+    ~deps:
+      [
+        octez_base |> open_ |> open_ ~m:"TzPervasives";
+        octez_clic;
+        caqti_lwt;
+        caqti_dynload;
+        octez_client_base |> open_;
+        octez_client_base_unix |> open_;
+      ]
+    ~modules:["get_teztale_data"]
+
 let simdal_lib =
   private_lib
     "simdal"
@@ -8114,6 +8135,7 @@ let _octez_smart_rollup_node_lib_tests =
            qcheck_core;
            logs_lwt;
            alcotezt;
+           tezt_lib;
            octez_client_base_unix |> open_;
            octez_smart_rollup_lib |> open_;
            octez_smart_rollup_node_lib |> open_;
@@ -8121,7 +8143,7 @@ let _octez_smart_rollup_node_lib_tests =
         @ protocol_deps)
   in
   tezt
-    ["canary"; "test_context_gc"]
+    ["canary"; "test_context_gc"; "test_store_gc"]
     ~path:"src/lib_smart_rollup_node/test/"
     ~opam:"tezos-smart-rollup-node-lib-test"
     ~synopsis:"Tests for the smart rollup node library"
