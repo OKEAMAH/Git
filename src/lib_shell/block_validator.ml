@@ -31,7 +31,9 @@ open Block_validator_errors
 module Profiler = struct
   include (val Profiler.wrap Shell_profiling.block_validator_profiler)
 
-  let may_start_block = Shell_profiling.may_start_block
+  let reset_block_section =
+    Shell_profiling.create_reset_block_section
+      Shell_profiling.block_validator_profiler
 end
 
 type validation_result =
@@ -201,7 +203,7 @@ let on_validation_request w
       precheck_and_notify;
     } =
   let open Lwt_result_syntax in
-  Profiler.may_start_block (Block_header.hash header) ;
+  Profiler.reset_block_section hash ;
   let bv = Worker.state w in
   let chain_store = Distributed_db.chain_store chain_db in
   let*! b = Store.Block.is_known_valid chain_store hash in
@@ -532,7 +534,7 @@ let validate w ?canceler ?peer ?(notify_new_block = fun _ -> ())
     ?(precheck_and_notify = false) chain_db hash (header : Block_header.t)
     operations =
   let open Lwt_syntax in
-  Profiler.may_start_block (Block_header.hash header) ;
+  Profiler.reset_block_section hash ;
   let chain_store = Distributed_db.chain_store chain_db in
   let* b = Store.Block.is_known_valid chain_store hash in
   match b with
