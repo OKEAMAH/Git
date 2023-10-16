@@ -235,7 +235,7 @@ let slots_injector_scenario ?publisher_sk ~airdropper_alias client dal_node
         ~giver:airdropper_alias
         ~receiver:alias
         ~burn_cap:(Tez.of_mutez_int 70_000)
-        ~wait:"2"
+        ~wait:"1"
         client
   in
   (* Fetch slots size from protocol parameters *)
