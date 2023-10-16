@@ -8,9 +8,9 @@ root_dir="$(dirname "$tezt_dir")"
 
 if [ -n "${TRACE:-}" ]; then set -x; fi
 
-codeowners=${tezt_dir}/TESTOWNERS.json
+testowners=${tezt_dir}/TESTOWNERS.json
 products() {
-    jq -r 'keys|join(", ")' < "$codeowners"
+    jq -r 'keys|join(", ")' < "$testowners"
 }
 
 usage() {
@@ -18,7 +18,7 @@ usage() {
 Usage: $0 PRODUCT [PRODUCT ...]
 
 Prints the list of Tezt tests associated with PRODUCT(s) as defined in
-'${codeowners#"$root_dir"/}'. Tests are printed in the TSV format used by Tezt's
+'${testowners#"$root_dir"/}'. Tests are printed in the TSV format used by Tezt's
 '--list-tsv', with an additional initial column containing the product
 name.
 EOF
@@ -35,8 +35,8 @@ if [ "${1:-}" = "--help" ] || [ "$#" -lt 1 ] ; then
     usage
 fi
 
-codeowners=${tezt_dir}/TESTOWNERS.json
-if ! [ -f "$codeowners" ]; then
+testowners=${tezt_dir}/TESTOWNERS.json
+if ! [ -f "$testowners" ]; then
     echo "No TESTOWNERS.json"
     exit 1
 fi
@@ -53,18 +53,18 @@ while [ "$#" -gt 0 ]; do
     product="$1"
     shift
 
-    if ! jq -e --arg product "$product" 'has($product)' < "$codeowners" > /dev/null ; then
+    if ! jq -e --arg product "$product" 'has($product)' < "$testowners" > /dev/null ; then
         echo "No product '$product' defined. Defined products: $(products)"
         exit 1
     fi
 
     # For each tag
-    jq -r --arg product "$product" '.[$product].tags[]' < "$codeowners" | while read -r tag; do
+    jq -r --arg product "$product" '.[$product].tags[]' < "$testowners" | while read -r tag; do
         tezt --list-tsv "${tag}" | sed "s/^/${product}\t/"
     done
 
     # For each file
-    jq -r --arg product "$product" '.[$product].path_prefixes[]' < "$codeowners" | while read -r file; do
+    jq -r --arg product "$product" '.[$product].path_prefixes[]' < "$testowners" | while read -r file; do
         tezt --list-tsv --match "^${file}" | sed "s/^/${product}\t/"
     done
 done
