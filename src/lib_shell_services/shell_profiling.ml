@@ -10,20 +10,17 @@ let block_validator_profiler = unplugged ()
 
 let rpc_server_profiler = unplugged ()
 
-let may_start_block =
+let create_reset_block_section profiler =
   let last_block = ref None in
   fun b ->
-    let sec () = Format.asprintf "block_validation(%a)" Block_hash.pp b in
     match !last_block with
     | None ->
-        let s = sec () in
-        record block_validator_profiler s ;
+        record profiler (Block_hash.to_b58check b) ;
         last_block := Some b
     | Some b' when Block_hash.equal b' b -> ()
     | Some _ ->
-        stop block_validator_profiler ;
-        let s = sec () in
-        record block_validator_profiler s ;
+        stop profiler ;
+        record profiler (Block_hash.to_b58check b) ;
         last_block := Some b
 
 let merge_profiler = unplugged ()
