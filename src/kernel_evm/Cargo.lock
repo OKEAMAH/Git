@@ -435,6 +435,7 @@ dependencies = [
 name = "evm-execution"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "const-decoder",
  "evm",
  "hex",

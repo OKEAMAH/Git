@@ -14,7 +14,7 @@ license = "MIT"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-
+anyhow.workspace = true
 thiserror.workspace = true
 
 num-bigint.workspace = true
