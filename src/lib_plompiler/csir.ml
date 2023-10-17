@@ -238,6 +238,27 @@ let table_rotate_right4_3 =
   Table.of_list
   @@ generate_lookup_table_op2 ~nb_bits (fun x y -> rotate_right ~nb_bits x y 3)
 
+let add_with_carry_lo ~nb_bits a b =
+  let r = a + b in
+  let mask = (1 lsl nb_bits) - 1 in
+  Int.logand r mask
+
+let add_with_carry_hi ~nb_bits a b =
+  let r = a + b in
+  r lsr nb_bits
+
+let table_add_with_carry_lo4 =
+  (* a + b -> (a + b) % 2^nb_bits *)
+  let nb_bits = 4 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_lo ~nb_bits)
+
+let table_add_with_carry_hi4 =
+  (* a + b -> (a + b) / 2^nb_bits *)
+  let nb_bits = 4 in
+  Table.of_list
+  @@ generate_lookup_table_op2 ~nb_bits (add_with_carry_hi ~nb_bits)
+
 module Tables = Map.Make (String)
 
 let table_registry =
@@ -251,6 +272,8 @@ let table_registry =
   let t = Tables.add "rotate_right4_1" table_rotate_right4_1 t in
   let t = Tables.add "rotate_right4_2" table_rotate_right4_2 t in
   let t = Tables.add "rotate_right4_3" table_rotate_right4_3 t in
+  let t = Tables.add "add_with_carry_lo4" table_add_with_carry_lo4 t in
+  let t = Tables.add "add_with_carry_hi4" table_add_with_carry_hi4 t in
   t
 
 module CS = struct
