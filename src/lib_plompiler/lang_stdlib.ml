@@ -52,6 +52,10 @@ module type Limb_list = sig
       [le] can be used to set the endianness. *)
   val constant : le:bool -> bytes -> tl repr t
 
+  (** [constant_uint32 ~le n] returns the constant [n] as a Plompiler value.
+      [le] can be used to set the endianness. *)
+  val constant_uint32 : le:bool -> Stdint.uint32 -> tl repr t
+
   (** [of_scalar ~total_nb_bits b] converts the scalar [b] of size
       [total_nb_bits] in bits into the [tl] representation. *)
   val of_scalar : total_nb_bits:int -> scalar repr -> tl repr t
@@ -207,11 +211,6 @@ module type LIB = sig
          and type 'a repr = 'a repr
          and type 'a t = 'a t
          and type 'a input = 'a Input.t
-
-    (** [constant_uint32 ~le n] returns a value holding the bytes correspoding
-      to the uint [n].
-      [le] can be used to set the endianness. *)
-    val constant_uint32 : le:bool -> Stdint.uint32 -> tl repr t
 
     (** [length b] returns the length of [b] in bits. *)
     val length : tl repr -> int
@@ -898,6 +897,11 @@ module Lib (C : COMMON) = struct
       let limbs = Utils.limbs_of_bool_list ~nb_bits bl in
       let* r = mapM (fun x -> Num.constant @@ S.of_int x) limbs in
       ret @@ to_list r
+
+    let constant_uint32 ~le u32 =
+      let b = Stdlib.Bytes.create 4 in
+      Stdint.Uint32.to_bytes_big_endian u32 b 0 ;
+      constant ~le b
 
     let xor a b =
       let* r = map2M LimbN.xor_lookup (of_list a) (of_list b) in
