@@ -49,6 +49,11 @@ let summary ~title ~description =
    then the attr for its size has id [size_id_of_id x] *)
 let size_id_of_id id = "size_of_" ^ id
 
+(* in kaitai-struct, some fields can be added to single attributes but not to a
+   group of them. When we want to attach a field to a group of attributes, we
+   need to create an indirection to a named type. [redirect_if_many] is a
+   function for adding a field which, on a by-need basis, introduces an
+   intermediate type. *)
 let redirect_if_many :
     Ground.Type.assoc ->
     AttrSpec.t list ->
@@ -364,14 +369,8 @@ and seq_field_of_field :
       (enums, types, [attr])
   | Opt {name; kind = _; encoding; title; description} ->
       let cond_id = escape_id (name ^ "_tag") in
-      let enums, types, cond_attr =
-        seq_field_of_data_encoding enums types DataEncoding.bool cond_id None
-      in
-      let cond_attr =
-        match cond_attr with
-        | [cond_attr] -> cond_attr
-        | [] | _ :: _ :: _ -> assert false
-      in
+      let enums = Helpers.add_uniq_assoc enums Ground.Enum.bool in
+      let cond_attr = Ground.Attr.bool ~id:cond_id in
       let cond =
         {
           Helpers.cond_no_cond with

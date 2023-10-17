@@ -895,8 +895,10 @@ module Constants : sig
       consensus_threshold : int;
       max_slashing_period : int;
       limit_of_delegation_over_baking : int;
-      percentage_of_frozen_deposits_slashed_per_double_baking : int;
-      percentage_of_frozen_deposits_slashed_per_double_attestation : int;
+      percentage_of_frozen_deposits_slashed_per_double_baking :
+        Int_percentage.t;
+      percentage_of_frozen_deposits_slashed_per_double_attestation :
+        Int_percentage.t;
       testnet_dictator : public_key_hash option;
       initial_seed : State_hash.t option;
       cache_script_size : int;
@@ -981,10 +983,11 @@ module Constants : sig
 
   val limit_of_delegation_over_baking : context -> int
 
-  val percentage_of_frozen_deposits_slashed_per_double_baking : context -> int
+  val percentage_of_frozen_deposits_slashed_per_double_baking :
+    context -> Int_percentage.t
 
   val percentage_of_frozen_deposits_slashed_per_double_attestation :
-    context -> int
+    context -> Int_percentage.t
 
   val testnet_dictator : context -> public_key_hash option
 
@@ -2065,8 +2068,6 @@ module Receipt : sig
     | Sc_rollup_refutation_punishments
     | Sc_rollup_refutation_rewards
 
-  val compare_balance : balance -> balance -> int
-
   type balance_update = Debited of Tez.t | Credited of Tez.t
 
   type update_origin =
@@ -2075,16 +2076,12 @@ module Receipt : sig
     | Subsidy
     | Simulation
 
-  val compare_update_origin : update_origin -> update_origin -> int
-
   type balance_updates = (balance * balance_update * update_origin) list
 
   val balance_updates_encoding : balance_updates Data_encoding.t
 
   val balance_updates_encoding_with_legacy_attestation_name :
     balance_updates Data_encoding.t
-
-  val group_balance_updates : balance_updates -> balance_updates tzresult
 end
 
 (** This module re-exports definitions from {!Delegate_consensus_key}. *)
@@ -5092,11 +5089,24 @@ module Staking_pseudotokens : sig
     (context * Tez.t) tzresult Lwt.t
 
   module For_RPC : sig
+    type t
+
+    val encoding : t Data_encoding.encoding
+
     val staked_balance :
       context ->
       contract:Contract.t ->
       delegate:public_key_hash ->
       Tez.t tzresult Lwt.t
+
+    val staking_pseudotokens_balance :
+      context -> delegator:Contract.t -> t tzresult Lwt.t
+
+    val get_frozen_deposits_pseudotokens :
+      context -> delegate:Signature.public_key_hash -> t tzresult Lwt.t
+
+    val get_frozen_deposits_staked_tez :
+      context -> delegate:Signature.public_key_hash -> Tez.t tzresult Lwt.t
   end
 end
 

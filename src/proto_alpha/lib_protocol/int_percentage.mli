@@ -1,14 +1,29 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* SPDX-License-Identifier: MIT                                              *)
-(* Copyright (c) 2023 Nomadic Labs. <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [build_rpc_directory node_version config] builds the Tezos RPC directory for
-    the rpc process. RPCs handled here are not forwarded to the node.
-*)
-val build_rpc_directory :
-  Tezos_version.Node_version.t ->
-  Octez_node_config.Config_file.t ->
-  unit Tezos_rpc.Directory.t
+(** An integer value between 0 and 100, inclusive. *)
+type t = private int
+
+val encoding : t Data_encoding.t
+
+val of_ratio_bounded : Ratio_repr.t -> t
+
+(** [neg p] is [100 - p]. *)
+val neg : t -> t
+
+val add_bounded : t -> t -> t
+
+(** Constants *)
+
+(** 0 *)
+val p0 : t
+
+(** 7 *)
+val p7 : t
+
+(** 50 *)
+val p50 : t

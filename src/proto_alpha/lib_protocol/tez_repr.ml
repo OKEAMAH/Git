@@ -182,6 +182,13 @@ let mul_ratio tez ~num ~den =
     if Z.fits_int64 z then return (Tez_tag (Z.to_int64 z))
     else tzfail (Multiplication_overflow (tez, num))
 
+let mul_percentage =
+  let z100 = Z.of_int 100 in
+  fun (Tez_tag t) (percentage : Int_percentage.t) ->
+    (* Guaranteed to produce no errors by the invariants on {!Int_percentage.t}. *)
+    Tez_tag
+      Z.(to_int64 (div (mul (of_int64 t) (of_int (percentage :> int))) z100))
+
 let of_mutez t = if t < 0L then None else Some (Tez_tag t)
 
 let of_mutez_exn x =
@@ -194,6 +201,16 @@ let encoding =
   let decode (Tez_tag t) = Z.of_int64 t in
   let encode = Json.wrap_error (fun i -> Tez_tag (Z.to_int64 i)) in
   Data_encoding.def name (check_size 10 (conv decode encode n))
+
+let balance_update_encoding =
+  let open Data_encoding in
+  conv
+    (function
+      | `Credited v -> to_mutez v | `Debited v -> Int64.neg (to_mutez v))
+    ( Json.wrap_error @@ fun v ->
+      if Compare.Int64.(v < 0L) then `Debited (Tez_tag (Int64.neg v))
+      else `Credited (Tez_tag v) )
+    int64
 
 let () =
   let open Data_encoding in
