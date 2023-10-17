@@ -249,7 +249,10 @@ let rec seq_field_of_data_encoding :
   | List
       {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
     ->
-      (* TODO: comment expalining why assert false *)
+      (* The same [assert false] exists in the de/serialisation functions of
+         [data_encoding]. This specific case is rejected by data-encoding
+         because the length of the list is both known statically and determined
+         dynamically by a header which is a waste of space. *)
       assert false
   | List {length_limit; length_encoding = None; elts} ->
       let elt_id = id ^ "_elt" in
