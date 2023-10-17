@@ -390,39 +390,60 @@ let pp_initial_state fmt {operation_queues; _} =
              (Queue.length queue)))
       (ManagerMap.bindings operation_queues))
 
-let init ~operations_file_path =
-  Format.printf "Parsing operations file@." ;
+let init_op_loader ~operations_file_path =
   let op_encoding = Protocol.Alpha_context.Operation.encoding in
   let buffer = Bytes.create (10 * 1024 * 1024) (* 10mb *) in
   let*! ic = Lwt_io.open_file ~mode:Input operations_file_path in
-  let rec loop acc =
-    let*! op_len =
-      Lwt.catch
-        (fun () ->
-          let*! op_len = Lwt_io.BE.read_int32 ic in
-          let*! () =
-            Lwt_io.read_into_exactly ic buffer 0 (Int32.to_int op_len)
+
+  (* Loads [nb_ops] of operations at at time *)
+  let rec loop nb_ops acc =
+    if nb_ops = 0 then Lwt.return_ok acc
+    else
+      let*! op_len =
+        Lwt.catch
+          (fun () ->
+            let*! op_len = Lwt_io.BE.read_int32 ic in
+            let*! () =
+              Lwt_io.read_into_exactly ic buffer 0 (Int32.to_int op_len)
+            in
+            Lwt.return_ok (`Op_len op_len))
+          (function
+            | End_of_file -> Lwt.return_ok `EOF
+            | exn -> failwith "%s" (Printexc.to_string exn))
+      in
+      match op_len with
+      | Error x -> Lwt.return_error x
+      | Ok `EOF ->
+          let*! () = Lwt_io.close ic in
+          return (List.rev acc)
+      | Ok (`Op_len op_len) ->
+          let op =
+            Data_encoding.Binary.of_bytes_exn
+              op_encoding
+              (Bytes.sub buffer 0 (Int32.to_int op_len))
           in
-          Lwt.return_ok (`Op_len op_len))
-        (function
-          | End_of_file -> Lwt.return_ok `EOF
-          | exn -> failwith "%s" (Printexc.to_string exn))
-    in
-    match op_len with
-    | Error x -> Lwt.return_error x
-    | Ok `EOF -> return (List.rev acc)
-    | Ok (`Op_len op_len) ->
-        let op =
-          Data_encoding.Binary.of_bytes_exn
-            op_encoding
-            (Bytes.sub buffer 0 (Int32.to_int op_len))
-        in
-        loop (op :: acc)
+          loop (nb_ops - 1) (op :: acc)
   in
-  let total = ref 0 in
-  let* all_ops = loop [] in
-  let*! () = Lwt_io.close ic in
-  Format.printf "Loading operations file@." ;
+  let op_loader ~nb_ops =
+    if Lwt_io.is_closed ic then
+      let () =
+        Format.printf
+          "Input channel for operations file %s is closed. This usually means \
+           that all operations have been loaded.@"
+          operations_file_path
+      in
+      return []
+    else
+      let+ ops = loop nb_ops [] in
+      Format.printf "%d manager operations loaded.@" (List.length ops) ;
+      ops
+  in
+  return op_loader
+
+(* Initializes a manager queue loader that loads operations from
+   [max_ops] from [operations_file_path] at a time.
+*)
+let init_manager_queue_loader ~operations_file_path ~max_ops =
   let rec loop
       (acc : (Operation_hash.t * packed_operation) Queue.t ManagerMap.t) :
       packed_operation list ->
@@ -441,7 +462,6 @@ let init ~operations_file_path =
          _;
        } as op)
       :: r ->
-        incr total ;
         let oph = Operation.hash_packed op in
         let acc =
           ManagerMap.update
@@ -459,13 +479,23 @@ let init ~operations_file_path =
         loop acc r
     | _non_manager_op :: r -> loop acc r
   in
-  let operation_queues = loop ManagerMap.empty all_ops in
-  Format.printf "%d manager operations loaded@." !total ;
-  return
-    {
-      last_injected_op_per_manager = Signature.Public_key_hash.Map.empty;
-      operation_queues;
-    }
+  let* load_ops = init_op_loader ~operations_file_path in
+  let manager_queue_loader ~state =
+    let {last_injected_op_per_manager = _; operation_queues} = state in
+    let operations_left =
+      ManagerMap.fold
+        (fun _pkh q count -> Queue.length q + count)
+        operation_queues
+        0
+    in
+    let threshold = Float.mul 0.2 (Float.of_int max_ops) in
+    if Float.of_int operations_left < threshold then
+      let+ ops = load_ops ~nb_ops:(max_ops - operations_left) in
+      let operation_queues = loop operation_queues ops in
+      {state with operation_queues}
+    else Lwt.return_ok state
+  in
+  return manager_queue_loader
 
 let choose_new_operations state prohibited_managers n =
   (* Prioritize large operations queues *)
@@ -576,7 +606,16 @@ let choose_and_inject_operations cctxt state prohibited_managers n =
 
 let start_injector cctxt ~op_per_mempool ~min_manager_queues
     ~operations_file_path =
-  let* state = init ~operations_file_path in
+  let* load_mq =
+    (* TODO: let [max_ops] be configurable. *)
+    init_manager_queue_loader ~operations_file_path ~max_ops:20_000
+  in
+  let state =
+    {
+      last_injected_op_per_manager = Signature.Public_key_hash.Map.empty;
+      operation_queues = ManagerMap.empty;
+    }
+  in
   Format.printf "Starting injector@." ;
   let* head_stream, _stopper = Monitor_services.heads cctxt `Main in
   let block_stream =
@@ -601,6 +640,7 @@ let start_injector cctxt ~op_per_mempool ~min_manager_queues
   let current_level = header.shell.level in
   let rec loop state current_level =
     let*! r = Lwt_stream.get block_stream in
+    let* state = load_mq ~state in
     match r with
     | None -> failwith "Head stream ended: lost connection with node?"
     | Some (header, _opll)
