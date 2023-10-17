@@ -8498,6 +8498,62 @@ Range-Checks-Max  : 4 [2.00]
 Tables            : 0 [0.00]
 Circuit Size      : 8 [3.00]
 
+Bytes.test_add:
+Constraints       : 13 [3.70]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add_optimized:
+Constraints       : 11 [3.46]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add:
+Constraints       : 13 [3.70]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add_optimized:
+Constraints       : 11 [3.46]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add:
+Constraints       : 13 [3.70]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add_optimized:
+Constraints       : 11 [3.46]
+Range-Checks-Total: 24 [4.58]
+Range-Checks-Max  : 8 [3.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add:
+Constraints       : 25 [4.64]
+Range-Checks-Total: 48 [5.58]
+Range-Checks-Max  : 16 [4.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
+Bytes.test_add_optimized:
+Constraints       : 21 [4.39]
+Range-Checks-Total: 48 [5.58]
+Range-Checks-Max  : 16 [4.00]
+Tables            : 512 [9.00]
+Circuit Size      : 512 [9.00]
+
 Range-checks:
 Constraints       : 24 [4.58]
 Range-Checks-Total: 132 [7.04]
