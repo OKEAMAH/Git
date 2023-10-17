@@ -290,13 +290,7 @@ let rec seq_field_of_data_encoding :
       (enums, types, seq)
   | Dynamic_size {kind; encoding} ->
       let size_id = size_id_of_id id in
-      let size_attr =
-        match kind with
-        | `N -> failwith "Not implemented"
-        | `Uint30 -> Ground.Attr.uint30 ~id:size_id
-        | `Uint16 -> Ground.Attr.uint16 ~id:size_id
-        | `Uint8 -> Ground.Attr.uint8 ~id:size_id
-      in
+      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id tid_gen
       in
