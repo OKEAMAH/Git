@@ -49,6 +49,18 @@ let summary ~title ~description =
    then the attr for its size has id [size_id_of_id x] *)
 let size_id_of_id id = "size_of_" ^ id
 
+let user_type_of_attrs types attrs fattr id =
+  let ((_, user_type) as type_) = (id, Helpers.class_spec_of_attrs ~id attrs) in
+  let types = Helpers.add_uniq_assoc types type_ in
+  let attr =
+    fattr
+      {
+        (Helpers.default_attr_spec ~id) with
+        dataType = DataType.(ComplexDataType (UserType user_type));
+      }
+  in
+  (types, attr)
+
 (* in kaitai-struct, some fields can be added to single attributes but not to a
    group of them. When we want to attach a field to a group of attributes, we
    need to create an indirection to a named type. [redirect_if_many] is a
@@ -64,19 +76,7 @@ let redirect_if_many :
   match attrs with
   | [] -> failwith "Not supported"
   | [attr] -> (types, {(fattr attr) with id})
-  | _ :: _ :: _ as attrs ->
-      let ((_, user_type) as type_) =
-        (id, Helpers.class_spec_of_attrs ~id attrs)
-      in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        fattr
-          {
-            (Helpers.default_attr_spec ~id) with
-            dataType = DataType.(ComplexDataType (UserType user_type));
-          }
-      in
-      (types, attr)
+  | _ :: _ :: _ as attrs -> user_type_of_attrs types attrs fattr id
 
 let rec seq_field_of_data_encoding :
     type a.
@@ -234,7 +234,7 @@ let rec seq_field_of_data_encoding :
                            - Support [size_of-type], by calling data-encoding
                              max size combinators/helpers? *)
       let types, attr =
-        redirect_if_many
+        user_type_of_attrs
           types
           attrs
           (fun attr ->
@@ -265,7 +265,7 @@ let rec seq_field_of_data_encoding :
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
       let types, attr =
-        redirect_if_many
+        user_type_of_attrs
           types
           attrs
           (fun attr ->

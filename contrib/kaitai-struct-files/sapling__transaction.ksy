@@ -16,9 +16,13 @@ types:
     - id: size_of_outputs
       type: s4
     - id: outputs
-      type: sapling__transaction__output
+      type: outputs_entries
       size: size_of_outputs
       repeat: eos
+  outputs_entries:
+    seq:
+    - id: sapling__transaction__output
+      type: sapling__transaction__output
       doc: Output of a transaction
   sapling__transaction__output:
     seq:
@@ -53,11 +57,15 @@ types:
     - id: size_of_inputs
       type: s4
     - id: inputs
-      type: sapling__transaction__input
+      type: inputs_entries
       size: size_of_inputs
       repeat: eos
       valid:
         max: 1833216
+  inputs_entries:
+    seq:
+    - id: sapling__transaction__input
+      type: sapling__transaction__input
       doc: Input of a transaction
   sapling__transaction__input:
     seq:

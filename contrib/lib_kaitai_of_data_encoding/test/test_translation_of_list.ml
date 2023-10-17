@@ -18,9 +18,14 @@ let%expect_test "test fixed size list translation" =
   meta:
     id: list_of_uint8
     endian: be
+  types:
+    list_of_uint8_entries:
+      seq:
+      - id: list_of_uint8_elt
+        type: u1
   seq:
   - id: list_of_uint8_entries
-    type: u1
+    type: list_of_uint8_entries
     repeat: expr
     repeat-expr: 5
   |}]
@@ -37,16 +42,17 @@ let%expect_test "test variable size list translation" =
   meta:
     id: list_of_uint8
     endian: be
+  types:
+    list_of_uint8_entries:
+      seq:
+      - id: list_of_uint8_elt
+        type: u1
   seq:
   - id: list_of_uint8_entries
-    type: u1
+    type: list_of_uint8_entries
     repeat: eos
   |}]
 
-(* TODO: Fix this translation. [repeat] attribute spec means we are dealing,
-         with the list/array type. If in addition attribute has a [size] spec,
-         it corresponds to the size of a single element and not whole list.
-         We need to introduce another layer of nesting to fix that. *)
 let%expect_test "test dynamic size list translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -59,19 +65,20 @@ let%expect_test "test dynamic size list translation" =
   meta:
     id: list_of_uint8
     endian: be
+  types:
+    list_of_uint8_entries:
+      seq:
+      - id: list_of_uint8_elt
+        type: u1
   seq:
   - id: size_of_list_of_uint8
     type: s4
   - id: list_of_uint8
-    type: u1
+    type: list_of_uint8_entries
     size: size_of_list_of_uint8
     repeat: eos
   |}]
 
-(* TODO: Fix this translation. [repeat] attribute spec means we are dealing,
-         with the list/array type. If in addition attribute has a [size] spec,
-         it corresponds to the size of a single element and not whole list.
-         We need to introduce another layer of nesting to fix that. *)
 let%expect_test "test dynamic size list with max length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -84,11 +91,16 @@ let%expect_test "test dynamic size list with max length" =
   meta:
     id: list_with_length
     endian: be
+  types:
+    list_with_length_entries:
+      seq:
+      - id: list_with_length_elt
+        type: u1
   seq:
   - id: size_of_list_with_length
     type: s4
   - id: list_with_length
-    type: u1
+    type: list_with_length_entries
     size: size_of_list_with_length
     repeat: eos
     valid:
@@ -108,9 +120,14 @@ let%expect_test "test variable size list with max length" =
   meta:
     id: list_with_length
     endian: be
+  types:
+    list_with_length_entries:
+      seq:
+      - id: list_with_length_elt
+        type: s4
   seq:
   - id: list_with_length_entries
-    type: s4
+    type: list_with_length_entries
     repeat: eos
   |}]
 
@@ -127,11 +144,16 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
+  types:
+    list_with_length_entries:
+      seq:
+      - id: list_with_length_elt
+        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: s4
   - id: list_with_length_entries
-    type: u1
+    type: list_with_length_entries
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]
@@ -148,11 +170,16 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
+  types:
+    list_with_length_entries:
+      seq:
+      - id: list_with_length_elt
+        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: u1
   - id: list_with_length_entries
-    type: u1
+    type: list_with_length_entries
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]
@@ -170,11 +197,16 @@ let%expect_test "test list with length" =
   meta:
     id: list_with_length
     endian: be
+  types:
+    list_with_length_entries:
+      seq:
+      - id: list_with_length_elt
+        type: u1
   seq:
   - id: number_of_elements_in_list_with_length
     type: u2
   - id: list_with_length_entries
-    type: u1
+    type: list_with_length_entries
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]

@@ -63,9 +63,13 @@ types:
     - id: size_of_fitness
       type: s4
     - id: fitness
-      type: fitness__elem
+      type: fitness_entries
       size: size_of_fitness
       repeat: eos
+  fitness_entries:
+    seq:
+    - id: fitness__elem
+      type: fitness__elem
   fitness__elem:
     seq:
     - id: size_of_fitness__elem

@@ -7,17 +7,25 @@ types:
     - id: size_of_endorsement_reward
       type: s4
     - id: endorsement_reward
-      type: n
+      type: endorsement_reward_entries
       size: size_of_endorsement_reward
       repeat: eos
+  endorsement_reward_entries:
+    seq:
+    - id: id_011__pthangz2__mutez
+      type: n
   baking_reward_per_endorsement:
     seq:
     - id: size_of_baking_reward_per_endorsement
       type: s4
     - id: baking_reward_per_endorsement
-      type: n
+      type: baking_reward_per_endorsement_entries
       size: size_of_baking_reward_per_endorsement
       repeat: eos
+  baking_reward_per_endorsement_entries:
+    seq:
+    - id: id_011__pthangz2__mutez
+      type: n
   n:
     seq:
     - id: n
@@ -48,17 +56,25 @@ types:
     - id: size_of_time_between_blocks
       type: s4
     - id: time_between_blocks
-      type: s8
+      type: time_between_blocks_entries
       size: size_of_time_between_blocks
       repeat: eos
+  time_between_blocks_entries:
+    seq:
+    - id: time_between_blocks_elt
+      type: s8
   cache_layout:
     seq:
     - id: size_of_cache_layout
       type: s4
     - id: cache_layout
-      type: s8
+      type: cache_layout_entries
       size: size_of_cache_layout
       repeat: eos
+  cache_layout_entries:
+    seq:
+    - id: cache_layout_elt
+      type: s8
 seq:
 - id: proof_of_work_nonce_size
   type: u1
