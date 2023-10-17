@@ -14,10 +14,6 @@ types:
       type: u2
     - id: denominator
       type: u2
-  id_013__ptjakart__mutez:
-    seq:
-    - id: id_013__ptjakart__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -85,25 +81,19 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: tokens_per_roll
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: seed_nonce_revelation_tip
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: origination_size
   type: s4
 - id: baking_reward_fixed_portion
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: baking_reward_bonus_per_slot
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: endorsing_reward_per_slot
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: cost_per_byte
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: hard_storage_limit_per_operation
   type: z
 - id: quorum_min
@@ -113,8 +103,7 @@ seq:
 - id: min_proposal_quorum
   type: s4
 - id: liquidity_baking_subsidy
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: liquidity_baking_sunset_level
   type: s4
 - id: liquidity_baking_toggle_ema_threshold
@@ -136,8 +125,7 @@ seq:
 - id: frozen_deposits_percentage
   type: s4
 - id: double_baking_punishment
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
   type: ratio_of_frozen_deposits_slashed_per_double_endorsement
 - id: initial_seed_tag
@@ -164,8 +152,7 @@ seq:
 - id: tx_rollup_max_withdrawals_per_batch
   type: s4
 - id: tx_rollup_commitment_bond
-  type: id_013__ptjakart__mutez
-  size: 10
+  type: n
 - id: tx_rollup_finality_period
   type: s4
 - id: tx_rollup_withdraw_period

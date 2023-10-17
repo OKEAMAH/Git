@@ -2,10 +2,6 @@ meta:
   id: id_016__ptmumbai__tez
   endian: be
 types:
-  id_016__ptmumbai__mutez:
-    seq:
-    - id: id_016__ptmumbai__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_016__ptmumbai__mutez
-  type: id_016__ptmumbai__mutez
-  size: 10
+  type: n

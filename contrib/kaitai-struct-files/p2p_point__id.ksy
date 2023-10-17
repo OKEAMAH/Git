@@ -4,10 +4,10 @@ meta:
 types:
   p2p_point__id:
     seq:
-    - id: len_p2p_point__id
+    - id: size_of_p2p_point__id
       type: s4
     - id: p2p_point__id
-      size: len_p2p_point__id
+      size: size_of_p2p_point__id
 seq:
 - id: p2p_point__id
   type: p2p_point__id

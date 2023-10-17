@@ -7,22 +7,18 @@ doc: ! >-
 types:
   bound_data:
     seq:
-    - id: len_bound_data
+    - id: size_of_bound_data
       type: s4
     - id: bound_data
-      size: len_bound_data
+      size: size_of_bound_data
   outputs:
     seq:
-    - id: len_outputs
+    - id: size_of_outputs
       type: s4
     - id: outputs
-      type: outputs_entries
-      size: len_outputs
-      repeat: eos
-  outputs_entries:
-    seq:
-    - id: sapling__transaction__output
       type: sapling__transaction__output
+      size: size_of_outputs
+      repeat: eos
       doc: Output of a transaction
   sapling__transaction__output:
     seq:
@@ -48,22 +44,20 @@ types:
       size: 24
   payload_enc:
     seq:
-    - id: len_payload_enc
+    - id: size_of_payload_enc
       type: s4
     - id: payload_enc
-      size: len_payload_enc
+      size: size_of_payload_enc
   inputs:
     seq:
-    - id: len_inputs
+    - id: size_of_inputs
       type: s4
     - id: inputs
-      type: inputs_entries
-      size: len_inputs
-      repeat: eos
-  inputs_entries:
-    seq:
-    - id: sapling__transaction__input
       type: sapling__transaction__input
+      size: size_of_inputs
+      repeat: eos
+      valid:
+        max: 1833216
       doc: Input of a transaction
   sapling__transaction__input:
     seq:

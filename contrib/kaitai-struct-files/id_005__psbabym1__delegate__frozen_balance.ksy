@@ -2,10 +2,6 @@ meta:
   id: id_005__psbabym1__delegate__frozen_balance
   endian: be
 types:
-  id_005__psbabym1__mutez:
-    seq:
-    - id: id_005__psbabym1__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,11 +16,8 @@ types:
       type: b7be
 seq:
 - id: deposit
-  type: id_005__psbabym1__mutez
-  size: 10
+  type: n
 - id: fees
-  type: id_005__psbabym1__mutez
-  size: 10
+  type: n
 - id: rewards
-  type: id_005__psbabym1__mutez
-  size: 10
+  type: n

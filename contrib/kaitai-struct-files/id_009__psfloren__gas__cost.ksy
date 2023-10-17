@@ -2,10 +2,6 @@ meta:
   id: id_009__psfloren__gas__cost
   endian: be
 types:
-  id_009__psfloren__gas__cost:
-    seq:
-    - id: id_009__psfloren__gas__cost
-      type: z
   z:
     seq:
     - id: has_tail
@@ -26,6 +22,5 @@ types:
     - id: payload
       type: b7be
 seq:
-- id: id_009__psfloren__gas__cost_with_checked_size
-  type: id_009__psfloren__gas__cost
-  size: 9
+- id: id_009__psfloren__gas__cost
+  type: z

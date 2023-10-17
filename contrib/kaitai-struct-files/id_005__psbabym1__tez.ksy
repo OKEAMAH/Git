@@ -2,10 +2,6 @@ meta:
   id: id_005__psbabym1__tez
   endian: be
 types:
-  id_005__psbabym1__mutez:
-    seq:
-    - id: id_005__psbabym1__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_005__psbabym1__mutez
-  type: id_005__psbabym1__mutez
-  size: 10
+  type: n

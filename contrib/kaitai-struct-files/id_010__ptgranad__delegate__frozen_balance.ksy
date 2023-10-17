@@ -2,10 +2,6 @@ meta:
   id: id_010__ptgranad__delegate__frozen_balance
   endian: be
 types:
-  id_010__ptgranad__mutez:
-    seq:
-    - id: id_010__ptgranad__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,11 +16,8 @@ types:
       type: b7be
 seq:
 - id: deposits
-  type: id_010__ptgranad__mutez
-  size: 10
+  type: n
 - id: fees
-  type: id_010__ptgranad__mutez
-  size: 10
+  type: n
 - id: rewards
-  type: id_010__ptgranad__mutez
-  size: 10
+  type: n

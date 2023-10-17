@@ -77,18 +77,15 @@ let%expect_test "test dynamic size list with max length" =
   meta:
     id: list_with_length
     endian: be
-  types:
-    list_with_length:
-      seq:
-      - id: list_with_length_entries
-        type: u1
-        repeat: eos
   seq:
   - id: size_of_list_with_length
     type: s4
   - id: list_with_length
-    type: list_with_length
+    type: u1
     size: size_of_list_with_length
+    repeat: eos
+    valid:
+      max: 5
   |}]
 
 (* TODO: ?max_length guard is missing. *)
@@ -104,16 +101,10 @@ let%expect_test "test variable size list with max length" =
   meta:
     id: list_with_length
     endian: be
-  types:
-    list_with_length:
-      seq:
-      - id: list_with_length_entries
-        type: s4
-        repeat: eos
   seq:
-  - id: list_with_length_with_checked_size
-    type: list_with_length
-    size: 20
+  - id: list_with_length_entries
+    type: s4
+    repeat: eos
   |}]
 
 (* TODO: ?max_length guard is missing. *)

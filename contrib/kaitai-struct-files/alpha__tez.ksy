@@ -2,10 +2,6 @@ meta:
   id: alpha__tez
   endian: be
 types:
-  alpha__mutez:
-    seq:
-    - id: alpha__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: alpha__mutez
-  type: alpha__mutez
-  size: 10
+  type: n

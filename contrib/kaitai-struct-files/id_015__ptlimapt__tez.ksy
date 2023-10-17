@@ -2,10 +2,6 @@ meta:
   id: id_015__ptlimapt__tez
   endian: be
 types:
-  id_015__ptlimapt__mutez:
-    seq:
-    - id: id_015__ptlimapt__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_015__ptlimapt__mutez
-  type: id_015__ptlimapt__mutez
-  size: 10
+  type: n

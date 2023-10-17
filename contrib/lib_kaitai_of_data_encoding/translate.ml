@@ -143,6 +143,26 @@ let rec seq_field_of_data_encoding :
       let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       (enums, types, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
+  | Dynamic_size {kind; encoding = {encoding = Check_size {limit; encoding}; _}}
+    ->
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types encoding id tid_gen
+      in
+      let size_id = size_id_of_id id in
+      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+      let types, attr =
+        redirect_if_many
+          types
+          attrs
+          (fun attr ->
+            {
+              attr with
+              size = Some (Ast.Name size_id);
+              valid = Some (ValidationMax (Ast.IntNum limit));
+            })
+          id
+      in
+      (enums, types, [size_attr; attr])
   | Padded (encoding, pad) ->
       let enums, types, attrs =
         seq_field_of_data_encoding enums types encoding id tid_gen
@@ -304,23 +324,9 @@ let rec seq_field_of_data_encoding :
           id
       in
       (enums, types, [attr])
-  | Check_size {limit; encoding} ->
-      let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
-      in
-      let ((_, user_type) as type_) =
-        (id, Helpers.class_spec_of_attrs ~id attrs)
-      in
-      let checked_size_id = id ^ "_with_checked_size" in
-      let types = Helpers.add_uniq_assoc types type_ in
-      let attr =
-        {
-          (Helpers.default_attr_spec ~id:checked_size_id) with
-          dataType = DataType.(ComplexDataType (UserType user_type));
-          size = Some (Ast.IntNum limit);
-        }
-      in
-      (enums, types, [attr])
+  | Check_size {limit = _; encoding} ->
+      (* TODO: Add a guard. *)
+      seq_field_of_data_encoding enums types encoding id tid_gen
   | _ -> failwith "Not implemented"
 
 and seq_field_of_field :

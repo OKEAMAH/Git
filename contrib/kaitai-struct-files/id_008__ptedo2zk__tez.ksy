@@ -2,10 +2,6 @@ meta:
   id: id_008__ptedo2zk__tez
   endian: be
 types:
-  id_008__ptedo2zk__mutez:
-    seq:
-    - id: id_008__ptedo2zk__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_008__ptedo2zk__mutez
-  type: id_008__ptedo2zk__mutez
-  size: 10
+  type: n

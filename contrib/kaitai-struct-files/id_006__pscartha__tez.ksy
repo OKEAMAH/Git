@@ -2,10 +2,6 @@ meta:
   id: id_006__pscartha__tez
   endian: be
 types:
-  id_006__pscartha__mutez:
-    seq:
-    - id: id_006__pscartha__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_006__pscartha__mutez
-  type: id_006__pscartha__mutez
-  size: 10
+  type: n

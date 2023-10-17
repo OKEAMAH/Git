@@ -2,10 +2,6 @@ meta:
   id: id_009__psfloren__tez
   endian: be
 types:
-  id_009__psfloren__mutez:
-    seq:
-    - id: id_009__psfloren__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_009__psfloren__mutez
-  type: id_009__psfloren__mutez
-  size: 10
+  type: n

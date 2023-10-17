@@ -7,17 +7,10 @@ types:
     - id: cycle
       type: s4
     - id: deposit
-      type: id_007__psdelph1__mutez
-      size: 10
+      type: n
     - id: fees
-      type: id_007__psdelph1__mutez
-      size: 10
+      type: n
     - id: rewards
-      type: id_007__psdelph1__mutez
-      size: 10
-  id_007__psdelph1__mutez:
-    seq:
-    - id: id_007__psdelph1__mutez
       type: n
   n:
     seq:

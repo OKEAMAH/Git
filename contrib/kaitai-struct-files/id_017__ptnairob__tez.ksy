@@ -2,10 +2,6 @@ meta:
   id: id_017__ptnairob__tez
   endian: be
 types:
-  id_017__ptnairob__mutez:
-    seq:
-    - id: id_017__ptnairob__mutez
-      type: n
   n:
     seq:
     - id: n
@@ -20,5 +16,4 @@ types:
       type: b7be
 seq:
 - id: id_017__ptnairob__mutez
-  type: id_017__ptnairob__mutez
-  size: 10
+  type: n
