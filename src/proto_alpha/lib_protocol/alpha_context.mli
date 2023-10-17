@@ -5119,7 +5119,7 @@ module Staking_pseudotokens : sig
     contract:Contract.t ->
     delegate:public_key_hash ->
     Tez.t ->
-    (context * Tez.t) tzresult Lwt.t
+    (context * Tez.t * Receipt.balance_updates) tzresult Lwt.t
 
   module For_RPC : sig
     val staked_balance :
