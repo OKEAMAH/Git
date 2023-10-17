@@ -2092,6 +2092,10 @@ module Receipt : sig
         delegator : Contract.t;
       }
         -> Staking_pseudotoken.t balance
+    | Staking_delegate_denominator : {
+        delegate : public_key_hash;
+      }
+        -> Staking_pseudotoken.t balance
 
   val token_of_balance : 'token balance -> 'token Token.t
 
