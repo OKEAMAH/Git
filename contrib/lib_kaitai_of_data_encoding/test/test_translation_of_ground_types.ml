@@ -180,10 +180,10 @@ let%expect_test "test dynamic size bytes translation" =
       id: ground_bytes
       endian: be
     seq:
-    - id: len_ground_bytes
+    - id: size_of_ground_bytes
       type: s4
     - id: ground_bytes
-      size: len_ground_bytes |}]
+      size: size_of_ground_bytes |}]
 
 let%expect_test "test fixed size bytes translation" =
   let s =
@@ -230,10 +230,10 @@ let%expect_test "test dynamic size string translation" =
       id: ground_string
       endian: be
     seq:
-    - id: len_ground_string
+    - id: size_of_ground_string
       type: s4
     - id: ground_string
-      size: len_ground_string |}]
+      size: size_of_ground_string |}]
 
 let%expect_test "test big numbers translation" =
   let s =
