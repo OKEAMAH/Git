@@ -43,6 +43,10 @@ let%expect_test "test variable size list translation" =
     repeat: eos
   |}]
 
+(* TODO: Fix this translation. [repeat] attribute spec means we are dealing,
+         with the list/array type. If in addition attribute has a [size] spec,
+         it corresponds to the size of a single element and not whole list.
+         We need to introduce another layer of nesting to fix that. *)
 let%expect_test "test dynamic size list translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -64,7 +68,10 @@ let%expect_test "test dynamic size list translation" =
     repeat: eos
   |}]
 
-(* TODO: ?max_length guard is missing. *)
+(* TODO: Fix this translation. [repeat] attribute spec means we are dealing,
+         with the list/array type. If in addition attribute has a [size] spec,
+         it corresponds to the size of a single element and not whole list.
+         We need to introduce another layer of nesting to fix that. *)
 let%expect_test "test dynamic size list with max length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -129,7 +136,6 @@ let%expect_test "test list with length" =
     repeat-expr: number_of_elements_in_list_with_length
   |}]
 
-(* TODO: ?max_length guard is missing. *)
 let%expect_test "test list with length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding

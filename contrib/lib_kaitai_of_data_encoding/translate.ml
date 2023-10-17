@@ -222,6 +222,12 @@ let rec seq_field_of_data_encoding :
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
+      (* TODO Add max size guard of size: [(size_of_type elts) * limit].
+              Two problems:
+                           - Guard should be placed on the actual list and not
+                             on the list element.
+                           - Support [size_of-type], by calling data-encoding
+                             max size combinators/helpers? *)
       let types, attr =
         redirect_if_many
           types
@@ -232,6 +238,8 @@ let rec seq_field_of_data_encoding :
               cond =
                 {
                   Helpers.cond_no_cond with
+                  (* TODO: Fix size refering to list element instead of whole
+                           list. *)
                   repeat = RepeatExpr (Ast.Name length_id);
                 };
             })
@@ -257,16 +265,22 @@ let rec seq_field_of_data_encoding :
             | No_limit ->
                 {
                   attr with
-                  (* TODO: [(size_of_type elts) * limit ] ? *)
                   cond = {Helpers.cond_no_cond with repeat = RepeatEos};
                 }
             | At_most _max_length ->
                 {
                   attr with
-                  (* TODO: Add max length guard *)
+                  (* TODO: Add guard of size: [(size_of_type elts) * limit]. *)
                   cond = {Helpers.cond_no_cond with repeat = RepeatEos};
                 }
             | Exactly exact_length ->
+                (* TODO/Question: This is [Dynamic_size(Check_size...)] case
+                                  when we have max length for elements of fixed
+                                  size?
+
+                                  What about when we have variable size list
+                                  with fixed size elements only? We will have to
+                                  propagate guard to a parent type? *)
                 {
                   attr with
                   cond =
