@@ -290,6 +290,28 @@ functor
           (8, "B0", "00");
         ]
 
+    let test_add_with_carry4 a b z () =
+      let* a = input ~kind:`Public a in
+      let* b = input b in
+      let* z = input z in
+      let* z' = Limbs4.add ~ignore_carry:true a b in
+      assert_equal z z'
+
+    let tests_add_with_carry =
+      List.map
+        (fun (valid, a, b, o) ->
+          let a = limb_list_input_bytes4 @@ bytes_of_hex a in
+          let b = limb_list_input_bytes4 @@ bytes_of_hex b in
+          let o = limb_list_input_bytes4 @@ bytes_of_hex o in
+          test ~valid ~name:"Bytes.test_add" @@ test_add_with_carry4 a b o)
+        [
+          (true, "08", "08", "10");
+          (true, "10", "0F", "1F");
+          (true, "FF", "00", "FF");
+          (true, "04D2", "0237", "0709");
+          (false, "08", "08", "08");
+        ]
+
     let tests =
       tests_bor @ tests_bor_bytes @ tests_xor
       @ tests_xor_bytes "1" bool_list_input_bytes test_xor_bytes
@@ -297,7 +319,7 @@ functor
       @ tests_bnot
       @ tests_bnot_bytes "1" bool_list_input_bytes test_bnot_bytes
       @ tests_bnot_bytes "4" limb_list_input_bytes4 test_bnot_bytes4
-      @ tests_rotate_right @ tests_shift_right
+      @ tests_rotate_right @ tests_shift_right @ tests_add_with_carry
   end
 
 let tests =
