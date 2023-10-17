@@ -143,17 +143,19 @@ let stake ctxt ~sender ~delegate amount =
   let* ctxt, finalize_balance_updates =
     finalize_unstake_and_check ~check_unfinalizable ctxt sender_contract
   in
-  let* ctxt =
+  let* ctxt, stake_balance_updates1 =
     Staking_pseudotokens.stake ctxt ~contract:sender_contract ~delegate amount
   in
-  let+ ctxt, stake_balance_updates =
+  let+ ctxt, stake_balance_updates2 =
     Token.transfer
       ctxt
       (`Contract sender_contract)
       (`Frozen_deposits (Receipt.Single (sender_contract, delegate)))
       amount
   in
-  (ctxt, stake_balance_updates @ finalize_balance_updates)
+  ( ctxt,
+    stake_balance_updates1 @ stake_balance_updates2 @ finalize_balance_updates
+  )
 
 let request_unstake ctxt ~sender_contract ~delegate requested_amount =
   let open Lwt_result_syntax in

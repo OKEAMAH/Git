@@ -5112,7 +5112,7 @@ module Staking_pseudotokens : sig
     contract:Contract.t ->
     delegate:public_key_hash ->
     Tez.t ->
-    context tzresult Lwt.t
+    (context * Receipt.balance_updates) tzresult Lwt.t
 
   val request_unstake :
     context ->
