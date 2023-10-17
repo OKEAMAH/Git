@@ -16,6 +16,7 @@ fn process_slot(
     slot_index: u8,
 ) {
     let mut buffer = vec![0u8; page_size * num_pages];
+    let mut is_attested = true;
 
     for page_index in 0..num_pages {
         let result = host.reveal_dal_page(
@@ -26,11 +27,19 @@ fn process_slot(
         );
 
         match result {
-            Ok(_) => {}
+            Ok(num) => {
+                is_attested = is_attested && num > 0;
+                debug_msg!(
+                    host,
+                    "Retrieved page {} successfully. {} bytes read\n",
+                    page_index,
+                    num
+                );
+            }
             Err(err) => {
                 debug_msg!(
                     host,
-                    "Failed to retrieve one of the pages. Slot {} not processed. Error: {}",
+                    "Failed to retrieve one of the pages. Slot {} not processed. Error: {}\n",
                     slot_index,
                     &err.to_string()
                 );
@@ -40,12 +49,19 @@ fn process_slot(
         }
     }
 
-    debug_msg!(host, "Writing buffer with size {}\n", buffer.len());
-    let slot_path = format!("/output/slot-{}", slot_index);
-    let path: OwnedPath = slot_path.as_bytes().to_vec().try_into().unwrap();
-    host.store_write(&path, &buffer, 0)
-        .map_err(|_| "Error writing to storage".to_string())
-        .unwrap_or_default();
+    if is_attested {
+        debug_msg!(host, "Writing buffer with size {}\n", buffer.len());
+
+        debug_msg!(host, "Content: {:x?}", &buffer);
+
+        let slot_path = format!("/output/slot-{}", slot_index);
+        let path: OwnedPath = slot_path.as_bytes().to_vec().try_into().unwrap();
+        host.store_write(&path, &buffer, 0)
+            .map_err(|_| "Error writing to storage".to_string())
+            .unwrap_or_default();
+    }else{
+        debug_msg!(host, "Slot {} not attested for level {}\n", slot_index, published_level);
+    }
 }
 
 #[derive(Debug)]
