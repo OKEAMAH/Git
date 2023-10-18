@@ -9,6 +9,7 @@
 #include <caml/mlvalues.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #ifdef __BLST_PORTABLE__
 #define BUILT_WITH_BLST_PORTABLE 1

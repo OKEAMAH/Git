@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-COMMIT="ab335a9a5e5b691ffb919813e7115809584474dd"
+COMMIT="90883355c5e0d4c9fd2a52fb2a8a237579878137"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 TMP_DIRECTORY=$(mktemp -d)

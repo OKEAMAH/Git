@@ -1,3 +1,4 @@
+.comm	___blst_platform_cap,4
 .text	
 
 .globl	_blst_sha256_block_data_order
@@ -8,32 +9,34 @@ _blst_sha256_block_data_order:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
-	pushq	%rbx
-.cfi_adjust_cfa_offset	8
-.cfi_offset	%rbx,-16
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
-.cfi_offset	%rbp,-24
+.cfi_offset	%rbp,-16
+	movq	%rsp,%rbp
+.cfi_def_cfa_register	%rbp
+#ifdef __BLST_PORTABLE__
+	testl	$2,___blst_platform_cap(%rip)
+	jnz	L$blst_sha256_block_data_order$2
+#endif
+	pushq	%rbx
+.cfi_offset	%rbx,-24
 	pushq	%r12
-.cfi_adjust_cfa_offset	8
 .cfi_offset	%r12,-32
 	pushq	%r13
-.cfi_adjust_cfa_offset	8
 .cfi_offset	%r13,-40
 	pushq	%r14
-.cfi_adjust_cfa_offset	8
 .cfi_offset	%r14,-48
 	pushq	%r15
-.cfi_adjust_cfa_offset	8
 .cfi_offset	%r15,-56
 	shlq	$4,%rdx
 	subq	$64+24,%rsp
-.cfi_adjust_cfa_offset	16*4+3*8
+
+.cfi_def_cfa	%rsp,144
+
 	leaq	(%rsi,%rdx,4),%rdx
 	movq	%rdi,64+0(%rsp)
 	movq	%rsi,64+8(%rsp)
 	movq	%rdx,64+16(%rsp)
-
 
 	movl	0(%rdi),%eax
 	movl	4(%rdi),%ebx
@@ -1636,23 +1639,31 @@ L$rounds_16_xx:
 	leaq	64+24+48(%rsp),%r11
 .cfi_def_cfa	%r11,8
 	movq	64+24(%rsp),%r15
-.cfi_restore	%r15
 	movq	-40(%r11),%r14
-.cfi_restore	%r14
 	movq	-32(%r11),%r13
-.cfi_restore	%r13
 	movq	-24(%r11),%r12
+	movq	-16(%r11),%rbx
+	movq	-8(%r11),%rbp
 .cfi_restore	%r12
-	movq	-16(%r11),%rbp
+.cfi_restore	%r13
+.cfi_restore	%r14
+.cfi_restore	%r15
 .cfi_restore	%rbp
-	movq	-8(%r11),%rbx
 .cfi_restore	%rbx
-
 	leaq	(%r11),%rsp
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 
 
+#ifndef __BLST_PORTABLE__
 .p2align	6
 
 K256:
@@ -1702,7 +1713,15 @@ _blst_sha256_emit:
 	shrq	$32,%r11
 	movl	%r10d,16(%rdi)
 	movl	%r11d,24(%rdi)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1721,7 +1740,15 @@ L$oop_bcopy:
 	movb	%al,-1(%rdi,%rsi,1)
 	decq	%rdx
 	jnz	L$oop_bcopy
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1741,6 +1768,15 @@ _blst_sha256_hcopy:
 	movq	%r9,8(%rdi)
 	movq	%r10,16(%rdi)
 	movq	%r11,24(%rdi)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
+#endif

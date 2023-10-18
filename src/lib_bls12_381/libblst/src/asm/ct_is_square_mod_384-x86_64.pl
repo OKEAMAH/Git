@@ -89,6 +89,7 @@ $code.=<<___;
 .text
 
 .globl	ct_is_square_mod_384
+.hidden	ct_is_square_mod_384
 .type	ct_is_square_mod_384,\@function,2,"unwind"
 .align	32
 ct_is_square_mod_384:
@@ -112,6 +113,9 @@ ct_is_square_mod_384:
 	lea	8*3+255(%rsp), %rax	# find closest 256-byte-aligned spot
 	and	\$-256, %rax		# in the frame...
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	mov	8*0(%rdi), @acc[0]	# load input
 	mov	8*1(%rdi), @acc[1]
 	mov	8*2(%rdi), @acc[2]
@@ -448,7 +452,7 @@ __inner_loop_30:		################# by Thomas Pornin
 	sub	$bias, $f1
 	sub	$bias, $g1
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=$a_
 .size	__inner_loop_30,.-__inner_loop_30
 
 .type	__inner_loop_48,\@abi-omnipotent

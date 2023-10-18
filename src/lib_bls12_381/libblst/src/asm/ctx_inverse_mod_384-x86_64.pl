@@ -58,9 +58,9 @@ def ct_inverse_mod_383(inp, mod):
         v = u*f1 + v*g1
 
     if v < 0:
-        v += mod << 387 # left aligned
+        v += mod << (768 - mod.bit_length())    # left aligned
 
-    return v    # to be reduced % mod
+    return v & (2**768 - 1) # to be reduced % mod
 ___
 
 $flavour = shift;
@@ -77,6 +77,10 @@ die "can't locate x86_64-xlate.pl";
 open STDOUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";
 
+$code.=<<___ if ($flavour =~ /masm/);
+.globl	ct_inverse_mod_383\$1
+___
+
 my ($out_ptr, $in_ptr, $n_ptr, $nx_ptr) = ("%rdi", "%rsi", "%rdx", "%rcx");
 my @acc=(map("%r$_",(8..15)), "%rbx", "%rbp", $in_ptr, $out_ptr);
 my ($f0, $g0, $f1, $g1) = ("%rdx","%rcx","%r12","%r13");
@@ -88,10 +92,12 @@ $code.=<<___;
 .text
 
 .globl	ctx_inverse_mod_383
+.hidden	ctx_inverse_mod_383
 .type	ctx_inverse_mod_383,\@function,4,"unwind"
 .align	32
 ctx_inverse_mod_383:
 .cfi_startproc
+ct_inverse_mod_383\$1:
 	push	%rbp
 .cfi_push	%rbp
 	push	%rbx
@@ -113,6 +119,9 @@ ctx_inverse_mod_383:
 	mov	$out_ptr, 8*4(%rsp)
 	mov	$nx_ptr, 8*5(%rsp)
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	mov	8*0($in_ptr), @acc[0]	# load input
 	mov	8*1($in_ptr), @acc[1]
 	mov	8*2($in_ptr), @acc[2]
@@ -280,7 +289,7 @@ $code.=<<___;
 	#xor	@acc[1],      @acc[1]	# |a_hi|
 	mov	8*6($in_ptr), @acc[2]	# |b_lo|
 	#xor	@acc[3],      @acc[3]	# |b_hi|
-	call	__inner_loop_62
+	call	__tail_loop_53
 	#mov	$f0, 8*7(%rsp)
 	#mov	$g0, 8*8(%rsp)
 	#mov	$f1, 8*9(%rsp)
@@ -306,6 +315,9 @@ $code.=<<___;
 	mov	%rax, @acc[0]		# mask |modulus|
 	mov	%rax, @acc[1]
 	mov	%rax, @acc[2]
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	and	8*0($in_ptr), @acc[0]
 	and	8*1($in_ptr), @acc[1]
 	mov	%rax, @acc[3]
@@ -526,7 +538,7 @@ $code.=<<___;
 	mov	@acc[10], 8*10(%rdx)
 	mov	%rax,     8*11(%rdx)
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=@acc[0]
 .size	__smulx_767x63,.-__smulx_767x63
 ___
 }
@@ -608,7 +620,7 @@ $code.=<<___;
 	mov	@acc[4], 8*4($out_ptr)
 	mov	@acc[5], 8*5($out_ptr)
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=@acc[0]
 .size	__smulx_383x63,.-__smulx_383x63
 ___
 ########################################################################
@@ -736,7 +748,7 @@ $code.=<<___;
 	add	$fx, %rdx
 	add	$fx, $g0
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=@acc[0]
 .size	__smulx_383_n_shift_by_31,.-__smulx_383_n_shift_by_31
 ___
 } {
@@ -815,7 +827,7 @@ $code.=<<___;
 	add	$fx, %rdx
 	add	$fx, $g0
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=@acc[0]
 .size	__smulx_191_n_shift_by_31,.-__smulx_191_n_shift_by_31
 ___
 } }
@@ -946,18 +958,18 @@ __inner_loop_31:		################# by Thomas Pornin
 	sub	$bias, $f1
 	sub	$bias, $g1
 
-	ret
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=$a_lo
 .size	__inner_loop_31,.-__inner_loop_31
 
-.type	__inner_loop_62,\@abi-omnipotent
+.type	__tail_loop_53,\@abi-omnipotent
 .align	32
-__inner_loop_62:
+__tail_loop_53:
 	mov	\$1, $f0	# |f0|=1
 	xor	$g0, $g0	# |g0|=0
 	xor	$f1, $f1	# |f1|=0
 	mov	\$1, $g1	# |g1|=1
 
-.Loop_62:
+.Loop_53:
 	xor	$t0, $t0
 	test	\$1, $a_lo	# if |a_| is odd, then we'll be subtracting |b_|
 	mov	$b_lo, $t1
@@ -984,10 +996,10 @@ __inner_loop_62:
 	sub	$t0, $f0	# |f0|-=|f1| (or |f0-=0| if |a_| was even)
 	sub	$t1, $g0	# |g0|-=|g1| (or |g0-=0| ...)
 	sub	\$1, $cnt
-	jnz	.Loop_62
+	jnz	.Loop_53
 
-	ret
-.size	__inner_loop_62,.-__inner_loop_62
+	ret	# __SGX_LVI_HARDENING_CLOBBER__=$a_lo
+.size	__tail_loop_53,.-__tail_loop_53
 ___
 }
 

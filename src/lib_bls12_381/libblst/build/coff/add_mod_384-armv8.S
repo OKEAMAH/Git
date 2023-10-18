@@ -8,25 +8,25 @@
 .p2align	5
 add_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x4,x5,[x3]
 	ldp	x6,x7,[x3,#16]
 	ldp	x8,x9,[x3,#32]
 
 	bl	__add_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -78,10 +78,10 @@ __add_mod_384_ab_are_loaded:
 .p2align	5
 add_mod_384x:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x4,x5,[x3]
 	ldp	x6,x7,[x3,#16]
@@ -96,15 +96,15 @@ add_mod_384x:
 	stp	x14,x15,[x0,#32]
 
 	bl	__add_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0,#48]
 	stp	x12,x13,[x0,#64]
 	stp	x14,x15,[x0,#80]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -117,10 +117,10 @@ add_mod_384x:
 .p2align	5
 rshift_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -135,14 +135,14 @@ rshift_mod_384:
 	bl	__rshift_mod_384
 	cbnz	x2,.Loop_rshift_mod_384
 
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -183,10 +183,10 @@ __rshift_mod_384:
 .p2align	5
 div_by_2_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -198,14 +198,14 @@ div_by_2_mod_384:
 
 	bl	__rshift_mod_384
 
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -218,10 +218,10 @@ div_by_2_mod_384:
 .p2align	5
 lshift_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -236,14 +236,14 @@ lshift_mod_384:
 	bl	__lshift_mod_384
 	cbnz	x2,.Loop_lshift_mod_384
 
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -287,10 +287,10 @@ __lshift_mod_384:
 .p2align	5
 mul_by_3_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -307,15 +307,15 @@ mul_by_3_mod_384:
 	ldp	x21,x22,[x1,#32]
 
 	bl	__add_mod_384_ab_are_loaded
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -328,10 +328,10 @@ mul_by_3_mod_384:
 .p2align	5
 mul_by_8_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -344,15 +344,15 @@ mul_by_8_mod_384:
 	bl	__lshift_mod_384
 	bl	__lshift_mod_384
 	bl	__lshift_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -365,10 +365,10 @@ mul_by_8_mod_384:
 .p2align	5
 mul_by_3_mod_384x:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -400,15 +400,15 @@ mul_by_3_mod_384x:
 	ldp	x21,x22,[x1,#80]
 
 	bl	__add_mod_384_ab_are_loaded
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0,#48]
 	stp	x12,x13,[x0,#64]
 	stp	x14,x15,[x0,#80]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -421,10 +421,10 @@ mul_by_3_mod_384x:
 .p2align	5
 mul_by_8_mod_384x:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x12,x13,[x1,#16]
@@ -448,15 +448,15 @@ mul_by_8_mod_384x:
 	bl	__lshift_mod_384
 	bl	__lshift_mod_384
 	bl	__lshift_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0,#48]
 	stp	x12,x13,[x0,#64]
 	stp	x14,x15,[x0,#80]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -469,10 +469,10 @@ mul_by_8_mod_384x:
 .p2align	5
 cneg_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x10,x11,[x1]
 	ldp	x4,x5,[x3]
@@ -507,9 +507,9 @@ cneg_mod_384:
 	csel	x15,x15,x22,eq
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -522,25 +522,25 @@ cneg_mod_384:
 .p2align	5
 sub_mod_384:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x4,x5,[x3]
 	ldp	x6,x7,[x3,#16]
 	ldp	x8,x9,[x3,#32]
 
 	bl	__sub_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0]
 	stp	x12,x13,[x0,#16]
 	stp	x14,x15,[x0,#32]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -589,10 +589,10 @@ __sub_mod_384:
 .p2align	5
 sub_mod_384x:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x4,x5,[x3]
 	ldp	x6,x7,[x3,#16]
@@ -607,15 +607,15 @@ sub_mod_384x:
 	stp	x14,x15,[x0,#32]
 
 	bl	__sub_mod_384
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0,#48]
 	stp	x12,x13,[x0,#64]
 	stp	x14,x15,[x0,#80]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -628,10 +628,10 @@ sub_mod_384x:
 .p2align	5
 mul_by_1_plus_i_mod_384x:
 .long	3573752639
-	stp	x29,x30,[sp,#-48]!
+	stp	x29,x30,[sp,#-6*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
+	stp	x19,x20,[sp,#2*__SIZEOF_POINTER__]
+	stp	x21,x22,[sp,#4*__SIZEOF_POINTER__]
 
 	ldp	x4,x5,[x2]
 	ldp	x6,x7,[x2,#16]
@@ -651,15 +651,15 @@ mul_by_1_plus_i_mod_384x:
 	ldp	x14,x15,[x1,#80]
 
 	bl	__add_mod_384_ab_are_loaded	// a->re + a->im
-	ldr	x30,[sp,#8]
+	ldr	x30,[sp,#__SIZEOF_POINTER__]
 
 	stp	x10,x11,[x0,#48]
 	stp	x12,x13,[x0,#64]
 	stp	x14,x15,[x0,#80]
 
-	ldp	x19,x20,[x29,#16]
-	ldp	x21,x22,[x29,#32]
-	ldr	x29,[sp],#48
+	ldp	x19,x20,[x29,#2*__SIZEOF_POINTER__]
+	ldp	x21,x22,[x29,#4*__SIZEOF_POINTER__]
+	ldr	x29,[sp],#6*__SIZEOF_POINTER__
 .long	3573752767
 	ret
 
@@ -784,6 +784,23 @@ sgn0_pty_mod_384x:
 	and	x1,x1,#2
 	orr	x0,x1,x3	// pack sign and parity
 
+	ret
+
+.globl	vec_select_32
+
+.def	vec_select_32;
+.type	32;
+.endef
+.p2align	5
+vec_select_32:
+	dup	v6.2d, x3
+	ld1	{v0.2d, v1.2d, v2.2d}, [x1],#48
+	cmeq	v6.2d, v6.2d, #0
+	ld1	{v3.2d, v4.2d, v5.2d}, [x2],#48
+	bit	v0.16b, v3.16b, v6.16b
+	bit	v1.16b, v4.16b, v6.16b
+	bit	v2.16b, v5.16b, v6.16b
+	st1	{v0.2d, v1.2d, v2.2d}, [x0]
 	ret
 
 .globl	vec_select_48
@@ -977,5 +994,63 @@ vec_prefetch:
 	cmp	x0, x1
 	csel	x0, x1, x0, hi
 	prfm	pldl1keep, [x0]
+	ret
+
+.globl	vec_is_zero_16x
+
+.def	vec_is_zero_16x;
+.type	32;
+.endef
+.p2align	5
+vec_is_zero_16x:
+	ld1	{v0.2d}, [x0], #16
+	lsr	x1, x1, #4
+	sub	x1, x1, #1
+	cbz	x1, .Loop_is_zero_done
+
+.Loop_is_zero:
+	ld1	{v1.2d}, [x0], #16
+	orr	v0.16b, v0.16b, v1.16b
+	sub	x1, x1, #1
+	cbnz	x1, .Loop_is_zero
+
+.Loop_is_zero_done:
+	dup	v1.2d, v0.d[1]
+	orr	v0.16b, v0.16b, v1.16b
+	umov	x1, v0.d[0]
+	mov	x0, #1
+	cmp	x1, #0
+	csel	x0, x0, xzr, eq
+	ret
+
+.globl	vec_is_equal_16x
+
+.def	vec_is_equal_16x;
+.type	32;
+.endef
+.p2align	5
+vec_is_equal_16x:
+	ld1	{v0.2d}, [x0], #16
+	ld1	{v1.2d}, [x1], #16
+	lsr	x2, x2, #4
+	eor	v0.16b, v0.16b, v1.16b
+
+.Loop_is_equal:
+	sub	x2, x2, #1
+	cbz	x2, .Loop_is_equal_done
+	ld1	{v1.2d}, [x0], #16
+	ld1	{v2.2d}, [x1], #16
+	eor	v1.16b, v1.16b, v2.16b
+	orr	v0.16b, v0.16b, v1.16b
+	b	.Loop_is_equal
+	nop
+
+.Loop_is_equal_done:
+	dup	v1.2d, v0.d[1]
+	orr	v0.16b, v0.16b, v1.16b
+	umov	x1, v0.d[0]
+	mov	x0, #1
+	cmp	x1, #0
+	csel	x0, x0, xzr, eq
 	ret
 

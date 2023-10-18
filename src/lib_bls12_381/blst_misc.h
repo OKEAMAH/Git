@@ -2,6 +2,7 @@
 #define BLST_MISC
 
 #include "blst.h"
+#include <stdbool.h>
 
 // blst_scalar
 size_t blst_scalar_sizeof();

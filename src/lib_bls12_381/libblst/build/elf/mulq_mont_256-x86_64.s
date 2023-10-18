@@ -1,3 +1,4 @@
+.comm	__blst_platform_cap,4
 .text	
 
 .globl	mul_mont_sparse_256
@@ -9,6 +10,10 @@ mul_mont_sparse_256:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	mul_mont_sparse_256$1
+#endif
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
@@ -60,7 +65,15 @@ mul_mont_sparse_256:
 	leaq	56(%rsp),%rsp
 .cfi_adjust_cfa_offset	-56
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 .size	mul_mont_sparse_256,.-mul_mont_sparse_256
 
@@ -73,6 +86,10 @@ sqr_mont_sparse_256:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_mont_sparse_256$1
+#endif
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
@@ -125,7 +142,15 @@ sqr_mont_sparse_256:
 	leaq	56(%rsp),%rsp
 .cfi_adjust_cfa_offset	-56
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 .size	sqr_mont_sparse_256,.-sqr_mont_sparse_256
 .type	__mulq_mont_sparse_256,@function
@@ -407,7 +432,15 @@ __mulq_mont_sparse_256:
 	movq	%r15,16(%rsi)
 	movq	%r9,24(%rsi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 .size	__mulq_mont_sparse_256,.-__mulq_mont_sparse_256
 .globl	from_mont_256
@@ -419,6 +452,10 @@ from_mont_256:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	from_mont_256$1
+#endif
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
@@ -481,7 +518,15 @@ from_mont_256:
 	leaq	56(%rsp),%rsp
 .cfi_adjust_cfa_offset	-56
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 .size	from_mont_256,.-from_mont_256
 
@@ -494,6 +539,10 @@ redc_mont_256:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	redc_mont_256$1
+#endif
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
@@ -562,7 +611,15 @@ redc_mont_256:
 	leaq	56(%rsp),%rsp
 .cfi_adjust_cfa_offset	-56
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 .size	redc_mont_256,.-redc_mont_256
 .type	__mulq_by_1_mont_256,@function
@@ -701,14 +758,24 @@ __mulq_by_1_mont_256:
 	addq	%r9,%r15
 	adcq	$0,%rdx
 	movq	%rdx,%r9
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 .size	__mulq_by_1_mont_256,.-__mulq_by_1_mont_256
 
 .section	.note.GNU-stack,"",@progbits
+#ifndef	__SGX_LVI_HARDENING__
 .section	.note.gnu.property,"a",@note
 	.long	4,2f-1f,5
 	.byte	0x47,0x4E,0x55,0
 1:	.long	0xc0000002,4,3
 .align	8
 2:
+#endif

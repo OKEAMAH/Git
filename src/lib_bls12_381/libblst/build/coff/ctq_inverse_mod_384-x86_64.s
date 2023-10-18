@@ -1,6 +1,8 @@
+.comm	__blst_platform_cap,4
 .text	
 
 .globl	ct_inverse_mod_383
+
 .def	ct_inverse_mod_383;	.scl 2;	.type 32;	.endef
 .p2align	5
 ct_inverse_mod_383:
@@ -9,12 +11,16 @@ ct_inverse_mod_383:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_ct_inverse_mod_383:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	ct_inverse_mod_383$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -538,7 +544,15 @@ ct_inverse_mod_383:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_ct_inverse_mod_383:
 .def	__smulq_767x63;	.scl 3;	.type 32;	.endef
@@ -750,7 +764,15 @@ __smulq_767x63:
 	movq	%rcx,80(%rdx)
 	movq	%rax,88(%rdx)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__smulq_383x63;	.scl 3;	.type 32;	.endef
 .p2align	5
@@ -892,7 +914,15 @@ __smulq_383x63:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__smulq_383_n_shift_by_62;	.scl 3;	.type 32;	.endef
 .p2align	5
@@ -1069,7 +1099,15 @@ __smulq_383_n_shift_by_62:
 	addq	%rbp,%rdx
 	addq	%rbp,%rcx
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__ab_approximation_62;	.scl 3;	.type 32;	.endef
 .p2align	5
@@ -1125,7 +1163,15 @@ __ab_approximation_62:
 
 	jmp	__inner_loop_62
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__inner_loop_62;	.scl 3;	.type 32;	.endef
 .p2align	3
@@ -1178,7 +1224,15 @@ __inner_loop_62:
 	jnz	.Loop_62
 
 	movq	8(%rsp),%rsi
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .section	.pdata
 .p2align	2
@@ -1200,8 +1254,9 @@ __inner_loop_62:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_ct_inverse_mod_383_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x8b,0x00
@@ -1213,6 +1268,8 @@ __inner_loop_62:
 .byte	0x00,0x74,0x92,0x00
 .byte	0x00,0x64,0x93,0x00
 .byte	0x00,0x01,0x91,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_ct_inverse_mod_383_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00

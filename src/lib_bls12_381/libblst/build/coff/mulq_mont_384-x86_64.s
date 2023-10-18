@@ -1,3 +1,4 @@
+.comm	__blst_platform_cap,4
 .text	
 
 
@@ -6,9 +7,9 @@
 
 
 
-.def	__sub_mod_384x384;	.scl 3;	.type 32;	.endef
+.def	__subq_mod_384x384;	.scl 3;	.type 32;	.endef
 .p2align	5
-__sub_mod_384x384:
+__subq_mod_384x384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 	movq	0(%rsi),%r8
@@ -70,12 +71,20 @@ __sub_mod_384x384:
 	movq	%rbp,80(%rdi)
 	movq	%rsi,88(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
-.def	__add_mod_384;	.scl 3;	.type 32;	.endef
+.def	__addq_mod_384;	.scl 3;	.type 32;	.endef
 .p2align	5
-__add_mod_384:
+__addq_mod_384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 	movq	0(%rsi),%r8
@@ -120,12 +129,20 @@ __add_mod_384:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
-.def	__sub_mod_384;	.scl 3;	.type 32;	.endef
+.def	__subq_mod_384;	.scl 3;	.type 32;	.endef
 .p2align	5
-__sub_mod_384:
+__subq_mod_384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 	movq	0(%rsi),%r8
@@ -135,7 +152,7 @@ __sub_mod_384:
 	movq	32(%rsi),%r12
 	movq	40(%rsi),%r13
 
-__sub_mod_384_a_is_loaded:
+__subq_mod_384_a_is_loaded:
 	subq	0(%rdx),%r8
 	movq	0(%rcx),%r14
 	sbbq	8(%rdx),%r9
@@ -170,7 +187,15 @@ __sub_mod_384_a_is_loaded:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	mul_mont_384x
 
@@ -182,13 +207,17 @@ mul_mont_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_mont_384x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 	movq	40(%rsp),%r8
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	mul_mont_384x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -229,12 +258,12 @@ mul_mont_384x:
 	movq	8(%rsp),%rcx
 	leaq	-48(%rsi),%rdx
 	leaq	40+192+48(%rsp),%rdi
-	call	__add_mod_384
+	call	__addq_mod_384
 
 	movq	16(%rsp),%rsi
 	leaq	48(%rsi),%rdx
 	leaq	-48(%rdi),%rdi
-	call	__add_mod_384
+	call	__addq_mod_384
 
 	leaq	(%rdi),%rbx
 	leaq	48(%rdi),%rsi
@@ -244,17 +273,17 @@ mul_mont_384x:
 	leaq	(%rdi),%rsi
 	leaq	40(%rsp),%rdx
 	movq	8(%rsp),%rcx
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 	leaq	(%rdi),%rsi
 	leaq	-96(%rdi),%rdx
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 
 	leaq	40(%rsp),%rsi
 	leaq	40+96(%rsp),%rdx
 	leaq	40(%rsp),%rdi
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 	movq	%rcx,%rbx
 
@@ -263,14 +292,14 @@ mul_mont_384x:
 	movq	0(%rsp),%rcx
 	movq	32(%rsp),%rdi
 	call	__mulq_by_1_mont_384
-	call	__redc_tail_mont_384
+	call	__redq_tail_mont_384
 
 
 	leaq	40+192(%rsp),%rsi
 	movq	0(%rsp),%rcx
 	leaq	48(%rdi),%rdi
 	call	__mulq_by_1_mont_384
-	call	__redc_tail_mont_384
+	call	__redq_tail_mont_384
 
 	leaq	328(%rsp),%r8
 	movq	0(%r8),%r15
@@ -291,7 +320,15 @@ mul_mont_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_mont_384x:
 .globl	sqr_mont_384x
@@ -304,12 +341,16 @@ sqr_mont_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_mont_384x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_mont_384x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -335,13 +376,13 @@ sqr_mont_384x:
 
 	leaq	48(%rsi),%rdx
 	leaq	32(%rsp),%rdi
-	call	__add_mod_384
+	call	__addq_mod_384
 
 
 	movq	16(%rsp),%rsi
 	leaq	48(%rsi),%rdx
 	leaq	32+48(%rsp),%rdi
-	call	__sub_mod_384
+	call	__subq_mod_384
 
 
 	movq	16(%rsp),%rsi
@@ -419,7 +460,15 @@ sqr_mont_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_mont_384x:
 
@@ -433,12 +482,16 @@ mul_382x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_382x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	mul_382x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -528,18 +581,18 @@ mul_382x:
 	leaq	32(%rsp),%rdx
 	movq	24(%rsp),%rcx
 	movq	%rsi,%rdi
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 
 	leaq	0(%rdi),%rsi
 	leaq	-96(%rdi),%rdx
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 
 	leaq	-96(%rdi),%rsi
 	leaq	32(%rsp),%rdx
 	leaq	-96(%rdi),%rdi
-	call	__sub_mod_384x384
+	call	__subq_mod_384x384
 
 	leaq	136(%rsp),%r8
 	movq	0(%r8),%r15
@@ -560,7 +613,15 @@ mul_382x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_382x:
 .globl	sqr_382x
@@ -573,11 +634,15 @@ sqr_382x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_382x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_382x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -628,7 +693,7 @@ sqr_382x:
 
 	leaq	48(%rsi),%rdx
 	leaq	48(%rdi),%rdi
-	call	__sub_mod_384_a_is_loaded
+	call	__subq_mod_384_a_is_loaded
 
 
 	leaq	(%rdi),%rsi
@@ -697,7 +762,15 @@ sqr_382x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_382x:
 .globl	mul_384
@@ -710,11 +783,15 @@ mul_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	mul_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -739,7 +816,15 @@ mul_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_384:
 
@@ -1027,7 +1112,15 @@ __mulq_384:
 	movq	%r11,80(%rdi)
 	movq	%r12,88(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	sqr_384
 
@@ -1039,10 +1132,14 @@ sqr_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1080,7 +1177,15 @@ sqr_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_384:
 
@@ -1273,7 +1378,15 @@ __sqrq_384:
 	movq	%rax,80(%rdi)
 	movq	%rdx,88(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	sqr_mont_384
@@ -1286,12 +1399,16 @@ sqr_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1321,7 +1438,7 @@ sqr_mont_384:
 	movq	104(%rsp),%rbx
 	movq	112(%rsp),%rdi
 	call	__mulq_by_1_mont_384
-	call	__redc_tail_mont_384
+	call	__redq_tail_mont_384
 
 	leaq	120(%rsp),%r8
 	movq	120(%rsp),%r15
@@ -1342,7 +1459,15 @@ sqr_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_mont_384:
 
@@ -1358,12 +1483,16 @@ redc_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_redc_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	redc_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1383,7 +1512,7 @@ redc_mont_384:
 
 	movq	%rdx,%rbx
 	call	__mulq_by_1_mont_384
-	call	__redc_tail_mont_384
+	call	__redq_tail_mont_384
 
 	movq	8(%rsp),%r15
 
@@ -1403,7 +1532,15 @@ redc_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_redc_mont_384:
 
@@ -1420,12 +1557,16 @@ from_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_from_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	from_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1494,7 +1635,15 @@ from_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_from_mont_384:
 .def	__mulq_by_1_mont_384;	.scl 3;	.type 32;	.endef
@@ -1792,12 +1941,20 @@ __mulq_by_1_mont_384:
 	addq	%r11,%r10
 	adcq	$0,%rdx
 	movq	%rdx,%r11
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
-.def	__redc_tail_mont_384;	.scl 3;	.type 32;	.endef
+.def	__redq_tail_mont_384;	.scl 3;	.type 32;	.endef
 .p2align	5
-__redc_tail_mont_384:
+__redq_tail_mont_384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 	addq	48(%rsi),%r14
@@ -1839,7 +1996,15 @@ __redc_tail_mont_384:
 	movq	%r10,32(%rdi)
 	movq	%r11,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	sgn0_pty_mont_384
@@ -1852,11 +2017,15 @@ sgn0_pty_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sgn0_pty_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sgn0_pty_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1920,7 +2089,15 @@ sgn0_pty_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sgn0_pty_mont_384:
 
@@ -1934,11 +2111,15 @@ sgn0_pty_mont_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sgn0_pty_mont_384x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sgn0_pty_mont_384x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2052,7 +2233,15 @@ sgn0_pty_mont_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sgn0_pty_mont_384x:
 .globl	mul_mont_384
@@ -2065,13 +2254,17 @@ mul_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 	movq	40(%rsp),%r8
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	mul_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2118,7 +2311,15 @@ mul_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_mont_384:
 .def	__mulq_mont_384;	.scl 3;	.type 32;	.endef
@@ -2721,7 +2922,15 @@ __mulq_mont_384:
 	movq	%r10,32(%rdi)
 	movq	%r11,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	sqr_n_mul_mont_384
 
@@ -2733,14 +2942,18 @@ sqr_n_mul_mont_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_n_mul_mont_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_n_mul_mont_384$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2774,7 +2987,7 @@ sqr_n_mul_mont_384:
 	movq	0(%rsp),%rcx
 	movq	16(%rsp),%rbx
 	call	__mulq_by_1_mont_384
-	call	__redc_tail_mont_384
+	call	__redq_tail_mont_384
 
 	movd	%xmm1,%edx
 	leaq	0(%rdi),%rsi
@@ -2814,7 +3027,15 @@ sqr_n_mul_mont_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_n_mul_mont_384:
 
@@ -2828,14 +3049,18 @@ sqr_n_mul_mont_383:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_n_mul_mont_383:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_n_mul_mont_383$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2922,7 +3147,15 @@ sqr_n_mul_mont_383:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_n_mul_mont_383:
 .def	__mulq_mont_383_nonred;	.scl 3;	.type 32;	.endef
@@ -3482,7 +3715,15 @@ __mulq_mont_383_nonred:
 	adcq	$0,%rdx
 	addq	%r12,%r10
 	adcq	%rdx,%r11
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	sqr_mont_382x
 
@@ -3494,12 +3735,16 @@ sqr_mont_382x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sqr_mont_382x:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 	movq	%r9,%rcx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$1,__blst_platform_cap(%rip)
+	jnz	sqr_mont_382x$1
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -3667,7 +3912,15 @@ sqr_mont_382x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sqr_mont_382x:
 .section	.pdata
@@ -3858,8 +4111,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_mont_384x_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x29,0x00
@@ -3871,6 +4125,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x30,0x00
 .byte	0x00,0x64,0x31,0x00
 .byte	0x00,0x01,0x2f,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_mont_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -3881,8 +4137,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_mont_384x_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x11,0x00
@@ -3894,6 +4151,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x18,0x00
 .byte	0x00,0x64,0x19,0x00
 .byte	0x00,0x01,0x17,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_mont_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -3904,8 +4163,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_382x_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x11,0x00
@@ -3917,6 +4177,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x18,0x00
 .byte	0x00,0x64,0x19,0x00
 .byte	0x00,0x01,0x17,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_382x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -3927,8 +4189,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_382x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -3940,7 +4203,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_382x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -3951,8 +4215,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_384_body:
 .byte	1,0,11,0
 .byte	0x00,0xc4,0x00,0x00
@@ -3972,8 +4237,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -3985,7 +4251,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -3996,8 +4263,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_mont_384_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x0f,0x00
@@ -4009,6 +4277,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x16,0x00
 .byte	0x00,0x64,0x17,0x00
 .byte	0x00,0x01,0x15,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4019,8 +4289,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_redc_mont_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -4032,7 +4303,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_redc_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4043,8 +4315,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_from_mont_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -4056,7 +4329,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_from_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4067,8 +4341,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sgn0_pty_mont_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -4080,7 +4355,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sgn0_pty_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4091,8 +4367,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sgn0_pty_mont_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -4104,7 +4381,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sgn0_pty_mont_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4115,8 +4393,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_mont_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x03,0x00
@@ -4128,7 +4407,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x0a,0x00
 .byte	0x00,0x64,0x0b,0x00
 .byte	0x00,0x82
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4139,8 +4419,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_n_mul_mont_384_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x11,0x00
@@ -4152,6 +4433,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x18,0x00
 .byte	0x00,0x64,0x19,0x00
 .byte	0x00,0x01,0x17,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_n_mul_mont_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4162,8 +4445,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_n_mul_mont_383_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x11,0x00
@@ -4175,6 +4459,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x18,0x00
 .byte	0x00,0x64,0x19,0x00
 .byte	0x00,0x01,0x17,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_n_mul_mont_383_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -4185,8 +4471,9 @@ sqr_mont_382x:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sqr_mont_382x_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x11,0x00
@@ -4198,6 +4485,8 @@ sqr_mont_382x:
 .byte	0x00,0x74,0x18,0x00
 .byte	0x00,0x64,0x19,0x00
 .byte	0x00,0x01,0x17,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sqr_mont_382x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00

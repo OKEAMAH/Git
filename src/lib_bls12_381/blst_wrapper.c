@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 size_t blst_scalar_sizeof() { return sizeof(blst_scalar); }
 
@@ -117,8 +118,6 @@ void blst_fp2_to_bytes(byte *out, blst_fp2 *p_c) {
   blst_lendian_from_fp(out + 48, &p_c->fp[1]);
 }
 
-size_t blst_fp12_sizeof() { return sizeof(blst_fp12); }
-
 void blst_fp12_set_to_one(blst_fp12 *buffer_c) {
   // Set all coordinates to 0. If allocated with allocate_fp12_stubs it's
   // normally fine, but doing it just in case...
@@ -205,18 +204,10 @@ int blst_fp12_pow(blst_fp12 *out, blst_fp12 *x, byte *exp, int exp_nb_bits) {
   return 0;
 }
 
-size_t blst_p1_sizeof() { return sizeof(blst_p1); }
-
-size_t blst_p1_affine_sizeof() { return sizeof(blst_p1_affine); }
-
 void blst_p1_set_coordinates(blst_p1 *buffer_c, blst_fp *x_c, blst_fp *y_c) {
   buffer_c->x = *x_c;
   buffer_c->y = *y_c;
 }
-
-size_t blst_p2_sizeof() { return sizeof(blst_p2); }
-
-size_t blst_p2_affine_sizeof() { return sizeof(blst_p2_affine); }
 
 void blst_p2_set_coordinates(blst_p2 *buffer_c, blst_fp2 *x_c, blst_fp2 *y_c) {
   byte out[96];

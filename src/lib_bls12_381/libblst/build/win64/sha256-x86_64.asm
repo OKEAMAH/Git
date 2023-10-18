@@ -1,4 +1,7 @@
 OPTION	DOTNAME
+_DATA	SEGMENT
+COMM	__blst_platform_cap:DWORD:1
+_DATA	ENDS
 .text$	SEGMENT ALIGN(256) 'CODE'
 
 ALIGN	64
@@ -38,26 +41,29 @@ blst_sha256_block_data_order_shaext	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_blst_sha256_block_data_order_shaext::
+
+
+	push	rbp
+
+	mov	rbp,rsp
+
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
+$L$blst_sha256_block_data_order$2::
+	sub	rsp,050h
 
-
-
-	sub	rsp,058h
-
-	movaps	XMMWORD PTR[(-88)+r11],xmm6
-
-	movaps	XMMWORD PTR[(-72)+r11],xmm7
-
-	movaps	XMMWORD PTR[(-56)+r11],xmm8
-
-	movaps	XMMWORD PTR[(-40)+r11],xmm9
-
-	movaps	XMMWORD PTR[(-24)+r11],xmm10
+	movaps	XMMWORD PTR[(-80)+rbp],xmm6
+	movaps	XMMWORD PTR[(-64)+rbp],xmm7
+	movaps	XMMWORD PTR[(-48)+rbp],xmm8
+	movaps	XMMWORD PTR[(-32)+rbp],xmm9
+	movaps	XMMWORD PTR[(-16)+rbp],xmm10
 
 $L$SEH_body_blst_sha256_block_data_order_shaext::
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	lea	rcx,QWORD PTR[((K256+128))]
 	movdqu	xmm1,XMMWORD PTR[rdi]
 	movdqu	xmm2,XMMWORD PTR[16+rdi]
@@ -259,18 +265,28 @@ DB	102,15,58,15,215,8
 
 	movdqu	XMMWORD PTR[rdi],xmm1
 	movdqu	XMMWORD PTR[16+rdi],xmm2
-	movaps	xmm6,XMMWORD PTR[((-88))+r11]
-	movaps	xmm7,XMMWORD PTR[((-72))+r11]
-	movaps	xmm8,XMMWORD PTR[((-56))+r11]
-	movaps	xmm9,XMMWORD PTR[((-40))+r11]
-	movaps	xmm10,XMMWORD PTR[((-24))+r11]
-	mov	rsp,r11
+	movaps	xmm6,XMMWORD PTR[((-80))+rbp]
+	movaps	xmm7,XMMWORD PTR[((-64))+rbp]
+	movaps	xmm8,XMMWORD PTR[((-48))+rbp]
+	movaps	xmm9,XMMWORD PTR[((-32))+rbp]
+	movaps	xmm10,XMMWORD PTR[((-16))+rbp]
+	mov	rsp,rbp
+
+	pop	rbp
 
 $L$SEH_epilogue_blst_sha256_block_data_order_shaext::
-	mov	rdi,QWORD PTR[8+r11]	;WIN64 epilogue
-	mov	rsi,QWORD PTR[16+r11]
+	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
+	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_blst_sha256_block_data_order_shaext::
 blst_sha256_block_data_order_shaext	ENDP
@@ -284,14 +300,19 @@ blst_sha256_block_data_order	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_blst_sha256_block_data_order::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-
 
 
 	push	rbp
 
+	mov	rbp,rsp
+
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+ifndef	__SGX_LVI_HARDENING__
+	test	DWORD PTR[__blst_platform_cap],2
+	jnz	$L$blst_sha256_block_data_order$2
+endif
 	push	rbx
 
 	push	r12
@@ -303,26 +324,24 @@ $L$SEH_begin_blst_sha256_block_data_order::
 	push	r15
 
 	shl	rdx,4
-	sub	rsp,104
+	sub	rsp,88
 
 	lea	rdx,QWORD PTR[rdx*4+rsi]
-	mov	QWORD PTR[rsp],rdi
+	mov	QWORD PTR[((-64))+rbp],rdi
 
-	mov	QWORD PTR[16+rsp],rdx
-	movaps	XMMWORD PTR[32+rsp],xmm6
-
-	movaps	XMMWORD PTR[48+rsp],xmm7
-
-	movaps	XMMWORD PTR[64+rsp],xmm8
-
-	movaps	XMMWORD PTR[80+rsp],xmm9
-
-	mov	rbp,rsp
+	mov	QWORD PTR[((-48))+rbp],rdx
+	movaps	XMMWORD PTR[(-128)+rbp],xmm6
+	movaps	XMMWORD PTR[(-112)+rbp],xmm7
+	movaps	XMMWORD PTR[(-96)+rbp],xmm8
+	movaps	XMMWORD PTR[(-80)+rbp],xmm9
 
 $L$SEH_body_blst_sha256_block_data_order::
 
 
 	lea	rsp,QWORD PTR[((-64))+rsp]
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	eax,DWORD PTR[rdi]
 	and	rsp,-64
 	mov	ebx,DWORD PTR[4+rdi]
@@ -338,7 +357,7 @@ $L$SEH_body_blst_sha256_block_data_order::
 ALIGN	16
 $L$loop_ssse3::
 	movdqa	xmm7,XMMWORD PTR[((K256+256))]
-	mov	QWORD PTR[8+rbp],rsi
+	mov	QWORD PTR[((-56))+rbp],rsi
 	movdqu	xmm0,XMMWORD PTR[rsi]
 	movdqu	xmm1,XMMWORD PTR[16+rsi]
 	movdqu	xmm2,XMMWORD PTR[32+rsi]
@@ -1363,10 +1382,13 @@ DB	102,15,58,15,249,4
 	add	eax,r15d
 	mov	r13d,r8d
 	add	r14d,eax
-	mov	rdi,QWORD PTR[rbp]
+	mov	rdi,QWORD PTR[((-64))+rbp]
 	mov	eax,r14d
-	mov	rsi,QWORD PTR[8+rbp]
+	mov	rsi,QWORD PTR[((-56))+rbp]
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	add	eax,DWORD PTR[rdi]
 	add	ebx,DWORD PTR[4+rdi]
 	add	ecx,DWORD PTR[8+rdi]
@@ -1377,7 +1399,7 @@ DB	102,15,58,15,249,4
 	add	r11d,DWORD PTR[28+rdi]
 
 	lea	rsi,QWORD PTR[64+rsi]
-	cmp	rsi,QWORD PTR[16+rbp]
+	cmp	rsi,QWORD PTR[((-48))+rbp]
 
 	mov	DWORD PTR[rdi],eax
 	mov	DWORD PTR[4+rdi],ebx
@@ -1390,34 +1412,36 @@ DB	102,15,58,15,249,4
 	jb	$L$loop_ssse3
 
 	xorps	xmm0,xmm0
-	lea	r11,QWORD PTR[((104+48))+rbp]
-
 	movaps	XMMWORD PTR[rsp],xmm0
 	movaps	XMMWORD PTR[16+rsp],xmm0
 	movaps	XMMWORD PTR[32+rsp],xmm0
 	movaps	XMMWORD PTR[48+rsp],xmm0
-	movaps	xmm6,XMMWORD PTR[32+rbp]
-	movaps	xmm7,XMMWORD PTR[48+rbp]
-	movaps	xmm8,XMMWORD PTR[64+rbp]
-	movaps	xmm9,XMMWORD PTR[80+rbp]
-	mov	r15,QWORD PTR[104+rbp]
+	movaps	xmm6,XMMWORD PTR[((-128))+rbp]
+	movaps	xmm7,XMMWORD PTR[((-112))+rbp]
+	movaps	xmm8,XMMWORD PTR[((-96))+rbp]
+	movaps	xmm9,XMMWORD PTR[((-80))+rbp]
+	mov	r15,QWORD PTR[((-40))+rbp]
+	mov	r14,QWORD PTR[((-32))+rbp]
+	mov	r13,QWORD PTR[((-24))+rbp]
+	mov	r12,QWORD PTR[((-16))+rbp]
+	mov	rbx,QWORD PTR[((-8))+rbp]
+	mov	rsp,rbp
 
-	mov	r14,QWORD PTR[((-40))+r11]
-
-	mov	r13,QWORD PTR[((-32))+r11]
-
-	mov	r12,QWORD PTR[((-24))+r11]
-
-	mov	rbx,QWORD PTR[((-16))+r11]
-
-	mov	rbp,QWORD PTR[((-8))+r11]
+	pop	rbp
 
 $L$SEH_epilogue_blst_sha256_block_data_order::
-	mov	rdi,QWORD PTR[8+r11]	;WIN64 epilogue
-	mov	rsi,QWORD PTR[16+r11]
+	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
+	mov	rsi,QWORD PTR[16+rsp]
 
-	lea	rsp,QWORD PTR[r11]
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_blst_sha256_block_data_order::
 blst_sha256_block_data_order	ENDP
@@ -1427,6 +1451,10 @@ PUBLIC	blst_sha256_emit
 ALIGN	16
 blst_sha256_emit	PROC PUBLIC
 	DB	243,15,30,250
+
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rdx]
 	mov	r9,QWORD PTR[8+rdx]
 	mov	r10,QWORD PTR[16+rdx]
@@ -1447,7 +1475,15 @@ blst_sha256_emit	PROC PUBLIC
 	shr	r11,32
 	mov	DWORD PTR[16+rcx],r10d
 	mov	DWORD PTR[24+rcx],r11d
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 blst_sha256_emit	ENDP
 
 PUBLIC	blst_sha256_bcopy
@@ -1456,6 +1492,10 @@ PUBLIC	blst_sha256_bcopy
 ALIGN	16
 blst_sha256_bcopy	PROC PUBLIC
 	DB	243,15,30,250
+
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	sub	rcx,rdx
 $L$oop_bcopy::
 	movzx	eax,BYTE PTR[rdx]
@@ -1463,7 +1503,15 @@ $L$oop_bcopy::
 	mov	BYTE PTR[((-1))+rdx*1+rcx],al
 	dec	r8
 	jnz	$L$oop_bcopy
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 blst_sha256_bcopy	ENDP
 
 PUBLIC	blst_sha256_hcopy
@@ -1472,6 +1520,10 @@ PUBLIC	blst_sha256_hcopy
 ALIGN	16
 blst_sha256_hcopy	PROC PUBLIC
 	DB	243,15,30,250
+
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rdx]
 	mov	r9,QWORD PTR[8+rdx]
 	mov	r10,QWORD PTR[16+rdx]
@@ -1480,7 +1532,15 @@ blst_sha256_hcopy	PROC PUBLIC
 	mov	QWORD PTR[8+rcx],r9
 	mov	QWORD PTR[16+rcx],r10
 	mov	QWORD PTR[24+rcx],r11
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 blst_sha256_hcopy	ENDP
 .text$	ENDS
 .pdata	SEGMENT READONLY ALIGN(4)
@@ -1513,13 +1573,14 @@ ALIGN	4
 .xdata	SEGMENT READONLY ALIGN(8)
 ALIGN	8
 $L$SEH_info_blst_sha256_block_data_order_shaext_prologue::
-DB	1,0,5,00bh
-DB	0,074h,1,0
-DB	0,064h,2,0
-DB	0,003h
-DB	0,0
+DB	1,4,6,005h
+DB	4,074h,2,0
+DB	4,064h,3,0
+DB	4,053h
+DB	1,050h
+	DD	0,0
 $L$SEH_info_blst_sha256_block_data_order_shaext_body::
-DB	1,0,15,0
+DB	1,0,17,85
 DB	000h,068h,000h,000h
 DB	000h,078h,001h,000h
 DB	000h,088h,002h,000h
@@ -1527,43 +1588,47 @@ DB	000h,098h,003h,000h
 DB	000h,0a8h,004h,000h
 DB	000h,074h,00ch,000h
 DB	000h,064h,00dh,000h
-DB	000h,0a2h
+DB	000h,053h
+DB	000h,092h
+DB	000h,050h
 DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_blst_sha256_block_data_order_shaext_epilogue::
-DB	1,0,5,11
+DB	1,0,4,0
 DB	000h,074h,001h,000h
 DB	000h,064h,002h,000h
-DB	000h,003h
-DB	000h,000h
+DB	000h,000h,000h,000h
 
 $L$SEH_info_blst_sha256_block_data_order_prologue::
-DB	1,0,5,00bh
-DB	0,074h,1,0
-DB	0,064h,2,0
-DB	0,003h
-DB	0,0
+DB	1,4,6,005h
+DB	4,074h,2,0
+DB	4,064h,3,0
+DB	4,053h
+DB	1,050h
+	DD	0,0
 $L$SEH_info_blst_sha256_block_data_order_body::
-DB	1,0,26,5
-DB	000h,068h,002h,000h
-DB	000h,078h,003h,000h
-DB	000h,088h,004h,000h
-DB	000h,098h,005h,000h
-DB	000h,0f4h,00dh,000h
-DB	000h,0e4h,00eh,000h
-DB	000h,0d4h,00fh,000h
-DB	000h,0c4h,010h,000h
-DB	000h,034h,011h,000h
-DB	000h,074h,014h,000h
-DB	000h,064h,015h,000h
-DB	000h,003h
-DB	000h,001h,012h,000h
+DB	1,0,25,133
+DB	000h,068h,000h,000h
+DB	000h,078h,001h,000h
+DB	000h,088h,002h,000h
+DB	000h,098h,003h,000h
+DB	000h,0f4h,00bh,000h
+DB	000h,0e4h,00ch,000h
+DB	000h,0d4h,00dh,000h
+DB	000h,0c4h,00eh,000h
+DB	000h,034h,00fh,000h
+DB	000h,074h,012h,000h
+DB	000h,064h,013h,000h
+DB	000h,053h
+DB	000h,0f2h
 DB	000h,050h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_blst_sha256_block_data_order_epilogue::
-DB	1,0,5,11
+DB	1,0,4,0
 DB	000h,074h,001h,000h
 DB	000h,064h,002h,000h
-DB	000h,003h
-DB	000h,000h
+DB	000h,000h,000h,000h
 
 
 .xdata	ENDS

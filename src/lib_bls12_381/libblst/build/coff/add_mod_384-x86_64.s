@@ -10,14 +10,14 @@ add_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_add_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -53,7 +53,15 @@ add_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_add_mod_384:
 
@@ -62,6 +70,9 @@ add_mod_384:
 __add_mod_384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -105,7 +116,15 @@ __add_mod_384_a_is_loaded:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	add_mod_384x
@@ -118,14 +137,14 @@ add_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_add_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -171,7 +190,15 @@ add_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_add_mod_384x:
 
@@ -186,14 +213,14 @@ rshift_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_rshift_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -209,6 +236,9 @@ rshift_mod_384:
 .LSEH_body_rshift_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -246,7 +276,15 @@ rshift_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_rshift_mod_384:
 
@@ -302,7 +340,15 @@ __rshift_mod_384:
 	orq	%rbp,%r12
 	orq	%rsi,%r13
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r14
+	lfence
+	jmpq	*%r14
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	div_by_2_mod_384
@@ -315,13 +361,13 @@ div_by_2_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_div_by_2_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -337,6 +383,9 @@ div_by_2_mod_384:
 .LSEH_body_div_by_2_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	%rdx,%rcx
 	movq	8(%rsi),%r9
@@ -372,7 +421,15 @@ div_by_2_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_div_by_2_mod_384:
 
@@ -387,14 +444,14 @@ lshift_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_lshift_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -410,6 +467,9 @@ lshift_mod_384:
 .LSEH_body_lshift_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -476,7 +536,15 @@ lshift_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_lshift_mod_384:
 
@@ -514,7 +582,15 @@ __lshift_mod_384:
 	cmovcq	%rbp,%r12
 	cmovcq	%rsi,%r13
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 
@@ -528,13 +604,13 @@ mul_by_3_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_by_3_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -550,6 +626,9 @@ mul_by_3_mod_384:
 .LSEH_body_mul_by_3_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -561,6 +640,9 @@ mul_by_3_mod_384:
 	call	__lshift_mod_384
 
 	movq	(%rsp),%rdx
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	call	__add_mod_384_a_is_loaded
 
 	movq	8(%rsp),%r15
@@ -581,7 +663,15 @@ mul_by_3_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_by_3_mod_384:
 
@@ -595,13 +685,13 @@ mul_by_8_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_by_8_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -617,6 +707,9 @@ mul_by_8_mod_384:
 .LSEH_body_mul_by_8_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -654,7 +747,15 @@ mul_by_8_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_by_8_mod_384:
 
@@ -669,13 +770,13 @@ mul_by_3_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_by_3_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -691,6 +792,9 @@ mul_by_3_mod_384x:
 .LSEH_body_mul_by_3_mod_384x:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -702,11 +806,17 @@ mul_by_3_mod_384x:
 	call	__lshift_mod_384
 
 	movq	(%rsp),%rdx
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	call	__add_mod_384_a_is_loaded
 
 	movq	(%rsp),%rsi
 	leaq	48(%rdi),%rdi
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	48(%rsi),%r8
 	movq	56(%rsi),%r9
 	movq	64(%rsi),%r10
@@ -718,6 +828,9 @@ mul_by_3_mod_384x:
 
 	movq	$48,%rdx
 	addq	(%rsp),%rdx
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	call	__add_mod_384_a_is_loaded
 
 	movq	8(%rsp),%r15
@@ -738,7 +851,15 @@ mul_by_3_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_by_3_mod_384x:
 
@@ -752,13 +873,13 @@ mul_by_8_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_by_8_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -774,6 +895,9 @@ mul_by_8_mod_384x:
 .LSEH_body_mul_by_8_mod_384x:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -794,6 +918,9 @@ mul_by_8_mod_384x:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	48+0(%rsi),%r8
 	movq	48+8(%rsi),%r9
 	movq	48+16(%rsi),%r10
@@ -830,7 +957,15 @@ mul_by_8_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_by_8_mod_384x:
 
@@ -845,14 +980,14 @@ cneg_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_cneg_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -868,6 +1003,9 @@ cneg_mod_384:
 .LSEH_body_cneg_mod_384:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%rdx
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -937,7 +1075,15 @@ cneg_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_cneg_mod_384:
 
@@ -952,14 +1098,14 @@ sub_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sub_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -995,7 +1141,15 @@ sub_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sub_mod_384:
 
@@ -1004,6 +1158,9 @@ sub_mod_384:
 __sub_mod_384:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -1045,7 +1202,15 @@ __sub_mod_384:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	sub_mod_384x
@@ -1058,14 +1223,14 @@ sub_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sub_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
-	movq	%r9,%rcx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+	movq	%r9,%rcx
 	pushq	%rbx
 
 	pushq	%r12
@@ -1111,7 +1276,15 @@ sub_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sub_mod_384x:
 .globl	mul_by_1_plus_i_mod_384x
@@ -1124,13 +1297,13 @@ mul_by_1_plus_i_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_mul_by_1_plus_i_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
 	pushq	%rbx
 
 	pushq	%r12
@@ -1146,6 +1319,9 @@ mul_by_1_plus_i_mod_384x:
 .LSEH_body_mul_by_1_plus_i_mod_384x:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -1261,7 +1437,15 @@ mul_by_1_plus_i_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_mul_by_1_plus_i_mod_384x:
 .globl	sgn0_pty_mod_384
@@ -1274,12 +1458,15 @@ sgn0_pty_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sgn0_pty_mod_384:
+
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
-
-
 .LSEH_body_sgn0_pty_mod_384:
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rdi),%r8
 	movq	8(%rdi),%r9
 	movq	16(%rdi),%r10
@@ -1314,7 +1501,15 @@ sgn0_pty_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sgn0_pty_mod_384:
 
@@ -1328,12 +1523,12 @@ sgn0_pty_mod_384x:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_sgn0_pty_mod_384x:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
 	pushq	%rbx
 
 	subq	$8,%rsp
@@ -1341,6 +1536,9 @@ sgn0_pty_mod_384x:
 .LSEH_body_sgn0_pty_mod_384x:
 
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	48(%rdi),%r8
 	movq	56(%rdi),%r9
 	movq	64(%rdi),%r10
@@ -1436,9 +1634,57 @@ sgn0_pty_mod_384x:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_sgn0_pty_mod_384x:
+.globl	vec_select_32
+
+.def	vec_select_32;	.scl 2;	.type 32;	.endef
+.p2align	5
+vec_select_32:
+	.byte	0xf3,0x0f,0x1e,0xfa
+
+	movd	%r9d,%xmm5
+	pxor	%xmm4,%xmm4
+	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
+	movdqu	(%rdx),%xmm0
+	leaq	16(%rdx),%rdx
+	pcmpeqd	%xmm4,%xmm5
+	movdqu	(%r8),%xmm1
+	leaq	16(%r8),%r8
+	pcmpeqd	%xmm5,%xmm4
+	leaq	16(%rcx),%rcx
+	pand	%xmm4,%xmm0
+	movdqu	0+16-16(%rdx),%xmm2
+	pand	%xmm5,%xmm1
+	movdqu	0+16-16(%r8),%xmm3
+	por	%xmm1,%xmm0
+	movdqu	%xmm0,0-16(%rcx)
+	pand	%xmm4,%xmm2
+	pand	%xmm5,%xmm3
+	por	%xmm3,%xmm2
+	movdqu	%xmm2,16-16(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
+	.byte	0xf3,0xc3
+#endif
+
 .globl	vec_select_48
 
 .def	vec_select_48;	.scl 2;	.type 32;	.endef
@@ -1449,6 +1695,9 @@ vec_select_48:
 	movd	%r9d,%xmm5
 	pxor	%xmm4,%xmm4
 	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movdqu	(%rdx),%xmm0
 	leaq	24(%rdx),%rdx
 	pcmpeqd	%xmm4,%xmm5
@@ -1472,7 +1721,15 @@ vec_select_48:
 	pand	%xmm5,%xmm1
 	por	%xmm1,%xmm0
 	movdqu	%xmm0,32-24(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	vec_select_96
 
@@ -1484,6 +1741,9 @@ vec_select_96:
 	movd	%r9d,%xmm5
 	pxor	%xmm4,%xmm4
 	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movdqu	(%rdx),%xmm0
 	leaq	48(%rdx),%rdx
 	pcmpeqd	%xmm4,%xmm5
@@ -1525,7 +1785,15 @@ vec_select_96:
 	pand	%xmm5,%xmm3
 	por	%xmm3,%xmm2
 	movdqu	%xmm2,80-48(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	vec_select_192
 
@@ -1537,6 +1805,9 @@ vec_select_192:
 	movd	%r9d,%xmm5
 	pxor	%xmm4,%xmm4
 	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movdqu	(%rdx),%xmm0
 	leaq	96(%rdx),%rdx
 	pcmpeqd	%xmm4,%xmm5
@@ -1614,7 +1885,15 @@ vec_select_192:
 	pand	%xmm5,%xmm3
 	por	%xmm3,%xmm2
 	movdqu	%xmm2,176-96(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	vec_select_144
 
@@ -1626,6 +1905,9 @@ vec_select_144:
 	movd	%r9d,%xmm5
 	pxor	%xmm4,%xmm4
 	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movdqu	(%rdx),%xmm0
 	leaq	72(%rdx),%rdx
 	pcmpeqd	%xmm4,%xmm5
@@ -1685,7 +1967,15 @@ vec_select_144:
 	pand	%xmm5,%xmm1
 	por	%xmm1,%xmm0
 	movdqu	%xmm0,128-72(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	vec_select_288
 
@@ -1697,6 +1987,9 @@ vec_select_288:
 	movd	%r9d,%xmm5
 	pxor	%xmm4,%xmm4
 	pshufd	$0,%xmm5,%xmm5
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movdqu	(%rdx),%xmm0
 	leaq	144(%rdx),%rdx
 	pcmpeqd	%xmm4,%xmm5
@@ -1810,7 +2103,15 @@ vec_select_288:
 	pand	%xmm5,%xmm3
 	por	%xmm3,%xmm2
 	movdqu	%xmm2,272-144(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .globl	vec_prefetch
 
@@ -1822,6 +2123,9 @@ vec_prefetch:
 	leaq	-1(%rcx,%rdx,1),%rdx
 	movq	$64,%rax
 	xorq	%r8,%r8
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	prefetchnta	(%rcx)
 	leaq	(%rcx,%rax,1),%rcx
 	cmpq	%rdx,%rcx
@@ -1852,7 +2156,100 @@ vec_prefetch:
 	cmpq	%rdx,%rcx
 	cmovaq	%rdx,%rcx
 	prefetchnta	(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
+
+.globl	vec_is_zero_16x
+
+.def	vec_is_zero_16x;	.scl 2;	.type 32;	.endef
+.p2align	5
+vec_is_zero_16x:
+	.byte	0xf3,0x0f,0x1e,0xfa
+
+	shrl	$4,%edx
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
+	movdqu	(%rcx),%xmm0
+	leaq	16(%rcx),%rcx
+
+.Loop_is_zero:
+	decl	%edx
+	jz	.Loop_is_zero_done
+	movdqu	(%rcx),%xmm1
+	leaq	16(%rcx),%rcx
+	por	%xmm1,%xmm0
+	jmp	.Loop_is_zero
+
+.Loop_is_zero_done:
+	pshufd	$0x4e,%xmm0,%xmm1
+	por	%xmm1,%xmm0
+.byte	102,72,15,126,192
+	incl	%edx
+	testq	%rax,%rax
+	cmovnzl	%edx,%eax
+	xorl	$1,%eax
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
+	.byte	0xf3,0xc3
+#endif
+
+.globl	vec_is_equal_16x
+
+.def	vec_is_equal_16x;	.scl 2;	.type 32;	.endef
+.p2align	5
+vec_is_equal_16x:
+	.byte	0xf3,0x0f,0x1e,0xfa
+
+	shrl	$4,%r8d
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
+	movdqu	(%rcx),%xmm0
+	movdqu	(%rdx),%xmm1
+	subq	%rcx,%rdx
+	leaq	16(%rcx),%rcx
+	pxor	%xmm1,%xmm0
+
+.Loop_is_equal:
+	decl	%r8d
+	jz	.Loop_is_equal_done
+	movdqu	(%rcx),%xmm1
+	movdqu	(%rcx,%rdx,1),%xmm2
+	leaq	16(%rcx),%rcx
+	pxor	%xmm2,%xmm1
+	por	%xmm1,%xmm0
+	jmp	.Loop_is_equal
+
+.Loop_is_equal_done:
+	pshufd	$0x4e,%xmm0,%xmm1
+	por	%xmm1,%xmm0
+.byte	102,72,15,126,192
+	incl	%r8d
+	testq	%rax,%rax
+	cmovnzl	%r8d,%eax
+	xorl	$1,%eax
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
+	.byte	0xf3,0xc3
+#endif
 
 .section	.pdata
 .p2align	2
@@ -2042,8 +2439,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_add_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2055,7 +2453,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_add_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2066,8 +2465,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_add_mod_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x03,0x00
@@ -2079,7 +2479,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x0a,0x00
 .byte	0x00,0x64,0x0b,0x00
 .byte	0x00,0x82
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_add_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2090,8 +2491,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_rshift_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2103,7 +2505,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_rshift_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2114,8 +2517,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_div_by_2_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2127,7 +2531,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_div_by_2_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2138,8 +2543,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_lshift_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2151,7 +2557,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_lshift_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2162,8 +2569,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_by_3_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2175,7 +2583,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_by_3_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2186,8 +2595,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_by_8_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2199,7 +2609,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_by_8_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2210,8 +2621,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_by_3_mod_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2223,7 +2635,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_by_3_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2234,8 +2647,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_by_8_mod_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2247,7 +2661,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_by_8_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2258,8 +2673,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_cneg_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2271,7 +2687,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_cneg_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2282,8 +2699,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sub_mod_384_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x01,0x00
@@ -2295,7 +2713,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x08,0x00
 .byte	0x00,0x64,0x09,0x00
 .byte	0x00,0x62
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sub_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2306,8 +2725,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sub_mod_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x03,0x00
@@ -2319,7 +2739,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x0a,0x00
 .byte	0x00,0x64,0x0b,0x00
 .byte	0x00,0x82
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sub_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2330,8 +2751,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_mul_by_1_plus_i_mod_384x_body:
 .byte	1,0,17,0
 .byte	0x00,0xf4,0x07,0x00
@@ -2343,7 +2765,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x0e,0x00
 .byte	0x00,0x64,0x0f,0x00
 .byte	0x00,0xc2
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_mul_by_1_plus_i_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2354,8 +2777,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sgn0_pty_mod_384_body:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
@@ -2371,8 +2795,9 @@ vec_prefetch:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_sgn0_pty_mod_384x_body:
 .byte	1,0,9,0
 .byte	0x00,0x34,0x01,0x00
@@ -2380,7 +2805,8 @@ vec_prefetch:
 .byte	0x00,0x74,0x04,0x00
 .byte	0x00,0x64,0x05,0x00
 .byte	0x00,0x22
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_sgn0_pty_mod_384x_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00

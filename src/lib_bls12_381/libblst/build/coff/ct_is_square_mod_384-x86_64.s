@@ -1,6 +1,7 @@
 .text	
 
 .globl	ct_is_square_mod_384
+
 .def	ct_is_square_mod_384;	.scl 2;	.type 32;	.endef
 .p2align	5
 ct_is_square_mod_384:
@@ -9,12 +10,12 @@ ct_is_square_mod_384:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_ct_is_square_mod_384:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
 
 
 	pushq	%rbp
 
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
 	pushq	%rbx
 
 	pushq	%r12
@@ -33,6 +34,9 @@ ct_is_square_mod_384:
 	leaq	24+255(%rsp),%rax
 	andq	$-256,%rax
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rdi),%r8
 	movq	8(%rdi),%r9
 	movq	16(%rdi),%r10
@@ -122,7 +126,15 @@ ct_is_square_mod_384:
 	mov	8(%rsp),%rdi
 	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_ct_is_square_mod_384:
 
@@ -297,7 +309,15 @@ __smulq_384_n_shift_by_30:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__ab_approximation_30;	.scl 3;	.type 32;	.endef
 .p2align	5
@@ -362,7 +382,15 @@ __ab_approximation_30:
 
 	jmp	__inner_loop_30
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .def	__inner_loop_30;	.scl 3;	.type 32;	.endef
 .p2align	5
@@ -423,7 +451,15 @@ __inner_loop_30:
 	subq	%r15,%rdx
 	subq	%r15,%rcx
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .def	__inner_loop_48;	.scl 3;	.type 32;	.endef
@@ -462,7 +498,15 @@ __inner_loop_48:
 	subl	$1,%edi
 	jnz	.Loop_48
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .section	.pdata
 .p2align	2
@@ -484,8 +528,9 @@ __inner_loop_48:
 .byte	1,0,5,0x0b
 .byte	0,0x74,1,0
 .byte	0,0x64,2,0
-.byte	0,0x03
+.byte	0,0xb3
 .byte	0,0
+.long	0,0
 .LSEH_info_ct_is_square_mod_384_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x43,0x00
@@ -497,6 +542,8 @@ __inner_loop_48:
 .byte	0x00,0x74,0x4a,0x00
 .byte	0x00,0x64,0x4b,0x00
 .byte	0x00,0x01,0x49,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_ct_is_square_mod_384_epilogue:
 .byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00

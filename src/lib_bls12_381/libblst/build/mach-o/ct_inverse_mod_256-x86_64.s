@@ -1,6 +1,7 @@
 .text	
 
 .globl	_ct_inverse_mod_256
+.private_extern	_ct_inverse_mod_256
 
 .p2align	5
 _ct_inverse_mod_256:
@@ -35,6 +36,9 @@ _ct_inverse_mod_256:
 	movq	%rdi,32(%rsp)
 	movq	%rcx,40(%rsp)
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rsi),%r8
 	movq	8(%rsi),%r9
 	movq	16(%rsi),%r10
@@ -566,6 +570,9 @@ _ct_inverse_mod_256:
 
 	movq	%rdx,%r8
 	movq	%rdx,%r9
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	andq	0(%rsi),%r8
 	movq	%rdx,%r10
 	andq	8(%rsi),%r9
@@ -628,7 +635,15 @@ _ct_inverse_mod_256:
 	leaq	48(%r8),%rsp
 .cfi_adjust_cfa_offset	-1072-8*6
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 
 
@@ -778,7 +793,15 @@ __smulq_512x63:
 	movq	%r14,48(%rdi)
 	movq	%r15,56(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -889,7 +912,15 @@ __smulq_256x63:
 	movq	%r11,24(%rdi)
 	movq	%rbp,32(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1020,7 +1051,15 @@ __smulq_256_n_shift_by_31:
 	addq	%rax,%rdx
 	addq	%rax,%rcx
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1076,7 +1115,15 @@ __ab_approximation_31_256:
 
 	jmp	__inner_loop_31_256
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1126,7 +1173,15 @@ L$oop_31_256:
 	subq	%r15,%r12
 	subq	%r15,%r13
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1172,6 +1227,14 @@ L$oop_62_256:
 	subl	$1,%r15d
 	jnz	L$oop_62_256
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 

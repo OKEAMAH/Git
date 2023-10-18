@@ -1,17 +1,18 @@
 .text
 
 .globl	ct_is_square_mod_384
+.hidden	ct_is_square_mod_384
 .type	ct_is_square_mod_384, %function
 .align	5
 ct_is_square_mod_384:
 	.inst	0xd503233f
-	stp	x29, x30, [sp,#-128]!
+	stp	x29, x30, [sp,#-16*__SIZEOF_POINTER__]!
 	add	x29, sp, #0
-	stp	x19, x20, [sp,#16]
-	stp	x21, x22, [sp,#32]
-	stp	x23, x24, [sp,#48]
-	stp	x25, x26, [sp,#64]
-	stp	x27, x28, [sp,#80]
+	stp	x19, x20, [sp,#2*__SIZEOF_POINTER__]
+	stp	x21, x22, [sp,#4*__SIZEOF_POINTER__]
+	stp	x23, x24, [sp,#6*__SIZEOF_POINTER__]
+	stp	x25, x26, [sp,#8*__SIZEOF_POINTER__]
+	stp	x27, x28, [sp,#10*__SIZEOF_POINTER__]
 	sub	sp, sp, #512
 
 	ldp	x3, x4, [x0,#8*0]		// load input
@@ -20,6 +21,9 @@ ct_is_square_mod_384:
 
 	add	x0, sp, #255	// find closest 256-byte-aligned spot
 	and	x0, x0, #-256	// in the frame...
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue	c0,csp,x0
+#endif
 
 	ldp	x9, x10, [x1,#8*0]		// load modulus
 	ldp	x11, x12, [x1,#8*2]
@@ -42,15 +46,21 @@ ct_is_square_mod_384:
 	sub	x15, x15, #1
 
 	eor	x1, x0, #128		// pointer to dst |b|
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue	c1,csp,x1
+#endif
 	bl	__smul_384_n_shift_by_30
 
 	mov	x19, x16			// |f0|
 	mov	x20, x17			// |g0|
-	add	x1, x1, #8*6	// pointer to dst |a|
+	add	x1,x1,#8*6
 	bl	__smul_384_n_shift_by_30
 
 	ldp	x9, x10, [x1,#-8*6]
 	eor	x0, x0, #128		// flip-flop src |a|b|
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue	c0,csp,x0
+#endif
 	and	x27, x27, x9		// if |a| was negative,
 	add	x2, x2, x27, lsr#1		// adjust |L|
 
@@ -58,22 +68,22 @@ ct_is_square_mod_384:
 
 	////////////////////////////////////////// last iteration
 	//bl	__ab_approximation_30		// |a| and |b| are exact,
-	//ldr	x8, [x0,#8*6]		// just load
-	mov	x14, x9			// ldr	x14, [x0,#8*0]
+	//ldr	x8, [x0,#8*6]		// and loaded
+	//ldr	x14, [x0,#8*0]
 	mov	x15, #48			// 48 is 768%30 + 30
 	bl	__inner_loop_48
-	ldr	x30, [x29,#8]
+	ldr	x30, [x29,#__SIZEOF_POINTER__]
 
 	and	x0, x2, #1
 	eor	x0, x0, #1
 
 	add	sp, sp, #512
-	ldp	x19, x20, [x29,#16]
-	ldp	x21, x22, [x29,#32]
-	ldp	x23, x24, [x29,#48]
-	ldp	x25, x26, [x29,#64]
-	ldp	x27, x28, [x29,#80]
-	ldr	x29, [sp],#128
+	ldp	x19, x20, [x29,#2*__SIZEOF_POINTER__]
+	ldp	x21, x22, [x29,#4*__SIZEOF_POINTER__]
+	ldp	x23, x24, [x29,#6*__SIZEOF_POINTER__]
+	ldp	x25, x26, [x29,#8*__SIZEOF_POINTER__]
+	ldp	x27, x28, [x29,#10*__SIZEOF_POINTER__]
+	ldr	x29, [sp],#16*__SIZEOF_POINTER__
 	.inst	0xd50323bf
 	ret
 .size	ct_is_square_mod_384,.-ct_is_square_mod_384
@@ -304,18 +314,18 @@ __inner_loop_30:
 .align	4
 __inner_loop_48:
 .Loop_48:
-	sbfx	x24, x8, #0, #1	// if |a_| is odd, then we'll be subtracting
-	and	x25, x8, x14
+	sbfx	x24, x3, #0, #1	// if |a_| is odd, then we'll be subtracting
+	and	x25, x3, x9
 	sub	x15, x15, #1
-	and	x21, x14, x24
-	sub	x22, x14, x8		// |b_|-|a_|
-	subs	x23, x8, x21	// |a_|-|b_| (or |a_|-0 if |a_| was even)
+	and	x21, x9, x24
+	sub	x22, x9, x3		// |b_|-|a_|
+	subs	x23, x3, x21	// |a_|-|b_| (or |a_|-0 if |a_| was even)
 	add	x25, x2, x25, lsr#1
-	csel	x14, x14, x8, hs	// |b_| = |a_|
-	csel	x8, x23, x22, hs	// borrow means |a_|<|b_|, replace with |b_|-|a_|
+	csel	x9, x9, x3, hs	// |b_| = |a_|
+	csel	x3, x23, x22, hs	// borrow means |a_|<|b_|, replace with |b_|-|a_|
 	csel	x2,   x2,   x25, hs
-	add	x23, x14, #2
-	lsr	x8, x8, #1
+	add	x23, x9, #2
+	lsr	x3, x3, #1
 	add	x2, x2, x23, lsr#2	// "negate" |L| if |b|%8 is 3 or 5
 
 	cbnz	x15, .Loop_48

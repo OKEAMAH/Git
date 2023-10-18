@@ -21,5 +21,13 @@
 #include "consts.c"
 #include "vect.c"
 #include "exports.c"
-#include "rb_tree.c"
+#ifndef __BLST_CGO__
+# include "rb_tree.c"
+#endif
+#ifdef BLST_FR_PENTAROOT
+# include "pentaroot.c"
+#endif
+#ifndef __BLST_NO_CPUID__
+# include "cpuid.c"
+#endif
 #include "blst_extended.c"

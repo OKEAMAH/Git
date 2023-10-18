@@ -11,15 +11,14 @@ add_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_add_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	sub	rsp,8
@@ -27,6 +26,9 @@ $L$SEH_begin_add_mod_256::
 $L$SEH_body_add_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -68,7 +70,15 @@ $L$SEH_epilogue_add_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_add_mod_256::
 add_mod_256	ENDP
@@ -84,14 +94,13 @@ mul_by_3_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_mul_by_3_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
 	push	rbx
 
 	push	r12
@@ -100,6 +109,9 @@ $L$SEH_body_mul_by_3_mod_256::
 
 
 	mov	rcx,rdx
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -121,7 +133,15 @@ $L$SEH_epilogue_mul_by_3_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_mul_by_3_mod_256::
 mul_by_3_mod_256	ENDP
@@ -130,6 +150,7 @@ mul_by_3_mod_256	ENDP
 ALIGN	32
 __lshift_mod_256	PROC PRIVATE
 	DB	243,15,30,250
+
 	add	r8,r8
 	adc	r9,r9
 	mov	rax,r8
@@ -151,7 +172,15 @@ __lshift_mod_256	PROC PRIVATE
 	cmovc	r10,rbx
 	cmovc	r11,rbp
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rax
+	lfence
+	jmp	rax
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __lshift_mod_256	ENDP
 
 
@@ -165,15 +194,14 @@ lshift_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_lshift_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	push	r12
@@ -181,6 +209,9 @@ $L$SEH_begin_lshift_mod_256::
 $L$SEH_body_lshift_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -208,7 +239,15 @@ $L$SEH_epilogue_lshift_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_lshift_mod_256::
 lshift_mod_256	ENDP
@@ -224,15 +263,14 @@ rshift_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_rshift_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	sub	rsp,8
@@ -240,6 +278,9 @@ $L$SEH_begin_rshift_mod_256::
 $L$SEH_body_rshift_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	rbp,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -299,7 +340,15 @@ $L$SEH_epilogue_rshift_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_rshift_mod_256::
 rshift_mod_256	ENDP
@@ -315,15 +364,14 @@ cneg_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_cneg_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	push	r12
@@ -331,6 +379,9 @@ $L$SEH_begin_cneg_mod_256::
 $L$SEH_body_cneg_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r12,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -379,7 +430,15 @@ $L$SEH_epilogue_cneg_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_cneg_mod_256::
 cneg_mod_256	ENDP
@@ -395,15 +454,14 @@ sub_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_sub_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	sub	rsp,8
@@ -411,6 +469,9 @@ $L$SEH_begin_sub_mod_256::
 $L$SEH_body_sub_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -450,7 +511,15 @@ $L$SEH_epilogue_sub_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_sub_mod_256::
 sub_mod_256	ENDP
@@ -466,11 +535,13 @@ check_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_check_mod_256::
+
+
 	mov	rdi,rcx
 	mov	rsi,rdx
-
-
-
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	rax,QWORD PTR[rdi]
 	mov	r9,QWORD PTR[8+rdi]
 	mov	r10,QWORD PTR[16+rdi]
@@ -495,7 +566,15 @@ $L$SEH_epilogue_check_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_check_mod_256::
 check_mod_256	ENDP
@@ -511,15 +590,14 @@ add_n_check_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_add_n_check_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	sub	rsp,8
@@ -527,6 +605,9 @@ $L$SEH_begin_add_n_check_mod_256::
 $L$SEH_body_add_n_check_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -573,7 +654,15 @@ $L$SEH_epilogue_add_n_check_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_add_n_check_mod_256::
 add_n_check_mod_256	ENDP
@@ -589,15 +678,14 @@ sub_n_check_mod_256	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_sub_n_check_mod_256::
-	mov	rdi,rcx
-	mov	rsi,rdx
-	mov	rdx,r8
-	mov	rcx,r9
-
 
 
 	push	rbp
 
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
 	push	rbx
 
 	sub	rsp,8
@@ -605,6 +693,9 @@ $L$SEH_begin_sub_n_check_mod_256::
 $L$SEH_body_sub_n_check_mod_256::
 
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -650,7 +741,15 @@ $L$SEH_epilogue_sub_n_check_mod_256::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_sub_n_check_mod_256::
 sub_n_check_mod_256	ENDP
@@ -764,8 +863,9 @@ $L$SEH_info_add_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_add_mod_256_body::
 DB	1,0,9,0
 DB	000h,034h,001h,000h
@@ -773,7 +873,8 @@ DB	000h,054h,002h,000h
 DB	000h,074h,004h,000h
 DB	000h,064h,005h,000h
 DB	000h,022h
-DB	000h,000h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_add_mod_256_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h
@@ -784,8 +885,9 @@ $L$SEH_info_mul_by_3_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_mul_by_3_mod_256_body::
 DB	1,0,11,0
 DB	000h,0c4h,000h,000h
@@ -805,8 +907,9 @@ $L$SEH_info_lshift_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_lshift_mod_256_body::
 DB	1,0,11,0
 DB	000h,0c4h,000h,000h
@@ -826,8 +929,9 @@ $L$SEH_info_rshift_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_rshift_mod_256_body::
 DB	1,0,9,0
 DB	000h,034h,001h,000h
@@ -835,7 +939,8 @@ DB	000h,054h,002h,000h
 DB	000h,074h,004h,000h
 DB	000h,064h,005h,000h
 DB	000h,022h
-DB	000h,000h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_rshift_mod_256_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h
@@ -846,8 +951,9 @@ $L$SEH_info_cneg_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_cneg_mod_256_body::
 DB	1,0,11,0
 DB	000h,0c4h,000h,000h
@@ -867,8 +973,9 @@ $L$SEH_info_sub_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_sub_mod_256_body::
 DB	1,0,9,0
 DB	000h,034h,001h,000h
@@ -876,7 +983,8 @@ DB	000h,054h,002h,000h
 DB	000h,074h,004h,000h
 DB	000h,064h,005h,000h
 DB	000h,022h
-DB	000h,000h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_sub_mod_256_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h
@@ -893,8 +1001,9 @@ $L$SEH_info_add_n_check_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_add_n_check_mod_256_body::
 DB	1,0,9,0
 DB	000h,034h,001h,000h
@@ -902,7 +1011,8 @@ DB	000h,054h,002h,000h
 DB	000h,074h,004h,000h
 DB	000h,064h,005h,000h
 DB	000h,022h
-DB	000h,000h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_add_n_check_mod_256_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h
@@ -913,8 +1023,9 @@ $L$SEH_info_sub_n_check_mod_256_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_sub_n_check_mod_256_body::
 DB	1,0,9,0
 DB	000h,034h,001h,000h
@@ -922,7 +1033,8 @@ DB	000h,054h,002h,000h
 DB	000h,074h,004h,000h
 DB	000h,064h,005h,000h
 DB	000h,022h
-DB	000h,000h
+DB	000h,000h,000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_sub_n_check_mod_256_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h

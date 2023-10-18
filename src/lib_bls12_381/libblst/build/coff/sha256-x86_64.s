@@ -1,3 +1,4 @@
+.comm	__blst_platform_cap,4
 .text	
 
 .p2align	6
@@ -34,25 +35,29 @@ blst_sha256_block_data_order_shaext:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_blst_sha256_block_data_order_shaext:
+
+
+	pushq	%rbp
+
+	movq	%rsp,%rbp
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
+.Lblst_sha256_block_data_order$2:
+	subq	$0x50,%rsp
 
-
-	subq	$0x58,%rsp
-
-	movaps	%xmm6,-88(%r11)
-
-	movaps	%xmm7,-72(%r11)
-
-	movaps	%xmm8,-56(%r11)
-
-	movaps	%xmm9,-40(%r11)
-
-	movaps	%xmm10,-24(%r11)
+	movaps	%xmm6,-80(%rbp)
+	movaps	%xmm7,-64(%rbp)
+	movaps	%xmm8,-48(%rbp)
+	movaps	%xmm9,-32(%rbp)
+	movaps	%xmm10,-16(%rbp)
 
 .LSEH_body_blst_sha256_block_data_order_shaext:
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	leaq	K256+128(%rip),%rcx
 	movdqu	(%rdi),%xmm1
 	movdqu	16(%rdi),%xmm2
@@ -254,18 +259,28 @@ blst_sha256_block_data_order_shaext:
 
 	movdqu	%xmm1,(%rdi)
 	movdqu	%xmm2,16(%rdi)
-	movaps	-88(%r11),%xmm6
-	movaps	-72(%r11),%xmm7
-	movaps	-56(%r11),%xmm8
-	movaps	-40(%r11),%xmm9
-	movaps	-24(%r11),%xmm10
-	movq	%r11,%rsp
+	movaps	-80(%rbp),%xmm6
+	movaps	-64(%rbp),%xmm7
+	movaps	-48(%rbp),%xmm8
+	movaps	-32(%rbp),%xmm9
+	movaps	-16(%rbp),%xmm10
+	movq	%rbp,%rsp
+
+	popq	%rbp
 
 .LSEH_epilogue_blst_sha256_block_data_order_shaext:
-	mov	8(%r11),%rdi
-	mov	16(%r11),%rsi
+	mov	8(%rsp),%rdi
+	mov	16(%rsp),%rsi
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_blst_sha256_block_data_order_shaext:
 .globl	blst_sha256_block_data_order
@@ -278,13 +293,19 @@ blst_sha256_block_data_order:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_blst_sha256_block_data_order:
-	movq	%rcx,%rdi
-	movq	%rdx,%rsi
-	movq	%r8,%rdx
 
 
 	pushq	%rbp
 
+	movq	%rsp,%rbp
+
+	movq	%rcx,%rdi
+	movq	%rdx,%rsi
+	movq	%r8,%rdx
+#ifndef	__SGX_LVI_HARDENING__
+	testl	$2,__blst_platform_cap(%rip)
+	jnz	.Lblst_sha256_block_data_order$2
+#endif
 	pushq	%rbx
 
 	pushq	%r12
@@ -296,26 +317,24 @@ blst_sha256_block_data_order:
 	pushq	%r15
 
 	shlq	$4,%rdx
-	subq	$104,%rsp
+	subq	$88,%rsp
 
 	leaq	(%rsi,%rdx,4),%rdx
-	movq	%rdi,0(%rsp)
+	movq	%rdi,-64(%rbp)
 
-	movq	%rdx,16(%rsp)
-	movaps	%xmm6,32(%rsp)
-
-	movaps	%xmm7,48(%rsp)
-
-	movaps	%xmm8,64(%rsp)
-
-	movaps	%xmm9,80(%rsp)
-
-	movq	%rsp,%rbp
+	movq	%rdx,-48(%rbp)
+	movaps	%xmm6,-128(%rbp)
+	movaps	%xmm7,-112(%rbp)
+	movaps	%xmm8,-96(%rbp)
+	movaps	%xmm9,-80(%rbp)
 
 .LSEH_body_blst_sha256_block_data_order:
 
 
 	leaq	-64(%rsp),%rsp
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movl	0(%rdi),%eax
 	andq	$-64,%rsp
 	movl	4(%rdi),%ebx
@@ -331,7 +350,7 @@ blst_sha256_block_data_order:
 .p2align	4
 .Lloop_ssse3:
 	movdqa	K256+256(%rip),%xmm7
-	movq	%rsi,8(%rbp)
+	movq	%rsi,-56(%rbp)
 	movdqu	0(%rsi),%xmm0
 	movdqu	16(%rsi),%xmm1
 	movdqu	32(%rsi),%xmm2
@@ -1356,10 +1375,13 @@ blst_sha256_block_data_order:
 	addl	%r15d,%eax
 	movl	%r8d,%r13d
 	addl	%eax,%r14d
-	movq	0(%rbp),%rdi
+	movq	-64(%rbp),%rdi
 	movl	%r14d,%eax
-	movq	8(%rbp),%rsi
+	movq	-56(%rbp),%rsi
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	addl	0(%rdi),%eax
 	addl	4(%rdi),%ebx
 	addl	8(%rdi),%ecx
@@ -1370,7 +1392,7 @@ blst_sha256_block_data_order:
 	addl	28(%rdi),%r11d
 
 	leaq	64(%rsi),%rsi
-	cmpq	16(%rbp),%rsi
+	cmpq	-48(%rbp),%rsi
 
 	movl	%eax,0(%rdi)
 	movl	%ebx,4(%rdi)
@@ -1383,34 +1405,36 @@ blst_sha256_block_data_order:
 	jb	.Lloop_ssse3
 
 	xorps	%xmm0,%xmm0
-	leaq	104+48(%rbp),%r11
-
 	movaps	%xmm0,0(%rsp)
 	movaps	%xmm0,16(%rsp)
 	movaps	%xmm0,32(%rsp)
 	movaps	%xmm0,48(%rsp)
-	movaps	32(%rbp),%xmm6
-	movaps	48(%rbp),%xmm7
-	movaps	64(%rbp),%xmm8
-	movaps	80(%rbp),%xmm9
-	movq	104(%rbp),%r15
+	movaps	-128(%rbp),%xmm6
+	movaps	-112(%rbp),%xmm7
+	movaps	-96(%rbp),%xmm8
+	movaps	-80(%rbp),%xmm9
+	movq	-40(%rbp),%r15
+	movq	-32(%rbp),%r14
+	movq	-24(%rbp),%r13
+	movq	-16(%rbp),%r12
+	movq	-8(%rbp),%rbx
+	movq	%rbp,%rsp
 
-	movq	-40(%r11),%r14
-
-	movq	-32(%r11),%r13
-
-	movq	-24(%r11),%r12
-
-	movq	-16(%r11),%rbx
-
-	movq	-8(%r11),%rbp
+	popq	%rbp
 
 .LSEH_epilogue_blst_sha256_block_data_order:
-	mov	8(%r11),%rdi
-	mov	16(%r11),%rsi
+	mov	8(%rsp),%rdi
+	mov	16(%rsp),%rsi
 
-	leaq	(%r11),%rsp
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_blst_sha256_block_data_order:
 .globl	blst_sha256_emit
@@ -1420,6 +1444,9 @@ blst_sha256_block_data_order:
 blst_sha256_emit:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rdx),%r8
 	movq	8(%rdx),%r9
 	movq	16(%rdx),%r10
@@ -1440,7 +1467,15 @@ blst_sha256_emit:
 	shrq	$32,%r11
 	movl	%r10d,16(%rcx)
 	movl	%r11d,24(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	blst_sha256_bcopy
@@ -1450,6 +1485,9 @@ blst_sha256_emit:
 blst_sha256_bcopy:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	subq	%rdx,%rcx
 .Loop_bcopy:
 	movzbl	(%rdx),%eax
@@ -1457,7 +1495,15 @@ blst_sha256_bcopy:
 	movb	%al,-1(%rcx,%rdx,1)
 	decq	%r8
 	jnz	.Loop_bcopy
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	blst_sha256_hcopy
@@ -1467,6 +1513,9 @@ blst_sha256_bcopy:
 blst_sha256_hcopy:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	movq	0(%rdx),%r8
 	movq	8(%rdx),%r9
 	movq	16(%rdx),%r10
@@ -1475,7 +1524,15 @@ blst_sha256_hcopy:
 	movq	%r9,8(%rcx)
 	movq	%r10,16(%rcx)
 	movq	%r11,24(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .section	.pdata
 .p2align	2
@@ -1506,13 +1563,14 @@ blst_sha256_hcopy:
 .section	.xdata
 .p2align	3
 .LSEH_info_blst_sha256_block_data_order_shaext_prologue:
-.byte	1,0,5,0x0b
-.byte	0,0x74,1,0
-.byte	0,0x64,2,0
-.byte	0,0x03
-.byte	0,0
+.byte	1,4,6,0x05
+.byte	4,0x74,2,0
+.byte	4,0x64,3,0
+.byte	4,0x53
+.byte	1,0x50
+.long	0,0
 .LSEH_info_blst_sha256_block_data_order_shaext_body:
-.byte	1,0,15,0
+.byte	1,0,17,85
 .byte	0x00,0x68,0x00,0x00
 .byte	0x00,0x78,0x01,0x00
 .byte	0x00,0x88,0x02,0x00
@@ -1520,41 +1578,45 @@ blst_sha256_hcopy:
 .byte	0x00,0xa8,0x04,0x00
 .byte	0x00,0x74,0x0c,0x00
 .byte	0x00,0x64,0x0d,0x00
-.byte	0x00,0xa2
+.byte	0x00,0x53
+.byte	0x00,0x92
+.byte	0x00,0x50
 .byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_blst_sha256_block_data_order_shaext_epilogue:
-.byte	1,0,5,11
+.byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
 .byte	0x00,0x64,0x02,0x00
-.byte	0x00,0x03
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 
 .LSEH_info_blst_sha256_block_data_order_prologue:
-.byte	1,0,5,0x0b
-.byte	0,0x74,1,0
-.byte	0,0x64,2,0
-.byte	0,0x03
-.byte	0,0
+.byte	1,4,6,0x05
+.byte	4,0x74,2,0
+.byte	4,0x64,3,0
+.byte	4,0x53
+.byte	1,0x50
+.long	0,0
 .LSEH_info_blst_sha256_block_data_order_body:
-.byte	1,0,26,5
-.byte	0x00,0x68,0x02,0x00
-.byte	0x00,0x78,0x03,0x00
-.byte	0x00,0x88,0x04,0x00
-.byte	0x00,0x98,0x05,0x00
-.byte	0x00,0xf4,0x0d,0x00
-.byte	0x00,0xe4,0x0e,0x00
-.byte	0x00,0xd4,0x0f,0x00
-.byte	0x00,0xc4,0x10,0x00
-.byte	0x00,0x34,0x11,0x00
-.byte	0x00,0x74,0x14,0x00
-.byte	0x00,0x64,0x15,0x00
-.byte	0x00,0x03
-.byte	0x00,0x01,0x12,0x00
+.byte	1,0,25,133
+.byte	0x00,0x68,0x00,0x00
+.byte	0x00,0x78,0x01,0x00
+.byte	0x00,0x88,0x02,0x00
+.byte	0x00,0x98,0x03,0x00
+.byte	0x00,0xf4,0x0b,0x00
+.byte	0x00,0xe4,0x0c,0x00
+.byte	0x00,0xd4,0x0d,0x00
+.byte	0x00,0xc4,0x0e,0x00
+.byte	0x00,0x34,0x0f,0x00
+.byte	0x00,0x74,0x12,0x00
+.byte	0x00,0x64,0x13,0x00
+.byte	0x00,0x53
+.byte	0x00,0xf2
 .byte	0x00,0x50
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_blst_sha256_block_data_order_epilogue:
-.byte	1,0,5,11
+.byte	1,0,4,0
 .byte	0x00,0x74,0x01,0x00
 .byte	0x00,0x64,0x02,0x00
-.byte	0x00,0x03
-.byte	0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 

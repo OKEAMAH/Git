@@ -10,11 +10,12 @@
 //
 // sha256_block procedure for ARMv8.
 //
-// This module is stripped of scalar code paths, with raionale that all
+// This module is stripped of scalar code paths, with rationale that all
 // known processors are NEON-capable.
 //
 // See original module at CRYPTOGAMS for further details.
 
+.comm	___blst_platform_cap,4
 .text
 
 .align	6
@@ -46,7 +47,7 @@ LK256:
 .align	6
 _blst_sha256_block_armv8:
 Lv8_entry:
-	stp	x29,x30,[sp,#-16]!
+	stp	x29,x30,[sp,#-2*__SIZEOF_POINTER__]!
 	add	x29,sp,#0
 
 	ld1	{v0.4s,v1.4s},[x0]
@@ -177,14 +178,19 @@ Loop_hw:
 
 	st1	{v0.4s,v1.4s},[x0]
 
-	ldr	x29,[sp],#16
+	ldr	x29,[sp],#2*__SIZEOF_POINTER__
 	ret
 
 .globl	_blst_sha256_block_data_order
 
 .align	4
 _blst_sha256_block_data_order:
-	stp	x29, x30, [sp, #-16]!
+	adrp	x16,___blst_platform_cap@PAGE
+	ldr	w16,[x16,___blst_platform_cap@PAGEOFF]
+	tst	w16,#1
+	b.ne	Lv8_entry
+
+	stp	x29, x30, [sp, #-2*__SIZEOF_POINTER__]!
 	mov	x29, sp
 	sub	sp,sp,#16*4
 
@@ -665,11 +671,11 @@ L_00_48:
 	sub	x17,x17,#64
 	bne	L_00_48
 
-	sub	x16,x16,#256		// rewind x16
+	sub	x16,x16,#256
 	cmp	x1,x2
-	mov	x17, #64
+	mov	x17, #-64
 	csel	x17, x17, xzr, eq
-	sub	x1,x1,x17			// avoid SEGV
+	add	x1,x1,x17
 	mov	x17,sp
 	add	w10,w10,w12
 	add	w3,w3,w15
@@ -1020,7 +1026,7 @@ L_00_48:
 	b.ne	L_00_48
 
 	ldr	x29,[x29]
-	add	sp,sp,#16*4+16
+	add	sp,sp,#16*4+2*__SIZEOF_POINTER__
 	ret
 
 .globl	_blst_sha256_emit

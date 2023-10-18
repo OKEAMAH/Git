@@ -66,9 +66,14 @@ $code.=<<___;
 
 .globl	div_3_limbs
 .hidden	div_3_limbs
-.type	div_3_limbs,\@function,3
+.type	div_3_limbs,\@function,3,"unwind"
 .align	32
 div_3_limbs:
+.cfi_startproc
+.cfi_end_prologue
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	mov	(%rdi),%r8		# load R.lo
 	mov	8(%rdi),%r9		# load R.hi
 	xor	%rax,%rax		# Q = 0
@@ -100,7 +105,9 @@ div_3_limbs:
 
 	or	%rcx,%rax		# all ones if overflow
 
+.cfi_epilogue
 	ret
+.cfi_endproc
 .size	div_3_limbs,.-div_3_limbs
 ___
 ########################################################################
@@ -116,9 +123,14 @@ my @tmp = ("%r10", "%r11", "%rax");
 $code.=<<___;
 .globl	quot_rem_128
 .hidden	quot_rem_128
-.type	quot_rem_128,\@function,3
+.type	quot_rem_128,\@function,3,"unwind"
 .align	32
 quot_rem_128:
+.cfi_startproc
+.cfi_end_prologue
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	mov	%rdx, %rax
 	mov	%rdx, $quotient
 
@@ -153,7 +165,9 @@ quot_rem_128:
 
 	mov	$quotient, %rax		# return adjusted quotient
 
+.cfi_epilogue
 	ret
+.cfi_endproc
 .size	quot_rem_128,.-quot_rem_128
 
 ########################################################################
@@ -162,9 +176,14 @@ quot_rem_128:
 
 .globl	quot_rem_64
 .hidden	quot_rem_64
-.type	quot_rem_64,\@function,3
+.type	quot_rem_64,\@function,3,"unwind"
 .align	32
 quot_rem_64:
+.cfi_startproc
+.cfi_end_prologue
+#ifdef	__SGX_LVI_HARDENING__
+	lfence
+#endif
 	mov	%rdx, %rax		# return quotient
 	imulq	0($divisor), %rdx	# divisor[0] * quotient
 
@@ -175,7 +194,9 @@ quot_rem_64:
 	mov	@tmp[0], 0($div_rem)	# save 1 limb of the remainder ...
 	mov	%rax, 8($div_rem)	# ... and 1 limb of the quotient
 
+.cfi_epilogue
 	ret
+.cfi_endproc
 .size	quot_rem_64,.-quot_rem_64
 ___
 }

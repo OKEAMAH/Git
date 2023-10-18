@@ -1,7 +1,9 @@
 OPTION	DOTNAME
+PUBLIC	ct_inverse_mod_383$1
 .text$	SEGMENT ALIGN(256) 'CODE'
 
 PUBLIC	ctx_inverse_mod_383
+
 
 ALIGN	32
 ctx_inverse_mod_383	PROC PUBLIC
@@ -10,13 +12,13 @@ ctx_inverse_mod_383	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_ctx_inverse_mod_383::
+
+
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
-
-
+ct_inverse_mod_383$1::
 	push	rbp
 
 	push	rbx
@@ -39,6 +41,9 @@ $L$SEH_body_ctx_inverse_mod_383::
 	mov	QWORD PTR[32+rsp],rdi
 	mov	QWORD PTR[40+rsp],rcx
 
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -814,7 +819,7 @@ $L$SEH_body_ctx_inverse_mod_383::
 
 	mov	r10,QWORD PTR[48+rsi]
 
-	call	__inner_loop_62
+	call	__tail_loop_53
 
 
 
@@ -840,6 +845,9 @@ $L$SEH_body_ctx_inverse_mod_383::
 	mov	r8,rax
 	mov	r9,rax
 	mov	r10,rax
+ifdef	__SGX_LVI_HARDENING__
+	lfence
+endif
 	and	r8,QWORD PTR[rsi]
 	and	r9,QWORD PTR[8+rsi]
 	mov	r11,rax
@@ -882,7 +890,15 @@ $L$SEH_epilogue_ctx_inverse_mod_383::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_ctx_inverse_mod_383::
 ctx_inverse_mod_383	ENDP
@@ -890,6 +906,7 @@ ctx_inverse_mod_383	ENDP
 ALIGN	32
 __smulx_767x63	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -1048,12 +1065,21 @@ __smulx_767x63	PROC PRIVATE
 	mov	QWORD PTR[80+rdx],rcx
 	mov	QWORD PTR[88+rdx],rax
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulx_767x63	ENDP
 
 ALIGN	32
 __smulx_383x63	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r8,QWORD PTR[((0+0))+rsi]
 	mov	r9,QWORD PTR[((0+8))+rsi]
 	mov	r10,QWORD PTR[((0+16))+rsi]
@@ -1155,12 +1181,21 @@ __smulx_383x63	PROC PRIVATE
 	mov	QWORD PTR[32+rdi],r12
 	mov	QWORD PTR[40+rdi],r13
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulx_383x63	ENDP
 
 ALIGN	32
 __smulx_383_n_shift_by_31	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rbx,rdx
 	xor	r14,r14
 	mov	r8,QWORD PTR[((0+0))+rsi]
@@ -1300,12 +1335,21 @@ __smulx_383_n_shift_by_31	PROC PRIVATE
 	add	rdx,rbp
 	add	rcx,rbp
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulx_383_n_shift_by_31	ENDP
 
 ALIGN	32
 __smulx_191_n_shift_by_31	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rbx,rdx
 	mov	r8,QWORD PTR[((0+0))+rsi]
 	mov	r9,QWORD PTR[((0+8))+rsi]
@@ -1391,12 +1435,21 @@ __smulx_191_n_shift_by_31	PROC PRIVATE
 	add	rdx,rbp
 	add	rcx,rbp
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulx_191_n_shift_by_31	ENDP
 
 ALIGN	32
 __ab_approximation_31	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r9,QWORD PTR[40+rsi]
 	mov	r11,QWORD PTR[88+rsi]
 	mov	rbx,QWORD PTR[32+rsi]
@@ -1461,12 +1514,21 @@ __ab_approximation_31	PROC PRIVATE
 
 	jmp	__inner_loop_31
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __ab_approximation_31	ENDP
 
 ALIGN	32
 __inner_loop_31	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rcx,07FFFFFFF80000000h
 	mov	r13,0800000007FFFFFFFh
 	mov	r15,07FFFFFFF7FFFFFFFh
@@ -1508,19 +1570,28 @@ $L$oop_31::
 	sub	r12,r15
 	sub	r13,r15
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __inner_loop_31	ENDP
 
 
 ALIGN	32
-__inner_loop_62	PROC PRIVATE
+__tail_loop_53	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rdx,1
 	xor	rcx,rcx
 	xor	r12,r12
 	mov	r13,1
 
-$L$oop_62::
+$L$oop_53::
 	xor	rax,rax
 	test	r8,1
 	mov	rbx,r10
@@ -1547,10 +1618,18 @@ $L$oop_62::
 	sub	rdx,rax
 	sub	rcx,rbx
 	sub	edi,1
-	jnz	$L$oop_62
+	jnz	$L$oop_53
 
-	DB	0F3h,0C3h		;repret
-__inner_loop_62	ENDP
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
+__tail_loop_53	ENDP
 .text$	ENDS
 .pdata	SEGMENT READONLY ALIGN(4)
 ALIGN	4
@@ -1573,8 +1652,9 @@ $L$SEH_info_ctx_inverse_mod_383_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_ctx_inverse_mod_383_body::
 DB	1,0,18,0
 DB	000h,0f4h,08bh,000h
@@ -1586,6 +1666,8 @@ DB	000h,054h,090h,000h
 DB	000h,074h,092h,000h
 DB	000h,064h,093h,000h
 DB	000h,001h,091h,000h
+DB	000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_ctx_inverse_mod_383_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h

@@ -90,18 +90,19 @@ $code.=<<___;
 .text
 
 .globl	ct_is_square_mod_384
+.hidden	ct_is_square_mod_384
 .type	ct_is_square_mod_384, %function
 .align	5
 ct_is_square_mod_384:
 	paciasp
-	stp	x29, x30, [sp,#-128]!
-	add	x29, sp, #0
-	stp	x19, x20, [sp,#16]
-	stp	x21, x22, [sp,#32]
-	stp	x23, x24, [sp,#48]
-	stp	x25, x26, [sp,#64]
-	stp	x27, x28, [sp,#80]
-	sub	sp, sp, #$frame
+	stp	c29, c30, [csp,#-16*__SIZEOF_POINTER__]!
+	add	c29, csp, #0
+	stp	c19, c20, [csp,#2*__SIZEOF_POINTER__]
+	stp	c21, c22, [csp,#4*__SIZEOF_POINTER__]
+	stp	c23, c24, [csp,#6*__SIZEOF_POINTER__]
+	stp	c25, c26, [csp,#8*__SIZEOF_POINTER__]
+	stp	c27, c28, [csp,#10*__SIZEOF_POINTER__]
+	sub	csp, csp, #$frame
 
 	ldp	@acc[0], @acc[1], [x0,#8*0]		// load input
 	ldp	@acc[2], @acc[3], [x0,#8*2]
@@ -109,6 +110,9 @@ ct_is_square_mod_384:
 
 	add	$in_ptr, sp, #255	// find closest 256-byte-aligned spot
 	and	$in_ptr, $in_ptr, #-256	// in the frame...
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue $in_ptr, csp, $in_ptr
+#endif
 
 	ldp	@acc[6], @acc[7], [x1,#8*0]		// load modulus
 	ldp	@acc[8], @acc[9], [x1,#8*2]
@@ -131,15 +135,21 @@ ct_is_square_mod_384:
 	sub	$cnt, $cnt, #1
 
 	eor	$out_ptr, $in_ptr, #128		// pointer to dst |b|
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue $out_ptr, csp, $out_ptr
+#endif
 	bl	__smul_384_n_shift_by_30
 
 	mov	$f1, $f0			// |f0|
 	mov	$g1, $g0			// |g0|
-	add	$out_ptr, $out_ptr, #8*6	// pointer to dst |a|
+	cadd	$out_ptr, $out_ptr, #8*6	// pointer to dst |a|
 	bl	__smul_384_n_shift_by_30
 
 	ldp	@acc[6], @acc[7], [$out_ptr,#-8*6]
 	eor	$in_ptr, $in_ptr, #128		// flip-flop src |a|b|
+#ifdef	__CHERI_PURE_CAPABILITY__
+	scvalue $in_ptr, csp, $in_ptr
+#endif
 	and	@t[6], @t[6], @acc[6]		// if |a| was negative,
 	add	$L, $L, @t[6], lsr#1		// adjust |L|
 
@@ -147,22 +157,22 @@ ct_is_square_mod_384:
 
 	////////////////////////////////////////// last iteration
 	//bl	__ab_approximation_30		// |a| and |b| are exact,
-	//ldr	$a_, [$in_ptr,#8*6]		// just load
-	mov	$b_, @acc[6]			// ldr	$b_, [$in_ptr,#8*0]
+	//ldr	$a_, [$in_ptr,#8*6]		// and loaded
+	//ldr	$b_, [$in_ptr,#8*0]
 	mov	$cnt, #48			// 48 is 768%30 + 30
 	bl	__inner_loop_48
-	ldr	x30, [x29,#8]
+	ldr	c30, [c29,#__SIZEOF_POINTER__]
 
 	and	x0, $L, #1
 	eor	x0, x0, #1
 
-	add	sp, sp, #$frame
-	ldp	x19, x20, [x29,#16]
-	ldp	x21, x22, [x29,#32]
-	ldp	x23, x24, [x29,#48]
-	ldp	x25, x26, [x29,#64]
-	ldp	x27, x28, [x29,#80]
-	ldr	x29, [sp],#128
+	add	csp, csp, #$frame
+	ldp	c19, c20, [c29,#2*__SIZEOF_POINTER__]
+	ldp	c21, c22, [c29,#4*__SIZEOF_POINTER__]
+	ldp	c23, c24, [c29,#6*__SIZEOF_POINTER__]
+	ldp	c25, c26, [c29,#8*__SIZEOF_POINTER__]
+	ldp	c27, c28, [c29,#10*__SIZEOF_POINTER__]
+	ldr	c29, [csp],#16*__SIZEOF_POINTER__
 	autiasp
 	ret
 .size	ct_is_square_mod_384,.-ct_is_square_mod_384
@@ -369,6 +379,8 @@ __inner_loop_30:
 ___
 }
 
+{
+my ($a_, $b_) = (@acc[0], @acc[6]);
 $code.=<<___;
 .type	__inner_loop_48, %function
 .align	4
@@ -393,6 +405,7 @@ __inner_loop_48:
 	ret
 .size	__inner_loop_48,.-__inner_loop_48
 ___
+}
 
 print $code;
 close STDOUT;

@@ -545,7 +545,7 @@ static void inverse_fp6(vec384fp6 ret, const vec384fp6 a)
     mul_by_u_plus_1_fp2(c1, c1);
     mul_fp2(t0, a[0], a[1]);
     sub_fp2(c1, c1, t0);
- 
+
     /* c2 = a1^2 - a0*a2 */
     sqr_fp2(c2, a[1]);
     mul_fp2(t0, a[0], a[2]);
@@ -733,7 +733,7 @@ static void frobenius_map_fp12(vec384fp12 ret, const vec384fp12 a, size_t n)
 
 
 /*
- * BLS12-381-specifc Fp12 shortcuts.
+ * BLS12-381-specific Fp12 shortcuts.
  */
 void blst_fp12_sqr(vec384fp12 ret, const vec384fp12 a)
 {   sqr_fp12(ret, a);   }
@@ -769,3 +769,21 @@ int blst_fp12_is_one(const vec384fp12 a)
 
 const vec384fp12 *blst_fp12_one(void)
 {   return (const vec384fp12 *)BLS12_381_Rx.p12;   }
+
+void blst_bendian_from_fp12(unsigned char ret[48*12], const vec384fp12 a)
+{
+    size_t i, j;
+    vec384 out;
+
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 2; j++) {
+            from_fp(out, a[j][i][0]);
+            be_bytes_from_limbs(ret, out, sizeof(vec384));  ret += 48;
+            from_fp(out, a[j][i][1]);
+            be_bytes_from_limbs(ret, out, sizeof(vec384));  ret += 48;
+        }
+    }
+}
+
+size_t blst_fp12_sizeof(void)
+{   return sizeof(vec384fp12);   }

@@ -1,6 +1,8 @@
+.comm	___blst_platform_cap,4
 .text	
 
 .globl	_ct_inverse_mod_383
+.private_extern	_ct_inverse_mod_383
 
 .p2align	5
 _ct_inverse_mod_383:
@@ -8,6 +10,10 @@ _ct_inverse_mod_383:
 	.byte	0xf3,0x0f,0x1e,0xfa
 
 
+#ifdef __BLST_PORTABLE__
+	testl	$1,___blst_platform_cap(%rip)
+	jnz	ct_inverse_mod_383$1
+#endif
 	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
@@ -533,7 +539,15 @@ _ct_inverse_mod_383:
 	leaq	48(%r8),%rsp
 .cfi_adjust_cfa_offset	-1112-8*6
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc	
 
 
@@ -746,7 +760,15 @@ __smulq_767x63:
 	movq	%rcx,80(%rdx)
 	movq	%rax,88(%rdx)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -890,7 +912,15 @@ __smulq_383x63:
 	movq	%r12,32(%rdi)
 	movq	%r13,40(%rdi)
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1069,7 +1099,15 @@ __smulq_383_n_shift_by_62:
 	addq	%rbp,%rdx
 	addq	%rbp,%rcx
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1127,7 +1165,15 @@ __ab_approximation_62:
 
 	jmp	__inner_loop_62
 
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 
 
@@ -1182,6 +1228,14 @@ L$oop_62:
 	jnz	L$oop_62
 
 	movq	8(%rsp),%rsi
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%r8
+	lfence
+	jmpq	*%r8
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 .cfi_endproc
 

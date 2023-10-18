@@ -1,3 +1,4 @@
+.comm	__blst_platform_cap,4
 .text	
 
 .globl	blst_sha256_block_data_order
@@ -9,14 +10,20 @@ blst_sha256_block_data_order:
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%r11
 .LSEH_begin_blst_sha256_block_data_order:
+
+
+	pushq	%rbp
+
+	movq	%rsp,%rbp
+
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
-
-
+#ifdef __BLST_PORTABLE__
+	testl	$2,__blst_platform_cap(%rip)
+	jnz	.Lblst_sha256_block_data_order$2
+#endif
 	pushq	%rbx
-
-	pushq	%rbp
 
 	pushq	%r12
 
@@ -29,12 +36,13 @@ blst_sha256_block_data_order:
 	shlq	$4,%rdx
 	subq	$64+24,%rsp
 
+
+.LSEH_body_blst_sha256_block_data_order:
+
 	leaq	(%rsi,%rdx,4),%rdx
 	movq	%rdi,64+0(%rsp)
 	movq	%rsi,64+8(%rsp)
 	movq	%rdx,64+16(%rsp)
-.LSEH_body_blst_sha256_block_data_order:
-
 
 	movl	0(%rdi),%eax
 	movl	4(%rdi),%ebx
@@ -1637,26 +1645,29 @@ blst_sha256_block_data_order:
 	leaq	64+24+48(%rsp),%r11
 
 	movq	64+24(%rsp),%r15
-
 	movq	-40(%r11),%r14
-
 	movq	-32(%r11),%r13
-
 	movq	-24(%r11),%r12
-
-	movq	-16(%r11),%rbp
-
-	movq	-8(%r11),%rbx
-
+	movq	-16(%r11),%rbx
+	movq	-8(%r11),%rbp
 .LSEH_epilogue_blst_sha256_block_data_order:
 	mov	8(%r11),%rdi
 	mov	16(%r11),%rsi
 
 	leaq	(%r11),%rsp
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 .LSEH_end_blst_sha256_block_data_order:
 
+#ifndef __BLST_PORTABLE__
 .p2align	6
 
 K256:
@@ -1705,7 +1716,15 @@ blst_sha256_emit:
 	shrq	$32,%r11
 	movl	%r10d,16(%rcx)
 	movl	%r11d,24(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	blst_sha256_bcopy
@@ -1722,7 +1741,15 @@ blst_sha256_bcopy:
 	movb	%al,-1(%rcx,%rdx,1)
 	decq	%r8
 	jnz	.Loop_bcopy
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
 
 .globl	blst_sha256_hcopy
@@ -1740,8 +1767,17 @@ blst_sha256_hcopy:
 	movq	%r9,8(%rcx)
 	movq	%r10,16(%rcx)
 	movq	%r11,24(%rcx)
+	
+#ifdef	__SGX_LVI_HARDENING__
+	popq	%rdx
+	lfence
+	jmpq	*%rdx
+	ud2
+#else
 	.byte	0xf3,0xc3
+#endif
 
+#endif
 .section	.pdata
 .p2align	2
 .rva	.LSEH_begin_blst_sha256_block_data_order
@@ -1759,26 +1795,30 @@ blst_sha256_hcopy:
 .section	.xdata
 .p2align	3
 .LSEH_info_blst_sha256_block_data_order_prologue:
-.byte	1,0,5,0x0b
-.byte	0,0x74,1,0
-.byte	0,0x64,2,0
-.byte	0,0x03
-.byte	0,0
+.byte	1,4,6,0x05
+.byte	4,0x74,2,0
+.byte	4,0x64,3,0
+.byte	4,0x53
+.byte	1,0x50
+.long	0,0
 .LSEH_info_blst_sha256_block_data_order_body:
 .byte	1,0,18,0
 .byte	0x00,0xf4,0x0b,0x00
 .byte	0x00,0xe4,0x0c,0x00
 .byte	0x00,0xd4,0x0d,0x00
 .byte	0x00,0xc4,0x0e,0x00
-.byte	0x00,0x54,0x0f,0x00
-.byte	0x00,0x34,0x10,0x00
+.byte	0x00,0x34,0x0f,0x00
+.byte	0x00,0x54,0x10,0x00
 .byte	0x00,0x74,0x12,0x00
 .byte	0x00,0x64,0x13,0x00
 .byte	0x00,0x01,0x11,0x00
+.byte	0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 .LSEH_info_blst_sha256_block_data_order_epilogue:
 .byte	1,0,5,11
 .byte	0x00,0x74,0x01,0x00
 .byte	0x00,0x64,0x02,0x00
-.byte	0x00,0x03
-.byte	0x00,0x00
+.byte	0x00,0xb3
+.byte	0x00,0x00,0x00,0x00,0x00,0x00
+.byte	0x00,0x00,0x00,0x00
 

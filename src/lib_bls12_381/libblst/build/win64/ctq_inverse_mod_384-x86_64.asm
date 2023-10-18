@@ -1,7 +1,12 @@
 OPTION	DOTNAME
+EXTERN	ct_inverse_mod_383$1:NEAR
+_DATA	SEGMENT
+COMM	__blst_platform_cap:DWORD:1
+_DATA	ENDS
 .text$	SEGMENT ALIGN(256) 'CODE'
 
 PUBLIC	ct_inverse_mod_383
+
 
 ALIGN	32
 ct_inverse_mod_383	PROC PUBLIC
@@ -10,13 +15,16 @@ ct_inverse_mod_383	PROC PUBLIC
 	mov	QWORD PTR[16+rsp],rsi
 	mov	r11,rsp
 $L$SEH_begin_ct_inverse_mod_383::
+
+
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
-
-
+ifdef __BLST_PORTABLE__
+	test	DWORD PTR[__blst_platform_cap],1
+	jnz	ct_inverse_mod_383$1
+endif
 	push	rbp
 
 	push	rbx
@@ -540,7 +548,15 @@ $L$SEH_epilogue_ct_inverse_mod_383::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 
 $L$SEH_end_ct_inverse_mod_383::
 ct_inverse_mod_383	ENDP
@@ -548,6 +564,7 @@ ct_inverse_mod_383	ENDP
 ALIGN	32
 __smulq_767x63	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -752,12 +769,21 @@ __smulq_767x63	PROC PRIVATE
 	mov	QWORD PTR[80+rdx],rcx
 	mov	QWORD PTR[88+rdx],rax
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulq_767x63	ENDP
 
 ALIGN	32
 __smulq_383x63	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
 	mov	r10,QWORD PTR[16+rsi]
@@ -893,12 +919,21 @@ __smulq_383x63	PROC PRIVATE
 	mov	QWORD PTR[32+rdi],r12
 	mov	QWORD PTR[40+rdi],r13
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulq_383x63	ENDP
 
 ALIGN	32
 __smulq_383_n_shift_by_62	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rbx,rdx
 	mov	r8,QWORD PTR[rsi]
 	mov	r9,QWORD PTR[8+rsi]
@@ -1069,12 +1104,21 @@ __smulq_383_n_shift_by_62	PROC PRIVATE
 	add	rdx,rbp
 	add	rcx,rbp
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __smulq_383_n_shift_by_62	ENDP
 
 ALIGN	32
 __ab_approximation_62	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	r9,QWORD PTR[40+rsi]
 	mov	r11,QWORD PTR[88+rsi]
 	mov	rbx,QWORD PTR[32+rsi]
@@ -1124,13 +1168,22 @@ __ab_approximation_62	PROC PRIVATE
 
 	jmp	__inner_loop_62
 
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	rdx
+	lfence
+	jmp	rdx
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __ab_approximation_62	ENDP
 
 ALIGN	8
 	DD	0
 __inner_loop_62	PROC PRIVATE
 	DB	243,15,30,250
+
 	mov	rdx,1
 	xor	rcx,rcx
 	xor	r12,r12
@@ -1176,7 +1229,15 @@ $L$oop_62::
 	jnz	$L$oop_62
 
 	mov	rsi,QWORD PTR[8+rsp]
-	DB	0F3h,0C3h		;repret
+	
+ifdef	__SGX_LVI_HARDENING__
+	pop	r8
+	lfence
+	jmp	r8
+	ud2
+else
+	DB	0F3h,0C3h
+endif
 __inner_loop_62	ENDP
 .text$	ENDS
 .pdata	SEGMENT READONLY ALIGN(4)
@@ -1200,8 +1261,9 @@ $L$SEH_info_ct_inverse_mod_383_prologue::
 DB	1,0,5,00bh
 DB	0,074h,1,0
 DB	0,064h,2,0
-DB	0,003h
+DB	0,0b3h
 DB	0,0
+	DD	0,0
 $L$SEH_info_ct_inverse_mod_383_body::
 DB	1,0,18,0
 DB	000h,0f4h,08bh,000h
@@ -1213,6 +1275,8 @@ DB	000h,054h,090h,000h
 DB	000h,074h,092h,000h
 DB	000h,064h,093h,000h
 DB	000h,001h,091h,000h
+DB	000h,000h,000h,000h
+DB	000h,000h,000h,000h
 $L$SEH_info_ct_inverse_mod_383_epilogue::
 DB	1,0,4,0
 DB	000h,074h,001h,000h

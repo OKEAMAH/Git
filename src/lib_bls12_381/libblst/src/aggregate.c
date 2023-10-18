@@ -90,7 +90,7 @@ const void *blst_pairing_get_dst(const PAIRING *ctx)
 
 /*
  * Optional |nbits|-wide |scalar| is used to facilitate multiple aggregated
- * signature vetification as discussed at
+ * signature verification as discussed at
  * https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407.
  * Usage pattern is not finalized yet, because (sig != NULL) is better and
  * will be handled separately...
@@ -287,6 +287,7 @@ static BLST_ERROR PAIRING_Aggregate_PK_in_G1(PAIRING *ctx,
     if (PK != NULL) {
         unsigned int n;
         POINTonE2 H[1];
+        POINTonE1 pk[1];
         const void *DST = pairing_get_dst(ctx);
 
         /*
@@ -311,8 +312,6 @@ static BLST_ERROR PAIRING_Aggregate_PK_in_G1(PAIRING *ctx,
         POINTonE2_from_Jacobian(H, H);
 
         if (nbits != 0 && scalar != NULL) {
-            POINTonE1 pk[1];
-
             FROM_AFFINE(pk, PK);
             POINTonE1_mult_w5(pk, pk, scalar, nbits);
             POINTonE1_from_Jacobian(pk, pk);
