@@ -9,6 +9,7 @@ pub mod comparable;
 pub mod parsed;
 pub mod typechecked;
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub use parsed::{ParsedInstruction, ParsedStage};
@@ -87,7 +88,9 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+// Note: serialization instances have no specific format for now, do not rely
+// on them.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Number(i128),
     Boolean(bool),
@@ -228,4 +231,17 @@ pub struct Contract<T: Stage> {
     pub parameter: Type,
     pub storage: Type,
     pub code: Instruction<T>,
+}
+
+#[cfg(test)]
+mod test_serialize {
+    use super::*;
+
+    #[test]
+    fn test_value_roundtrip() {
+        let val = Value::from((5, "abc"));
+        let encoded = serde_json::to_string(&val).unwrap();
+        let decoded = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(val, decoded)
+    }
 }
