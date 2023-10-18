@@ -77,5 +77,83 @@ let () =
     (def "ground.float" ~description:"Floating point numbers" float)
 
 let () =
+  (* Custom encodings registered for testing kaitai translation. *)
+  let open Data_encoding in
+  Registration.register
+    (def "test.list_of_bool" ~description:"List of boolean values" (list bool)) ;
+  Registration.register
+    (def "test.list_of_uint8" ~description:"List of uint8 values" (list uint8)) ;
+  Registration.register
+    (def
+       "test.fixed_list_of_bool"
+       ~description:"Fixed sized list of boolean values"
+       (Fixed.list 5 bool)) ;
+  Registration.register
+    (def
+       "test.fixed_list_of_uint8"
+       ~description:"Fixed sized list of uint8 values"
+       (Fixed.list 5 uint8)) ;
+  Registration.register
+    (def
+       "test.variable_list_of_bool"
+       ~description:"Variable sized list of boolean values"
+       (Variable.list bool)) ;
+  Registration.register
+    (def
+       "test.variable_list_of_uint8"
+       ~description:"Variable sized list of uint8 values"
+       (Variable.list uint8)) ;
+  Registration.register
+    (def
+       "test.nested_list_of_bool"
+       ~description:"Nested list of boolean values"
+       (list @@ list bool)) ;
+  Registration.register
+    (def
+       "test.nested_list_of_uint8"
+       ~description:"Nested list of uint8 values"
+       (list @@ list uint8)) ;
+  Registration.register
+    (def
+       "test.list_of_fixed_list_of_bool"
+       ~description:"List of fixed sized list of boolean values"
+       (list @@ Fixed.list 5 bool)) ;
+  Registration.register
+    (def
+       "test.list_of_fixed_list_of_uint8"
+       ~description:"List of fixed sized list of uint8 values"
+       (list @@ Fixed.list 5 uint8)) ;
+  Registration.register
+    (def
+       "test.fixed_list_of_fixed_list_of_bool"
+       ~description:"Fixed sized list of fixed sized list of boolean values"
+       (Fixed.list 5 @@ Fixed.list 100 bool)) ;
+  Registration.register
+    (def
+       "test.fixed_list_of_fixed_list_of_uint8"
+       ~description:"Fixed sized list of fixed sized list of uint8 values"
+       (Fixed.list 100 @@ Fixed.list 5 uint8)) ;
+  Registration.register
+    (def
+       "test.small_int_range"
+       ~description:"Small int range"
+       (ranged_int (-100) 100)) ;
+  Registration.register
+    (def
+       "test.medium_int_range"
+       ~description:"Medium int range"
+       (ranged_int (-10000) 10000)) ;
+  Registration.register
+    (def
+       "test.small_float_range"
+       ~description:"Small float range"
+       (ranged_float (-100.0) 100.0)) ;
+  Registration.register
+    (def
+       "test.medium_float_range"
+       ~description:"Medium float range"
+       (ranged_float (-10000.0) 10000.0))
+
+let () =
   Registration.register
     (def "ground.json" ~description:"JSON values" Data_encoding.json)
