@@ -789,6 +789,8 @@ module Constants : sig
 
   val michelson_maximum_type_size : int
 
+  val max_slashing_period : int
+
   val sc_rollup_message_size_limit : int
 
   val sc_rollup_max_number_of_messages_per_level : Z.t
@@ -893,7 +895,6 @@ module Constants : sig
       minimal_participation_ratio : Ratio.t;
       consensus_committee_size : int;
       consensus_threshold : int;
-      max_slashing_period : int;
       limit_of_delegation_over_baking : int;
       percentage_of_frozen_deposits_slashed_per_double_baking :
         Int_percentage.t;
@@ -978,8 +979,6 @@ module Constants : sig
   val consensus_threshold : context -> int
 
   val minimal_participation_ratio : context -> Ratio.t
-
-  val max_slashing_period : context -> int
 
   val limit_of_delegation_over_baking : context -> int
 
@@ -2076,7 +2075,14 @@ module Receipt : sig
     | Subsidy
     | Simulation
 
-  type balance_updates = (balance * balance_update * update_origin) list
+  type balance_update_item = private
+    | Balance_update_item :
+        balance * balance_update * update_origin
+        -> balance_update_item
+
+  val item : balance -> balance_update -> update_origin -> balance_update_item
+
+  type balance_updates = balance_update_item list
 
   val balance_updates_encoding : balance_updates Data_encoding.t
 
@@ -2161,6 +2167,7 @@ module Delegate : sig
     Misbehaviour.t ->
     public_key_hash ->
     Level.t ->
+    rewarded:public_key_hash ->
     (context * punishing_amounts) tzresult Lwt.t
 
   type level_participation = Participated | Didn't_participate

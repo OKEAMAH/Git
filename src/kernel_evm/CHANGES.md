@@ -9,6 +9,7 @@
 - Store the `base_gas_per_fee` and use a default value of 21000. (!10234)
 - Transaction can no longer be overwritten nor reincluded (implicit transaction size limit now
   becomes ~1200 chunks). (!10337)
+- Produce outbox messages withdrawing funds. (!10063)
 
 ### EVM Node
 
@@ -22,10 +23,12 @@
 - Genesis parent hash is 0xff..ff, all parent hashes are now unique. (!10332)
 
 ### Breaking changes
+- L2 blocks' RLP encoding includes all the fields. (!10386)
 
 ### Internal
 
 - Indexes of accounts are now correctly checked, they are no longer duplicated. (!10395)
+- Remove POW related fields from L2 blocks. (!10421)
 
 ## Version fc06d63568b1be253088ff5d6e422fd80ed3d2c2
 
@@ -90,7 +93,6 @@
 - Make it possible for any precompiled contract to generate withdrawals. (!9910)
 - A precompiled contract for withdrawing funds at address 0x00...20. (!10022)
 - Remove artificial minimal gas cost for simulation. (!10169)
-- Remove POW related fields from L2 blocks. (!10421)
 
 ## Version 4c111dcae061bea6c3616429a0ea1262ce6c174f
 
