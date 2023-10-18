@@ -49,7 +49,11 @@ let summary ~title ~description =
    then the attr for its size has id [size_id_of_id x] *)
 let size_id_of_id id = "size_of_" ^ id
 
-let user_type_of_attrs types attrs fattr id =
+(* in kaitai-struct, some fields can be added to single attributes but not to a
+   group of them. When we want to attach a field to a group of attributes, we
+   need to create an indirection to a named type. [redirect] is a function for
+   adding a field to an indirection. *)
+let redirect types attrs fattr id =
   let ((_, user_type) as type_) = (id, Helpers.class_spec_of_attrs ~id attrs) in
   let types = Helpers.add_uniq_assoc types type_ in
   let attr =
@@ -61,11 +65,8 @@ let user_type_of_attrs types attrs fattr id =
   in
   (types, attr)
 
-(* in kaitai-struct, some fields can be added to single attributes but not to a
-   group of them. When we want to attach a field to a group of attributes, we
-   need to create an indirection to a named type. [redirect_if_many] is a
-   function for adding a field which, on a by-need basis, introduces an
-   intermediate type. *)
+(* [redirect_if_many] is like [redirect] but it only does the redirection when
+   there are multiple attributes, otherwise it adds the field directly. *)
 let redirect_if_many :
     Ground.Type.assoc ->
     AttrSpec.t list ->
@@ -76,7 +77,7 @@ let redirect_if_many :
   match attrs with
   | [] -> failwith "Not supported"
   | [attr] -> (types, {(fattr attr) with id})
-  | _ :: _ :: _ as attrs -> user_type_of_attrs types attrs fattr id
+  | _ :: _ :: _ as attrs -> redirect types attrs fattr id
 
 let rec seq_field_of_data_encoding :
     type a.
@@ -234,7 +235,7 @@ let rec seq_field_of_data_encoding :
                            - Support [size_of-type], by calling data-encoding
                              max size combinators/helpers? *)
       let types, attr =
-        user_type_of_attrs
+        redirect
           types
           attrs
           (fun attr ->
@@ -265,7 +266,7 @@ let rec seq_field_of_data_encoding :
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
       let types, attr =
-        user_type_of_attrs
+        redirect
           types
           attrs
           (fun attr ->
