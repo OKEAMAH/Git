@@ -11,7 +11,7 @@
 //!
 //! Mind the size limits: values cannot be larger than 2Gb, and keys also have
 //! their limit on size. Consider avoiding using arbitrarily-sized path
-//! seghments in the keys. And we will have to do something about values.
+//! segments in the keys. And we will have to do something about values.
 //!
 //! There are a few restrictions on keys. Putting it short, the key must use
 //! characters from `[A-Za-z0-9.-_]` set, and there are busy keys used by
