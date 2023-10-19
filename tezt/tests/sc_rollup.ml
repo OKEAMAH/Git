@@ -4027,7 +4027,6 @@ let test_refutation_migration ~migrate_from ~migrate_to =
         (fun (migration_variant, migration_on_event) ->
           let variant = String.concat "_" [variant; migration_variant] in
           test_refutation_migration_scenario
-            ~flaky:true
             ~kind:"wasm_2_0_0"
               (* The tests for refutations over migrations are only ran for wasm
                  as the arith PVMs do not have the same semantic in all
