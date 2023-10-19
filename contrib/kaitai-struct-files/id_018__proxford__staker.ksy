@@ -7,14 +7,14 @@ types:
     - id: id_018__proxford__staker_tag
       type: u1
       enum: id_018__proxford__staker_tag
-    - id: id_018__proxford__staker_Single
-      type: id_018__proxford__staker_Single
+    - id: id_018__proxford__staker_single
+      type: id_018__proxford__staker_single
       if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::Single)
-    - id: id_018__proxford__staker_Shared
+    - id: id_018__proxford__staker_shared
       type: public_key_hash
       if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::Shared)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  id_018__proxford__staker_Single:
+  id_018__proxford__staker_single:
     seq:
     - id: contract
       type: id_018__proxford__contract_id
@@ -29,14 +29,14 @@ types:
     - id: id_018__proxford__contract_id_tag
       type: u1
       enum: id_018__proxford__contract_id_tag
-    - id: id_018__proxford__contract_id_Implicit
+    - id: id_018__proxford__contract_id_implicit
       type: public_key_hash
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::Implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: id_018__proxford__contract_id_Originated
-      type: id_018__proxford__contract_id_Originated
+    - id: id_018__proxford__contract_id_originated
+      type: id_018__proxford__contract_id_originated
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::Originated)
-  id_018__proxford__contract_id_Originated:
+  id_018__proxford__contract_id_originated:
     seq:
     - id: contract_hash
       size: 20
@@ -48,16 +48,16 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_Ed25519
+    - id: public_key_hash_ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
-    - id: public_key_hash_Secp256k1
+    - id: public_key_hash_secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
-    - id: public_key_hash_P256
+    - id: public_key_hash_p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::P256)
-    - id: public_key_hash_Bls
+    - id: public_key_hash_bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Bls)
 enums:

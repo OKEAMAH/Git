@@ -29,6 +29,6 @@ seq:
 - id: id_018__proxford__gas_tag
   type: u1
   enum: id_018__proxford__gas_tag
-- id: id_018__proxford__gas_Limited
+- id: id_018__proxford__gas_limited
   type: z
   if: (id_018__proxford__gas_tag == id_018__proxford__gas_tag::Limited)

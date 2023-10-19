@@ -7,14 +7,14 @@ types:
     - id: id_011__pthangz2__contract_id_tag
       type: u1
       enum: id_011__pthangz2__contract_id_tag
-    - id: id_011__pthangz2__contract_id_Implicit
+    - id: id_011__pthangz2__contract_id_implicit
       type: public_key_hash
       if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::Implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: id_011__pthangz2__contract_id_Originated
-      type: id_011__pthangz2__contract_id_Originated
+    - id: id_011__pthangz2__contract_id_originated
+      type: id_011__pthangz2__contract_id_originated
       if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::Originated)
-  id_011__pthangz2__contract_id_Originated:
+  id_011__pthangz2__contract_id_originated:
     seq:
     - id: contract_hash
       size: 20
@@ -26,13 +26,13 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_Ed25519
+    - id: public_key_hash_ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
-    - id: public_key_hash_Secp256k1
+    - id: public_key_hash_secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
-    - id: public_key_hash_P256
+    - id: public_key_hash_p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::P256)
 enums:

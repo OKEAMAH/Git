@@ -112,22 +112,22 @@ types:
     - id: bootstrap_accounts_elt_tag
       type: u1
       enum: bootstrap_accounts_elt_tag
-    - id: bootstrap_accounts_elt_Public_key_known
-      type: bootstrap_accounts_elt_Public_key_known
+    - id: bootstrap_accounts_elt_public_key_known
+      type: bootstrap_accounts_elt_public_key_known
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known)
-    - id: bootstrap_accounts_elt_Public_key_unknown
-      type: bootstrap_accounts_elt_Public_key_unknown
+    - id: bootstrap_accounts_elt_public_key_unknown
+      type: bootstrap_accounts_elt_public_key_unknown
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown)
-    - id: bootstrap_accounts_elt_Public_key_known_with_delegate
-      type: bootstrap_accounts_elt_Public_key_known_with_delegate
+    - id: bootstrap_accounts_elt_public_key_known_with_delegate
+      type: bootstrap_accounts_elt_public_key_known_with_delegate
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known_with_delegate)
-    - id: bootstrap_accounts_elt_Public_key_unknown_with_delegate
-      type: bootstrap_accounts_elt_Public_key_unknown_with_delegate
+    - id: bootstrap_accounts_elt_public_key_unknown_with_delegate
+      type: bootstrap_accounts_elt_public_key_unknown_with_delegate
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown_with_delegate)
-    - id: bootstrap_accounts_elt_Public_key_known_with_consensus_key
-      type: bootstrap_accounts_elt_Public_key_known_with_consensus_key
+    - id: bootstrap_accounts_elt_public_key_known_with_consensus_key
+      type: bootstrap_accounts_elt_public_key_known_with_consensus_key
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known_with_consensus_key)
-  bootstrap_accounts_elt_Public_key_known_with_consensus_key:
+  bootstrap_accounts_elt_public_key_known_with_consensus_key:
     seq:
     - id: signature__public_key
       type: public_key
@@ -137,7 +137,7 @@ types:
     - id: signature__public_key
       type: public_key
       doc: A Ed25519, Secp256k1, or P256 public key
-  bootstrap_accounts_elt_Public_key_unknown_with_delegate:
+  bootstrap_accounts_elt_public_key_unknown_with_delegate:
     seq:
     - id: signature__public_key_hash
       type: public_key_hash
@@ -147,7 +147,7 @@ types:
     - id: signature__public_key_hash
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  bootstrap_accounts_elt_Public_key_known_with_delegate:
+  bootstrap_accounts_elt_public_key_known_with_delegate:
     seq:
     - id: signature__public_key
       type: public_key
@@ -157,7 +157,7 @@ types:
     - id: signature__public_key_hash
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  bootstrap_accounts_elt_Public_key_unknown:
+  bootstrap_accounts_elt_public_key_unknown:
     seq:
     - id: signature__public_key_hash
       type: public_key_hash
@@ -169,19 +169,19 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_Ed25519
+    - id: public_key_hash_ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
-    - id: public_key_hash_Secp256k1
+    - id: public_key_hash_secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
-    - id: public_key_hash_P256
+    - id: public_key_hash_p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::P256)
-    - id: public_key_hash_Bls
+    - id: public_key_hash_bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Bls)
-  bootstrap_accounts_elt_Public_key_known:
+  bootstrap_accounts_elt_public_key_known:
     seq:
     - id: signature__public_key
       type: public_key
@@ -205,16 +205,16 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: public_key_Ed25519
+    - id: public_key_ed25519
       size: 32
       if: (public_key_tag == public_key_tag::Ed25519)
-    - id: public_key_Secp256k1
+    - id: public_key_secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::Secp256k1)
-    - id: public_key_P256
+    - id: public_key_p256
       size: 33
       if: (public_key_tag == public_key_tag::P256)
-    - id: public_key_Bls
+    - id: public_key_bls
       size: 48
       if: (public_key_tag == public_key_tag::Bls)
 enums:

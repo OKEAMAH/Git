@@ -7,14 +7,14 @@ types:
     - id: alpha__contract_id_tag
       type: u1
       enum: alpha__contract_id_tag
-    - id: alpha__contract_id_Implicit
+    - id: alpha__contract_id_implicit
       type: public_key_hash
       if: (alpha__contract_id_tag == alpha__contract_id_tag::Implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: alpha__contract_id_Originated
-      type: alpha__contract_id_Originated
+    - id: alpha__contract_id_originated
+      type: alpha__contract_id_originated
       if: (alpha__contract_id_tag == alpha__contract_id_tag::Originated)
-  alpha__contract_id_Originated:
+  alpha__contract_id_originated:
     seq:
     - id: contract_hash
       size: 20
@@ -26,16 +26,16 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_Ed25519
+    - id: public_key_hash_ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
-    - id: public_key_hash_Secp256k1
+    - id: public_key_hash_secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
-    - id: public_key_hash_P256
+    - id: public_key_hash_p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::P256)
-    - id: public_key_hash_Bls
+    - id: public_key_hash_bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Bls)
 enums:

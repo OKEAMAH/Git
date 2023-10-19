@@ -7,10 +7,10 @@ types:
     - id: delegate_selection_tag
       type: u1
       enum: delegate_selection_tag
-    - id: delegate_selection_Round_robin_over_delegates
-      type: delegate_selection_Round_robin_over_delegates
+    - id: delegate_selection_round_robin_over_delegates
+      type: delegate_selection_round_robin_over_delegates
       if: (delegate_selection_tag == delegate_selection_tag::Round_robin_over_delegates)
-  delegate_selection_Round_robin_over_delegates:
+  delegate_selection_round_robin_over_delegates:
     seq:
     - id: size_of_round_robin_over_delegates
       type: s4
@@ -122,13 +122,13 @@ types:
     - id: bootstrap_accounts_elt_tag
       type: u1
       enum: bootstrap_accounts_elt_tag
-    - id: bootstrap_accounts_elt_Public_key_known
-      type: bootstrap_accounts_elt_Public_key_known
+    - id: bootstrap_accounts_elt_public_key_known
+      type: bootstrap_accounts_elt_public_key_known
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known)
-    - id: bootstrap_accounts_elt_Public_key_unknown
-      type: bootstrap_accounts_elt_Public_key_unknown
+    - id: bootstrap_accounts_elt_public_key_unknown
+      type: bootstrap_accounts_elt_public_key_unknown
       if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown)
-  bootstrap_accounts_elt_Public_key_unknown:
+  bootstrap_accounts_elt_public_key_unknown:
     seq:
     - id: signature__v0__public_key_hash
       type: public_key_hash
@@ -140,16 +140,16 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_Ed25519
+    - id: public_key_hash_ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
-    - id: public_key_hash_Secp256k1
+    - id: public_key_hash_secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
-    - id: public_key_hash_P256
+    - id: public_key_hash_p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::P256)
-  bootstrap_accounts_elt_Public_key_known:
+  bootstrap_accounts_elt_public_key_known:
     seq:
     - id: signature__v0__public_key
       type: public_key
@@ -173,13 +173,13 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: public_key_Ed25519
+    - id: public_key_ed25519
       size: 32
       if: (public_key_tag == public_key_tag::Ed25519)
-    - id: public_key_Secp256k1
+    - id: public_key_secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::Secp256k1)
-    - id: public_key_P256
+    - id: public_key_p256
       size: 33
       if: (public_key_tag == public_key_tag::P256)
 enums:

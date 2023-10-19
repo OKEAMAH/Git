@@ -29,6 +29,6 @@ seq:
 - id: id_017__ptnairob__gas_tag
   type: u1
   enum: id_017__ptnairob__gas_tag
-- id: id_017__ptnairob__gas_Limited
+- id: id_017__ptnairob__gas_limited
   type: z
   if: (id_017__ptnairob__gas_tag == id_017__ptnairob__gas_tag::Limited)
