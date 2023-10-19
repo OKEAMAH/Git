@@ -826,8 +826,9 @@ let detect_manager_failure :
   in
   fun {contents} -> detect_manager_failure contents
 
-let apply_with_metadata ?(policy = By_round 0) ?(check_size = true) ~baking_mode
-    ~allow_manager_failures header ?(operations = []) pred =
+let apply_with_metadata ?(policy = By_round 0) ?(check_size = true)
+    ?(baking_mode = Application) ~allow_manager_failures header
+    ?(operations = []) pred =
   let open Lwt_result_wrap_syntax in
   let* context, result =
     let* vstate =
@@ -897,7 +898,7 @@ let apply header ?(operations = []) ?(allow_manager_failures = false) pred =
   return t
 
 let bake_with_metadata ?locked_round ?policy ?timestamp ?operation ?operations
-    ?payload_round ?check_size ~baking_mode ?(allow_manager_failures = false)
+    ?payload_round ?check_size ?baking_mode ?(allow_manager_failures = false)
     ?liquidity_baking_toggle_vote ?adaptive_issuance_vote pred =
   let open Lwt_result_syntax in
   let operations =
@@ -922,14 +923,14 @@ let bake_with_metadata ?locked_round ?policy ?timestamp ?operation ?operations
   apply_with_metadata
     ?policy
     ?check_size
-    ~baking_mode
+    ?baking_mode
     ~allow_manager_failures
     header
     ?operations
     pred
 
 let bake_n_with_metadata ?locked_round ?policy ?timestamp ?payload_round
-    ?check_size ?(baking_mode = Application) ?(allow_manager_failures = false)
+    ?check_size ?baking_mode ?(allow_manager_failures = false)
     ?liquidity_baking_toggle_vote ?adaptive_issuance_vote n pred =
   let open Lwt_result_syntax in
   let get_next b =
@@ -939,7 +940,7 @@ let bake_n_with_metadata ?locked_round ?policy ?timestamp ?payload_round
       ?timestamp
       ?payload_round
       ?check_size
-      ~baking_mode
+      ?baking_mode
       ~allow_manager_failures
       ?liquidity_baking_toggle_vote
       ?adaptive_issuance_vote
@@ -948,14 +949,14 @@ let bake_n_with_metadata ?locked_round ?policy ?timestamp ?payload_round
   let* b = get_next pred in
   List.fold_left_es (fun (b, _metadata) _ -> get_next b) b (2 -- n)
 
-let bake ?(baking_mode = Application) ?(allow_manager_failures = false)
-    ?payload_round ?locked_round ?policy ?timestamp ?operation ?operations
+let bake ?baking_mode ?(allow_manager_failures = false) ?payload_round
+    ?locked_round ?policy ?timestamp ?operation ?operations
     ?liquidity_baking_toggle_vote ?adaptive_issuance_vote ?check_size pred =
   let open Lwt_result_syntax in
   let* t, (_metadata : block_header_metadata) =
     bake_with_metadata
       ?payload_round
-      ~baking_mode
+      ?baking_mode
       ~allow_manager_failures
       ?locked_round
       ?policy
@@ -971,12 +972,12 @@ let bake ?(baking_mode = Application) ?(allow_manager_failures = false)
 
 (********** Cycles ****************)
 
-let bake_n ?(baking_mode = Application) ?policy ?liquidity_baking_toggle_vote
+let bake_n ?baking_mode ?policy ?liquidity_baking_toggle_vote
     ?adaptive_issuance_vote n b =
   List.fold_left_es
     (fun b _ ->
       bake
-        ~baking_mode
+        ?baking_mode
         ?policy
         ?liquidity_baking_toggle_vote
         ?adaptive_issuance_vote
@@ -984,14 +985,14 @@ let bake_n ?(baking_mode = Application) ?policy ?liquidity_baking_toggle_vote
     b
     (1 -- n)
 
-let rec bake_while_with_metadata ?(baking_mode = Application) ?policy
+let rec bake_while_with_metadata ?baking_mode ?policy
     ?liquidity_baking_toggle_vote ?adaptive_issuance_vote
     ?(invariant = fun _ -> return_unit) predicate b =
   let open Lwt_result_syntax in
   let* () = invariant b in
   let* new_block, metadata =
     bake_with_metadata
-      ~baking_mode
+      ?baking_mode
       ?policy
       ?liquidity_baking_toggle_vote
       ?adaptive_issuance_vote
@@ -999,7 +1000,7 @@ let rec bake_while_with_metadata ?(baking_mode = Application) ?policy
   in
   if predicate new_block metadata then
     (bake_while_with_metadata [@ocaml.tailcall])
-      ~baking_mode
+      ?baking_mode
       ?policy
       ?liquidity_baking_toggle_vote
       ?adaptive_issuance_vote
@@ -1019,17 +1020,17 @@ let bake_while ?baking_mode ?policy ?liquidity_baking_toggle_vote
     (fun block _metadata -> predicate block)
     b
 
-let bake_until_level ?(baking_mode = Application) ?policy
-    ?liquidity_baking_toggle_vote ?adaptive_issuance_vote level b =
+let bake_until_level ?baking_mode ?policy ?liquidity_baking_toggle_vote
+    ?adaptive_issuance_vote level b =
   bake_while
-    ~baking_mode
+    ?baking_mode
     ?policy
     ?liquidity_baking_toggle_vote
     ?adaptive_issuance_vote
     (fun b -> b.header.shell.level <= Raw_level.to_int32 level)
     b
 
-let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
+let bake_n_with_all_balance_updates ?baking_mode ?policy
     ?liquidity_baking_toggle_vote ?adaptive_issuance_vote n b =
   let open Lwt_result_syntax in
   let+ b, balance_updates_rev =
@@ -1037,7 +1038,7 @@ let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
       (fun (b, balance_updates_rev) _ ->
         let* b, metadata =
           bake_with_metadata
-            ~baking_mode
+            ?baking_mode
             ?policy
             ?liquidity_baking_toggle_vote
             ?adaptive_issuance_vote
@@ -1080,12 +1081,12 @@ let bake_n_with_all_balance_updates ?(baking_mode = Application) ?policy
   in
   (b, List.rev balance_updates_rev)
 
-let bake_n_with_origination_results ?(baking_mode = Application) ?policy n b =
+let bake_n_with_origination_results ?baking_mode ?policy n b =
   let open Lwt_result_syntax in
   let+ b, origination_results_rev =
     List.fold_left_es
       (fun (b, origination_results_rev) _ ->
-        let* b, metadata = bake_with_metadata ~baking_mode ?policy b in
+        let* b, metadata = bake_with_metadata ?baking_mode ?policy b in
         let origination_results_rev =
           List.fold_left
             (fun origination_results_rev ->
