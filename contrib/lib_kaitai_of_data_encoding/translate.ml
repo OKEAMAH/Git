@@ -388,6 +388,8 @@ let rec seq_field_of_data_encoding :
       in
       let seq = left @ right in
       (enums, types, seq)
+  | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
+      seq_field_of_union enums types tag_size cases id
   | Dynamic_size {kind; encoding} ->
       let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
@@ -502,6 +504,102 @@ and seq_field_of_field :
           id
       in
       (enums, types, [attr])
+
+and seq_field_of_union :
+    type a.
+    Ground.Enum.assoc ->
+    Ground.Type.assoc ->
+    Data_encoding__Binary_size.tag_size ->
+    a DataEncoding.case list ->
+    string ->
+    Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
+ fun enums types tag_size cases id ->
+  let tag_type : Kaitai.Types.DataType.int_type =
+    match tag_size with
+    | `Uint8 -> Int1Type {signed = false}
+    | `Uint16 -> IntMultiType {signed = false; width = W2; endian = None}
+  in
+  let tag_id = id ^ "_tag" in
+  let tag_enum_map =
+    List.filter_map
+      (fun (DataEncoding.Case
+             {title; tag; description; encoding = _; proj = _; inj = _}) ->
+        Data_encoding__Uint_option.fold
+          ~none:None
+          ~some:(fun tag ->
+            Some
+              ( tag,
+                EnumValueSpec.
+                  {
+                    name = title;
+                    doc = DocSpec.{refs = []; summary = description};
+                  } ))
+          tag)
+      cases
+  in
+  let tag_enum = EnumSpec.{path = []; map = tag_enum_map} in
+  let enums = Helpers.add_uniq_assoc enums (tag_id, tag_enum) in
+  let tag_attr =
+    {
+      (Helpers.default_attr_spec ~id:tag_id) with
+      dataType = DataType.(NumericType (Int_type tag_type));
+      enum = Some tag_id;
+    }
+  in
+  let enums, types, payload_attrs =
+    List.fold_left
+      (fun (enums, types, payload_attrs)
+           (DataEncoding.Case
+             {title; tag; description = _; encoding; proj = _; inj = _}) ->
+        Data_encoding__Uint_option.fold
+          ~none:(enums, types, payload_attrs)
+          ~some:(fun _tag ->
+            let enums, types, attrs =
+              seq_field_of_data_encoding enums types encoding title None
+            in
+            match attrs with
+            | [] -> (enums, types, payload_attrs)
+            | _ :: _ as attrs ->
+                let types, attr =
+                  redirect_if_many
+                    types
+                    attrs
+                    (fun attr ->
+                      {
+                        attr with
+                        cond =
+                          {
+                            Helpers.cond_no_cond with
+                            ifExpr =
+                              Some
+                                (Compare
+                                   {
+                                     left = Name (id ^ "_tag");
+                                     ops = Eq;
+                                     right =
+                                       EnumByLabel
+                                         {
+                                           enumName = tag_id;
+                                           label = title;
+                                           inType =
+                                             {
+                                               absolute = true;
+                                               names = [tag_id];
+                                               isArray = false;
+                                             };
+                                         };
+                                   });
+                          };
+                      })
+                    (id ^ "_" ^ title)
+                in
+                (enums, types, attr :: payload_attrs))
+          tag)
+      (enums, types, [])
+      cases
+  in
+  let payload_attrs = List.rev payload_attrs in
+  (enums, types, tag_attr :: payload_attrs)
 
 let from_data_encoding :
     type a. id:string -> ?description:string -> a DataEncoding.t -> ClassSpec.t
