@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2020-2021 Nomadic Labs, <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -26,7 +27,12 @@
 open Store_types
 open Store_errors
 
-module Profiler = (val Profiler.wrap Shell_profiling.store_profiler)
+module Profiler = struct
+  include (val Profiler.wrap Shell_profiling.store_profiler)
+
+  let reset_block_section =
+    Shell_profiling.create_reset_block_section Shell_profiling.store_profiler
+end
 
 module Shared = struct
   type 'a t = {mutable data : 'a; lock : Lwt_idle_waiter.t}
@@ -446,6 +452,9 @@ module Block = struct
 
   let store_block chain_store ~block_header ~operations validation_result =
     let open Lwt_result_syntax in
+    let bytes = Block_header.to_bytes block_header in
+    let hash = Block_header.hash_raw bytes in
+    Profiler.reset_block_section hash;
     Profiler.record_s "store_block" @@ fun () ->
     let {
       Block_validation.validation_store =
@@ -462,8 +471,6 @@ module Block = struct
     } =
       validation_result
     in
-    let bytes = Block_header.to_bytes block_header in
-    let hash = Block_header.hash_raw bytes in
     let operations_length = List.length operations in
     let operation_metadata_length =
       match ops_metadata with
