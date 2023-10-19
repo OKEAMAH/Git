@@ -740,10 +740,15 @@ let get_balance_from_context ctxt contract =
   let* staking_delegator_numerator_b =
     Context.Contract.staking_numerator ctxt contract
   in
-  let* staking_delegate_denominator_b =
+  let*! staking_delegate_denominator_b =
     match (contract : Protocol.Alpha_context.Contract.t) with
-    | Implicit pkh -> Context.Delegate.staking_denominator ctxt pkh
-    | Originated _ -> return Z.zero
+    | Implicit pkh ->
+        let*! result = Context.Delegate.staking_denominator ctxt pkh in
+        Lwt.return
+          (match result with
+          | Ok v -> v
+          | Error _ -> (* Not a delegate *) Z.zero)
+    | Originated _ -> Lwt.return Z.zero
   in
   let bd =
     {
