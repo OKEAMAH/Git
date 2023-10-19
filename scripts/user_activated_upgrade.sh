@@ -32,6 +32,8 @@ if [ ! -d "$1" ] || [ -z "$2" ]; then
     exit 1
 fi
 
+# TODO: add more potatoes here
+
 if [[ $1 =~ ^.*/proto_[0-9]{3}_.*$ ]]
 then
     version=$(echo "$1" | sed 's/.*proto_\([0-9]\{3\}\)_.*/\1/')
