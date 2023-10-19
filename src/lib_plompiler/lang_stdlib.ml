@@ -91,8 +91,9 @@ module type Limb_list = sig
       [shift_right b n = b / 2^n] *)
   val shift_right : tl repr -> int -> tl repr t
 
-  (** [add a b] computes the addition of [a] and [b]. *)
-  val add : ?ignore_carry:bool -> tl repr -> tl repr -> tl repr t
+  (** [add a b] computes the addition of [a] and [b] modulo [2^nb_bits],
+      where [nb_bits] is the size of [a] or [b] in bits. *)
+  val add : tl repr -> tl repr -> tl repr t
 end
 
 (** The {!LIB} module type extends the core language defined in {!Lang_core.COMMON}
@@ -775,7 +776,7 @@ module Lib (C : COMMON) = struct
                 la
                 lb))
 
-    let add ?(ignore_carry = true) a b =
+    let add a b =
       check_args_length "Bytes.add" a b ;
       with_label ~label:"Bytes.add"
       @@
@@ -783,7 +784,7 @@ module Lib (C : COMMON) = struct
       let hb, tb = (List.hd (of_list b), List.tl (of_list b)) in
       let* a_xor_b = Bool.xor ha hb in
       let* a_and_b = Bool.band ha hb in
-      let* res, carry =
+      let* res, _carry =
         fold2M
           (fun (res, c) a b ->
             let* p = Bool.full_adder a b c in
@@ -793,7 +794,7 @@ module Lib (C : COMMON) = struct
           ta
           tb
       in
-      ret @@ to_list @@ List.rev (if ignore_carry then res else carry :: res)
+      ret @@ to_list @@ List.rev res
 
     let xor a b =
       check_args_length "Bytes.xor" a b ;
@@ -945,9 +946,9 @@ module Lib (C : COMMON) = struct
 
     let shift_right a i = rotate_or_shift_right ~is_shift:true a i
 
-    let add ?(ignore_carry = true) a b =
+    let add a b =
       let* c_in = Num.zero in
-      let* carry, res =
+      let* _carry, res =
         fold2M
           (fun (c_in, res) a b ->
             (* a + b = c1 * 2^n + t1 *)
@@ -965,7 +966,7 @@ module Lib (C : COMMON) = struct
           (of_list a)
           (of_list b)
       in
-      ret @@ to_list @@ List.rev (if ignore_carry then res else carry :: res)
+      ret @@ to_list @@ List.rev res
   end
 
   let add2 p1 p2 =

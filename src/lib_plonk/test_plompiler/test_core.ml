@@ -751,7 +751,7 @@ functor
       let* a = input ~kind:`Public a in
       let* b = input b in
       let* z = input z in
-      let* z' = add ~ignore_carry:true a b in
+      let* z' = add a b in
       assert_equal z z'
 
     let tests_add =

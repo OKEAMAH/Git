@@ -62,24 +62,24 @@ functor
       let r2 = 12 in
       let r3 = 8 in
       let r4 = 7 in
-      let* tmp = Bytes.add ~ignore_carry:true v.(a) v.(b) in
-      let* tmp = Bytes.add ~ignore_carry:true tmp x in
+      let* tmp = Bytes.add v.(a) v.(b) in
+      let* tmp = Bytes.add tmp x in
       v.(a) <- tmp ;
       let* tmp = Bytes.xor v.(d) v.(a) in
       let* tmp = Bytes.rotate_right tmp r1 in
       v.(d) <- tmp ;
-      let* tmp = Bytes.add ~ignore_carry:true v.(c) v.(d) in
+      let* tmp = Bytes.add v.(c) v.(d) in
       v.(c) <- tmp ;
       let* tmp = Bytes.xor v.(b) v.(c) in
       let* tmp = Bytes.rotate_right tmp r2 in
       v.(b) <- tmp ;
-      let* tmp = Bytes.add ~ignore_carry:true v.(a) v.(b) in
-      let* tmp = Bytes.add ~ignore_carry:true tmp y in
+      let* tmp = Bytes.add v.(a) v.(b) in
+      let* tmp = Bytes.add tmp y in
       v.(a) <- tmp ;
       let* tmp = Bytes.xor v.(d) v.(a) in
       let* tmp = Bytes.rotate_right tmp r3 in
       v.(d) <- tmp ;
-      let* tmp = Bytes.add ~ignore_carry:true v.(c) v.(d) in
+      let* tmp = Bytes.add v.(c) v.(d) in
       v.(c) <- tmp ;
       let* tmp = Bytes.xor v.(b) v.(c) in
       let* tmp = Bytes.rotate_right tmp r4 in
