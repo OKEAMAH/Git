@@ -7,12 +7,15 @@
 
 #![allow(dead_code)]
 use std::str::FromStr;
-use lalrpop_util::ParseError;
 
 use crate::ast::*;
-use crate::parser::validate_unescape_string;
+use crate::parser::{validate_unescape_string, ParserError};
 
 grammar;
+
+extern {
+    type Error = ParserError;
+}
 
 match {
   r"(?-u:\s)+" => {}, // more or less same as default, but required to build w/o unicode
@@ -20,15 +23,13 @@ match {
 }
 
 number: i128 = <s:r"([+-]?)[0-9]+"> =>? i128::from_str(s)
-  .map_err(|_| ParseError::User { error : "parsing of numeric literal failed." } );
+  .map_err(|_| ParserError::NumericLiteral(s.to_owned()).into() );
 
 u10: u16 = <s:r"([+-]?)[0-9]+"> =>? {
     let res = u16::from_str(s)
-      .map_err(|_| ParseError::User { error : "Expected a natural from 0 to 1023 inclusive" } )?;
+      .map_err(|_| ParserError::ExpectedU10(s.to_owned()) )?;
     if res >= 1024 {
-      return Err(ParseError::User {
-        error: "Expected a natural from 0 to 1023 inclusive"
-      });
+      return Err(ParserError::ExpectedU10(s.to_owned()).into());
     }
     Ok(res)
   };
@@ -52,6 +53,7 @@ pair_args: Type = {
 composite_type: Type = {
     "pair" <type_expr> <pair_args> => Type::new_pair(<>),
     "option" <type_expr> => Type::new_option(<>),
+    "list" <type_expr> => Type::new_list(<>),
 }
 
 type_expr: Type = {
@@ -86,9 +88,16 @@ composite_value: Value = {
 
 value_expr: Value = {
   atomic_value => <>,
-  "(" <composite_value> ")" => <>,
-  "(" <value_expr> ")" => <>,
+  "(" <value_expr_naked> ")" => <>,
+  "{" <value_seq> "}" => Seq(<>),
 }
+
+value_expr_naked: Value = {
+  composite_value => <>,
+  value_expr => <>,
+}
+
+value_seq: Vec<Value> = semicolonSepSeq<value_expr_naked>;
 
 use Instruction::*;
 instruction: ParsedInstruction = {
@@ -109,23 +118,25 @@ instruction: ParsedInstruction = {
   "PAIR" => Pair,
   "IF_NONE" <instructionBlock> <instructionBlock> => IfNone(<>),
   "SOME" => ISome,
+  "COMPARE" => Compare,
+  "AMOUNT" => Amount,
 }
 
-instructionSeq: Vec<ParsedInstruction> = {
-  <mut ib:(<instruction>";")*><i:instruction?> => {
-    // A sequence of instruction-followed-by-a-semicolon matched by
-    // `(<instruction>";")*` resulting in `Vec<instruction>` and bound to `ib`,
-    // which can be optionally followed by a single trailing instruction,
-    // matched by `<i:instruction?>.
+instructionSeq = semicolonSepSeq<instruction>;
+
+semicolonSepSeq<T>: Vec<T> = {
+  <mut tseq:(<T>";")*><i:T?> => {
+    // A sequence of T-followed-by-a-semicolon matched by
+    // `(<T>";")*` resulting in `Vec<T>` and bound to `ib`,
+    // which can be optionally followed by a single trailing T,
+    // matched by `<i:T?>.
 
     match i {
-      Some(instr) => {
-        ib.push(instr);
-        ib
+      Some(t) => {
+        tseq.push(t);
+        tseq
       },
-      None => {
-        ib
-      }
+      None => tseq
     }
   }
 }

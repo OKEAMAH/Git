@@ -5,6 +5,7 @@
 /*                                                                            */
 /******************************************************************************/
 
+pub mod comparable;
 pub mod parsed;
 pub mod typechecked;
 
@@ -21,6 +22,19 @@ pub enum Type {
     Unit,
     Pair(Box<Type>, Box<Type>),
     Option(Box<Type>),
+    List(Box<Type>),
+}
+
+impl Type {
+    pub fn is_comparable(&self) -> bool {
+        use Type::*;
+        match &self {
+            List(..) => false,
+            Nat | Int | Bool | Mutez | String | Unit => true,
+            Pair(l, r) => l.is_comparable() && r.is_comparable(),
+            Option(x) => x.is_comparable(),
+        }
+    }
 }
 
 impl Type {
@@ -36,6 +50,7 @@ impl Type {
             Type::Unit => 1,
             Type::Pair(l, r) => 1 + l.size_for_gas() + r.size_for_gas(),
             Type::Option(x) => 1 + x.size_for_gas(),
+            Type::List(x) => 1 + x.size_for_gas(),
         }
     }
 
@@ -45,6 +60,10 @@ impl Type {
 
     pub fn new_option(x: Self) -> Self {
         Self::Option(Box::new(x))
+    }
+
+    pub fn new_list(x: Self) -> Self {
+        Self::List(Box::new(x))
     }
 }
 
@@ -56,6 +75,7 @@ pub enum Value {
     UnitValue,
     PairValue(Box<Value>, Box<Value>),
     OptionValue(Option<Box<Value>>),
+    Seq(Vec<Value>),
 }
 
 impl Value {
@@ -78,6 +98,7 @@ pub enum TypedValue {
     Unit,
     Pair(Box<TypedValue>, Box<TypedValue>),
     Option(Option<Box<TypedValue>>),
+    List(Vec<TypedValue>),
 }
 
 impl TypedValue {
@@ -117,6 +138,8 @@ pub enum Instruction<T: Stage> {
     Pair,
     /// `ISome` because `Some` is already taken
     ISome,
+    Compare,
+    Amount,
 }
 
 pub type ParsedAST = Vec<ParsedInstruction>;
