@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2020-2021 Nomadic Labs, <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -27,7 +28,12 @@ open Store_types
 open Block_repr
 open Store_errors
 
-module Merge_profiler = (val Profiler.wrap Shell_profiling.merge_profiler)
+module Merge_profiler = struct
+  include (val Profiler.wrap Shell_profiling.merge_profiler)
+
+  let reset_block_section =
+    Shell_profiling.create_reset_block_section Shell_profiling.merge_profiler
+end
 
 let default_block_cache_limit = 100
 
@@ -1381,6 +1387,7 @@ let merge_stores block_store ~(on_error : tztrace -> unit tzresult Lwt.t)
   let* () = fail_when block_store.readonly Cannot_write_in_readonly in
   (* Do not allow multiple merges: force waiting for a potential
      previous merge. *)
+  Merge_profiler.reset_block_section (Block_repr.hash new_head) ;
   Merge_profiler.record "merge store" ;
   let*! () = Lwt_mutex.lock block_store.merge_mutex in
   protect
