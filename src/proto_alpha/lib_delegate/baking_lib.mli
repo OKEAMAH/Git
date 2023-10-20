@@ -42,7 +42,7 @@ val bake :
   (* Number of baked blocks. Defaults to 1. *)
   ?count:int ->
   ?votes:Baking_configuration.per_block_votes_config ->
-  ?record_flag:bool ->
+  record_flag:bool ->
   Baking_state.consensus_key list ->
   unit tzresult Lwt.t
 
@@ -55,7 +55,7 @@ val preattest :
 val attest :
   Protocol_client_context.full ->
   ?force:bool ->
-  ?record_flag:bool ->
+  record_flag:bool ->
   Baking_state.consensus_key list ->
   unit tzresult Lwt.t
 
@@ -69,7 +69,7 @@ val propose :
   ?minimal_timestamp:bool ->
   ?extra_operations:Baking_configuration.Operations_source.t ->
   ?context_path:string ->
-  ?record_flag:bool ->
+  record_flag:bool ->
   Baking_state.consensus_key list ->
   unit tzresult Lwt.t
 
@@ -81,6 +81,6 @@ val repropose :
   Protocol_client_context.full ->
   ?force:bool ->
   ?force_round:Round.t ->
-  ?record_flag:bool ->
+  record_flag:bool ->
   Baking_state.consensus_key list ->
   unit tzresult Lwt.t

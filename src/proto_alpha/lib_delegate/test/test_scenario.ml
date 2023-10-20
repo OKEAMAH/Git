@@ -8,6 +8,9 @@
 
 open Mockup_simulator
 
+(* TODO: See what to test when it does/doesn't record state*)
+let record_flag = true
+
 let bootstrap1 = Signature.Public_key.hash bootstrap1
 
 let bootstrap2 = Signature.Public_key.hash bootstrap2
@@ -61,7 +64,7 @@ let test_level_5 () =
       round1 = 3L;
     }
   in
-  run ~config [(3, (module Hooks)); (2, (module Hooks))]
+  run ~config [(3, (module Hooks)); (2, (module Hooks))] ~record_flag
 
 let test_preattest_on_valid () =
   let level_to_reach = 2l in
@@ -120,7 +123,7 @@ let test_preattest_on_valid () =
       return_unit
   end in
   let config = {default_config with timeout = 10} in
-  run ~config [(1, (module Hooks))]
+  run ~config [(1, (module Hooks))] ~record_flag
 
 let test_reset_delayed_pqc () =
   let open Lwt_syntax in
@@ -176,7 +179,7 @@ let test_reset_delayed_pqc () =
       else return_ok_unit
   end in
   let config = {default_config with round0 = 2L; round1 = 3L; timeout = 50} in
-  run ~config [(1, (module Hooks))]
+  run ~config [(1, (module Hooks))] ~record_flag
 
 (*
 
@@ -276,7 +279,10 @@ let test_scenario_t1 () =
       delegate_selection = [(1l, [(0l, bootstrap1); (1l, bootstrap2)])];
     }
   in
-  run ~config [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
+  run
+    ~config
+    [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
+    ~record_flag
 
 (*
 
@@ -325,7 +331,10 @@ let test_scenario_t2 () =
       delegate_selection = [(1l, [(0l, bootstrap1); (1l, bootstrap2)])];
     }
   in
-  run ~config [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
+  run
+    ~config
+    [(1, (module Node_a_hooks)); (1, (module Node_b_hooks))]
+    ~record_flag
 
 (*
 
@@ -513,6 +522,7 @@ let test_scenario_t3 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -688,6 +698,7 @@ let test_scenario_f1 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -751,6 +762,7 @@ let test_scenario_f2 () =
       (1, (module Hooks));
       (1, (module Hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -810,6 +822,7 @@ let test_scenario_m1 () =
       (1, (module Hooks));
       (1, (module Hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -873,6 +886,7 @@ let test_scenario_m2 () =
       (1, (module Normal_node));
       (1, (module Missing_node));
     ]
+    ~record_flag
 
 (*
 
@@ -945,6 +959,7 @@ let test_scenario_m3 () =
       (1, (module Other_hooks));
       (1, (module Other_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -1049,6 +1064,7 @@ let test_scenario_m4 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -1135,6 +1151,7 @@ let test_scenario_m5 () =
       (1, (module Other_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -1274,6 +1291,7 @@ let test_scenario_m6 () =
       (1, (module Other_node));
       (1, (module Other_node));
     ]
+    ~record_flag
 
 (*
 
@@ -1483,6 +1501,7 @@ let test_scenario_m7 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 (*
 
@@ -1635,6 +1654,7 @@ let test_scenario_m8 () =
       (1, (module Node_c_hooks));
       (1, (module Node_d_hooks));
     ]
+    ~record_flag
 
 let () =
   Alcotest_lwt.run "mockup_baking" ~__FILE__

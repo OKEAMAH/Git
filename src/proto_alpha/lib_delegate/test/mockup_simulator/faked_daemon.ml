@@ -1,7 +1,6 @@
 module Baker = struct
   let run ~(cctxt : #Protocol_client_context.full) ~stop_on_event ~chain_id
-      ~(context_index : Abstract_context_index.t) ?(record_flag = false)
-      ~delegates =
+      ~(context_index : Abstract_context_index.t) ~record_flag ~delegates =
     let open Lwt_result_syntax in
     let chain = `Hash chain_id in
     let baking_configuration =

@@ -795,7 +795,7 @@ let may_reset_profiler =
   | _ -> ()
 
 let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
-    loop_state state ?(record_flag = false) event =
+    loop_state state ~record_flag event =
   let open Lwt_result_syntax in
   let state_recorder ~new_state =
     match config.Baking_configuration.state_recorder with
@@ -938,8 +938,7 @@ let register_dal_profiles cctxt dal_node_rpc_ctxt delegates =
     dal_node_rpc_ctxt
 
 let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
-    ?(on_error = fun _ -> return_unit) ~chain config ?(record_flag = false)
-    delegates =
+    ?(on_error = fun _ -> return_unit) ~chain config ~record_flag delegates =
   let open Lwt_result_syntax in
   let* chain_id = Shell_services.Chain.chain_id cctxt ~chain () in
   let* () = perform_sanity_check cctxt ~chain_id in

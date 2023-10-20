@@ -178,7 +178,11 @@ val default_config : config
    A simulation continues till all nodes finish either with an error or
    successfully. If at least one node finishes with an error, it propagates
    to the final result. *)
-val run : ?config:config -> (int * (module Hooks)) list -> unit tzresult Lwt.t
+val run :
+  ?config:config ->
+  (int * (module Hooks)) list ->
+  record_flag:bool ->
+  unit tzresult Lwt.t
 
 val bootstrap1 : Signature.public_key
 

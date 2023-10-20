@@ -100,7 +100,7 @@ module Baker = struct
   let run (cctxt : Protocol_client_context.full) ?minimal_fees
       ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?votes
       ?extra_operations ?dal_node_endpoint ?force_apply ?context_path ~chain
-      ~keep_alive ?(record_flag = false) delegates =
+      ~keep_alive ~record_flag delegates =
     let open Lwt_result_syntax in
     let process () =
       let* user_activated_upgrades =

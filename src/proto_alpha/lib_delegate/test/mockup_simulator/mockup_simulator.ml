@@ -904,7 +904,8 @@ let create_fake_node_state ~i ~live_depth
 (** Start baker process. *)
 let baker_process ~(delegates : Baking_state.consensus_key list) ~base_dir
     ~(genesis_block : Block_header.t * Tezos_protocol_environment.rpc_context)
-    ~i ~global_chain_table ~broadcast_pipes ~(user_hooks : (module Hooks)) =
+    ~i ~global_chain_table ~broadcast_pipes ~(user_hooks : (module Hooks))
+    ~record_flag =
   let open Lwt_result_syntax in
   let broadcast_pipe =
     List.nth broadcast_pipes i |> WithExceptions.Option.get ~loc:__LOC__
@@ -966,6 +967,7 @@ let baker_process ~(delegates : Baking_state.consensus_key list) ~base_dir
       ~stop_on_event
       ~chain_id
       ~context_index
+      ~record_flag
       ~delegates
   in
   let* () = Lwt.pick [listener_process (); baker_process ()] in
@@ -1267,7 +1269,7 @@ let make_baking_delegate
       secret_key_uri = secret.sk_uri;
     }
 
-let run ?(config = default_config) bakers_spec =
+let run ?(config = default_config) bakers_spec ~record_flag =
   let open Lwt_result_syntax in
   Tezos_client_base.Client_keys.register_signer
     (module Tezos_signer_backends.Unencrypted) ;
@@ -1340,6 +1342,7 @@ let run ?(config = default_config) bakers_spec =
                       ~global_chain_table
                       ~broadcast_pipes
                       ~user_hooks
+                      ~record_flag
                   in
                   (i + 1, leftover_delegates, m :: ms))
                 (0, all_delegates, [])

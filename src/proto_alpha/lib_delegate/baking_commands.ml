@@ -182,7 +182,7 @@ let adaptive_issuance_vote_arg =
     ~placeholder:"vote"
     per_block_vote_parameter
 
-let record_flag_arg =
+let record_state_arg =
   Tezos_clic.switch
     ~long:"record-state"
     ~doc:"If record-state flag is set, the baker saves all event-related info."
@@ -393,7 +393,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          do_not_monitor_node_mempool_arg
          endpoint_arg
          block_count_arg
-         record_flag_arg)
+         record_state_arg)
       (prefixes ["bake"; "for"] @@ sources_param)
       (fun ( minimal_fees,
              minimal_nanotez_per_gas_unit,
@@ -437,7 +437,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
     command
       ~group
       ~desc:"Forge and inject an attestation operation."
-      (args2 attestation_force_switch_arg record_flag_arg)
+      (args2 attestation_force_switch_arg record_state_arg)
       (prefixes ["attest"; "for"] @@ sources_param)
       (fun (force, record_flag) pkhs cctxt ->
         let* delegates = get_delegates cctxt pkhs in
@@ -447,7 +447,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
       ~desc:
         "Deprecated, use **attest for** instead. Forge and inject an \
          attestation operation."
-      (args2 attestation_force_switch_arg record_flag_arg)
+      (args2 attestation_force_switch_arg record_state_arg)
       (prefixes ["endorse"; "for"] @@ sources_param)
       (fun (force, record_flag) pkhs cctxt ->
         let* delegates = get_delegates cctxt pkhs in
@@ -482,7 +482,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          force_switch
          operations_arg
          context_path_arg
-         record_flag_arg)
+         record_state_arg)
       (prefixes ["propose"; "for"] @@ sources_param)
       (fun ( minimal_fees,
              minimal_nanotez_per_gas_unit,
@@ -555,7 +555,7 @@ let lookup_default_vote_file_path (cctxt : Protocol_client_context.full) =
 type baking_mode = Local of {local_data_dir_path : string} | Remote
 
 let baker_args =
-  Tezos_clic.args11
+  Tezos_clic.args12
     pidfile_arg
     minimal_fees_arg
     minimal_nanotez_per_gas_unit_arg
@@ -567,6 +567,7 @@ let baker_args =
     per_block_vote_file_arg
     operations_arg
     endpoint_arg
+    record_state_arg
 
 let run_baker
     ( pidfile,
@@ -579,7 +580,8 @@ let run_baker
       adaptive_issuance_vote,
       per_block_vote_file,
       extra_operations,
-      dal_node_endpoint ) baking_mode sources ?(record_flag = false) cctxt =
+      dal_node_endpoint,
+      record_flag ) baking_mode sources cctxt =
   let open Lwt_result_syntax in
   may_lock_pidfile pidfile @@ fun () ->
   let*! per_block_vote_file =
