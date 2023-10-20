@@ -1,6 +1,7 @@
 meta:
   id: id_012__psithaca__block_header
   endian: be
+doc: ! 'Encoding id: 012-Psithaca.block_header'
 types:
   id_012__psithaca__block_header__alpha__full_header:
     seq:

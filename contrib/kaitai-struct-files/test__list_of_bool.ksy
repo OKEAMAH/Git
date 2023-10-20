@@ -1,7 +1,9 @@
 meta:
   id: test__list_of_bool
   endian: be
-doc: List of boolean values
+doc: ! 'Encoding id: test.list_of_bool
+
+  Description: List of boolean values'
 types:
   test__list_of_bool_entries:
     seq:

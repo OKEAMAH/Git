@@ -1,6 +1,7 @@
 meta:
   id: id_013__ptjakart__block_header__raw
   endian: be
+doc: ! 'Encoding id: 013-PtJakart.block_header.raw'
 types:
   block_header:
     seq:

@@ -1,6 +1,7 @@
 meta:
   id: id_006__pscartha__parameters
   endian: be
+doc: ! 'Encoding id: 006-PsCARTHA.parameters'
 types:
   endorsement_reward:
     seq:

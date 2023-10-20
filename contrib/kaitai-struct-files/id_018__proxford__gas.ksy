@@ -1,6 +1,7 @@
 meta:
   id: id_018__proxford__gas
   endian: be
+doc: ! 'Encoding id: 018-Proxford.gas'
 types:
   z:
     seq:

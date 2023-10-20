@@ -1,6 +1,7 @@
 meta:
   id: id_009__psfloren__constants__parametric
   endian: be
+doc: ! 'Encoding id: 009-PsFLoren.constants.parametric'
 types:
   endorsement_reward:
     seq:

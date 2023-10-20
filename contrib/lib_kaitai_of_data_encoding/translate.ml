@@ -615,32 +615,37 @@ and seq_field_of_union :
   let payload_attrs = List.rev payload_attrs in
   (enums, types, tag_attr :: payload_attrs)
 
-let from_data_encoding :
-    type a. id:string -> ?description:string -> a DataEncoding.t -> ClassSpec.t
-    =
- fun ~id ?description encoding ->
+let add_original_id_to_description ?description id =
+  match description with
+  | None -> "Encoding id: " ^ id
+  | Some description -> "Encoding id: " ^ id ^ "\nDescription: " ^ description
+
+let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
+ fun ~id encoding ->
   let encoding_name = escape_id id in
   match encoding.encoding with
-  | Describe {encoding; description; id; _} ->
+  | Describe {encoding; description; id = descrid; _} ->
+      let description = add_original_id_to_description ?description id in
       let enums, types, attrs =
-        seq_field_of_data_encoding [] [] encoding id None
+        seq_field_of_data_encoding [] [] encoding descrid None
       in
       Helpers.class_spec_of_attrs
         ~top_level:true
         ~id:encoding_name
-        ?description
+        ~description
         ~enums
         ~types
         ~instances:[]
         attrs
   | _ ->
+      let description = add_original_id_to_description id in
       let enums, types, attrs =
         seq_field_of_data_encoding [] [] encoding encoding_name None
       in
       Helpers.class_spec_of_attrs
         ~top_level:true
         ~id:encoding_name
-        ?description
+        ~description
         ~enums
         ~types
         ~instances:[]

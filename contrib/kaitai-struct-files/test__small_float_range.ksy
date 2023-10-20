@@ -1,7 +1,9 @@
 meta:
   id: test__small_float_range
   endian: be
-doc: Small float range
+doc: ! 'Encoding id: test.small_float_range
+
+  Description: Small float range'
 seq:
 - id: test__small_float_range
   type: f8

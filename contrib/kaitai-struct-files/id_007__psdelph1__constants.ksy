@@ -1,6 +1,7 @@
 meta:
   id: id_007__psdelph1__constants
   endian: be
+doc: ! 'Encoding id: 007-PsDELPH1.constants'
 types:
   endorsement_reward:
     seq:

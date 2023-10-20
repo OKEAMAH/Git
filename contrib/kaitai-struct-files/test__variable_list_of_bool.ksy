@@ -1,7 +1,10 @@
 meta:
   id: test__variable_list_of_bool
   endian: be
-doc: Variable sized list of boolean values
+doc: ! >-
+  Encoding id: test.variable_list_of_bool
+
+  Description: Variable sized list of boolean values
 types:
   test__variable_list_of_bool_entries:
     seq:

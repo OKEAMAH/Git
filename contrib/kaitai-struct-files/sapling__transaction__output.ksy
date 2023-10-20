@@ -1,7 +1,9 @@
 meta:
   id: sapling__transaction__output
   endian: be
-doc: Output of a transaction
+doc: ! 'Encoding id: sapling.transaction.output
+
+  Description: Output of a transaction'
 types:
   sapling__transaction__ciphertext:
     seq:

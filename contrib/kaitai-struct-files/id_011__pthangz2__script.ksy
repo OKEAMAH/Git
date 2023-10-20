@@ -1,6 +1,7 @@
 meta:
   id: id_011__pthangz2__script
   endian: be
+doc: ! 'Encoding id: 011-PtHangz2.script'
 types:
   id_011__pthangz2__scripted__contracts:
     seq:

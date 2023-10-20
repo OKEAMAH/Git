@@ -1,6 +1,7 @@
 meta:
   id: id_018__proxford__block_header
   endian: be
+doc: ! 'Encoding id: 018-Proxford.block_header'
 types:
   id_018__proxford__block_header__alpha__full_header:
     seq:

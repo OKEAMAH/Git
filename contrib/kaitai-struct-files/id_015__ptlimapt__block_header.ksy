@@ -1,6 +1,7 @@
 meta:
   id: id_015__ptlimapt__block_header
   endian: be
+doc: ! 'Encoding id: 015-PtLimaPt.block_header'
 types:
   id_015__ptlimapt__block_header__alpha__full_header:
     seq:

@@ -1,6 +1,7 @@
 meta:
   id: id_017__ptnairob__block_header
   endian: be
+doc: ! 'Encoding id: 017-PtNairob.block_header'
 types:
   id_017__ptnairob__block_header__alpha__full_header:
     seq:

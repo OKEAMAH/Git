@@ -1,6 +1,7 @@
 meta:
   id: alpha__staker
   endian: be
+doc: ! 'Encoding id: alpha.staker'
 types:
   alpha__staker:
     seq:

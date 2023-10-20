@@ -1,6 +1,7 @@
 meta:
   id: id_010__ptgranad__constants
   endian: be
+doc: ! 'Encoding id: 010-PtGRANAD.constants'
 types:
   endorsement_reward:
     seq:

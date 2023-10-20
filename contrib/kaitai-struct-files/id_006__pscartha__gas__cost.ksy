@@ -1,6 +1,7 @@
 meta:
   id: id_006__pscartha__gas__cost
   endian: be
+doc: ! 'Encoding id: 006-PsCARTHA.gas.cost'
 types:
   z:
     seq:

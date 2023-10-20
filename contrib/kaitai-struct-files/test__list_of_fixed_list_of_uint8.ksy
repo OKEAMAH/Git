@@ -1,7 +1,10 @@
 meta:
   id: test__list_of_fixed_list_of_uint8
   endian: be
-doc: List of fixed sized list of uint8 values
+doc: ! >-
+  Encoding id: test.list_of_fixed_list_of_uint8
+
+  Description: List of fixed sized list of uint8 values
 types:
   test__list_of_fixed_list_of_uint8_entries:
     seq:

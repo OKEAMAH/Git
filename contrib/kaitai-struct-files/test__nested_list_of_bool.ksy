@@ -1,7 +1,9 @@
 meta:
   id: test__nested_list_of_bool
   endian: be
-doc: Nested list of boolean values
+doc: ! 'Encoding id: test.nested_list_of_bool
+
+  Description: Nested list of boolean values'
 types:
   test__nested_list_of_bool_entries:
     seq:

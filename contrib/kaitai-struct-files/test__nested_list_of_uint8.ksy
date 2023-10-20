@@ -1,7 +1,9 @@
 meta:
   id: test__nested_list_of_uint8
   endian: be
-doc: Nested list of uint8 values
+doc: ! 'Encoding id: test.nested_list_of_uint8
+
+  Description: Nested list of uint8 values'
 types:
   test__nested_list_of_uint8_entries:
     seq:

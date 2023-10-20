@@ -1,7 +1,10 @@
 meta:
   id: test__fixed_list_of_bool
   endian: be
-doc: Fixed sized list of boolean values
+doc: ! >-
+  Encoding id: test.fixed_list_of_bool
+
+  Description: Fixed sized list of boolean values
 types:
   test__fixed_list_of_bool_entries:
     seq:
