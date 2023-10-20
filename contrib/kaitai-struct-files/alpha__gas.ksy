@@ -23,12 +23,12 @@ types:
       type: b7be
 enums:
   alpha__gas_tag:
-    0: Limited
-    1: Unaccounted
+    0: limited
+    1: unaccounted
 seq:
 - id: alpha__gas_tag
   type: u1
   enum: alpha__gas_tag
 - id: alpha__gas_limited
   type: z
-  if: (alpha__gas_tag == alpha__gas_tag::Limited)
+  if: (alpha__gas_tag == alpha__gas_tag::limited)

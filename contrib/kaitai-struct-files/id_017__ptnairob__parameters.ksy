@@ -58,10 +58,12 @@ types:
       repeat: eos
   commitments_entries:
     seq:
-    - id: blinded__public__key__hash
+    - id: commitments_elt_field0
       size: 20
-    - id: id_017__ptnairob__mutez
+      doc: blinded__public__key__hash
+    - id: commitments_elt_field1
       type: n
+      doc: id_017__ptnairob__mutez
   bootstrap_contracts:
     seq:
     - id: size_of_bootstrap_contracts
@@ -116,56 +118,81 @@ types:
       enum: bootstrap_accounts_elt_tag
     - id: bootstrap_accounts_elt_public_key_known
       type: bootstrap_accounts_elt_public_key_known
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_known)
     - id: bootstrap_accounts_elt_public_key_unknown
       type: bootstrap_accounts_elt_public_key_unknown
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_unknown)
     - id: bootstrap_accounts_elt_public_key_known_with_delegate
       type: bootstrap_accounts_elt_public_key_known_with_delegate
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known_with_delegate)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_known_with_delegate)
     - id: bootstrap_accounts_elt_public_key_unknown_with_delegate
       type: bootstrap_accounts_elt_public_key_unknown_with_delegate
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown_with_delegate)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_unknown_with_delegate)
     - id: bootstrap_accounts_elt_public_key_known_with_consensus_key
       type: bootstrap_accounts_elt_public_key_known_with_consensus_key
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known_with_consensus_key)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_known_with_consensus_key)
   bootstrap_accounts_elt_public_key_known_with_consensus_key:
     seq:
-    - id: signature__public_key
+    - id: public_key_known_with_consensus_key_field0
       type: public_key
-      doc: A Ed25519, Secp256k1, or P256 public key
-    - id: id_017__ptnairob__mutez
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key
+
+
+        signature__public_key'
+    - id: public_key_known_with_consensus_key_field1
       type: n
-    - id: signature__public_key
+      doc: id_017__ptnairob__mutez
+    - id: public_key_known_with_consensus_key_field2
       type: public_key
-      doc: A Ed25519, Secp256k1, or P256 public key
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key
+
+
+        signature__public_key'
   bootstrap_accounts_elt_public_key_unknown_with_delegate:
     seq:
-    - id: signature__public_key_hash
+    - id: public_key_unknown_with_delegate_field0
       type: public_key_hash
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: id_017__ptnairob__mutez
+      doc: ! 'A Ed25519, Secp256k1, P256, or BLS public key hash
+
+
+        signature__public_key_hash'
+    - id: public_key_unknown_with_delegate_field1
       type: n
-    - id: signature__public_key_hash
+      doc: id_017__ptnairob__mutez
+    - id: public_key_unknown_with_delegate_field2
       type: public_key_hash
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+      doc: ! 'A Ed25519, Secp256k1, P256, or BLS public key hash
+
+
+        signature__public_key_hash'
   bootstrap_accounts_elt_public_key_known_with_delegate:
     seq:
-    - id: signature__public_key
+    - id: public_key_known_with_delegate_field0
       type: public_key
-      doc: A Ed25519, Secp256k1, or P256 public key
-    - id: id_017__ptnairob__mutez
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key
+
+
+        signature__public_key'
+    - id: public_key_known_with_delegate_field1
       type: n
-    - id: signature__public_key_hash
+      doc: id_017__ptnairob__mutez
+    - id: public_key_known_with_delegate_field2
       type: public_key_hash
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+      doc: ! 'A Ed25519, Secp256k1, P256, or BLS public key hash
+
+
+        signature__public_key_hash'
   bootstrap_accounts_elt_public_key_unknown:
     seq:
-    - id: signature__public_key_hash
+    - id: public_key_unknown_field0
       type: public_key_hash
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: id_017__ptnairob__mutez
+      doc: ! 'A Ed25519, Secp256k1, P256, or BLS public key hash
+
+
+        signature__public_key_hash'
+    - id: public_key_unknown_field1
       type: n
+      doc: id_017__ptnairob__mutez
   public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -173,23 +200,27 @@ types:
       enum: public_key_hash_tag
     - id: public_key_hash_ed25519
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: public_key_hash_secp256k1
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: public_key_hash_p256
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::P256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: public_key_hash_bls
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   bootstrap_accounts_elt_public_key_known:
     seq:
-    - id: signature__public_key
+    - id: public_key_known_field0
       type: public_key
-      doc: A Ed25519, Secp256k1, or P256 public key
-    - id: id_017__ptnairob__mutez
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key
+
+
+        signature__public_key'
+    - id: public_key_known_field1
       type: n
+      doc: id_017__ptnairob__mutez
   n:
     seq:
     - id: n
@@ -209,36 +240,36 @@ types:
       enum: public_key_tag
     - id: public_key_ed25519
       size: 32
-      if: (public_key_tag == public_key_tag::Ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: public_key_secp256k1
       size: 33
-      if: (public_key_tag == public_key_tag::Secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: public_key_p256
       size: 33
-      if: (public_key_tag == public_key_tag::P256)
+      if: (public_key_tag == public_key_tag::p256)
     - id: public_key_bls
       size: 48
-      if: (public_key_tag == public_key_tag::Bls)
+      if: (public_key_tag == public_key_tag::bls)
 enums:
   bool:
     0: false
     255: true
   public_key_hash_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
-    3: Bls
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
   public_key_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
-    3: Bls
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
   bootstrap_accounts_elt_tag:
-    0: Public_key_known
-    1: Public_key_unknown
-    2: Public_key_known_with_delegate
-    3: Public_key_unknown_with_delegate
-    4: Public_key_known_with_consensus_key
+    0: public_key_known
+    1: public_key_unknown
+    2: public_key_known_with_delegate
+    3: public_key_unknown_with_delegate
+    4: public_key_known_with_consensus_key
 seq:
 - id: bootstrap_accounts
   type: bootstrap_accounts

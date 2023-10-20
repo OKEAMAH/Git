@@ -16,22 +16,22 @@ types:
       enum: public_key_hash_tag
     - id: public_key_hash_ed25519
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: public_key_hash_secp256k1
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: public_key_hash_p256
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::P256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: public_key_hash_bls
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   public_key_hash_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
-    3: Bls
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
 seq:
 - id: size_of_id_016__ptmumbai__vote__listings
   type: s4

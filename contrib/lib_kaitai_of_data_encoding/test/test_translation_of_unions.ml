@@ -89,23 +89,23 @@ let%expect_test "test medium union" =
         0: false
         255: true
       more_union_tag:
-        0: A
-        1: B
-        2: C
-        255: D
+        0: a
+        1: b
+        2: c
+        255: d
     seq:
     - id: more_union_tag
       type: u1
       enum: more_union_tag
     - id: more_union_a
       type: u1
-      if: (more_union_tag == more_union_tag::A)
+      if: (more_union_tag == more_union_tag::a)
     - id: more_union_b
       type: u2
-      if: (more_union_tag == more_union_tag::B)
+      if: (more_union_tag == more_union_tag::b)
     - id: more_union_c
       type: u1
-      if: (more_union_tag == more_union_tag::C)
+      if: (more_union_tag == more_union_tag::c)
       enum: bool
   |}]
 
@@ -164,6 +164,10 @@ let%expect_test "test union with structures inside" =
         seq:
         - id: b_field0
           type: u2
+        - id: b_field1
+          type: b_field1
+      b_field1:
+        seq:
         - id: size_of_b_field1
           type: s4
         - id: b_field1
@@ -173,21 +177,21 @@ let%expect_test "test union with structures inside" =
         0: false
         255: true
       more_union_tag:
-        0: A
-        1: B
-        2: C
-        255: D
+        0: a
+        1: b
+        2: c
+        255: d
     seq:
     - id: more_union_tag
       type: u1
       enum: more_union_tag
     - id: more_union_a
       type: u1
-      if: (more_union_tag == more_union_tag::A)
+      if: (more_union_tag == more_union_tag::a)
     - id: more_union_b
       type: more_union_b
-      if: (more_union_tag == more_union_tag::B)
+      if: (more_union_tag == more_union_tag::b)
     - id: more_union_c
       type: more_union_c
-      if: (more_union_tag == more_union_tag::C)
+      if: (more_union_tag == more_union_tag::c)
   |}]

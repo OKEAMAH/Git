@@ -9,7 +9,7 @@ types:
       enum: delegate_selection_tag
     - id: delegate_selection_round_robin_over_delegates
       type: delegate_selection_round_robin_over_delegates
-      if: (delegate_selection_tag == delegate_selection_tag::Round_robin_over_delegates)
+      if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   delegate_selection_round_robin_over_delegates:
     seq:
     - id: size_of_round_robin_over_delegates
@@ -38,13 +38,13 @@ types:
       enum: public_key_tag
     - id: public_key_ed25519
       size: 32
-      if: (public_key_tag == public_key_tag::Ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: public_key_secp256k1
       size: 33
-      if: (public_key_tag == public_key_tag::Secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: public_key_p256
       size: 33
-      if: (public_key_tag == public_key_tag::P256)
+      if: (public_key_tag == public_key_tag::p256)
   ratio_of_frozen_deposits_slashed_per_double_endorsement:
     seq:
     - id: numerator
@@ -96,12 +96,12 @@ types:
       type: s8
 enums:
   public_key_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
+    0: ed25519
+    1: secp256k1
+    2: p256
   delegate_selection_tag:
-    0: Random_delegate_selection
-    1: Round_robin_over_delegates
+    0: random_delegate_selection
+    1: round_robin_over_delegates
 seq:
 - id: proof_of_work_nonce_size
   type: u1

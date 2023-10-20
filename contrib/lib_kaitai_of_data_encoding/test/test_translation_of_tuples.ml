@@ -90,23 +90,34 @@ let%expect_test "test tuples with tup1 translation" =
     meta:
       id: tup1tup
       endian: be
+    types:
+      tup1tup_field5:
+        seq:
+        - id: tup1tup_field6
+          type: u1
+          doc: tup1tup_field7
+        - id: tup1tup_field8
+          type: u1
+      tup1tup_field2:
+        seq:
+        - id: tup1tup_field3
+          type: u1
+        - id: tup1tup_field4
+          type: u1
+          enum: bool
     enums:
       bool:
         0: false
         255: true
     seq:
-    - id: tup1tup_field1
+    - id: tup1tup_field0
       type: u1
       enum: bool
-    - id: tup1tup_field3
-      type: u1
-    - id: tup1tup_field4
-      type: u1
-      enum: bool
-    - id: tup1tup_field7
-      type: u1
-    - id: tup1tup_field8
-      type: u1 |}]
+      doc: tup1tup_field1
+    - id: tup1tup_field2
+      type: tup1tup_field2
+    - id: tup1tup_field5
+      type: tup1tup_field5 |}]
 
 let%expect_test "test tuples with n inside translation" =
   let s =
@@ -121,6 +132,20 @@ let%expect_test "test tuples with n inside translation" =
       id: tup1tup
       endian: be
     types:
+      tup1tup_field5:
+        seq:
+        - id: tup1tup_field6
+          type: n
+          doc: tup1tup_field7
+        - id: tup1tup_field8
+          type: n
+      tup1tup_field2:
+        seq:
+        - id: tup1tup_field3
+          type: n
+        - id: tup1tup_field4
+          type: u1
+          enum: bool
       n:
         seq:
         - id: n
@@ -138,18 +163,14 @@ let%expect_test "test tuples with n inside translation" =
         0: false
         255: true
     seq:
-    - id: tup1tup_field1
+    - id: tup1tup_field0
       type: u1
       enum: bool
-    - id: tup1tup_field3
-      type: n
-    - id: tup1tup_field4
-      type: u1
-      enum: bool
-    - id: tup1tup_field7
-      type: n
-    - id: tup1tup_field8
-      type: n |}]
+      doc: tup1tup_field1
+    - id: tup1tup_field2
+      type: tup1tup_field2
+    - id: tup1tup_field5
+      type: tup1tup_field5 |}]
 
 let%expect_test "test tuples descr inside" =
   let s =
@@ -183,14 +204,16 @@ let%expect_test "test tuples descr inside" =
         0: false
         255: true
     seq:
-    - id: unique_id_trap
+    - id: tupdef_field0
       type: u1
       enum: bool
+      doc: unique_id_trap
     - id: tupdef_field1
       type: n
-    - id: unique_id_trap
+    - id: tupdef_field2
       type: u1
       enum: bool
+      doc: unique_id_trap
     - id: tupdef_field3
       type: u1
       enum: bool |}]

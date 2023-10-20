@@ -3,11 +3,11 @@ meta:
   endian: be
 enums:
   kind_tag:
-    0: Proposal
-    1: Testing_vote
-    2: Testing
-    3: Promotion_vote
-    4: Adoption
+    0: proposal
+    1: testing_vote
+    2: testing
+    3: promotion_vote
+    4: adoption
 seq:
 - id: index
   type: s4

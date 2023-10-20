@@ -61,10 +61,12 @@ types:
       repeat: eos
   commitments_entries:
     seq:
-    - id: blinded__public__key__hash
+    - id: commitments_elt_field0
       size: 20
-    - id: id_009__psfloren__mutez
+      doc: blinded__public__key__hash
+    - id: commitments_elt_field1
       type: n
+      doc: id_009__psfloren__mutez
   bootstrap_contracts:
     seq:
     - id: size_of_bootstrap_contracts
@@ -115,17 +117,21 @@ types:
       enum: bootstrap_accounts_elt_tag
     - id: bootstrap_accounts_elt_public_key_known
       type: bootstrap_accounts_elt_public_key_known
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_known)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_known)
     - id: bootstrap_accounts_elt_public_key_unknown
       type: bootstrap_accounts_elt_public_key_unknown
-      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::Public_key_unknown)
+      if: (bootstrap_accounts_elt_tag == bootstrap_accounts_elt_tag::public_key_unknown)
   bootstrap_accounts_elt_public_key_unknown:
     seq:
-    - id: signature__v0__public_key_hash
+    - id: public_key_unknown_field0
       type: public_key_hash
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: id_009__psfloren__mutez
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key hash
+
+
+        signature__v0__public_key_hash'
+    - id: public_key_unknown_field1
       type: n
+      doc: id_009__psfloren__mutez
   public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -133,20 +139,24 @@ types:
       enum: public_key_hash_tag
     - id: public_key_hash_ed25519
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: public_key_hash_secp256k1
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::Secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: public_key_hash_p256
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::P256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   bootstrap_accounts_elt_public_key_known:
     seq:
-    - id: signature__v0__public_key
+    - id: public_key_known_field0
       type: public_key
-      doc: A Ed25519, Secp256k1, or P256 public key
-    - id: id_009__psfloren__mutez
+      doc: ! 'A Ed25519, Secp256k1, or P256 public key
+
+
+        signature__v0__public_key'
+    - id: public_key_known_field1
       type: n
+      doc: id_009__psfloren__mutez
   n:
     seq:
     - id: n
@@ -166,28 +176,28 @@ types:
       enum: public_key_tag
     - id: public_key_ed25519
       size: 32
-      if: (public_key_tag == public_key_tag::Ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: public_key_secp256k1
       size: 33
-      if: (public_key_tag == public_key_tag::Secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: public_key_p256
       size: 33
-      if: (public_key_tag == public_key_tag::P256)
+      if: (public_key_tag == public_key_tag::p256)
 enums:
   bool:
     0: false
     255: true
   public_key_hash_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
+    0: ed25519
+    1: secp256k1
+    2: p256
   public_key_tag:
-    0: Ed25519
-    1: Secp256k1
-    2: P256
+    0: ed25519
+    1: secp256k1
+    2: p256
   bootstrap_accounts_elt_tag:
-    0: Public_key_known
-    1: Public_key_unknown
+    0: public_key_known
+    1: public_key_unknown
 seq:
 - id: bootstrap_accounts
   type: bootstrap_accounts

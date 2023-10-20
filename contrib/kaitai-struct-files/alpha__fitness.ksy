@@ -9,11 +9,11 @@ types:
       enum: locked_round_tag
     - id: locked_round_some
       type: s4
-      if: (locked_round_tag == locked_round_tag::Some)
+      if: (locked_round_tag == locked_round_tag::some)
 enums:
   locked_round_tag:
-    1: Some
-    0: None
+    1: some
+    0: none
 seq:
 - id: level
   type: s4

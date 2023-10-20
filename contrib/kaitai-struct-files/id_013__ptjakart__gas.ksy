@@ -23,12 +23,12 @@ types:
       type: b7be
 enums:
   id_013__ptjakart__gas_tag:
-    0: Limited
-    1: Unaccounted
+    0: limited
+    1: unaccounted
 seq:
 - id: id_013__ptjakart__gas_tag
   type: u1
   enum: id_013__ptjakart__gas_tag
 - id: id_013__ptjakart__gas_limited
   type: z
-  if: (id_013__ptjakart__gas_tag == id_013__ptjakart__gas_tag::Limited)
+  if: (id_013__ptjakart__gas_tag == id_013__ptjakart__gas_tag::limited)

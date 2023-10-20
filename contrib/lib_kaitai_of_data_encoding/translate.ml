@@ -39,6 +39,10 @@ open Kaitai.Types
    than the public module [Data_encoding.Encoding]. *)
 module DataEncoding = Data_encoding__Encoding
 
+(* We need an existential type for encodings because the type of encodings in
+   cases is not related to the type of encodings in unions. *)
+type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding
+
 let summary ~title ~description =
   match (title, description) with
   | None, None -> None
@@ -271,9 +275,24 @@ let rec seq_field_of_data_encoding :
       (enums, types, [Ground.Attr.z ~id])
   | Conv {encoding; _} ->
       seq_field_of_data_encoding enums types encoding id tid_gen
-  | Tup e ->
+  | Tup e -> (
       let id = match tid_gen with None -> id | Some tid_gen -> tid_gen () in
-      seq_field_of_data_encoding enums types e id tid_gen
+      let enums, types, attrs =
+        seq_field_of_data_encoding enums types e id tid_gen
+      in
+      match attrs with
+      | [] -> (enums, types, attrs)
+      | _ :: _ as attrs ->
+          let types, attr =
+            redirect_if_many
+              types
+              attrs
+              (fun attr ->
+                if attr.id = id then attr
+                else Helpers.merge_summaries {attr with id} (Some attr.id))
+              id
+          in
+          (enums, types, [attr]))
   | Tups {kind = _; left; right} ->
       let tid_gen =
         match tid_gen with
@@ -510,6 +529,20 @@ and seq_field_of_union :
     string ->
     Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
  fun enums types tag_size cases id ->
+  let tagged_cases : (int * string * string option * anyEncoding) list =
+    (* Some cases are JSON-only, we filter those out and we also get rid of
+       parts we don't care about like injection and projection functions. *)
+    List.filter_map
+      (fun (DataEncoding.Case
+             {title; tag; description; encoding; proj = _; inj = _}) ->
+        Data_encoding__Uint_option.fold
+          ~none:None
+          ~some:(fun tag ->
+            Some (tag, escape_id title, description, AnyEncoding encoding))
+          tag)
+      cases
+  in
+  let id = escape_id id in
   let tag_type : Kaitai.Types.DataType.int_type =
     match tag_size with
     | `Uint8 -> Int1Type {signed = false}
@@ -517,21 +550,12 @@ and seq_field_of_union :
   in
   let tag_id = id ^ "_tag" in
   let tag_enum_map =
-    List.filter_map
-      (fun (DataEncoding.Case
-             {title; tag; description; encoding = _; proj = _; inj = _}) ->
-        Data_encoding__Uint_option.fold
-          ~none:None
-          ~some:(fun tag ->
-            Some
-              ( tag,
-                EnumValueSpec.
-                  {
-                    name = title;
-                    doc = DocSpec.{refs = []; summary = description};
-                  } ))
-          tag)
-      cases
+    List.map
+      (fun (tag, id, description, _) ->
+        ( tag,
+          EnumValueSpec.
+            {name = id; doc = DocSpec.{refs = []; summary = description}} ))
+      tagged_cases
   in
   let tag_enum = EnumSpec.{path = []; map = tag_enum_map} in
   let enums = Helpers.add_uniq_assoc enums (tag_id, tag_enum) in
@@ -544,55 +568,49 @@ and seq_field_of_union :
   in
   let enums, types, payload_attrs =
     List.fold_left
-      (fun (enums, types, payload_attrs)
-           (DataEncoding.Case
-             {title; tag; description = _; encoding; proj = _; inj = _}) ->
-        Data_encoding__Uint_option.fold
-          ~none:(enums, types, payload_attrs)
-          ~some:(fun _tag ->
-            let enums, types, attrs =
-              seq_field_of_data_encoding enums types encoding title None
-            in
-            match attrs with
-            | [] -> (enums, types, payload_attrs)
-            | _ :: _ as attrs ->
-                let types, attr =
-                  redirect_if_many
-                    types
-                    attrs
-                    (fun attr ->
+      (fun (enums, types, payload_attrs) (_, case_id, _, AnyEncoding encoding) ->
+        let enums, types, attrs =
+          seq_field_of_data_encoding enums types encoding case_id None
+        in
+        match attrs with
+        | [] -> (enums, types, payload_attrs)
+        | _ :: _ as attrs ->
+            let types, attr =
+              redirect_if_many
+                types
+                attrs
+                (fun attr ->
+                  {
+                    attr with
+                    cond =
                       {
-                        attr with
-                        cond =
-                          {
-                            Helpers.cond_no_cond with
-                            ifExpr =
-                              Some
-                                (Compare
-                                   {
-                                     left = Name (id ^ "_tag");
-                                     ops = Eq;
-                                     right =
-                                       EnumByLabel
+                        Helpers.cond_no_cond with
+                        ifExpr =
+                          Some
+                            (Compare
+                               {
+                                 left = Name (id ^ "_tag");
+                                 ops = Eq;
+                                 right =
+                                   EnumByLabel
+                                     {
+                                       enumName = tag_id;
+                                       label = case_id;
+                                       inType =
                                          {
-                                           enumName = tag_id;
-                                           label = title;
-                                           inType =
-                                             {
-                                               absolute = true;
-                                               names = [tag_id];
-                                               isArray = false;
-                                             };
+                                           absolute = true;
+                                           names = [tag_id];
+                                           isArray = false;
                                          };
-                                   });
-                          };
-                      })
-                    (id ^ "_" ^ escape_id title)
-                in
-                (enums, types, attr :: payload_attrs))
-          tag)
+                                     };
+                               });
+                      };
+                  })
+                (id ^ "_" ^ case_id)
+            in
+            (enums, types, attr :: payload_attrs))
       (enums, types, [])
-      cases
+      tagged_cases
   in
   let payload_attrs = List.rev payload_attrs in
   (enums, types, tag_attr :: payload_attrs)

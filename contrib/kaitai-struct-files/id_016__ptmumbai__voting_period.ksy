@@ -3,11 +3,11 @@ meta:
   endian: be
 enums:
   kind_tag:
-    0: Proposal
+    0: proposal
     1: exploration
-    2: Cooldown
-    3: Promotion
-    4: Adoption
+    2: cooldown
+    3: promotion
+    4: adoption
 seq:
 - id: index
   type: s4
