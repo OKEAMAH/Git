@@ -15,6 +15,7 @@ depends: [
   "octez-protocol-alpha-libs"
   "octez-l2-libs"
   "octez-version"
+  "octez-smart-rollup-wasm-debugger-plugin"
   "lambda-term" { >= "3.3.1" }
 ]
 build: [

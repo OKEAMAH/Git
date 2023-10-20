@@ -4029,6 +4029,7 @@ let octez_benchmark =
         opam_only "hashcons" V.True;
       ]
     ~inline_tests:ppx_expect
+    ~inline_tests_deps:[S "%{workspace_root}/.ocamlformat"]
       (* We disable tests for this package as they require Python, which is not
            installed in the image of the opam jobs. *)
     ~opam_with_test:Never
@@ -8162,6 +8163,14 @@ let _octez_smart_rollup_node_lib_tests =
         alcotezt;
       ]
 
+let octez_scoru_wasm_debugger_plugin =
+  public_lib
+    "octez-smart-rollup-wasm-debugger-plugin"
+    ~path:"src/bin_wasm_debugger/plugin"
+    ~release_status:Released
+    ~deps:[]
+    ~synopsis:"Plugin interface for the Octez Smart Rollup WASM Debugger"
+
 let _octez_scoru_wasm_debugger =
   public_exe
     (sf "octez-smart-rollup-wasm-debugger")
@@ -8186,8 +8195,21 @@ let _octez_scoru_wasm_debugger =
         octez_webassembly_interpreter |> open_;
         octez_webassembly_interpreter_extra |> open_;
         octez_version_value;
+        octez_scoru_wasm_debugger_plugin;
+        dynlink;
         lambda_term;
       ]
+
+let evm_proxy_lib_prod_encoding =
+  private_lib
+    "evm_proxy_lib_prod_encoding"
+    ~path:"src/bin_evm_proxy/lib_prod/encodings"
+    ~opam:"octez-evm-proxy-lib-prod-encoding"
+    ~synopsis:
+      "EVM encodings for the EVM proxy and plugin for the WASM Debugger [prod \
+       version]"
+    ~deps:
+      [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
 let evm_proxy_lib_prod =
   private_lib
@@ -8205,8 +8227,20 @@ let evm_proxy_lib_prod =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
+        evm_proxy_lib_prod_encoding |> open_;
         lwt_exit;
       ]
+
+let evm_proxy_lib_dev_encoding =
+  private_lib
+    "evm_proxy_lib_dev_encoding"
+    ~path:"src/bin_evm_proxy/lib_dev/encodings"
+    ~opam:"octez-evm-proxy-lib-dev-encoding"
+    ~synopsis:
+      "EVM encodings for the EVM proxy and plugin for the WASM Debugger [dev \
+       version]"
+    ~deps:
+      [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
 let evm_proxy_lib_dev =
   private_lib
@@ -8224,12 +8258,13 @@ let evm_proxy_lib_dev =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
+        evm_proxy_lib_dev_encoding |> open_;
         lwt_exit;
       ]
 
 let _octez_evm_proxy_tests =
   tezt
-    ["test_rlp"]
+    ["test_rlp"; "test_ethbloom"]
     ~path:"src/bin_evm_proxy/test"
     ~opam:"octez-evm-proxy-tests"
     ~synopsis:"Tests for the EVM Proxy"
@@ -8325,6 +8360,7 @@ let _evm_proxy =
         octez_version_value;
         evm_proxy_lib_prod;
         evm_proxy_lib_dev;
+        evm_proxy_lib_dev_encoding |> open_;
       ]
     ~bisect_ppx:Yes
 
