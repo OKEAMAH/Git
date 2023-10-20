@@ -22,6 +22,7 @@ use tezos_ethereum::transaction::{
     TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::Bloom;
+use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -229,6 +230,17 @@ impl BlockInProgress {
 
         // make receipt
         let receipt = self.make_receipt(receipt_info);
+        let mut size = 0;
+        for n in 0..receipt.logs.len() {
+            size += receipt.logs[n].topics.len();
+        }
+        log!(
+            host,
+            Debug,
+            "[Benchmarking] log size: {}",
+            receipt.logs.len()
+        );
+        log!(host, Debug, "[Benchmarking] log topic size: {}", size);
 
         // extend BIP's logs bloom
         self.logs_bloom.accrue_bloom(&receipt.logs_bloom);
