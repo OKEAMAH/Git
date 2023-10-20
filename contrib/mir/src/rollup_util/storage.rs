@@ -10,13 +10,14 @@
 //! Things that are related to all the methods:
 //!
 //! Mind the size limits: values cannot be larger than 2Gb, and keys also have
-//! their limit on size. Consider avoiding using arbitrarily-sized path
-//! segments in the keys. And we will have to do something about values.
+//! their limit on size. Consider avoiding using path segments of unbounded size
+//! in the keys. And we will have to do something about handling the limits on
+//! values' size.
 //!
 //! There are a few restrictions on keys. Putting it short, the key must use
-//! characters from `[A-Za-z0-9.-_]` set, and there are busy keys used by
-//! rollup machinery (just avoid `/readonly` and `/kernel` prefixes). For more
-//! details, see [tezos_smart_rollup_host::path::PathError].
+//! characters from `[A-Za-z0-9.-_]` set, and there are busy keys used by rollup
+//! machinery (just avoid `/readonly` and `/kernel` prefixes). For more details,
+//! see [tezos_smart_rollup_host::path::PathError].
 
 use tezos_smart_rollup::{host::RuntimeError, prelude::Runtime, storage::path::Path};
 
