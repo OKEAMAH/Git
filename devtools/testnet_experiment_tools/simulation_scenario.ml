@@ -98,6 +98,12 @@ let round_duration_arg =
     ~placeholder:"seconds"
     positive_int_parameter
 
+let record_flag_arg =
+  Tezos_clic.switch
+    ~long:"record-state"
+    ~doc:"If record-state flag is set, the baker saves all event-related info."
+    ()
+
 let op_per_mempool_arg =
   default_arg
     ~doc:
@@ -278,14 +284,15 @@ let extract_yes_wallet (cctxt : Client_context.full) =
   let*! () = cctxt#message "Extracting yes-wallet with consensus keys." in
   Tool.extract_client_context cctxt
 
-let sync_node (cctxt : Client_context.full) round_duration_target =
+let sync_node (cctxt : Client_context.full) ?(record_flag = false)
+    round_duration_target =
   let open Lwt_result_syntax in
   let* {current_protocol; _} =
     Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
   in
   let* (module Tool) = find_proto_tool current_protocol in
   let*! () = cctxt#message "Synchronizing the node to a low round time." in
-  Tool.sync_node cctxt ?round_duration_target ()
+  Tool.sync_node cctxt ?round_duration_target ~record_flag ()
 
 let run_injector (cctxt : Client_context.full) ~op_per_mempool
     ~min_manager_queues ~operations_file_path =
@@ -412,10 +419,10 @@ let commands =
         "Synchronize a yes-node so that the current head round's duration is \
          low enough in order for yes-bakers to activate without having to wait \
          a significant amount of time."
-      (args1 round_duration_arg)
+      (args2 round_duration_arg record_flag_arg)
       (fixed ["sync"])
-      (fun round_duration_target (cctxt : Client_context.full) ->
-        sync_node cctxt round_duration_target);
+      (fun (round_duration_target, record_flag) (cctxt : Client_context.full) ->
+        sync_node cctxt ~record_flag round_duration_target);
     command
       ~group
       ~desc:

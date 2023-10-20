@@ -96,6 +96,7 @@ val automaton_loop :
   on_error:(tztrace -> (unit, tztrace) result Lwt.t) ->
   loop_state ->
   state ->
+  ?record_flag:bool ->
   event ->
   event option tzresult Lwt.t
 
@@ -106,5 +107,6 @@ val run :
   ?on_error:(tztrace -> unit tzresult Lwt.t) ->
   chain:Chain_services.chain ->
   Baking_configuration.t ->
+  ?record_flag:bool ->
   consensus_key list ->
   unit tzresult Lwt.t

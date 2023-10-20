@@ -39,6 +39,7 @@ module Baker : sig
     ?context_path:string ->
     chain:Shell_services.chain ->
     keep_alive:bool ->
+    ?record_flag:bool ->
     Baking_state.consensus_key list ->
     unit tzresult Lwt.t
 end

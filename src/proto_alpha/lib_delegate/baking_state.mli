@@ -217,7 +217,7 @@ val state_data_encoding : state_data Data_encoding.t
 val record_state : t -> unit tzresult Lwt.t
 
 val may_record_new_state :
-  previous_state:t -> new_state:t -> unit tzresult Lwt.t
+  previous_state:t -> new_state:t -> record_flag:bool -> unit tzresult Lwt.t
 
 val load_attestable_data :
   Protocol_client_context.full ->

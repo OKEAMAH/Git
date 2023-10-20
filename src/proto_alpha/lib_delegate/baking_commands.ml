@@ -182,6 +182,12 @@ let adaptive_issuance_vote_arg =
     ~placeholder:"vote"
     per_block_vote_parameter
 
+let record_flag_arg =
+  Tezos_clic.switch
+    ~long:"record-state"
+    ~doc:"If record-state flag is set, the baker saves all event-related info."
+    ()
+
 let get_delegates (cctxt : Protocol_client_context.full)
     (pkhs : Signature.public_key_hash list) =
   let open Lwt_result_syntax in
@@ -374,7 +380,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
     command
       ~group
       ~desc:"Forge and inject block using the delegates' rights."
-      (args12
+      (args13
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
          minimal_nanotez_per_byte_arg
@@ -386,7 +392,8 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          adaptive_issuance_vote_arg
          do_not_monitor_node_mempool_arg
          endpoint_arg
-         block_count_arg)
+         block_count_arg
+         record_flag_arg)
       (prefixes ["bake"; "for"] @@ sources_param)
       (fun ( minimal_fees,
              minimal_nanotez_per_gas_unit,
@@ -399,7 +406,8 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
              adaptive_issuance_vote,
              do_not_monitor_node_mempool,
              dal_node_endpoint,
-             block_count )
+             block_count,
+             record_flag )
            pkhs
            cctxt ->
         let* delegates = get_delegates cctxt pkhs in
@@ -424,25 +432,26 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
                    adaptive_issuance_vote;
                  })
                adaptive_issuance_vote)
+          ~record_flag
           delegates);
     command
       ~group
       ~desc:"Forge and inject an attestation operation."
-      (args1 attestation_force_switch_arg)
+      (args2 attestation_force_switch_arg record_flag_arg)
       (prefixes ["attest"; "for"] @@ sources_param)
-      (fun force pkhs cctxt ->
+      (fun (force, record_flag) pkhs cctxt ->
         let* delegates = get_delegates cctxt pkhs in
-        Baking_lib.attest ~force cctxt delegates);
+        Baking_lib.attest ~force cctxt ~record_flag delegates);
     command
       ~group
       ~desc:
         "Deprecated, use **attest for** instead. Forge and inject an \
          attestation operation."
-      (args1 attestation_force_switch_arg)
+      (args2 attestation_force_switch_arg record_flag_arg)
       (prefixes ["endorse"; "for"] @@ sources_param)
-      (fun force pkhs cctxt ->
+      (fun (force, record_flag) pkhs cctxt ->
         let* delegates = get_delegates cctxt pkhs in
-        Baking_lib.attest ~force cctxt delegates);
+        Baking_lib.attest ~force cctxt ~record_flag delegates);
     command
       ~group
       ~desc:"Forge and inject a preattestation operation."
@@ -464,7 +473,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
     command
       ~group
       ~desc:"Send a Tenderbake proposal"
-      (args8
+      (args9
          minimal_fees_arg
          minimal_nanotez_per_gas_unit_arg
          minimal_nanotez_per_byte_arg
@@ -472,7 +481,8 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
          force_apply_switch_arg
          force_switch
          operations_arg
-         context_path_arg)
+         context_path_arg
+         record_flag_arg)
       (prefixes ["propose"; "for"] @@ sources_param)
       (fun ( minimal_fees,
              minimal_nanotez_per_gas_unit,
@@ -481,7 +491,8 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
              force_apply,
              force,
              extra_operations,
-             context_path )
+             context_path,
+             record_flag )
            sources
            cctxt ->
         let* delegates = get_delegates cctxt sources in
@@ -495,6 +506,7 @@ let delegate_commands () : Protocol_client_context.full Tezos_clic.command list
           ~force
           ?extra_operations
           ?context_path
+          ~record_flag
           delegates);
   ]
 
@@ -567,7 +579,7 @@ let run_baker
       adaptive_issuance_vote,
       per_block_vote_file,
       extra_operations,
-      dal_node_endpoint ) baking_mode sources cctxt =
+      dal_node_endpoint ) baking_mode sources ?(record_flag = false) cctxt =
   let open Lwt_result_syntax in
   may_lock_pidfile pidfile @@ fun () ->
   let*! per_block_vote_file =
@@ -605,6 +617,7 @@ let run_baker
     ~chain:cctxt#chain
     ?context_path
     ~keep_alive
+    ~record_flag
     delegates
 
 let baker_commands () : Protocol_client_context.full Tezos_clic.command list =

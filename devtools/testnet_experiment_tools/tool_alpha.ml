@@ -335,7 +335,8 @@ let check_round_duration cctxt ?round_duration_target () =
           (Ptime.Span.of_int_s minimal_round_target)
       else return (Ptime.Span.of_int_s target)
 
-let sync_node (cctxt : Client_context.full) ?round_duration_target () =
+let sync_node (cctxt : Client_context.full) ?round_duration_target
+    ?(record_flag = false) () =
   let open Lwt_result_syntax in
   let*! () = Tezos_base_unix.Internal_event_unix.close () in
   let cctxt = new wrap_silent_memory_client cctxt in
@@ -362,7 +363,12 @@ let sync_node (cctxt : Client_context.full) ?round_duration_target () =
       Format.printf
         "Predecessor's metadata are not present: baking a dummy block@." ;
       let* () =
-        Baking_lib.bake cctxt ~minimal_timestamp:true ~force:true delegates
+        Baking_lib.bake
+          cctxt
+          ~minimal_timestamp:true
+          ~force:true
+          ~record_flag
+          delegates
       in
       (* Waiting next block... *)
       let*! new_proposal = Lwt_stream.get block_stream in
@@ -403,12 +409,22 @@ let sync_node (cctxt : Client_context.full) ?round_duration_target () =
       in
       Format.printf "Proposing at previous round: %a@." Round.pp pred_round ;
       let* () =
-        Baking_lib.repropose cctxt delegates ~force:true ~force_round:pred_round
+        Baking_lib.repropose
+          cctxt
+          ~force:true
+          ~force_round:pred_round
+          ~record_flag
+          delegates
       in
       let*! new_block = wait_next_block block_stream current_proposal in
       Format.printf "Baking at next level with minimal round@." ;
       let* () =
-        Baking_lib.bake cctxt delegates ~force:true ~minimal_timestamp:true
+        Baking_lib.bake
+          cctxt
+          ~force:true
+          ~minimal_timestamp:true
+          ~record_flag
+          delegates
       in
       let*! new_block = wait_next_block block_stream new_block in
       loop new_block)

@@ -100,7 +100,7 @@ module Baker = struct
   let run (cctxt : Protocol_client_context.full) ?minimal_fees
       ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?votes
       ?extra_operations ?dal_node_endpoint ?force_apply ?context_path ~chain
-      ~keep_alive delegates =
+      ~keep_alive ?(record_flag = false) delegates =
     let open Lwt_result_syntax in
     let process () =
       let* user_activated_upgrades =
@@ -137,7 +137,7 @@ module Baker = struct
       in
       let () = may_start_profiler cctxt#get_base_dir in
       Baking_profiler.record "initialization" ;
-      Baking_scheduling.run cctxt ~canceler ~chain config delegates
+      Baking_scheduling.run cctxt ~canceler ~chain config ~record_flag delegates
     in
     let* () =
       Client_confirmations.wait_for_bootstrapped

@@ -561,7 +561,7 @@ let () =
     (function Broken_locked_values_invariant -> Some () | _ -> None)
     (fun () -> Broken_locked_values_invariant)
 
-let may_record_new_state ~previous_state ~new_state =
+let may_record_new_state ~previous_state ~new_state ~record_flag =
   let open Lwt_result_syntax in
   let {
     current_level = previous_current_level;
@@ -616,7 +616,8 @@ let may_record_new_state ~previous_state ~new_state =
     && previous_state.level_state.attestable_payload
        == new_state.level_state.attestable_payload
   in
-  if has_not_changed then return_unit else record_state new_state
+  if has_not_changed || not record_flag then return_unit
+  else record_state new_state
 
 let load_attestable_data cctxt location =
   let open Lwt_result_syntax in

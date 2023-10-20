@@ -795,12 +795,15 @@ let may_reset_profiler =
   | _ -> ()
 
 let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
-    loop_state state event =
+    loop_state state ?(record_flag = false) event =
   let open Lwt_result_syntax in
   let state_recorder ~new_state =
     match config.Baking_configuration.state_recorder with
     | Baking_configuration.Filesystem ->
-        Baking_state.may_record_new_state ~previous_state:state ~new_state
+        Baking_state.may_record_new_state
+          ~previous_state:state
+          ~new_state
+          ~record_flag
     | Baking_configuration.Disabled -> return_unit
   in
   may_reset_profiler event ;
@@ -848,7 +851,14 @@ let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
   | Some event ->
       if stop_on_event event then return_some event
       else
-        automaton_loop ~stop_on_event ~config ~on_error loop_state state'' event
+        automaton_loop
+          ~stop_on_event
+          ~config
+          ~on_error
+          loop_state
+          state''
+          ~record_flag
+          event
 
 let perform_sanity_check cctxt ~chain_id =
   let open Lwt_result_syntax in
@@ -928,7 +938,8 @@ let register_dal_profiles cctxt dal_node_rpc_ctxt delegates =
     dal_node_rpc_ctxt
 
 let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
-    ?(on_error = fun _ -> return_unit) ~chain config delegates =
+    ?(on_error = fun _ -> return_unit) ~chain config ?(record_flag = false)
+    delegates =
   let open Lwt_result_syntax in
   let* chain_id = Shell_services.Chain.chain_id cctxt ~chain () in
   let* () = perform_sanity_check cctxt ~chain_id in
@@ -1017,6 +1028,7 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
           ~on_error
           loop_state
           initial_state
+          ~record_flag
           initial_event
       in
       return_unit)

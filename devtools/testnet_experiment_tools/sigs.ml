@@ -36,6 +36,7 @@ module type PROTO_TOOL = sig
   val sync_node :
     Client_context.full ->
     ?round_duration_target:int ->
+    ?record_flag:bool ->
     unit ->
     unit tzresult Lwt.t
 

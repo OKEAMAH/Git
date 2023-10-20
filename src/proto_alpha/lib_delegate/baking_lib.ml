@@ -92,7 +92,8 @@ let preattest (cctxt : Protocol_client_context.full) ?(force = false) delegates
   in
   Baking_actions.inject_preattestations state ~preattestations:consensus_list
 
-let attest (cctxt : Protocol_client_context.full) ?(force = false) delegates =
+let attest (cctxt : Protocol_client_context.full) ?(force = false)
+    ?(record_flag = false) delegates =
   let open State_transitions in
   let open Lwt_result_syntax in
   let cache = Baking_cache.Block_cache.create 10 in
@@ -125,7 +126,10 @@ let attest (cctxt : Protocol_client_context.full) ?(force = false) delegates =
       (List.map fst consensus_list)
   in
   let* () =
-    Baking_state.may_record_new_state ~previous_state:state ~new_state:state
+    Baking_state.may_record_new_state
+      ~previous_state:state
+      ~new_state:state
+      ~record_flag
   in
   Baking_actions.inject_attestations state ~attestations:consensus_list
 
@@ -214,13 +218,16 @@ let state_attesting_power =
         Kind.attestation operation)
     -> consensus_content)
 
-let do_action (state, action) =
+let do_action ?(record_flag = false) (state, action) =
   let state_recorder ~new_state =
-    Baking_state.may_record_new_state ~previous_state:state ~new_state
+    Baking_state.may_record_new_state
+      ~previous_state:state
+      ~new_state
+      ~record_flag
   in
   Baking_actions.perform_action ~state_recorder state action
 
-let propose_at_next_level ~minimal_timestamp state =
+let propose_at_next_level ~minimal_timestamp ?(record_flag = false) state =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   assert (Option.is_some state.level_state.elected_block) ;
@@ -249,7 +256,10 @@ let propose_at_next_level ~minimal_timestamp state =
       }
     in
     let state_recorder ~new_state =
-      Baking_state.may_record_new_state ~previous_state:state ~new_state
+      Baking_state.may_record_new_state
+        ~previous_state:state
+        ~new_state
+        ~record_flag
     in
     let* state =
       Baking_actions.perform_action
@@ -270,7 +280,7 @@ let propose_at_next_level ~minimal_timestamp state =
     let* event = bake_at_next_level state in
     let* state =
       let*! action = State_transitions.step state event in
-      do_action action
+      do_action ~record_flag action
     in
     let*! () = cctxt#message "Proposal injected" in
     return state
@@ -295,7 +305,8 @@ let attestation_quorum state =
        - No  :: repropose fresh block for current round *)
 let propose (cctxt : Protocol_client_context.full) ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?force_apply ?force
-    ?(minimal_timestamp = false) ?extra_operations ?context_path delegates =
+    ?(minimal_timestamp = false) ?extra_operations ?context_path
+    ?(record_flag = false) delegates =
   let open Lwt_result_syntax in
   let cache = Baking_cache.Block_cache.create 10 in
   let* _block_stream, current_proposal = get_current_proposal cctxt ~cache () in
@@ -320,7 +331,7 @@ let propose (cctxt : Protocol_client_context.full) ?minimal_fees
   in
   let* _ =
     match state.level_state.elected_block with
-    | Some _ -> propose_at_next_level ~minimal_timestamp state
+    | Some _ -> propose_at_next_level ~minimal_timestamp ~record_flag state
     | None -> (
         match attestation_quorum state with
         | Some (_voting_power, attestation_qc) ->
@@ -348,10 +359,10 @@ let propose (cctxt : Protocol_client_context.full) ?minimal_fees
                   state
                   (Baking_state.Quorum_reached (candidate, attestation_qc))
               in
-              do_action action
+              do_action ~record_flag action
               (* this will register the elected block *)
             in
-            propose_at_next_level ~minimal_timestamp state
+            propose_at_next_level ~minimal_timestamp ~record_flag state
         | None -> (
             let*? event = Baking_scheduling.compute_bootstrap_event state in
             let*! state, _action = State_transitions.step state event in
@@ -372,7 +383,7 @@ let propose (cctxt : Protocol_client_context.full) ?minimal_fees
                         round
                         state.level_state.latest_proposal
                     in
-                    let* state = do_action (state, action) in
+                    let* state = do_action ~record_flag (state, action) in
                     let*! () =
                       cctxt#message
                         "Reproposed block at level %ld on round %a"
@@ -392,7 +403,7 @@ let propose (cctxt : Protocol_client_context.full) ?minimal_fees
   return_unit
 
 let repropose (cctxt : Protocol_client_context.full) ?force ?force_round
-    delegates =
+    ?(record_flag = false) delegates =
   let open Lwt_result_syntax in
   let open Baking_state in
   let cache = Baking_cache.Block_cache.create 10 in
@@ -424,7 +435,7 @@ let repropose (cctxt : Protocol_client_context.full) ?force ?force_round
               round
               state.level_state.latest_proposal
           in
-          let* state = do_action (state, action) in
+          let* state = do_action ~record_flag (state, action) in
           let*! () =
             cctxt#message
               "Reproposed block at level %ld on round %a"
@@ -441,7 +452,8 @@ let repropose (cctxt : Protocol_client_context.full) ?force ?force_round
         Round.pp
         round
 
-let bake_using_automaton ~count config state heads_stream =
+let bake_using_automaton ~count config state ?(record_flag = false) heads_stream
+    =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   let* initial_event = first_automaton_event state in
@@ -464,6 +476,7 @@ let bake_using_automaton ~count config state heads_stream =
       ~on_error:(fun err -> Lwt.return (Error err))
       loop_state
       state
+      ~record_flag
       initial_event
   in
   match event_opt with
@@ -479,7 +492,7 @@ let bake_using_automaton ~count config state heads_stream =
   | _ -> cctxt#error "Baking loop unexpectedly ended"
 
 (* attest the latest proposal and bake with it *)
-let rec baking_minimal_timestamp ~count state
+let rec baking_minimal_timestamp ~count state ?(record_flag = false)
     (block_stream : proposal Lwt_stream.t) =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
@@ -568,7 +581,10 @@ let rec baking_minimal_timestamp ~count state
     }
   in
   let state_recorder ~new_state =
-    Baking_state.may_record_new_state ~previous_state:state ~new_state
+    Baking_state.may_record_new_state
+      ~previous_state:state
+      ~new_state
+      ~record_flag
   in
   let* new_state =
     Baking_actions.perform_action
@@ -618,13 +634,17 @@ let rec baking_minimal_timestamp ~count state
              action. *)
           assert false
     in
-    baking_minimal_timestamp ~count:(pred count) new_state block_stream
+    baking_minimal_timestamp
+      ~count:(pred count)
+      new_state
+      ~record_flag
+      block_stream
 
 let bake (cctxt : Protocol_client_context.full) ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?force_apply ?force
     ?(minimal_timestamp = false) ?extra_operations
     ?(monitor_node_mempool = true) ?context_path ?dal_node_endpoint ?(count = 1)
-    ?votes delegates =
+    ?votes ?(record_flag = false) delegates =
   let open Lwt_result_syntax in
   let config =
     Baking_configuration.make
@@ -659,5 +679,5 @@ let bake (cctxt : Protocol_client_context.full) ?minimal_fees
           state.global_state.operation_worker)
   in
   if not minimal_timestamp then
-    bake_using_automaton ~count config state block_stream
-  else baking_minimal_timestamp ~count state block_stream
+    bake_using_automaton ~count config state ~record_flag block_stream
+  else baking_minimal_timestamp ~count state ~record_flag block_stream
