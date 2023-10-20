@@ -43,6 +43,7 @@ atomic_type: Type = {
   "mutez" => Type::Mutez,
   "string" => Type::String,
   "unit" => Type::Unit,
+  "operation" => Type::Operation,
 }
 
 pair_args: Type = {
@@ -120,6 +121,7 @@ instruction: ParsedInstruction = {
   "SOME" => ISome,
   "COMPARE" => Compare,
   "AMOUNT" => Amount,
+  "NIL" <type_expr> => Nil(<>),
 }
 
 instructionSeq = semicolonSepSeq<instruction>;
