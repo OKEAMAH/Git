@@ -28,15 +28,17 @@ let%expect_test "test uint8 translation" =
       meta:
         id: ground_uint8
         endian: be
+      doc: ! 'Encoding id: ground_uint8'
       seq:
       - id: ground_uint8
         type: u1 |}]
   in
-  let _expected_ksy = expected_ksy "uint8.ksy" in
-  (*
-      print_endline expected_ksy ;
-      [%expect {||}] ; *)
+  (* let _expected_ksy = expected_ksy "uint8.ksy" in
+     (* *)
+         print_endline expected_ksy ;
+         [%expect {||}] ; *)
   print (fun () -> print_endline (Kaitai.Print.print s))
+(* print (fun () -> print_endline (Sys.getcwd ())) *)
 
 let%expect_test "test int8 translation" =
   let s =
@@ -50,6 +52,7 @@ let%expect_test "test int8 translation" =
     meta:
       id: ground_int8
       endian: be
+    doc: ! 'Encoding id: ground_int8'
     seq:
     - id: ground_int8
       type: s1
@@ -67,6 +70,7 @@ let%expect_test "test uint16 translation" =
     meta:
       id: ground_uint16
       endian: be
+    doc: ! 'Encoding id: ground_uint16'
     seq:
     - id: ground_uint16
       type: u2
@@ -84,6 +88,7 @@ let%expect_test "test int16 translation" =
     meta:
       id: ground_int16
       endian: be
+    doc: ! 'Encoding id: ground_int16'
     seq:
     - id: ground_int16
       type: s2
@@ -101,6 +106,7 @@ let%expect_test "test int32 translation" =
     meta:
       id: ground_int32
       endian: be
+    doc: ! 'Encoding id: ground_int32'
     seq:
     - id: ground_int32
       type: s4
@@ -118,6 +124,7 @@ let%expect_test "test int64 translation" =
     meta:
       id: ground_int64
       endian: be
+    doc: ! 'Encoding id: ground_int64'
     seq:
     - id: ground_int64
       type: s8
@@ -135,6 +142,7 @@ let%expect_test "test int31 translation" =
     meta:
       id: ground_int31
       endian: be
+    doc: ! 'Encoding id: ground_int31'
     seq:
     - id: ground_int31
       type: s4
@@ -152,6 +160,7 @@ let%expect_test "test float translation" =
     meta:
       id: ground_float
       endian: be
+    doc: ! 'Encoding id: ground_float'
     seq:
     - id: ground_float
       type: f8
@@ -169,6 +178,7 @@ let%expect_test "test bool translation" =
     meta:
       id: ground_bool
       endian: be
+    doc: ! 'Encoding id: ground_bool'
     enums:
       bool:
         0: false
@@ -191,6 +201,7 @@ let%expect_test "test dynamic size bytes translation" =
     meta:
       id: ground_bytes
       endian: be
+    doc: ! 'Encoding id: ground_bytes'
     seq:
     - id: size_of_ground_bytes
       type: s4
@@ -209,6 +220,7 @@ let%expect_test "test fixed size bytes translation" =
     meta:
       id: bytes_fixed_32
       endian: be
+    doc: ! 'Encoding id: bytes_fixed_32'
     seq:
     - id: bytes_fixed_32
       size: 32 |}]
@@ -225,6 +237,7 @@ let%expect_test "test variable size bytes translation" =
     meta:
       id: bytes_variable
       endian: be
+    doc: ! 'Encoding id: bytes_variable'
     seq:
     - id: bytes_variable
       size-eos: true |}]
@@ -241,6 +254,7 @@ let%expect_test "test dynamic size string translation" =
     meta:
       id: ground_string
       endian: be
+    doc: ! 'Encoding id: ground_string'
     seq:
     - id: size_of_ground_string
       type: s4
@@ -259,6 +273,7 @@ let%expect_test "test big numbers translation" =
     meta:
       id: ground_n
       endian: be
+    doc: ! 'Encoding id: ground_n'
     types:
       n:
         seq:
@@ -289,6 +304,7 @@ let%expect_test "test big numbers translation" =
     meta:
       id: ground_z
       endian: be
+    doc: ! 'Encoding id: ground_z'
     types:
       z:
         seq:

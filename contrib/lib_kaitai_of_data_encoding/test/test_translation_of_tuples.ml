@@ -18,6 +18,7 @@ let%expect_test "test tuple translation" =
     meta:
       id: simple_tuple
       endian: be
+    doc: ! 'Encoding id: simple_tuple'
     enums:
       bool:
         0: false
@@ -42,6 +43,7 @@ let%expect_test "test long tuple translation" =
     meta:
       id: simple_tuple
       endian: be
+    doc: ! 'Encoding id: simple_tuple'
     enums:
       bool:
         0: false
@@ -72,6 +74,7 @@ let%expect_test "test tup1 tuple translation" =
     meta:
       id: tup1
       endian: be
+    doc: ! 'Encoding id: tup1'
     seq:
     - id: tup1
       type: u1
@@ -90,6 +93,7 @@ let%expect_test "test tuples with tup1 translation" =
     meta:
       id: tup1tup
       endian: be
+    doc: ! 'Encoding id: tup1tup'
     types:
       tup1tup_field5:
         seq:
@@ -131,6 +135,7 @@ let%expect_test "test tuples with n inside translation" =
     meta:
       id: tup1tup
       endian: be
+    doc: ! 'Encoding id: tup1tup'
     types:
       tup1tup_field5:
         seq:
@@ -186,6 +191,7 @@ let%expect_test "test tuples descr inside" =
     meta:
       id: tupdef
       endian: be
+    doc: ! 'Encoding id: tupdef'
     types:
       n:
         seq:
