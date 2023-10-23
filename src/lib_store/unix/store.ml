@@ -1084,6 +1084,7 @@ module Chain = struct
                   (Block.predecessor block)
                   (Block.hash current_head)
              && Ringo.Ring.capacity live_data_cache = expected_capacity -> (
+          Profiler.record_s "updating live blocks cache" @@ fun () ->
           let most_recent_block = Block.hash block in
           let most_recent_ops =
             Block.all_operation_hashes block
@@ -1110,6 +1111,7 @@ module Chain = struct
               in
               Lwt.return (diffed_new_live_blocks, diffed_new_live_operations))
       | _ when update_cache ->
+          Profiler.record_s "create fresh live blocks cache" @@ fun () ->
           let new_cache = Ringo.Ring.create expected_capacity in
           let* () =
             Chain_traversal.live_blocks_with_ring
@@ -1127,7 +1129,9 @@ module Chain = struct
                 (Block_hash.Set.add bh bhs, Operation_hash.Set.union ops opss))
           in
           Lwt.return (live_blocks, live_ops)
-      | _ -> Chain_traversal.live_blocks chain_store block expected_capacity
+      | _ ->
+          Profiler.record_s "no live blocks cache" @@ fun () ->
+          Chain_traversal.live_blocks chain_store block expected_capacity
 
   let compute_live_blocks chain_store ~block =
     let open Lwt_result_syntax in
