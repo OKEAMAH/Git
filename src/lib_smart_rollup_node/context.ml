@@ -104,9 +104,15 @@ let raw_commit ?(message = "") index tree parents =
   in
   IStore.Commit.v index.repo ~info ~parents tree
 
+let set_head ctxt commit =
+  let open Lwt_syntax in
+  let* main = IStore.main ctxt.index.repo in
+  IStore.Head.set main commit
+
 let commit ?message ctxt =
   let open Lwt_syntax in
-  let+ commit = raw_commit ?message ctxt.index ctxt.tree ctxt.parents in
+  let* commit = raw_commit ?message ctxt.index ctxt.tree ctxt.parents in
+  let+ () = set_head ctxt commit in
   IStore.Commit.hash commit |> istore_hash_to_hash
 
 let checkout index key =
