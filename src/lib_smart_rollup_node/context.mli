@@ -71,7 +71,8 @@ val readonly : [> `Read] index -> [`Read] index
 
 (** [raw_commit ?message ctxt tree] commits the [tree] in the context repository
     [ctxt] on disk, and return the commit. *)
-val raw_commit : ?message:string -> [> `Write] index -> tree -> commit Lwt.t
+val raw_commit :
+  ?message:string -> [> `Write] index -> tree -> commit list -> commit Lwt.t
 
 (** [commit ?message context] commits content of the context [context] on disk,
     and return the commit hash. *)

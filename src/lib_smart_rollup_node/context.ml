@@ -53,7 +53,7 @@ type rw_index = [`Read | `Write] index
 
 type ro_index = [`Read] index
 
-type 'a t = {index : 'a index; tree : tree}
+type 'a t = {index : 'a index; tree : tree; parents : IStore.Commit.t list}
 
 type rw = [`Read | `Write] t
 
@@ -95,13 +95,18 @@ let close ctxt =
 
 let readonly (index : [> `Read] index) = (index :> [`Read] index)
 
-let raw_commit ?(message = "") index tree =
+let raw_commit ?(message = "") index tree parents =
   let info = IStore.Info.v ~author:"Tezos" 0L ~message in
-  IStore.Commit.v index.repo ~info ~parents:[] tree
+  let parents =
+    List.map
+      (fun c -> IStore.Commit.hash c |> Irmin_pack_unix.Pack_key.v_indexed)
+      parents
+  in
+  IStore.Commit.v index.repo ~info ~parents tree
 
 let commit ?message ctxt =
   let open Lwt_syntax in
-  let+ commit = raw_commit ?message ctxt.index ctxt.tree in
+  let+ commit = raw_commit ?message ctxt.index ctxt.tree ctxt.parents in
   IStore.Commit.hash commit |> istore_hash_to_hash
 
 let checkout index key =
@@ -111,9 +116,9 @@ let checkout index key =
   | None -> return_none
   | Some commit ->
       let tree = IStore.Commit.tree commit in
-      return_some {index; tree}
+      return_some {index; tree; parents = [commit]}
 
-let empty index = {index; tree = IStore.Tree.empty ()}
+let empty index = {index; tree = IStore.Tree.empty (); parents = []}
 
 let is_empty ctxt = IStore.Tree.is_empty ctxt.tree
 
@@ -207,7 +212,7 @@ struct
   let produce_proof index tree step =
     let open Lwt_syntax in
     (* Committing the context is required by Irmin to produce valid proofs. *)
-    let* _commit_key = raw_commit index tree in
+    let* _commit_key = raw_commit index tree [] in
     match Tree.kinded_key tree with
     | Some k ->
         let* p = IStoreProof.produce_tree_proof index.repo k step in
