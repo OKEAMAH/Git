@@ -5,8 +5,8 @@ const fs = require('fs');
 const csv = require('csv-stringify/sync')
 const utils = require("./utils")
 const OUTPUT = 'block_finalization_data.csv'
-const MODEL_INTERCEPT = 500000
-const MODEL_COEF_NB_TX = 36523
+const MODEL_INTERCEPT = 125000000
+const MODEL_COEF_NB_TX = 0
 
 function predict_current(datum) {
     return MODEL_COEF_NB_TX * datum.nb_tx + MODEL_INTERCEPT

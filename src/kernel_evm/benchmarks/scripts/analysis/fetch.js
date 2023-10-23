@@ -6,8 +6,8 @@ const fs = require('fs');
 const csv = require('csv-stringify/sync')
 const utils = require("./utils")
 const OUTPUT = 'fetch_data.csv'
-const MODEL_INTERCEPT = 165000
-const MODEL_COEF_SIZE = 600
+const MODEL_INTERCEPT = 310000000
+const MODEL_COEF_SIZE = 0
 const MODEL_COEF_NB_TX = 0
 
 function predict_current(fetch) {
