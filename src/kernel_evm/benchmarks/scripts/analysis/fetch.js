@@ -2,27 +2,43 @@
 const MLR = require("ml-regression-multivariate-linear")
 module.exports = { print_fetch_analysis }
 const number_formatter_compact = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'long' });
-const number_formatter = Intl.NumberFormat('en', {});
+const fs = require('fs');
+const csv = require('csv-stringify/sync');
+const OUTPUT = 'fetch_data.csv'
+const MODEL_INTERCEPT = 165000
+const MODEL_COEF_SIZE = 600
+const MODEL_COEF_NB_TX = 0
 
-function predict_naive_fetch(fetch) {
-    let nbtx = fetch[2]
-    let size = fetch[1]
+function predict_current(fetch) {
+    let nbtx = fetch.nb_tx
+    let size = fetch.size
     // return 800000 + 160 * size + 140000 * nbtx
     // taken from MLR + maximum negative error (as constant)
-    return 1030000 + 140 * size + 145000 * nbtx
+    // return 1030000 + 140 * size + 145000 * nbtx
+    return MODEL_INTERCEPT + nbtx * MODEL_COEF_NB_TX + size * MODEL_COEF_SIZE
 }
 
 function print_fetch_analysis(infos) {
-    let mlr = fetch_mlr(infos.fetch_data)
-    let lr_nbtx = fetch_regression_nb_tx(infos.fetch_data)
-    console.log(infos.fetch_data)
+    let mlr = compound_mlr(infos.fetch_data)
+    console.log(`fetch model: Y = ${mlr.weights[2][0]} + ${mlr.weights[0][0]} * size + ${mlr.weights[1][0]} * nbtx`)
+    let lr_nbtx = nb_tx_mlr(infos.fetch_data)
+    console.log(`fetch model: Y = ${lr_nbtx.weights[1][0]} + ${lr_nbtx.weights[0][0]} * nbtx `)
+    let size_lr = size_mlr(infos.fetch_data)
+    console.log(`fetch model: Y = ${size_lr.weights[1][0]} + ${size_lr.weights[0][0]} * size `)
+    const csv_config = {
+        header: true,
+        columns: ["benchmark_name", "size", "nb_tx", "ticks"]
+    };
+    fs.writeFileSync(OUTPUT, csv.stringify(infos.fetch_data, csv_config))
+    let max_error_current = 0;
+    let nb_error = 0
     for (datum of infos.fetch_data) {
-        let prediction = predict_naive_fetch(datum)
-        let prediction2 = mlr.predict([datum[1], datum[2]])
-        let prediction3 = lr_nbtx.predict([datum[2]])[0] + 1700000
-        let value = datum[0]
-        console.log(`prediction: ${prediction} (${compare(prediction, value)}) vs MLR ${prediction2} (${compare(prediction2, value)})  vs LR nbtx ${prediction3} (${compare(prediction3, value)})  vs value ${value}`)
+        let error = datum.ticks - predict_current(datum)
+        if (error > 0) nb_error += 1
+        max_error_current = Math.max(max_error_current, error)
     }
+    console.log(`current model: Y = ${MODEL_INTERCEPT} + ${MODEL_COEF_NB_TX} * nbtx + ${MODEL_COEF_SIZE} * size`)
+    console.log(`nb of errors: ${nb_error} ; maximum error: ${max_error_current}`)
 }
 
 function compare(prediction, value) {
@@ -33,28 +49,37 @@ function compare(prediction, value) {
 
 }
 
-function fetch_mlr(fetch_data) {
+function compound_mlr(fetch_data) {
     var X = []
     var Y = []
     for (datum of fetch_data) {
-        X.push([datum[1], datum[2]])
-        Y.push([datum[0]])
+        X.push([datum.size, datum.nb_tx])
+        Y.push([datum.ticks])
     }
     let mlr = new MLR(X, Y)
     // console.log(JSON.stringify(mlr.toJSON(), null, 2))
     // Y = A + B X0 + C X1
-    console.log(`Y = ${mlr.weights[2][0]} + ${mlr.weights[0][0]} * size + ${mlr.weights[1][0]} * nbtx`)
     return mlr
 }
 
-function fetch_regression_nb_tx(fetch_data) {
+function nb_tx_mlr(fetch_data) {
     var X = []
     var Y = []
     for (datum of fetch_data) {
-        X.push([datum[2]])
-        Y.push([datum[0]])
+        X.push([datum.nb_tx])
+        Y.push([datum.ticks])
     }
     let mlr = new MLR(X, Y)
-    console.log(`Y = ${mlr.weights[1][0]} + ${mlr.weights[0][0]} * nbtx `)
+    return mlr
+}
+
+function size_mlr(fetch_data) {
+    var X = []
+    var Y = []
+    for (datum of fetch_data) {
+        X.push([datum.size])
+        Y.push([datum.ticks])
+    }
+    let mlr = new MLR(X, Y)
     return mlr
 }

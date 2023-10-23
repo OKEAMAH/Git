@@ -8,6 +8,7 @@ const { is_transfer, is_create, is_transaction, BASE_GAS } = require('./utils')
 const fs = require('fs');
 const tx_register = require('./tx_register')
 const fetch = require('./fetch')
+const block_finalization = require('./block_finalization')
 
 const number_formatter_compact = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'long' });
 const number_formatter = Intl.NumberFormat('en', {});
@@ -32,7 +33,8 @@ function init_analysis() {
         nb_transfer: 0,
         kernel_runs: [],
         fetch_data: [],
-        tx_register: []
+        tx_register: [],
+        block_finalization: []
 
     };
     return empty
@@ -40,8 +42,15 @@ function init_analysis() {
 
 function print_analysis(infos) {
     const tickPerGas = infos.total_ticks_tx / infos.total_gas
+    console.info(`-------------------------------------------------------`)
+    console.info(`Fetch Analysis`)
     fetch.print_fetch_analysis(infos)
+    console.info(`-------------------------------------------------------`)
+    console.info(`Transaction Registering Analysis`)
     tx_register.print_analysis(infos)
+    console.info(`-------------------------------------------------------`)
+    console.info(`Block Finalization Analysis`)
+    block_finalization.print_analysis(infos)
     console.info(`-------------------------------------------------------`)
     console.info(`Kernels infos`)
     console.info(`Overall tick per gas: ~${tickPerGas.toFixed()}`)
@@ -53,10 +62,11 @@ function print_analysis(infos) {
     console.info(`-------------------------------------------------------`)
     console.info(`Benchmark run infos`)
     console.info(`Number of tx: ${infos.signatures.length}`)
-    console.info(`Number of kernel run: ${infos.nb_kernel_run}`)
     console.info(`Number of transfers: ${infos.nb_transfer}`)
     console.info(`Number of create: ${infos.nb_create}`)
     console.info(`Number of call: ${infos.nb_call}`)
+    console.info(`Number of kernel run: ${infos.nb_kernel_run}`)
+    console.info(`Number of blocks: ${infos.block_finalization.length}`)
     console.info(`-------------------------------------------------------`)
 
 }
@@ -73,14 +83,21 @@ function process_bench_record(record, acc) {
     if (!isNaN(record.interpreter_decode_ticks)) acc.nb_kernel_run += 1
     if (!isNaN(record.kernel_run_ticks)) acc.kernel_runs.push(record.kernel_run_ticks)
     if (!isNaN(record.fetch_blueprint_ticks) && !isNaN(record.nb_tx)) {
-        acc.fetch_data.push([record.fetch_blueprint_ticks, record.inbox_size, record.nb_tx, record.benchmark_name])
-        console.log(` ${record.benchmark_name},  ${record.inbox_size}, ${record.nb_tx}, ${record.fetch_blueprint_ticks}`)
+        acc.fetch_data.push({
+            ticks: record.fetch_blueprint_ticks,
+            size: record.inbox_size,
+            nb_tx: record.nb_tx,
+            benchmark_name: record.benchmark_name
+        })
     }
+    if (!isNaN(record.nb_tx)) acc.block_finalization.push({ benchmark_name: record.benchmark_name, nb_tx: record.nb_tx, size: record.inbox_size })
+    if (!isNaN(record.block_finalize)) acc.block_finalization.at(-1).block_finalize = record.block_finalize
 }
 
 function process_transaction_record(record, acc) {
     acc.signatures.push(record.signature_verification_ticks)
-    acc.tx_register.push([record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
+    if (!isNaN(record.tx_size) && !isNaN(record.store_transaction_object_ticks))
+        acc.tx_register.push([record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
     if (is_transfer(record)) process_transfer(record, acc)
     else if (is_create(record)) process_create(record, acc)
     else process_call(record, acc)
@@ -93,7 +110,6 @@ function process_transfer(record, acc) {
 
 function process_create(record, acc) {
     acc.nb_create++
-
 }
 
 function process_call(record, acc) {

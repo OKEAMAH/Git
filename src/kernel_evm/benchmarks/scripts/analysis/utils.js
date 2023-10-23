@@ -16,7 +16,8 @@ function is_create(record) {
 }
 
 function is_transaction(record) {
-    return !(isNaN(record.gas_cost)
-        || isNaN(record.run_transaction_ticks)
-        || isNaN(record.signature_verification_ticks))
+    return !isNaN(record.gas_cost)
+        || !isNaN(record.run_transaction_ticks)
+        || !isNaN(record.signature_verification_ticks)
+        || record.status
 }
