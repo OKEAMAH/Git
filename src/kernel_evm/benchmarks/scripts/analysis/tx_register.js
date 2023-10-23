@@ -7,14 +7,15 @@ const utils = require("./utils")
 const OUTPUT = 'register_tx_data.csv'
 const MODEL_OBJ = { intercept: 200000, coef: 880 }
 const MODEL_RECEIPT = { intercept: 200000, coef: 960 }
-const MODEL_LOGBLOOM = { intercept: 600000, coef: 100 }
+const MODEL_LOGBLOOM = { intercept: 5300, coef: 85000 }
 
 function predict_obj(model, x) {
+    if (isNaN(x)) return model.intercept
     return model.intercept + model.coef * x
 }
 
 function predict_register(datum) {
-    return predict_obj(MODEL_OBJ, datum.tx_size) + predict_obj(MODEL_RECEIPT, datum.receipt_size) + predict_obj(MODEL_LOGBLOOM, datum.receipt_size)
+    return predict_obj(MODEL_OBJ, datum.tx_size) + predict_obj(MODEL_RECEIPT, datum.receipt_size) + predict_obj(MODEL_LOGBLOOM, datum.log_size + datum.log_topic_size)
 }
 
 //[record.benchmark_name, record.tx_size, record.store_transaction_object_ticks])
@@ -37,9 +38,17 @@ function print_analysis(infos) {
         header: true,
         columns: ["benchmark_name", "receipt_size", "store_receipt_ticks"]
     }))
+    fs.writeFileSync("bloom_" + OUTPUT, csv.stringify(infos.tx_register, {
+        header: true,
+        columns: ["benchmark_name", "log_size", "log_topic_size", "logs_to_bloom"]
+    }))
 
-    console.log(`current model: Y = ${MODEL_OBJ.intercept} + ${MODEL_OBJ.coef} * size + ${MODEL_RECEIPT.intercept} + ${MODEL_RECEIPT.coef} * receipt size  + ${MODEL_LOGBLOOM.intercept} + ${MODEL_LOGBLOOM.coef} * receipt size`)
-    return utils.print_summary_errors(infos.tx_register, datum => { return datum.register_tx_ticks - predict_register(datum) })
+    console.log(`current model: Y = ${MODEL_OBJ.intercept} + ${MODEL_OBJ.coef} * size + ${MODEL_RECEIPT.intercept} + ${MODEL_RECEIPT.coef} * receipt size  + ${MODEL_LOGBLOOM.intercept} + ${MODEL_LOGBLOOM.coef} * bloom size`)
+    let error_receipt = utils.print_summary_errors(infos.tx_register, datum => { return datum.store_receipt_ticks - predict_obj(MODEL_RECEIPT, datum.receipt_size) })
+    let error_object = utils.print_summary_errors(infos.tx_register, datum => { return datum.tx_size - predict_obj(MODEL_RECEIPT, datum.receipt_size) })
+    let error_bloom = utils.print_summary_errors(infos.tx_register, datum => { return datum.logs_to_bloom - predict_obj(MODEL_LOGBLOOM, datum.log_size + datum.log_topic_size) })
+
+    return error_receipt + error_object + error_bloom
 }
 
 
