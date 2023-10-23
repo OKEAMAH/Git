@@ -12,16 +12,34 @@
 let read_file file = In_channel.with_open_text file In_channel.input_all
 
 let expected_ksy example_filename =
-  read_file @@ "contrib/lib_kaitai_of_data_encoding/test/expected/"
-  ^ example_filename
+  (* TODO: not sure this is the best way to reference file path? *)
+  read_file
+  @@ "../../../../../../../contrib/lib_kaitai_of_data_encoding/test/expected/"
+  ^ example_filename ^ ".ksy"
+
+(** [assert_encoding_translation_to_valid_ksy_spec ~encoding_id encoding expect_test]
+    guarantees that the expected [.ksy] file which we are asserting the correct
+    translation is a semantically valid one. As such it can be used to build
+    e2e tests.
+
+    Before running any test with [assert_encoding_translation_to_valid_ksy_spec]
+    the following script should pass:
+    [./contrib/lib_kaitai_of_data_encoding/test/ksdump.sh]!
+    
+    TODO: Improve this docstring. *)
+let assert_encoding_translation_to_valid_ksy_spec ~encoding_id encoding
+    expect_test =
+  let kaitai_spec =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:encoding_id
+      encoding
+  in
+  let expected_ksy = expected_ksy encoding_id in
+  expect_test (fun () -> print_endline (Kaitai.Print.print kaitai_spec)) ;
+  expect_test (fun () -> print_endline expected_ksy)
 
 let%expect_test "test uint8 translation" =
-  let s =
-    Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~id:"ground_uint8"
-      Data_encoding.uint8
-  in
-  let print f =
+  let expect_test f =
     f () ;
     [%expect
       {|
@@ -31,14 +49,13 @@ let%expect_test "test uint8 translation" =
       doc: ! 'Encoding id: ground_uint8'
       seq:
       - id: ground_uint8
-        type: u1 |}]
+        type: u1
+    |}]
   in
-  (* let _expected_ksy = expected_ksy "uint8.ksy" in
-     (* *)
-         print_endline expected_ksy ;
-         [%expect {||}] ; *)
-  print (fun () -> print_endline (Kaitai.Print.print s))
-(* print (fun () -> print_endline (Sys.getcwd ())) *)
+  assert_encoding_translation_to_valid_ksy_spec
+    ~encoding_id:"ground_uint8"
+    Data_encoding.uint8
+    expect_test
 
 let%expect_test "test int8 translation" =
   let s =

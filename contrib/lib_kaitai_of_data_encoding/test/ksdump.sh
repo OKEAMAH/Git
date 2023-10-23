@@ -46,7 +46,7 @@ validate_kaitai_spec() {
 
 
 # TODO: Make a loop: for every file inside `test/expected` do...
-encoding=uint8
+encoding=ground_uint8
 validation_output=$(validate_kaitai_spec $encoding 2>&1 )
 validation_status=$?
 if [ $validation_status -eq 0 ];
