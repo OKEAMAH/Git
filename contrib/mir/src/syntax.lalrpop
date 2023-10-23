@@ -77,6 +77,7 @@ extern {
         "GET" => Tok::Prim(PT::Prim(Prim::GET)),
         "UPDATE" => Tok::Prim(PT::Prim(Prim::UPDATE)),
         "UNPAIR" => Tok::Prim(PT::Prim(Prim::UNPAIR)),
+        "CONS" => Tok::Prim(PT::Prim(Prim::CONS)),
         "(" => Tok::LParen,
         ")" => Tok::RParen,
         "{" => Tok::LBrace,
@@ -176,6 +177,7 @@ atomic_instruction: ParsedInstruction = {
   "DROP" => Drop(None),
   "DUP" => Dup(None),
   "UNPAIR" => Unpair,
+  "CONS" => Cons,
 }
 
 instruction: ParsedInstruction = {
