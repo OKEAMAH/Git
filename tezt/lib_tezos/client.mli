@@ -534,6 +534,7 @@ val bake_for :
   ?context_path:string ->
   ?dal_node_endpoint:string ->
   ?expect_failure:bool ->
+  ?record_flag:bool ->
   t ->
   unit Lwt.t
 
@@ -564,6 +565,7 @@ val bake_for_and_wait :
   ?level_before:int ->
   ?node:Node.t ->
   ?dal_node_endpoint:string ->
+  ?record_flag:bool ->
   t ->
   unit Lwt.t
 
@@ -584,6 +586,7 @@ val bake_for_and_wait_level :
   ?level_before:int ->
   ?node:Node.t ->
   ?dal_node_endpoint:string ->
+  ?record_flag:bool ->
   t ->
   int Lwt.t
 
@@ -602,6 +605,7 @@ val spawn_bake_for :
   ?force:bool ->
   ?context_path:string ->
   ?dal_node_endpoint:string ->
+  ?record_flag:bool ->
   t ->
   Process.t
 
@@ -614,6 +618,7 @@ val attest_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   unit Lwt.t
 
@@ -623,6 +628,7 @@ val spawn_attest_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   Process.t
 
@@ -635,6 +641,7 @@ val preattest_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   unit Lwt.t
 
@@ -644,6 +651,7 @@ val spawn_preattest_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   Process.t
 
@@ -656,6 +664,7 @@ val spawn_propose_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   Process.t
 
@@ -669,6 +678,7 @@ val propose_for :
   ?protocol:Protocol.t ->
   ?key:string list ->
   ?force:bool ->
+  ?record_flag:bool ->
   t ->
   unit Lwt.t
 

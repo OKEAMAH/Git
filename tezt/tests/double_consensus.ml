@@ -78,6 +78,7 @@ let double_attestation_init
       ?protocol:Protocol.t ->
       ?key:string list ->
       ?force:bool ->
+      ?record_flag:bool ->
       Client.t ->
       unit Lwt.t) consensus_name protocol () =
   let* node, client = Client.init_with_protocol ~protocol `Client () in

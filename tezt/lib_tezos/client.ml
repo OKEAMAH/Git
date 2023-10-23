@@ -739,7 +739,7 @@ let empty_mempool_file ?(filename = "mempool.json") () =
 let spawn_bake_for ?endpoint ?protocol ?(keys = [Constant.bootstrap1.alias])
     ?minimal_fees ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte
     ?(minimal_timestamp = true) ?mempool ?(ignore_node_mempool = false) ?count
-    ?force ?context_path ?dal_node_endpoint client =
+    ?force ?context_path ?dal_node_endpoint ?record_flag client =
   spawn_command
     ?endpoint
     client
@@ -760,12 +760,16 @@ let spawn_bake_for ?endpoint ?protocol ?(keys = [Constant.bootstrap1.alias])
     @ optional_arg "count" string_of_int count
     @ (match force with None | Some false -> [] | Some true -> ["--force"])
     @ optional_arg "context" Fun.id context_path
-    @ optional_arg "dal-node" Fun.id dal_node_endpoint)
+    @ optional_arg "dal-node" Fun.id dal_node_endpoint
+    @
+    match record_flag with
+    | None | Some false -> []
+    | Some true -> ["--record-state"])
 
 let bake_for ?endpoint ?protocol ?keys ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?minimal_timestamp
     ?mempool ?ignore_node_mempool ?count ?force ?context_path ?dal_node_endpoint
-    ?expect_failure client =
+    ?expect_failure ?record_flag client =
   spawn_bake_for
     ?endpoint
     ?keys
@@ -780,13 +784,14 @@ let bake_for ?endpoint ?protocol ?keys ?minimal_fees
     ?context_path
     ?protocol
     ?dal_node_endpoint
+    ?record_flag
     client
   |> Process.check ?expect_failure
 
 let bake_for_and_wait_level ?endpoint ?protocol ?keys ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?minimal_timestamp
     ?mempool ?ignore_node_mempool ?count ?force ?context_path ?level_before
-    ?node ?dal_node_endpoint client =
+    ?node ?dal_node_endpoint ?record_flag client =
   let node =
     match node with
     | Some n -> n
@@ -817,6 +822,7 @@ let bake_for_and_wait_level ?endpoint ?protocol ?keys ?minimal_fees
       ?force
       ?context_path
       ?dal_node_endpoint
+      ?record_flag
       client
   in
   Node.wait_for_level node (actual_level_before + 1)
@@ -824,7 +830,7 @@ let bake_for_and_wait_level ?endpoint ?protocol ?keys ?minimal_fees
 let bake_for_and_wait ?endpoint ?protocol ?keys ?minimal_fees
     ?minimal_nanotez_per_gas_unit ?minimal_nanotez_per_byte ?minimal_timestamp
     ?mempool ?ignore_node_mempool ?count ?force ?context_path ?level_before
-    ?node ?dal_node_endpoint client =
+    ?node ?dal_node_endpoint ?record_flag client =
   let* (_level : int) =
     bake_for_and_wait_level
       ?endpoint
@@ -842,6 +848,7 @@ let bake_for_and_wait ?endpoint ?protocol ?keys ?minimal_fees
       ?level_before
       ?node
       ?dal_node_endpoint
+      ?record_flag
       client
   in
   unit
@@ -857,7 +864,7 @@ let tenderbake_action_to_string ~use_legacy_attestation_name = function
 
 let spawn_tenderbake_action_for ~tenderbake_action ?endpoint ?protocol
     ?(key = [Constant.bootstrap1.alias]) ?(minimal_timestamp = false)
-    ?(force = false) client =
+    ?(force = false) ?(record_flag = false) client =
   let use_legacy_attestation_name =
     match protocol with
     | None -> false
@@ -875,9 +882,11 @@ let spawn_tenderbake_action_for ~tenderbake_action ?endpoint ?protocol
       ]
     @ key
     @ (if minimal_timestamp then ["--minimal-timestamp"] else [])
-    @ if force then ["--force"] else [])
+    @
+    if force then ["--force"]
+    else [] @ if record_flag then ["--record-state"] else [])
 
-let spawn_attest_for ?endpoint ?protocol ?key ?force client =
+let spawn_attest_for ?endpoint ?protocol ?key ?force ?record_flag client =
   spawn_tenderbake_action_for
     ~tenderbake_action:Attest
     ~minimal_timestamp:false
@@ -885,9 +894,10 @@ let spawn_attest_for ?endpoint ?protocol ?key ?force client =
     ?protocol
     ?key
     ?force
+    ?record_flag
     client
 
-let spawn_preattest_for ?endpoint ?protocol ?key ?force client =
+let spawn_preattest_for ?endpoint ?protocol ?key ?force ?record_flag client =
   spawn_tenderbake_action_for
     ~tenderbake_action:Preattest
     ~minimal_timestamp:false
@@ -895,10 +905,11 @@ let spawn_preattest_for ?endpoint ?protocol ?key ?force client =
     ?protocol
     ?key
     ?force
+    ?record_flag
     client
 
-let spawn_propose_for ?endpoint ?minimal_timestamp ?protocol ?key ?force client
-    =
+let spawn_propose_for ?endpoint ?minimal_timestamp ?protocol ?key ?force
+    ?record_flag client =
   spawn_tenderbake_action_for
     ~tenderbake_action:Propose
     ?minimal_timestamp
@@ -906,17 +917,27 @@ let spawn_propose_for ?endpoint ?minimal_timestamp ?protocol ?key ?force client
     ?protocol
     ?key
     ?force
+    ?record_flag
     client
 
-let attest_for ?endpoint ?protocol ?key ?force client =
-  spawn_attest_for ?endpoint ?protocol ?key ?force client |> Process.check
+let attest_for ?endpoint ?protocol ?key ?force ?record_flag client =
+  spawn_attest_for ?endpoint ?protocol ?key ?force ?record_flag client
+  |> Process.check
 
-let preattest_for ?endpoint ?protocol ?key ?force client =
-  spawn_preattest_for ?endpoint ?protocol ?key ?force client |> Process.check
+let preattest_for ?endpoint ?protocol ?key ?force ?record_flag client =
+  spawn_preattest_for ?endpoint ?protocol ?key ?force ?record_flag client
+  |> Process.check
 
 let propose_for ?endpoint ?(minimal_timestamp = true) ?protocol ?key ?force
-    client =
-  spawn_propose_for ?endpoint ?protocol ?key ?force ~minimal_timestamp client
+    ?record_flag client =
+  spawn_propose_for
+    ?endpoint
+    ?protocol
+    ?key
+    ?force
+    ~minimal_timestamp
+    ?record_flag
+    client
   |> Process.check
 
 let id = ref 0

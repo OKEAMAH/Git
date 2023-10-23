@@ -128,6 +128,9 @@ val liquidity_baking_votefile : ?path:string -> liquidity_baking_vote -> string
     [operations_pool] and [force_apply] are passed to the baker daemon through
     the flag [--operations-pool] and [--force_apply].
 
+    [record_flag] is passed to the baker daemon through the flag
+    [--record-state].
+
     If [remote_mode] is specified, the baker will run in RPC-only mode.
 
     If [dal_node] is specified, then it is the DAL node that the baker queries
@@ -152,6 +155,7 @@ val create :
   ?operations_pool:string ->
   ?dal_node:Dal_node.t ->
   ?minimal_nanotez_per_gas_unit:int ->
+  ?record_flag:bool ->
   Node.t ->
   Client.t ->
   t
@@ -189,6 +193,7 @@ val create_from_uris :
   ?operations_pool:string ->
   ?dal_node_rpc_endpoint:Endpoint.t ->
   ?minimal_nanotez_per_gas_unit:int ->
+  ?record_flag:bool ->
   base_dir:string ->
   node_data_dir:string ->
   node_rpc_endpoint:Endpoint.t ->
@@ -230,6 +235,9 @@ val create_from_uris :
     [--votefile], [--liquidity-baking-toggle-vote], [--should-apply]
     respectively [--operations-pool].
 
+    [record_flag] is passed to the baker daemon through the 
+    [--record-state] flag.
+
     If [remote_mode] is specified, the baker will run in RPC-only mode.
 
     If [dal_node] is specified, then it is the DAL node that the baker queries
@@ -250,6 +258,7 @@ val init :
   ?operations_pool:string ->
   ?dal_node:Dal_node.t ->
   ?minimal_nanotez_per_gas_unit:int ->
+  ?record_flag:bool ->
   Node.t ->
   Client.t ->
   t Lwt.t

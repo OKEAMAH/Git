@@ -453,8 +453,46 @@ let test_baker_external_operations =
   in
   unit
 
+let test_baker_record_state =
+  let _record_flag = true in
+  Protocol.register_test
+    ~__FILE__
+    ~title:"Baker record state"
+    ~tags:["baker"; "record"; "state"]
+  @@ fun protocol ->
+  let* node, client =
+    Client.init_with_protocol ~timestamp:Now ~protocol `Client ()
+  in
+  let keys =
+    Array.map
+      (fun Account.{public_key_hash; _} -> public_key_hash)
+      Account.Bootstrap.keys
+    |> Array.to_list
+  in
+  let* () = Client.bake_for_and_wait ~keys client in
+  let* level = Node.get_level node in
+
+  let* _baker = Baker.init ~protocol node client in
+  let* (_ : int) = Node.wait_for_level node (level + 1) in
+
+  let* chain_id = Client.RPC.call client (RPC.get_chain_chain_id ()) in
+  let chain_id =
+    Tezos_crypto.Hashed.Chain_id.to_short_b58check
+      (Tezos_crypto.Hashed.Chain_id.of_b58check_exn chain_id)
+  in
+  let record_state_file = chain_id ^ "_baker_state" in
+  let base_dir = Client.base_dir client in
+  let dir_contents = Array.to_list @@ Sys.readdir base_dir in
+  Check.(
+    (List.mem record_state_file dir_contents = true)
+      bool
+      ~__LOC__
+      ~error_msg:"The file presence: %L, but its presence should have been: %R") ;
+  unit
+
 let register ~protocols =
   test_ignore_node_mempool protocols ;
   test_bake_empty_operations protocols ;
   test_bake_singleton_operations protocols ;
-  test_baker_external_operations protocols
+  test_baker_external_operations protocols ;
+  test_baker_record_state protocols
