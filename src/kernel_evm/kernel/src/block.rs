@@ -415,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    // Test if the invalid transactions are producing receipts with invalid status
+    // Test if the invalid transactions are producing receipts
     fn test_invalid_transactions_receipt_status() {
         let mut host = MockHost::default();
 
@@ -448,9 +448,10 @@ mod tests {
         )
         .expect("The block production failed.");
 
-        let status = read_transaction_receipt_status(&mut host, &tx_hash)
-            .expect("Should have found receipt");
-        assert_eq!(TransactionStatus::Failure, status);
+        assert!(
+            read_transaction_receipt_status(&mut host, &tx_hash).is_err(),
+            "Invalid transaction should not have a receipt"
+        );
     }
 
     #[test]
@@ -493,17 +494,6 @@ mod tests {
         assert_eq!(TransactionStatus::Success, status);
     }
 
-    #[test]
-    fn playground() {
-        let v = vec![1, 2, 3, 4];
-        let l1 = v.len();
-        let mut iter = v.into_iter();
-        println!("{:?}", iter.next());
-        let mut rest = vec![];
-        rest.extend(iter);
-        println!("{:?}", rest);
-        assert!(l1 > rest.len());
-    }
     #[test]
     // Test if a valid transaction is producing a receipt with a contract address
     fn test_valid_transactions_receipt_contract_address() {
@@ -1127,17 +1117,14 @@ mod tests {
             DUMMY_BASE_FEE_PER_GAS.into(),
         )
         .expect("The block production failed.");
-        let receipt = read_transaction_receipt(&mut host, &tx_hash)
-            .expect("should have found receipt");
-        assert_eq!(
-            receipt.status,
-            TransactionStatus::Failure,
-            "transaction should have failed"
+        assert!(
+            read_transaction_receipt(&mut host, &tx_hash).is_err(),
+            "Transaction is invalid, so should not have a receipt"
         );
 
-        // Nonce should have been bumped
+        // Nonce should not have been bumped
         let nonce = caller_account.nonce(&host).unwrap();
-        assert_eq!(nonce, default_nonce + 1, "nonce should have been bumped");
+        assert_eq!(nonce, default_nonce, "nonce should not have been bumped");
     }
 
     /// A queue that should produce 1 block with an invalid transaction
