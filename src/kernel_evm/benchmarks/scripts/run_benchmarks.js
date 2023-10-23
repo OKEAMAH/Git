@@ -40,9 +40,10 @@ function push_match(output, array, regexp) {
     }
 }
 
-function run_profiler(path) {
+function run_profiler(path, logs) {
 
     profiler_result = new Promise((resolve, _) => {
+
 
         var gas_used = [];
 
@@ -70,6 +71,7 @@ function run_profiler(path) {
 
         childProcess.stdout.on('data', (data) => {
             const output = data.toString();
+            if (!output.includes("__wasm_debugger__::Section")) fs.appendFileSync(logs, output)
             const profiler_output_path_regex = /Profiling result can be found in (.+)/;
             const profiler_output_path_match = output.match(profiler_output_path_regex);
             const profiler_output_path_result = profiler_output_path_match
@@ -169,6 +171,8 @@ async function analyze_profiler_output(path) {
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
     fetch_blueprint_ticks = await get_ticks(path, "blueprint5fetch");
     block_finalize = await get_ticks(path, "store_current_block");
+    bip_store_ticks = await get_ticks(path, "store_block_in_progress");
+    bip_read_ticks = await get_ticks(path, "read_block_in_progress");
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -179,14 +183,16 @@ async function analyze_profiler_output(path) {
         fetch_blueprint_ticks: fetch_blueprint_ticks,
         sputnik_runtime_ticks: sputnik_runtime_ticks,
         store_receipt_ticks,
-        block_finalize
+        block_finalize,
+        bip_store_ticks,
+        bip_read_ticks
     };
 }
 
 // Run given benchmark
-async function run_benchmark(path) {
+async function run_benchmark(path, logs) {
     var inbox_size = fs.statSync(path).size
-    run_profiler_result = await run_profiler(path);
+    run_profiler_result = await run_profiler(path, logs);
     profiler_output_analysis_result = await analyze_profiler_output(run_profiler_result.profiler_output_path);
     return {
         inbox_size,
@@ -222,6 +228,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     tx_size = run_benchmark_result.tx_size;
     bip_read = run_benchmark_result.bip_read;
     bip_store = run_benchmark_result.bip_store;
+    bip_store_ticks = run_benchmark_result.bip_store_ticks;
+    bip_read_ticks = run_benchmark_result.bip_read_ticks;
 
     console.log(`Number of transactions: ${tx_status.length}`)
     run_time_index = 0;
@@ -273,6 +281,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         console.log("Warning: runtime not matched with a transaction in: " + benchmark_name);
     }
 
+    let bip_idx = 0
     // first kernel run
     // the nb of tx correspond to the full inbox, not just those done in first run
     rows.push({
@@ -284,7 +293,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         estimated_ticks: estimated_ticks[0],
         inbox_size: run_benchmark_result.inbox_size,
         nb_tx: tx_status.length,
-        bip_store: bip_store[0] ? bip_store[0] : 0
+        bip_store: bip_store[0] ? bip_store[0] : '',
+        bip_store_ticks: bip_store[0] ? bip_store_ticks[bip_idx++] : ''
     });
 
     //reboots
@@ -296,9 +306,12 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             fetch_blueprint_ticks: fetch_blueprint_ticks[j],
             kernel_run_ticks: kernel_run_ticks[j],
             estimated_ticks: estimated_ticks[j],
-            bip_store: bip_store[j] ? bip_store[j] : 0,
-            bip_read: bip_read[j - 1] // the first read correspond to second run
+            bip_store: bip_store[j] ? bip_store[j] : '',
+            bip_store_ticks: bip_store[j] ? bip_store_ticks[bip_idx] : '',
+            bip_read: bip_read[j - 1], // the first read correspond to second run
+            bip_read_ticks: bip_read[j - 1] ? bip_read_ticks[bip_idx - 1] : ''
         });
+        if (bip_read[j - 1]) bip_idx++
     }
 
     // ticks that are not covered by identified area of interest
@@ -326,6 +339,10 @@ function output_filename() {
     return path.format({ dir: OUTPUT_DIRECTORY, base: `benchmark_result_${timestamp()}.csv` })
 }
 
+function logs_filename() {
+    return path.format({ dir: OUTPUT_DIRECTORY, base: `logs_${timestamp()}.log` })
+}
+
 // Run the benchmark suite and write the result to benchmark_result_${TIMESTAMP}.csv
 async function run_all_benchmarks(benchmark_scripts) {
     console.log(`Running benchmarks on: [${benchmark_scripts.join('\n  ')}]`);
@@ -347,7 +364,9 @@ async function run_all_benchmarks(benchmark_scripts) {
         "inbox_size",
         "fetch_blueprint_ticks",
         "bip_read",
+        "bip_read_ticks",
         "bip_store",
+        "bip_store_ticks",
         "block_finalize",
         "kernel_run_ticks",
         "unaccounted_ticks",
@@ -356,86 +375,99 @@ async function run_all_benchmarks(benchmark_scripts) {
     console.log(`Output in ${output}`);
     const csv_config = { columns: fields };
     fs.writeFileSync(output, csv.stringify([], { header: true, ...csv_config }));
+    let logs = logs_filename()
+    fs.writeFileSync(logs, "Logging debugger\n")
+    console.log(`Full logs in ${logs}`)
     for (var i = 0; i < benchmark_scripts.length; i++) {
         var benchmark_script = benchmark_scripts[i];
         var parts = benchmark_script.split("/");
         var benchmark_name = parts[parts.length - 1].split(".")[0];
         console.log(`Benchmarking ${benchmark_script}`);
+        fs.appendFileSync(logs, `=================================================\nBenchmarking ${benchmark_script}\n`)
         build_benchmark_scenario(benchmark_script);
-        run_benchmark_result = await run_benchmark("transactions.json");
+        run_benchmark_result = await run_benchmark("transactions.json", logs);
         benchmark_log = log_benchmark_result(benchmark_name, run_benchmark_result);
         fs.appendFileSync(output, csv.stringify(benchmark_log, csv_config));
     }
     console.log("Benchmarking complete");
+    fs.writeFileSync(logs, "=================================================\nBenchmarking complete.\n")
     execSync("rm transactions.json");
 }
 
 benchmark_scripts = [
-    "benchmarks/bench_storage_1.js",
-    "benchmarks/bench_storage_2.js",
-    "benchmarks/bench_transfers_1.js",
-    "benchmarks/bench_transfers_2.js",
-    "benchmarks/bench_transfers_3.js",
-    "benchmarks/bench_keccak.js",
-    "benchmarks/bench_verifySignature.js",
-    "benchmarks/bench_erc20tok.js",
-    "benchmarks/bench_read_info.js",
+    // "benchmarks/bench_storage_1.js",
+    // "benchmarks/bench_storage_2.js",
+    // "benchmarks/bench_transfers_1.js",
+    // "benchmarks/bench_transfers_2.js",
+    // "benchmarks/bench_transfers_3.js",
+    // "benchmarks/bench_keccak.js",
+    // "benchmarks/bench_verifySignature.js",
+    // "benchmarks/bench_erc20tok.js",
+    // "benchmarks/bench_read_info.js",
 
-    "benchmarks/scenarios/solidity_by_example/bench_abi_decode.js",
-    "benchmarks/scenarios/solidity_by_example/bench_abi_encode.js",
-    "benchmarks/scenarios/solidity_by_example/bench_array.js",
-    "benchmarks/scenarios/solidity_by_example/bench_assembly_error.js",
-    "benchmarks/scenarios/solidity_by_example/bench_assembly_loop.js",
-    "benchmarks/scenarios/solidity_by_example/bench_assembly_variable.js",
-    "benchmarks/scenarios/solidity_by_example/bench_bitwise_op.js",
-    "benchmarks/scenarios/solidity_by_example/bench_counter.js",
-    "benchmarks/scenarios/solidity_by_example/bench_create_contract.js",
-    "benchmarks/scenarios/solidity_by_example/bench_delegatecall.js",
-    "benchmarks/scenarios/solidity_by_example/bench_enum.js",
-    "benchmarks/scenarios/solidity_by_example/bench_event.js",
-    "benchmarks/scenarios/solidity_by_example/bench_function_modifier.js",
-    "benchmarks/scenarios/solidity_by_example/bench_function_selector.js",
-    "benchmarks/scenarios/solidity_by_example/bench_immutable.js",
-    "benchmarks/scenarios/solidity_by_example/bench_mapping.js",
-    "benchmarks/scenarios/solidity_by_example/bench_payable.js",
-    "benchmarks/scenarios/solidity_by_example/bench_send_ether.js",
-    "benchmarks/scenarios/solidity_by_example/bench_struct.js",
-    "benchmarks/scenarios/solidity_by_example/bench_ether_wallet.js",
-    "benchmarks/scenarios/solidity_by_example/bench_multi_sig_wallet.js",
-    "benchmarks/scenarios/solidity_by_example/bench_merkle_tree.js",
-    "benchmarks/scenarios/solidity_by_example/bench_iterable_map.js",
-    "benchmarks/scenarios/solidity_by_example/bench_erc721.js",
-    "benchmarks/scenarios/solidity_by_example/bench_bytecode_contract.js",
-    "benchmarks/scenarios/solidity_by_example/bench_create2.js",
-    "benchmarks/scenarios/solidity_by_example/bench_minimal_proxy.js",
-    "benchmarks/scenarios/solidity_by_example/bench_upgradeable_proxy.js",
-    "benchmarks/scenarios/solidity_by_example/bench_binary_exponentiation.js",
-    "benchmarks/bench_erc1155.js",
-    "benchmarks/bench_selfdestruct.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_abi_decode.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_abi_encode.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_array.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_assembly_error.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_assembly_loop.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_assembly_variable.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_bitwise_op.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_counter.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_create_contract.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_delegatecall.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_enum.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_event.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_function_modifier.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_function_selector.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_immutable.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_mapping.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_payable.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_send_ether.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_struct.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_ether_wallet.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_multi_sig_wallet.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_merkle_tree.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_iterable_map.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_erc721.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_bytecode_contract.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_create2.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_minimal_proxy.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_upgradeable_proxy.js",
+    // "benchmarks/scenarios/solidity_by_example/bench_binary_exponentiation.js",
+    // "benchmarks/bench_erc1155.js",
+    // "benchmarks/bench_selfdestruct.js",
 
-    "benchmarks/bench_creates_erc20.js",
-    "benchmarks/bench_creates_erc1155.js",
+    // "benchmarks/bench_creates_erc20.js",
+    // "benchmarks/bench_creates_erc1155.js",
 
-    "benchmarks/bench_linear_transfers.js 0",
-    "benchmarks/bench_linear_transfers.js 5",
-    "benchmarks/bench_linear_transfers.js 10",
-    "benchmarks/bench_linear_transfers.js 15",
-    "benchmarks/bench_linear_transfers.js 20",
-    "benchmarks/bench_linear_transfers.js 25",
-    "benchmarks/bench_linear_transfers.js 30",
+    // "benchmarks/bench_linear_transfers.js 0",
+    // "benchmarks/bench_linear_transfers.js 5",
+    // "benchmarks/bench_linear_transfers.js 10",
+    // "benchmarks/bench_linear_transfers.js 15",
+    // "benchmarks/bench_linear_transfers.js 20",
+    // "benchmarks/bench_linear_transfers.js 25",
+    // "benchmarks/bench_linear_transfers.js 30",
 
-    "benchmarks/bench_linear_erc20.js 0",
-    "benchmarks/bench_linear_erc20.js 5",
-    "benchmarks/bench_linear_erc20.js 10",
-    "benchmarks/bench_linear_erc20.js 15",
-    "benchmarks/bench_linear_erc20.js 20",
-    "benchmarks/bench_linear_erc20.js 25",
-    "benchmarks/bench_linear_erc20.js 30",
+    // "benchmarks/bench_linear_erc20.js 0",
+    // "benchmarks/bench_linear_erc20.js 5",
+    // "benchmarks/bench_linear_erc20.js 10",
+    // "benchmarks/bench_linear_erc20.js 15",
+    // "benchmarks/bench_linear_erc20.js 20",
+    // "benchmarks/bench_linear_erc20.js 25",
+    // "benchmarks/bench_linear_erc20.js 30",
+
+    "benchmarks/bench_loop_calldataload.js",
+
+    // fishing for reboots
 
     "benchmarks/bench_loop_progressive.js",
     "benchmarks/bench_loop_expensive.js",
 
-    "benchmarks/bench_loop_calldataload.js"
+    "benchmarks/bench_linear_transfers.js 200",
+    "benchmarks/bench_linear_erc20.js 200",
+    "benchmarks/bench_linear_erc1155.js 20",
+    "benchmarks/bench_linear_erc1155_create.js 200",
+    "benchmarks/bench_linear_verifySignature.js 200",
 ]
 
 run_all_benchmarks(benchmark_scripts);
