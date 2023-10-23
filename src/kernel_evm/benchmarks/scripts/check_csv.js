@@ -7,7 +7,6 @@
 let fs = require('fs')
 let analysis = require("./analysis/analysis")
 let graphs = require("./analysis/graph")
-let sanity = require("./analysis/sanity")
 let { parse } = require('csv-parse')
 
 var args = process.argv.slice(2)
@@ -29,7 +28,6 @@ const cast_value = function (value, context) {
 const processFile = async () => {
     const acc = analysis.init_analysis()
     const graph_acc = graphs.init_graphs()
-    const sanity_acc = sanity.init_sanity()
     const parser = fs
         .createReadStream(`${filename}`)
         .pipe(parse({
@@ -40,16 +38,14 @@ const processFile = async () => {
         }))
     for await (const record of parser) {
         // Work with each record
-        sanity.check_record(sanity_acc, record)
         analysis.process_record(record, acc)
         graphs.process_record(record, graph_acc)
     }
-    return { analysis: acc, graphs: graph_acc, sanity: sanity_acc }
+    return { analysis: acc, graphs: graph_acc }
 }
 
 (async () => {
     const infos = await processFile()
     let exit_status = analysis.check_result(infos.analysis)
-    sanity.print_summary(infos.sanity)
     process.exit(exit_status)
 })()
