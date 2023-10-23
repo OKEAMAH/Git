@@ -9,22 +9,34 @@
 (* This test suite is meant to test translation of ground encodings
    to [Kaitai.Types.ClassSpec.t] *)
 
+let read_file file = In_channel.with_open_text file In_channel.input_all
+
+let expected_ksy example_filename =
+  read_file @@ "contrib/lib_kaitai_of_data_encoding/test/expected/"
+  ^ example_filename
+
 let%expect_test "test uint8 translation" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
       ~id:"ground_uint8"
       Data_encoding.uint8
   in
-  print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: ground_uint8
-      endian: be
-    seq:
-    - id: ground_uint8
-      type: u1
-  |}]
+  let print f =
+    f () ;
+    [%expect
+      {|
+      meta:
+        id: ground_uint8
+        endian: be
+      seq:
+      - id: ground_uint8
+        type: u1 |}]
+  in
+  let _expected_ksy = expected_ksy "uint8.ksy" in
+  (*
+      print_endline expected_ksy ;
+      [%expect {||}] ; *)
+  print (fun () -> print_endline (Kaitai.Print.print s))
 
 let%expect_test "test int8 translation" =
   let s =
