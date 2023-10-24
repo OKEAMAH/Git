@@ -134,7 +134,12 @@ type t = {
   no_degraded : bool;
   gc_parameters : gc_parameters;
   history_mode : history_mode;
+  cors : Resto_cohttp.Cors.t;
 }
+
+type error +=
+  | Missing_mode_operators of {mode : string; missing_operators : string list}
+  | Empty_operation_kinds_for_custom_mode
 
 (** [make_purpose_map ~default purposes] constructs a purpose map from a list of
     bindings [purposes], with a potential [default] value. *)
@@ -316,6 +321,8 @@ module Cli : sig
     no_degraded:bool ->
     gc_frequency:int32 option ->
     history_mode:history_mode option ->
+    allowed_origins:string list option ->
+    allowed_headers:string list option ->
     t tzresult
 
   val create_or_read_config :
@@ -344,5 +351,7 @@ module Cli : sig
     no_degraded:bool ->
     gc_frequency:int32 option ->
     history_mode:history_mode option ->
+    allowed_origins:string list option ->
+    allowed_headers:string list option ->
     t tzresult Lwt.t
 end

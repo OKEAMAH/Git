@@ -290,6 +290,9 @@ seq:
 - id: smart_rollup_private_enable
   type: u1
   enum: bool
+- id: smart_rollup_riscv_pvm_enable
+  type: u1
+  enum: bool
 - id: zk_rollup_enable
   type: u1
   enum: bool
