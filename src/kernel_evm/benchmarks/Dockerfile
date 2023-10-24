@@ -1,5 +1,5 @@
 # FROM tezos/tezos-debug:amd64_master
-FROM registry.gitlab.com/tezos/tezos/debug:amd64_pec_evm_bench_analyse_bloom
+FROM registry.gitlab.com/tezos/tezos/debug:amd64_pec_evm_bench_analyze_data
 WORKDIR /home/tezos
 
 RUN mkdir -p scripts
