@@ -350,7 +350,13 @@ let balance_of_account account_name (account_map : account_map) =
   | None -> raise Not_found
   | Some account ->
       let balance =
-        {balance_zero with liquid_b = account.liquid; bonds_b = account.bonds}
+        {
+          balance_zero with
+          liquid_b = account.liquid;
+          bonds_b = account.bonds;
+          staking_delegator_numerator_b = account.staking_delegator_numerator;
+          staking_delegate_denominator_b = account.staking_delegate_denominator;
+        }
       in
       let balance =
         match account.delegate with
