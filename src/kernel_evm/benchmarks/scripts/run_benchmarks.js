@@ -56,6 +56,7 @@ function run_profiler(path, logs) {
         var receipt_size = [];
         let log_size = [];
         let log_topic_size = [];
+        let nb_reboots = 0;
 
         var profiler_output_path = "";
 
@@ -88,11 +89,12 @@ function run_profiler(path, logs) {
             push_match(output, estimated_ticks, /\bEstimated ticks:\s*(\d+)/g)
             push_match(output, estimated_ticks_per_tx, /\bEstimated ticks after tx:\s*(\d+)/g)
             push_match(output, tx_size, /\bStoring transaction object of size\s*(\d+)/g)
-            push_match(output, bip_store, /\bStoring Block in Progress of size\s*(\d+)/g)
-            push_match(output, bip_read, /\bReading Block in Progress of size\s*(\d+)/g)
+            push_match(output, bip_store, /\bStoring Queue of size\s*(\d+)/g)
+            push_match(output, bip_read, /\bReading Queue of size\s*(\d+)/g)
             push_match(output, receipt_size, /\bStoring receipt of size \s*(\d+)/g)
             push_match(output, log_size, /\[Benchmarking\] log size:\s*(\d+)/g)
             push_match(output, log_topic_size, /\[Benchmarking\] log topic size:\s*(\d+)/g)
+            if (output.includes("Kernel was rebooted.")) nb_reboots++
 
         });
         childProcess.on('close', _ => {
@@ -119,6 +121,12 @@ function run_profiler(path, logs) {
             }
             if (log_topic_size.length != log_size.length) {
                 console.log(new Error("Missing log topic size value (expected: " + log_size.length + ", actual: " + log_topic_size.length + ")"));
+            }
+            if (bip_store.length != nb_reboots) {
+                console.log(new Error("Missing stored queue size value (expected: " + nb_reboots + ", actual: " + bip_store.length + ")"));
+            }
+            if (bip_read.length != nb_reboots) {
+                console.log(new Error("Missing read queue size value (expected: " + nb_reboots + ", actual: " + bip_read.length + ")"));
             }
             resolve({
                 profiler_output_path,
@@ -183,13 +191,9 @@ async function analyze_profiler_output(path) {
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
     fetch_blueprint_ticks = await get_ticks(path, "blueprint5fetch");
     block_finalize = await get_ticks(path, "store_current_block");
-<<<<<<< HEAD
-    bip_store_ticks = await get_ticks(path, "store_block_in_progress");
-    bip_read_ticks = await get_ticks(path, "read_block_in_progress");
-=======
+    bip_store_ticks = await get_ticks(path, "store_queue");
+    bip_read_ticks = await get_ticks(path, "read_queue");
     logs_to_bloom = await get_ticks(path, "logs_to_bloom");
-
->>>>>>> c50e094fb2... EVM: measure logs to bloom
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -201,12 +205,9 @@ async function analyze_profiler_output(path) {
         sputnik_runtime_ticks: sputnik_runtime_ticks,
         store_receipt_ticks,
         block_finalize,
-<<<<<<< HEAD
         bip_store_ticks,
-        bip_read_ticks
-=======
+        bip_read_ticks,
         logs_to_bloom
->>>>>>> c50e094fb2... EVM: measure logs to bloom
     };
 }
 
@@ -417,7 +418,7 @@ async function run_all_benchmarks(benchmark_scripts) {
         fs.appendFileSync(output, csv.stringify(benchmark_log, csv_config));
     }
     console.log("Benchmarking complete");
-    fs.writeFileSync(logs, "=================================================\nBenchmarking complete.\n")
+    fs.appendFileSync(logs, "=================================================\nBenchmarking complete.\n")
     execSync("rm transactions.json");
 }
 
@@ -461,7 +462,7 @@ benchmark_scripts = [
     // "benchmarks/scenarios/solidity_by_example/bench_minimal_proxy.js",
     // "benchmarks/scenarios/solidity_by_example/bench_upgradeable_proxy.js",
     // "benchmarks/scenarios/solidity_by_example/bench_binary_exponentiation.js",
-    // "benchmarks/bench_erc1155.js",
+    "benchmarks/bench_erc1155.js",
     // "benchmarks/bench_selfdestruct.js",
 
     // "benchmarks/bench_creates_erc20.js",
@@ -483,18 +484,18 @@ benchmark_scripts = [
     // "benchmarks/bench_linear_erc20.js 25",
     // "benchmarks/bench_linear_erc20.js 30",
 
-    "benchmarks/bench_loop_calldataload.js",
+    // "benchmarks/bench_loop_calldataload.js",
 
     // fishing for reboots
 
-    "benchmarks/bench_loop_progressive.js",
+    // "benchmarks/bench_loop_progressive.js",
     // "benchmarks/bench_loop_expensive.js",
 
-    "benchmarks/bench_linear_transfers.js 200",
-    "benchmarks/bench_linear_erc20.js 200",
-    "benchmarks/bench_linear_erc1155.js 20",
-    "benchmarks/bench_linear_erc1155_create.js 200",
-    "benchmarks/bench_linear_verifySignature.js 200",
+    // "benchmarks/bench_linear_transfers.js 200",
+    // "benchmarks/bench_linear_erc20.js 200",
+    // "benchmarks/bench_linear_erc1155.js 20",
+    // "benchmarks/bench_linear_erc1155_create.js 200",
+    // "benchmarks/bench_linear_verifySignature.js 200",
 ]
 
 run_all_benchmarks(benchmark_scripts);
