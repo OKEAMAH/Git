@@ -461,7 +461,7 @@ benchmark_scripts = [
     // fishing for reboots
 
     "benchmarks/bench_loop_progressive.js",
-    "benchmarks/bench_loop_expensive.js",
+    // "benchmarks/bench_loop_expensive.js",
 
     "benchmarks/bench_linear_transfers.js 200",
     "benchmarks/bench_linear_erc20.js 200",
