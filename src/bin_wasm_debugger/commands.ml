@@ -523,13 +523,14 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
   (* [load_inputs_gen inboxes level tree] reads the next inbox from [inboxes], set the
      messages at [level] in the [tree], and returns the remaining inbox, the next
      level and the tree. *)
-  let load_inputs_gen inboxes level tree =
+  let load_inputs_gen ?time_between_blocks inboxes level tree =
     let open Lwt_result_syntax in
     match Seq.uncons inboxes with
     | Some (inputs, inboxes) ->
         let* tree =
           trap_exn (fun () ->
               set_full_input_step_gen
+                ?time_between_blocks
                 set_raw_message_input_step
                 inputs
                 level
@@ -546,17 +547,17 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
         let*! () = Lwt_fmt.printf "No more inputs at level %ld\n%!" level in
         return (tree, inboxes, level)
 
-  let load_inputs inboxes level tree =
+  let load_inputs ?time_between_blocks inboxes level tree =
     let open Lwt_result_syntax in
     let*! status = check_input_request tree in
     match status with
-    | Ok () -> load_inputs_gen inboxes level tree
+    | Ok () -> load_inputs_gen ?time_between_blocks inboxes level tree
     | Error msg ->
         Format.printf "%s\n%!" msg ;
         return (tree, inboxes, level)
 
   (* Eval dispatcher. *)
-  let eval level inboxes config step tree =
+  let eval ?time_between_blocks level inboxes config step tree =
     let open Lwt_result_syntax in
     let return' ?(inboxes = inboxes) f =
       let* tree, count = f in
@@ -570,7 +571,9 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
         let*! status = check_input_request tree in
         match status with
         | Ok () ->
-            let* tree, inboxes, level = load_inputs inboxes level tree in
+            let* tree, inboxes, level =
+              load_inputs ?time_between_blocks inboxes level tree
+            in
             let* tree, ticks = eval_until_input_requested config tree in
             return (tree, ticks, inboxes, level)
         | Error _ -> return' (eval_until_input_requested config tree))
@@ -649,9 +652,11 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
 
   (* [step level inboxes config kind tree] evals according to the step kind and
      prints the number of ticks elapsed and the new status. *)
-  let step level inboxes config kind tree =
+  let step ?time_between_blocks level inboxes config kind tree =
     let open Lwt_result_syntax in
-    let* tree, ticks, inboxes, level = eval level inboxes config kind tree in
+    let* tree, ticks, inboxes, level =
+      eval ?time_between_blocks level inboxes config kind tree
+    in
     let*! () = Lwt_fmt.printf "Evaluation took %Ld ticks so far\n" ticks in
     let*! () = show_status tree in
     return_some (tree, inboxes, level)
@@ -973,7 +978,14 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
       | Show_status ->
           let*! () = show_status tree in
           return ()
-      | Step kind -> step level inboxes config kind tree
+      | Step kind ->
+          step
+            ?time_between_blocks:config.Config.time_between_blocks
+            level
+            inboxes
+            config
+            kind
+            tree
       | Show_inbox ->
           let*! () = show_inbox tree in
           return ()

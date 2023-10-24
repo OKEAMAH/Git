@@ -70,7 +70,11 @@ module type S = sig
     Pvm_input_kind.protocol -> int32 -> tree -> tree Lwt.t
 
   val set_info_per_level_input :
-    ?migration_block:bool -> int32 -> tree -> tree Lwt.t
+    ?migration_block:bool ->
+    ?time_between_blocks:int ->
+    int32 ->
+    tree ->
+    tree Lwt.t
 
   val set_eol_input : int32 -> Z.t -> tree -> tree Lwt.t
 
@@ -82,6 +86,7 @@ module type S = sig
 
   val set_inputs_step :
     ?migrate_to:Pvm_input_kind.protocol ->
+    ?time_between_blocks:int ->
     (int32 -> Z.t -> 'a -> tree -> tree Lwt.t) ->
     'a trace ->
     int32 ->
@@ -90,16 +95,22 @@ module type S = sig
 
   val set_full_input_step :
     ?migrate_to:Pvm_input_kind.protocol ->
+    ?time_between_blocks:int ->
     string list ->
     int32 ->
     tree ->
     tree Lwt.t
 
   val set_empty_inbox_step :
-    ?migrate_to:Pvm_input_kind.protocol -> int32 -> tree -> tree Lwt.t
+    ?migrate_to:Pvm_input_kind.protocol ->
+    ?time_between_blocks:int ->
+    int32 ->
+    tree ->
+    tree Lwt.t
 
   val set_full_input_step_gen :
     ?migrate_to:Pvm_input_kind.protocol ->
+    ?time_between_blocks:int ->
     (int32 -> Z.t -> 'a -> tree -> tree Lwt.t) ->
     'a list ->
     int32 ->
@@ -108,6 +119,7 @@ module type S = sig
 
   val set_full_raw_input_step :
     ?migrate_to:Pvm_input_kind.protocol ->
+    ?time_between_blocks:int ->
     string trace ->
     int32 ->
     tree ->

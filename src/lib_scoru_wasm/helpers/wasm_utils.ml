@@ -225,9 +225,21 @@ module Make (Ctx : Tezos_tree_encoding.Encodings_util.S) :
     in
     Wasm.set_input_step (input_info level Z.one) sol_input tree
 
-  let set_info_per_level_input ?(migration_block = false) level tree =
+  let set_info_per_level_input ?(migration_block = false) ?time_between_blocks
+      level tree =
     let block_hash = Block_hash.zero in
-    let timestamp = Time.Protocol.epoch in
+    let timestamp =
+      match time_between_blocks with
+      | None -> Time.Protocol.epoch
+      | Some time_between_blocks ->
+          let offset =
+            match level with
+            | 0l | 1l -> 0L
+            | _ ->
+                Int64.(mul (pred (of_int32 level)) (of_int time_between_blocks))
+          in
+          Time.Protocol.(add epoch offset)
+    in
     let info_res =
       Data_encoding.(
         Binary.to_string
@@ -271,7 +283,8 @@ module Make (Ctx : Tezos_tree_encoding.Encodings_util.S) :
     in
     Wasm.set_input_step (input_info level counter) sol_input tree
 
-  let set_inputs_step ?migrate_to set_internal_message messages level tree =
+  let set_inputs_step ?migrate_to ?time_between_blocks set_internal_message
+      messages level tree =
     let open Lwt_syntax in
     let next_message_counter = new_message_counter () in
     let (_ : Z.t) = next_message_counter () in
@@ -288,6 +301,7 @@ module Make (Ctx : Tezos_tree_encoding.Encodings_util.S) :
     let* tree =
       set_info_per_level_input
         ~migration_block:(Option.is_some migrate_to)
+        ?time_between_blocks
         level
         tree
     in
@@ -300,22 +314,31 @@ module Make (Ctx : Tezos_tree_encoding.Encodings_util.S) :
     in
     set_eol_input level (next_message_counter ()) tree
 
-  let set_full_input_step_gen ?migrate_to set_internal_message messages level
-      tree =
+  let set_full_input_step_gen ?migrate_to ?time_between_blocks
+      set_internal_message messages level tree =
     let open Lwt_syntax in
     let* tree =
-      set_inputs_step ?migrate_to set_internal_message messages level tree
+      set_inputs_step
+        ?migrate_to
+        ?time_between_blocks
+        set_internal_message
+        messages
+        level
+        tree
     in
     eval_to_snapshot ~max_steps:Int64.max_int tree
 
-  let set_full_input_step ?migrate_to =
-    set_full_input_step_gen ?migrate_to set_internal_message
+  let set_full_input_step ?migrate_to ?time_between_blocks =
+    set_full_input_step_gen
+      ?migrate_to
+      ?time_between_blocks
+      set_internal_message
 
-  let set_full_raw_input_step ?migrate_to =
-    set_full_input_step_gen set_raw_message ?migrate_to
+  let set_full_raw_input_step ?migrate_to ?time_between_blocks =
+    set_full_input_step_gen set_raw_message ?migrate_to ?time_between_blocks
 
-  let set_empty_inbox_step ?migrate_to level tree =
-    set_full_input_step ?migrate_to [] level tree
+  let set_empty_inbox_step ?migrate_to ?time_between_blocks level tree =
+    set_full_input_step ?migrate_to ?time_between_blocks [] level tree
 
   let rec eval_until_init tree =
     let open Lwt_syntax in

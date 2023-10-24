@@ -44,13 +44,14 @@ type config = {
   preimage_directory : string;
   dal_pages_directory : string;
   kernel_debug : bool;
+  time_between_blocks : int option;
 }
 
 let config ?(sender = default_sender) ?(source = default_source)
     ?(destination = default_destination)
     ?(preimage_directory = default_preimage_directory)
     ?(dal_pages_directory = default_dal_pages_directory)
-    ?(kernel_debug = default_kernel_debug) () =
+    ?(kernel_debug = default_kernel_debug) ?time_between_blocks () =
   {
     sender;
     source;
@@ -58,4 +59,5 @@ let config ?(sender = default_sender) ?(source = default_source)
     preimage_directory;
     dal_pages_directory;
     kernel_debug;
+    time_between_blocks;
   }

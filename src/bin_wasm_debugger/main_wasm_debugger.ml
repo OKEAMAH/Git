@@ -236,9 +236,19 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       ~placeholder:"plugin1.cmxs,plugin2.cmxs"
       plugins_parameter
 
+  let time_between_blocks_arg =
+    let open Tezos_clic in
+    arg
+      ~doc:
+        "Time between blocks used in info per level timestamp, if not provided \
+         it will always be `epoch`"
+      ~long:"time-between-blocks"
+      ~placeholder:"seconds"
+    @@ parameter (fun _ s -> Lwt_result_syntax.return (int_of_string s))
+
   let global_options =
     Tezos_clic.(
-      args8
+      args9
         wasm_arg
         input_arg
         rollup_arg
@@ -246,7 +256,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         dal_pages_directory_arg
         version_arg
         no_kernel_debug_flag
-        plugins_arg)
+        plugins_arg
+        time_between_blocks_arg)
 
   let handle_plugin_file f =
     try Dynlink.loadfile f with
@@ -268,7 +279,8 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
              dal_pages_directory,
              version,
              no_kernel_debug_flag,
-             plugins ),
+             plugins,
+             time_between_blocks ),
            _ ) =
       Tezos_clic.parse_global_options global_options () args
     in
@@ -284,6 +296,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         ?preimage_directory
         ?dal_pages_directory
         ~kernel_debug:(not no_kernel_debug_flag)
+        ?time_between_blocks
         ()
     in
     let*? wasm_file =

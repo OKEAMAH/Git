@@ -126,6 +126,9 @@ Smart Rollup WASM Debugger
   ``start_section(<data>)`` and ``end_section(<data>)`` to count ticks in
   specific sections. (:gl:`!10149`)
 
+- Added argument ``--time-between-blocks`` to simulate the timestamp used in
+  the info per level payload. (:gl:`!10593`)
+
 Data Availability Committee (DAC)
 ---------------------------------
 
