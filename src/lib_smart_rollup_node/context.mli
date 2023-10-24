@@ -104,6 +104,17 @@ val is_gc_finished : [> `Write] index -> bool
     GC run is currently ongoing. *)
 val wait_gc_completion : [> `Write] index -> unit Lwt.t
 
+val export :
+  ?format:[`Binary | `Json] ->
+  'a index ->
+  ?since:hash ->
+  hash ->
+  path:string ->
+  unit Lwt.t
+
+val import :
+  ?format:[`Binary | `Json] -> 'a index -> path:string -> unit tzresult Lwt.t
+
 (** Module for generating and verifying proofs for a context *)
 module Proof (Hash : sig
   type t

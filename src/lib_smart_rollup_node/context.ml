@@ -53,7 +53,11 @@ type rw_index = [`Read | `Write] index
 
 type ro_index = [`Read] index
 
-type 'a t = {index : 'a index; tree : tree; parents : IStore.Commit.t list}
+type 'a t = {
+  index : 'a index;
+  tree : tree;
+  mutable parents : IStore.Commit.t list;
+}
 
 type rw = [`Read | `Write] t
 
@@ -112,6 +116,7 @@ let set_head ctxt commit =
 let commit ?message ctxt =
   let open Lwt_syntax in
   let* commit = raw_commit ?message ctxt.index ctxt.tree ctxt.parents in
+  ctxt.parents <- [commit] ;
   let+ () = set_head ctxt commit in
   IStore.Commit.hash commit |> istore_hash_to_hash
 
@@ -172,6 +177,96 @@ let wait_gc_completion index =
 let is_gc_finished index = IStore.Gc.is_finished index.repo
 
 let index context = context.index
+
+let encode_export_json slice path =
+  let oc = open_out path in
+  try
+    let encoder = Jsonm.encoder ~minify:true (`Channel oc) in
+    Irmin.Type.encode_json IStore.slice_t encoder slice ;
+    ignore @@ Jsonm.encode encoder `End ;
+    close_out oc
+  with e ->
+    close_out oc ;
+    raise e
+
+let encode_export_binary slice path =
+  let oc = open_out_bin path in
+  try
+    let encode = Irmin.Type.unstage (Irmin.Type.encode_bin IStore.slice_t) in
+    encode slice (fun s -> output_string oc s) ;
+    close_out oc
+  with e ->
+    close_out oc ;
+    raise e
+
+let export ?(format = `Binary) index ?since head ~path =
+  let open Lwt_syntax in
+  let commit_of_hash hash =
+    let istore_hash = hash_to_istore_hash hash in
+    let* commit_opt = IStore.Commit.of_hash index.repo istore_hash in
+    match commit_opt with
+    | None ->
+        Fmt.failwith
+          "Context.export: unknown context hash %a"
+          Smart_rollup_context_hash.pp
+          hash
+    | Some commit -> return [commit]
+  in
+  let* min = Option.map_s commit_of_hash since in
+  let* head = commit_of_hash head in
+  let* slice = IStore.Repo.export ?min ~max:(`Max head) index.repo in
+  let* () = Lwt_utils_unix.create_dir (Filename.dirname path) in
+  let encode_export =
+    match format with
+    | `Json -> encode_export_json
+    | `Binary -> encode_export_binary
+  in
+  encode_export slice path ;
+  return_unit
+
+let decode_import_json path =
+  let open Lwt_result_syntax in
+  let ic = open_in path in
+  try
+    let decoder = Jsonm.decoder (`Channel ic) in
+    let slice = Irmin.Type.decode_json IStore.slice_t decoder in
+    close_in ic ;
+    Lwt.return slice
+  with exn ->
+    close_in ic ;
+    fail (`Msg ("cannot decode json: " ^ Printexc.to_string exn))
+
+let decode_import_binary path =
+  let open Lwt_result_syntax in
+  let*! s = Lwt_utils_unix.read_file path in
+  let count = ref 0 in
+  let decode = Irmin.Type.unstage (Irmin.Type.decode_bin IStore.slice_t) in
+  return (decode s count)
+(* let ic = open_in_bin path in *)
+(* try *)
+(*   let count = ref 0 in *)
+(*   let decode = Irmin.Type.unstage (Irmin.Type.decode_bin IStore.slice_t) in *)
+(*   let slice = decode path count in *)
+(*   close_in ic ; *)
+(*   Ok slice *)
+(* with exn -> *)
+(*   close_in ic ; *)
+(*   Error (`Msg (Printexc.to_string exn)) *)
+
+let import ?(format = `Binary) index ~path =
+  let open Lwt_result_syntax in
+  let decode_import =
+    match format with
+    | `Json -> decode_import_json
+    | `Binary -> decode_import_binary
+  in
+  let*! res =
+    let* slice = decode_import path in
+    IStore.Repo.import index.repo slice
+  in
+  match res with
+  | Error (`Msg msg) -> failwith "Failed to import context: %s" msg
+  | Ok () -> return_unit
 
 module Proof (Hash : sig
   type t
