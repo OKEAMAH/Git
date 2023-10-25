@@ -489,7 +489,7 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
           confirmed_slots_history
     | Needs_reveal (Reveal_dal_parameters _) ->
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6544
-           reveal_dal_parameters for slow execution. *)
+           Support reveal_dal_parameters in refutation game. *)
         assert false
   in
   let input_given =
