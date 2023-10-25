@@ -23,6 +23,7 @@ fi
 #         - export node path, e.g. `export NODE_PATH="/usr/lib/node_modules"`
 
 PARSE_AND_PRINT="contrib/lib_kaitai_of_data_encoding/test/parse_and_print.js"
+KSY_DIR="contrib/lib_kaitai_of_data_encoding/test/expected"
 
 parse_hex_input() {
     tmp=$1
@@ -52,7 +53,7 @@ validate_kaitai_spec() {
     hex_input_dir="contrib/lib_kaitai_of_data_encoding/test/input"
     valid_input="${hex_input_dir}/valid/${encoding}"
     invalid_input="${hex_input_dir}/invalid/${encoding}"
-    ksy_file="contrib/lib_kaitai_of_data_encoding/test/expected/${encoding}.ksy"
+    ksy_file="${KSY_DIR}/${encoding}.ksy"
     parser_dir="${tmp}/parsers/${encoding}"
     # ksc gives an auto-generated file a random name.
     # In order to get this filename at runtime, we
@@ -88,17 +89,18 @@ validate_kaitai_spec() {
     done
 }
 
-# TODO: Make a loop: for every file inside `test/expected` do...
-encoding=ground_uint8
-validation_output=$(validate_kaitai_spec $encoding 2>&1)
-validation_status=$?
-if [ $validation_status -eq 0 ]; then
-    echo "$encoding kaitai spec file is valid."
-else
-    echo "$encoding kaitai spec files is not valid."
-    echo "See the action log:"
-    echo "$validation_output"
-fi
+for ksy_file in "$KSY_DIR"/*; do
+    encoding="$(basename "$ksy_file" .ksy)"
+    validation_output=$(validate_kaitai_spec $encoding 2>&1)
+    validation_status=$?
+    if [ $validation_status -eq 0 ]; then
+        echo "$encoding kaitai spec file is valid."
+    else
+        echo "$encoding kaitai spec files is not valid."
+        echo "See the action log:"
+        echo "$validation_output"
+    fi
+done
 
 # TODO: Better logging/error reporting for better dev ux.
 # TODO: Correct redirection of standard error.
