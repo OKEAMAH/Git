@@ -10,7 +10,9 @@ types:
   p2p_address:
     seq:
     - id: size_of_p2p_address
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: p2p_address
       size: size_of_p2p_address
 enums:

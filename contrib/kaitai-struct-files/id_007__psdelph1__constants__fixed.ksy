@@ -11,5 +11,8 @@ seq:
   type: u1
 - id: max_operation_data_length
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: max_proposals_per_delegate
   type: u1

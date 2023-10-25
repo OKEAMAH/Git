@@ -19,7 +19,9 @@ types:
   time_between_blocks:
     seq:
     - id: size_of_time_between_blocks
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
       size: size_of_time_between_blocks
@@ -31,7 +33,9 @@ types:
   commitments:
     seq:
     - id: size_of_commitments
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: commitments
       type: commitments_entries
       size: size_of_commitments
@@ -47,7 +51,9 @@ types:
   bootstrap_contracts:
     seq:
     - id: size_of_bootstrap_contracts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_contracts
       type: bootstrap_contracts_entries
       size: size_of_bootstrap_contracts
@@ -70,19 +76,25 @@ types:
   storage:
     seq:
     - id: size_of_storage
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: storage
       size: size_of_storage
   code:
     seq:
     - id: size_of_code
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: code
       size: size_of_code
   bootstrap_accounts:
     seq:
     - id: size_of_bootstrap_accounts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_accounts
       type: bootstrap_accounts_entries
       size: size_of_bootstrap_accounts
@@ -188,12 +200,18 @@ seq:
 - id: security_deposit_ramp_up_cycles
   type: s4
   if: (security_deposit_ramp_up_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: no_reward_cycles_tag
   type: u1
   enum: bool
 - id: no_reward_cycles
   type: s4
   if: (no_reward_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: preserved_cycles
   type: u1
 - id: blocks_per_cycle
@@ -222,6 +240,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

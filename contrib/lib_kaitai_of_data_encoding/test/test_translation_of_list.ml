@@ -75,7 +75,9 @@ let%expect_test "test dynamic size list translation" =
         type: u1
   seq:
   - id: size_of_list_of_uint8
-    type: s4
+    type: u4
+    valid:
+      max: 1073741823
   - id: list_of_uint8
     type: list_of_uint8_entries
     size: size_of_list_of_uint8
@@ -102,7 +104,9 @@ let%expect_test "test dynamic size list with max length" =
         type: u1
   seq:
   - id: size_of_list_with_length
-    type: s4
+    type: u4
+    valid:
+      max: 1073741823
   - id: list_with_length
     type: list_with_length_entries
     size: size_of_list_with_length
@@ -111,7 +115,6 @@ let%expect_test "test dynamic size list with max length" =
       max: 5
   |}]
 
-(* TODO: ?max_length guard is missing. *)
 let%expect_test "test variable size list with max length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -136,7 +139,6 @@ let%expect_test "test variable size list with max length" =
     repeat: eos
   |}]
 
-(* TODO: ?max_length guard is missing. *)
 let%expect_test "test list with length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -158,6 +160,9 @@ let%expect_test "test list with length" =
   seq:
   - id: number_of_elements_in_list_with_length
     type: s4
+    valid:
+      min: -1073741824
+      max: 1073741823
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr
@@ -185,13 +190,14 @@ let%expect_test "test list with length" =
   seq:
   - id: number_of_elements_in_list_with_length
     type: u1
+    valid:
+      max: 255
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr
     repeat-expr: number_of_elements_in_list_with_length
   |}]
 
-(* TODO: ?max_length guard is missing. *)
 let%expect_test "test list with length" =
   let s =
     Kaitai_of_data_encoding.Translate.from_data_encoding
@@ -213,6 +219,8 @@ let%expect_test "test list with length" =
   seq:
   - id: number_of_elements_in_list_with_length
     type: u2
+    valid:
+      max: 65535
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr

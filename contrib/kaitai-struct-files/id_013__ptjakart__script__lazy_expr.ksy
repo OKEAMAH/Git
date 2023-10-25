@@ -4,6 +4,8 @@ meta:
 doc: ! 'Encoding id: 013-PtJakart.script.lazy_expr'
 seq:
 - id: size_of_id_013__ptjakart__script__lazy_expr
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_013__ptjakart__script__lazy_expr
   size: size_of_id_013__ptjakart__script__lazy_expr

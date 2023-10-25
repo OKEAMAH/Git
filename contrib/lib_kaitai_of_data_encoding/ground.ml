@@ -213,16 +213,23 @@ module Attr = struct
   let int64 ~id = int_multi_type_atrr_spec ~id ~signed:true DataType.W8
 
   let int31 ~id =
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/6261
-             There should be a validation that [Int31] is in the appropriate
-             range. *)
-    int_multi_type_atrr_spec ~id ~signed:true DataType.W4
+    (* the integer literal bounds are from data-encoding source, specifically
+       the binary reader *)
+    {
+      (int_multi_type_atrr_spec ~id ~signed:true DataType.W4) with
+      valid =
+        Some
+          (ValidationSpec.ValidationRange
+             {min = Ast.IntNum (-0x4000_0000); max = Ast.IntNum 0x3fff_ffff});
+    }
 
   let uint30 ~id =
-    (* TODO: https://gitlab.com/tezos/tezos/-/issues/6261
-             There should be a validation that [Uint30] is in the appropriate
-             range. *)
-    int_multi_type_atrr_spec ~id ~signed:true DataType.W4
+    (* the integer literal bounds are from data-encoding source, specifically
+       the binary reader *)
+    {
+      (int_multi_type_atrr_spec ~id ~signed:false DataType.W4) with
+      valid = Some (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
+    }
 
   let float ~id = float_multi_type_attr_spec ~id
 

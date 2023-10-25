@@ -14,7 +14,9 @@ types:
   delegate_selection_round_robin_over_delegates:
     seq:
     - id: size_of_round_robin_over_delegates
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates
       type: round_robin_over_delegates_entries
       size: size_of_round_robin_over_delegates
@@ -22,7 +24,9 @@ types:
   round_robin_over_delegates_entries:
     seq:
     - id: size_of_round_robin_over_delegates_elt
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates_elt
       type: round_robin_over_delegates_elt_entries
       size: size_of_round_robin_over_delegates_elt
@@ -114,6 +118,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: baking_reward_fixed_portion
   type: n
 - id: baking_reward_bonus_per_slot
@@ -144,14 +151,26 @@ seq:
   type: s8
 - id: consensus_committee_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: consensus_threshold
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: frozen_deposits_percentage
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement

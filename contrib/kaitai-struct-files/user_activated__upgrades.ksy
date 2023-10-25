@@ -14,7 +14,9 @@ types:
       size: 32
 seq:
 - id: size_of_user_activated__upgrades
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: user_activated__upgrades
   type: user_activated__upgrades_entries
   size: size_of_user_activated__upgrades

@@ -35,7 +35,9 @@ enums:
     3: bls
 seq:
 - id: size_of_alpha__vote__listings
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: alpha__vote__listings
   type: alpha__vote__listings_entries
   size: size_of_alpha__vote__listings

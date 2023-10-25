@@ -27,7 +27,9 @@ types:
       type: b7be
 seq:
 - id: size_of_id_005__psbabym1__delegate__frozen_balance_by_cycles
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_005__psbabym1__delegate__frozen_balance_by_cycles
   type: id_005__psbabym1__delegate__frozen_balance_by_cycles_entries
   size: size_of_id_005__psbabym1__delegate__frozen_balance_by_cycles

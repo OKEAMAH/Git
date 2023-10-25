@@ -10,7 +10,9 @@ types:
   components:
     seq:
     - id: size_of_components
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: components
       type: components_entries
       size: size_of_components
@@ -30,19 +32,25 @@ types:
   implementation:
     seq:
     - id: size_of_implementation
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: implementation
       size: size_of_implementation
   interface:
     seq:
     - id: size_of_interface
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: interface
       size: size_of_interface
   name:
     seq:
     - id: size_of_name
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: name
       size: size_of_name
 enums:

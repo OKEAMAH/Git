@@ -31,7 +31,9 @@ enums:
     2: p256
 seq:
 - id: size_of_id_012__psithaca__vote__listings
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_012__psithaca__vote__listings
   type: id_012__psithaca__vote__listings_entries
   size: size_of_id_012__psithaca__vote__listings

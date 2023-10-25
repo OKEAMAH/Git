@@ -20,6 +20,9 @@ types:
       type: u2
     - id: slot_size
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: number_of_shards
       type: u2
   ratio_of_frozen_deposits_slashed_per_double_endorsement:
@@ -50,7 +53,9 @@ types:
   commitments:
     seq:
     - id: size_of_commitments
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: commitments
       type: commitments_entries
       size: size_of_commitments
@@ -66,7 +71,9 @@ types:
   bootstrap_contracts:
     seq:
     - id: size_of_bootstrap_contracts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_contracts
       type: bootstrap_contracts_entries
       size: size_of_bootstrap_contracts
@@ -93,19 +100,25 @@ types:
   storage:
     seq:
     - id: size_of_storage
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: storage
       size: size_of_storage
   code:
     seq:
     - id: size_of_code
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: code
       size: size_of_code
   bootstrap_accounts:
     seq:
     - id: size_of_bootstrap_accounts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_accounts
       type: bootstrap_accounts_entries
       size: size_of_bootstrap_accounts
@@ -282,12 +295,18 @@ seq:
 - id: security_deposit_ramp_up_cycles
   type: s4
   if: (security_deposit_ramp_up_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: no_reward_cycles_tag
   type: u1
   enum: bool
 - id: no_reward_cycles
   type: s4
   if: (no_reward_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: preserved_cycles
   type: u1
 - id: blocks_per_cycle
@@ -314,6 +333,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: baking_reward_fixed_portion
   type: n
 - id: baking_reward_bonus_per_slot
@@ -342,14 +364,26 @@ seq:
   type: s8
 - id: consensus_committee_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: consensus_threshold
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: frozen_deposits_percentage
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
@@ -369,6 +403,9 @@ seq:
   if: (initial_seed_tag == bool::true)
 - id: cache_script_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: cache_stake_distribution_cycles
   type: s1
 - id: cache_sampler_state_cycles
@@ -378,30 +415,66 @@ seq:
   enum: bool
 - id: tx_rollup_origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_hard_size_limit_per_inbox
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_hard_size_limit_per_message
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_max_withdrawals_per_batch
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_commitment_bond
   type: n
 - id: tx_rollup_finality_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_withdraw_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_max_inboxes_count
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_max_messages_per_inbox
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_max_commitments_count
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_cost_per_byte_ema_factor
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_max_ticket_payload_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_rejection_max_proof_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: tx_rollup_sunset_level
   type: s4
 - id: dal_parametric
@@ -414,30 +487,57 @@ seq:
   enum: bool
 - id: smart_rollup_origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_challenge_window_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_stake_amount
   type: n
 - id: smart_rollup_commitment_period_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_lookahead_in_blocks
   type: s4
 - id: smart_rollup_max_active_outbox_levels
   type: s4
 - id: smart_rollup_max_outbox_messages_per_level
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_number_of_sections_in_dissection
   type: u1
 - id: smart_rollup_timeout_period_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_number_of_cemented_commitments
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_number_of_parallel_games
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: zk_rollup_enable
   type: u1
   enum: bool
 - id: zk_rollup_origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: zk_rollup_min_pending_to_process
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823

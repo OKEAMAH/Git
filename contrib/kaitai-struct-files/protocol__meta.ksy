@@ -10,7 +10,9 @@ types:
   modules:
     seq:
     - id: size_of_modules
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: modules
       type: modules_entries
       size: size_of_modules
@@ -18,7 +20,9 @@ types:
   modules_entries:
     seq:
     - id: size_of_modules_elt
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: modules_elt
       size: size_of_modules_elt
 enums:

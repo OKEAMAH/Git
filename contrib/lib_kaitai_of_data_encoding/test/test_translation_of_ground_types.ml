@@ -163,6 +163,9 @@ let%expect_test "test int31 translation" =
     seq:
     - id: ground_int31
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   |}]
 
 let%expect_test "test float translation" =
@@ -221,7 +224,9 @@ let%expect_test "test dynamic size bytes translation" =
     doc: ! 'Encoding id: ground_bytes'
     seq:
     - id: size_of_ground_bytes
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: ground_bytes
       size: size_of_ground_bytes |}]
 
@@ -274,7 +279,9 @@ let%expect_test "test dynamic size string translation" =
     doc: ! 'Encoding id: ground_string'
     seq:
     - id: size_of_ground_string
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: ground_string
       size: size_of_ground_string |}]
 

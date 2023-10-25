@@ -14,7 +14,9 @@ types:
   delegate_selection_round_robin_over_delegates:
     seq:
     - id: size_of_round_robin_over_delegates
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates
       type: round_robin_over_delegates_entries
       size: size_of_round_robin_over_delegates
@@ -22,7 +24,9 @@ types:
   round_robin_over_delegates_entries:
     seq:
     - id: size_of_round_robin_over_delegates_elt
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates_elt
       type: round_robin_over_delegates_elt_entries
       size: size_of_round_robin_over_delegates_elt
@@ -60,7 +64,9 @@ types:
   commitments:
     seq:
     - id: size_of_commitments
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: commitments
       type: commitments_entries
       size: size_of_commitments
@@ -76,7 +82,9 @@ types:
   bootstrap_contracts:
     seq:
     - id: size_of_bootstrap_contracts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_contracts
       type: bootstrap_contracts_entries
       size: size_of_bootstrap_contracts
@@ -103,19 +111,25 @@ types:
   storage:
     seq:
     - id: size_of_storage
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: storage
       size: size_of_storage
   code:
     seq:
     - id: size_of_code
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: code
       size: size_of_code
   bootstrap_accounts:
     seq:
     - id: size_of_bootstrap_accounts
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_accounts
       type: bootstrap_accounts_entries
       size: size_of_bootstrap_accounts
@@ -224,12 +238,18 @@ seq:
 - id: security_deposit_ramp_up_cycles
   type: s4
   if: (security_deposit_ramp_up_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: no_reward_cycles_tag
   type: u1
   enum: bool
 - id: no_reward_cycles
   type: s4
   if: (no_reward_cycles_tag == bool::true)
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: preserved_cycles
   type: u1
 - id: blocks_per_cycle
@@ -252,6 +272,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: baking_reward_fixed_portion
   type: n
 - id: baking_reward_bonus_per_slot
@@ -282,14 +305,26 @@ seq:
   type: s8
 - id: consensus_committee_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: consensus_threshold
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: frozen_deposits_percentage
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement

@@ -91,6 +91,9 @@ ground.int31 test
   seq:
   - id: ground__int31
     type: s4
+    valid:
+      min: -1073741824
+      max: 1073741823
 ground.float test
   $ ./codec.exe dump kaitai for ground.float
   meta:
@@ -110,7 +113,9 @@ ground.bytes test
   doc: ! 'Encoding id: ground.bytes'
   seq:
   - id: size_of_ground__bytes
-    type: s4
+    type: u4
+    valid:
+      max: 1073741823
   - id: ground__bytes
     size: size_of_ground__bytes
 ground.string test
@@ -121,7 +126,9 @@ ground.string test
   doc: ! 'Encoding id: ground.string'
   seq:
   - id: size_of_ground__string
-    type: s4
+    type: u4
+    valid:
+      max: 1073741823
   - id: ground__string
     size: size_of_ground__string
 ground.N test

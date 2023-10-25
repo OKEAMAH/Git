@@ -11,7 +11,9 @@ types:
       type: u1
 seq:
 - id: size_of_test__list_of_uint8
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: test__list_of_uint8
   type: test__list_of_uint8_entries
   size: size_of_test__list_of_uint8

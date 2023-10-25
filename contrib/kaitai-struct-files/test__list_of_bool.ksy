@@ -16,7 +16,9 @@ enums:
     255: true
 seq:
 - id: size_of_test__list_of_bool
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: test__list_of_bool
   type: test__list_of_bool_entries
   size: size_of_test__list_of_bool

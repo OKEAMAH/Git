@@ -6,7 +6,9 @@ types:
   endorsement_reward:
     seq:
     - id: size_of_endorsement_reward
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: endorsement_reward
       type: endorsement_reward_entries
       size: size_of_endorsement_reward
@@ -18,7 +20,9 @@ types:
   baking_reward_per_endorsement:
     seq:
     - id: size_of_baking_reward_per_endorsement
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: baking_reward_per_endorsement
       type: baking_reward_per_endorsement_entries
       size: size_of_baking_reward_per_endorsement
@@ -55,7 +59,9 @@ types:
   time_between_blocks:
     seq:
     - id: size_of_time_between_blocks
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
       size: size_of_time_between_blocks
@@ -91,6 +97,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

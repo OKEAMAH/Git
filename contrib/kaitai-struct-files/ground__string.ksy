@@ -4,6 +4,8 @@ meta:
 doc: ! 'Encoding id: ground.string'
 seq:
 - id: size_of_ground__string
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: ground__string
   size: size_of_ground__string

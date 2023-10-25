@@ -31,7 +31,9 @@ types:
   time_between_blocks:
     seq:
     - id: size_of_time_between_blocks
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
       size: size_of_time_between_blocks
@@ -49,6 +51,9 @@ seq:
   type: u1
 - id: max_operation_data_length
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: max_proposals_per_delegate
   type: u1
 - id: preserved_cycles
@@ -79,6 +84,9 @@ seq:
   type: n
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

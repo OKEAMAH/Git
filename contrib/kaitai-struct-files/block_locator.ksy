@@ -10,7 +10,9 @@ types:
   current_head:
     seq:
     - id: size_of_current_head
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: current_head
       type: block_header
       size: size_of_current_head
@@ -52,7 +54,9 @@ types:
   fitness:
     seq:
     - id: size_of_fitness
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: fitness
       type: fitness_entries
       size: size_of_fitness
@@ -64,7 +68,9 @@ types:
   fitness__elem:
     seq:
     - id: size_of_fitness__elem
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: fitness__elem
       size: size_of_fitness__elem
 seq:

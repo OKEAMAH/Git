@@ -35,7 +35,9 @@ enums:
     3: bls
 seq:
 - id: size_of_id_018__proxford__vote__listings
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_018__proxford__vote__listings
   type: id_018__proxford__vote__listings_entries
   size: size_of_id_018__proxford__vote__listings

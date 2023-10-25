@@ -172,7 +172,9 @@ let%expect_test "test union with structures inside" =
       b_field1:
         seq:
         - id: size_of_b_field1
-          type: s4
+          type: u4
+          valid:
+            max: 1073741823
         - id: b_field1
           size: size_of_b_field1
     enums:

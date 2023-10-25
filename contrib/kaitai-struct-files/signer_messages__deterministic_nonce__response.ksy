@@ -6,7 +6,9 @@ types:
   deterministic_nonce:
     seq:
     - id: size_of_deterministic_nonce
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: deterministic_nonce
       size: size_of_deterministic_nonce
 seq:

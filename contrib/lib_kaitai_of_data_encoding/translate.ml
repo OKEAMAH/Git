@@ -307,26 +307,31 @@ let rec seq_field_of_data_encoding :
       in
       let seq = left @ right in
       (enums, types, seq)
-  | List {length_limit = At_most _max_length; length_encoding = Some le; elts}
-    ->
+  | List {length_limit = At_most max_length; length_encoding = Some le; elts} ->
       let length_id = "number_of_elements_in_" ^ id in
       let enums, types, length_attrs =
         seq_field_of_data_encoding enums types le length_id tid_gen
       in
-      (* TODO: Big number length size not yet supported. We expect
-               [`Uint30/16/8] to produce only one attribute. *)
-      let () = assert (List.length length_attrs = 1) in
+      let length_attr =
+        match length_attrs with
+        | [] -> assert false
+        | [attr] ->
+            Helpers.merge_valid
+              attr
+              (ValidationSpec.ValidationMax (Ast.IntNum max_length))
+        | _ :: _ :: _ ->
+            (* TODO: Big number length size not yet supported. We expect
+                     [`Uint30/16/8] to produce only one attribute. *)
+            failwith "Not supported"
+      in
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
         seq_field_of_data_encoding enums types elts elt_id tid_gen
       in
-      (* TODO Add max size guard of size: [(size_of_type elts) * limit].
-              Two problems:
-                           - Guard should be placed on the actual list and not
-                             on the list element.
-                           - Support [size_of-type], by calling data-encoding
-                             max size combinators/helpers? *)
       let types, attr =
+        (* We do uncoditional redirect because there can be issues where the
+           [size] of elements and the [size] of the list get mixed up.
+           TODO: redirect on (a) multiple attrs and (b) single attr with [size] *)
         redirect
           types
           attrs
@@ -336,14 +341,12 @@ let rec seq_field_of_data_encoding :
               cond =
                 {
                   Helpers.cond_no_cond with
-                  (* TODO: Fix size refering to list element instead of whole
-                           list. *)
                   repeat = RepeatExpr (Ast.Name length_id);
                 };
             })
           (id ^ "_entries")
       in
-      (enums, types, length_attrs @ [attr])
+      (enums, types, [length_attr; attr])
   | List
       {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
     ->
@@ -371,17 +374,10 @@ let rec seq_field_of_data_encoding :
             | At_most _max_length ->
                 {
                   attr with
-                  (* TODO: Add guard of size: [(size_of_type elts) * limit]. *)
+                  (* TODO: Add guard of length *)
                   cond = {Helpers.cond_no_cond with repeat = RepeatEos};
                 }
             | Exactly exact_length ->
-                (* TODO/Question: This is [Dynamic_size(Check_size...)] case
-                                  when we have max length for elements of fixed
-                                  size?
-
-                                  What about when we have variable size list
-                                  with fixed size elements only? We will have to
-                                  propagate guard to a parent type? *)
                 {
                   attr with
                   cond =

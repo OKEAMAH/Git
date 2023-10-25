@@ -68,6 +68,9 @@ types:
       type: u2
     - id: slot_size
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: number_of_shards
       type: u2
   public_key_hash:
@@ -99,16 +102,34 @@ types:
       type: n
     - id: baking_reward_fixed_portion_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: baking_reward_bonus_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: attesting_reward_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: liquidity_baking_subsidy_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: seed_nonce_revelation_tip_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
     - id: vdf_revelation_tip_weight
       type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   n:
     seq:
     - id: n
@@ -170,6 +191,9 @@ seq:
   type: s8
 - id: origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: issuance_weights
   type: issuance_weights
 - id: cost_per_byte
@@ -192,12 +216,21 @@ seq:
   type: s8
 - id: consensus_committee_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: consensus_threshold
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: limit_of_delegation_over_baking
   type: u1
 - id: percentage_of_frozen_deposits_slashed_per_double_baking
@@ -219,6 +252,9 @@ seq:
   if: (initial_seed_tag == bool::true)
 - id: cache_script_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: cache_stake_distribution_cycles
   type: s1
 - id: cache_sampler_state_cycles
@@ -233,26 +269,47 @@ seq:
   enum: bool
 - id: smart_rollup_origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_challenge_window_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_stake_amount
   type: n
 - id: smart_rollup_commitment_period_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_lookahead_in_blocks
   type: s4
 - id: smart_rollup_max_active_outbox_levels
   type: s4
 - id: smart_rollup_max_outbox_messages_per_level
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_number_of_sections_in_dissection
   type: u1
 - id: smart_rollup_timeout_period_in_blocks
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_number_of_cemented_commitments
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_max_number_of_parallel_games
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: smart_rollup_reveal_activation_level
   type: smart_rollup_reveal_activation_level
 - id: zk_rollup_enable
@@ -260,10 +317,19 @@ seq:
   enum: bool
 - id: zk_rollup_origination_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: zk_rollup_min_pending_to_process
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: zk_rollup_max_ticket_payload_size
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823
 - id: global_limit_of_staking_over_baking
   type: u1
 - id: edge_of_staking_over_delegation

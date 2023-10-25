@@ -8,7 +8,9 @@ types:
   test__nested_list_of_bool_entries:
     seq:
     - id: size_of_test__nested_list_of_bool_elt
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: test__nested_list_of_bool_elt
       type: test__nested_list_of_bool_elt_entries
       size: size_of_test__nested_list_of_bool_elt
@@ -24,7 +26,9 @@ enums:
     255: true
 seq:
 - id: size_of_test__nested_list_of_bool
-  type: s4
+  type: u4
+  valid:
+    max: 1073741823
 - id: test__nested_list_of_bool
   type: test__nested_list_of_bool_entries
   size: size_of_test__nested_list_of_bool

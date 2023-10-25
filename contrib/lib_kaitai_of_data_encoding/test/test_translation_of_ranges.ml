@@ -136,7 +136,7 @@ let%expect_test "test bigger shifted range" =
             value: (shifted_big_range_shifted_to_zero + 103)
         seq:
         - id: shifted_big_range_shifted_to_zero
-          type: s4
+          type: u4
           valid:
             max: 99899
     seq:

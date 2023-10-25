@@ -12,13 +12,17 @@ types:
   fee:
     seq:
     - id: size_of_fee
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: fee
       size: size_of_fee
   tez__amount:
     seq:
     - id: size_of_tez__amount
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: tez__amount
       size: size_of_tez__amount
   z:
@@ -43,13 +47,17 @@ types:
   destination:
     seq:
     - id: size_of_destination
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: destination
       size: size_of_destination
   token_contract:
     seq:
     - id: size_of_token_contract
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: token_contract
       size: size_of_token_contract
 enums:

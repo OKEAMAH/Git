@@ -6,7 +6,9 @@ types:
   deterministic_nonce_hash:
     seq:
     - id: size_of_deterministic_nonce_hash
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: deterministic_nonce_hash
       size: size_of_deterministic_nonce_hash
 seq:

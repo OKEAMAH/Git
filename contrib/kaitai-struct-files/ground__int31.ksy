@@ -7,3 +7,6 @@ doc: ! 'Encoding id: ground.int31
 seq:
 - id: ground__int31
   type: s4
+  valid:
+    min: -1073741824
+    max: 1073741823

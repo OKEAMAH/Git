@@ -6,7 +6,9 @@ types:
   memo:
     seq:
     - id: size_of_memo
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: memo
       size: size_of_memo
 seq:
