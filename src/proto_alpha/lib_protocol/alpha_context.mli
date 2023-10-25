@@ -814,6 +814,7 @@ module Constants : sig
       raw_data : sc_rollup_reveal_hashing_schemes;
       metadata : Raw_level.t;
       dal_page : Raw_level.t;
+      dal_parameters : Raw_level.t;
     }
 
     type sc_rollup = {
@@ -2917,7 +2918,12 @@ module Sc_rollup : sig
 
   (** See {!Sc_rollup_dal_parameters_repr}. *)
   module Dal_parameters : sig
-    type t = {attestation_lag : int; slot_size : int; page_size : int}
+    type t = {
+      number_of_slots : int;
+      attestation_lag : int;
+      slot_size : int;
+      page_size : int;
+    }
 
     val pp : Format.formatter -> t -> unit
 
