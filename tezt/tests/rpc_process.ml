@@ -203,6 +203,57 @@ let test_forward =
     RPC.get_monitor_applied_blocks
     ~rpc_prefix:"/monitor/applied_blocks"
 
+let point_of_port port = "127.0.0.1:" ^ Int.to_string port
+
+let make_endpoint port =
+  Client.Foreign_endpoint Endpoint.{host = "127.0.0.1"; scheme = "http"; port}
+
+let test_parallel =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"RPC process parallel requests"
+    ~tags:["rpc"; "process"; "parallel"]
+  @@ fun protocol ->
+  let count = 100 in
+  Log.info
+    "Execute %d RPCs in parallel with the RPC process or the local RPC server"
+    count ;
+  let process_port = Port.fresh () in
+  let local_port = Port.fresh () in
+  let* _node, client =
+    Client.init_with_protocol
+      ~nodes_args:
+        [
+          Node.RPC_additional_addr (point_of_port process_port);
+          Node.RPC_additional_addr (point_of_port local_port);
+        ]
+      ~protocol
+      `Client
+      ()
+  in
+  let call_version port =
+    let* _ =
+      Client.RPC.call ~endpoint:(make_endpoint port) client RPC.get_version
+    in
+    unit
+  in
+  let test_port name port =
+    let* () = (* dry run *) call_version port in
+    let before = Unix.gettimeofday () in
+    let* _ = Lwt.join (List.init count (fun _i -> call_version port)) in
+    Log.info
+      "time %dx version %s: %f"
+      count
+      name
+      (Unix.gettimeofday () -. before) ;
+    unit
+  in
+  let* () = test_port "process" process_port in
+  let* () = test_port "local" local_port in
+  let* () = test_port "process" process_port in
+  test_port "local" local_port
+
 let register ~protocols =
   test_kill protocols ;
-  test_forward protocols
+  test_forward protocols ;
+  test_parallel protocols

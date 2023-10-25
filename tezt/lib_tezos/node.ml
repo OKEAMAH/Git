@@ -253,6 +253,10 @@ let add_default_arguments arguments =
   (* Give a default value of 0 to --expected-pow. *)
   add_missing_argument arguments (Expected_pow 0)
 
+let should_keep = function
+  | RPC_additional_addr _ | RPC_additional_addr_local _ -> true
+  | _ -> false
+
 let spawn_config_command command node arguments =
   let arguments =
     List.fold_left
@@ -261,7 +265,7 @@ let spawn_config_command command node arguments =
       node.persistent_state.arguments
   in
   (* Since arguments will be in the configuration file, we will not need them after this. *)
-  node.persistent_state.arguments <- [] ;
+  node.persistent_state.arguments <- List.filter should_keep arguments ;
   spawn_command
     node
     ("config" :: command :: "--data-dir" :: node.persistent_state.data_dir
