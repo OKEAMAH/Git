@@ -8,7 +8,12 @@
 (** DAL related parameters for the PVMs.  *)
 
 (** DAL related parameters that would be useful to the kernel. *)
-type t = {attestation_lag : int; slot_size : int; page_size : int}
+type t = {
+  number_of_slots : int;
+  attestation_lag : int;
+  slot_size : int;
+  page_size : int;
+}
 
 (** Pretty-printer for the parameters. *)
 val pp : Format.formatter -> t -> unit
