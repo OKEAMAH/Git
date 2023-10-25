@@ -308,6 +308,13 @@ type elected_block = {
   attestation_qc : Kind.attestation Operation.t list;
 }
 
+type signed_block = {
+  round : Round.t;
+  delegate : consensus_key_and_delegate;
+  block_header : block_header;
+  operations : Tezos_base.Operation.t list list;
+}
+
 (* Updated only when we receive a block at a different level.
 
    N.B. it may be our own: implying that we should not update unless
@@ -326,6 +333,9 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
+  next_forged_block : signed_block option;
+      (* Block that is preemptively forged for the next level when baker is
+           round 0 proposer. *)
 }
 
 type phase =
@@ -894,6 +904,7 @@ let pp_level_state fmt
       delegate_slots;
       next_level_delegate_slots;
       next_level_proposed_round;
+      next_forged_block = _;
     } =
   Format.fprintf
     fmt
