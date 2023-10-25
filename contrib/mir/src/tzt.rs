@@ -35,7 +35,7 @@ pub enum TztTestError {
 /// expectation of failure.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TztTest {
-    pub code: ParsedInstructionBlock,
+    pub code: ParsedInstruction,
     pub input: TestStack,
     pub output: TestExpectation,
     pub amount: Option<i64>,
@@ -44,7 +44,7 @@ pub struct TztTest {
 fn typecheck_stack(stk: Vec<(Type, Value)>) -> Result<Vec<(Type, TypedValue)>, TcError> {
     stk.into_iter()
         .map(|(t, v)| {
-            let tc_val = typecheck_value(&mut Default::default(), &t, v)?;
+            let tc_val = v.typecheck(&mut Default::default(), &t)?;
             Ok((t, tc_val))
         })
         .collect()
@@ -77,7 +77,7 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
         use TestExpectation::*;
         use TztEntity::*;
         use TztOutput::*;
-        let mut m_code: Option<ParsedInstructionBlock> = None;
+        let mut m_code: Option<ParsedInstruction> = None;
         let mut m_input: Option<TestStack> = None;
         let mut m_output: Option<TestExpectation> = None;
         let mut m_amount: Option<i64> = None;
@@ -154,7 +154,7 @@ pub enum InterpreterErrorExpectation {
 /// Helper type for use during parsing, represent a single
 /// line from the test file.
 pub enum TztEntity {
-    Code(ParsedInstructionBlock),
+    Code(ParsedInstruction),
     Input(Vec<(Type, Value)>),
     Output(TztOutput),
     Amount(i64),
@@ -169,7 +169,7 @@ pub enum TztOutput {
 }
 
 fn execute_tzt_test_code(
-    code: ParsedInstructionBlock,
+    code: ParsedInstruction,
     ctx: &mut Ctx,
     input: Vec<(Type, TypedValue)>,
 ) -> Result<(FailingTypeStack, IStack), TestError> {
@@ -185,9 +185,9 @@ fn execute_tzt_test_code(
     // This value along with the test expectation
     // from the test file will be used to decide if
     // the test was a success or a fail.
-    let typechecked_code = typecheck(code, ctx, &mut t_stack)?;
+    let typechecked_code = code.typecheck(ctx, &mut t_stack)?;
     let mut i_stack: IStack = TopIsFirst::from(vals).0;
-    interpret(&typechecked_code, ctx, &mut i_stack)?;
+    typechecked_code.interpret(ctx, &mut i_stack)?;
     Ok((t_stack, i_stack))
 }
 

@@ -229,7 +229,7 @@ instructionBlock: ParsedInstructionBlock = {
 }
 
 // synonym for consistent type naming
-pub InstructionBlock = instructionBlock;
+pub Instruction = instruction;
 
 // synonym for consistent type naming
 pub Type: Type = type_expr;
@@ -273,7 +273,7 @@ mutezAmount : i64 =
     .map_err(|_| ParserError::LexerError(LexerError::NumericLiteral(n.to_string())).into() );
 
 tztEntity : TztEntity = {
-  "code" <ib:instructionBlock> => Code(ib),
+  "code" <code_content> => Code(<>),
   "input" <s:tztStack> => Input(s),
   "output" <s:tztStack> => Output(Success(s)),
   "output" "(" "failed" <v:value_expr> ")" => Output(Fail(v)),
