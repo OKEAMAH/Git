@@ -221,6 +221,16 @@ mod tests {
                 code: Failwith
             })
         );
+
+        // non-atomic arguments to code must be wrapped in braces
+        assert_eq!(
+            parse_contract("parameter unit; storage unit; code NIL unit")
+                .unwrap_err()
+                .to_string()
+                .lines()
+                .next(),
+            Some("Unrecognized token `NIL` found at 35:38")
+        );
         // duplicate
         assert_eq!(
             parse_contract("parameter unit; parameter int; storage unit; code FAILWITH"),
