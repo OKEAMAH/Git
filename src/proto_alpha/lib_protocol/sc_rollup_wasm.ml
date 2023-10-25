@@ -444,6 +444,10 @@ module V2_0_0 = struct
           let* s = get in
           let* s = lift (WASM_machine.reveal_step content_bytes s) in
           set s
+      | PS.Reveal (PS.Dal_parameters _) ->
+          (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6544
+             reveal_dal_parameters result for slow execution PVM. *)
+          assert false
 
     let set_input input = state_of @@ set_input_state input
 
