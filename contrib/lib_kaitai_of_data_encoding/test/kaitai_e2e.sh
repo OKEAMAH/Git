@@ -99,3 +99,6 @@ else
     echo "See the action log:"
     echo "$validation_output"
 fi
+
+# TODO: Better logging/error reporting for better dev ux.
+# TODO: Correct redirection of standard error.
