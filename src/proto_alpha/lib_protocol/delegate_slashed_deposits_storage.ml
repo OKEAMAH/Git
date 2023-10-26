@@ -108,7 +108,23 @@ let punish_double_signing ctxt (misbehaviour : Misbehaviour.t) delegate
     let+ amount_to_burn = Tez_repr.(punishing_amount -? reward) in
     (should_forbid, {reward; amount_to_burn})
   in
-  let* frozen_deposits = Frozen_deposits_storage.get ctxt delegate_contract in
+  let current_cycle = (Raw_context.current_level ctxt).cycle in
+  let* frozen_deposits =
+    let* initial_amount =
+      if Cycle_repr.(level.cycle = current_cycle) then
+        Delegate_storage.initial_frozen_deposits ctxt delegate
+      else if Cycle_repr.(succ level.cycle = current_cycle) then
+        Delegate_storage.initial_frozen_deposits_of_previous_cycle ctxt delegate
+      else
+        (* Because [max_slashing_period = 2], there cannot be denunciations
+           for other cycles. *)
+        assert false
+    in
+    let* current_amount =
+      Delegate_storage.current_frozen_deposits ctxt delegate
+    in
+    return Deposits_repr.{initial_amount; current_amount}
+  in
   let*? should_forbid, staked = compute_reward_and_burn frozen_deposits in
   let* unstaked =
     let oldest_slashable_cycle =
@@ -139,7 +155,6 @@ let punish_double_signing ctxt (misbehaviour : Misbehaviour.t) delegate
     Storage.Contract.Slashed_deposits.find ctxt delegate_contract
   in
   let slash_history = Option.value slash_history_opt ~default:[] in
-  let current_cycle = (Raw_context.current_level ctxt).cycle in
   let previously_slashed_this_cycle =
     Storage.Slashed_deposits_history.get current_cycle slash_history
   in

@@ -504,11 +504,6 @@ module Delegate = struct
   include Delegate_slashed_deposits_storage
   include Delegate_cycles
 
-  type deposits = Deposits_repr.t = {
-    initial_amount : Tez.t;
-    current_amount : Tez.t;
-  }
-
   let last_cycle_before_deactivation =
     Delegate_activation_storage.last_cycle_before_deactivation
 
@@ -534,6 +529,18 @@ module Delegate = struct
   end
 
   module Staking_parameters = Delegate_staking_parameters
+
+  module For_RPC = struct
+    include For_RPC
+
+    let current_cycle_denunciations_list ctxt =
+      let open Lwt_syntax in
+      let* r = Storage.Current_cycle_denunciations.bindings ctxt in
+      let r =
+        List.map (fun (x, l) -> List.map (fun y -> (x, y)) l) r |> List.flatten
+      in
+      return r
+  end
 end
 
 module Stake_distribution = struct
@@ -553,6 +560,10 @@ module Stake_distribution = struct
     return (Stake_repr.get_frozen total_stake)
 
   module For_RPC = Delegate_sampler.For_RPC
+end
+
+module Staking = struct
+  include Staking
 end
 
 module Nonce = Nonce_storage
@@ -688,17 +699,15 @@ end
 
 module Unstaked_frozen_deposits = Unstaked_frozen_deposits_storage
 
-module Staking_pseudotokens = struct
+module Staking_pseudotoken = struct
   include Staking_pseudotoken_repr
+  module For_RPC = Staking_pseudotoken_repr
+  module Internal_for_tests = Staking_pseudotoken_repr
+end
+
+module Staking_pseudotokens = struct
   include Staking_pseudotokens_storage
-
-  module For_RPC = struct
-    type nonrec t = Staking_pseudotoken_repr.t
-
-    let encoding = Staking_pseudotoken_repr.encoding
-
-    include Staking_pseudotokens_storage.For_RPC
-  end
+  module For_RPC = Staking_pseudotokens_storage.For_RPC
 end
 
 module Internal_for_tests = struct

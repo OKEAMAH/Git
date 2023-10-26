@@ -146,7 +146,7 @@ val check_op_in_whitelist_or_bailout_mode :
     purpose.
 *)
 val get_fee_parameter :
-  _ t -> Configuration.operation_kind -> Injector_sigs.fee_parameter
+  _ t -> Configuration.operation_kind -> Injector_common.fee_parameter
 
 (** [init cctxt ~data_dir mode l1_ctxt genesis_info protocol configuration]
     initializes the rollup representation. The rollup origination level and kind
@@ -336,6 +336,18 @@ val commitment_was_published :
 
 (** [set_lcc t lcc] saves the LCC both on disk and in the node context. It's written in the context iff [lcc] is is younger than its current value. *)
 val set_lcc : rw -> lcc -> unit tzresult Lwt.t
+
+(** [register_published_commitment t c ~first_published_at_level ~level
+    ~published_by_us] saves the publishing information for commitment [c] both
+    on disk and in the node context. We remember the first publication level
+    and the level the commitment was published by us. *)
+val register_published_commitment :
+  rw ->
+  Commitment.t ->
+  first_published_at_level:int32 ->
+  level:int32 ->
+  published_by_us:bool ->
+  unit tzresult Lwt.t
 
 (** {3 Inboxes} *)
 

@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 TriliTech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,45 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let get ctxt delegate =
-  let open Lwt_result_syntax in
-  let+ frozen_deposits_opt =
-    Storage.Contract.Frozen_deposits.find ctxt delegate
+let run_kernel ~kernel =
+  let process =
+    Process.spawn (project_root // "risc-v-sandbox") ["-i"; kernel]
   in
-  Option.value ~default:Deposits_repr.zero frozen_deposits_opt
-
-let update_balance ctxt delegate f amount =
-  let open Lwt_result_syntax in
-  let delegate_contract = Contract_repr.Implicit delegate in
-  let* frozen_deposits = get ctxt delegate_contract in
-  let*? new_amount = f frozen_deposits.current_amount amount in
-  let*! ctxt =
-    Storage.Contract.Frozen_deposits.add
-      ctxt
-      delegate_contract
-      {frozen_deposits with current_amount = new_amount}
-  in
-  return ctxt
-
-let credit_only_call_from_token ctxt staker amount =
-  let open Lwt_result_syntax in
-  let delegate = Staker_repr.staker_delegate staker in
-  let* ctxt = update_balance ctxt delegate Tez_repr.( +? ) amount in
-  Stake_storage.add_frozen_stake ctxt staker amount
-
-let spend_only_call_from_token ctxt staker amount =
-  let open Lwt_result_syntax in
-  let delegate = Staker_repr.staker_delegate staker in
-  let* ctxt = update_balance ctxt delegate Tez_repr.( -? ) amount in
-  Stake_storage.remove_frozen_stake ctxt staker amount
-
-let update_initial_amount ctxt delegate_contract deposits_cap =
-  let open Lwt_result_syntax in
-  let* frozen_deposits = get ctxt delegate_contract in
-  let*! ctxt =
-    Storage.Contract.Frozen_deposits.add
-      ctxt
-      delegate_contract
-      {frozen_deposits with initial_amount = deposits_cap}
-  in
-  return ctxt
+  Process.check process

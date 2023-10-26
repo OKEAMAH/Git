@@ -153,6 +153,19 @@ module Tez : sig
   val div_exn : t -> int -> t
 end
 
+(** This module re-exports definitions from {!Staking_pseudotoken_repr}. *)
+module Staking_pseudotoken : sig
+  type t
+
+  module For_RPC : sig
+    val encoding : t Data_encoding.encoding
+  end
+
+  module Internal_for_tests : sig
+    val to_z : t -> Z.t
+  end
+end
+
 (** This module re-exports definitions from {!Period_repr}. *)
 module Period : sig
   include BASIC_DATA
@@ -2042,7 +2055,9 @@ end
 (** This module re-exports definitions from {!Receipt_repr}. *)
 module Receipt : sig
   module Token : sig
-    type 'token t = Tez : Tez.t t
+    type 'token t =
+      | Tez : Tez.t t
+      | Staking_pseudotoken : Staking_pseudotoken.t t
 
     val eq :
       'token1 t -> 'token2 t -> ('token1, 'token2) Equality_witness.eq option
@@ -2078,6 +2093,14 @@ module Receipt : sig
     | Frozen_bonds : Contract.t * Bond_id.t -> Tez.t balance
     | Sc_rollup_refutation_punishments : Tez.t balance
     | Sc_rollup_refutation_rewards : Tez.t balance
+    | Staking_delegator_numerator : {
+        delegator : Contract.t;
+      }
+        -> Staking_pseudotoken.t balance
+    | Staking_delegate_denominator : {
+        delegate : public_key_hash;
+      }
+        -> Staking_pseudotoken.t balance
 
   val token_of_balance : 'token balance -> 'token Token.t
 
@@ -2128,7 +2151,7 @@ module Consensus_key : sig
   val pkh : pk -> t
 end
 
-(** This module re-exports definitions from {!Deposits_repr}, {!Delegate_storage},
+(** This module re-exports definitions from {!Delegate_storage},
    {!Delegate_consensus_key}, {!Delegate_missed_attestations_storage},
    {!Delegate_slashed_deposits_storage}, {!Delegate_cycles},
    {!Delegate_rewards}. *)
@@ -2205,9 +2228,11 @@ module Delegate : sig
     attesting_power:int ->
     context tzresult Lwt.t
 
-  type deposits = {initial_amount : Tez.t; current_amount : Tez.t}
+  val current_frozen_deposits :
+    context -> public_key_hash -> Tez.t tzresult Lwt.t
 
-  val frozen_deposits : context -> public_key_hash -> deposits tzresult Lwt.t
+  val initial_frozen_deposits :
+    context -> public_key_hash -> Tez.t tzresult Lwt.t
 
   (** See {!Contract_delegate_storage.delegated_contracts}. *)
   val delegated_contracts : context -> public_key_hash -> Contract.t list Lwt.t
@@ -2363,7 +2388,52 @@ module Delegate : sig
     val delegated_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
 
     val staking_balance : context -> public_key_hash -> Tez.t tzresult Lwt.t
+
+    val current_cycle_denunciations_list :
+      context -> (public_key_hash * Denunciations_repr.item) list Lwt.t
   end
+end
+
+module Staking : sig
+  (** [stake ctxt ~sender ~delegate amount] add [amount] as [sender]'s stake
+    to [delegate]. *)
+  val stake :
+    context ->
+    sender:public_key_hash ->
+    delegate:public_key_hash ->
+    Tez.t ->
+    (context * Receipt.balance_updates) tzresult Lwt.t
+
+  (** [request_unstake ctxt ~sender_contract ~delegate amount] records a request
+    from [sender_contract] to unstake [amount] from [delegate]. *)
+  val request_unstake :
+    context ->
+    sender_contract:Contract.t ->
+    delegate:public_key_hash ->
+    Tez.t ->
+    (context * Receipt.balance_updates) tzresult Lwt.t
+
+  (** [finalize_unstake ctxt contract] performs the finalization of all unstake
+    requests from [contract] that can be finalized.
+    An unstake request can be finalized if it is old enough, specifically the
+    requested amount must not be at stake anymore and must not be slashable
+    anymore, i.e. after [preserved_cycles + max_slashing_period] after the
+    request.
+    Amounts are transferred from the [contract]'s delegate (at request time)
+    unstaked frozen deposits to [contract]'s spendable balance, minus slashing
+    the requested stake undergone in between. *)
+  val finalize_unstake :
+    context -> Contract.t -> (context * Receipt.balance_updates) tzresult Lwt.t
+
+  (** [punish_delegate ctxt delegate level misbehaviour ~rewarded] slashes [delegate]
+    for a [misbehaviour] at [level] and rewards [rewarded]. *)
+  val punish_delegate :
+    context ->
+    public_key_hash ->
+    Level.t ->
+    Misbehaviour.t ->
+    rewarded:public_key_hash ->
+    (context * Receipt.balance_updates) tzresult Lwt.t
 end
 
 (** This module re-exports definitions from {!Voting_period_repr} and
@@ -5080,17 +5150,6 @@ module Unstake_requests : sig
   val prepare_finalize_unstake :
     context -> Contract.t -> prepared_finalize_unstake option tzresult Lwt.t
 
-  val update :
-    context -> Contract.t -> stored_requests -> context tzresult Lwt.t
-
-  val add :
-    context ->
-    contract:Contract.t ->
-    delegate:public_key_hash ->
-    Cycle.t ->
-    Tez.t ->
-    context tzresult Lwt.t
-
   module For_RPC : sig
     val apply_slash_to_unstaked_unfinalizable :
       context ->
@@ -5109,25 +5168,7 @@ end
 
 (** This module re-exports definitions from {!Staking_pseudotokens_storage}. *)
 module Staking_pseudotokens : sig
-  val stake :
-    context ->
-    contract:Contract.t ->
-    delegate:public_key_hash ->
-    Tez.t ->
-    context tzresult Lwt.t
-
-  val request_unstake :
-    context ->
-    contract:Contract.t ->
-    delegate:public_key_hash ->
-    Tez.t ->
-    (context * Tez.t) tzresult Lwt.t
-
   module For_RPC : sig
-    type t
-
-    val encoding : t Data_encoding.encoding
-
     val staked_balance :
       context ->
       contract:Contract.t ->
@@ -5135,10 +5176,12 @@ module Staking_pseudotokens : sig
       Tez.t tzresult Lwt.t
 
     val staking_pseudotokens_balance :
-      context -> delegator:Contract.t -> t tzresult Lwt.t
+      context -> delegator:Contract.t -> Staking_pseudotoken.t tzresult Lwt.t
 
     val get_frozen_deposits_pseudotokens :
-      context -> delegate:Signature.public_key_hash -> t tzresult Lwt.t
+      context ->
+      delegate:Signature.public_key_hash ->
+      Staking_pseudotoken.t tzresult Lwt.t
 
     val get_frozen_deposits_staked_tez :
       context -> delegate:Signature.public_key_hash -> Tez.t tzresult Lwt.t

@@ -74,14 +74,12 @@ type rw = [`Read | `Write] t
 type ro = [`Read] t
 
 let get_operator node_ctxt purpose =
-  Configuration.Operator_purpose_map.find
-    purpose
-    node_ctxt.config.sc_rollup_node_operators
+  Configuration.Operator_purpose_map.find purpose node_ctxt.config.operators
 
 let is_operator node_ctxt pkh =
   Configuration.Operator_purpose_map.exists
     (fun _ operator -> Signature.Public_key_hash.(operator = pkh))
-    node_ctxt.config.sc_rollup_node_operators
+    node_ctxt.config.operators
 
 let is_accuser node_ctxt = node_ctxt.config.mode = Accuser
 
@@ -106,8 +104,7 @@ let get_fee_parameter node_ctxt operation_kind =
   Configuration.Operation_kind_map.find
     operation_kind
     node_ctxt.config.fee_parameters
-  |> Option.value
-       ~default:(Configuration.default_fee_parameter ~operation_kind ())
+  |> Option.value ~default:(Configuration.default_fee_parameter operation_kind)
 
 let lock ~data_dir =
   let lockfile_path = Filename.concat data_dir "lock" in
@@ -665,6 +662,34 @@ let last_seen_lcc {store; genesis_info; _} =
   | None ->
       {commitment = genesis_info.commitment_hash; level = genesis_info.level}
 
+let register_published_commitment node_ctxt commitment ~first_published_at_level
+    ~level ~published_by_us =
+  let open Lwt_result_syntax in
+  let commitment_hash = Commitment.hash commitment in
+  let* prev_publication =
+    Store.Commitments_published_at_level.mem
+      node_ctxt.store.commitments_published_at_level
+      commitment_hash
+  in
+  let published_at_level = if published_by_us then Some level else None in
+  let* () =
+    if (not prev_publication) || published_by_us then
+      set_commitment_published_at_level
+        node_ctxt
+        commitment_hash
+        {first_published_at_level; published_at_level}
+    else return_unit
+  in
+  when_ published_by_us @@ fun () ->
+  let* () = Store.Lpc.write node_ctxt.store.lpc commitment in
+  let update_lpc_ref =
+    match Reference.get node_ctxt.lpc with
+    | None -> true
+    | Some {inbox_level; _} -> commitment.inbox_level >= inbox_level
+  in
+  if update_lpc_ref then Reference.set node_ctxt.lpc (Some commitment) ;
+  return_unit
+
 let find_inbox {store; _} inbox_hash =
   let open Lwt_result_syntax in
   let+ inbox = Store.Inboxes.read store.inboxes inbox_hash in
@@ -1135,7 +1160,7 @@ module Internal_for_tests = struct
         {
           sc_rollup_address = rollup_address;
           boot_sector_file = None;
-          sc_rollup_node_operators = operators;
+          operators;
           rpc_addr = Configuration.default_rpc_addr;
           rpc_port = Configuration.default_rpc_port;
           metrics_addr = None;

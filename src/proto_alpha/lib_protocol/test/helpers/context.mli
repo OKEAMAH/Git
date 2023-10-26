@@ -141,6 +141,10 @@ val get_ai_current_yearly_rate_exact : t -> Q.t tzresult Lwt.t
 val get_ai_expected_issuance :
   t -> Adaptive_issuance_services.expected_rewards list tzresult Lwt.t
 
+val get_denunciations :
+  t ->
+  (Signature.Public_key_hash.t * Denunciations_repr.item) list tzresult Lwt.t
+
 module Vote : sig
   val get_ballots : t -> Vote.ballots tzresult Lwt.t
 
@@ -203,6 +207,8 @@ module Contract : sig
 
   val full_balance : t -> Contract.t -> Tez.t tzresult Lwt.t
 
+  val staking_numerator : t -> Contract.t -> Z.t tzresult Lwt.t
+
   val counter : t -> Contract.t -> Manager_counter.t tzresult Lwt.t
 
   val manager : t -> Contract.t -> Account.t tzresult Lwt.t
@@ -229,7 +235,7 @@ module Delegate : sig
     delegated_contracts : Alpha_context.Contract.t list;
     delegated_balance : Tez.t;
     total_delegated_stake : Tez.t;
-    staking_denominator : Staking_pseudotokens.For_RPC.t;
+    staking_denominator : Staking_pseudotoken.t;
     deactivated : bool;
     grace_period : Cycle.t;
     voting_info : Vote.delegate_info;
@@ -248,6 +254,8 @@ module Delegate : sig
   val initial_frozen_deposits : t -> public_key_hash -> Tez.t tzresult Lwt.t
 
   val staking_balance : t -> public_key_hash -> Tez.t tzresult Lwt.t
+
+  val staking_denominator : t -> public_key_hash -> Z.t tzresult Lwt.t
 
   val deactivated : t -> public_key_hash -> bool tzresult Lwt.t
 

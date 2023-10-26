@@ -181,7 +181,6 @@
   Stake_storage
   Unstaked_frozen_deposits_storage
   Unstake_requests_storage
-  Frozen_deposits_storage
   Staking_pseudotokens_storage
   Contract_storage
   Token
@@ -195,6 +194,7 @@
   Delegate_rewards
   Delegate_missed_attestations_storage
   Delegate_slashed_deposits_storage
+  Staking
   Delegate_cycles
   Vote_storage
   Ticket_storage
@@ -270,7 +270,6 @@
   Sc_rollup_operations
   Dal_apply
   Zk_rollup_apply
-  Staking
   Baking
   Validate_errors
   Amendment
@@ -475,7 +474,6 @@
   stake_storage.ml stake_storage.mli
   unstaked_frozen_deposits_storage.ml unstaked_frozen_deposits_storage.mli
   unstake_requests_storage.ml unstake_requests_storage.mli
-  frozen_deposits_storage.ml frozen_deposits_storage.mli
   staking_pseudotokens_storage.ml staking_pseudotokens_storage.mli
   contract_storage.ml contract_storage.mli
   token.ml token.mli
@@ -490,6 +488,7 @@
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
+  staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -565,7 +564,6 @@
   sc_rollup_operations.ml sc_rollup_operations.mli
   dal_apply.ml dal_apply.mli
   zk_rollup_apply.ml zk_rollup_apply.mli
-  staking.ml staking.mli
   baking.ml baking.mli
   validate_errors.ml validate_errors.mli
   amendment.ml amendment.mli
@@ -771,7 +769,6 @@
   stake_storage.ml stake_storage.mli
   unstaked_frozen_deposits_storage.ml unstaked_frozen_deposits_storage.mli
   unstake_requests_storage.ml unstake_requests_storage.mli
-  frozen_deposits_storage.ml frozen_deposits_storage.mli
   staking_pseudotokens_storage.ml staking_pseudotokens_storage.mli
   contract_storage.ml contract_storage.mli
   token.ml token.mli
@@ -786,6 +783,7 @@
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
+  staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -861,7 +859,6 @@
   sc_rollup_operations.ml sc_rollup_operations.mli
   dal_apply.ml dal_apply.mli
   zk_rollup_apply.ml zk_rollup_apply.mli
-  staking.ml staking.mli
   baking.ml baking.mli
   validate_errors.ml validate_errors.mli
   amendment.ml amendment.mli
@@ -1051,7 +1048,6 @@
   stake_storage.ml stake_storage.mli
   unstaked_frozen_deposits_storage.ml unstaked_frozen_deposits_storage.mli
   unstake_requests_storage.ml unstake_requests_storage.mli
-  frozen_deposits_storage.ml frozen_deposits_storage.mli
   staking_pseudotokens_storage.ml staking_pseudotokens_storage.mli
   contract_storage.ml contract_storage.mli
   token.ml token.mli
@@ -1066,6 +1062,7 @@
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
+  staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli
   vote_storage.ml vote_storage.mli
   ticket_storage.ml ticket_storage.mli
@@ -1141,7 +1138,6 @@
   sc_rollup_operations.ml sc_rollup_operations.mli
   dal_apply.ml dal_apply.mli
   zk_rollup_apply.ml zk_rollup_apply.mli
-  staking.ml staking.mli
   baking.ml baking.mli
   validate_errors.ml validate_errors.mli
   amendment.ml amendment.mli

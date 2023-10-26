@@ -16,5 +16,7 @@ build_kernels:
       - tx_kernel.wasm
       - tx_kernel_dal.wasm
       - dal_echo_kernel.wasm
+      - risc-v-sandbox
+      - risc-v-dummy.elf
     expire_in: 1 day
     when: on_success

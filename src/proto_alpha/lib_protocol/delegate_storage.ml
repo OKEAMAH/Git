@@ -46,6 +46,8 @@ let () =
     (function Unregistered_delegate k -> Some k | _ -> None)
     (fun k -> Unregistered_delegate k)
 
+type error += No_previous_cycle
+
 let registered = Storage.Delegates.mem
 
 module Contract = struct
@@ -225,8 +227,47 @@ let fold = Storage.Delegates.fold
 
 let list = Storage.Delegates.elements
 
-let frozen_deposits ctxt delegate =
-  Frozen_deposits_storage.get ctxt (Contract_repr.Implicit delegate)
+let initial_frozen_deposits ctxt delegate =
+  let open Lwt_result_syntax in
+  let* stake_opt =
+    match Raw_context.find_stake_distribution_for_current_cycle ctxt with
+    | Some distribution ->
+        return (Signature.Public_key_hash.Map.find delegate distribution)
+    | None ->
+        (* This branch happens when the stake distribution is not initialized in
+           [ctxt], e.g. when RPCs are called or operations are simulated. *)
+        let current_cycle = (Raw_context.current_level ctxt).cycle in
+        let+ stakes =
+          Stake_storage.get_selected_distribution ctxt current_cycle
+        in
+        List.assoc ~equal:Signature.Public_key_hash.equal delegate stakes
+  in
+  match stake_opt with
+  | None -> return Tez_repr.zero
+  | Some {frozen; weighted_delegated = _} -> return frozen
+
+let initial_frozen_deposits_of_previous_cycle ctxt delegate =
+  let open Lwt_result_syntax in
+  let current_cycle = (Raw_context.current_level ctxt).cycle in
+  match Cycle_repr.pred current_cycle with
+  | None -> tzfail No_previous_cycle
+  | Some previous_cycle -> (
+      let+ stakes =
+        Stake_storage.get_selected_distribution ctxt previous_cycle
+      in
+      match
+        List.assoc ~equal:Signature.Public_key_hash.equal delegate stakes
+      with
+      | None -> Tez_repr.zero
+      | Some {frozen; weighted_delegated = _} -> frozen)
+
+let current_frozen_deposits ctxt delegate =
+  let open Lwt_result_syntax in
+  let* {own_frozen; staked_frozen; delegated = _} =
+    Stake_storage.get_full_staking_balance ctxt delegate
+  in
+  let*? total = Tez_repr.(own_frozen +? staked_frozen) in
+  return total
 
 let spendable_balance ctxt delegate =
   let contract = Contract_repr.Implicit delegate in

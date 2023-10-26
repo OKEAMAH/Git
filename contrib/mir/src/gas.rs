@@ -64,6 +64,23 @@ impl AsGasCost for checked::Checked<usize> {
     }
 }
 
+/// A hack to get the integral logarithm base 2, rounded up.
+/// Rounds up to the nearest power of 2 and counts trailing zeroes. Thus,
+///
+/// ```
+/// log2i(1) = log2i(0b1) = 0;
+/// log2i(2) = log2i(0b10) = 1;
+/// log2i(3) = log2i(4) = log2i(0b100) = 2;
+/// ```
+/// &c
+///
+/// `log2i(0)` is not well-defined, and likely is a logic error, hence the
+/// function will panic on `0`.
+fn log2i(x: usize) -> u32 {
+    assert!(x != 0);
+    x.next_power_of_two().trailing_zeros()
+}
+
 pub mod tc_cost {
     use checked::Checked;
 
@@ -105,10 +122,7 @@ pub mod tc_cost {
         // to avoid log2(0) it's more practical to compute log2(n + 1)
         let n = Checked::from(sz);
         let key_size = Checked::from(key_size);
-        let log2n = (n + 1)
-            .ok_or(OutOfGas)?
-            .next_power_of_two()
-            .trailing_zeros() as usize;
+        let log2n = super::log2i((n + 1).ok_or(OutOfGas)?) as usize;
         (80 * n + key_size * n * log2n).as_gas_cost()
     }
 }
@@ -226,6 +240,34 @@ pub mod interpret_cost {
             _ => unreachable!("Comparison of incomparable values"),
         })
     }
+
+    pub fn map_get(k: &TypedValue, map_size: usize) -> Result<u32, OutOfGas> {
+        // NB: this doesn't copy the tezos model exactly; tezos model uses
+        //
+        // 80 + sizeof(key)*log2(map.size)
+        //
+        // this seems dubious, from first principles and dimensional analysis,
+        // this seems more probable:
+        //
+        // 80 + cost_of_compare(key)*log2(map.size + 1)
+        //
+        // "+ 1" is from the observation that a lookup in a map of size 1 does
+        // exactly one comparison.
+        let compare_cost = compare(k, k)?;
+        let size_log = super::log2i(map_size + 1);
+        let lookup_cost = Checked::from(compare_cost) * size_log;
+        (80 + lookup_cost).as_gas_cost()
+    }
+
+    pub fn map_update(k: &TypedValue, map_size: usize) -> Result<u32, OutOfGas> {
+        // NB: same considerations as for map_get
+        let compare_cost = compare(k, k)?;
+        let size_log = super::log2i(map_size + 1);
+        let lookup_cost = Checked::from(compare_cost) * size_log;
+        // NB: 2 factor copied from Tezos protocol, in principle it should
+        // reflect update vs get overhead.
+        (80 + 2 * lookup_cost).as_gas_cost()
+    }
 }
 
 #[cfg(test)]
@@ -259,5 +301,23 @@ mod test {
         for n in [usize::MAX, usize::MAX / 2, usize::MAX / 4] {
             assert_eq!(super::tc_cost::ty_eq(n, n), Err(OutOfGas));
         }
+    }
+
+    #[test]
+    fn log2i_test() {
+        assert_eq!(log2i(1), 0);
+        assert_eq!(log2i(2), 1);
+        assert_eq!(log2i(3), 2);
+        assert_eq!(log2i(4), 2);
+        assert_eq!(log2i(5), 3);
+        assert_eq!(log2i(70_000), 17);
+        assert_eq!(log2i(100_000), 17);
+        assert_eq!(log2i(300_000), 19);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed: x != 0")]
+    fn log2i_test_panic() {
+        log2i(0);
     }
 }

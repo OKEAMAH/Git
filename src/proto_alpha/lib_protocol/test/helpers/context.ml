@@ -315,6 +315,9 @@ let get_ai_current_yearly_rate_exact ctxt =
 let get_ai_expected_issuance ctxt =
   Adaptive_issuance_services.expected_issuance rpc_ctxt ctxt
 
+let get_denunciations ctxt =
+  Alpha_services.Denunciations.denunciations rpc_ctxt ctxt
+
 (* Voting *)
 
 module Vote = struct
@@ -397,6 +400,13 @@ module Contract = struct
   let full_balance ctxt contract =
     Alpha_services.Contract.full_balance rpc_ctxt ctxt contract
 
+  let staking_numerator ctxt contract =
+    let open Lwt_result_syntax in
+    let+ pseudotokens =
+      Alpha_services.Contract.staking_numerator rpc_ctxt ctxt contract
+    in
+    Staking_pseudotoken.Internal_for_tests.to_z pseudotokens
+
   let counter ctxt (contract : Contract.t) =
     match contract with
     | Originated _ -> invalid_arg "Helpers.Context.counter"
@@ -449,7 +459,7 @@ module Delegate = struct
     delegated_contracts : Alpha_context.Contract.t list;
     delegated_balance : Tez.t;
     total_delegated_stake : Tez.t;
-    staking_denominator : Staking_pseudotokens.For_RPC.t;
+    staking_denominator : Staking_pseudotoken.t;
     deactivated : bool;
     grace_period : Cycle.t;
     voting_info : Alpha_context.Vote.delegate_info;
@@ -469,6 +479,13 @@ module Delegate = struct
 
   let staking_balance ctxt pkh =
     Delegate_services.staking_balance rpc_ctxt ctxt pkh
+
+  let staking_denominator ctxt pkh =
+    let open Lwt_result_syntax in
+    let+ pseudotokens =
+      Delegate_services.staking_denominator rpc_ctxt ctxt pkh
+    in
+    Staking_pseudotoken.Internal_for_tests.to_z pseudotokens
 
   let deactivated ctxt pkh = Delegate_services.deactivated rpc_ctxt ctxt pkh
 

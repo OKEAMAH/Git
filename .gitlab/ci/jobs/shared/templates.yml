@@ -26,6 +26,8 @@
 
 # Add variables for bisect_ppx instrumentation
 .template__coverage:
+  extends:
+    - .tags_template__gcp
   variables:
     COVERAGE_OPTIONS: "--instrument-with bisect_ppx"
     BISECT_FILE: "$CI_PROJECT_DIR/_coverage_output/"
@@ -45,8 +47,8 @@
 .kernels_template:
   extends:
     - .default_settings_template
+    - .image_template__rust_toolchain
   stage: build
-  image: "${PROD_AWS_ECR}/rust-toolchain:v1.0.3"
   needs: [trigger]
   before_script:
     - make -f kernels.mk build-dev-deps
@@ -64,5 +66,7 @@
       - evm_kernel.wasm
       - sequenced_kernel.wasm
       - smart-rollup-installer
+      - risc-v-sandbox
+      - risc-v-dummy.elf
     expire_in: 1 day
     when: on_success

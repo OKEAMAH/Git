@@ -93,17 +93,20 @@ let has_minimal_stake ctxt
   let open Result_syntax in
   let open Tez_repr in
   let minimal_stake = Constants_storage.minimal_stake ctxt in
-  let minimal_frozen_stake = Constants_storage.minimal_frozen_stake ctxt in
   let sum =
     let* frozen = own_frozen +? staked_frozen in
     frozen +? delegated
   in
-  own_frozen >= minimal_frozen_stake
-  &&
   match sum with
   | Error _sum_overflows ->
       true (* If the sum overflows, we are definitely over the minimal stake. *)
   | Ok staking_balance -> Tez_repr.(staking_balance >= minimal_stake)
+
+let has_minimal_stake_and_frozen_stake ctxt
+    ({own_frozen; _} as full_staking_balance : Full_staking_balance_repr.t) =
+  let minimal_frozen_stake = Constants_storage.minimal_frozen_stake ctxt in
+  Tez_repr.(own_frozen >= minimal_frozen_stake)
+  && has_minimal_stake ctxt full_staking_balance
 
 let update_stake ~f ctxt delegate =
   let open Lwt_result_syntax in
@@ -281,7 +284,7 @@ let clear_cycle ctxt cycle =
   let* ctxt = Storage.Stake.Total_active_stake.remove_existing ctxt cycle in
   Selected_distribution_for_cycle.remove_existing ctxt cycle
 
-let fold ctxt ~f ~order init =
+let fold_on_active_delegates_with_minimal_stake_es ctxt ~f ~order ~init =
   let open Lwt_result_syntax in
   Storage.Stake.Active_delegates_with_minimal_stake.fold
     ctxt
@@ -310,7 +313,7 @@ let clear_at_cycle_end ctxt ~new_cycle =
   | None -> return ctxt
   | Some cycle_to_clear -> clear_cycle ctxt cycle_to_clear
 
-let fold_on_active_delegates_with_minimal_stake =
+let fold_on_active_delegates_with_minimal_stake_s =
   Storage.Stake.Active_delegates_with_minimal_stake.fold
 
 let get_selected_distribution = Selected_distribution_for_cycle.get
