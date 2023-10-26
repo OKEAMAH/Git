@@ -1314,18 +1314,26 @@ module Make (Parameters : PARAMETERS) = struct
           return_unit
 
   let inject ?tags ?header () =
+    let open Lwt_syntax in
     let workers = Worker.list table in
     let tags = Option.map Tags.of_list tags in
-    List.iter_p
-      (fun (_signer, w) ->
-        let open Lwt_syntax in
-        let worker_state = Worker.state w in
-        if has_tag_in ~tags worker_state then
-          delay_strategy worker_state header @@ fun () ->
-          let* _pushed = Worker.Queue.push_request w Request.Inject in
-          return_unit
-        else Lwt.return_unit)
-      workers
+    let* len =
+      List.fold_left_s
+        (fun len (_signer, w) ->
+          let worker_state = Worker.state w in
+          if has_tag_in ~tags worker_state then
+            let* () =
+              delay_strategy worker_state header @@ fun () ->
+              let* _pushed = Worker.Queue.push_request w Request.Inject in
+              return_unit
+            in
+            return (len + Worker.Queue.pending_requests_length w)
+          else return len)
+        0
+        workers
+    in
+    Metrics.set_injector_queue_length len ;
+    return_unit
 
   let notify_new_tezos_head h =
     let open Lwt_syntax in
