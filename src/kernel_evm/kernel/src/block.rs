@@ -4,20 +4,18 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::apply::{apply_transaction, ExecutionInfo};
+use crate::apply::{apply_transaction, EvmContext, ExecutionInfo};
 use crate::block_in_progress;
 use crate::blueprint::{Queue, QueueElement};
 use crate::current_timestamp;
 use crate::error::Error;
-use crate::indexable_storage::IndexableStorage;
 use crate::storage;
 use crate::storage::init_account_index;
 use crate::tick_model::estimate_remaining_ticks_for_transaction_execution;
 use anyhow::Context;
 use block_in_progress::BlockInProgress;
-use evm_execution::account_storage::{init_account_storage, EthereumAccountStorage};
+use evm_execution::account_storage::init_account_storage;
 use evm_execution::precompiles;
-use evm_execution::precompiles::PrecompileBTreeMap;
 use primitive_types::{H256, U256};
 use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -42,15 +40,11 @@ pub enum ComputationResult {
 }
 
 fn compute<Host: Runtime>(
-    host: &mut Host,
+    context: &mut EvmContext<Host>,
     block_in_progress: &mut BlockInProgress,
-    block_constants: &BlockConstants,
-    precompiles: &PrecompileBTreeMap<Host>,
-    evm_account_storage: &mut EthereumAccountStorage,
-    accounts_index: &mut IndexableStorage,
 ) -> Result<ComputationResult, anyhow::Error> {
     log!(
-        host,
+        context.host,
         Debug,
         "Queue length {}.",
         block_in_progress.queue_length()
@@ -62,10 +56,10 @@ fn compute<Host: Runtime>(
             // TODO: https://gitlab.com/tezos/tezos/-/issues/6094
             // there should be an upper bound on gasLimit
 
-            if host.reboot_left()? <= 1 {
+            if context.host.reboot_left()? <= 1 {
                 // TODO: #5873
                 // this case needs to be handle properly
-                log!(host, Info, "Warning: maximum number of reboots reached, some transactions were lost");
+                log!(context.host, Info, "Warning: maximum number of reboots reached, some transactions were lost");
                 return Ok(ComputationResult::Finished);
             }
             return Ok(ComputationResult::RebootNeeded);
@@ -79,13 +73,9 @@ fn compute<Host: Runtime>(
         // If `apply_transaction` returns `None`, the transaction should be
         // ignored, i.e. invalid signature or nonce.
         match apply_transaction(
-            host,
-            block_constants,
-            precompiles,
+            context,
             &transaction,
             block_in_progress.index,
-            evm_account_storage,
-            accounts_index,
             allocated_ticks,
         )? {
             Some(ExecutionInfo {
@@ -98,10 +88,10 @@ fn compute<Host: Runtime>(
                     object_info,
                     receipt_info,
                     estimated_ticks_used,
-                    host,
+                    context.host,
                 )?;
                 log!(
-                    host,
+                    context.host,
                     Debug,
                     "Estimated ticks after tx: {}",
                     block_in_progress.estimated_ticks
@@ -110,7 +100,7 @@ fn compute<Host: Runtime>(
             None => {
                 block_in_progress.account_for_invalid_transaction();
                 log!(
-                    host,
+                    context.host,
                     Debug,
                     "Estimated ticks after tx: {}",
                     block_in_progress.estimated_ticks
@@ -127,7 +117,7 @@ pub fn produce<Host: Runtime>(
     chain_id: U256,
     base_fee_per_gas: U256,
 ) -> Result<ComputationResult, anyhow::Error> {
-    let (mut current_constants, mut current_block_number, mut current_block_parent_hash) =
+    let (current_constants, mut current_block_number, mut current_block_parent_hash) =
         match storage::read_current_block(host) {
             Ok(block) => (
                 block.constants(chain_id, base_fee_per_gas),
@@ -144,11 +134,18 @@ pub fn produce<Host: Runtime>(
                 )
             }
         };
-    let mut evm_account_storage =
+    let mut account_storage =
         init_account_storage().context("Failed to initialize EVM account storage")?;
     let mut accounts_index = init_account_index()?;
     let precompiles = precompiles::precompile_set::<Host>();
     let mut tick_counter = TickCounter::new(0u64);
+    let mut context = EvmContext::new(
+        host,
+        current_constants,
+        &precompiles,
+        &mut account_storage,
+        &mut accounts_index,
+    );
 
     let mut iter = queue.proposals.into_iter();
     while let Some(proposal) = iter.next() {
@@ -157,18 +154,11 @@ pub fn produce<Host: Runtime>(
             proposal,
             current_block_number,
             current_block_parent_hash,
-            &current_constants,
+            &context.block_constants,
             tick_counter.c,
         );
 
-        match compute(
-            host,
-            &mut block_in_progress,
-            &current_constants,
-            &precompiles,
-            &mut evm_account_storage,
-            &mut accounts_index,
-        )? {
+        match compute(&mut context, &mut block_in_progress)? {
             ComputationResult::RebootNeeded => {
                 log!(
                     host,
@@ -188,11 +178,11 @@ pub fn produce<Host: Runtime>(
             ComputationResult::Finished => {
                 tick_counter = TickCounter::new(block_in_progress.estimated_ticks);
                 let new_block = block_in_progress
-                    .finalize_and_store(host)
+                    .finalize_and_store(context.host)
                     .context("Failed to finalize the block in progress")?;
                 current_block_number = new_block.number + 1;
                 current_block_parent_hash = new_block.hash;
-                current_constants = new_block.constants(chain_id, base_fee_per_gas);
+                context.block_constants = new_block.constants(chain_id, base_fee_per_gas);
             }
         }
     }
@@ -924,19 +914,20 @@ mod tests {
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut accounts_index = init_account_index().unwrap();
 
+        let mut context = EvmContext::new(
+            host,
+            block_constants,
+            &precompiles,
+            &mut evm_account_storage,
+            &mut accounts_index,
+        );
+
         // init block in progress
         let mut block_in_progress =
             BlockInProgress::new(U256::from(1), U256::from(1), transactions);
 
-        compute::<MockHost>(
-            host,
-            &mut block_in_progress,
-            &block_constants,
-            &precompiles,
-            &mut evm_account_storage,
-            &mut accounts_index,
-        )
-        .expect("Should have computed block");
+        compute::<MockHost>(&mut context, &mut block_in_progress)
+            .expect("Should have computed block");
         block_in_progress
     }
 
@@ -1035,13 +1026,22 @@ mod tests {
         let mut host = MockHost::default();
         let block_constants = first_block(&mut host);
         let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut account_storage = init_account_storage().unwrap();
         let mut accounts_index = init_account_index().unwrap();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         //provision sender account
         let sender = H160::from_str("af1276cbb260bb13deddb4209ae99ae6e497f446").unwrap();
         let mut evm_account_storage = init_account_storage().unwrap();
         set_balance(
-            &mut host,
+            context.host,
             &mut evm_account_storage,
             &sender,
             U256::from(10000000000000000000u64),
@@ -1061,15 +1061,8 @@ mod tests {
         block_in_progress.estimated_ticks = tick_model::constants::MAX_TICKS - 1000;
 
         // act
-        compute::<MockHost>(
-            &mut host,
-            &mut block_in_progress,
-            &block_constants,
-            &precompiles,
-            &mut evm_account_storage,
-            &mut accounts_index,
-        )
-        .expect("Should have computed block");
+        compute::<MockHost>(&mut context, &mut block_in_progress)
+            .expect("Should have computed block");
 
         // assert
 

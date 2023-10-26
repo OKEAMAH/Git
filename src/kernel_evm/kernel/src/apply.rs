@@ -10,7 +10,7 @@ use evm_execution::account_storage::{
     account_path, EthereumAccount, EthereumAccountStorage,
 };
 use evm_execution::handler::ExecutionOutcome;
-use evm_execution::precompiles::PrecompileBTreeMap;
+use evm_execution::precompiles;
 use evm_execution::run_transaction;
 use primitive_types::{H160, U256};
 use tezos_data_encoding::enc::BinWriter;
@@ -188,63 +188,92 @@ fn account<Host: Runtime>(
     Ok(evm_account_storage.get(host, &caller_account_path)?)
 }
 
+pub struct EvmContext<'a, Host: Runtime> {
+    pub host: &'a mut Host,
+    pub block_constants: BlockConstants,
+    pub precompiles: &'a precompiles::PrecompileBTreeMap<Host>,
+    pub account_storage: &'a mut EthereumAccountStorage,
+    pub accounts_index: &'a mut IndexableStorage,
+}
+
+impl<'a, Host: Runtime> EvmContext<'a, Host> {
+    pub fn new(
+        host: &'a mut Host,
+        block_constants: BlockConstants,
+        precompiles: &'a precompiles::PrecompileBTreeMap<Host>,
+        account_storage: &'a mut EthereumAccountStorage,
+        accounts_index: &'a mut IndexableStorage,
+    ) -> Self {
+        Self {
+            host,
+            block_constants,
+            precompiles,
+            account_storage,
+            accounts_index,
+        }
+    }
+}
+
 fn is_valid_ethereum_transaction_common<Host: Runtime>(
-    host: &mut Host,
-    evm_account_storage: &mut EthereumAccountStorage,
+    context: &mut EvmContext<Host>,
     transaction: &EthereumTransactionCommon,
-    block_constant: &BlockConstants,
 ) -> Result<Option<H160>, Error> {
     // The transaction signature is valid.
     let caller = match transaction.caller() {
         Ok(caller) => caller,
         Err(_err) => {
-            log!(host, Debug, "Transaction status: ERROR_SIGNATURE.");
+            log!(context.host, Debug, "Transaction status: ERROR_SIGNATURE.");
             // Transaction with undefined caller are ignored, i.e. the caller
             // could not be derived from the signature.
             return Ok(None);
         }
     };
 
-    let account = account(host, caller, evm_account_storage)?;
+    let account = account(context.host, caller, context.account_storage)?;
 
     let (nonce, balance, code_exists): (U256, U256, bool) = match account {
         None => (U256::zero(), U256::zero(), false),
         Some(account) => (
-            account.nonce(host)?,
-            account.balance(host)?,
-            account.code_exists(host)?.is_some(),
+            account.nonce(context.host)?,
+            account.balance(context.host)?,
+            account.code_exists(context.host)?.is_some(),
         ),
     };
 
     // The transaction nonce is valid.
     if nonce != transaction.nonce {
-        log!(host, Debug, "Transaction status: ERROR_NONCE.");
+        log!(context.host, Debug, "Transaction status: ERROR_NONCE.");
         return Ok(None);
     };
 
     // The sender account balance contains at least the cost.
-    let cost = U256::from(transaction.gas_limit).saturating_mul(block_constant.gas_price);
+    let cost = U256::from(transaction.gas_limit)
+        .saturating_mul(context.block_constants.gas_price);
     // The sender can afford the max gas fee he set, see EIP-1559
     let max_fee =
         U256::from(transaction.gas_limit).saturating_mul(transaction.max_fee_per_gas);
     if balance < cost || balance < max_fee {
-        log!(host, Debug, "Transaction status: ERROR_PRE_PAY.");
+        log!(context.host, Debug, "Transaction status: ERROR_PRE_PAY.");
         return Ok(None);
     }
 
     // The sender does not have code, see EIP3607.
     if code_exists {
-        log!(host, Debug, "Transaction status: ERROR_CODE.");
+        log!(context.host, Debug, "Transaction status: ERROR_CODE.");
         return Ok(None);
     }
 
     // EIP 1559 checks
     // ensure that the user was willing to at least pay the base fee
     // and that max is greater than both fees
-    if transaction.max_fee_per_gas < block_constant.base_fee_per_gas
+    if transaction.max_fee_per_gas < context.block_constants.base_fee_per_gas
         || transaction.max_fee_per_gas < transaction.max_priority_fee_per_gas
     {
-        log!(host, Debug, "Transaction status: ERROR_MAX_BASE_FEE");
+        log!(
+            context.host,
+            Debug,
+            "Transaction status: ERROR_MAX_BASE_FEE"
+        );
         return Ok(None);
     }
 
@@ -259,19 +288,11 @@ pub struct TransactionResult {
 }
 
 fn apply_ethereum_transaction_common<Host: Runtime>(
-    host: &mut Host,
-    block_constants: &BlockConstants,
-    precompiles: &PrecompileBTreeMap<Host>,
-    evm_account_storage: &mut EthereumAccountStorage,
+    context: &mut EvmContext<Host>,
     transaction: &EthereumTransactionCommon,
     allocated_ticks: u64,
 ) -> Result<Option<TransactionResult>, Error> {
-    let caller = match is_valid_ethereum_transaction_common(
-        host,
-        evm_account_storage,
-        transaction,
-        block_constants,
-    )? {
+    let caller = match is_valid_ethereum_transaction_common(context, transaction)? {
         Some(caller) => caller,
         None => return Ok(None),
     };
@@ -281,10 +302,10 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     let gas_limit = transaction.gas_limit;
     let value = transaction.value;
     let execution_outcome = match run_transaction(
-        host,
-        block_constants,
-        evm_account_storage,
-        precompiles,
+        context.host,
+        &context.block_constants,
+        context.account_storage,
+        context.precompiles,
         CONFIG,
         to,
         caller,
@@ -307,7 +328,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     let (gas_used, estimated_ticks_used) = match &execution_outcome {
         Some(execution_outcome) => {
             log!(
-                host,
+                context.host,
                 Debug,
                 "Transaction status: OK_{}.",
                 execution_outcome.is_success
@@ -318,7 +339,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
             )
         }
         None => {
-            log!(host, Debug, "Transaction status: OK_UNKNOWN.");
+            log!(context.host, Debug, "Transaction status: OK_UNKNOWN.");
             (U256::zero(), 0)
         }
     };
@@ -441,29 +462,19 @@ pub struct ExecutionInfo {
     pub estimated_ticks_used: u64,
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn apply_transaction<Host: Runtime>(
-    host: &mut Host,
-    block_constants: &BlockConstants,
-    precompiles: &PrecompileBTreeMap<Host>,
+    context: &mut EvmContext<Host>,
     transaction: &Transaction,
     index: u32,
-    evm_account_storage: &mut EthereumAccountStorage,
-    accounts_index: &mut IndexableStorage,
     allocated_ticks: u64,
 ) -> Result<Option<ExecutionInfo>, anyhow::Error> {
     let to = transaction.to();
     let apply_result = match &transaction.content {
-        TransactionContent::Ethereum(tx) => apply_ethereum_transaction_common(
-            host,
-            block_constants,
-            precompiles,
-            evm_account_storage,
-            tx,
-            allocated_ticks,
-        ),
+        TransactionContent::Ethereum(tx) => {
+            apply_ethereum_transaction_common(context, tx, allocated_ticks)
+        }
         TransactionContent::Deposit(deposit) => {
-            apply_deposit(host, evm_account_storage, deposit)
+            apply_deposit(context.host, context.account_storage, deposit)
         }
     }?;
 
@@ -475,11 +486,16 @@ pub fn apply_transaction<Host: Runtime>(
             estimated_ticks_used: ticks_used,
         }) => {
             if let Some(outcome) = &execution_outcome {
-                log!(host, Debug, "Transaction executed, outcome: {:?}", outcome);
+                log!(
+                    context.host,
+                    Debug,
+                    "Transaction executed, outcome: {:?}",
+                    outcome
+                );
             }
 
             if let Some(ref execution_outcome) = execution_outcome {
-                post_withdrawals(host, &execution_outcome.withdrawals)?
+                post_withdrawals(context.host, &execution_outcome.withdrawals)?
             }
 
             let receipt_info = make_receipt_info(
@@ -495,10 +511,10 @@ pub fn apply_transaction<Host: Runtime>(
                 caller,
                 index,
                 gas_used,
-                block_constants.base_fee_per_gas,
+                context.block_constants.base_fee_per_gas,
             )?;
 
-            index_new_accounts(host, accounts_index, &receipt_info)?;
+            index_new_accounts(context.host, context.accounts_index, &receipt_info)?;
             Ok(Some(ExecutionInfo {
                 receipt_info,
                 object_info,
@@ -511,6 +527,7 @@ pub fn apply_transaction<Host: Runtime>(
 
 #[cfg(test)]
 mod tests {
+    use super::EvmContext;
     use evm_execution::account_storage::{account_path, EthereumAccountStorage};
     use primitive_types::{H160, U256};
     use tezos_ethereum::{
@@ -521,7 +538,10 @@ mod tests {
     use tezos_smart_rollup_encoding::timestamp::Timestamp;
     use tezos_smart_rollup_mock::MockHost;
 
-    use crate::inbox::{Transaction, TransactionContent};
+    use crate::{
+        inbox::{Transaction, TransactionContent},
+        storage::init_account_index,
+    };
 
     use super::{is_valid_ethereum_transaction_common, make_object_info};
 
@@ -589,24 +609,29 @@ mod tests {
     #[test]
     fn test_tx_is_valid() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
         let balance = U256::from(21000 * 21000);
         let transaction = valid_tx();
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             Some(address),
             res.expect("Verification should not have raise an error"),
@@ -617,9 +642,19 @@ mod tests {
     #[test]
     fn test_tx_is_invalid_cannot_prepay() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
@@ -627,15 +662,10 @@ mod tests {
         let balance = U256::from(1);
         let transaction = valid_tx();
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             None,
             res.expect("Verification should not have raise an error"),
@@ -646,25 +676,29 @@ mod tests {
     #[test]
     fn test_tx_is_invalid_signature() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
 
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
         let balance = U256::from(21000 * 21000);
         let mut transaction = valid_tx();
         transaction.signature = None;
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             None,
             res.expect("Verification should not have raise an error"),
@@ -675,9 +709,19 @@ mod tests {
     #[test]
     fn test_tx_is_invalid_wrong_nonce() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
@@ -686,15 +730,10 @@ mod tests {
         transaction.nonce = U256::from(42);
 
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             None,
             res.expect("Verification should not have raise an error"),
@@ -705,9 +744,19 @@ mod tests {
     #[test]
     fn test_tx_is_invalid_max_fee_less_than_base_fee() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
@@ -718,15 +767,10 @@ mod tests {
         transaction = resign(transaction);
 
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             None,
             res.expect("Verification should not have raise an error"),
@@ -737,9 +781,19 @@ mod tests {
     #[test]
     fn test_tx_is_invalid_max_fee_less_than_priority_fee() {
         let mut host = MockHost::default();
-        let mut evm_account_storage =
+        let mut account_storage =
             evm_execution::account_storage::init_account_storage().unwrap();
         let block_constants = mock_block_constants();
+        let mut accounts_index = init_account_index().unwrap();
+        let precompiles = evm_execution::precompiles::precompile_set::<MockHost>();
+
+        let mut context = EvmContext::new(
+            &mut host,
+            block_constants,
+            &precompiles,
+            &mut account_storage,
+            &mut accounts_index,
+        );
 
         // setup
         let address = address_from_str("af1276cbb260bb13deddb4209ae99ae6e497f446");
@@ -750,15 +804,10 @@ mod tests {
         transaction = resign(transaction);
 
         // fund account
-        set_balance(&mut host, &mut evm_account_storage, &address, balance);
+        set_balance(context.host, context.account_storage, &address, balance);
 
         // act
-        let res = is_valid_ethereum_transaction_common(
-            &mut host,
-            &mut evm_account_storage,
-            &transaction,
-            &block_constants,
-        );
+        let res = is_valid_ethereum_transaction_common(&mut context, &transaction);
         assert_eq!(
             None,
             res.expect("Verification should not have raise an error"),
