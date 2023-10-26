@@ -193,7 +193,6 @@ let rec seq_field_of_data_encoding :
                       ValueInstanceSpec
                         {
                           id = "value";
-                          path = [];
                           value =
                             BinOp
                               {
@@ -406,7 +405,7 @@ let rec seq_field_of_data_encoding :
                    {name = escape_id m; doc = Helpers.default_doc_spec} ))
         |> List.of_seq
       in
-      let enumspec = EnumSpec.{path = []; map} in
+      let enumspec = EnumSpec.{map} in
       let enums = Helpers.add_uniq_assoc enums (id, enumspec) in
       let dataType =
         DataType.NumericType
@@ -590,7 +589,7 @@ and seq_field_of_union :
             {name = id; doc = DocSpec.{refs = []; summary = description}} ))
       tagged_cases
   in
-  let tag_enum = EnumSpec.{path = []; map = tag_enum_map} in
+  let tag_enum = EnumSpec.{map = tag_enum_map} in
   let enums = Helpers.add_uniq_assoc enums (tag_id, tag_enum) in
   let tag_attr =
     {
