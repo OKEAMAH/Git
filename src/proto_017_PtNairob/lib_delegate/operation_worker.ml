@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -540,7 +541,16 @@ let create ?(monitor_node_operations = true)
     make_initial_state ~monitor_node_operations ()
   in
   let sym_of_head (lvl, rnd) =
-    Printf.sprintf "level:%ld, round:%ld" lvl (Round.to_int32 rnd)
+    let ptime_opt = Ptime.of_float_s @@ Unix.gettimeofday () in
+    match ptime_opt with
+    | Some ptime ->
+        let printable_time = Format.asprintf "%a" Time.System.pp_hum ptime in
+        Printf.sprintf
+          "level:%ld, round:%ld - %s"
+          lvl
+          (Round.to_int32 rnd)
+          printable_time
+    | None -> Printf.sprintf "level:%ld, round:%ld" lvl (Round.to_int32 rnd)
   in
   (* TODO should we continue forever ? *)
   let rec worker_loop () =
