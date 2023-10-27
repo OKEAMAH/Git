@@ -448,6 +448,31 @@ let rec seq_field_of_data_encoding :
             name
         in
         (enums, types, mus, [attr])
+  | String_enum (h, a) ->
+      let map =
+        Hashtbl.to_seq_values h
+        |> Seq.map (fun (m, i) ->
+               ( i,
+                 EnumValueSpec.
+                   {name = escape_id m; doc = Helpers.default_doc_spec} ))
+        |> List.of_seq
+      in
+      let enumspec = EnumSpec.{path = []; map} in
+      let enums = Helpers.add_uniq_assoc enums (id, enumspec) in
+      let dataType =
+        DataType.NumericType
+          (Int_type
+             (match Data_encoding__Binary_size.enum_size a with
+             | `Uint8 -> Int1Type {signed = false}
+             | `Uint16 ->
+                 IntMultiType {signed = false; width = W2; endian = None}
+             | `Uint30 ->
+                 IntMultiType {signed = false; width = W4; endian = None}))
+      in
+      let attr =
+        {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
+      in
+      (enums, types, mus, [attr])
   | _ -> failwith "Not implemented"
 
 and seq_field_of_tups :

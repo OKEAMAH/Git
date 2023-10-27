@@ -200,3 +200,29 @@ let%expect_test "test union with structures inside" =
       type: more_union_c
       if: (more_union_tag == more_union_tag::c)
   |}]
+
+(* string enums are kind of unions so here they go! *)
+let%expect_test "test simple enum" =
+  let s =
+    Kaitai_of_data_encoding.Translate.from_data_encoding
+      ~id:"enumnnumnnum"
+      Data_encoding.(
+        string_enum [("aaaa", []); ("aaaaaaaaa", [0]); ("aaaaaaaaaaaa", [0; 1])])
+  in
+  print_endline (Kaitai.Print.print s) ;
+  [%expect
+    {|
+    meta:
+      id: enumnnumnnum
+      endian: be
+    doc: ! 'Encoding id: enumnnumnnum'
+    enums:
+      enumnnumnnum:
+        1: aaaaaaaaa
+        0: aaaa
+        2: aaaaaaaaaaaa
+    seq:
+    - id: enumnnumnnum
+      type: u1
+      enum: enumnnumnnum
+  |}]
