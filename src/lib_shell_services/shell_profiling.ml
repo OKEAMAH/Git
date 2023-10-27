@@ -10,24 +10,24 @@ let block_validator_profiler = unplugged ()
 
 let rpc_server_profiler = unplugged ()
 
-let create_reset_block_section profiler =
-  let last_block = ref None in
-  fun b ->
-    match !last_block with
-    | None ->
-        record profiler (Block_hash.to_b58check b) ;
-        last_block := Some b
-    | Some b' when Block_hash.equal b' b -> ()
-    | Some _ ->
-        stop profiler ;
-        record profiler (Block_hash.to_b58check b) ;
-        last_block := Some b
-
 let merge_profiler = unplugged ()
 
 let p2p_reader_profiler = unplugged ()
 
 let requester_profiler = unplugged ()
+
+let create_reset_block_section profiler =
+  let last_block = ref None in
+  fun b ->
+    match !last_block with
+    | None ->
+        record profiler ~record_timestamp:true (Block_hash.to_b58check b) ;
+        last_block := Some b
+    | Some b' when Block_hash.equal b' b -> ()
+    | Some _ ->
+        stop profiler ;
+        record profiler ~record_timestamp:true (Block_hash.to_b58check b) ;
+        last_block := Some b
 
 let all_profilers =
   [

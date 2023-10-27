@@ -21,12 +21,12 @@ let create_reset_block_section profiler =
   fun b ->
     match !last_block with
     | None ->
-        record profiler (Block_hash.to_b58check b) ;
+        record profiler ~record_timestamp:true (Block_hash.to_b58check b) ;
         last_block := Some b
     | Some b' when Block_hash.equal b' b -> ()
     | Some _ ->
         stop profiler ;
-        record profiler (Block_hash.to_b58check b) ;
+        record profiler ~record_timestamp:true (Block_hash.to_b58check b) ;
         last_block := Some b
 
 include (val wrap profiler)

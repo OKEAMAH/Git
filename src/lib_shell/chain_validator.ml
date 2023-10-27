@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (* Copyright (c) 2018-2021 Nomadic Labs. <contact@nomadic-labs.com>          *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -508,7 +509,10 @@ let reset_profilers block =
   List.iter
     (fun profiler ->
       (try Profiler.stop profiler with _ -> ()) ;
-      Profiler.record profiler (Block_hash.to_b58check (Store.Block.hash block)))
+      Profiler.record
+        profiler
+        ~record_timestamp:true
+        (Block_hash.to_b58check (Store.Block.hash block)))
     profilers
 
 let on_validation_request w peer start_testchain active_chains spawn_child block
