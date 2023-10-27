@@ -3684,12 +3684,12 @@ let cost_Parsing_Data_size size1 size2 size3 =
     + (size3 * S.safe_int 70))
 
 (* model translator/TY_EQ *)
-(* fun size -> max 10 (31.1882471167 + (21.8805791266 * size)) *)
-let cost_TY_EQ size = (size * S.safe_int 22) + S.safe_int 35
+(* fun size -> max 10 (71.9033816389 + (21.8805791266 * size)) *)
+let cost_TY_EQ size = (size * S.safe_int 22) + S.safe_int 75
 
 (* model translator/UNPARSE_TYPE *)
-(* fun size -> max 10 (0. + (20. * size)) *)
-let cost_UNPARSE_TYPE size = S.max (S.safe_int 10) (size * S.safe_int 20)
+(* fun size -> max 10 (114.407698534 + (20. * size)) *)
+let cost_UNPARSE_TYPE size = (size * S.safe_int 20) + S.safe_int 115
 
 (* model translator/Unparsing_Code_gas *)
 (* fun size -> max 10 (0. + (0.592309924661 * size)) *)
