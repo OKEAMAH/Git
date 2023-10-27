@@ -1,5 +1,3 @@
-include: .gitlab/ci/jobs/publish/common.yml
-
 opam:release:
   extends:
     - .image_template__runtime_build_test_dependencies
