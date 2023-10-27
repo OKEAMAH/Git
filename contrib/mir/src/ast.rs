@@ -266,7 +266,6 @@ pub enum Instruction<T: Stage> {
     Get(T::GetOverload),
     Update(T::UpdateOverload),
     Seq(Vec<Instruction<T>>),
-    MacroSeq(Vec<Instruction<T>>),
 }
 
 pub type ParsedAST = Vec<ParsedInstruction>;

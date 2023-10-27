@@ -445,7 +445,6 @@ fn typecheck_instruction(
         (I::Update(..), [] | [_] | [_, _]) => no_overload!(UPDATE, len 3),
 
         (I::Seq(nested), ..) => I::Seq(typecheck(nested, ctx, opt_stack)?),
-        (I::MacroSeq(nested), ..) => I::MacroSeq(typecheck(nested, ctx, opt_stack)?),
     })
 }
 

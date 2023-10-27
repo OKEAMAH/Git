@@ -105,7 +105,6 @@ defprim! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PrimWithTzt {
     Prim(Prim),
-    Macro(String),
     TztPrim(TztPrim),
     Underscore,
     // Including underscore spearately from TztPrim because the `defprim` macro won't work if we
@@ -129,6 +128,25 @@ pub enum Tok {
     #[regex(r"@%|@%%|%@|[@:%][_0-9a-zA-Z][_0-9a-zA-Z\.%@]*")]
     Annotation,
 
+    #[token("IF_SOME")]
+    IfSome,
+    #[token("IFCMPEQ")]
+    IfCmpEq,
+    #[token("IFCMPLE")]
+    IfCmpLe,
+    #[token("ASSERT")]
+    Assert,
+    #[token("ASSERT_CMPEQ")]
+    AssertCmpEq,
+    #[token("ASSERT_CMPLE")]
+    AssertCmpLe,
+    #[token("FAIL")]
+    Fail,
+    #[regex("DI{2,}P", lex_diip)]
+    Diip(u16),
+    #[regex("DU{2,}P", lex_duup)]
+    Duup(u16),
+
     #[token("(")]
     LParen,
     #[token(")")]
@@ -147,7 +165,6 @@ impl std::fmt::Display for Tok {
             Tok::Prim(PrimWithTzt::Prim(p)) => p.fmt(f),
             Tok::Prim(PrimWithTzt::TztPrim(p)) => p.fmt(f),
             Tok::Prim(PrimWithTzt::Underscore) => write!(f, "_"),
-            Tok::Prim(PrimWithTzt::Macro(m)) => m.fmt(f),
             Tok::Number(n) => n.fmt(f),
             Tok::String(s) => s.fmt(f),
             Tok::Annotation => write!(f, "<ann>"),
@@ -156,6 +173,15 @@ impl std::fmt::Display for Tok {
             Tok::LBrace => write!(f, "{{"),
             Tok::RBrace => write!(f, "}}"),
             Tok::Semi => write!(f, ";"),
+            Tok::IfSome => write!(f, "IF_SOME"),
+            Tok::IfCmpEq => write!(f, "IFCMPEQ"),
+            Tok::IfCmpLe => write!(f, "IFCMPLE"),
+            Tok::Assert => write!(f, "ASSERT"),
+            Tok::AssertCmpEq => write!(f, "ASSERT_CMPEQ"),
+            Tok::AssertCmpLe => write!(f, "ASSERT_CMPLE"),
+            Tok::Fail => write!(f, "FAIL"),
+            Tok::Diip(n) => write!(f, "D{}P", "I".repeat(*n as usize)),
+            Tok::Duup(n) => write!(f, "D{}P", "U".repeat(*n as usize)),
         }
     }
 }
@@ -186,20 +212,29 @@ fn lex_prim(lex: &mut Lexer) -> Result<PrimWithTzt, LexerError> {
     lex.slice()
         .parse()
         .map(PrimWithTzt::Prim)
-        .or_else(|_| lex.slice().parse().map(PrimWithTzt::TztPrim))
         .or_else(|_| match lex.slice() {
-            "_" => Ok::<PrimWithTzt, PrimError>(PrimWithTzt::Underscore),
-            s => {
-                // Check if the token could be a macro by checking if all
-                // chars in the token are upper case ascii or an underscore.
-                if s.chars().all(|c| c == '_' || char::is_ascii_uppercase(&c)) {
-                    Ok(PrimWithTzt::Macro(s.to_string()))
-                } else {
-                    Err(PrimError(s.to_owned()))
-                }
-            }
+            "_" => Ok(PrimWithTzt::Underscore),
+            str => str.parse().map(PrimWithTzt::TztPrim),
         })
         .map_err(LexerError::from)
+}
+
+fn lex_diip(lex: &mut Lexer) -> Result<u16, LexerError> {
+    lex.slice()
+        .bytes()
+        .filter(|b| b == &b'I')
+        .count()
+        .try_into()
+        .map_err(|_| LexerError::UnknownToken)
+}
+
+fn lex_duup(lex: &mut Lexer) -> Result<u16, LexerError> {
+    lex.slice()
+        .bytes()
+        .filter(|b| b == &b'U')
+        .count()
+        .try_into()
+        .map_err(|_| LexerError::UnknownToken)
 }
 
 fn lex_number(lex: &mut Lexer) -> Result<i128, LexerError> {
