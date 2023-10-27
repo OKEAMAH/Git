@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -135,13 +136,13 @@ module type DRIVER = sig
 
   val time : state -> time
 
-  val record : state -> lod -> string -> unit
+  val record : state -> lod -> bool -> string -> unit
 
   val aggregate : state -> lod -> string -> unit
 
   val stop : state -> unit
 
-  val stamp : state -> lod -> string -> unit
+  val stamp : state -> lod -> bool -> string -> unit
 
   val mark : state -> lod -> string list -> unit
 
@@ -230,14 +231,14 @@ let iter (p : profiler) f =
       r)
     p
 
-let record p ?(lod = Terse) id =
-  iter p (fun (module I) -> I.Driver.record I.state lod id)
+let record p ?(lod = Terse) ?(record_timestamp = false) id =
+  iter p (fun (module I) -> I.Driver.record I.state lod record_timestamp id)
 
 let aggregate p ?(lod = Terse) id =
   iter p (fun (module I) -> I.Driver.aggregate I.state lod id)
 
-let stamp p ?(lod = Terse) ids =
-  iter p (fun (module I) -> I.Driver.stamp I.state lod ids)
+let stamp p ?(lod = Terse) ?(record_timestamp = false) ids =
+  iter p (fun (module I) -> I.Driver.stamp I.state lod record_timestamp ids)
 
 let mark p ?(lod = Terse) ids =
   iter p (fun (module I) -> I.Driver.mark I.state lod ids)
@@ -257,7 +258,8 @@ let section p start id f =
   stop p ;
   match r with Ok r -> r | Error exn -> raise exn
 
-let record_f p ?lod id f = section p (fun p -> record p ?lod) id f
+let record_f p ?lod ?record_timestamp id f =
+  section p (fun p -> record p ?lod ?record_timestamp) id f
 
 let aggregate_f p ?lod id f = section p (fun p -> aggregate p ?lod) id f
 
@@ -283,7 +285,8 @@ let section_s p start id f =
       stop p ;
       Lwt.fail exn)
 
-let record_s p ?lod id f = section_s p (fun p -> record p ?lod) id f
+let record_s p ?lod ?record_timestamp id f =
+  section_s p (fun p -> record p ?lod ?record_timestamp) id f
 
 let aggregate_s p ?lod id f = section_s p (fun p -> aggregate p ?lod) id f
 

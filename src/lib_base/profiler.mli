@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -111,7 +112,7 @@ module type DRIVER = sig
   (** Open a sequence in the current sequence.
       If currently aggregating (not all aggregation scopes are closed),
       this has the same semantics as {!aggregate} instead. *)
-  val record : state -> lod -> string -> unit
+  val record : state -> lod -> bool -> string -> unit
 
   (** Open an aggregation node in the current sequence. *)
   val aggregate : state -> lod -> string -> unit
@@ -120,7 +121,7 @@ module type DRIVER = sig
   val stop : state -> unit
 
   (** Record a timestamp in the most recently opened sequence. *)
-  val stamp : state -> lod -> string -> unit
+  val stamp : state -> lod -> bool -> string -> unit
 
   (** Count this event's occurences in the most recent sequence. *)
   val mark : state -> lod -> string list -> unit
@@ -164,13 +165,13 @@ val close_and_unplug_all : profiler -> unit
 
 val plugged : profiler -> instance list
 
-val record : profiler -> ?lod:lod -> string -> unit
+val record : profiler -> ?lod:lod -> ?record_timestamp:bool -> string -> unit
 
 val aggregate : profiler -> ?lod:lod -> string -> unit
 
 val stop : profiler -> unit
 
-val stamp : profiler -> ?lod:lod -> string -> unit
+val stamp : profiler -> ?lod:lod -> ?record_timestamp:bool -> string -> unit
 
 val mark : profiler -> ?lod:lod -> string list -> unit
 
@@ -178,9 +179,16 @@ val span : profiler -> ?lod:lod -> span -> string list -> unit
 
 val inc : profiler -> report -> unit
 
-val record_f : profiler -> ?lod:lod -> string -> (unit -> 'a) -> 'a
+val record_f :
+  profiler -> ?lod:lod -> ?record_timestamp:bool -> string -> (unit -> 'a) -> 'a
 
-val record_s : profiler -> ?lod:lod -> string -> (unit -> 'a Lwt.t) -> 'a Lwt.t
+val record_s :
+  profiler ->
+  ?lod:lod ->
+  ?record_timestamp:bool ->
+  string ->
+  (unit -> 'a Lwt.t) ->
+  'a Lwt.t
 
 val aggregate_f : profiler -> ?lod:lod -> string -> (unit -> 'a) -> 'a
 

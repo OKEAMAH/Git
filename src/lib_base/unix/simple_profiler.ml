@@ -46,17 +46,22 @@ let empty max_lod =
 let aggregate state lod id =
   {state with scopes = {id; lod; time = time ()} :: state.scopes}
 
-let record state lod id =
+let record state lod record_timestamp id =
   if state.scopes <> [] then aggregate state lod id
   else
+    let time = time () in
+    let ptime_opt = Ptime.of_float_s time.wall in
+    let id =
+      match (ptime_opt, record_timestamp) with
+      | Some ptime, true ->
+          let printable_time = Format.asprintf "%a" Time.System.pp_hum ptime in
+          let id = Printf.sprintf "%s - %s" id printable_time in
+          id
+      | _ -> id
+    in
     let stack =
       Cons
-        ( {
-            id;
-            time = time ();
-            report = {recorded = []; aggregated = StringMap.empty};
-            lod;
-          },
+        ( {id; time; report = {recorded = []; aggregated = StringMap.empty}; lod},
           state.stack )
     in
     {state with stack}
@@ -197,7 +202,8 @@ let stop state =
       in
       {state with stack}
 
-let stamp state lod id = stop (record state lod id)
+let stamp state lod record_timestamp id =
+  stop (record state lod record_timestamp id)
 
 let pp_delta_t ppf t =
   let t = int_of_float (t *. 1000000.) in
@@ -224,9 +230,9 @@ let pp_line nindent ppf id n t t0 =
       (indent
       @ [
           id;
-          " ......................................................";
-          "......................................................";
-          "......................................................";
+          " ...............................................................";
+          "...............................................................";
+          "...............................................................";
         ])
   in
   Format.fprintf ppf "%s %-7i " (String.sub indentsym 0 80) n ;
@@ -277,9 +283,11 @@ module Headless = struct
 
   let create lod = ref (empty lod)
 
-  let stamp state lod id = state := stamp !state lod id
+  let stamp state lod record_timestamp id =
+    state := stamp !state lod record_timestamp id
 
-  let record state lod id = state := record !state lod id
+  let record state lod record_timestamp id =
+    state := record !state lod record_timestamp id
 
   let aggregate state lod id = state := aggregate !state lod id
 
@@ -335,8 +343,9 @@ let make_driver ~file_format =
 
     let time _ = time ()
 
-    let record state lod id =
-      state.profiler_state <- record state.profiler_state lod id
+    let record state lod record_timestamp id =
+      state.profiler_state <-
+        record state.profiler_state lod record_timestamp id
 
     let aggregate state lod id =
       state.profiler_state <- aggregate state.profiler_state lod id
@@ -383,8 +392,8 @@ let make_driver ~file_format =
       state.profiler_state <- mark state.profiler_state lod id ;
       may_write state
 
-    let stamp state lod id =
-      state.profiler_state <- stamp state.profiler_state lod id ;
+    let stamp state lod record_timestamp id =
+      state.profiler_state <- stamp state.profiler_state lod record_timestamp id ;
       may_write state
 
     let span state lod d id =
