@@ -89,9 +89,8 @@ let rec seq_field_of_data_encoding :
     Ground.Type.assoc ->
     a DataEncoding.t ->
     string ->
-    Helpers.tid_gen option ->
     Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
- fun enums types {encoding; _} id tid_gen ->
+ fun enums types {encoding; _} id ->
   let id = escape_id id in
   match encoding with
   | Null -> (enums, types, [])
@@ -147,12 +146,7 @@ let rec seq_field_of_data_encoding :
           }
         in
         let enums, types, represented_interval_attrs =
-          seq_field_of_data_encoding
-            enums
-            types
-            shifted_encoding
-            shifted_id
-            tid_gen
+          seq_field_of_data_encoding enums types shifted_encoding shifted_id
         in
         let instance_type : Kaitai.Types.DataType.int_type =
           match size with
@@ -233,7 +227,7 @@ let rec seq_field_of_data_encoding :
   | Dynamic_size {kind; encoding = {encoding = Check_size {limit; encoding}; _}}
     ->
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
+        seq_field_of_data_encoding enums types encoding id
       in
       let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
@@ -252,7 +246,7 @@ let rec seq_field_of_data_encoding :
       (enums, types, [size_attr; attr])
   | Padded (encoding, pad) ->
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
+        seq_field_of_data_encoding enums types encoding id
       in
       let pad_attr =
         let id = id ^ "_padding" in
@@ -273,44 +267,26 @@ let rec seq_field_of_data_encoding :
       let types = Helpers.add_uniq_assoc types Ground.Type.n_chunk in
       let types = Helpers.add_uniq_assoc types Ground.Type.z in
       (enums, types, [Ground.Attr.z ~id])
-  | Conv {encoding; _} ->
-      seq_field_of_data_encoding enums types encoding id tid_gen
-  | Tup e -> (
-      let id = match tid_gen with None -> id | Some tid_gen -> tid_gen () in
-      let enums, types, attrs =
-        seq_field_of_data_encoding enums types e id tid_gen
-      in
-      match attrs with
-      | [] -> (enums, types, attrs)
-      | _ :: _ as attrs ->
-          let types, attr =
-            redirect_if_many
-              types
-              attrs
-              (fun attr ->
-                if attr.id = id then attr
-                else Helpers.merge_summaries {attr with id} (Some attr.id))
-              id
-          in
-          (enums, types, [attr]))
-  | Tups {kind = _; left; right} ->
+  | Conv {encoding; _} -> seq_field_of_data_encoding enums types encoding id
+  | Tup _ ->
+      (* single-field tup *)
       let tid_gen =
-        match tid_gen with
-        | None -> Some (Helpers.mk_tid_gen id)
-        | Some _ as tid_gen -> tid_gen
+        let already_called = ref false in
+        fun () ->
+          if !already_called then
+            raise (Invalid_argument "multiple fields inside a single-field tup") ;
+          already_called := true ;
+          id
       in
-      let enums, types, left =
-        seq_field_of_data_encoding enums types left id tid_gen
-      in
-      let enums, types, right =
-        seq_field_of_data_encoding enums types right id tid_gen
-      in
-      let seq = left @ right in
-      (enums, types, seq)
+      seq_field_of_tups enums types tid_gen encoding
+  | Tups _ ->
+      (* multi-field tup *)
+      let tid_gen = Helpers.mk_tid_gen id in
+      seq_field_of_tups enums types tid_gen encoding
   | List {length_limit = At_most max_length; length_encoding = Some le; elts} ->
       let length_id = "number_of_elements_in_" ^ id in
       let enums, types, length_attrs =
-        seq_field_of_data_encoding enums types le length_id tid_gen
+        seq_field_of_data_encoding enums types le length_id
       in
       let length_attr =
         match length_attrs with
@@ -326,7 +302,7 @@ let rec seq_field_of_data_encoding :
       in
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types elts elt_id tid_gen
+        seq_field_of_data_encoding enums types elts elt_id
       in
       let types, attr =
         (* We do uncoditional redirect because there can be issues where the
@@ -358,7 +334,7 @@ let rec seq_field_of_data_encoding :
   | List {length_limit; length_encoding = None; elts} ->
       let elt_id = id ^ "_elt" in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types elts elt_id tid_gen
+        seq_field_of_data_encoding enums types elts elt_id
       in
       let types, attr =
         redirect
@@ -391,11 +367,9 @@ let rec seq_field_of_data_encoding :
       (enums, types, [attr])
   | Obj f -> seq_field_of_field enums types f
   | Objs {kind = _; left; right} ->
-      let enums, types, left =
-        seq_field_of_data_encoding enums types left id None
-      in
+      let enums, types, left = seq_field_of_data_encoding enums types left id in
       let enums, types, right =
-        seq_field_of_data_encoding enums types right id None
+        seq_field_of_data_encoding enums types right id
       in
       let seq = left @ right in
       (enums, types, seq)
@@ -405,7 +379,7 @@ let rec seq_field_of_data_encoding :
       let size_id = size_id_of_id id in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
+        seq_field_of_data_encoding enums types encoding id
       in
       let types, attr =
         redirect_if_many
@@ -416,12 +390,12 @@ let rec seq_field_of_data_encoding :
       in
       (enums, types, [size_attr; attr])
   | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
-      seq_field_of_data_encoding enums types encoding id tid_gen
+      seq_field_of_data_encoding enums types encoding id
   | Describe {encoding; id; description; title} ->
       let id = escape_id id in
       let summary = summary ~title ~description in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id tid_gen
+        seq_field_of_data_encoding enums types encoding id
       in
       let types, attr =
         redirect_if_many
@@ -433,8 +407,49 @@ let rec seq_field_of_data_encoding :
       (enums, types, [attr])
   | Check_size {limit = _; encoding} ->
       (* TODO: Add a guard for check size.*)
-      seq_field_of_data_encoding enums types encoding id tid_gen
+      seq_field_of_data_encoding enums types encoding id
   | _ -> failwith "Not implemented"
+
+and seq_field_of_tups :
+    type a.
+    Ground.Enum.assoc ->
+    Ground.Type.assoc ->
+    Helpers.tid_gen ->
+    a DataEncoding.desc ->
+    Ground.Enum.assoc * Ground.Type.assoc * AttrSpec.t list =
+ fun enums types tid_gen d ->
+  match d with
+  | Tup {encoding = Tup _ as e; json_encoding = _} ->
+      seq_field_of_tups enums types tid_gen e
+  | Tup {encoding = Tups _ as e; json_encoding = _} ->
+      seq_field_of_tups enums types tid_gen e
+  | Tup e ->
+      let id = tid_gen () in
+      let enums, types, attrs = seq_field_of_data_encoding enums types e id in
+      let types, attrs =
+        match attrs with
+        | [] -> (types, [])
+        | [attr] ->
+            if attr.id = id then (types, attrs)
+            else
+              (* [id] was over-ridden by a [Describe] or other construct, we
+                 restore it here to guarantee names are unique. *)
+              (types, [Helpers.merge_summaries {attr with id} (Some attr.id)])
+        | _ :: _ ->
+            let types, attr = redirect types attrs Fun.id id in
+            (types, [attr])
+      in
+      (enums, types, attrs)
+  | Tups {kind = _; left; right} ->
+      let enums, types, left =
+        seq_field_of_tups enums types tid_gen left.encoding
+      in
+      let enums, types, right =
+        seq_field_of_tups enums types tid_gen right.encoding
+      in
+      let seq = left @ right in
+      (enums, types, seq)
+  | _ -> failwith "Non-tup(s) inside a tups"
 
 and seq_field_of_field :
     type a.
@@ -447,7 +462,7 @@ and seq_field_of_field :
   | Req {name; encoding; title; description} ->
       let id = escape_id name in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id None
+        seq_field_of_data_encoding enums types encoding id
       in
       let summary = summary ~title ~description in
       let types, attr =
@@ -489,7 +504,7 @@ and seq_field_of_field :
       in
       let id = escape_id name in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id None
+        seq_field_of_data_encoding enums types encoding id
       in
       let summary = summary ~title ~description in
       let types, attr =
@@ -504,7 +519,7 @@ and seq_field_of_field :
       (* NOTE: in binary format Dft is the same as Req *)
       let id = escape_id name in
       let enums, types, attrs =
-        seq_field_of_data_encoding enums types encoding id None
+        seq_field_of_data_encoding enums types encoding id
       in
       let summary = summary ~title ~description in
       let types, attr =
@@ -566,7 +581,7 @@ and seq_field_of_union :
     List.fold_left
       (fun (enums, types, payload_attrs) (_, case_id, _, AnyEncoding encoding) ->
         let enums, types, attrs =
-          seq_field_of_data_encoding enums types encoding case_id None
+          seq_field_of_data_encoding enums types encoding case_id
         in
         match attrs with
         | [] -> (enums, types, payload_attrs)
@@ -623,7 +638,7 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
   | Describe {encoding; description; id = descrid; _} ->
       let description = add_original_id_to_description ?description id in
       let enums, types, attrs =
-        seq_field_of_data_encoding [] [] encoding descrid None
+        seq_field_of_data_encoding [] [] encoding descrid
       in
       Helpers.class_spec_of_attrs
         ~top_level:true
@@ -636,7 +651,7 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
   | _ ->
       let description = add_original_id_to_description id in
       let enums, types, attrs =
-        seq_field_of_data_encoding [] [] encoding encoding_name None
+        seq_field_of_data_encoding [] [] encoding encoding_name
       in
       Helpers.class_spec_of_attrs
         ~top_level:true

@@ -827,6 +827,7 @@ module Constants : sig
       raw_data : sc_rollup_reveal_hashing_schemes;
       metadata : Raw_level.t;
       dal_page : Raw_level.t;
+      dal_parameters : Raw_level.t;
     }
 
     type sc_rollup = {
@@ -2209,7 +2210,7 @@ module Delegate : sig
     public_key_hash ->
     Level.t ->
     rewarded:public_key_hash ->
-    (context * punishing_amounts) tzresult Lwt.t
+    context tzresult Lwt.t
 
   type level_participation = Participated | Didn't_participate
 
@@ -2424,16 +2425,6 @@ module Staking : sig
     the requested stake undergone in between. *)
   val finalize_unstake :
     context -> Contract.t -> (context * Receipt.balance_updates) tzresult Lwt.t
-
-  (** [punish_delegate ctxt delegate level misbehaviour ~rewarded] slashes [delegate]
-    for a [misbehaviour] at [level] and rewards [rewarded]. *)
-  val punish_delegate :
-    context ->
-    public_key_hash ->
-    Level.t ->
-    Misbehaviour.t ->
-    rewarded:public_key_hash ->
-    (context * Receipt.balance_updates) tzresult Lwt.t
 end
 
 (** This module re-exports definitions from {!Voting_period_repr} and
@@ -2982,6 +2973,22 @@ module Sc_rollup : sig
     val encoding : t Data_encoding.t
   end
 
+  (** See {!Sc_rollup_dal_parameters_repr}. *)
+  module Dal_parameters : sig
+    type t = {
+      number_of_slots : int64;
+      attestation_lag : int64;
+      slot_size : int64;
+      page_size : int64;
+    }
+
+    val pp : Format.formatter -> t -> unit
+
+    val equal : t -> t -> bool
+
+    val encoding : t Data_encoding.t
+  end
+
   (** See {!Sc_rollup_inbox_message_repr}. *)
   module Inbox_message : sig
     type internal_inbox_message =
@@ -3090,6 +3097,7 @@ module Sc_rollup : sig
     | Raw_data of string
     | Metadata of Metadata.t
     | Dal_page of Dal.Page.content option
+    | Dal_parameters of Dal_parameters.t
 
   type input = Inbox_message of inbox_message | Reveal of reveal_data
 
@@ -3111,6 +3119,7 @@ module Sc_rollup : sig
     | Reveal_raw_data of Sc_rollup_reveal_hash.t
     | Reveal_metadata
     | Request_dal_page of Dal.Page.t
+    | Reveal_dal_parameters of {published_level : Raw_level_repr.t}
 
   type is_reveal_enabled = current_block_level:Raw_level.t -> reveal -> bool
 

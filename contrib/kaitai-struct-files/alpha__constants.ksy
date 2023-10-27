@@ -55,6 +55,8 @@ types:
       type: s4
     - id: dal_page
       type: s4
+    - id: dal_parameters
+      type: s4
   dal_parametric:
     seq:
     - id: feature_enable
