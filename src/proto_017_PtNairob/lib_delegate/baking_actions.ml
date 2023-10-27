@@ -479,11 +479,8 @@ let sign_preendorsements state preendorsements =
            Operation.unsigned_encoding
            unsigned_operation
        in
-       let sign () =
-         Baking_profiler.record_s "signing preendorsement" @@ fun () ->
-         Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
-       in
-       sign_with_artificial_delay sign
+       Baking_profiler.record_s "signing preendorsement" @@ fun () ->
+       Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
       else
         fail (Baking_highwatermarks.Block_previously_preendorsed {round; level}))
       >>= function
