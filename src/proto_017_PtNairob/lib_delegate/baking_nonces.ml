@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -28,7 +29,12 @@ open Alpha_context
 open Baking_cache
 module Events = Baking_events.Nonces
 
-module Profiler = (val Profiler.wrap Baking_profiler.nonce_profiler)
+module Profiler = struct
+  include (val Profiler.wrap Baking_profiler.nonce_profiler)
+
+  let reset_block_section =
+    Baking_profiler.create_reset_block_section Baking_profiler.nonce_profiler
+end
 
 type state = {
   cctxt : Protocol_client_context.full;
@@ -358,9 +364,7 @@ let start_revelation_worker cctxt config chain_id constants block_stream =
            with the node was interrupted: exit *)
         return_unit
     | Some new_proposal ->
-        Option.iter (fun _ -> Profiler.stop ()) !last_proposal ;
-        Profiler.record
-          (Block_hash.to_b58check new_proposal.Baking_state.block.hash) ;
+        Profiler.reset_block_section new_proposal.Baking_state.block.hash ;
         last_proposal := Some new_proposal.Baking_state.block.hash ;
         if !should_shutdown then return_unit
         else

@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2021 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -26,6 +27,13 @@
 open Protocol.Alpha_context
 module Events = Baking_events.Scheduling
 open Baking_state
+
+module Profiler = struct
+  include (val Profiler.wrap Baking_profiler.profiler)
+
+  let reset_block_section =
+    Baking_profiler.create_reset_block_section Baking_profiler.profiler
+end
 
 type loop_state = {
   heads_stream : Baking_state.proposal Lwt_stream.t;
@@ -773,25 +781,11 @@ let compute_bootstrap_event state =
     in
     return @@ Baking_state.Timeout (End_of_round {ending_round})
 
-let may_reset_profiler =
-  let prev_head = ref None in
-  let () =
-    at_exit (fun () ->
-        Option.iter (fun _ -> Baking_profiler.stop ()) !prev_head)
-  in
-  function
+let may_reset_profiler event =
+  match event with
   | Baking_state.New_head_proposal proposal
-  | Baking_state.New_valid_proposal proposal -> (
-      let curr_head_hash = proposal.block.hash in
-      match !prev_head with
-      | None ->
-          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
-          prev_head := Some curr_head_hash
-      | Some prev_head_hash when prev_head_hash <> curr_head_hash ->
-          Baking_profiler.stop () ;
-          Baking_profiler.record (Block_hash.to_short_b58check curr_head_hash) ;
-          prev_head := Some curr_head_hash
-      | _ -> ())
+  | Baking_state.New_valid_proposal proposal ->
+      Profiler.reset_block_section proposal.block.hash
   | _ -> ()
 
 let rec automaton_loop ?(stop_on_event = fun _ -> false) ~config ~on_error
