@@ -63,14 +63,10 @@ fn is_key_absent_error(err: RuntimeError) -> bool {
     matches!(
         err,
         RuntimeError::PathNotFound
-        // PathNotFound is not reliable - it is returned when the inner
-        // `store_has` says there is something there, i.e. when either value or
-        // subtree or both are there.
+        // PathNotFound is not reliable - sometimes instead of it we get
+        // StoreNotANode or StoreNotAValue.
         //
-        // Oftentimes this is not what we want: for instance, in `store_get` we
-        // access only a value. So on running `store_get`, if there is nethier
-        // value nor subtree at this key, I will get PathNotFound. If there is
-        // only a subtree, I will get `StoreNotAValue`.
+        // See https://gitlab.com/tezos/tezos/-/issues/6568
         | RuntimeError::HostErr(
             tezos_smart_rollup_host::Error::StoreNotANode
             | tezos_smart_rollup_host::Error::StoreNotAValue)
