@@ -73,24 +73,6 @@ fn is_key_absent_error(err: RuntimeError) -> bool {
     )
 }
 
-/// NB on implementation (@martoon) [optimization]: This API is implemented
-/// on top of tezos_smart_rollup's [Runtime], but my impression is that it
-/// does not really suit our purposes well:
-/// 1. Instead of being more elaborate on which errors can be throw and
-///    which cannot, it just rethrows all and adds its own options.
-///
-///    It does not attempt at distinguishing checked and unchecked errors.
-///
-///    Moreover, it adds ambiguity: `HostError` has its own errors for "key
-///    not found", and `RuntimeError` additionally declares a dedicated
-///    constructor for that (that does not really work well as explained in
-///    [is_key_absent_error]).
-///
-/// 2. In case of reading methods, the implementation always checks for the
-///    key presence first (instead of relying on error codes). This sounds
-///    like an extra work with memory (however its amount can be nigligible
-///    due to cache, needs benchmarking).
-
 /// Read a value from the durable storage,
 ///
 /// This is a high-level function. It is dedicated for reading entire,
