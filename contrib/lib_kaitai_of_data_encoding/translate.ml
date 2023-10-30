@@ -71,6 +71,20 @@ let redirect types attrs fattr id =
   in
   (types, attr)
 
+let redirect_if_any :
+    Ground.Type.assoc ->
+    AttrSpec.t list ->
+    (AttrSpec.t -> AttrSpec.t) ->
+    string ->
+    Ground.Type.assoc * AttrSpec.t option =
+ fun types attrs fattr id ->
+  match attrs with
+  | [] -> (types, None)
+  | [attr] -> (types, Some {(fattr attr) with id})
+  | _ :: _ :: _ as attrs ->
+      let types, attr = redirect types attrs fattr id in
+      (types, Some attr)
+
 (* [redirect_if_many] is like [redirect] but it only does the redirection when
    there are multiple attributes, otherwise it adds the field directly. *)
 let redirect_if_many :
@@ -473,14 +487,14 @@ and seq_field_of_field :
         seq_field_of_data_encoding enums types mus encoding id
       in
       let summary = summary ~title ~description in
-      let types, attr =
-        redirect_if_many
+      let types, attr_o =
+        redirect_if_any
           types
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
           id
       in
-      (enums, types, mus, [attr])
+      (enums, types, mus, Option.to_list attr_o)
   | Opt {name; kind = _; encoding; title; description} ->
       let cond_id = escape_id (name ^ "_tag") in
       let enums = Helpers.add_uniq_assoc enums Ground.Enum.bool in
@@ -530,14 +544,14 @@ and seq_field_of_field :
         seq_field_of_data_encoding enums types mus encoding id
       in
       let summary = summary ~title ~description in
-      let types, attr =
-        redirect_if_many
+      let types, attr_o =
+        redirect_if_any
           types
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
           id
       in
-      (enums, types, mus, [attr])
+      (enums, types, mus, Option.to_list attr_o)
 
 and seq_field_of_union :
     type a.
