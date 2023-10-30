@@ -50,6 +50,7 @@ extern {
         "map" => Tok::Prim(PT::Prim(Prim::map)),
         "or" => Tok::Prim(PT::Prim(Prim::or)),
         "contract" => Tok::Prim(PT::Prim(Prim::contract)),
+        "address" => Tok::Prim(PT::Prim(Prim::address)),
         "True" => Tok::Prim(PT::Prim(Prim::True)),
         "False" => Tok::Prim(PT::Prim(Prim::False)),
         "Unit" => Tok::Prim(PT::Prim(Prim::Unit)),
@@ -106,6 +107,7 @@ atomic_type: Type = {
   "string" => Type::String,
   "unit" => Type::Unit,
   "operation" => Type::Operation,
+  "address" => Type::Address,
 }
 
 pair_args: Type = {
