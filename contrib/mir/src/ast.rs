@@ -365,6 +365,7 @@ pub enum Instruction<T: Stage> {
     IfCons(Vec<Instruction<T>>, Vec<Instruction<T>>),
     Iter(T::IterOverload, Vec<Instruction<T>>),
     IfLeft(Vec<Instruction<T>>, Vec<Instruction<T>>),
+    ChainId,
 }
 
 pub type ParsedAST = Vec<ParsedInstruction>;
