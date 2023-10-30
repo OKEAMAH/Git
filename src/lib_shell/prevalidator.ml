@@ -333,10 +333,14 @@ module Make_s
              Events.(emit ban_operation_encountered) (origin, oph))) ;
       true)
     else
-      Pending_ops.mem oph shell.pending
-      || Operation_hash.Set.mem oph shell.live_operations
-      || Classification.is_in_mempool oph shell.classification <> None
-      || Classification.is_known_unparsable oph shell.classification
+      ( Profiler.aggregate_f "is_pending" @@ fun () ->
+        Pending_ops.mem oph shell.pending )
+      || ( Profiler.aggregate_f "is_live_operation" @@ fun () ->
+           Operation_hash.Set.mem oph shell.live_operations )
+      || ( Profiler.aggregate_f "is_classified" @@ fun () ->
+           Classification.is_in_mempool oph shell.classification <> None )
+      || Profiler.aggregate_f "is_known_unparsable" @@ fun () ->
+         Classification.is_known_unparsable oph shell.classification
 
   let advertise (shell : ('operation_data, _) types_state_shell) mempool =
     let open Lwt_syntax in
