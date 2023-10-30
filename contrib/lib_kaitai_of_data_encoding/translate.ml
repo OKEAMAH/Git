@@ -81,7 +81,7 @@ let redirect_if_many :
     Ground.Type.assoc * AttrSpec.t =
  fun types attrs fattr id ->
   match attrs with
-  | [] -> failwith "Not supported"
+  | [] -> failwith "Not supported (empty redirect)"
   | [attr] -> (types, {(fattr attr) with id})
   | _ :: _ :: _ as attrs -> redirect types attrs fattr id
 
@@ -663,7 +663,7 @@ and seq_field_of_collection :
         | _ :: _ :: _ ->
             (* TODO: Big number length size not yet supported. We expect
                      [`Uint30/16/8] to produce only one attribute. *)
-            failwith "Not supported"
+            failwith "Not supported (N-like header)"
       in
       let elt_id = id ^ "_elt" in
       let enums, types, mus, attrs =

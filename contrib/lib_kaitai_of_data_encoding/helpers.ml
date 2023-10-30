@@ -118,6 +118,6 @@ let merge_valid attr v =
               {min = smallm; max = IntNum (min bigm m2)}
         | _, _ ->
             (* Specialise whichever pattern on a by-need basis *)
-            failwith "Not supported"
+            failwith "Not supported (ranges)"
       in
       {attr with valid = Some valid}

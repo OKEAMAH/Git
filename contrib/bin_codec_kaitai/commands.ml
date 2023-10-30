@@ -475,9 +475,12 @@ let commands () =
                   match
                     Kaitai_of_data_encoding.Translate.from_data_encoding ~id e
                   with
-                  | exception _ ->
+                  | exception e ->
                       (* TODO: offer a [result] variant of conversion function *)
-                      cctxt#warning "Failed to generate ksy file for %s" id
+                      cctxt#warning
+                        "Failed to generate ksy file for %s (%s)"
+                        id
+                        (Printexc.to_string e)
                   | spec ->
                       let yml = Kaitai.Print.print spec in
                       Lwt_io.with_file
