@@ -289,88 +289,15 @@ let rec seq_field_of_data_encoding :
       (* multi-field tup *)
       let tid_gen = Helpers.mk_tid_gen id in
       seq_field_of_tups enums types mus tid_gen encoding
-  | List {length_limit = At_most max_length; length_encoding = Some le; elts} ->
-      let length_id = "number_of_elements_in_" ^ id in
-      let enums, types, mus, length_attrs =
-        seq_field_of_data_encoding enums types mus le length_id
-      in
-      let length_attr =
-        match length_attrs with
-        | [] -> assert false
-        | [attr] ->
-            Helpers.merge_valid
-              attr
-              (ValidationSpec.ValidationMax (Ast.IntNum max_length))
-        | _ :: _ :: _ ->
-            (* TODO: Big number length size not yet supported. We expect
-                     [`Uint30/16/8] to produce only one attribute. *)
-            failwith "Not supported"
-      in
-      let elt_id = id ^ "_elt" in
-      let enums, types, mus, attrs =
-        seq_field_of_data_encoding enums types mus elts elt_id
-      in
-      let types, attr =
-        (* We do uncoditional redirect because there can be issues where the
-           [size] of elements and the [size] of the list get mixed up.
-           TODO: redirect on (a) multiple attrs and (b) single attr with [size] *)
-        redirect
-          types
-          attrs
-          (fun attr ->
-            {
-              attr with
-              cond =
-                {
-                  Helpers.cond_no_cond with
-                  repeat = RepeatExpr (Ast.Name length_id);
-                };
-            })
-          (id ^ "_entries")
-      in
-      (enums, types, mus, [length_attr; attr])
-  | List
-      {length_limit = Exactly _ | No_limit; length_encoding = Some _; elts = _}
-    ->
-      (* The same [assert false] exists in the de/serialisation functions of
-         [data_encoding]. This specific case is rejected by data-encoding
-         because the length of the list is both known statically and determined
-         dynamically by a header which is a waste of space. *)
-      assert false
-  | List {length_limit; length_encoding = None; elts} ->
-      let elt_id = id ^ "_elt" in
-      let enums, types, mus, attrs =
-        seq_field_of_data_encoding enums types mus elts elt_id
-      in
-      let types, attr =
-        redirect
-          types
-          attrs
-          (fun attr ->
-            match length_limit with
-            | No_limit ->
-                {
-                  attr with
-                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-                }
-            | At_most _max_length ->
-                {
-                  attr with
-                  (* TODO: Add guard of length *)
-                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
-                }
-            | Exactly exact_length ->
-                {
-                  attr with
-                  cond =
-                    {
-                      Helpers.cond_no_cond with
-                      repeat = RepeatExpr (Ast.IntNum exact_length);
-                    };
-                })
-          (id ^ "_entries")
-      in
-      (enums, types, mus, [attr])
+  | List {length_limit; length_encoding; elts} ->
+      seq_field_of_collection
+        enums
+        types
+        mus
+        length_limit
+        length_encoding
+        elts
+        id
   | Obj f -> seq_field_of_field enums types mus f
   | Objs {kind = _; left; right} ->
       let enums, types, mus, left =
@@ -699,6 +626,99 @@ and seq_field_of_union :
   in
   let payload_attrs = List.rev payload_attrs in
   (enums, types, mus, tag_attr :: payload_attrs)
+
+and seq_field_of_collection :
+    type a.
+    Ground.Enum.assoc ->
+    Ground.Type.assoc ->
+    MuSet.t ->
+    DataEncoding.limit ->
+    int DataEncoding.encoding option ->
+    a DataEncoding.encoding ->
+    string ->
+    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+ fun enums types mus length_limit length_encoding elts id ->
+  match (length_limit, length_encoding, elts) with
+  | At_most max_length, Some le, elts ->
+      let length_id = "number_of_elements_in_" ^ id in
+      let enums, types, mus, length_attrs =
+        seq_field_of_data_encoding enums types mus le length_id
+      in
+      let length_attr =
+        match length_attrs with
+        | [] -> assert false
+        | [attr] ->
+            Helpers.merge_valid
+              attr
+              (ValidationSpec.ValidationMax (Ast.IntNum max_length))
+        | _ :: _ :: _ ->
+            (* TODO: Big number length size not yet supported. We expect
+                     [`Uint30/16/8] to produce only one attribute. *)
+            failwith "Not supported"
+      in
+      let elt_id = id ^ "_elt" in
+      let enums, types, mus, attrs =
+        seq_field_of_data_encoding enums types mus elts elt_id
+      in
+      let types, attr =
+        (* We do uncoditional redirect because there can be issues where the
+           [size] of elements and the [size] of the list get mixed up.
+           TODO: redirect on (a) multiple attrs and (b) single attr with [size] *)
+        redirect
+          types
+          attrs
+          (fun attr ->
+            {
+              attr with
+              cond =
+                {
+                  Helpers.cond_no_cond with
+                  repeat = RepeatExpr (Ast.Name length_id);
+                };
+            })
+          (id ^ "_entries")
+      in
+      (enums, types, mus, [length_attr; attr])
+  | (Exactly _ | No_limit), Some _, _ ->
+      (* The same [assert false] exists in the de/serialisation functions of
+         [data_encoding]. This specific case is rejected by data-encoding
+         because the length of the list is both known statically and determined
+         dynamically by a header which is a waste of space. *)
+      assert false
+  | length_limit, None, elts ->
+      let elt_id = id ^ "_elt" in
+      let enums, types, mus, attrs =
+        seq_field_of_data_encoding enums types mus elts elt_id
+      in
+      let types, attr =
+        redirect
+          types
+          attrs
+          (fun attr ->
+            match length_limit with
+            | No_limit ->
+                {
+                  attr with
+                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+                }
+            | At_most _max_length ->
+                {
+                  attr with
+                  (* TODO: Add guard of length *)
+                  cond = {Helpers.cond_no_cond with repeat = RepeatEos};
+                }
+            | Exactly exact_length ->
+                {
+                  attr with
+                  cond =
+                    {
+                      Helpers.cond_no_cond with
+                      repeat = RepeatExpr (Ast.IntNum exact_length);
+                    };
+                })
+          (id ^ "_entries")
+      in
+      (enums, types, mus, [attr])
 
 let add_original_id_to_description ?description id =
   match description with
