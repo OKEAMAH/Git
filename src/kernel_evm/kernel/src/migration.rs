@@ -3,13 +3,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::error::Error;
 use crate::error::StorageError::InvalidLoadValue;
 use crate::error::UpgradeProcessError::Fallback;
+use crate::error::{Error, UpgradeProcessError};
 use crate::storage::{
     block_path, index_block, init_blocks_index, init_transaction_hashes_index,
     object_path, read_current_block_number, read_storage_version, receipt_path,
-    store_rlp, store_storage_version, STORAGE_VERSION,
+    store_rlp, store_rlp_with_length, store_storage_version, STORAGE_VERSION,
 };
 use ethbloom::Bloom;
 use ethereum::Log;
@@ -34,6 +34,85 @@ pub enum MigrationStatus {
     Done,
 }
 
+mod benchmarks {
+    use super::*;
+
+    static mut BLOCK_START_SECTION_MSG: [u8; 38] =
+        *b"__wasm_debugger__::start_section(\0\0\0\0)";
+
+    static mut BLOCK_END_SECTION_MSG: [u8; 40] =
+        *b"__wasm_debugger__::end_section(\0\0\0\0\0\0\0\0)";
+
+    #[inline(always)]
+    pub fn block_start_section<Host: Runtime>(host: &mut Host, block_number: u32) {
+        unsafe {
+            BLOCK_START_SECTION_MSG[33..37].copy_from_slice(&block_number.to_le_bytes());
+            host.write_debug(core::str::from_utf8_unchecked(&BLOCK_START_SECTION_MSG));
+        }
+    }
+
+    #[inline(always)]
+    pub fn block_end_section<Host: Runtime>(
+        host: &mut Host,
+        bytes_read: u32,
+        bytes_written: u32,
+    ) {
+        unsafe {
+            BLOCK_END_SECTION_MSG[31..35].copy_from_slice(&bytes_read.to_le_bytes());
+            BLOCK_END_SECTION_MSG[35..39].copy_from_slice(&bytes_written.to_le_bytes());
+            host.write_debug(core::str::from_utf8_unchecked(&BLOCK_END_SECTION_MSG));
+        }
+    }
+
+    static mut REC_START_SECTION_MSG: [u8; 34] = *b"__wasm_debugger__::start_section()";
+
+    static mut REC_END_SECTION_MSG: [u8; 40] =
+        *b"__wasm_debugger__::end_section(\0\0\0\0\0\0\0\0)";
+
+    #[inline(always)]
+    pub fn receipt_start_section<Host: Runtime>(host: &mut Host) {
+        unsafe {
+            host.write_debug(core::str::from_utf8_unchecked(&REC_START_SECTION_MSG));
+        }
+    }
+
+    #[inline(always)]
+    pub fn receipt_end_section<Host: Runtime>(
+        host: &mut Host,
+        bytes_read: u32,
+        bytes_written: u32,
+    ) {
+        unsafe {
+            REC_END_SECTION_MSG[31..35].copy_from_slice(&bytes_read.to_le_bytes());
+            REC_END_SECTION_MSG[35..39].copy_from_slice(&bytes_written.to_le_bytes());
+            host.write_debug(core::str::from_utf8_unchecked(&REC_END_SECTION_MSG));
+        }
+    }
+    static mut OBJ_START_SECTION_MSG: [u8; 35] = *b"__wasm_debugger__::start_section(\0)";
+
+    static mut OBJ_END_SECTION_MSG: [u8; 41] =
+        *b"__wasm_debugger__::end_section(\0\0\0\0\0\0\0\0\0)";
+
+    #[inline(always)]
+    pub fn object_start_section<Host: Runtime>(host: &mut Host) {
+        unsafe {
+            host.write_debug(core::str::from_utf8_unchecked(&OBJ_START_SECTION_MSG));
+        }
+    }
+
+    #[inline(always)]
+    pub fn object_end_section<Host: Runtime>(
+        host: &mut Host,
+        bytes_read: u32,
+        bytes_written: u32,
+    ) {
+        unsafe {
+            OBJ_END_SECTION_MSG[31..35].copy_from_slice(&bytes_read.to_le_bytes());
+            OBJ_END_SECTION_MSG[35..39].copy_from_slice(&bytes_written.to_le_bytes());
+            host.write_debug(core::str::from_utf8_unchecked(&OBJ_END_SECTION_MSG));
+        }
+    }
+}
 // Old blocks were serialized using an RLP encoding consisting of the following
 // 6 fields:
 // [number, hash, parent_hash, transactions, gas_used, timestamp]
@@ -133,7 +212,7 @@ impl Decodable for OldL2Block {
 fn migrate_one_block<Host: Runtime>(
     host: &mut Host,
     block_hash: H256,
-) -> Result<(), Error> {
+) -> Result<(u32, u32), Error> {
     let path = block_path(block_hash)?;
     let bytes = host.store_read_all(&path)?;
     host.store_delete(&path)?;
@@ -155,14 +234,24 @@ fn migrate_one_block<Host: Runtime>(
         transactions: old_block.transactions,
     };
     // Write new block
-    store_rlp(&new_block, host, &path)
+    let written: u32 = store_rlp_with_length(&new_block, host, &path)?
+        .try_into()
+        .map_err(|_| {
+            Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+        })?;
+    let read_length: u32 = bytes.len().try_into().map_err(|_| {
+        Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+    })?;
+    Ok((read_length, written))
 }
 
 fn migrate_blocks<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
     let head = read_current_block_number(host)?.as_u32();
     for number in 0..(head + 1) {
+        benchmarks::block_start_section(host, number);
         let hash: H256 = H256(U256::from(number).into());
-        migrate_one_block(host, hash)?;
+        let (read, written) = migrate_one_block(host, hash)?;
+        benchmarks::block_end_section(host, read, written)
     }
     Ok(())
 }
@@ -354,7 +443,7 @@ impl Decodable for OldTransactionObject {
 fn migrate_one_receipt<Host: Runtime>(
     host: &mut Host,
     receipt_hash: &TransactionHash,
-) -> Result<(), Error> {
+) -> Result<(u32, u32), Error> {
     let path = receipt_path(receipt_hash)?;
     let bytes = host.store_read_all(&path)?;
     host.store_delete(&path)?;
@@ -376,19 +465,27 @@ fn migrate_one_receipt<Host: Runtime>(
         status: old_receipt.status,
     };
     // Write new receipt
-    store_rlp(&new_receipt, host, &path)
+    let written: u32 = store_rlp_with_length(&new_receipt, host, &path)?
+        .try_into()
+        .map_err(|_| {
+            Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+        })?;
+    let read_length: u32 = bytes.len().try_into().map_err(|_| {
+        Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+    })?;
+    Ok((read_length, written))
 }
 
 fn migrate_one_object<Host: Runtime>(
     host: &mut Host,
     tx_hash: &TransactionHash,
-) -> Result<(), Error> {
+) -> Result<(u32, u32), Error> {
     let path = object_path(tx_hash)?;
     let bytes = host.store_read_all(&path)?;
     host.store_delete(&path)?;
     // Read old object
     let old_object = OldTransactionObject::from_rlp_bytes(&bytes)?;
-    let new_receipt = TransactionObject {
+    let new_object = TransactionObject {
         block_number: old_object.block_number,
         from: old_object.from,
         gas_used: old_object.gas_used,
@@ -402,7 +499,15 @@ fn migrate_one_object<Host: Runtime>(
         signature: old_object.signature,
     };
     // Write new receipt
-    store_rlp(&new_receipt, host, &path)
+    let written: u32 = store_rlp_with_length(&new_object, host, &path)?
+        .try_into()
+        .map_err(|_| {
+            Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+        })?;
+    let read_length: u32 = bytes.len().try_into().map_err(|_| {
+        Error::UpgradeError(UpgradeProcessError::InternalUpgrade("Conversion"))
+    })?;
+    Ok((read_length, written))
 }
 
 fn migrate_receipts_and_objects<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
@@ -415,8 +520,12 @@ fn migrate_receipts_and_objects<Host: Runtime>(host: &mut Host) -> Result<(), Er
                 expected: TRANSACTION_HASH_SIZE,
                 actual: bytes.len(),
             })?;
-        migrate_one_receipt(host, &tx_hash)?;
-        migrate_one_object(host, &tx_hash)?;
+        benchmarks::receipt_start_section(host);
+        let (rec_read, rec_written) = migrate_one_receipt(host, &tx_hash)?;
+        benchmarks::receipt_end_section(host, rec_read, rec_written);
+        benchmarks::object_start_section(host);
+        let (obj_read, obj_written) = migrate_one_object(host, &tx_hash)?;
+        benchmarks::object_end_section(host, obj_read, obj_written);
     }
     Ok(())
 }

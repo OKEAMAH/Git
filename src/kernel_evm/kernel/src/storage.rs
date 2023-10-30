@@ -220,6 +220,16 @@ pub fn store_rlp<T: Encodable, Host: Runtime>(
     host.store_write(path, &bytes, 0).map_err(Error::from)
 }
 
+pub fn store_rlp_with_length<T: Encodable, Host: Runtime>(
+    src: &T,
+    host: &mut Host,
+    path: &OwnedPath,
+) -> Result<usize, Error> {
+    let bytes = src.rlp_bytes();
+    host.store_write(path, &bytes, 0).map_err(Error::from)?;
+    Ok(bytes.len())
+}
+
 fn read_rlp<T: Decodable, Host: Runtime>(
     host: &mut Host,
     path: &OwnedPath,
