@@ -421,6 +421,69 @@ module Handler = struct
       handler
       (Tezos_shell_services.Monitor_services.heads cctxt `Main)
 
+  let monitor_worker_stats ctxt =
+    let open Lwt_syntax in
+    let rec loop () =
+      let Gossipsub.Worker.Introspection.
+            {
+              count_topics;
+              count_connections;
+              count_bootstrap_connections;
+              count_received =
+                {
+                  count_valid_messages = count_valid_messages_rcv;
+                  count_invalid_messages = count_invalid_messages_rcv;
+                  count_unknown_validity_messages =
+                    count_unknown_validity_messages_rcv;
+                  count_grafts = count_grafts_rcv;
+                  count_prunes = count_prunes_rcv;
+                  count_ihaves = count_ihaves_rcv;
+                  count_iwants = count_iwants_rcv;
+                };
+              count_sent =
+                {
+                  count_valid_messages = count_valid_messages_sent;
+                  count_invalid_messages = count_invalid_messages_sent;
+                  count_unknown_validity_messages =
+                    count_unknown_validity_messages_sent;
+                  count_grafts = count_grafts_sent;
+                  count_prunes = count_prunes_sent;
+                  count_ihaves = count_ihaves_sent;
+                  count_iwants = count_iwants_sent;
+                };
+            } =
+        Node_context.get_gs_worker ctxt |> Gossipsub.Worker.stats
+      in
+      let* () =
+        Event.(
+          emit
+            worker_stats
+            ( Int64.of_int count_topics,
+              Int64.of_int count_connections,
+              Int64.of_int count_bootstrap_connections,
+              ( Int64.of_int count_valid_messages_rcv,
+                Int64.of_int count_invalid_messages_rcv,
+                Int64.of_int count_unknown_validity_messages_rcv,
+                Int64.of_int count_grafts_rcv,
+                Int64.of_int count_prunes_rcv,
+                Int64.of_int count_ihaves_rcv,
+                Int64.of_int count_iwants_rcv ),
+              ( Int64.of_int count_valid_messages_sent,
+                Int64.of_int count_invalid_messages_sent,
+                Int64.of_int count_unknown_validity_messages_sent,
+                Int64.of_int count_grafts_sent,
+                Int64.of_int count_prunes_sent,
+                Int64.of_int count_ihaves_sent,
+                Int64.of_int count_iwants_sent ) ))
+      in
+      let* () =
+        Lwt_unix.sleep
+          (float Constants.gossipsub_worker_stats_refresh_frequency)
+      in
+      loop ()
+    in
+    loop ()
+
   let new_slot_header ctxt =
     (* Monitor neighbor DAL nodes and download published slots as shards. *)
     let open Lwt_result_syntax in
@@ -647,6 +710,9 @@ let run ~data_dir configuration_override =
   in
   (* Start never-ending monitoring daemons *)
   let* () =
-    daemonize (Handler.new_head ctxt cctxt :: Handler.new_slot_header ctxt)
+    daemonize
+      (Handler.monitor_worker_stats ctxt
+      :: Handler.new_head ctxt cctxt
+      :: Handler.new_slot_header ctxt)
   in
   return_unit
