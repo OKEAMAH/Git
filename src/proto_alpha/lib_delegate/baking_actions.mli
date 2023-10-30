@@ -48,9 +48,14 @@ type block_to_bake = {
           [baking_commands.ml]). *)
 }
 
+type inject_block_kind =
+  | Forge_and_inject of block_to_bake
+  | Inject_only of signed_block
+
 type action =
   | Do_nothing
-  | Inject_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Inject_block of {kind : inject_block_kind; updated_state : state}
+  | Forge_block of {block_to_bake : block_to_bake; updated_state : state}
   | Inject_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }

@@ -137,9 +137,14 @@ type block_to_bake = {
   force_apply : bool;
 }
 
+type inject_block_kind =
+  | Forge_and_inject of block_to_bake
+  | Inject_only of signed_block
+
 type action =
   | Do_nothing
-  | Inject_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Inject_block of {kind : inject_block_kind; updated_state : state}
+  | Forge_block of {block_to_bake : block_to_bake; updated_state : state}
   | Inject_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
@@ -197,6 +202,7 @@ let sign_with_artificial_delay sign_f =
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Inject_block _ -> Format.fprintf fmt "inject block"
+  | Forge_block _ -> Format.fprintf fmt "forge_block"
   | Inject_preattestations _ -> Format.fprintf fmt "inject preattestations"
   | Inject_attestations _ -> Format.fprintf fmt "inject attestations"
   | Update_to_level _ -> Format.fprintf fmt "update to level"
@@ -1034,6 +1040,7 @@ let rec perform_action ~state_recorder state (action : action) =
            (snd block_to_bake.delegate))
       @@ fun () ->
       inject_block state ~state_recorder block_to_bake ~updated_state
+  | Forge_block _ -> raise Not_found
   | Inject_preattestations {preattestations} ->
       Baking_profiler.record_s "inject preattestations" @@ fun () ->
       let* () = inject_preattestations state ~preattestations in
