@@ -591,14 +591,22 @@ module Make_s
     else
       let our_mempool =
         let known_valid =
+          Profiler.aggregate_f "union validated hashes" @@ fun () ->
           Operation_hash.Set.union
             validated_mempool.known_valid
             pv_shell.mempool.known_valid
         in
-        {Mempool.known_valid; pending = Pending_ops.hashes pv_shell.pending}
+        let pending =
+          Profiler.aggregate_f "pending hashes" @@ fun () ->
+          Pending_ops.hashes pv_shell.pending
+        in
+        {Mempool.known_valid; pending}
       in
-      let* _res = set_mempool pv_shell our_mempool in
-      Lwt.pause ()
+      let* _res =
+        Profiler.aggregate_s "set mempool" @@ fun () ->
+        set_mempool pv_shell our_mempool
+      in
+      Profiler.aggregate_s "pause" @@ fun () -> Lwt.pause ()
 
   let handle_unprocessed pv =
     let open Lwt_syntax in
