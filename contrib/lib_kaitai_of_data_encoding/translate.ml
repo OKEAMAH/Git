@@ -473,7 +473,10 @@ let rec seq_field_of_data_encoding :
         {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
       in
       (enums, types, mus, [attr])
-  | _ -> failwith "Not implemented"
+  | Delayed mk ->
+      (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
+      let e = mk () in
+      seq_field_of_data_encoding enums types mus e id
 
 and seq_field_of_tups :
     type a.
