@@ -534,21 +534,29 @@ module Make_s
       let mempool_to_advertise =
         Mempool.{delta_mempool with known_valid = delta_mempool.known_valid}
       in
-      advertise pv_shell mempool_to_advertise ;
+      let () =
+        Profiler.aggregate_f "advertise" @@ fun () ->
+        advertise pv_shell mempool_to_advertise
+      in
       let our_mempool =
         let validated_hashes =
+          Profiler.aggregate_f "fold validated hashes" @@ fun () ->
           Classification.Sized_map.fold
             (fun x _ acc -> Operation_hash.Set.add x acc)
             pv_shell.classification.validated
             Operation_hash.Set.empty
         in
-        {
-          Mempool.known_valid = validated_hashes;
-          pending = Pending_ops.hashes pv_shell.pending;
-        }
+        let pending =
+          Profiler.aggregate_f "pending hashes" @@ fun () ->
+          Pending_ops.hashes pv_shell.pending
+        in
+        {Mempool.known_valid = validated_hashes; pending}
       in
-      let* _res = set_mempool pv_shell our_mempool in
-      Lwt.pause ()
+      let* _res =
+        Profiler.aggregate_s "set mempool" @@ fun () ->
+        set_mempool pv_shell our_mempool
+      in
+      Profiler.aggregate_s "pause" @@ fun () -> Lwt.pause ()
 
   let handle_unprocessed pv =
     let open Lwt_syntax in
