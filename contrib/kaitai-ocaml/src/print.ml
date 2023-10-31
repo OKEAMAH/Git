@@ -59,9 +59,10 @@ let enumSpec enumspec =
   mapping
     (List.map
        (fun (v, EnumValueSpec.{name; doc}) ->
-         match doc_spec doc with
-         | [] -> (string_of_int v, scalar name)
-         | l -> (string_of_int v, mapping (("id", scalar name) :: l)))
+         ( string_of_int v,
+           match doc_spec doc with
+           | [] -> scalar name
+           | l -> mapping (("id", scalar name) :: l) ))
        enumspec.EnumSpec.map)
 
 let enums_spec enums =
@@ -71,7 +72,7 @@ let enums_spec enums =
 let type_spec attr =
   match attr.AttrSpec.dataType with
   | AnyType | BytesType _ -> []
-  | NumericType _ | BooleanType | StrType _ | ComplexDataType _ ->
+  | NumericType _ | BooleanType _ | StrType _ | ComplexDataType _ | Raw _ ->
       [("type", scalar (DataType.to_string attr.AttrSpec.dataType))]
 
 let repeat_spec =

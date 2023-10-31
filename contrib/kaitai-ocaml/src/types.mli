@@ -23,6 +23,8 @@ module Ast : sig
 
   type typeId = {absolute : bool; names : string list; isArray : bool}
 
+  val empty_typeId : typeId
+
   type operator =
     | Add
     | Sub
@@ -183,11 +185,12 @@ end
 module rec DataType : sig
   type data_type =
     | NumericType of numeric_type
-    | BooleanType
+    | BooleanType of boolean_type
     | BytesType of bytes_type
     | StrType of str_type
     | ComplexDataType of complex_data_type
     | AnyType
+    | Raw of string
 
   and int_width = W1 | W2 | W4 | W8
 

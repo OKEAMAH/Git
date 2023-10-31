@@ -5,6 +5,7 @@
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (*****************************************************************************)
+
 open Sexplib.Std
 
 module Identifier = struct
@@ -17,9 +18,12 @@ module Ast = struct
   type typeId = {absolute : bool; names : string list; isArray : bool}
   [@@deriving sexp]
 
+  let empty_typeId = {absolute = false; names = []; isArray = false}
+
   let typeId_to_string {absolute; names; isArray} =
-    if isArray || not absolute then failwith "not implemented (typeId)" ;
-    String.concat "." names
+    let names = if absolute then "" :: names else names in
+    let base = String.concat "::" names in
+    if isArray then base ^ "[]" else base
 
   type operator =
     | Add
@@ -35,19 +39,28 @@ module Ast = struct
   [@@deriving sexp]
 
   let operator_to_string = function
-    | BitAnd -> "&"
-    | RShift -> ">>"
     | Add -> "+"
-    | _ -> failwith "not implemented (operator)"
+    | Sub -> "-"
+    | Mult -> "*"
+    | Div -> "/"
+    | Mod -> "%"
+    | BitAnd -> "&"
+    | BitOr -> "|"
+    | BitXor -> "^"
+    | LShift -> "<<"
+    | RShift -> ">>"
 
   type unaryop = Invert | Not | Minus [@@deriving sexp]
 
   type cmpop = Eq | NotEq | Lt | LtE | Gt | GtE [@@deriving sexp]
 
   let cmpop_to_string = function
-    | NotEq -> "!="
+    | Lt -> "<"
+    | LtE -> "<="
+    | Gt -> ">"
+    | GtE -> ">="
     | Eq -> "=="
-    | _ -> failwith "not implemented (cmpop)"
+    | NotEq -> "!="
 
   type t =
     | Raw of string
@@ -78,14 +91,13 @@ module Ast = struct
 
   type expr = t [@@deriving sexp]
 
+  let string_of_unop = function Not -> "not" | Invert -> "~" | Minus -> "-"
+
   let rec to_string = function
     | IntNum n -> Int.to_string n
     | FloatNum f -> Float.to_string f
     | Name name -> name
-    | UnaryOp {op; operand} -> (
-        match op with
-        | Not -> "not " ^ to_string operand
-        | _ -> failwith "unary operator not supported")
+    | UnaryOp {op; operand} -> string_of_unop op ^ " " ^ to_string operand
     | BinOp {left; op; right} ->
         Format.sprintf
           "(%s %s %s)"
@@ -104,11 +116,35 @@ module Ast = struct
     | CastToType {value; typeName} ->
         (* TODO: here and other cases: https://gitlab.com/tezos/tezos/-/issues/6487 *)
         Format.sprintf "%s.as<%s>" (to_string value) (typeId_to_string typeName)
-    | EnumByLabel {enumName; label; inType} ->
-        (* TODO: don't ignore inType *)
-        ignore inType ;
-        Format.sprintf "%s::%s" enumName label
-    | _ -> failwith "not implemented (ast)"
+    | EnumByLabel {enumName; label; inType} -> (
+        match typeId_to_string inType with
+        | "" -> Printf.sprintf "%s::%s" enumName label
+        | s -> Printf.sprintf "%s::%s::%s" s enumName label)
+    | Raw s -> s
+    | BoolOp {op = Or; values} ->
+        String.concat " or " (List.map to_string values)
+    | BoolOp {op = And; values} ->
+        String.concat " and " (List.map to_string values)
+    | IfExp {condition; ifTrue; ifFalse} ->
+        Printf.sprintf
+          "%s?%s:%s"
+          (to_string condition)
+          (to_string ifTrue)
+          (to_string ifFalse)
+    | Call {func; args} ->
+        Printf.sprintf
+          "%s(%s)"
+          (to_string func)
+          (String.concat ", " (List.map to_string args))
+    | Str s -> s
+    | Bool b -> Bool.to_string b
+    | EnumById _ -> failwith "not implemented (EnumById)"
+    | ByteSizeOfType {typeName} ->
+        Printf.sprintf "sizeof<%s>" (typeId_to_string typeName)
+    | BitSizeOfType {typeName} ->
+        Printf.sprintf "bitsizeof<%s>" (typeId_to_string typeName)
+    | List l ->
+        Printf.sprintf "[%s]" (String.concat ", " (List.map to_string l))
 end
 
 type processExpr =
@@ -135,7 +171,8 @@ module Endianness = struct
   let to_string = function
     | `BE -> "be"
     | `LE -> "le"
-    | `Calc _ | `Inherited -> failwith "not supported (Calc | Inherited)"
+    | `Calc _ -> failwith "not supported (Calc)"
+    | `Inherited -> failwith "not supported (Inherited)"
 end
 
 module DocSpec = struct
@@ -195,11 +232,12 @@ end
 module rec DataType : sig
   type data_type =
     | NumericType of numeric_type
-    | BooleanType
+    | BooleanType of boolean_type
     | BytesType of bytes_type
     | StrType of str_type
     | ComplexDataType of complex_data_type
     | AnyType
+    | Raw of string
   [@@deriving sexp]
 
   and int_width = W1 | W2 | W4 | W8 [@@deriving sexp]
@@ -280,11 +318,12 @@ module rec DataType : sig
 end = struct
   type data_type =
     | NumericType of numeric_type
-    | BooleanType
+    | BooleanType of boolean_type
     | BytesType of bytes_type
     | StrType of str_type
     | ComplexDataType of complex_data_type
     | AnyType
+    | Raw of string
   [@@deriving sexp]
 
   and int_width = W1 | W2 | W4 | W8 [@@deriving sexp]
@@ -364,6 +403,7 @@ end = struct
   let width_to_int = function W1 -> 1 | W2 -> 2 | W4 -> 4 | W8 -> 8
 
   let to_string = function
+    | Raw s -> s
     | NumericType (Int_type int_type) -> (
         match int_type with
         | Int1Type {signed} -> if signed then "s1" else "u1"
@@ -377,12 +417,20 @@ end = struct
               |> Option.value ~default:"")
         | BitsType {width; bit_endian} ->
             Printf.sprintf "b%d%s" width (BitEndianness.to_string bit_endian)
-        | _ -> failwith "not supported (NumericType)")
+        | CalcIntType -> failwith "not supported (CalcIntType)")
     | NumericType (Float_type (FloatMultiType {width = _; endian = _})) -> "f8"
+    | NumericType (Float_type CalcFloatType) ->
+        failwith "not supported (CalcFloatType)"
     | ComplexDataType (UserType {meta = {id = Some id; _}; _}) -> id
+    | ComplexDataType (UserType {meta = {id = None; _}; _}) -> assert false
+    | ComplexDataType StructType -> failwith "not supported (StructType)"
+    | ComplexDataType (ArrayType _) -> failwith "not supported (ArrayType)"
+    | BooleanType (BitsType1 _) -> "b1"
+    | BooleanType CalcBooleanType -> failwith "not supported (CalcBooleanType)"
     | BytesType _ ->
         failwith "Bytes types are ommitted in kaitai struct representation"
-    | _ -> failwith "not supported (datatype)"
+    | AnyType -> failwith "not supported (AnyType)"
+    | StrType _ -> failwith "not supported (StrType)"
 end
 
 and AttrSpec : sig

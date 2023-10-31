@@ -75,7 +75,7 @@ let n_seq_attr =
                      {
                        value = Attribute {value = Name "_"; attr = "has_more"};
                        typeName =
-                         {absolute = true; names = ["bool"]; isArray = false};
+                         {absolute = false; names = ["bool"]; isArray = false};
                      };
                });
       };
@@ -127,7 +127,7 @@ let z_type =
                      {
                        value = Name "has_tail";
                        typeName =
-                         {absolute = true; names = ["bool"]; isArray = false};
+                         {absolute = false; names = ["bool"]; isArray = false};
                      });
               repeat =
                 RepeatUntil
@@ -141,7 +141,7 @@ let z_type =
                                Attribute {value = Name "_"; attr = "has_more"};
                              typeName =
                                {
-                                 absolute = true;
+                                 absolute = false;
                                  names = ["bool"];
                                  isArray = false;
                                };
