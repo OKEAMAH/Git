@@ -241,6 +241,8 @@ let ppx_deriving_show = external_sublib ppx_deriving "ppx_deriving.show"
 
 let ppx_repr = external_lib "ppx_repr" V.(at_least "0.6.0")
 
+let ppx_sexp_conv = external_lib "ppx_sexp_conv" V.True
+
 let ptime_clock_os = external_sublib ~js_compatible:true ptime "ptime.clock.os"
 
 let pure_splitmix =
@@ -8466,6 +8468,7 @@ let kaitai =
     "kaitai"
     ~path:"contrib/kaitai-ocaml/src"
     ~release_status:Unreleased
+    ~preprocess:[pps ppx_sexp_conv]
     ~deps:[yaml]
     ~synopsis:"OCaml library for reading Kaitai spec files"
 

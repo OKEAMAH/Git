@@ -316,4 +316,5 @@ and ClassSpec : sig
     instances : (InstanceIdentifier.t * InstanceSpec.t) list;
     enums : (string * EnumSpec.t) list;
   }
+  [@@deriving sexp]
 end

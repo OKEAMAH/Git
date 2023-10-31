@@ -7,13 +7,14 @@
 (*****************************************************************************)
 
 module Identifier = struct
-  type t = string
+  type t = string [@@deriving sexp]
 end
 
 module Ast = struct
-  type boolop = Or | And
+  type boolop = Or | And [@@deriving sexp]
 
   type typeId = {absolute : bool; names : string list; isArray : bool}
+  [@@deriving sexp]
 
   let typeId_to_string {absolute; names; isArray} =
     if isArray || not absolute then failwith "not implemented (typeId)" ;
@@ -30,6 +31,7 @@ module Ast = struct
     | BitOr
     | BitXor
     | BitAnd
+  [@@deriving sexp]
 
   let operator_to_string = function
     | BitAnd -> "&"
@@ -37,9 +39,9 @@ module Ast = struct
     | Add -> "+"
     | _ -> failwith "not implemented (operator)"
 
-  type unaryop = Invert | Not | Minus
+  type unaryop = Invert | Not | Minus [@@deriving sexp]
 
-  type cmpop = Eq | NotEq | Lt | LtE | Gt | GtE
+  type cmpop = Eq | NotEq | Lt | LtE | Gt | GtE [@@deriving sexp]
 
   let cmpop_to_string = function
     | NotEq -> "!="
@@ -71,8 +73,9 @@ module Ast = struct
     | Subscript of {value : t; idx : t}
     | Name of Identifier.t
     | List of t list
+  [@@deriving sexp]
 
-  type expr = t
+  type expr = t [@@deriving sexp]
 
   let rec to_string = function
     | IntNum n -> Int.to_string n
@@ -112,19 +115,21 @@ type processExpr =
   | ProcessXor of {key : Ast.expr}
   | ProcessRotate of {left : int; key : Ast.expr}
   | ProcessCustom
+[@@deriving sexp]
 
 module BitEndianness = struct
-  type t = LittleBitEndian | BigBitEndian
+  type t = LittleBitEndian | BigBitEndian [@@deriving sexp]
 
   let to_string = function LittleBitEndian -> "le" | BigBitEndian -> "be"
 end
 
 module Endianness = struct
-  type fixed_endian = [`BE | `LE]
+  type fixed_endian = [`BE | `LE] [@@deriving sexp]
 
-  type cases = (Ast.expr * fixed_endian) list
+  type cases = (Ast.expr * fixed_endian) list [@@deriving sexp]
 
   type t = [fixed_endian | `Calc of Ast.expr * cases | `Inherited]
+  [@@deriving sexp]
 
   let to_string = function
     | `BE -> "be"
@@ -134,12 +139,13 @@ end
 
 module DocSpec = struct
   type refspec = TextRef of string | UrlRef of {url : string; text : string}
+  [@@deriving sexp]
 
-  type t = {summary : string option; refs : refspec list}
+  type t = {summary : string option; refs : refspec list} [@@deriving sexp]
 end
 
 module InstanceIdentifier = struct
-  type t = string
+  type t = string [@@deriving sexp]
 end
 
 module RepeatSpec = struct
@@ -148,6 +154,7 @@ module RepeatSpec = struct
     | RepeatUntil of Ast.expr
     | RepeatEos
     | NoRepeat
+  [@@deriving sexp]
 end
 
 module ValidationSpec = struct
@@ -158,14 +165,15 @@ module ValidationSpec = struct
     | ValidationRange of {min : Ast.expr; max : Ast.expr}
     | ValidationAnyOf of Ast.expr list
     | ValidationExpr of Ast.expr
+  [@@deriving sexp]
 end
 
 module EnumValueSpec = struct
-  type t = {name : string; doc : DocSpec.t}
+  type t = {name : string; doc : DocSpec.t} [@@deriving sexp]
 end
 
 module EnumSpec = struct
-  type t = {map : (int * EnumValueSpec.t) list}
+  type t = {map : (int * EnumValueSpec.t) list} [@@deriving sexp]
 end
 
 module MetaSpec = struct
@@ -180,6 +188,7 @@ module MetaSpec = struct
     zeroCopySubstream : bool option;
     imports : string list;
   }
+  [@@deriving sexp]
 end
 
 module rec DataType : sig
@@ -190,10 +199,12 @@ module rec DataType : sig
     | StrType of str_type
     | ComplexDataType of complex_data_type
     | AnyType
+  [@@deriving sexp]
 
-  and int_width = W1 | W2 | W4 | W8
+  and int_width = W1 | W2 | W4 | W8 [@@deriving sexp]
 
   and numeric_type = Int_type of int_type | Float_type of float_type
+  [@@deriving sexp]
 
   and int_type =
     | CalcIntType
@@ -204,6 +215,7 @@ module rec DataType : sig
         endian : Endianness.fixed_endian option;
       }
     | BitsType of {width : int; bit_endian : BitEndianness.t}
+  [@@deriving sexp]
 
   and float_type =
     | CalcFloatType
@@ -211,8 +223,10 @@ module rec DataType : sig
         width : int_width;
         endian : Endianness.fixed_endian option;
       }
+  [@@deriving sexp]
 
   and boolean_type = BitsType1 of BitEndianness.t | CalcBooleanType
+  [@@deriving sexp]
 
   and bytes_type =
     | CalcBytesType
@@ -236,17 +250,20 @@ module rec DataType : sig
         eosError : bool;
         mutable process : processExpr option;
       }
+  [@@deriving sexp]
 
   and str_type =
     | CalcStrType
     | StrFromBytesType of {bytes : bytes_type; encoding : string}
+  [@@deriving sexp]
 
-  and array_type = ArrayTypeInStream | CalcArrayType
+  and array_type = ArrayTypeInStream | CalcArrayType [@@deriving sexp]
 
   and complex_data_type =
     | StructType
     | UserType of ClassSpec.t
     | ArrayType of array_type
+  [@@deriving sexp]
 
   and switch_type = {
     on : Ast.expr;
@@ -254,8 +271,9 @@ module rec DataType : sig
     isOwning : bool;
     mutable isOwningInExpr : bool;
   }
+  [@@deriving sexp]
 
-  type t = data_type
+  type t = data_type [@@deriving sexp]
 
   val to_string : t -> string
 end = struct
@@ -266,10 +284,12 @@ end = struct
     | StrType of str_type
     | ComplexDataType of complex_data_type
     | AnyType
+  [@@deriving sexp]
 
-  and int_width = W1 | W2 | W4 | W8
+  and int_width = W1 | W2 | W4 | W8 [@@deriving sexp]
 
   and numeric_type = Int_type of int_type | Float_type of float_type
+  [@@deriving sexp]
 
   and int_type =
     | CalcIntType
@@ -280,6 +300,7 @@ end = struct
         endian : Endianness.fixed_endian option;
       }
     | BitsType of {width : int; bit_endian : BitEndianness.t}
+  [@@deriving sexp]
 
   and float_type =
     | CalcFloatType
@@ -287,8 +308,10 @@ end = struct
         width : int_width;
         endian : Endianness.fixed_endian option;
       }
+  [@@deriving sexp]
 
   and boolean_type = BitsType1 of BitEndianness.t | CalcBooleanType
+  [@@deriving sexp]
 
   and bytes_type =
     | CalcBytesType
@@ -312,17 +335,20 @@ end = struct
         eosError : bool;
         mutable process : processExpr option;
       }
+  [@@deriving sexp]
 
   and str_type =
     | CalcStrType
     | StrFromBytesType of {bytes : bytes_type; encoding : string}
+  [@@deriving sexp]
 
-  and array_type = ArrayTypeInStream | CalcArrayType
+  and array_type = ArrayTypeInStream | CalcArrayType [@@deriving sexp]
 
   and complex_data_type =
     | StructType
     | UserType of ClassSpec.t
     | ArrayType of array_type
+  [@@deriving sexp]
 
   and switch_type = {
     on : Ast.expr;
@@ -330,8 +356,9 @@ end = struct
     isOwning : bool;
     mutable isOwningInExpr : bool;
   }
+  [@@deriving sexp]
 
-  type t = data_type
+  type t = data_type [@@deriving sexp]
 
   let width_to_int = function W1 -> 1 | W2 -> 2 | W4 -> 4 | W8 -> 8
 
@@ -359,7 +386,7 @@ end
 
 and AttrSpec : sig
   module ConditionalSpec : sig
-    type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t}
+    type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t} [@@deriving sexp]
   end
 
   type t = {
@@ -371,9 +398,10 @@ and AttrSpec : sig
     doc : DocSpec.t;
     size : Ast.expr option;
   }
+  [@@deriving sexp]
 end = struct
   module ConditionalSpec = struct
-    type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t}
+    type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t} [@@deriving sexp]
   end
 
   type t = {
@@ -385,10 +413,11 @@ end = struct
     doc : DocSpec.t;
     size : Ast.expr option;
   }
+  [@@deriving sexp]
 end
 
 and InstanceSpec : sig
-  type t = {doc : DocSpec.t; descr : descr}
+  type t = {doc : DocSpec.t; descr : descr} [@@deriving sexp]
 
   and descr =
     | ValueInstanceSpec of {
@@ -398,8 +427,9 @@ and InstanceSpec : sig
         dataTypeOpt : DataType.t option;
       }
     | ParseInstanceSpec
+  [@@deriving sexp]
 end = struct
-  type t = {doc : DocSpec.t; descr : descr}
+  type t = {doc : DocSpec.t; descr : descr} [@@deriving sexp]
 
   and descr =
     | ValueInstanceSpec of {
@@ -409,12 +439,15 @@ end = struct
         dataTypeOpt : DataType.t option;
       }
     | ParseInstanceSpec (* TODO *)
+  [@@deriving sexp]
 end
 
 and ParamDefSpec : sig
   type t = {id : Identifier.t; dataType : DataType.t; doc : DocSpec.t}
+  [@@deriving sexp]
 end = struct
   type t = {id : Identifier.t; dataType : DataType.t; doc : DocSpec.t}
+  [@@deriving sexp]
 end
 
 and ClassSpec : sig
@@ -430,6 +463,7 @@ and ClassSpec : sig
     instances : (InstanceIdentifier.t * InstanceSpec.t) list;
     enums : (string * EnumSpec.t) list;
   }
+  [@@deriving sexp]
 end = struct
   type t = {
     fileName : string option;
@@ -443,4 +477,5 @@ end = struct
     instances : (InstanceIdentifier.t * InstanceSpec.t) list;
     enums : (string * EnumSpec.t) list;
   }
+  [@@deriving sexp]
 end
