@@ -8472,6 +8472,7 @@ let kaitai =
     ~release_status:Unreleased
     ~preprocess:[pps ppx_sexp_conv]
     ~deps:[yaml; sexplib]
+    ~dune:Dune.[ocamllex "lexer"; menhir "parser"]
     ~synopsis:"OCaml library for reading Kaitai spec files"
 
 (* We use a private-lib with inline-tests in order to run the tests normally,
