@@ -292,11 +292,11 @@ types:
     seq:
     - id: size_of_named
       type: u1
+      valid:
+        max: 31
     - id: named
       size: size_of_named
       size-eos: true
-      valid:
-        max: 31
   id_015__ptlimapt__transaction_destination:
     seq:
     - id: id_015__ptlimapt__transaction_destination_tag

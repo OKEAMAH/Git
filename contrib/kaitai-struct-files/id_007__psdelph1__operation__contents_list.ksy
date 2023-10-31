@@ -164,11 +164,11 @@ types:
     seq:
     - id: size_of_named
       type: u1
+      valid:
+        max: 31
     - id: named
       size: size_of_named
       size-eos: true
-      valid:
-        max: 31
   id_007__psdelph1__contract_id:
     seq:
     - id: id_007__psdelph1__contract_id_tag

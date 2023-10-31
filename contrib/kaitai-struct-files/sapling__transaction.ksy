@@ -65,13 +65,11 @@ types:
     - id: size_of_inputs
       type: u4
       valid:
-        max: 1073741823
+        max: 1833216
     - id: inputs
       type: inputs_entries
       size: size_of_inputs
       repeat: eos
-      valid:
-        max: 1833216
   inputs_entries:
     seq:
     - id: sapling__transaction__input

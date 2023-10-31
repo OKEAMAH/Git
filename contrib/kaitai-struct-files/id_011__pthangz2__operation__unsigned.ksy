@@ -204,11 +204,11 @@ types:
     seq:
     - id: size_of_named
       type: u1
+      valid:
+        max: 31
     - id: named
       size: size_of_named
       size-eos: true
-      valid:
-        max: 31
   id_011__pthangz2__contract_id:
     seq:
     - id: id_011__pthangz2__contract_id_tag

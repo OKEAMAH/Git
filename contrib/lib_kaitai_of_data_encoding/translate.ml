@@ -250,17 +250,16 @@ let rec seq_field_of_data_encoding :
         seq_field_of_data_encoding enums types mus encoding id
       in
       let size_id = size_id_of_id id in
-      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+      let size_attr =
+        Helpers.merge_valid
+          (Ground.Attr.binary_length_kind ~id:size_id kind)
+          (ValidationMax (Ast.IntNum limit))
+      in
       let types, attr =
         redirect_if_many
           types
           attrs
-          (fun attr ->
-            {
-              attr with
-              size = Some (Ast.Name size_id);
-              valid = Some (ValidationMax (Ast.IntNum limit));
-            })
+          (fun attr -> {attr with size = Some (Ast.Name size_id)})
           id
       in
       (enums, types, mus, [size_attr; attr])

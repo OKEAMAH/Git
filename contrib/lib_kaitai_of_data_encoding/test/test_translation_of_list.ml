@@ -106,13 +106,11 @@ let%expect_test "test dynamic size list with max length" =
   - id: size_of_list_with_length
     type: u4
     valid:
-      max: 1073741823
+      max: 5
   - id: list_with_length
     type: list_with_length_entries
     size: size_of_list_with_length
     repeat: eos
-    valid:
-      max: 5
   |}]
 
 let%expect_test "test variable size list with max length" =
