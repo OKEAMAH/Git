@@ -285,6 +285,7 @@ pub fn typed_value_to_value_optimized(tv: TypedValue) -> Value {
         TV::Or(x) => V::new_or(x.map(typed_value_to_value_optimized)),
         TV::Address(x) => V::Bytes(x.to_bytes_vec()),
         TV::ChainId(x) => V::Bytes(x.into()),
+        TV::Contract(x) => typed_value_to_value_optimized(TV::Address(x)),
     }
 }
 
@@ -367,6 +368,8 @@ pub enum Instruction<T: Stage> {
     Iter(T::IterOverload, Vec<Instruction<T>>),
     IfLeft(Vec<Instruction<T>>, Vec<Instruction<T>>),
     ChainId,
+    /// `ISelf` because `Self` is a reserved keyword
+    ISelf,
 }
 
 pub type ParsedAST = Vec<ParsedInstruction>;

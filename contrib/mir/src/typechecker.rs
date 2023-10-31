@@ -63,6 +63,8 @@ pub enum TcError {
     AddressError(#[from] AddressError),
     #[error("invalid value for chain_id: {0}")]
     ChainIdError(#[from] ChainIdError),
+    #[error("SELF instruction is forbidden in this context")]
+    SelfForbidden,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
@@ -611,6 +613,13 @@ fn typecheck_instruction(
         (I::ChainId, ..) => {
             stack.push(T::ChainId);
             I::ChainId
+        }
+
+        (I::ISelf, ..) => {
+            stack.push(T::new_contract(
+                self_type.ok_or(TcError::SelfForbidden)?.clone(),
+            ));
+            I::ISelf
         }
 
         (I::Seq(nested), ..) => I::Seq(typecheck(nested, ctx, self_type, opt_stack)?),
@@ -2562,5 +2571,20 @@ mod typecheck_tests {
             ),
             Ok(Instruction::ChainId)
         );
+    }
+
+    #[test]
+    fn self_instr() {
+        let stk = &mut tc_stk![];
+        assert_eq!(
+            super::typecheck_instruction(
+                parse("SELF").unwrap(),
+                &mut Ctx::default(),
+                Some(&Type::Nat),
+                stk
+            ),
+            Ok(Instruction::ISelf)
+        );
+        assert_eq!(stk, &tc_stk![Type::new_contract(Type::Nat)]);
     }
 }
