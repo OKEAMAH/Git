@@ -100,6 +100,20 @@ address_hash_type_and_impls! {
     Sr1(SmartRollupHash),
 }
 
+impl TryFrom<&[u8]> for AddressHash {
+    type Error = AddressError;
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Self::from_bytes(value)
+    }
+}
+
+impl TryFrom<&str> for AddressHash {
+    type Error = AddressError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_base58_check(value)
+    }
+}
+
 impl AddressHash {
     const TAG_IMPLICIT: u8 = 0;
     const TAG_KT1: u8 = 1;
@@ -273,6 +287,20 @@ impl Address {
         } else {
             format!("{}%{}", self.hash.to_base58_check(), self.entrypoint)
         }
+    }
+}
+
+impl TryFrom<&[u8]> for Address {
+    type Error = AddressError;
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Self::from_bytes(value)
+    }
+}
+
+impl TryFrom<&str> for Address {
+    type Error = AddressError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_base58_check(value)
     }
 }
 
