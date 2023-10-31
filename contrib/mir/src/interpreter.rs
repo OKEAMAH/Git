@@ -16,8 +16,43 @@ pub enum InterpretError {
     OutOfGas(#[from] OutOfGas),
     #[error("mutez overflow")]
     MutezOverflow,
-    #[error("failed with: {0:?}")]
-    FailedWith(TypedValue),
+    #[error("failed with: {1:?} of type {0:?}")]
+    FailedWith(Type, TypedValue),
+}
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ContractInterpretError {
+    #[error("failed typechecking input: {0}")]
+    TcError(#[from] crate::typechecker::TcError),
+    #[error("runtime failure while running the contract: {0}")]
+    InterpretError(#[from] crate::interpreter::InterpretError),
+}
+
+#[allow(dead_code)]
+impl ContractScript<TypecheckedStage> {
+    /// Interpret a typechecked contract script using the provided parameter and
+    /// storage. Parameter and storage are given as untyped `Value`s, as this
+    /// allows ensuring they satisfy the types expected by the script.
+    pub fn interpret(
+        &self,
+        ctx: &mut crate::context::Ctx,
+        parameter: Value,
+        storage: Value,
+    ) -> Result<(Vec<TypedValue>, TypedValue), ContractInterpretError> {
+        let in_ty = Type::new_pair(self.parameter.clone(), self.storage.clone());
+        let in_val = Value::new_pair(parameter, storage);
+        let tc_val = in_val.typecheck(ctx, &in_ty)?;
+        let mut stack = stk![tc_val];
+        self.code.interpret(ctx, &mut stack)?;
+        use TypedValue as V;
+        match stack.pop().expect("empty execution stack") {
+            V::Pair(p) => match *p {
+                (V::List(vec), storage) => Ok((vec, storage)),
+                (v, _) => panic!("expected `list operation`, got {:?}", v),
+            },
+            v => panic!("expected `pair 'a 'b`, got {:?}", v),
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -27,12 +62,19 @@ pub fn interpret(
     stack: &mut IStack,
 ) -> Result<(), InterpretError> {
     for i in ast {
-        interpret_one(i, ctx, stack)?;
+        i.interpret(ctx, stack)?;
     }
     ctx.gas.consume(interpret_cost::INTERPRET_RET)?;
     Ok(())
 }
 
+impl TypecheckedInstruction {
+    fn interpret(&self, ctx: &mut Ctx, stack: &mut IStack) -> Result<(), InterpretError> {
+        interpret_one(self, ctx, stack)
+    }
+}
+
+#[track_caller]
 fn unreachable_state() -> ! {
     // If the typechecking of the program being interpreted was successful and if this is reached
     // during interpreting, then the typechecking should be broken, and needs to be fixed.
@@ -177,9 +219,9 @@ fn interpret_one(
             ctx.gas.consume(interpret_cost::SWAP)?;
             stack.swap(0, 1);
         }
-        I::Failwith => {
+        I::Failwith(ty) => {
             let x = pop!();
-            return Err(InterpretError::FailedWith(x));
+            return Err(InterpretError::FailedWith(ty.clone(), x));
         }
         I::Unit => {
             ctx.gas.consume(interpret_cost::UNIT)?;
@@ -187,13 +229,13 @@ fn interpret_one(
         }
         I::Car => {
             ctx.gas.consume(interpret_cost::CAR)?;
-            pop!(V::Pair, l, _r);
-            stack.push(*l);
+            let (l, _) = *pop!(V::Pair);
+            stack.push(l);
         }
         I::Cdr => {
             ctx.gas.consume(interpret_cost::CDR)?;
-            pop!(V::Pair, _l, r);
-            stack.push(*r);
+            let (_, r) = *pop!(V::Pair);
+            stack.push(r);
         }
         I::Pair => {
             ctx.gas.consume(interpret_cost::PAIR)?;
@@ -487,8 +529,12 @@ mod interpreter_tests {
     #[test]
     fn test_failwith() {
         assert_eq!(
-            interpret_one(&Failwith, &mut Ctx::default(), &mut stk![V::Nat(20)]),
-            Err(InterpretError::FailedWith(V::Nat(20)))
+            interpret_one(
+                &Failwith(Type::Nat),
+                &mut Ctx::default(),
+                &mut stk![V::Nat(20)]
+            ),
+            Err(InterpretError::FailedWith(Type::Nat, V::Nat(20)))
         );
     }
 
@@ -996,5 +1042,19 @@ mod interpreter_tests {
             Ok(())
         );
         assert_eq!(stack, stk![TypedValue::Int(-747)]);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Unreachable state reached during interpreting, possibly broken typechecking!"
+    )]
+    fn trigger_unreachable_state() {
+        let mut stack = stk![];
+        interpret(
+            &vec![Add(overloads::Add::NatInt)],
+            &mut Ctx::default(),
+            &mut stack,
+        )
+        .unwrap(); // panics
     }
 }

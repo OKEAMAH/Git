@@ -6,7 +6,7 @@
 /******************************************************************************/
 
 use crate::ast::*;
-use crate::lexer::{LexerError, Tok};
+use crate::lexer::{LexerError, Prim, Tok};
 use crate::syntax;
 use lalrpop_util::ParseError;
 use logos::Logos;
@@ -17,11 +17,61 @@ pub enum ParserError {
     ExpectedU10(i128),
     #[error(transparent)]
     LexerError(#[from] LexerError),
+    #[error("no {0} field")]
+    NoField(Prim),
+    #[error("duplicate {0} field")]
+    DuplicateField(Prim),
 }
 
 #[allow(dead_code)]
 pub fn parse(src: &str) -> Result<ParsedInstructionBlock, ParseError<usize, Tok, ParserError>> {
-    syntax::instructionBlockParser::new().parse(spanned_lexer(src))
+    syntax::InstructionBlockParser::new().parse(spanned_lexer(src))
+}
+
+#[allow(dead_code)]
+pub fn parse_contract_script(
+    src: &str,
+) -> Result<ContractScript<ParsedStage>, ParseError<usize, Tok, ParserError>> {
+    syntax::ContractScriptParser::new().parse(spanned_lexer(src))
+}
+
+/// Helper type to parse contract fields
+pub enum ContractScriptEntity {
+    Parameter(Type),
+    Storage(Type),
+    Code(ParsedInstruction),
+}
+
+impl TryFrom<Vec<ContractScriptEntity>> for ContractScript<ParsedStage> {
+    type Error = crate::parser::ParserError;
+    fn try_from(value: Vec<ContractScriptEntity>) -> Result<Self, Self::Error> {
+        use crate::lexer::Prim as P;
+        use crate::parser::ParserError as Err;
+        use ContractScriptEntity as CE;
+        let mut param: Option<Type> = None;
+        let mut storage: Option<Type> = None;
+        let mut code: Option<ParsedInstruction> = None;
+        fn set_if_none<T>(x: &mut Option<T>, y: T, e: P) -> Result<(), Err> {
+            if x.is_none() {
+                *x = Some(y);
+                Ok(())
+            } else {
+                Err(Err::DuplicateField(e))
+            }
+        }
+        for i in value {
+            match i {
+                CE::Parameter(p) => set_if_none(&mut param, p, P::parameter),
+                CE::Storage(p) => set_if_none(&mut storage, p, P::storage),
+                CE::Code(p) => set_if_none(&mut code, p, P::code),
+            }?;
+        }
+        Ok(ContractScript {
+            parameter: param.ok_or(Err::NoField(P::parameter))?,
+            storage: storage.ok_or(Err::NoField(P::storage))?,
+            code: code.ok_or(Err::NoField(P::code))?,
+        })
+    }
 }
 
 fn spanned_lexer(
@@ -33,6 +83,15 @@ fn spanned_lexer(
             Ok(tok) => Ok((span.start, tok, span.end)),
             Err(err) => Err(err.into()),
         })
+}
+
+/// Validate a number is a 10-bit unsigned integer.
+pub fn validate_u10(n: i128) -> Result<u16, ParserError> {
+    let res = u16::try_from(n).map_err(|_| ParserError::ExpectedU10(n))?;
+    if res >= 1024 {
+        return Err(ParserError::ExpectedU10(n));
+    }
+    Ok(res)
 }
 
 #[cfg(test)]
@@ -153,6 +212,76 @@ mod tests {
         assert_eq!(
             parse("{CAR @var :ty %field :ty.2 @var.2 %field.2}").unwrap(),
             vec![Car],
+        );
+    }
+
+    #[test]
+    fn invalid_prim() {
+        assert_eq!(
+            parse("{UNNIT}").unwrap_err().to_string(),
+            "unknown primitive: UNNIT"
+        );
+    }
+
+    #[test]
+    fn parse_contract_script_test() {
+        use crate::lexer::Prim::{code, parameter, storage};
+        use Instruction::*;
+        use ParserError as Err;
+        use Type as T;
+
+        assert_eq!(
+            parse_contract_script("parameter unit; storage unit; code FAILWITH"),
+            Ok(ContractScript {
+                parameter: T::Unit,
+                storage: T::Unit,
+                code: Failwith(())
+            })
+        );
+
+        // non-atomic arguments to code must be wrapped in braces
+        assert_eq!(
+            parse_contract_script("parameter unit; storage unit; code NIL unit")
+                .unwrap_err()
+                .to_string()
+                .lines()
+                .next(),
+            Some("Unrecognized token `NIL` found at 35:38")
+        );
+        // or parentheses
+        assert_eq!(
+            parse_contract_script("parameter unit; storage unit; code (NIL unit)"),
+            Ok(ContractScript {
+                parameter: T::Unit,
+                storage: T::Unit,
+                code: Nil(T::Unit),
+            })
+        );
+        // duplicate
+        assert_eq!(
+            parse_contract_script("parameter unit; parameter int; storage unit; code FAILWITH"),
+            Err(Err::DuplicateField(parameter).into())
+        );
+        assert_eq!(
+            parse_contract_script("parameter unit; storage unit; storage int; code FAILWITH"),
+            Err(Err::DuplicateField(storage).into())
+        );
+        assert_eq!(
+            parse_contract_script("code INT; parameter unit; storage unit; code FAILWITH"),
+            Err(Err::DuplicateField(code).into())
+        );
+        // missing
+        assert_eq!(
+            parse_contract_script("storage unit; code FAILWITH"),
+            Err(Err::NoField(parameter).into())
+        );
+        assert_eq!(
+            parse_contract_script("parameter unit; code FAILWITH"),
+            Err(Err::NoField(storage).into())
+        );
+        assert_eq!(
+            parse_contract_script("parameter unit; storage unit"),
+            Err(Err::NoField(code).into())
         );
     }
 }

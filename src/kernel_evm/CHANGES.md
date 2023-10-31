@@ -10,12 +10,15 @@
 - Transaction can no longer be overwritten nor reincluded (implicit transaction size limit now
   becomes ~1200 chunks). (!10337)
 - Produce outbox messages withdrawing funds. (!10063)
+- EVM execution configuration was bumped from London to Shanghai. (!10591)
 
 ### EVM Node
 
 - Remove `mockup` mode previously used for internal testing only. (!10406)
 - RPCs related to blocks now return default values for the POW fields instead of
   mockup. (!10427)
+- The binary `evm-proxy-server` is renamed to `evm-node`. (!10656)
+- Renamed node's argument `mode` to `version`. (!10657)
 
 ### Bug fixes
 
@@ -32,6 +35,8 @@
 - Block hash is no longer in Tx object, receipt and BIP. (!10520)
 - Compute real block hashes. (!10442)
 - EVM evaluation framework (testing for the EVM execution) is now available. (!10221)
+- Compute {state,transactions,receipt}_root in block. (!10545)
+- Upgrade nonce is no longer needed, only the preimage root hash. (!12345)
 
 ## Version fc06d63568b1be253088ff5d6e422fd80ed3d2c2
 

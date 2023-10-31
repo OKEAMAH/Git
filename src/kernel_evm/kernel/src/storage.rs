@@ -14,11 +14,10 @@ use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
 use tezos_smart_rollup_host::path::*;
-use tezos_smart_rollup_host::runtime::{Runtime, RuntimeError, ValueType};
+use tezos_smart_rollup_host::runtime::{Runtime, ValueType};
 
 use crate::block_in_progress::BlockInProgress;
 use crate::error::{Error, StorageError};
-use crate::parsing::UPGRADE_NONCE_SIZE;
 use rlp::{Decodable, Encodable, Rlp};
 use tezos_ethereum::block::L2Block;
 use tezos_ethereum::rlp_helpers::FromRlpBytes;
@@ -51,10 +50,11 @@ pub const EVM_BLOCKS: RefPath = RefPath::assert_from(b"/blocks");
 const BLOCK_NUMBER: RefPath = RefPath::assert_from(b"/number");
 const BLOCK_HASH: RefPath = RefPath::assert_from(b"/hash");
 
-const EVM_TRANSACTIONS_RECEIPTS: RefPath =
+pub const EVM_TRANSACTIONS_RECEIPTS: RefPath =
     RefPath::assert_from(b"/transactions_receipts");
 
-const EVM_TRANSACTIONS_OBJECTS: RefPath = RefPath::assert_from(b"/transactions_objects");
+pub const EVM_TRANSACTIONS_OBJECTS: RefPath =
+    RefPath::assert_from(b"/transactions_objects");
 
 const EVM_CHAIN_ID: RefPath = RefPath::assert_from(b"/chain_id");
 
@@ -663,18 +663,6 @@ pub fn store_kernel_upgrade_nonce<Host: Runtime>(
 ) -> Result<(), Error> {
     host.store_write_all(&KERNEL_UPGRADE_NONCE, &upgrade_nonce.to_le_bytes())
         .map_err(Error::from)
-}
-
-pub fn read_kernel_upgrade_nonce<Host: Runtime>(host: &mut Host) -> Result<u16, Error> {
-    match host.store_read_all(&KERNEL_UPGRADE_NONCE) {
-        Ok(bytes) => {
-            let slice_of_bytes: [u8; UPGRADE_NONCE_SIZE] =
-                bytes[..].try_into().map_err(|_| Error::InvalidConversion)?;
-            Ok(u16::from_le_bytes(slice_of_bytes))
-        }
-        Err(RuntimeError::PathNotFound) => Ok(1_u16),
-        Err(e) => Err(e.into()),
-    }
 }
 
 /// Get the index of accounts.

@@ -103,21 +103,6 @@ pub struct Queue {
     pub kernel_upgrade: Option<KernelUpgrade>,
 }
 
-impl Queue {
-    pub fn new() -> Queue {
-        Queue {
-            proposals: Vec::new(),
-            kernel_upgrade: None,
-        }
-    }
-
-    pub fn add(queue: &mut Queue, transactions: Vec<Transaction>) {
-        queue
-            .proposals
-            .push(QueueElement::Blueprint(Blueprint { transactions }))
-    }
-}
-
 impl Decodable for Queue {
     fn decode(decoder: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         if !decoder.is_list() {
@@ -195,7 +180,6 @@ mod tests {
 
     use super::*;
     use crate::inbox::TransactionContent::Ethereum;
-    use crate::parsing::UPGRADE_NONCE_SIZE;
     use primitive_types::{H160, H256, U256};
     use rlp::Rlp;
     use tezos_ethereum::{
@@ -319,7 +303,6 @@ mod tests {
             proposal,
         ];
         let kernel_upgrade = Some(KernelUpgrade {
-            nonce: [3; UPGRADE_NONCE_SIZE],
             preimage_hash: [3; PREIMAGE_HASH_SIZE],
         });
         let queue = Queue {

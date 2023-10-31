@@ -888,6 +888,73 @@ let octez_rpc =
       ]
     ~js_compatible:true
 
+let octez_risc_v_pvm =
+  let base_name = "octez_risc_v_pvm" in
+  let archive_file = Format.sprintf "lib%s.a" base_name in
+  let archive_output_file = Format.sprintf "target/release/%s" archive_file in
+  let header_file = Format.sprintf "%s.h" base_name in
+  let rust_foreign_library =
+    Dune.
+      [
+        S "rule";
+        [S "targets"; S archive_file; S header_file];
+        [
+          S "deps";
+          [S "source_tree"; S "src"];
+          [S "file"; S "build.rs"];
+          [S "file"; S "Cargo.toml"];
+          [S "file"; S "Cargo.lock"];
+          (* For the interpreter crate, these patterns only include files
+           * directly contained in [../interpreter], as well as the [src]
+           * directory, excluding all other directories in order to avoid
+           * copying any build artifacts. *)
+          [S "glob_files"; S "../interpreter/*"];
+          [S "source_tree"; S "../interpreter/src"];
+        ];
+        [
+          S "action";
+          [
+            S "no-infer";
+            [
+              S "progn";
+              [S "run"; S "cargo"; S "build"; S "--release"];
+              [S "copy"; S archive_output_file; S archive_file];
+            ];
+          ];
+        ];
+      ]
+  in
+  public_lib
+    "octez-risc-v-pvm"
+    ~path:"src/risc_v/pvm"
+    ~synopsis:"Bindings for RISC-V interpreter"
+    ~deps:[ctypes; ctypes_foreign]
+    ~flags:(Flags.standard ~disable_warnings:[9; 27] ())
+    ~ctypes:
+      Ctypes.
+        {
+          external_library_name = base_name;
+          include_header = header_file;
+          extra_search_dir = "%{env:INSIDE_DUNE=.}/src/risc_v/pvm";
+          type_description = {instance = "Types"; functor_ = "Api_types_desc"};
+          function_description =
+            {instance = "Functions"; functor_ = "Api_funcs_desc"};
+          generated_types = "Api_types";
+          generated_entry_point = "Api";
+          c_flags = [];
+          c_library_flags = [];
+          deps = [archive_file; header_file];
+        }
+    ~dune:Dune.[rust_foreign_library]
+
+let _octez_risc_v_pvm_test =
+  tezt
+    ["test_main"]
+    ~path:"src/risc_v/pvm/test"
+    ~opam:"octez-risc-v-pvm-test"
+    ~synopsis:"Tests for RISC-V interpreter bindings"
+    ~deps:[alcotezt; octez_risc_v_pvm]
+
 let bls12_381 =
   public_lib
     "bls12-381"
@@ -8211,22 +8278,22 @@ let _octez_scoru_wasm_debugger =
         lambda_term;
       ]
 
-let evm_proxy_lib_prod_encoding =
+let evm_node_lib_prod_encoding =
   private_lib
-    "evm_proxy_lib_prod_encoding"
-    ~path:"src/bin_evm_proxy/lib_prod/encodings"
-    ~opam:"octez-evm-proxy-lib-prod-encoding"
+    "evm_node_lib_prod_encoding"
+    ~path:"src/bin_evm_node/lib_prod/encodings"
+    ~opam:"octez-node-lib-prod-encoding"
     ~synopsis:
-      "EVM encodings for the EVM proxy and plugin for the WASM Debugger [prod \
+      "EVM encodings for the EVM node and plugin for the WASM Debugger [prod \
        version]"
     ~deps:
       [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
-let evm_proxy_lib_prod =
+let evm_node_lib_prod =
   private_lib
-    "evm_proxy_lib_prod"
-    ~path:"src/bin_evm_proxy/lib_prod"
-    ~opam:"octez-evm-proxy-lib-prod"
+    "evm_node_lib_prod"
+    ~path:"src/bin_evm_node/lib_prod"
+    ~opam:"octez-node-lib-prod"
     ~synopsis:
       "An implementation of a subset of Ethereum JSON-RPC API for the EVM \
        rollup [prod version]"
@@ -8238,26 +8305,26 @@ let evm_proxy_lib_prod =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
-        evm_proxy_lib_prod_encoding |> open_;
+        evm_node_lib_prod_encoding |> open_;
         lwt_exit;
       ]
 
-let evm_proxy_lib_dev_encoding =
+let evm_node_lib_dev_encoding =
   private_lib
-    "evm_proxy_lib_dev_encoding"
-    ~path:"src/bin_evm_proxy/lib_dev/encodings"
-    ~opam:"octez-evm-proxy-lib-dev-encoding"
+    "evm_node_lib_dev_encoding"
+    ~path:"src/bin_evm_node/lib_dev/encodings"
+    ~opam:"octez-node-lib-dev-encoding"
     ~synopsis:
-      "EVM encodings for the EVM proxy and plugin for the WASM Debugger [dev \
+      "EVM encodings for the EVM node and plugin for the WASM Debugger [dev \
        version]"
     ~deps:
       [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
-let evm_proxy_lib_dev =
+let evm_node_lib_dev =
   private_lib
-    "evm_proxy_lib_dev"
-    ~path:"src/bin_evm_proxy/lib_dev"
-    ~opam:"octez-evm-proxy-lib-dev"
+    "evm_node_lib_dev"
+    ~path:"src/bin_evm_node/lib_dev"
+    ~opam:"octez-node-lib-dev"
     ~synopsis:
       "An implementation of a subset of Ethereum JSON-RPC API for the EVM \
        rollup [dev version]"
@@ -8269,16 +8336,16 @@ let evm_proxy_lib_dev =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
-        evm_proxy_lib_dev_encoding |> open_;
+        evm_node_lib_dev_encoding |> open_;
         lwt_exit;
       ]
 
-let _octez_evm_proxy_tests =
+let _octez_evm_node_tests =
   tezt
     ["test_rlp"; "test_ethbloom"]
-    ~path:"src/bin_evm_proxy/test"
-    ~opam:"octez-evm-proxy-tests"
-    ~synopsis:"Tests for the EVM Proxy"
+    ~path:"src/bin_evm_node/test"
+    ~opam:"octez-evm-node-tests"
+    ~synopsis:"Tests for the EVM Node"
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";
@@ -8287,8 +8354,8 @@ let _octez_evm_proxy_tests =
         octez_test_helpers |> open_;
         qcheck_alcotest;
         alcotezt;
-        evm_proxy_lib_prod;
-        evm_proxy_lib_dev;
+        evm_node_lib_prod;
+        evm_node_lib_dev;
       ]
 
 let octez_scoru_sequencer =
@@ -8351,12 +8418,12 @@ let _sc_sequencer_node =
         octez_scoru_sequencer |> open_;
       ]
 
-let _evm_proxy =
+let _evm_node =
   public_exe
-    (sf "octez-evm-proxy-server")
-    ~internal_name:(sf "evm_proxy")
-    ~path:("src" // "bin_evm_proxy")
-    ~opam:"octez-evm-proxy"
+    (sf "octez-evm-node")
+    ~internal_name:(sf "evm_node")
+    ~path:("src" // "bin_evm_node")
+    ~opam:"octez-evm-node"
     ~synopsis:
       "An implementation of a subset of Ethereum JSON-RPC API for the EVM \
        rollup"
@@ -8369,9 +8436,9 @@ let _evm_proxy =
         octez_rpc_http |> open_;
         octez_rpc_http_server;
         octez_version_value;
-        evm_proxy_lib_prod;
-        evm_proxy_lib_dev;
-        evm_proxy_lib_dev_encoding |> open_;
+        evm_node_lib_prod;
+        evm_node_lib_dev;
+        evm_node_lib_dev_encoding |> open_;
       ]
     ~bisect_ppx:Yes
 

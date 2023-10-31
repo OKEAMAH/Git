@@ -16,7 +16,7 @@ use crate::EthereumError;
 use alloc::collections::btree_map::BTreeMap;
 use evm::{Context, ExitReason, ExitRevert, ExitSucceed, Transfer};
 use host::runtime::Runtime;
-use primitive_types::H160;
+use primitive_types::{H160, U256};
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 use tezos_ethereum::withdrawal::Withdrawal;
@@ -218,6 +218,15 @@ fn withdrawal_precompile<Host: Runtime>(
         return Ok(revert_withdrawal())
     };
 
+    if U256::is_zero(&transfer.value) {
+        log!(
+            handler.borrow_host(),
+            Info,
+            "Withdrawal precompiled contract: transfer of 0"
+        );
+        return Ok(revert_withdrawal());
+    }
+
     match input {
         [0xcd, 0xa4, 0xfe, 0xe2, rest @ ..] => {
             let Some(address_str) = abi::string_parameter(rest, 0) else {
@@ -300,6 +309,8 @@ mod tests {
     use tezos_smart_rollup_encoding::contract::Contract;
     use tezos_smart_rollup_mock::MockHost;
 
+    const DUMMY_ALLOCATED_TICKS: u64 = 1_000_000;
+
     fn set_balance(
         host: &mut MockHost,
         evm_account_storage: &mut EthereumAccountStorage,
@@ -333,7 +344,7 @@ mod tests {
             BlockConstants::first_block(U256::zero(), U256::one(), U256::from(21000));
         let mut evm_account_storage = init_evm_account_storage().unwrap();
         let precompiles = precompile_set::<MockHost>();
-        let config = Config::london();
+        let config = Config::shanghai();
 
         if let Some(Transfer { source, value, .. }) = transfer {
             set_balance(
@@ -351,6 +362,7 @@ mod tests {
             &block,
             &config,
             &precompiles,
+            DUMMY_ALLOCATED_TICKS,
         );
 
         let is_static = true;
@@ -386,6 +398,8 @@ mod tests {
             logs: vec![],
             result: Some(expected_hash),
             withdrawals: vec![],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -411,6 +425,8 @@ mod tests {
             logs: vec![],
             result: Some(expected_hash),
             withdrawals: vec![],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -460,6 +476,8 @@ mod tests {
                 target: expected_target,
                 amount: 100.into(),
             }],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -510,6 +528,8 @@ mod tests {
                 target: expected_target,
                 amount: 100.into(),
             }],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -518,13 +538,15 @@ mod tests {
     #[test]
     fn call_withdrawal_fails_without_transfer() {
         let input: &[u8] = &hex::decode(
-            "bc85a759\
+            "cda4fee2\
                  0000000000000000000000000000000000000000000000000000000000000020\
                  0000000000000000000000000000000000000000000000000000000000000024\
-                 4b54314275455a7462363863315134796a74636b634e6a47454c71577435365879657363\
+                 747a31526a745a5556654c6841444648444c385577445a4136766a5757686f6a70753577\
                  00000000000000000000000000000000000000000000000000000000",
         )
         .unwrap();
+
+        // 1. Fails with no transfer
 
         let target = H160::from_low_u64_be(32u64);
 
@@ -539,7 +561,35 @@ mod tests {
             logs: vec![],
             result: None,
             withdrawals: vec![],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
         };
+
+        assert_eq!(Ok(expected), result);
+
+        // 2. Fails with transfer of 0 amount.
+
+        let target = H160::from_low_u64_be(32u64);
+        let source = H160::from_low_u64_be(118u64);
+
+        let transfer: Option<Transfer> = Some(Transfer {
+            target,
+            source,
+            value: U256::zero(),
+        });
+
+        let expected = ExecutionOutcome {
+            gas_used: 21000,
+            is_success: false,
+            new_address: None,
+            logs: vec![],
+            result: None,
+            withdrawals: vec![],
+            // TODO (#6426): estimate the ticks consumption of precompiled contracts
+            estimated_ticks_used: 0,
+        };
+
+        let result = execute_precompiled(target, input, transfer, Some(21000));
 
         assert_eq!(Ok(expected), result);
     }
