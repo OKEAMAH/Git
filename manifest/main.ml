@@ -305,6 +305,8 @@ let secp256k1_internal =
 
 let seqes = external_lib ~js_compatible:true "seqes" V.(at_least "0.2")
 
+let sexplib = external_lib "sexplib" V.True
+
 let stdint = external_lib "stdint" V.True
 
 let str = external_lib ~js_compatible:true "str" ~opam:"" V.True
@@ -8469,7 +8471,7 @@ let kaitai =
     ~path:"contrib/kaitai-ocaml/src"
     ~release_status:Unreleased
     ~preprocess:[pps ppx_sexp_conv]
-    ~deps:[yaml]
+    ~deps:[yaml; sexplib]
     ~synopsis:"OCaml library for reading Kaitai spec files"
 
 (* We use a private-lib with inline-tests in order to run the tests normally,

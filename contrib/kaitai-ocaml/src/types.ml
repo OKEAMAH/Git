@@ -5,6 +5,7 @@
 (* Copyright (c) 2023 Nomadic Labs, <contact@nomadic-labs.com>               *)
 (*                                                                           *)
 (*****************************************************************************)
+open Sexplib.Std
 
 module Identifier = struct
   type t = string [@@deriving sexp]
