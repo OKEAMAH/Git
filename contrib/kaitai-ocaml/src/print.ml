@@ -56,10 +56,12 @@ let instances_spec instances =
   mapping (instances |> List.map (fun (k, v) -> (k, instanceSpec v)))
 
 let enumSpec enumspec =
-  (* TODO: pp doc spec as well. *)
   mapping
     (List.map
-       (fun (v, EnumValueSpec.{name; _}) -> (string_of_int v, scalar name))
+       (fun (v, EnumValueSpec.{name; doc}) ->
+         match doc_spec doc with
+         | [] -> (string_of_int v, scalar name)
+         | l -> (string_of_int v, mapping (("id", scalar name) :: l)))
        enumspec.EnumSpec.map)
 
 let enums_spec enums =

@@ -337,13 +337,27 @@ enums:
     0: int
     1: string
     2: sequence
-    3: prim__no_args__no_annots
-    4: prim__no_args__some_annots
-    5: prim__1_arg__no_annots
-    6: prim__1_arg__some_annots
-    7: prim__2_args__no_annots
-    8: prim__2_args__some_annots
-    9: prim__generic
+    3:
+      id: prim__no_args__no_annots
+      doc: Primitive with no arguments and no annotations
+    4:
+      id: prim__no_args__some_annots
+      doc: Primitive with no arguments and some annotations
+    5:
+      id: prim__1_arg__no_annots
+      doc: Primitive with one argument and no annotations
+    6:
+      id: prim__1_arg__some_annots
+      doc: Primitive with one argument and some annotations
+    7:
+      id: prim__2_args__no_annots
+      doc: Primitive with two arguments and no annotations
+    8:
+      id: prim__2_args__some_annots
+      doc: Primitive with two arguments and some annotations
+    9:
+      id: prim__generic
+      doc: Generic primitive (any number of args with or without annotations)
     10: bytes
   id_007__psdelph1__contract__big_map_diff_elt_tag:
     0: update
