@@ -179,6 +179,7 @@ pub enum TztOutput {
 fn execute_tzt_test_code(
     code: ParsedInstruction,
     ctx: &mut Ctx,
+    parameter: Option<&Type>,
     input: Vec<(Type, TypedValue)>,
 ) -> Result<(FailingTypeStack, IStack), TestError> {
     // Build initial stacks (type and value) for running the test from the test input
@@ -208,6 +209,6 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
         amount: test.amount.unwrap_or_default(),
         chain_id: test.chain_id.unwrap_or(Ctx::default().chain_id),
     };
-    let execution_result = execute_tzt_test_code(test.code, &mut ctx, test.input);
+    let execution_result = execute_tzt_test_code(test.code, &mut ctx, None, test.input);
     check_expectation(&mut ctx, test.output, execution_result)
 }
