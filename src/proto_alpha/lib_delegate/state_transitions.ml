@@ -715,19 +715,15 @@ let time_to_forge_block state =
            each proposal, we'll retrieve them from the mempool *)
         []
       in
-      let new_level_state =
-        {state.level_state with next_level_proposed_round = Some at_round}
-      in
-      let new_state = {state with level_state = new_level_state} in
       let* action =
         forge_fresh_block_action
           ~attestations
           ~dal_attestations
           ~predecessor:elected_block.proposal.block
-          new_state
+          state
           consensus_key_and_delegate
       in
-      return (new_state, action)
+      return (state, action)
 
 let time_to_bake_at_next_level state at_round =
   let open Lwt_syntax in
