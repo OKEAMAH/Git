@@ -316,6 +316,19 @@ module State_transitions = struct
       ~pp2:Round.pp
       ("round", Round.encoding)
 
+  let no_need_forge_block =
+    declare_2
+      ~section
+      ~name:"no_need_forge_block"
+      ~level:Info
+      ~msg:
+        "found preemptively forged block. no need to forge block for \
+         {delegate} at round {round}"
+      ~pp1:Baking_state.pp_consensus_key_and_delegate
+      ("delegate", Baking_state.consensus_key_and_delegate_encoding)
+      ~pp2:Round.pp
+      ("round", Round.encoding)
+
   let no_attestable_payload_fresh_block =
     declare_0
       ~section

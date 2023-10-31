@@ -280,7 +280,7 @@ let sign_block_header state proposer unsigned_block_header =
       in
       return {Block_header.shell; protocol_data = {contents; signature}}
 
-let inject_block ~state_recorder state block_to_bake ~updated_state =
+let forge_signed_block ~state_recorder ~updated_state block_to_bake state =
   let open Lwt_result_syntax in
   let {
     predecessor;
@@ -454,22 +454,29 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
         Baking_nonces.register_nonce cctxt ~chain_id block_hash nonce
   in
   let* () = state_recorder ~new_state:updated_state in
-  let*! () =
-    Events.(
-      emit injecting_block (signed_block_header.shell.level, round, delegate))
+  let signed_block =
+    {round; delegate; operations; block_header = signed_block_header}
   in
+  return (signed_block, updated_state)
+
+let inject_block ~updated_state state signed_block =
+  let open Lwt_result_syntax in
+  let {round; delegate; block_header; operations} = signed_block in
+  let*! () =
+    Events.(emit injecting_block (block_header.shell.level, round, delegate))
+  in
+  let cctxt = state.global_state.cctxt in
   let* bh =
     Baking_profiler.record_s "inject block to node" @@ fun () ->
     Node_rpc.inject_block
       cctxt
       ~force:state.global_state.config.force
       ~chain:(`Hash state.global_state.chain_id)
-      signed_block_header
+      block_header
       operations
   in
   let*! () =
-    Events.(
-      emit block_injected (bh, signed_block_header.shell.level, round, delegate))
+    Events.(emit block_injected (bh, block_header.shell.level, round, delegate))
   in
   return updated_state
 
@@ -1032,15 +1039,39 @@ let rec perform_action ~state_recorder state (action : action) =
   | Do_nothing ->
       let* () = state_recorder ~new_state:state in
       return state
-  | Inject_block {block_to_bake; updated_state} ->
-      Baking_profiler.record_s
-        (Format.asprintf
-           "forge and inject block for %a"
-           Signature.Public_key_hash.pp_short
-           (snd block_to_bake.delegate))
-      @@ fun () ->
-      inject_block state ~state_recorder block_to_bake ~updated_state
-  | Forge_block _ -> raise Not_found
+  | Inject_block {kind; updated_state} ->
+      let* signed_block, updated_state =
+        match kind with
+        | Forge_and_inject block_to_bake ->
+            Baking_profiler.record_s
+              (Format.asprintf
+                 "forge signed block in forge_and_inject for %a"
+                 Signature.Public_key_hash.pp_short
+                 (snd block_to_bake.delegate))
+            @@ fun () ->
+            forge_signed_block
+              ~state_recorder
+              ~updated_state
+              block_to_bake
+              state
+        | Inject_only signed_block -> return (signed_block, updated_state)
+      in
+      inject_block ~updated_state state signed_block
+  | Forge_block {block_to_bake; updated_state} ->
+      let+ signed_block, updated_state =
+        forge_signed_block ~state_recorder ~updated_state block_to_bake state
+      in
+      let updated_state =
+        {
+          updated_state with
+          level_state =
+            {
+              updated_state.level_state with
+              next_forged_block = Some signed_block;
+            };
+        }
+      in
+      updated_state
   | Inject_preattestations {preattestations} ->
       Baking_profiler.record_s "inject preattestations" @@ fun () ->
       let* () = inject_preattestations state ~preattestations in

@@ -521,18 +521,33 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
      block, the block is supposed to carry only attestations for the
      previous level. *)
   let open Lwt_syntax in
-  let* block_to_bake =
-    prepare_block_to_bake
-      ~attestations
-      ~dal_attestations
-      ?last_proposal
-      ~predecessor
-      state
-      delegate
-      round
+  let+ kind, updated_state =
+    match state.level_state.next_forged_block with
+    | Some ({delegate; round; block_header = _; operations = _} as signed_block)
+      ->
+        let+ () = Events.(emit no_need_forge_block (delegate, round)) in
+        let updated_state =
+          {
+            state with
+            level_state = {state.level_state with next_forged_block = None};
+          }
+        in
+        (Inject_only signed_block, updated_state)
+    | None ->
+        let+ block_to_bake =
+          prepare_block_to_bake
+            ~attestations
+            ~dal_attestations
+            ?last_proposal
+            ~predecessor
+            state
+            delegate
+            round
+        in
+        (Forge_and_inject block_to_bake, state)
   in
-  let updated_state = update_current_phase state Idle in
-  return @@ Inject_block {block_to_bake; updated_state}
+  let updated_state = update_current_phase updated_state Idle in
+  Inject_block {kind; updated_state}
 
 let propose_block_action state delegate round (proposal : proposal) =
   let open Lwt_syntax in
@@ -631,7 +646,8 @@ let propose_block_action state delegate round (proposal : proposal) =
         {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
       in
       let updated_state = update_current_phase state Idle in
-      return @@ Inject_block {block_to_bake; updated_state}
+      return
+      @@ Inject_block {kind = Forge_and_inject block_to_bake; updated_state}
 
 let end_of_round state current_round =
   let open Lwt_syntax in
