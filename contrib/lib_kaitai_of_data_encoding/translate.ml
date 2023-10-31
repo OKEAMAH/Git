@@ -624,7 +624,7 @@ and seq_field_of_union :
                           Some
                             (Compare
                                {
-                                 left = Name (id ^ "_tag");
+                                 left = Name tag_id;
                                  ops = Eq;
                                  right =
                                    EnumByLabel
