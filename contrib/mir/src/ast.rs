@@ -249,6 +249,7 @@ pub enum TypedValue {
     Or(Box<Or<TypedValue, TypedValue>>),
     Address(Address),
     ChainId(ChainId),
+    Contract(Address),
 }
 
 pub fn typed_value_to_value_optimized(tv: TypedValue) -> Value {
