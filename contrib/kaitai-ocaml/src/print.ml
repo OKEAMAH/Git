@@ -45,11 +45,17 @@ let doc_spec DocSpec.{summary; refs = _} =
       ("doc", scalar ~style summary))
     summary
 
-let instanceSpec InstanceSpec.{doc = _; descr} =
-  (* TODO: pp doc spec as well. *)
+let instanceSpec InstanceSpec.{doc; descr} =
   match descr with
-  | ValueInstanceSpec instance ->
-      mapping [("value", scalar (Ast.to_string instance.value))]
+  | ValueInstanceSpec {value; ifExpr; id = _; dataTypeOpt = _} ->
+      let all = doc_spec doc in
+      let all = ("value", scalar (Ast.to_string value)) :: all in
+      let all =
+        match ifExpr with
+        | None -> all
+        | Some e -> ("if", scalar (Ast.to_string e)) :: all
+      in
+      mapping all
   | ParseInstanceSpec -> failwith "not supported (ParseInstanceSpec)"
 
 let instances_spec instances =

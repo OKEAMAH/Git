@@ -204,7 +204,10 @@ let rec seq_field_of_data_encoding :
                               };
                           ifExpr = None;
                           dataTypeOpt =
-                            Some (NumericType (Int_type instance_type));
+                            (* FIXME: This is disabled as it break roundtripping.
+                               It seems it's not used in the ksy file *)
+                            (if true then None
+                            else Some (NumericType (Int_type instance_type)));
                         };
                   } );
               ]

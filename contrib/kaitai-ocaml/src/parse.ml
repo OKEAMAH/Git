@@ -286,7 +286,20 @@ let seq x =
   let doc = doc m in
   AttrSpec.{id; dataType; cond; valid; enum; size; doc}
 
-let instanceSpec _ = InstanceSpec.{doc = empty_doc; descr = ParseInstanceSpec}
+let instanceSpec id v =
+  let m = mapping v in
+  let doc = doc m in
+  let value = find_key m "value" in
+  let ifExpr =
+    match find_key_opt m "ifExpr" with
+    | None -> None
+    | Some e -> Some (expression e)
+  in
+  let descr =
+    InstanceSpec.ValueInstanceSpec
+      {value = expression value; id; ifExpr; dataTypeOpt = None}
+  in
+  InstanceSpec.{doc; descr}
 
 let enumValueSpec yaml =
   match yaml with
@@ -388,7 +401,7 @@ let rec classSpec id yaml =
     | None -> []
     | Some content ->
         let m = mapping content in
-        keys m (fun k v -> (k, instanceSpec v))
+        keys m (fun k v -> (k, instanceSpec k v))
   in
   let enums =
     match find_key_opt m "enums" with
