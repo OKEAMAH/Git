@@ -11,14 +11,14 @@
 open Parser
 
 let kw =
- let l = 
-[ "and", AND
-; "or", OR
-; "not", NOT
-; "as", AS
-; "sizeof" , SIZEOF
-; "bitsizeof", BITSIZEOF
-]
+ let l =
+   [ "and", AND
+   ; "or", OR
+   ; "not", NOT
+   ; "as", AS
+   ; "sizeof" , SIZEOF
+   ; "bitsizeof", BITSIZEOF
+   ]
  in
  let t = Hashtbl.create 10 in
  List.iter (fun (name, k) -> Hashtbl.add t name k) l;
@@ -45,13 +45,13 @@ let float_literal =
   ('.' ['0'-'9' '_']* )?
   (['e' 'E'] ['+' '-']? ['0'-'9'] ['0'-'9' '_']* )?
 
-  let lowercase  = ['a'-'z']
-  let uppercase  = ['A'-'Z']
-  let digit      = ['0'-'9']
-  let letter     = ( lowercase | uppercase )
-  let nameStart = (letter | "_" )
-  let namePart  = ( letter | digit | "_" )
-  let identifier  = nameStart namePart *
+let lowercase  = ['a'-'z']
+let uppercase  = ['A'-'Z']
+let digit      = ['0'-'9']
+let letter     = ( lowercase | uppercase )
+let nameStart = (letter | "_" )
+let namePart  = ( letter | digit | "_" )
+let identifier  = nameStart namePart *
 
 rule token = parse
   | " "  { token lexbuf }
@@ -85,7 +85,8 @@ rule token = parse
   | "\"" {
    let buf = Buffer.create 20 in
    Buffer.add_string buf (Lexing.lexeme lexbuf);
-   STRING (string buf lexbuf) }
+   STRING (string buf lexbuf)
+  }
   | int_literal as lit { INT lit }
   | '-' decimal_literal { INT (Lexing.lexeme lexbuf) }
   | float_literal as lit { FLOAT lit }
@@ -95,6 +96,7 @@ rule token = parse
     | kw -> kw
   }
   | eof { EOF }
+
 and string buf = parse
   | "\""  { Buffer.add_string buf (Lexing.lexeme lexbuf); Buffer.contents buf }
   | "\\u" hex_digit hex_digit hex_digit hex_digit {
