@@ -289,7 +289,8 @@ tztEntity : TztEntity = {
   "output" "(" "failed" <v:value_expr> ")" => Output(Fail(v)),
   "output" "(" "mutezOverflow" <a1:mutezAmount> <a2:mutezAmount> ")" => Output(MutezOverflow(a1, a2)),
   "output" "(" "generalOverflow" <a1:number> <a2:number> ")" => Output(GeneralOverflow(a1, a2)),
-  "amount" <m:mutezAmount> => TztEntity::Amount(m)
+  "amount" <m:mutezAmount> => TztEntity::Amount(m),
+  "chain_id" <value_expr> => TztEntity::ChainId(<>),
 }
 
 pub tztTestEntities : Vec<TztEntity> = semicolonSepSeq<tztEntity>;
