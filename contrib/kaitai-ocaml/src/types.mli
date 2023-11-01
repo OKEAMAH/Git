@@ -99,6 +99,8 @@ type processExpr =
 
 module BitEndianness : sig
   type t = LittleBitEndian | BigBitEndian
+
+  val to_string : t -> string
 end
 
 module Endianness : sig

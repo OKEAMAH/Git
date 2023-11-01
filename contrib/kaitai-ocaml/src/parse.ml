@@ -353,7 +353,7 @@ let meta content =
     | Some c -> Some (bool c)
   in
   let imports =
-    match find_key_opt m "ks-zero-copy-substream" with
+    match find_key_opt m "imports" with
     | None -> []
     | Some l -> List.map scalar (sequence l)
   in

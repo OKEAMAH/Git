@@ -27,22 +27,61 @@ let mapping l =
 
 let mapping_flatten l = mapping (List.flatten l)
 
+let bool = function true -> scalar "true" | false -> scalar "false"
+
 let map_list_of_option f = function None -> [] | Some x -> [f x]
 
-let metaSpec (t : MetaSpec.t) =
+let metaSpec
+    ({
+       id;
+       endian;
+       bitEndian;
+       forceDebug;
+       opaqueTypes;
+       zeroCopySubstream;
+       imports;
+       encoding = _;
+       isOpaque = _;
+     } :
+      MetaSpec.t) =
   mapping_flatten
     [
-      map_list_of_option (fun id -> ("id", scalar id)) t.id;
+      map_list_of_option (fun id -> ("id", scalar id)) id;
       map_list_of_option
         (fun endian -> ("endian", scalar (Endianness.to_string endian)))
-        t.endian;
+        endian;
+      map_list_of_option
+        (fun bitendian ->
+          ("bit-endian", scalar (BitEndianness.to_string bitendian)))
+        bitEndian;
+      (match imports with
+      | [] -> []
+      | l -> [("imports", sequence (List.map scalar l))]);
+      map_list_of_option
+        (fun opaqueTypes -> ("ks-opaque-types", bool opaqueTypes))
+        opaqueTypes;
+      (if forceDebug then [("ks-debug", bool forceDebug)] else []);
+      map_list_of_option
+        (fun zeroCopySubstream ->
+          ("ks-zero-copy-substream", bool zeroCopySubstream))
+        zeroCopySubstream;
     ]
 
-let doc_spec DocSpec.{summary; refs = _} =
+let doc_spec DocSpec.{summary; refs} =
   map_list_of_option
     (fun summary ->
       let style = if String.length summary > 80 then `Folded else `Any in
-      ("doc", scalar ~style summary))
+      let doc = ("doc", scalar ~style summary) in
+      match refs with
+      | [] -> doc
+      | l ->
+          ( "doc-ref",
+            List.map
+              (function
+                | DocSpec.UrlRef {url; text} -> scalar (url ^ " " ^ text)
+                | DocSpec.TextRef x -> scalar x)
+              l
+            |> sequence ))
     summary
 
 let instanceSpec InstanceSpec.{doc; descr} =
@@ -61,7 +100,7 @@ let instanceSpec InstanceSpec.{doc; descr} =
 let instances_spec instances =
   mapping (instances |> List.map (fun (k, v) -> (k, instanceSpec v)))
 
-let enumSpec enumspec =
+let enumSpec {EnumSpec.map} =
   mapping
     (List.map
        (fun (v, EnumValueSpec.{name; doc}) ->
@@ -69,7 +108,7 @@ let enumSpec enumspec =
            match doc_spec doc with
            | [] -> scalar name
            | l -> mapping (("id", scalar name) :: l) ))
-       enumspec.EnumSpec.map)
+       map)
 
 let enums_spec enums =
   mapping (enums |> List.map (fun (k, v) -> (k, enumSpec v)))
