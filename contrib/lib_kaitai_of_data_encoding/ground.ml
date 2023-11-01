@@ -61,7 +61,7 @@ let n_chunk_type =
 let n_seq_attr =
   {
     (Helpers.default_attr_spec ~id:"n") with
-    dataType = DataType.(ComplexDataType (UserType n_chunk_type));
+    dataType = Helpers.usertype n_chunk_type;
     cond =
       {
         Helpers.cond_no_cond with
@@ -118,7 +118,7 @@ let z_type =
         };
         {
           (Helpers.default_attr_spec ~id:"tail") with
-          dataType = DataType.(ComplexDataType (UserType n_chunk_type));
+          dataType = Helpers.usertype n_chunk_type;
           cond =
             {
               ifExpr =
@@ -290,13 +290,13 @@ module Attr = struct
   let n ~id =
     {
       (Helpers.default_attr_spec ~id) with
-      dataType = DataType.(ComplexDataType (UserType (snd Type.n)));
+      dataType = Helpers.usertype (snd Type.n);
     }
 
   let z ~id =
     {
       (Helpers.default_attr_spec ~id) with
-      dataType = DataType.(ComplexDataType (UserType (snd Type.z)));
+      dataType = Helpers.usertype (snd Type.z);
     }
 
   let binary_length_kind ~id kind =

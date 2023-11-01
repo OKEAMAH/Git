@@ -60,13 +60,15 @@ let size_id_of_id id = "size_of_" ^ id
    need to create an indirection to a named type. [redirect] is a function for
    adding a field to an indirection. *)
 let redirect types attrs fattr id =
-  let ((_, user_type) as type_) = (id, Helpers.class_spec_of_attrs ~id attrs) in
+  let ((_, user_type_classpec) as type_) =
+    (id, Helpers.class_spec_of_attrs ~id attrs)
+  in
   let types = Helpers.add_uniq_assoc types type_ in
   let attr =
     fattr
       {
         (Helpers.default_attr_spec ~id) with
-        dataType = DataType.(ComplexDataType (UserType user_type));
+        dataType = Helpers.usertype user_type_classpec;
       }
   in
   (types, attr)
@@ -217,8 +219,7 @@ let rec seq_field_of_data_encoding :
           [
             {
               (Helpers.default_attr_spec ~id) with
-              dataType =
-                DataType.(ComplexDataType (UserType represented_interval_class));
+              dataType = Helpers.usertype represented_interval_class;
             };
           ] )
   | Float -> (enums, types, mus, [Ground.Attr.float ~id])
@@ -378,8 +379,7 @@ let rec seq_field_of_data_encoding :
               dataType =
                 (* We don't have the full type, we just put a dummy with the correct
                    [id] which is all that gets printed *)
-                ComplexDataType
-                  (UserType (Helpers.default_class_spec ~id:name ()));
+                ComplexDataType (UserType name);
             };
           ] )
       else

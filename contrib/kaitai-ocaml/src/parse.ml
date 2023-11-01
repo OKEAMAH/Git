@@ -181,33 +181,7 @@ let dataType x _extra : DataType.t =
                 | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> true
                 | _ -> false)
               s
-          then
-            ComplexDataType
-              (UserType
-                 {
-                   fileName = None;
-                   isTopLevel = false;
-                   meta =
-                     MetaSpec.
-                       {
-                         isOpaque = false;
-                         id = Some s';
-                         endian = Some `BE;
-                         bitEndian = None;
-                         encoding = None;
-                         forceDebug = false;
-                         opaqueTypes = None;
-                         zeroCopySubstream = None;
-                         imports = [];
-                       };
-                   doc = empty_doc;
-                   toStringExpr = None;
-                   params = [];
-                   seq = [];
-                   types = [];
-                   instances = [];
-                   enums = [];
-                 })
+          then ComplexDataType (UserType s)
           else Raw s)
   | _ -> assert false
 

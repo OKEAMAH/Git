@@ -70,6 +70,9 @@ val class_spec_of_attrs :
   AttrSpec.t list ->
   ClassSpec.t
 
+(** [usertype classspec] construct a [UserType] [DataType.t] from a classspec. *)
+val usertype : ClassSpec.t -> DataType.t
+
 (** [default_instance_spec ~id expr] returns a default instance specification for
     of a given [id] and [expr]. *)
 val default_instance_spec : id:string -> Ast.t -> InstanceSpec.t

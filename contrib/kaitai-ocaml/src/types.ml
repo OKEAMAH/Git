@@ -229,7 +229,7 @@ module MetaSpec = struct
   [@@deriving sexp]
 end
 
-module rec DataType : sig
+module DataType = struct
   type data_type =
     | NumericType of numeric_type
     | BooleanType of boolean_type
@@ -300,93 +300,7 @@ module rec DataType : sig
 
   and complex_data_type =
     | StructType
-    | UserType of ClassSpec.t
-    | ArrayType of array_type
-  [@@deriving sexp]
-
-  and switch_type = {
-    on : Ast.expr;
-    cases : (Ast.expr * data_type) list;
-    isOwning : bool;
-    mutable isOwningInExpr : bool;
-  }
-  [@@deriving sexp]
-
-  type t = data_type [@@deriving sexp]
-
-  val to_string : t -> string
-end = struct
-  type data_type =
-    | NumericType of numeric_type
-    | BooleanType of boolean_type
-    | BytesType of bytes_type
-    | StrType of str_type
-    | ComplexDataType of complex_data_type
-    | AnyType
-    | Raw of string
-  [@@deriving sexp]
-
-  and int_width = W1 | W2 | W4 | W8 [@@deriving sexp]
-
-  and numeric_type = Int_type of int_type | Float_type of float_type
-  [@@deriving sexp]
-
-  and int_type =
-    | CalcIntType
-    | Int1Type of {signed : bool}
-    | IntMultiType of {
-        signed : bool;
-        width : int_width;
-        endian : Endianness.fixed_endian option;
-      }
-    | BitsType of {width : int; bit_endian : BitEndianness.t}
-  [@@deriving sexp]
-
-  and float_type =
-    | CalcFloatType
-    | FloatMultiType of {
-        width : int_width;
-        endian : Endianness.fixed_endian option;
-      }
-  [@@deriving sexp]
-
-  and boolean_type = BitsType1 of BitEndianness.t | CalcBooleanType
-  [@@deriving sexp]
-
-  and bytes_type =
-    | CalcBytesType
-    | BytesEosType of {
-        terminator : int option;
-        include_ : bool;
-        padRight : int option;
-        mutable process : processExpr option;
-      }
-    | BytesLimitType of {
-        size : Ast.expr;
-        terminator : int option;
-        include_ : bool;
-        padRight : int option;
-        mutable process : processExpr option;
-      }
-    | BytesTerminatedType of {
-        terminator : int;
-        include_ : bool;
-        consume : bool;
-        eosError : bool;
-        mutable process : processExpr option;
-      }
-  [@@deriving sexp]
-
-  and str_type =
-    | CalcStrType
-    | StrFromBytesType of {bytes : bytes_type; encoding : string}
-  [@@deriving sexp]
-
-  and array_type = ArrayTypeInStream | CalcArrayType [@@deriving sexp]
-
-  and complex_data_type =
-    | StructType
-    | UserType of ClassSpec.t
+    | UserType of string
     | ArrayType of array_type
   [@@deriving sexp]
 
@@ -421,8 +335,7 @@ end = struct
     | NumericType (Float_type (FloatMultiType {width = _; endian = _})) -> "f8"
     | NumericType (Float_type CalcFloatType) ->
         failwith "not supported (CalcFloatType)"
-    | ComplexDataType (UserType {meta = {id = Some id; _}; _}) -> id
-    | ComplexDataType (UserType {meta = {id = None; _}; _}) -> assert false
+    | ComplexDataType (UserType id) -> id
     | ComplexDataType StructType -> failwith "not supported (StructType)"
     | ComplexDataType (ArrayType _) -> failwith "not supported (ArrayType)"
     | BooleanType (BitsType1 _) -> "b1"
@@ -433,22 +346,7 @@ end = struct
     | StrType _ -> failwith "not supported (StrType)"
 end
 
-and AttrSpec : sig
-  module ConditionalSpec : sig
-    type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t} [@@deriving sexp]
-  end
-
-  type t = {
-    id : Identifier.t;
-    dataType : DataType.t;
-    cond : ConditionalSpec.t;
-    valid : ValidationSpec.t option;
-    enum : string option;
-    doc : DocSpec.t;
-    size : Ast.expr option;
-  }
-  [@@deriving sexp]
-end = struct
+module AttrSpec = struct
   module ConditionalSpec = struct
     type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t} [@@deriving sexp]
   end
@@ -465,19 +363,7 @@ end = struct
   [@@deriving sexp]
 end
 
-and InstanceSpec : sig
-  type t = {doc : DocSpec.t; descr : descr} [@@deriving sexp]
-
-  and descr =
-    | ValueInstanceSpec of {
-        id : InstanceIdentifier.t;
-        value : Ast.expr;
-        ifExpr : Ast.expr option;
-        dataTypeOpt : DataType.t option;
-      }
-    | ParseInstanceSpec
-  [@@deriving sexp]
-end = struct
+module InstanceSpec = struct
   type t = {doc : DocSpec.t; descr : descr} [@@deriving sexp]
 
   and descr =
@@ -491,29 +377,12 @@ end = struct
   [@@deriving sexp]
 end
 
-and ParamDefSpec : sig
-  type t = {id : Identifier.t; dataType : DataType.t; doc : DocSpec.t}
-  [@@deriving sexp]
-end = struct
+module ParamDefSpec = struct
   type t = {id : Identifier.t; dataType : DataType.t; doc : DocSpec.t}
   [@@deriving sexp]
 end
 
-and ClassSpec : sig
-  type t = {
-    fileName : string option;
-    isTopLevel : bool;
-    meta : MetaSpec.t;
-    doc : DocSpec.t;
-    toStringExpr : Ast.expr option;
-    params : ParamDefSpec.t list;
-    seq : AttrSpec.t list;
-    types : (string * t) list;
-    instances : (InstanceIdentifier.t * InstanceSpec.t) list;
-    enums : (string * EnumSpec.t) list;
-  }
-  [@@deriving sexp]
-end = struct
+module ClassSpec = struct
   type t = {
     fileName : string option;
     isTopLevel : bool;

@@ -182,7 +182,7 @@ end
 (** [DataType] module defines AST for describing underlying data types.
 
     For a reference implementation {{:https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/datatype/DataType.scala} see. *)
-module rec DataType : sig
+module DataType : sig
   type data_type =
     | NumericType of numeric_type
     | BooleanType of boolean_type
@@ -246,7 +246,7 @@ module rec DataType : sig
 
   and complex_data_type =
     | StructType
-    | UserType of ClassSpec.t
+    | UserType of string
     | ArrayType of array_type
 
   and switch_type = {
@@ -262,7 +262,7 @@ module rec DataType : sig
 end
 
 (** For a reference implementation {{:https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/format/AttrSpec.scala} see}.*)
-and AttrSpec : sig
+module AttrSpec : sig
   module ConditionalSpec : sig
     type t = {ifExpr : Ast.expr option; repeat : RepeatSpec.t}
   end
@@ -279,7 +279,7 @@ and AttrSpec : sig
   }
 end
 
-and InstanceSpec : sig
+module InstanceSpec : sig
   (** For a reference implementation {{:https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/format/InstanceSpec.scala} see}. *)
 
   (** [t] defines a Kaitai instance.
@@ -298,11 +298,11 @@ and InstanceSpec : sig
 end
 
 (** For a reference implementation {{:https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/format/ParamDefSpec.scala} see}. *)
-and ParamDefSpec : sig
+module ParamDefSpec : sig
   type t = {id : Identifier.t; dataType : DataType.t; doc : DocSpec.t}
 end
 
-and ClassSpec : sig
+module ClassSpec : sig
   (** For a reference implementation {{:https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/format/ClassSpec.scala} see}. *)
 
   (** [t] is an outermost type that describes Kaitai Struct specification files. *)

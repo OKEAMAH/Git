@@ -91,6 +91,11 @@ let default_instance_spec ~id value =
           {id; value; ifExpr = None; dataTypeOpt = None};
     }
 
+let usertype (c : ClassSpec.t) =
+  match c.meta.id with
+  | None -> failwith "usertype: no id found in classspec"
+  | Some id -> DataType.(ComplexDataType (UserType id))
+
 let merge_summaries attr summary =
   match (attr.AttrSpec.doc.summary, summary) with
   | _, None -> attr
