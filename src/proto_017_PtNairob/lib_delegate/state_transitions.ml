@@ -327,6 +327,7 @@ let rec handle_proposal ~is_proposal_applied state (new_proposal : proposal) =
           delegate_slots;
           next_level_delegate_slots;
           next_level_proposed_round = None;
+          next_forged_block = None;
         }
       in
       (* recursive call with the up-to-date state to handle the new
@@ -429,17 +430,8 @@ let round_proposer state delegate_slots round =
     state.level_state.delegate_slots.all_slots_by_round.(round_mod)
     delegate_slots
 
-(** Inject a fresh block proposal containing the current operations of the
-    mempool in [state] and the additional [endorsements] and [dal_attestations]
-    for [delegate] at round [round]. *)
-let propose_fresh_block_action ~endorsements ~dal_attestations ?last_proposal
+let prepare_block_to_bake ~endorsements ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate round =
-  (* TODO check if there is a trace where we could not have updated the level *)
-  (* The block to bake embeds the operations gathered by the
-     worker. However, consensus operations that are not relevant for
-     this block are filtered out. In the case of proposing a new fresh
-     block, the block is supposed to carry only endorsements for the
-     previous level. *)
   let operation_pool =
     (* 1. Fetch operations from the mempool. *)
     let current_mempool =
@@ -492,15 +484,64 @@ let propose_fresh_block_action ~endorsements ~dal_attestations ?last_proposal
       (List.map Operation.pack dal_attestations)
   in
   let kind = Fresh operation_pool in
-  Events.(emit proposing_fresh_block (delegate, round)) >>= fun () ->
+  Events.(emit preparing_fresh_block (delegate, round)) >>= fun () ->
   let force_apply =
     state.global_state.config.force_apply || Round.(round <> zero)
     (* This is used as a safety net by applying blocks on round > 0, in case
        validation-only did not produce a correct round-0 block. *)
   in
-  let block_to_bake = {predecessor; round; delegate; kind; force_apply} in
+  Lwt.return {predecessor; round; delegate; kind; force_apply}
+
+let forge_fresh_block_action ~endorsements ~dal_attestations ?last_proposal
+    ~(predecessor : block_info) state delegate =
+  prepare_block_to_bake
+    ~endorsements
+    ~dal_attestations
+    ?last_proposal
+    ~predecessor
+    state
+    delegate
+    Round.zero
+  >>= fun block_to_bake ->
   let updated_state = update_current_phase state Idle in
-  Lwt.return @@ Inject_block {block_to_bake; updated_state}
+  Lwt.return @@ Forge_block {block_to_bake; updated_state}
+
+(** Inject a fresh block proposal containing the current operations of the
+    mempool in [state] and the additional [endorsements] and [dal_attestations]
+    for [delegate] at round [round]. *)
+let propose_fresh_block_action ~endorsements ~dal_attestations ?last_proposal
+    ~(predecessor : block_info) state delegate round =
+  (* TODO check if there is a trace where we could not have updated the level *)
+  (* The block to bake embeds the operations gathered by the
+     worker. However, consensus operations that are not relevant for
+     this block are filtered out. In the case of proposing a new fresh
+     block, the block is supposed to carry only attestations for the
+     previous level. *)
+  (* let+ kind, updated_state = *)
+  (match state.level_state.next_forged_block with
+  | Some ({delegate; round; block_header = _; operations = _} as signed_block)
+    ->
+      Events.(emit no_need_forge_block (delegate, round)) >|= fun () ->
+      let updated_state =
+        {
+          state with
+          level_state = {state.level_state with next_forged_block = None};
+        }
+      in
+      (Inject_only signed_block, updated_state)
+  | None ->
+      prepare_block_to_bake
+        ~endorsements
+        ~dal_attestations
+        ?last_proposal
+        ~predecessor
+        state
+        delegate
+        round
+      >|= fun block_to_bake -> (Forge_and_inject block_to_bake, state))
+  >|= fun (kind, updated_state) ->
+  let updated_state = update_current_phase updated_state Idle in
+  Inject_block {kind; updated_state}
 
 let propose_block_action state delegate round (proposal : proposal) =
   (* Possible cases:
@@ -598,7 +639,8 @@ let propose_block_action state delegate round (proposal : proposal) =
         {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
       in
       let updated_state = update_current_phase state Idle in
-      Lwt.return @@ Inject_block {block_to_bake; updated_state}
+      Lwt.return
+      @@ Inject_block {kind = Forge_and_inject block_to_bake; updated_state}
 
 let end_of_round state current_round =
   let new_round = Round.succ current_round in
@@ -641,6 +683,34 @@ let end_of_round state current_round =
           new_round
           state.level_state.latest_proposal
         >>= fun action -> Lwt.return (new_state, action)
+
+let time_to_forge_block state =
+  let at_round = Round.zero in
+  let round_proposer_opt =
+    round_proposer
+      state
+      state.level_state.next_level_delegate_slots.own_delegate_slots
+      at_round
+  in
+  match (state.level_state.elected_block, round_proposer_opt) with
+  | None, _ | _, None ->
+      (* Unreachable: the [Time_to_forge_Block] event can only be
+         triggered when we have a slot and an elected block *)
+      assert false
+  | Some elected_block, Some (delegate, _) ->
+      let endorsements = elected_block.endorsement_qc in
+      let dal_attestations =
+        (* Unlike proposal attestations, we don't watch and store DAL attestations for
+           each proposal, we'll retrieve them from the mempool *)
+        []
+      in
+      forge_fresh_block_action
+        ~endorsements
+        ~dal_attestations
+        ~predecessor:elected_block.proposal.block
+        state
+        delegate
+      >|= fun action -> (state, action)
 
 let time_to_bake_at_next_level state at_round =
   (* It is now time to update the state level *)
@@ -826,6 +896,13 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
          going on and propose the next level block *)
       Baking_profiler.record_s "time to bake at next level" @@ fun () ->
       time_to_bake_at_next_level state at_round
+  | _, Timeout Time_to_forge_block ->
+      (* TODO: When its time to forge, we should start forging block.
+          This rountine does not need to be blocking. We can store the
+          forging process in state then continue.
+      *)
+      Baking_profiler.record_s "time to forge block" @@ fun () ->
+      time_to_forge_block state
   | Idle, New_head_proposal proposal ->
       Events.(
         emit
