@@ -7,6 +7,7 @@
 
 mod expectation;
 
+use crate::ast::michelson_address::AddressHash;
 use crate::ast::*;
 use crate::context::*;
 use crate::interpreter::*;
@@ -36,6 +37,8 @@ pub struct TztTest {
     pub output: TestExpectation,
     pub amount: Option<i64>,
     pub chain_id: Option<ChainId>,
+    pub parameter: Type,
+    pub self_addr: Option<AddressHash>,
 }
 
 fn typecheck_stack(stk: Vec<(Type, Value)>) -> Result<Vec<(Type, TypedValue)>, TcError> {
@@ -79,6 +82,8 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
         let mut m_output: Option<TestExpectation> = None;
         let mut m_amount: Option<i64> = None;
         let mut m_chain_id: Option<Value> = None;
+        let mut m_parameter: Option<Type> = None;
+        let mut m_self: Option<Value> = None;
 
         for e in tzt {
             match e {
@@ -102,6 +107,8 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
                 )?,
                 Amount(m) => set_tzt_field("amount", &mut m_amount, m)?,
                 ChainId(id) => set_tzt_field("chain_id", &mut m_chain_id, id)?,
+                Parameter(ty) => set_tzt_field("parameter", &mut m_parameter, ty)?,
+                SelfAddr(v) => set_tzt_field("self", &mut m_self, v)?,
             }
         }
 
@@ -116,6 +123,18 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
                         v.typecheck(&mut Ctx::default(), &Type::ChainId)?;
                         TypedValue::ChainId
                     ))
+                })
+                .transpose()?,
+            parameter: m_parameter.unwrap_or(Type::Unit),
+            self_addr: m_self
+                .map(|v| {
+                    Ok::<_, TcError>(
+                        irrefutable_match!(
+                            v.typecheck(&mut Ctx::default(), &Type::Address)?;
+                            TypedValue::Address
+                        )
+                        .hash,
+                    )
                 })
                 .transpose()?,
         })
@@ -163,6 +182,8 @@ pub enum TztEntity {
     Output(TztOutput),
     Amount(i64),
     ChainId(Value),
+    Parameter(Type),
+    SelfAddr(Value),
 }
 
 /// Possible values for the "output" field in a Tzt test
@@ -206,8 +227,8 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
         gas: crate::gas::Gas::default(),
         amount: test.amount.unwrap_or_default(),
         chain_id: test.chain_id.unwrap_or(Ctx::default().chain_id),
-        self_address: Ctx::default().self_address,
+        self_address: test.self_addr.unwrap_or(Ctx::default().self_address),
     };
-    let execution_result = execute_tzt_test_code(test.code, &mut ctx, &Type::Unit, test.input);
+    let execution_result = execute_tzt_test_code(test.code, &mut ctx, &test.parameter, test.input);
     check_expectation(&mut ctx, test.output, execution_result)
 }
