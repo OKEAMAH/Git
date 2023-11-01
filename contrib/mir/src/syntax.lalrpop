@@ -30,6 +30,7 @@ extern {
         "mutezOverflow" => Tok::Prim(TztPrim(TzP::MutezOverflow)),
         "generalOverflow" => Tok::Prim(TztPrim(TzP::GeneralOverflow)),
         "amount" => Tok::Prim(TztPrim(TzP::amount)),
+        "self" => Tok::Prim(TztPrim(TzP::self_)),
         number => Tok::Number(<i128>),
         string => Tok::String(<String>),
         bytes => Tok::Bytes(<Vec<u8>>),
@@ -293,6 +294,8 @@ tztEntity : TztEntity = {
   "output" "(" "generalOverflow" <a1:number> <a2:number> ")" => Output(GeneralOverflow(a1, a2)),
   "amount" <m:mutezAmount> => TztEntity::Amount(m),
   "chain_id" <value_expr> => TztEntity::ChainId(<>),
+  "parameter" <type_expr> => TztEntity::Parameter(<>),
+  "self" <value_expr> => TztEntity::SelfAddr(<>),
 }
 
 pub tztTestEntities : Vec<TztEntity> = semicolonSepSeq<tztEntity>;
