@@ -158,6 +158,36 @@ let rec to_yaml (t : ClassSpec.t) =
 
 and types_spec types = mapping (types |> List.map (fun (k, v) -> (k, to_yaml v)))
 
-let print t =
+let to_string t =
   let y = to_yaml t in
   match Yaml.yaml_to_string y with Ok x -> x | Error (`Msg m) -> failwith m
+
+let print_diff difftool a b =
+  let a_str = Sexplib.Sexp.to_string_hum (Types.ClassSpec.sexp_of_t a) in
+  let b_str = Sexplib.Sexp.to_string_hum (Types.ClassSpec.sexp_of_t b) in
+  let output_to_file c =
+    let f = Filename.temp_file "kaitai" ".ksy" in
+    let oc = open_out_bin f in
+    output_string oc c ;
+    close_out oc ;
+    f
+  in
+  let f1 = output_to_file a_str in
+  let f2 = output_to_file b_str in
+  ignore (Sys.command (Printf.sprintf "%s %s %s" difftool f1 f2) : int) ;
+  Sys.remove f1 ;
+  Sys.remove f2
+
+let print t =
+  let s = to_string t in
+  let t' = Parse.parse s in
+  if t <> t' then (
+    match Sys.getenv_opt "KAITAIDIFF" with
+    | None | Some "" ->
+        failwith
+          "Printing kaitai value does not roundtrip. Set the KAITAIDIFF \
+           environment variable with a difftool to display the diff"
+    | Some difftool ->
+        print_diff difftool t t' ;
+        failwith "Printing kaitai value does not roundtrip")
+  else s
