@@ -280,6 +280,13 @@ type elected_block = {
   endorsement_qc : Kind.endorsement Operation.t list;
 }
 
+type signed_block = {
+  round : Round.t;
+  delegate : consensus_key_and_delegate;
+  block_header : block_header;
+  operations : Tezos_base.Operation.t list list;
+}
+
 (* Updated only when we receive a block at a different level.
 
    N.B. it may be our own: implying that we should not update unless
@@ -298,6 +305,9 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
+  next_forged_block : signed_block option;
+      (* Block that is preemptively forged for the next level when baker is
+           round 0 proposer. *)
 }
 
 type phase =
@@ -357,6 +367,7 @@ let update_current_phase state new_phase =
 type timeout_kind =
   | End_of_round of {ending_round : Round.t}
   | Time_to_bake_next_level of {at_round : Round.t}
+  | Time_to_forge_block
 
 let timeout_kind_encoding =
   let open Data_encoding in
@@ -840,6 +851,7 @@ let pp_level_state fmt
       delegate_slots;
       next_level_delegate_slots;
       next_level_proposed_round;
+      next_forged_block = _;
     } =
   Format.fprintf
     fmt
@@ -897,6 +909,7 @@ let pp_timeout_kind fmt = function
       Format.fprintf fmt "end of round %a" Round.pp ending_round
   | Time_to_bake_next_level {at_round} ->
       Format.fprintf fmt "time to bake next level at round %a" Round.pp at_round
+  | Time_to_forge_block -> Format.fprintf fmt "time to forge block"
 
 let pp_event fmt = function
   | New_valid_proposal proposal ->
