@@ -5,17 +5,16 @@
 /*                                                                            */
 /******************************************************************************/
 
-mod context;
 mod expectation;
 
 use crate::ast::*;
 use crate::context::*;
 use crate::interpreter::*;
+use crate::irrefutable_match::irrefutable_match;
 use crate::parser::spanned_lexer;
 use crate::stack::*;
 use crate::syntax::tztTestEntitiesParser;
 use crate::typechecker::*;
-use crate::tzt::context::*;
 use crate::tzt::expectation::*;
 
 pub type TestStack = Vec<(Type, TypedValue)>;
@@ -39,6 +38,7 @@ pub struct TztTest {
     pub input: TestStack,
     pub output: TestExpectation,
     pub amount: Option<i64>,
+    pub chain_id: Option<ChainId>,
 }
 
 fn typecheck_stack(stk: Vec<(Type, Value)>) -> Result<Vec<(Type, TypedValue)>, TcError> {
@@ -81,6 +81,7 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
         let mut m_input: Option<TestStack> = None;
         let mut m_output: Option<TestExpectation> = None;
         let mut m_amount: Option<i64> = None;
+        let mut m_chain_id: Option<Value> = None;
 
         for e in tzt {
             match e {
@@ -106,6 +107,7 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
                     },
                 )?,
                 Amount(m) => set_tzt_field("amount", &mut m_amount, m)?,
+                ChainId(id) => set_tzt_field("chain_id", &mut m_chain_id, id)?,
             }
         }
 
@@ -114,6 +116,14 @@ impl TryFrom<Vec<TztEntity>> for TztTest {
             input: m_input.ok_or("input section not found in test")?,
             output: m_output.ok_or("output section not found in test")?,
             amount: m_amount,
+            chain_id: m_chain_id
+                .map(|v| {
+                    Ok::<_, TcError>(irrefutable_match!(
+                        v.typecheck(&mut Ctx::default(), &Type::ChainId)?;
+                        TypedValue::ChainId
+                    ))
+                })
+                .transpose()?,
         })
     }
 }
@@ -158,6 +168,7 @@ pub enum TztEntity {
     Input(Vec<(Type, Value)>),
     Output(TztOutput),
     Amount(i64),
+    ChainId(Value),
 }
 
 /// Possible values for the "output" field in a Tzt test
@@ -196,7 +207,11 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
     // Here we compare the outcome of the interpreting with the
     // expectation from the test, and declare the result of the test
     // accordingly.
-    let mut ctx = construct_context(&test);
+    let mut ctx = Ctx {
+        gas: crate::gas::Gas::default(),
+        amount: test.amount.unwrap_or_default(),
+        chain_id: test.chain_id.unwrap_or(Ctx::default().chain_id),
+    };
     let execution_result = execute_tzt_test_code(test.code, &mut ctx, test.input);
     check_expectation(&mut ctx, test.output, execution_result)
 }
