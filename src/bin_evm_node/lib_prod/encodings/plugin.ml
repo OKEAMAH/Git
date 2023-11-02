@@ -10,7 +10,23 @@ let block_to_string bytes =
   Data_encoding.Json.(
     construct Ethereum_types.block_encoding decoded |> to_string)
 
+let transaction_receipt_to_string bytes =
+  let decoded = Ethereum_types.transaction_object_from_rlp bytes in
+  Data_encoding.Json.(
+    construct Ethereum_types.transaction_object_encoding decoded |> to_string)
+
+let transaction_object_to_string bytes =
+  let decoded = Ethereum_types.transaction_object_from_rlp bytes in
+  Data_encoding.Json.(
+    construct Ethereum_types.transaction_object_encoding decoded |> to_string)
+
 let () =
   Octez_smart_rollup_wasm_debugger_plugin.Encodings.register
-    "evm.block"
-    block_to_string
+    "evm.prod.block"
+    block_to_string ;
+  Octez_smart_rollup_wasm_debugger_plugin.Encodings.register
+    "evm.prod.transaction_object"
+    transaction_object_to_string ;
+  Octez_smart_rollup_wasm_debugger_plugin.Encodings.register
+    "evm.prod.transaction_receipt"
+    transaction_receipt_to_string
