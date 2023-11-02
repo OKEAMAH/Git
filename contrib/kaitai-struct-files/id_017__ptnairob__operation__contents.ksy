@@ -2916,8 +2916,8 @@ enums:
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
   op_elt_field1_tag:
-    1: some
     0: none
+    1: some
   circuits_info_elt_field1_tag:
     0: public
     1: private
@@ -2970,29 +2970,28 @@ enums:
     2: p256
     3: bls
   id_017__ptnairob__operation__alpha__contents_tag:
-    21: endorsement
-    20: preendorsement
-    22: dal_attestation
     1: seed_nonce_revelation
-    8: vdf_revelation
     2: double_endorsement_evidence
-    7: double_preendorsement_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
+    7: double_preendorsement_evidence
+    8: vdf_revelation
+    9: drain_delegate
+    17: failing_noop
+    20: preendorsement
+    21: endorsement
+    22: dal_attestation
     107: reveal
     108: transaction
     109: origination
     110: delegation
+    111: register_global_constant
     112: set_deposits_limit
     113: increase_paid_storage
     114: update_consensus_key
-    9: drain_delegate
-    17: failing_noop
-    111: register_global_constant
     158: transfer_ticket
-    230: dal_publish_slot_header
     200: smart_rollup_originate
     201: smart_rollup_add_messages
     202: smart_rollup_cement
@@ -3001,6 +3000,7 @@ enums:
     205: smart_rollup_timeout
     206: smart_rollup_execute_outbox_message
     207: smart_rollup_recover_bond
+    230: dal_publish_slot_header
     250: zk_rollup_origination
     251: zk_rollup_publish
     252: zk_rollup_update

@@ -2882,8 +2882,8 @@ enums:
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
   op_elt_field1_tag:
-    1: some
     0: none
+    1: some
   circuits_info_elt_field1_tag:
     0: public
     1: private
@@ -2935,13 +2935,13 @@ enums:
     3: bls
   alpha__per_block_votes_tag:
     0: case__0
-    4: case__4
-    8: case__8
     1: case__1
-    5: case__5
-    9: case__9
     2: case__2
+    4: case__4
+    5: case__5
     6: case__6
+    8: case__8
+    9: case__9
     10: case__10
   alpha__inlined__attestation_mempool__contents_tag:
     21: attestation
@@ -2951,28 +2951,27 @@ enums:
   alpha__inlined__preattestation__contents_tag:
     20: preattestation
   alpha__operation__alpha__contents_tag:
-    20: preattestation
-    21: attestation
-    7: double_preattestation_evidence
-    2: double_attestation_evidence
-    22: dal_attestation
     1: seed_nonce_revelation
-    8: vdf_revelation
+    2: double_attestation_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
+    7: double_preattestation_evidence
+    8: vdf_revelation
+    9: drain_delegate
+    17: failing_noop
+    20: preattestation
+    21: attestation
+    22: dal_attestation
     107: reveal
     108: transaction
     109: origination
     110: delegation
+    111: register_global_constant
     113: increase_paid_storage
     114: update_consensus_key
-    9: drain_delegate
-    17: failing_noop
-    111: register_global_constant
     158: transfer_ticket
-    230: dal_publish_slot_header
     200: smart_rollup_originate
     201: smart_rollup_add_messages
     202: smart_rollup_cement
@@ -2981,6 +2980,7 @@ enums:
     205: smart_rollup_timeout
     206: smart_rollup_execute_outbox_message
     207: smart_rollup_recover_bond
+    230: dal_publish_slot_header
     250: zk_rollup_origination
     251: zk_rollup_publish
     252: zk_rollup_update

@@ -3832,15 +3832,15 @@ types:
       size: 32
 enums:
   inbox_tag:
-    1: some
     0: none
+    1: some
   requested_tag:
     0: no_input_required
     1: initial
     2: first_after
   given_tag:
-    1: some
     0: none
+    1: some
   inode_tree_tag:
     0: blinded_inode
     1: inode_values
@@ -3868,8 +3868,8 @@ enums:
     0: arithmetic__pvm__with__proof
     1: wasm__2__0__0__pvm__with__proof
   dissection_elt_field0_tag:
-    1: some
     0: none
+    1: some
   step_tag:
     0: dissection
     1: proof
@@ -3878,20 +3878,20 @@ enums:
     1: wasm__2__0__0__smart__contract__rollup__kind
   case__3_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3906,20 +3906,20 @@ enums:
     227: case__227
   case__1_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3934,20 +3934,20 @@ enums:
     227: case__227
   case__2_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3971,20 +3971,20 @@ enums:
     1: case__1
   case__0_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3999,8 +3999,8 @@ enums:
     227: case__227
   proof_tag:
     0: case__0
-    2: case__2
     1: case__1
+    2: case__2
     3: case__3
   amount_tag:
     0: case__0
@@ -4011,8 +4011,8 @@ enums:
     0: batch
     1: deposit
   predecessor_tag:
-    1: some
     0: none
+    1: some
   id_014__ptkathma__contract_id__originated_tag:
     1: originated
   id_014__ptkathma__entrypoint_tag:
@@ -4041,25 +4041,25 @@ enums:
     1: secp256k1
     2: p256
   id_014__ptkathma__operation__alpha__contents_tag:
-    21: endorsement
-    20: preendorsement
-    22: dal_slot_availability
     1: seed_nonce_revelation
-    8: vdf_revelation
     2: double_endorsement_evidence
-    7: double_preendorsement_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
+    7: double_preendorsement_evidence
+    8: vdf_revelation
+    17: failing_noop
+    20: preendorsement
+    21: endorsement
+    22: dal_slot_availability
     107: reveal
     108: transaction
     109: origination
     110: delegation
+    111: register_global_constant
     112: set_deposits_limit
     113: increase_paid_storage
-    17: failing_noop
-    111: register_global_constant
     150: tx_rollup_origination
     151: tx_rollup_submit_batch
     152: tx_rollup_commit
@@ -4069,7 +4069,6 @@ enums:
     156: tx_rollup_rejection
     157: tx_rollup_dispatch_tickets
     158: transfer_ticket
-    230: dal_publish_slot_header
     200: sc_rollup_originate
     201: sc_rollup_add_messages
     202: sc_rollup_cement
@@ -4079,6 +4078,7 @@ enums:
     206: sc_rollup_execute_outbox_message
     207: sc_rollup_recover_bond
     208: sc_rollup_dal_slot_subscribe
+    230: dal_publish_slot_header
 seq:
 - id: id_014__ptkathma__operation__alpha__contents
   type: id_014__ptkathma__operation__alpha__contents

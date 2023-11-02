@@ -633,22 +633,22 @@ enums:
   id_012__psithaca__inlined__endorsement_mempool__contents_tag:
     21: endorsement
   id_012__psithaca__operation__alpha__contents_tag:
-    21: endorsement
-    20: preendorsement
     1: seed_nonce_revelation
     2: double_endorsement_evidence
-    7: double_preendorsement_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
+    7: double_preendorsement_evidence
+    17: failing_noop
+    20: preendorsement
+    21: endorsement
     107: reveal
     108: transaction
     109: origination
     110: delegation
-    112: set_deposits_limit
-    17: failing_noop
     111: register_global_constant
+    112: set_deposits_limit
 seq:
 - id: id_012__psithaca__operation__alpha__contents_and_signature
   type: id_012__psithaca__operation__alpha__contents_and_signature

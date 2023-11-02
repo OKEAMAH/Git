@@ -2945,20 +2945,20 @@ enums:
     1: originated
   case__3_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -2973,20 +2973,20 @@ enums:
     227: case__227
   case__1_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3001,20 +3001,20 @@ enums:
     227: case__227
   case__2_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3038,20 +3038,20 @@ enums:
     1: case__1
   case__0_field3_elt_tag:
     0: case__0
-    8: case__8
-    4: case__4
-    12: case__12
     1: case__1
-    9: case__9
-    5: case__5
-    13: case__13
     2: case__2
-    10: case__10
-    6: case__6
-    14: case__14
     3: case__3
-    11: case__11
+    4: case__4
+    5: case__5
+    6: case__6
     7: case__7
+    8: case__8
+    9: case__9
+    10: case__10
+    11: case__11
+    12: case__12
+    13: case__13
+    14: case__14
     15: case__15
     128: case__128
     129: case__129
@@ -3066,8 +3066,8 @@ enums:
     227: case__227
   proof_tag:
     0: case__0
-    2: case__2
     1: case__1
+    2: case__2
     3: case__3
   amount_tag:
     0: case__0
@@ -3078,8 +3078,8 @@ enums:
     0: batch
     1: deposit
   predecessor_tag:
-    1: some
     0: none
+    1: some
   id_013__ptjakart__entrypoint_tag:
     0: default
     1: root
@@ -3107,22 +3107,22 @@ enums:
   id_013__ptjakart__inlined__endorsement_mempool__contents_tag:
     21: endorsement
   id_013__ptjakart__operation__alpha__contents_tag:
-    21: endorsement
-    20: preendorsement
     1: seed_nonce_revelation
     2: double_endorsement_evidence
-    7: double_preendorsement_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
+    7: double_preendorsement_evidence
+    17: failing_noop
+    20: preendorsement
+    21: endorsement
     107: reveal
     108: transaction
     109: origination
     110: delegation
-    112: set_deposits_limit
-    17: failing_noop
     111: register_global_constant
+    112: set_deposits_limit
     150: tx_rollup_origination
     151: tx_rollup_submit_batch
     152: tx_rollup_commit
