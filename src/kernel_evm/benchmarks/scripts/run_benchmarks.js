@@ -82,6 +82,7 @@ function run_profiler(path) {
         var queue_read = [];
         var receipt_size = [];
         let nb_reboots = 0;
+        let bloom_size = [];
 
         var profiler_output_path = "";
 
@@ -118,8 +119,9 @@ function run_profiler(path) {
             push_match(output, queue_store, /\bStoring Queue of size\s*(\d+)/g)
             push_match(output, queue_read, /\bReading Queue of size\s*(\d+)/g)
             push_match(output, receipt_size, /\bStoring receipt of size \s*(\d+)/g)
-            push_profiler_sections(output, opcodes)
             if (output.includes("Kernel was rebooted.")) nb_reboots++;
+            push_match(output, bloom_size, /\[Benchmarking\] bloom size:\s*(\d+)/g)
+            push_profiler_sections(output, opcodes);
         });
         childProcess.on('close', _ => {
             if (profiler_output_path == "") {
@@ -145,6 +147,9 @@ function run_profiler(path) {
             }
             if (queue_read.length != nb_reboots) {
                 console.log(new Error("Missing read queue size value (expected: " + nb_reboots + ", actual: " + queue_read.length + ")"));
+            }
+            if (tx_status.length != bloom_size.length) {
+                console.log(new Error("Missing bloom size value (expected: " + tx_status.length + ", actual: " + bloom_size.length + ")"));
             }
             resolve({
                 profiler_output_path,
@@ -210,6 +215,7 @@ async function analyze_profiler_output(path) {
     block_finalize = await get_ticks(path, "store_current_block");
     queue_store_ticks = await get_ticks(path, "store_queue");
     queue_read_ticks = await get_ticks(path, "read_queue");
+    logs_to_bloom = await get_ticks(path, "logs_to_bloom");
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -222,7 +228,8 @@ async function analyze_profiler_output(path) {
         store_receipt_ticks,
         block_finalize,
         queue_store_ticks,
-        queue_read_ticks
+        queue_read_ticks,
+        logs_to_bloom
     };
 }
 
@@ -303,6 +310,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
                     store_receipt_ticks: run_benchmark_result.store_receipt_ticks[j],
                     receipt_size: run_benchmark_result.receipt_size[j],
                     tx_size: tx_size[j],
+                    logs_to_bloom: run_benchmark_result.logs_to_bloom[j],
+                    bloom_size: run_benchmark_result.bloom_size[j],
                     ...basic_info_row
                 });
             gas_cost_index += 1;
@@ -407,6 +416,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         "store_transaction_object_ticks",
         "receipt_size",
         "store_receipt_ticks",
+        "logs_to_bloom",
+        "bloom_size",
         "estimated_ticks",
         "interpreter_decode_ticks",
         "interpreter_init_ticks",
