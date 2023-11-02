@@ -104,7 +104,9 @@ let init_store ~allow_testchains ~readonly parameters =
   return store
 
 let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
-    (watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper
+    (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
+    (applied_blocks_watcher :
+      (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) _stopper
     (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
   let block_level = header.shell.level in
@@ -117,7 +119,18 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
         in
         last_status := current_status ;
         dynamic_store := Some store ;
-        Lwt_watcher.notify watcher (block_hash, header) ;
+        Lwt_watcher.notify head_watcher (block_hash, header) ;
+        let* () =
+          (* Notify the applied_blocks monitoring RPC only if it was
+             intanciated at least once. *)
+          match !applied_blocks_watcher with
+          | None -> return_unit
+          | Some stream ->
+              let chain_store = Store.main_chain_store store in
+              let* block = Store.Block.read_block chain_store block_hash in
+              Lwt_watcher.notify stream (chain_store, block) ;
+              return_unit
+        in
         let*! () = cleanups () in
         let*! () = Events.(emit synchronized) (block_level, block_hash) in
         return_unit
@@ -131,7 +144,9 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   return_unit
 
 let init (dynamic_store : Store.t option ref) parameters
-    (stream : (Block_hash.t * Block_header.t) Lwt_watcher.input) =
+    (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
+    (applied_blocks_watcher :
+      (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) =
   let open Lwt_result_syntax in
   let ctx =
     Forward_handler.build_socket_redirection_ctx parameters.rpc_comm_socket_path
@@ -167,5 +182,10 @@ let init (dynamic_store : Store.t option ref) parameters
   dynamic_store := Some store ;
   Daemon.make_stream_daemon
     ~on_head:
-      (handle_new_head dynamic_store (ref initial_status) parameters stream)
+      (handle_new_head
+         dynamic_store
+         (ref initial_status)
+         parameters
+         head_watcher
+         applied_blocks_watcher)
     ~head_stream:(Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
