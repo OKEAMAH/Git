@@ -8,59 +8,63 @@ types:
     - id: alpha__staker_tag
       type: u1
       enum: alpha__staker_tag
-    - id: alpha__staker_single
-      type: alpha__staker_single
-      if: (alpha__staker_tag == alpha__staker_tag::single)
-    - id: alpha__staker_shared
-      type: public_key_hash
-      if: (alpha__staker_tag == alpha__staker_tag::shared)
+    - id: shared__alpha__staker
+      type: shared__public_key_hash
+      if: (alpha__staker_tag == ::alpha__staker_tag::alpha__staker_tag::shared)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  alpha__staker_single:
+  shared__public_key_hash:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: shared__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+  single__alpha__staker:
     seq:
     - id: contract
-      type: alpha__contract_id
+      type: single__alpha__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: delegate
-      type: public_key_hash
+      type: single__public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  alpha__contract_id:
+  single__public_key_hash:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: single__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+  single__alpha__contract_id:
     seq:
     - id: alpha__contract_id_tag
       type: u1
       enum: alpha__contract_id_tag
-    - id: alpha__contract_id_implicit
-      type: public_key_hash
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+    - id: single__implicit__alpha__contract_id
+      type: single__implicit__public_key_hash
+      if: (alpha__contract_id_tag == ::alpha__contract_id_tag::alpha__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: alpha__contract_id_originated
-      type: alpha__contract_id_originated
+    - id: single__originated__alpha__contract_id
+      type: single__originated__alpha__contract_id
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  alpha__contract_id_originated:
+  single__originated__alpha__contract_id:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  public_key_hash:
+  single__implicit__public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_ed25519
+    - id: single__implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash_secp256k1
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash_p256
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: public_key_hash_bls
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
 enums:
   public_key_hash_tag:
     0: ed25519

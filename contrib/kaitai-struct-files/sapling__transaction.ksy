@@ -70,6 +70,8 @@ types:
       type: inputs_entries
       size: size_of_inputs
       repeat: eos
+      valid:
+        max: 1833216
   inputs_entries:
     seq:
     - id: sapling__transaction__input

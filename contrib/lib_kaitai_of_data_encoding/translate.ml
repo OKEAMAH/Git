@@ -63,7 +63,9 @@ let size_id_of_id id = "size_of_" ^ id
    adding a field to an indirection. *)
 let redirect types attrs fattr path id =
   let id = pathify path id in
-  let ((_, user_type_classpec) as type_) = (id, Helpers.class_spec_of_attrs ~id attrs) in
+  let ((_, user_type_classpec) as type_) =
+    (id, Helpers.class_spec_of_attrs ~id attrs)
+  in
   let types = Helpers.add_uniq_assoc types type_ in
   let attr =
     fattr

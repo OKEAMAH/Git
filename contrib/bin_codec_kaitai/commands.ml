@@ -481,14 +481,21 @@ let commands () =
                         "Failed to generate ksy file for %s (%s)"
                         id
                         (Printexc.to_string e)
-                  | spec ->
-                      let yml = Kaitai.Print.print spec in
-                      Lwt_io.with_file
-                        ~mode:Output
-                        (dir ^ "/"
-                        ^ Kaitai_of_data_encoding.Translate.escape_id id
-                        ^ ".ksy")
-                        (fun oc -> Lwt_io.write oc yml)))
+                  | spec -> (
+                      match Kaitai.Print.print spec with
+                      | exception e ->
+                          (* TODO: offer a [result] variant of conversion function *)
+                          cctxt#warning
+                            "Failed to print ksy file for %s (%s)"
+                            id
+                            (Printexc.to_string e)
+                      | yml ->
+                          Lwt_io.with_file
+                            ~mode:Output
+                            (dir ^ "/"
+                            ^ Kaitai_of_data_encoding.Translate.escape_id id
+                            ^ ".ksy")
+                            (fun oc -> Lwt_io.write oc yml))))
             (Data_encoding.Registration.list ())
         in
         return_ok_unit);

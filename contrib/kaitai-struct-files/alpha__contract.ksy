@@ -8,37 +8,28 @@ types:
     - id: alpha__contract_id_tag
       type: u1
       enum: alpha__contract_id_tag
-    - id: alpha__contract_id_implicit
-      type: public_key_hash
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+    - id: implicit__alpha__contract_id
+      type: implicit__public_key_hash
+      if: (alpha__contract_id_tag == ::alpha__contract_id_tag::alpha__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: alpha__contract_id_originated
-      type: alpha__contract_id_originated
+    - id: originated__alpha__contract_id
+      type: originated__alpha__contract_id
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  alpha__contract_id_originated:
+  originated__alpha__contract_id:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  public_key_hash:
+  implicit__public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_ed25519
+    - id: implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash_secp256k1
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash_p256
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: public_key_hash_bls
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
 enums:
   public_key_hash_tag:
     0: ed25519

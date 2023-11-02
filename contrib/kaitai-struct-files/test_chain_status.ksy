@@ -8,7 +8,7 @@ doc: ! >-
   the moment), forking (the test chain is being setup), running (the test chain is
   running).
 types:
-  test_chain_status_running:
+  running__test_chain_status:
     seq:
     - id: chain_id
       size: 4
@@ -19,7 +19,7 @@ types:
     - id: expiration
       type: s8
       doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
-  test_chain_status_forking:
+  forking__test_chain_status:
     seq:
     - id: protocol
       size: 32
@@ -35,9 +35,9 @@ seq:
 - id: test_chain_status_tag
   type: u1
   enum: test_chain_status_tag
-- id: test_chain_status_forking
-  type: test_chain_status_forking
+- id: forking__test_chain_status
+  type: forking__test_chain_status
   if: (test_chain_status_tag == test_chain_status_tag::forking)
-- id: test_chain_status_running
-  type: test_chain_status_running
+- id: running__test_chain_status
+  type: running__test_chain_status
   if: (test_chain_status_tag == test_chain_status_tag::running)
