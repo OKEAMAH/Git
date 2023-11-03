@@ -1741,6 +1741,7 @@ let sync ~last_status block_store =
   let open Lwt_result_syntax in
   Lwt.finalize
     (fun () ->
+      (* TODO: Lwt_idle_waiter.force_idle block_store.merge_scheduler ?? *)
       let*! () = lock block_store.lockfile in
       let chain_dir = block_store.chain_dir in
       let readonly = true in

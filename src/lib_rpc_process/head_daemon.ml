@@ -112,6 +112,8 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   let block_level = header.shell.level in
   let*! () = Events.(emit new_head) block_level in
   let* () =
+    (* TODO: add a critical sections for store's acces? With the idle waiter? *)
+    (* TODO: If status is merging then sync? *)
     match !dynamic_store with
     | Some store ->
         let* store, current_status, cleanups =
