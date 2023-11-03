@@ -78,9 +78,10 @@ function run_profiler(path) {
         var estimated_ticks = [];
         var estimated_ticks_per_tx = [];
         var tx_size = [];
-        var bip_store = [];
-        var bip_read = [];
+        var queue_store = [];
+        var queue_read = [];
         var receipt_size = [];
+        let nb_reboots = 0;
 
         var profiler_output_path = "";
 
@@ -114,10 +115,11 @@ function run_profiler(path) {
             push_match(output, estimated_ticks, /\bEstimated ticks:\s*(\d+)/g)
             push_match(output, estimated_ticks_per_tx, /\bEstimated ticks after tx:\s*(\d+)/g)
             push_match(output, tx_size, /\bStoring transaction object of size\s*(\d+)/g)
-            push_match(output, bip_store, /\bStoring Block in Progress of size\s*(\d+)/g)
-            push_match(output, bip_read, /\bReading Block in Progress of size\s*(\d+)/g)
+            push_match(output, queue_store, /\bStoring Queue of size\s*(\d+)/g)
+            push_match(output, queue_read, /\bReading Queue of size\s*(\d+)/g)
             push_match(output, receipt_size, /\bStoring receipt of size \s*(\d+)/g)
-            push_profiler_sections(output, opcodes);
+            push_profiler_sections(output, opcodes)
+            if (output.includes("Kernel was rebooted.")) nb_reboots++;
         });
         childProcess.on('close', _ => {
             if (profiler_output_path == "") {
@@ -138,6 +140,12 @@ function run_profiler(path) {
             if (tx_status.length != receipt_size.length) {
                 console.log(new Error("Missing receipt size value (expected: " + tx_status.length + ", actual: " + receipt_size.length + ")"));
             }
+            if (queue_store.length != nb_reboots) {
+                console.log(new Error("Missing stored queue size value (expected: " + nb_reboots + ", actual: " + queue_store.length + ")"));
+            }
+            if (queue_read.length != nb_reboots) {
+                console.log(new Error("Missing read queue size value (expected: " + nb_reboots + ", actual: " + queue_read.length + ")"));
+            }
             resolve({
                 profiler_output_path,
                 gas_costs: gas_used,
@@ -145,8 +153,8 @@ function run_profiler(path) {
                 estimated_ticks,
                 estimated_ticks_per_tx,
                 tx_size,
-                bip_store,
-                bip_read,
+                queue_store,
+                queue_read,
                 receipt_size,
                 opcodes,
             });
@@ -200,6 +208,8 @@ async function analyze_profiler_output(path) {
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
     fetch_blueprint_ticks = await get_ticks(path, "blueprint5fetch");
     block_finalize = await get_ticks(path, "store_current_block");
+    queue_store_ticks = await get_ticks(path, "store_queue");
+    queue_read_ticks = await get_ticks(path, "read_queue");
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -210,7 +220,9 @@ async function analyze_profiler_output(path) {
         fetch_blueprint_ticks: fetch_blueprint_ticks,
         sputnik_runtime_ticks: sputnik_runtime_ticks,
         store_receipt_ticks,
-        block_finalize
+        block_finalize,
+        queue_store_ticks,
+        queue_read_ticks
     };
 }
 
@@ -251,8 +263,10 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     estimated_ticks = run_benchmark_result.estimated_ticks;
     estimated_ticks_per_tx = run_benchmark_result.estimated_ticks_per_tx;
     tx_size = run_benchmark_result.tx_size;
-    bip_read = run_benchmark_result.bip_read;
-    bip_store = run_benchmark_result.bip_store;
+    queue_read = run_benchmark_result.queue_read;
+    queue_store = run_benchmark_result.queue_store;
+    queue_store_ticks = run_benchmark_result.queue_store_ticks;
+    queue_read_ticks = run_benchmark_result.queue_read_ticks;
 
     console.log(`Number of transactions: ${tx_status.length}`)
     run_time_index = 0;
@@ -306,6 +320,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
 
     // first kernel run
     // the nb of tx correspond to the full inbox, not just those done in first run
+    let bip_idx = 0
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         interpreter_init_ticks: interpreter_init_ticks[0],
@@ -315,7 +330,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         estimated_ticks: estimated_ticks[0],
         inbox_size: run_benchmark_result.inbox_size,
         nb_tx: tx_status.length,
-        bip_store: bip_store[0] ? bip_store[0] : 0
+        queue_store: queue_store[0] ? queue_store[0] : '',
+        queue_store_ticks: queue_store[0] ? queue_store_ticks[bip_idx++] : ''
     });
 
     //reboots
@@ -327,9 +343,12 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             fetch_blueprint_ticks: fetch_blueprint_ticks[j],
             kernel_run_ticks: kernel_run_ticks[j],
             estimated_ticks: estimated_ticks[j],
-            bip_store: bip_store[j] ? bip_store[j] : 0,
-            bip_read: bip_read[j - 1] // the first read correspond to second run
+            queue_store: queue_store[j] ? queue_store[j] : '',
+            queue_store_ticks: queue_store[j] ? queue_store_ticks[bip_idx] : '',
+            queue_read: queue_read[j - 1], // the first read correspond to second run
+            queue_read_ticks: queue_read[j - 1] ? queue_read_ticks[bip_idx - 1] : ''
         });
+        if (queue_read[j - 1]) bip_idx++
     }
 
     // ticks that are not covered by identified area of interest
@@ -394,8 +413,10 @@ async function run_all_benchmarks(benchmark_scripts) {
         "nb_tx",
         "inbox_size",
         "fetch_blueprint_ticks",
-        "bip_read",
-        "bip_store",
+        "queue_read",
+        "queue_read_ticks",
+        "queue_store",
+        "queue_store_ticks",
         "block_finalize",
         "kernel_run_ticks",
         "unaccounted_ticks",
