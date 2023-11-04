@@ -607,6 +607,7 @@ module Make (Proto : Protocol_plugin.T) = struct
                 List.fold_left_es
                   (fun (state, acc) (oph, op, _check_signature) ->
                     let* state, op_metadata =
+                      (* lin: operation applied here. *)
                       Proto.apply_operation state oph op
                     in
                     return (state, op_metadata :: acc))

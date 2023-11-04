@@ -292,6 +292,7 @@ and _ contents =
       source : Signature.public_key_hash;
       fee : Tez_repr.tez;
       counter : Manager_counter_repr.t;
+      (* lin: In JSON the operation is inlined. *)
       operation : 'kind manager_operation;
       gas_limit : Gas_limit_repr.Arith.integral;
       storage_limit : Z.t;
@@ -1929,6 +1930,7 @@ let unsigned_operation_length (type kind)
 
 let check_signature (type kind) key chain_id (op : kind operation) =
   let open Result_syntax in
+  (* lin: We serialize then check signature. *)
   let serialized_operation = serialize_unsigned_operation op in
   let check ~watermark signature =
     if Signature.check ~watermark key signature serialized_operation then

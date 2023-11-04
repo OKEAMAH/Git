@@ -2005,6 +2005,7 @@ module Manager = struct
       several managers to group-sign a sequence of operations. *)
   let check_sanity_and_find_public_key vi
       (contents_list : _ Kind.manager contents_list) =
+    (* lin: A lot of checks against batch done here. *)
     let open Lwt_result_syntax in
     let*? source, revealed_key, first_counter = check_batch contents_list in
     let* balance = Contract.check_allocated_and_get_balance vi.ctxt source in
@@ -2175,6 +2176,9 @@ module Manager = struct
        the batch. *)
     let fixed_gas_cost =
       let manager_op_cost = Michelson_v1_gas.Cost_of.manager_operation in
+      (* lin: Gas cost for sig check for the first manager operation in the list done
+              here. We must account for the sig checks of the check of the signature
+              inside [Relayed_operation] somewhere too. *)
       match consume_gas_for_sig_check with
       | None -> manager_op_cost
       | Some gas_for_sig_check -> Gas.(manager_op_cost +@ gas_for_sig_check)
@@ -2199,6 +2203,7 @@ module Manager = struct
        would not take into account any gas consumed by
        {!check_kind_specific_content}. If you really need to consume gas here, then you
        must make {!check_kind_specific_content} return the [remaining_gas].*)
+    (* lin: Probably checking that [source] can pay [fee]. *)
     let* balance, is_allocated =
       Contract.simulate_spending
         vi.ctxt
@@ -2251,6 +2256,9 @@ module Manager = struct
           batch_state
           tail
           ~consume_gas_for_sig_check:None
+          (* lin: Sig check not accouted after second element.
+                  additional sig check for the inner operations of the relay operation
+                  should be accounted for somewhere. *)
           remaining_gas
 
   let check_manager_operation vi ~check_signature
@@ -2274,6 +2282,7 @@ module Manager = struct
         remaining_block_gas
     in
     let*? () =
+      (* lin: check sig for manager operations here. *)
       if check_signature then
         Operation.check_signature source_pk vi.chain_id operation
       else ok_unit
@@ -2288,6 +2297,7 @@ module Manager = struct
       | Cons (Manager_operation {source; _}, _) ->
           source
     in
+    (* lin: 1M done here *)
     (* One-operation-per-manager-per-block restriction (1M) *)
     match
       Signature.Public_key_hash.Map.find_opt

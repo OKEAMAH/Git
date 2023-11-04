@@ -683,6 +683,7 @@ let fee_needed_to_replace_by_fee config ~op_to_replace ~candidate_op =
 let find_manager {shell = _; protocol_data = Operation_data {contents; _}} =
   match contents with
   | Single (Manager_operation {source; _}) -> Some source
+  (* lin: all op in manager operation list should have same source. *)
   | Cons (Manager_operation {source; _}, _) -> Some source
   | Single
       ( Preattestation _ | Attestation _ | Dal_attestation _ | Proposals _

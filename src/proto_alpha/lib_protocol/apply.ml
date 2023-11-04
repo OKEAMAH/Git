@@ -971,6 +971,7 @@ let apply_manager_operation :
     (* See the comment above [fixed_gas_cost] in the
        {!Validate.check_contents} function. *)
     let fixed_gas_cost =
+      (* lin: gas cost for signature verification done here. *)
       let manager_op_cost = Michelson_v1_gas.Cost_of.manager_operation in
       match consume_gas_for_sig_check with
       | None -> manager_op_cost
