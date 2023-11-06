@@ -75,17 +75,53 @@ module Daemon = struct
       It returns a couple [(p, stopper)] where [p] is a promise
       resolving when the stream closes and [stopper] a function
       closing the stream. *)
-  let make_stream_daemon ~on_head
-      ~(* on_applied_block *) head_stream (* applied_block_stream *) =
+  let make_stream_daemon ~on_head ~on_applied_block
+      ~(head_stream :
+         ((Block_hash.t * Block_header.t) Lwt_stream.t
+         * Tezos_rpc.Context.stopper)
+         tzresult
+         Lwt.t)
+      ~(applied_block_stream :
+         ((Chain_id.t * Block_hash.t * Block_header.t * Operation.t trace trace)
+          Lwt_stream.t
+         * Tezos_rpc.Context.stopper)
+         tzresult
+         Lwt.t) =
     let open Lwt_result_syntax in
     let* head_stream, head_stream_stopper = head_stream in
-    (* let* applied_block_stream, applied_block_stopper = applied_block_stream in *)
+    let get_head_stream () =
+      let*! v = Lwt_stream.get head_stream in
+      match v with
+      | Some v -> Lwt.return_some (`Head, v)
+      | None -> Lwt.return_none
+    in
+    let* applied_block_stream, applied_block_stream_stopper =
+      applied_block_stream
+    in
+    let get_applied_block_stream () =
+      let*! v = Lwt_stream.get applied_block_stream in
+      match v with
+      | Some (_, hash, header, _) -> Lwt.return_some (`Applied, (hash, header))
+      | None -> Lwt.return_none
+    in
     let rec go () =
-      let*! tok = Lwt.choose [Lwt_stream.get head_stream] in
+      let*! tok =
+        Lwt.choose [get_head_stream (); get_applied_block_stream ()]
+      in
       match tok with
       | None -> return_unit
-      | Some element ->
+      | Some (`Head, element) ->
           let*! r = on_head head_stream_stopper element in
+          let*! () =
+            match r with
+            | Ok () -> Lwt.return_unit
+            | Error trace ->
+                let*! () = Events.(emit daemon_error) trace in
+                Lwt.return_unit
+          in
+          go ()
+      | Some (`Applied, element) ->
+          let*! r = on_applied_block applied_block_stream_stopper element in
           let*! () =
             match r with
             | Ok () -> Lwt.return_unit
@@ -119,30 +155,27 @@ let sync_store (dynamic_store : Store.t option ref) last_status parameters
     (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
   let block_level = header.shell.level in
-  let* () =
-    (* TODO: add a critical sections for store's acces? With the idle waiter? *)
-    (* TODO: If status is merging then sync? *)
-    match !dynamic_store with
-    | Some store ->
-        let*! () =
-          Events.(emit start_synchronization) (block_level, block_hash)
-        in
-        let* store, current_status, cleanups =
-          Store.sync ~last_status:!last_status ~trigger_hash:block_hash store
-        in
-        last_status := current_status ;
-        dynamic_store := Some store ;
-        let*! () = cleanups () in
-        let*! () = Events.(emit synchronized) (block_hash, block_level) in
-        return_unit
-    | None ->
-        let* store =
-          init_store ~allow_testchains:false ~readonly:true parameters
-        in
-        dynamic_store := Some store ;
-        return_unit
-  in
-  return_unit
+  (* TODO: add a critical sections for store's acces? With the idle waiter? *)
+  (* TODO: If status is merging then sync? *)
+  match !dynamic_store with
+  | Some store ->
+      let*! () =
+        Events.(emit start_synchronization) (block_level, block_hash)
+      in
+      let* store, current_status, cleanups =
+        Store.sync ~last_status:!last_status ~trigger_hash:block_hash store
+      in
+      last_status := current_status ;
+      dynamic_store := Some store ;
+      let*! () = cleanups () in
+      let*! () = Events.(emit synchronized) (block_hash, block_level) in
+      return store
+  | None ->
+      let* store =
+        init_store ~allow_testchains:false ~readonly:true parameters
+      in
+      dynamic_store := Some store ;
+      return store
 
 let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
     (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper
@@ -150,20 +183,31 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   let open Lwt_result_syntax in
   let block_level = header.shell.level in
   let*! () = Events.(emit new_head) block_level in
-  let* () =
+  let* (_ : Store.t) =
     sync_store dynamic_store last_status parameters (block_hash, header)
   in
   Lwt_watcher.notify head_watcher (block_hash, header) ;
   return_unit
 
-(* (* let chain_store = Store.main_chain_store store in *)
-   (* let* block = Store.Block.read_block chain_store block_hash in *)
-   (* Format.printf "Notify applied_blocks_watcher@." ; *)
-   (* Lwt_watcher.notify applied_blocks_watcher (chain_store, block) ; *)*)
+let handle_new_applied_block (dynamic_store : Store.t option ref) last_status
+    parameters
+    (applied_block_watcher :
+      (Store.chain_store * Store.Block.t) Lwt_watcher.input) _stopper
+    (block_hash, (header : Tezos_base.Block_header.t)) =
+  let open Lwt_result_syntax in
+  let block_level = header.shell.level in
+  let*! () = Events.(emit new_head) block_level in
+  let* store =
+    sync_store dynamic_store last_status parameters (block_hash, header)
+  in
+  let chain_store = Store.main_chain_store store in
+  let* block = Store.Block.read_block chain_store block_hash in
+  Lwt_watcher.notify applied_block_watcher (chain_store, block) ;
+  return_unit
 
 let init (dynamic_store : Store.t option ref) parameters
     (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
-    (_applied_blocks_watcher :
+    (applied_block_watcher :
       (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) =
   let open Lwt_result_syntax in
   let ctx =
@@ -197,6 +241,11 @@ let init (dynamic_store : Store.t option ref) parameters
   let* stored_status = Stored_data.load status_file in
   let*! initial_status = Stored_data.get stored_status in
   let* store = init_store ~allow_testchains:false ~readonly:true parameters in
+  let _ = Tezos_shell_services.Monitor_services.applied_blocks rpc_ctxt () in
+  (*FIXME: make it optional if not called to avoid overhead.*)
+  let applied_block_watcher =
+    match !applied_block_watcher with Some v -> v | None -> assert false
+  in
   dynamic_store := Some store ;
   Daemon.make_stream_daemon
     ~on_head:
@@ -206,3 +255,11 @@ let init (dynamic_store : Store.t option ref) parameters
          parameters
          head_watcher)
     ~head_stream:(Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+    ~on_applied_block:
+      (handle_new_applied_block
+         dynamic_store
+         (ref initial_status)
+         parameters
+         applied_block_watcher)
+    ~applied_block_stream:
+      (Tezos_shell_services.Monitor_services.applied_blocks rpc_ctxt ())
