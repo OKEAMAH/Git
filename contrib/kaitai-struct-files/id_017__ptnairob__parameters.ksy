@@ -120,6 +120,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -175,6 +184,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: public_key_known_with_consensus_key__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: public_key_known_with_consensus_key__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: public_key_known_with_consensus_key__p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: public_key_known_with_consensus_key__bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
@@ -200,6 +218,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: public_key_unknown_with_delegate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: public_key_unknown_with_delegate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: public_key_unknown_with_delegate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: public_key_unknown_with_delegate__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -225,6 +252,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: public_key_known_with_delegate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: public_key_known_with_delegate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: public_key_known_with_delegate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: public_key_known_with_delegate__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -233,6 +269,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: public_key_known_with_delegate__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: public_key_known_with_delegate__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: public_key_known_with_delegate__p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: public_key_known_with_delegate__bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
@@ -252,6 +297,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: public_key_unknown__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: public_key_unknown__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: public_key_unknown__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: public_key_unknown__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -283,6 +337,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: public_key_known__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: public_key_known__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: public_key_known__p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: public_key_known__bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)

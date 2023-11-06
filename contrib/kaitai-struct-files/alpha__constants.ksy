@@ -86,6 +86,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

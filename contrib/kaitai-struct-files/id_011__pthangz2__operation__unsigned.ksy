@@ -20,6 +20,42 @@ types:
     - id: id_011__pthangz2__operation__alpha__contents_tag
       type: u1
       enum: id_011__pthangz2__operation__alpha__contents_tag
+    - id: endorsement__id_011__pthangz2__operation__alpha__contents
+      type: s4
+      if: (id_011__pthangz2__operation__alpha__contents_tag == ::id_011__pthangz2__operation__alpha__contents_tag::id_011__pthangz2__operation__alpha__contents_tag::endorsement)
+    - id: seed_nonce_revelation__id_011__pthangz2__operation__alpha__contents
+      type: seed_nonce_revelation__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::seed_nonce_revelation)
+    - id: endorsement_with_slot__id_011__pthangz2__operation__alpha__contents
+      type: endorsement_with_slot__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::endorsement_with_slot)
+    - id: double_endorsement_evidence__id_011__pthangz2__operation__alpha__contents
+      type: double_endorsement_evidence__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::double_endorsement_evidence)
+    - id: double_baking_evidence__id_011__pthangz2__operation__alpha__contents
+      type: double_baking_evidence__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::double_baking_evidence)
+    - id: activate_account__id_011__pthangz2__operation__alpha__contents
+      type: activate_account__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::activate_account)
+    - id: proposals__id_011__pthangz2__operation__alpha__contents
+      type: proposals__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::proposals)
+    - id: ballot__id_011__pthangz2__operation__alpha__contents
+      type: ballot__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::ballot)
+    - id: reveal__id_011__pthangz2__operation__alpha__contents
+      type: reveal__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::reveal)
+    - id: transaction__id_011__pthangz2__operation__alpha__contents
+      type: transaction__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::transaction)
+    - id: origination__id_011__pthangz2__operation__alpha__contents
+      type: origination__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::origination)
+    - id: delegation__id_011__pthangz2__operation__alpha__contents
+      type: delegation__id_011__pthangz2__operation__alpha__contents
+      if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::delegation)
     - id: failing_noop__id_011__pthangz2__operation__alpha__contents
       type: failing_noop__arbitrary
       if: (id_011__pthangz2__operation__alpha__contents_tag == ::id_011__pthangz2__operation__alpha__contents_tag::id_011__pthangz2__operation__alpha__contents_tag::failing_noop)
@@ -54,6 +90,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: register_global_constant__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -90,6 +132,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -144,6 +192,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -231,6 +285,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -239,6 +299,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -263,6 +329,12 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: reveal__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
     - id: reveal__p256__public_key
       size: 33
       if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
@@ -283,6 +355,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: reveal__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -302,6 +380,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: ballot__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -333,6 +417,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: proposals__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: proposals__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: proposals__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)

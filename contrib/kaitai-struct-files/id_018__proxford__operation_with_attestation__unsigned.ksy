@@ -20,6 +20,60 @@ types:
     - id: id_018__proxford__operation__alpha__contents_tag
       type: u1
       enum: id_018__proxford__operation__alpha__contents_tag
+    - id: preattestation__id_018__proxford__operation__alpha__contents
+      type: preattestation__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::preattestation)
+    - id: attestation__id_018__proxford__operation__alpha__contents
+      type: attestation__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::attestation)
+    - id: double_preattestation_evidence__id_018__proxford__operation__alpha__contents
+      type: double_preattestation_evidence__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::double_preattestation_evidence)
+    - id: double_attestation_evidence__id_018__proxford__operation__alpha__contents
+      type: double_attestation_evidence__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::double_attestation_evidence)
+    - id: dal_attestation__id_018__proxford__operation__alpha__contents
+      type: dal_attestation__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::dal_attestation)
+    - id: seed_nonce_revelation__id_018__proxford__operation__alpha__contents
+      type: seed_nonce_revelation__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::seed_nonce_revelation)
+    - id: vdf_revelation__id_018__proxford__operation__alpha__contents
+      type: vdf_revelation__solution
+      if: (id_018__proxford__operation__alpha__contents_tag == ::id_018__proxford__operation__alpha__contents_tag::id_018__proxford__operation__alpha__contents_tag::vdf_revelation)
+    - id: double_baking_evidence__id_018__proxford__operation__alpha__contents
+      type: double_baking_evidence__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::double_baking_evidence)
+    - id: activate_account__id_018__proxford__operation__alpha__contents
+      type: activate_account__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::activate_account)
+    - id: proposals__id_018__proxford__operation__alpha__contents
+      type: proposals__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::proposals)
+    - id: ballot__id_018__proxford__operation__alpha__contents
+      type: ballot__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::ballot)
+    - id: reveal__id_018__proxford__operation__alpha__contents
+      type: reveal__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::reveal)
+    - id: transaction__id_018__proxford__operation__alpha__contents
+      type: transaction__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::transaction)
+    - id: origination__id_018__proxford__operation__alpha__contents
+      type: origination__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::origination)
+    - id: delegation__id_018__proxford__operation__alpha__contents
+      type: delegation__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::delegation)
+    - id: increase_paid_storage__id_018__proxford__operation__alpha__contents
+      type: increase_paid_storage__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::increase_paid_storage)
+    - id: update_consensus_key__id_018__proxford__operation__alpha__contents
+      type: update_consensus_key__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::update_consensus_key)
+    - id: drain_delegate__id_018__proxford__operation__alpha__contents
+      type: drain_delegate__id_018__proxford__operation__alpha__contents
+      if: (id_018__proxford__operation__alpha__contents_tag == id_018__proxford__operation__alpha__contents_tag::drain_delegate)
     - id: failing_noop__id_018__proxford__operation__alpha__contents
       type: failing_noop__arbitrary
       if: (id_018__proxford__operation__alpha__contents_tag == ::id_018__proxford__operation__alpha__contents_tag::id_018__proxford__operation__alpha__contents_tag::failing_noop)
@@ -182,6 +236,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_update__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_update__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: zk_rollup_update__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: zk_rollup_update__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -261,6 +324,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_publish__some__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_publish__some__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: zk_rollup_publish__some__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: zk_rollup_publish__some__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -269,6 +341,37 @@ types:
     - id: micheline__018__proxford__michelson_v1__expression_tag
       type: u1
       enum: micheline__018__proxford__michelson_v1__expression_tag
+    - id: zk_rollup_publish__some__int__micheline__018__proxford__michelson_v1__expression
+      type: z
+      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::int)
+    - id: zk_rollup_publish__some__string__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__string__string
+      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::string)
+    - id: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::sequence)
+    - id: zk_rollup_publish__some__prim__no_args__no_annots__micheline__018__proxford__michelson_v1__expression
+      type: u1
+      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: zk_rollup_publish__some__prim__no_args__no_annots__id_018__proxford__michelson__v1__primitives
+    - id: zk_rollup_publish__some__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: zk_rollup_publish__some__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: zk_rollup_publish__some__prim__2_args__some_annots__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__2_args__some_annots__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__generic)
     - id: zk_rollup_publish__some__bytes__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__bytes__bytes
       if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::bytes)
@@ -441,6 +544,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: zk_rollup_publish__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: zk_rollup_publish__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -521,6 +633,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: zk_rollup_origination__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: zk_rollup_origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -547,6 +668,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_recover_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_recover_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_recover_bond__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_recover_bond__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -582,6 +712,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_execute_outbox_message__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_execute_outbox_message__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_execute_outbox_message__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_execute_outbox_message__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -615,6 +754,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_timeout__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_timeout__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_timeout__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_timeout__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -681,6 +829,9 @@ types:
     - id: input_proof_tag
       type: u1
       enum: input_proof_tag
+    - id: smart_rollup_refute__move__proof__inbox__proof__input_proof
+      type: smart_rollup_refute__move__proof__inbox__proof__input_proof
+      if: (input_proof_tag == input_proof_tag::inbox__proof)
     - id: smart_rollup_refute__move__proof__reveal__proof__input_proof
       type: smart_rollup_refute__move__proof__reveal__proof__reveal_proof
       if: (input_proof_tag == ::input_proof_tag::input_proof_tag::reveal__proof)
@@ -783,6 +934,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_refute__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_refute__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_refute__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_refute__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -818,6 +978,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_publish__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_publish__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -841,6 +1010,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_cement__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_cement__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_cement__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_cement__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -882,6 +1060,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_add_messages__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_add_messages__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_add_messages__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_add_messages__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -926,6 +1113,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: smart_rollup_originate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: smart_rollup_originate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: smart_rollup_originate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: smart_rollup_originate__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -957,6 +1153,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_publish_slot_header__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_publish_slot_header__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: dal_publish_slot_header__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: dal_publish_slot_header__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1023,6 +1228,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: transfer_ticket__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: transfer_ticket__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1047,6 +1261,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: transfer_ticket__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: transfer_ticket__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1078,6 +1301,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: register_global_constant__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: register_global_constant__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1105,6 +1337,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: drain_delegate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: drain_delegate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: drain_delegate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: drain_delegate__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1129,6 +1370,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: update_consensus_key__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: update_consensus_key__p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: update_consensus_key__bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
@@ -1137,6 +1387,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: update_consensus_key__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: update_consensus_key__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: update_consensus_key__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1180,6 +1439,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: increase_paid_storage__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: increase_paid_storage__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: increase_paid_storage__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: increase_paid_storage__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1208,6 +1476,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: delegation__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1262,6 +1539,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: origination__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1349,6 +1635,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: transaction__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: transaction__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1357,6 +1652,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: transaction__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: transaction__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1381,6 +1685,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: reveal__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: reveal__p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: reveal__bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
@@ -1395,6 +1708,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: reveal__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: reveal__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1414,6 +1736,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: ballot__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: ballot__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1447,6 +1778,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: proposals__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: proposals__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: proposals__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: proposals__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -1603,6 +1943,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_attestation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_attestation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: dal_attestation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: dal_attestation__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

@@ -8,6 +8,9 @@ types:
     - id: id_011__pthangz2__contract__big_map_diff_elt_tag
       type: u1
       enum: id_011__pthangz2__contract__big_map_diff_elt_tag
+    - id: update__id_011__pthangz2__contract__big_map_diff_elt
+      type: update__id_011__pthangz2__contract__big_map_diff_elt
+      if: (id_011__pthangz2__contract__big_map_diff_elt_tag == id_011__pthangz2__contract__big_map_diff_elt_tag::update)
     - id: remove__id_011__pthangz2__contract__big_map_diff_elt
       type: z
       if: (id_011__pthangz2__contract__big_map_diff_elt_tag == ::id_011__pthangz2__contract__big_map_diff_elt_tag::id_011__pthangz2__contract__big_map_diff_elt_tag::remove)
@@ -50,6 +53,37 @@ types:
     - id: micheline__011__pthangz2__michelson_v1__expression_tag
       type: u1
       enum: micheline__011__pthangz2__michelson_v1__expression_tag
+    - id: update__int__micheline__011__pthangz2__michelson_v1__expression
+      type: z
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == ::micheline__011__pthangz2__michelson_v1__expression_tag::micheline__011__pthangz2__michelson_v1__expression_tag::int)
+    - id: update__string__micheline__011__pthangz2__michelson_v1__expression
+      type: update__string__string
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == ::micheline__011__pthangz2__michelson_v1__expression_tag::micheline__011__pthangz2__michelson_v1__expression_tag::string)
+    - id: update__sequence__micheline__011__pthangz2__michelson_v1__expression
+      type: update__sequence__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::sequence)
+    - id: update__prim__no_args__no_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: u1
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == ::micheline__011__pthangz2__michelson_v1__expression_tag::micheline__011__pthangz2__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: update__prim__no_args__no_annots__id_011__pthangz2__michelson__v1__primitives
+    - id: update__prim__no_args__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__no_args__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: update__prim__1_arg__no_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__1_arg__no_annots__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: update__prim__1_arg__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__1_arg__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: update__prim__2_args__no_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__2_args__no_annots__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: update__prim__2_args__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__2_args__some_annots__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: update__prim__generic__micheline__011__pthangz2__michelson_v1__expression
+      type: update__prim__generic__micheline__011__pthangz2__michelson_v1__expression
+      if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__generic)
     - id: update__bytes__micheline__011__pthangz2__michelson_v1__expression
       type: update__bytes__bytes
       if: (micheline__011__pthangz2__michelson_v1__expression_tag == ::micheline__011__pthangz2__michelson_v1__expression_tag::micheline__011__pthangz2__michelson_v1__expression_tag::bytes)

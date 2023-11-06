@@ -644,35 +644,34 @@ and seq_field_of_union :
             ( enums,
               types,
               mus,
-              [
-                {
-                  attr with
-                  id = pathify path id;
-                  cond =
-                    {
-                      Helpers.cond_no_cond with
-                      ifExpr =
-                        Some
-                          (Compare
-                             {
-                               left = Name (id ^ "_tag");
-                               ops = Eq;
-                               right =
-                                 EnumByLabel
-                                   {
-                                     enumName = tag_id;
-                                     label = case_id;
-                                     inType =
-                                       {
-                                         absolute = true;
-                                         names = [tag_id];
-                                         isArray = false;
-                                       };
-                                   };
-                             });
-                    };
-                };
-              ] )
+              {
+                attr with
+                id = pathify path id;
+                cond =
+                  {
+                    Helpers.cond_no_cond with
+                    ifExpr =
+                      Some
+                        (Compare
+                           {
+                             left = Name (id ^ "_tag");
+                             ops = Eq;
+                             right =
+                               EnumByLabel
+                                 {
+                                   enumName = tag_id;
+                                   label = case_id;
+                                   inType =
+                                     {
+                                       absolute = true;
+                                       names = [tag_id];
+                                       isArray = false;
+                                     };
+                                 };
+                           });
+                  };
+              }
+              :: payload_attrs )
         | _ :: _ as attrs ->
             let types, attr =
               redirect

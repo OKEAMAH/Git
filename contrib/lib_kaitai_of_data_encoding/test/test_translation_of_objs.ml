@@ -211,12 +211,12 @@ let%expect_test "test nested object translation" =
   types:
     protocol_hash:
       seq:
-      - id: size_of_protocol_hash
+      - id: len_protocol_hash
         type: u4
         valid:
           max: 1073741823
       - id: protocol_hash
-        size: size_of_protocol_hash
+        size: len_protocol_hash
   seq:
   - id: replaced_protocol
     type: protocol_hash

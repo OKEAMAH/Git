@@ -27,6 +27,21 @@ types:
     - id: id_018__proxford__operation_metadata__alpha__balance_tag
       type: u1
       enum: id_018__proxford__operation_metadata__alpha__balance_tag
+    - id: contract__id_018__proxford__operation_metadata__alpha__balance
+      type: contract__id_018__proxford__contract_id
+      if: (id_018__proxford__operation_metadata__alpha__balance_tag == ::id_018__proxford__operation_metadata__alpha__balance_tag::id_018__proxford__operation_metadata__alpha__balance_tag::contract)
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: deposits__id_018__proxford__operation_metadata__alpha__balance
+      type: deposits__id_018__proxford__staker
+      if: (id_018__proxford__operation_metadata__alpha__balance_tag == ::id_018__proxford__operation_metadata__alpha__balance_tag::id_018__proxford__operation_metadata__alpha__balance_tag::deposits)
+      doc: ! >-
+        staker: Abstract notion of staker used in operation receipts, either a single
+        staker or all the stakers delegating to some delegate.
+    - id: lost_attesting_rewards__id_018__proxford__operation_metadata__alpha__balance
+      type: lost_attesting_rewards__id_018__proxford__operation_metadata__alpha__balance
+      if: (id_018__proxford__operation_metadata__alpha__balance_tag == id_018__proxford__operation_metadata__alpha__balance_tag::lost_attesting_rewards)
     - id: commitments__id_018__proxford__operation_metadata__alpha__balance
       size: 20
       if: (id_018__proxford__operation_metadata__alpha__balance_tag == ::id_018__proxford__operation_metadata__alpha__balance_tag::id_018__proxford__operation_metadata__alpha__balance_tag::commitments)
@@ -50,6 +65,9 @@ types:
     - id: id_018__proxford__staker_tag
       type: u1
       enum: id_018__proxford__staker_tag
+    - id: unstaked_deposits__single__id_018__proxford__staker
+      type: unstaked_deposits__single__id_018__proxford__staker
+      if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::single)
     - id: unstaked_deposits__shared__id_018__proxford__staker
       type: unstaked_deposits__shared__public_key_hash
       if: (id_018__proxford__staker_tag == ::id_018__proxford__staker_tag::id_018__proxford__staker_tag::shared)
@@ -59,6 +77,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__shared__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__shared__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__shared__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__shared__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -77,6 +104,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__single__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__single__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__single__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -104,6 +140,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__single__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__single__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__single__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__single__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -148,6 +193,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: frozen_bonds__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: frozen_bonds__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: frozen_bonds__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: frozen_bonds__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -167,6 +221,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: lost_attesting_rewards__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: lost_attesting_rewards__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: lost_attesting_rewards__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: lost_attesting_rewards__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -175,6 +238,9 @@ types:
     - id: id_018__proxford__staker_tag
       type: u1
       enum: id_018__proxford__staker_tag
+    - id: deposits__single__id_018__proxford__staker
+      type: deposits__single__id_018__proxford__staker
+      if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::single)
     - id: deposits__shared__id_018__proxford__staker
       type: deposits__shared__public_key_hash
       if: (id_018__proxford__staker_tag == ::id_018__proxford__staker_tag::id_018__proxford__staker_tag::shared)
@@ -184,6 +250,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__shared__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__shared__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__shared__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__shared__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -202,6 +277,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__single__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__single__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__single__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -229,6 +313,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__single__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__single__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__single__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__single__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -256,6 +349,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: contract__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

@@ -41,6 +41,12 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: round_robin_over_delegates__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: round_robin_over_delegates__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
     - id: round_robin_over_delegates__p256__public_key
       size: 33
       if: (public_key_tag == ::public_key_tag::public_key_tag::p256)

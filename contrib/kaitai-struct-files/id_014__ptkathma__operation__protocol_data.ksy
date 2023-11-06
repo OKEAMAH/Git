@@ -19,6 +19,57 @@ types:
     - id: id_014__ptkathma__operation__alpha__contents_tag
       type: u1
       enum: id_014__ptkathma__operation__alpha__contents_tag
+    - id: endorsement__id_014__ptkathma__operation__alpha__contents
+      type: endorsement__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::endorsement)
+    - id: preendorsement__id_014__ptkathma__operation__alpha__contents
+      type: preendorsement__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::preendorsement)
+    - id: dal_slot_availability__id_014__ptkathma__operation__alpha__contents
+      type: dal_slot_availability__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::dal_slot_availability)
+    - id: seed_nonce_revelation__id_014__ptkathma__operation__alpha__contents
+      type: seed_nonce_revelation__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::seed_nonce_revelation)
+    - id: vdf_revelation__id_014__ptkathma__operation__alpha__contents
+      type: vdf_revelation__solution
+      if: (id_014__ptkathma__operation__alpha__contents_tag == ::id_014__ptkathma__operation__alpha__contents_tag::id_014__ptkathma__operation__alpha__contents_tag::vdf_revelation)
+    - id: double_endorsement_evidence__id_014__ptkathma__operation__alpha__contents
+      type: double_endorsement_evidence__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_endorsement_evidence)
+    - id: double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents
+      type: double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_preendorsement_evidence)
+    - id: double_baking_evidence__id_014__ptkathma__operation__alpha__contents
+      type: double_baking_evidence__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_baking_evidence)
+    - id: activate_account__id_014__ptkathma__operation__alpha__contents
+      type: activate_account__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::activate_account)
+    - id: proposals__id_014__ptkathma__operation__alpha__contents
+      type: proposals__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::proposals)
+    - id: ballot__id_014__ptkathma__operation__alpha__contents
+      type: ballot__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::ballot)
+    - id: reveal__id_014__ptkathma__operation__alpha__contents
+      type: reveal__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::reveal)
+    - id: transaction__id_014__ptkathma__operation__alpha__contents
+      type: transaction__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::transaction)
+    - id: origination__id_014__ptkathma__operation__alpha__contents
+      type: origination__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::origination)
+    - id: delegation__id_014__ptkathma__operation__alpha__contents
+      type: delegation__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::delegation)
+    - id: set_deposits_limit__id_014__ptkathma__operation__alpha__contents
+      type: set_deposits_limit__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::set_deposits_limit)
+    - id: increase_paid_storage__id_014__ptkathma__operation__alpha__contents
+      type: increase_paid_storage__id_014__ptkathma__operation__alpha__contents
+      if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::increase_paid_storage)
     - id: failing_noop__id_014__ptkathma__operation__alpha__contents
       type: failing_noop__arbitrary
       if: (id_014__ptkathma__operation__alpha__contents_tag == ::id_014__ptkathma__operation__alpha__contents_tag::id_014__ptkathma__operation__alpha__contents_tag::failing_noop)
@@ -115,6 +166,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_dal_slot_subscribe__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_dal_slot_subscribe__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_dal_slot_subscribe__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -138,6 +195,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_recover_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_recover_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_recover_bond__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -201,6 +264,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_execute_outbox_message__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_execute_outbox_message__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_execute_outbox_message__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -245,6 +314,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_timeout__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_timeout__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_timeout__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -330,6 +405,9 @@ types:
     - id: after_tag
       type: u1
       enum: after_tag
+    - id: sc_rollup_refute__proof__some__value__after
+      size: 32
+      if: (after_tag == ::after_tag::after_tag::value)
     - id: sc_rollup_refute__proof__some__node__after
       size: 32
       if: (after_tag == ::after_tag::after_tag::node)
@@ -338,6 +416,9 @@ types:
     - id: before_tag
       type: u1
       enum: before_tag
+    - id: sc_rollup_refute__proof__some__value__before
+      size: 32
+      if: (before_tag == ::before_tag::before_tag::value)
     - id: sc_rollup_refute__proof__some__node__before
       size: 32
       if: (before_tag == ::before_tag::before_tag::node)
@@ -546,6 +627,9 @@ types:
     - id: after_tag
       type: u1
       enum: after_tag
+    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__value__after
+      size: 32
+      if: (after_tag == ::after_tag::after_tag::value)
     - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__node__after
       size: 32
       if: (after_tag == ::after_tag::after_tag::node)
@@ -554,6 +638,9 @@ types:
     - id: before_tag
       type: u1
       enum: before_tag
+    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__value__before
+      size: 32
+      if: (before_tag == ::before_tag::before_tag::value)
     - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__node__before
       size: 32
       if: (before_tag == ::before_tag::before_tag::node)
@@ -618,6 +705,21 @@ types:
     - id: tree_encoding_tag
       type: u1
       enum: tree_encoding_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__value
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::value)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__blinded_value__tree_encoding
+      size: 32
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::blinded_value)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::node)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__blinded_node__tree_encoding
+      size: 32
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::blinded_node)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__inode
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::inode)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__tree_encoding
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__extender
       if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::extender)
@@ -651,6 +753,9 @@ types:
     - id: proofs_tag
       type: u1
       enum: proofs_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__proofs
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof
+      if: (proofs_tag == ::proofs_tag::proofs_tag::sparse_proof)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__proofs
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__dense_proof_entries
       if: (proofs_tag == ::proofs_tag::proofs_tag::dense_proof)
@@ -681,6 +786,15 @@ types:
     - id: inode_tree_tag
       type: u1
       enum: inode_tree_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__blinded_inode__inode_tree
+      size: 32
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::blinded_inode)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::inode_values)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__inode_tree
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::inode_tree)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__inode_tree
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__inode_extender
       if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::inode_extender)
@@ -714,6 +828,9 @@ types:
     - id: proofs_tag
       type: u1
       enum: proofs_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__proofs
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof
+      if: (proofs_tag == ::proofs_tag::proofs_tag::sparse_proof)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__proofs
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__dense_proof_entries
       if: (proofs_tag == ::proofs_tag::proofs_tag::dense_proof)
@@ -804,6 +921,9 @@ types:
     - id: after_tag
       type: u1
       enum: after_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__after
+      size: 32
+      if: (after_tag == ::after_tag::after_tag::value)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__after
       size: 32
       if: (after_tag == ::after_tag::after_tag::node)
@@ -812,6 +932,9 @@ types:
     - id: before_tag
       type: u1
       enum: before_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__before
+      size: 32
+      if: (before_tag == ::before_tag::before_tag::value)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__before
       size: 32
       if: (before_tag == ::before_tag::before_tag::node)
@@ -852,6 +975,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_refute__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_refute__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_refute__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -900,6 +1029,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_publish__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -936,6 +1071,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_cement__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_cement__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_cement__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -990,6 +1131,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_add_messages__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_add_messages__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_add_messages__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1034,6 +1181,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_originate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_originate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_originate__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1068,6 +1221,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_publish_slot_header__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_publish_slot_header__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: dal_publish_slot_header__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1134,6 +1293,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transfer_ticket__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1158,6 +1323,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transfer_ticket__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1223,6 +1394,15 @@ types:
     - id: amount_tag
       type: u1
       enum: amount_tag
+    - id: tx_rollup_dispatch_tickets__case__0__amount
+      type: u1
+      if: (amount_tag == ::amount_tag::amount_tag::case__0)
+    - id: tx_rollup_dispatch_tickets__case__1__amount
+      type: u2
+      if: (amount_tag == ::amount_tag::amount_tag::case__1)
+    - id: tx_rollup_dispatch_tickets__case__2__amount
+      type: s4
+      if: (amount_tag == ::amount_tag::amount_tag::case__2)
     - id: tx_rollup_dispatch_tickets__case__3__amount
       type: s8
       if: (amount_tag == ::amount_tag::amount_tag::case__3)
@@ -1250,6 +1430,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_dispatch_tickets__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_dispatch_tickets__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_dispatch_tickets__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1288,6 +1474,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_dispatch_tickets__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_dispatch_tickets__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_dispatch_tickets__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -1371,6 +1563,57 @@ types:
     - id: case__3_field3_elt_tag
       type: u1
       enum: case__3_field3_elt_tag
+    - id: tx_rollup_rejection__case__3__case__0__case__3_field3_elt
+      type: u1
+      if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__0)
+    - id: tx_rollup_rejection__case__3__case__8__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__8__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__8)
+    - id: tx_rollup_rejection__case__3__case__4__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__4__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__4)
+    - id: tx_rollup_rejection__case__3__case__12__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__12__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__12)
+    - id: tx_rollup_rejection__case__3__case__1__case__3_field3_elt
+      type: u2
+      if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__1)
+    - id: tx_rollup_rejection__case__3__case__9__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__9__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__9)
+    - id: tx_rollup_rejection__case__3__case__5__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__5__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__5)
+    - id: tx_rollup_rejection__case__3__case__13__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__13__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__13)
+    - id: tx_rollup_rejection__case__3__case__2__case__3_field3_elt
+      type: s4
+      if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__2)
+    - id: tx_rollup_rejection__case__3__case__10__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__10__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__10)
+    - id: tx_rollup_rejection__case__3__case__6__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__6__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__6)
+    - id: tx_rollup_rejection__case__3__case__14__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__14__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__14)
+    - id: tx_rollup_rejection__case__3__case__3__case__3_field3_elt
+      type: s8
+      if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__3)
+    - id: tx_rollup_rejection__case__3__case__11__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__11__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__11)
+    - id: tx_rollup_rejection__case__3__case__7__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__7__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__7)
+    - id: tx_rollup_rejection__case__3__case__15__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__15__case__3_field3_elt
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__15)
+    - id: tx_rollup_rejection__case__3__case__129__case__3_field3_elt
+      type: tx_rollup_rejection__case__3__case__129__case__129_entries
+      if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__129)
     - id: tx_rollup_rejection__case__3__case__130__case__3_field3_elt
       type: tx_rollup_rejection__case__3__case__130__case__130_entries
       if: (case__3_field3_elt_tag == ::case__3_field3_elt_tag::case__3_field3_elt_tag::case__130)
@@ -1529,6 +1772,9 @@ types:
     - id: case__131_elt_field1_tag
       type: u1
       enum: case__131_elt_field1_tag
+    - id: tx_rollup_rejection__case__3__case__131__case__0__case__131_elt_field1
+      size: 32
+      if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__3__case__131__case__1__case__131_elt_field1
       size: 32
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
@@ -1554,6 +1800,9 @@ types:
     - id: case__130_elt_field1_tag
       type: u1
       enum: case__130_elt_field1_tag
+    - id: tx_rollup_rejection__case__3__case__130__case__0__case__130_elt_field1
+      size: 32
+      if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__3__case__130__case__1__case__130_elt_field1
       size: 32
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
@@ -1579,6 +1828,9 @@ types:
     - id: case__129_elt_field1_tag
       type: u1
       enum: case__129_elt_field1_tag
+    - id: tx_rollup_rejection__case__3__case__129__case__0__case__129_elt_field1
+      size: 32
+      if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__3__case__129__case__1__case__129_elt_field1
       size: 32
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
@@ -1756,6 +2008,57 @@ types:
     - id: case__1_field3_elt_tag
       type: u1
       enum: case__1_field3_elt_tag
+    - id: tx_rollup_rejection__case__1__case__0__case__1_field3_elt
+      type: u1
+      if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__0)
+    - id: tx_rollup_rejection__case__1__case__8__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__8__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__8)
+    - id: tx_rollup_rejection__case__1__case__4__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__4__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__4)
+    - id: tx_rollup_rejection__case__1__case__12__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__12__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__12)
+    - id: tx_rollup_rejection__case__1__case__1__case__1_field3_elt
+      type: u2
+      if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__1)
+    - id: tx_rollup_rejection__case__1__case__9__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__9__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__9)
+    - id: tx_rollup_rejection__case__1__case__5__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__5__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__5)
+    - id: tx_rollup_rejection__case__1__case__13__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__13__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__13)
+    - id: tx_rollup_rejection__case__1__case__2__case__1_field3_elt
+      type: s4
+      if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__2)
+    - id: tx_rollup_rejection__case__1__case__10__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__10__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__10)
+    - id: tx_rollup_rejection__case__1__case__6__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__6__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__6)
+    - id: tx_rollup_rejection__case__1__case__14__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__14__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__14)
+    - id: tx_rollup_rejection__case__1__case__3__case__1_field3_elt
+      type: s8
+      if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__3)
+    - id: tx_rollup_rejection__case__1__case__11__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__11__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__11)
+    - id: tx_rollup_rejection__case__1__case__7__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__7__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__7)
+    - id: tx_rollup_rejection__case__1__case__15__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__15__case__1_field3_elt
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__15)
+    - id: tx_rollup_rejection__case__1__case__129__case__1_field3_elt
+      type: tx_rollup_rejection__case__1__case__129__case__129_entries
+      if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__129)
     - id: tx_rollup_rejection__case__1__case__130__case__1_field3_elt
       type: tx_rollup_rejection__case__1__case__130__case__130_entries
       if: (case__1_field3_elt_tag == ::case__1_field3_elt_tag::case__1_field3_elt_tag::case__130)
@@ -1914,6 +2217,9 @@ types:
     - id: case__131_elt_field1_tag
       type: u1
       enum: case__131_elt_field1_tag
+    - id: tx_rollup_rejection__case__1__case__131__case__0__case__131_elt_field1
+      size: 32
+      if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__1__case__131__case__1__case__131_elt_field1
       size: 32
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
@@ -1939,6 +2245,9 @@ types:
     - id: case__130_elt_field1_tag
       type: u1
       enum: case__130_elt_field1_tag
+    - id: tx_rollup_rejection__case__1__case__130__case__0__case__130_elt_field1
+      size: 32
+      if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__1__case__130__case__1__case__130_elt_field1
       size: 32
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
@@ -1964,6 +2273,9 @@ types:
     - id: case__129_elt_field1_tag
       type: u1
       enum: case__129_elt_field1_tag
+    - id: tx_rollup_rejection__case__1__case__129__case__0__case__129_elt_field1
+      size: 32
+      if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__1__case__129__case__1__case__129_elt_field1
       size: 32
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
@@ -2141,6 +2453,57 @@ types:
     - id: case__2_field3_elt_tag
       type: u1
       enum: case__2_field3_elt_tag
+    - id: tx_rollup_rejection__case__2__case__0__case__2_field3_elt
+      type: u1
+      if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__0)
+    - id: tx_rollup_rejection__case__2__case__8__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__8__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__8)
+    - id: tx_rollup_rejection__case__2__case__4__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__4__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__4)
+    - id: tx_rollup_rejection__case__2__case__12__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__12__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__12)
+    - id: tx_rollup_rejection__case__2__case__1__case__2_field3_elt
+      type: u2
+      if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__1)
+    - id: tx_rollup_rejection__case__2__case__9__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__9__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__9)
+    - id: tx_rollup_rejection__case__2__case__5__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__5__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__5)
+    - id: tx_rollup_rejection__case__2__case__13__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__13__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__13)
+    - id: tx_rollup_rejection__case__2__case__2__case__2_field3_elt
+      type: s4
+      if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__2)
+    - id: tx_rollup_rejection__case__2__case__10__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__10__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__10)
+    - id: tx_rollup_rejection__case__2__case__6__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__6__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__6)
+    - id: tx_rollup_rejection__case__2__case__14__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__14__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__14)
+    - id: tx_rollup_rejection__case__2__case__3__case__2_field3_elt
+      type: s8
+      if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__3)
+    - id: tx_rollup_rejection__case__2__case__11__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__11__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__11)
+    - id: tx_rollup_rejection__case__2__case__7__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__7__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__7)
+    - id: tx_rollup_rejection__case__2__case__15__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__15__case__2_field3_elt
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__15)
+    - id: tx_rollup_rejection__case__2__case__129__case__2_field3_elt
+      type: tx_rollup_rejection__case__2__case__129__case__129_entries
+      if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__129)
     - id: tx_rollup_rejection__case__2__case__130__case__2_field3_elt
       type: tx_rollup_rejection__case__2__case__130__case__130_entries
       if: (case__2_field3_elt_tag == ::case__2_field3_elt_tag::case__2_field3_elt_tag::case__130)
@@ -2299,6 +2662,9 @@ types:
     - id: case__131_elt_field1_tag
       type: u1
       enum: case__131_elt_field1_tag
+    - id: tx_rollup_rejection__case__2__case__131__case__0__case__131_elt_field1
+      size: 32
+      if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__2__case__131__case__1__case__131_elt_field1
       size: 32
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
@@ -2324,6 +2690,9 @@ types:
     - id: case__130_elt_field1_tag
       type: u1
       enum: case__130_elt_field1_tag
+    - id: tx_rollup_rejection__case__2__case__130__case__0__case__130_elt_field1
+      size: 32
+      if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__2__case__130__case__1__case__130_elt_field1
       size: 32
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
@@ -2349,6 +2718,9 @@ types:
     - id: case__129_elt_field1_tag
       type: u1
       enum: case__129_elt_field1_tag
+    - id: tx_rollup_rejection__case__2__case__129__case__0__case__129_elt_field1
+      size: 32
+      if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__2__case__129__case__1__case__129_elt_field1
       size: 32
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
@@ -2526,6 +2898,57 @@ types:
     - id: case__0_field3_elt_tag
       type: u1
       enum: case__0_field3_elt_tag
+    - id: tx_rollup_rejection__case__0__case__0__case__0_field3_elt
+      type: u1
+      if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__0)
+    - id: tx_rollup_rejection__case__0__case__8__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__8__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__8)
+    - id: tx_rollup_rejection__case__0__case__4__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__4__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__4)
+    - id: tx_rollup_rejection__case__0__case__12__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__12__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__12)
+    - id: tx_rollup_rejection__case__0__case__1__case__0_field3_elt
+      type: u2
+      if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__1)
+    - id: tx_rollup_rejection__case__0__case__9__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__9__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__9)
+    - id: tx_rollup_rejection__case__0__case__5__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__5__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__5)
+    - id: tx_rollup_rejection__case__0__case__13__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__13__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__13)
+    - id: tx_rollup_rejection__case__0__case__2__case__0_field3_elt
+      type: s4
+      if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__2)
+    - id: tx_rollup_rejection__case__0__case__10__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__10__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__10)
+    - id: tx_rollup_rejection__case__0__case__6__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__6__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__6)
+    - id: tx_rollup_rejection__case__0__case__14__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__14__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__14)
+    - id: tx_rollup_rejection__case__0__case__3__case__0_field3_elt
+      type: s8
+      if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__3)
+    - id: tx_rollup_rejection__case__0__case__11__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__11__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__11)
+    - id: tx_rollup_rejection__case__0__case__7__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__7__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__7)
+    - id: tx_rollup_rejection__case__0__case__15__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__15__case__0_field3_elt
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__15)
+    - id: tx_rollup_rejection__case__0__case__129__case__0_field3_elt
+      type: tx_rollup_rejection__case__0__case__129__case__129_entries
+      if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__129)
     - id: tx_rollup_rejection__case__0__case__130__case__0_field3_elt
       type: tx_rollup_rejection__case__0__case__130__case__130_entries
       if: (case__0_field3_elt_tag == ::case__0_field3_elt_tag::case__0_field3_elt_tag::case__130)
@@ -2684,6 +3107,9 @@ types:
     - id: case__131_elt_field1_tag
       type: u1
       enum: case__131_elt_field1_tag
+    - id: tx_rollup_rejection__case__0__case__131__case__0__case__131_elt_field1
+      size: 32
+      if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__0__case__131__case__1__case__131_elt_field1
       size: 32
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
@@ -2709,6 +3135,9 @@ types:
     - id: case__130_elt_field1_tag
       type: u1
       enum: case__130_elt_field1_tag
+    - id: tx_rollup_rejection__case__0__case__130__case__0__case__130_elt_field1
+      size: 32
+      if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__0__case__130__case__1__case__130_elt_field1
       size: 32
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
@@ -2734,6 +3163,9 @@ types:
     - id: case__129_elt_field1_tag
       type: u1
       enum: case__129_elt_field1_tag
+    - id: tx_rollup_rejection__case__0__case__129__case__0__case__129_elt_field1
+      size: 32
+      if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__0)
     - id: tx_rollup_rejection__case__0__case__129__case__1__case__129_elt_field1
       size: 32
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
@@ -2937,6 +3369,9 @@ types:
     - id: message_tag
       type: u1
       enum: message_tag
+    - id: tx_rollup_rejection__batch__message
+      type: tx_rollup_rejection__batch__batch
+      if: (message_tag == ::message_tag::message_tag::batch)
     - id: tx_rollup_rejection__deposit__message
       type: tx_rollup_rejection__deposit__deposit
       if: (message_tag == ::message_tag::message_tag::deposit)
@@ -2956,6 +3391,15 @@ types:
     - id: amount_tag
       type: u1
       enum: amount_tag
+    - id: tx_rollup_rejection__deposit__case__0__amount
+      type: u1
+      if: (amount_tag == ::amount_tag::amount_tag::case__0)
+    - id: tx_rollup_rejection__deposit__case__1__amount
+      type: u2
+      if: (amount_tag == ::amount_tag::amount_tag::case__1)
+    - id: tx_rollup_rejection__deposit__case__2__amount
+      type: s4
+      if: (amount_tag == ::amount_tag::amount_tag::case__2)
     - id: tx_rollup_rejection__deposit__case__3__amount
       type: s8
       if: (amount_tag == ::amount_tag::amount_tag::case__3)
@@ -2964,6 +3408,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_rejection__deposit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_rejection__deposit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_rejection__deposit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -2980,6 +3430,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_rejection__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_rejection__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_rejection__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3006,6 +3462,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_remove_commitment__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_remove_commitment__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_remove_commitment__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3032,6 +3494,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_finalize_commitment__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_finalize_commitment__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_finalize_commitment__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3058,6 +3526,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_return_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_return_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_return_bond__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3118,6 +3592,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_commit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_commit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_commit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3160,6 +3640,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_submit_batch__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_submit_batch__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_submit_batch__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3181,6 +3667,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3212,6 +3704,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: register_global_constant__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3263,6 +3761,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: increase_paid_storage__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: increase_paid_storage__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: increase_paid_storage__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3290,6 +3794,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: set_deposits_limit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: set_deposits_limit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: set_deposits_limit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3318,6 +3828,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3372,6 +3888,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3459,6 +3981,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3467,6 +3995,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3491,6 +4025,12 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: reveal__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
     - id: reveal__p256__public_key
       size: 33
       if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
@@ -3505,6 +4045,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: reveal__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3524,6 +4070,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: ballot__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3555,6 +4107,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: proposals__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: proposals__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: proposals__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -3818,6 +4376,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_slot_availability__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_slot_availability__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: dal_slot_availability__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)

@@ -74,6 +74,37 @@ types:
     - id: micheline__017__ptnairob__michelson_v1__expression_tag
       type: u1
       enum: micheline__017__ptnairob__michelson_v1__expression_tag
+    - id: event__int__micheline__017__ptnairob__michelson_v1__expression
+      type: z
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == ::micheline__017__ptnairob__michelson_v1__expression_tag::micheline__017__ptnairob__michelson_v1__expression_tag::int)
+    - id: event__string__micheline__017__ptnairob__michelson_v1__expression
+      type: event__string__string
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == ::micheline__017__ptnairob__michelson_v1__expression_tag::micheline__017__ptnairob__michelson_v1__expression_tag::string)
+    - id: event__sequence__micheline__017__ptnairob__michelson_v1__expression
+      type: event__sequence__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::sequence)
+    - id: event__prim__no_args__no_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: u1
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == ::micheline__017__ptnairob__michelson_v1__expression_tag::micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: event__prim__no_args__no_annots__id_017__ptnairob__michelson__v1__primitives
+    - id: event__prim__no_args__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__no_args__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: event__prim__1_arg__no_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__1_arg__no_annots__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: event__prim__1_arg__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__1_arg__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: event__prim__2_args__no_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__2_args__no_annots__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: event__prim__2_args__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__2_args__some_annots__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: event__prim__generic__micheline__017__ptnairob__michelson_v1__expression
+      type: event__prim__generic__micheline__017__ptnairob__michelson_v1__expression
+      if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__generic)
     - id: event__bytes__micheline__017__ptnairob__michelson_v1__expression
       type: event__bytes__bytes
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == ::micheline__017__ptnairob__michelson_v1__expression_tag::micheline__017__ptnairob__michelson_v1__expression_tag::bytes)
@@ -232,6 +263,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: delegation__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -275,6 +315,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: origination__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -386,6 +435,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: transaction__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: transaction__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -458,6 +516,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

@@ -25,6 +25,63 @@ types:
     - id: alpha__operation_metadata__alpha__balance_and_update_tag
       type: u1
       enum: alpha__operation_metadata__alpha__balance_and_update_tag
+    - id: contract__alpha__operation_metadata__alpha__balance_and_update
+      type: contract__alpha__operation_metadata__alpha__balance_and_update
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::contract)
+    - id: block_fees__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::block_fees)
+    - id: deposits__alpha__operation_metadata__alpha__balance_and_update
+      type: deposits__alpha__operation_metadata__alpha__balance_and_update
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::deposits)
+    - id: nonce_revelation_rewards__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::nonce_revelation_rewards)
+    - id: attesting_rewards__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::attesting_rewards)
+    - id: baking_rewards__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::baking_rewards)
+    - id: baking_bonuses__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::baking_bonuses)
+    - id: storage_fees__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::storage_fees)
+    - id: double_signing_punishments__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::double_signing_punishments)
+    - id: lost_attesting_rewards__alpha__operation_metadata__alpha__balance_and_update
+      type: lost_attesting_rewards__alpha__operation_metadata__alpha__balance_and_update
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::lost_attesting_rewards)
+    - id: liquidity_baking_subsidies__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::liquidity_baking_subsidies)
+    - id: burned__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::burned)
+    - id: commitments__alpha__operation_metadata__alpha__balance_and_update
+      type: commitments__alpha__operation_metadata__alpha__balance_and_update
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::commitments)
+    - id: bootstrap__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::bootstrap)
+    - id: invoice__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::invoice)
+    - id: initial_commitments__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::initial_commitments)
+    - id: minted__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::minted)
+    - id: frozen_bonds__alpha__operation_metadata__alpha__balance_and_update
+      type: frozen_bonds__alpha__operation_metadata__alpha__balance_and_update
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::frozen_bonds)
+    - id: smart_rollup_refutation_punishments__alpha__operation_metadata__alpha__balance_and_update
+      type: s8
+      if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::smart_rollup_refutation_punishments)
     - id: smart_rollup_refutation_rewards__alpha__operation_metadata__alpha__balance_and_update
       type: s8
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == ::alpha__operation_metadata__alpha__balance_and_update_tag::alpha__operation_metadata__alpha__balance_and_update_tag::smart_rollup_refutation_rewards)
@@ -49,6 +106,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: staking_delegate_denominator__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: staking_delegate_denominator__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: staking_delegate_denominator__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: staking_delegate_denominator__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -85,6 +151,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: staking_delegator_numerator__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: staking_delegator_numerator__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: staking_delegator_numerator__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: staking_delegator_numerator__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -104,6 +179,9 @@ types:
     - id: alpha__staker_tag
       type: u1
       enum: alpha__staker_tag
+    - id: unstaked_deposits__single__alpha__staker
+      type: unstaked_deposits__single__alpha__staker
+      if: (alpha__staker_tag == alpha__staker_tag::single)
     - id: unstaked_deposits__shared__alpha__staker
       type: unstaked_deposits__shared__public_key_hash
       if: (alpha__staker_tag == ::alpha__staker_tag::alpha__staker_tag::shared)
@@ -113,6 +191,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__shared__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__shared__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__shared__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__shared__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -131,6 +218,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__single__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__single__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__single__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -158,6 +254,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: unstaked_deposits__single__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: unstaked_deposits__single__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: unstaked_deposits__single__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: unstaked_deposits__single__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -204,6 +309,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: frozen_bonds__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: frozen_bonds__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: frozen_bonds__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: frozen_bonds__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -231,6 +345,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: lost_attesting_rewards__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: lost_attesting_rewards__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: lost_attesting_rewards__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: lost_attesting_rewards__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -248,6 +371,9 @@ types:
     - id: alpha__staker_tag
       type: u1
       enum: alpha__staker_tag
+    - id: deposits__single__alpha__staker
+      type: deposits__single__alpha__staker
+      if: (alpha__staker_tag == alpha__staker_tag::single)
     - id: deposits__shared__alpha__staker
       type: deposits__shared__public_key_hash
       if: (alpha__staker_tag == ::alpha__staker_tag::alpha__staker_tag::shared)
@@ -257,6 +383,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__shared__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__shared__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__shared__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__shared__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -275,6 +410,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__single__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__single__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__single__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -302,6 +446,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__single__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__single__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__single__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__single__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -338,6 +491,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: contract__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

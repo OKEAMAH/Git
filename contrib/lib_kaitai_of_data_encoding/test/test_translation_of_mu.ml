@@ -116,7 +116,7 @@ let%expect_test "test more mu" =
           enum: mt_tag
         - id: one__mt
           type: u1
-          if: (mt_tag == mt_tag::one)
+          if: (mt_tag == ::mt_tag::mt_tag::one)
           enum: bool
         - id: seq__mt
           type: seq__mt
@@ -133,13 +133,13 @@ let%expect_test "test more mu" =
           type: branch__branches
       branch__branches:
         seq:
-        - id: size_of_branches
+        - id: len_branches
           type: u4
           valid:
             max: 1073741823
         - id: branches
           type: branch__branches_entries
-          size: size_of_branches
+          size: len_branches
           repeat: eos
       branch__branches_entries:
         seq:

@@ -27,6 +27,19 @@ types:
     - id: id_017__ptnairob__operation_metadata__alpha__balance_tag
       type: u1
       enum: id_017__ptnairob__operation_metadata__alpha__balance_tag
+    - id: contract__id_017__ptnairob__operation_metadata__alpha__balance
+      type: contract__id_017__ptnairob__contract_id
+      if: (id_017__ptnairob__operation_metadata__alpha__balance_tag == ::id_017__ptnairob__operation_metadata__alpha__balance_tag::id_017__ptnairob__operation_metadata__alpha__balance_tag::contract)
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: deposits__id_017__ptnairob__operation_metadata__alpha__balance
+      type: deposits__public_key_hash
+      if: (id_017__ptnairob__operation_metadata__alpha__balance_tag == ::id_017__ptnairob__operation_metadata__alpha__balance_tag::id_017__ptnairob__operation_metadata__alpha__balance_tag::deposits)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: lost_endorsing_rewards__id_017__ptnairob__operation_metadata__alpha__balance
+      type: lost_endorsing_rewards__id_017__ptnairob__operation_metadata__alpha__balance
+      if: (id_017__ptnairob__operation_metadata__alpha__balance_tag == id_017__ptnairob__operation_metadata__alpha__balance_tag::lost_endorsing_rewards)
     - id: commitments__id_017__ptnairob__operation_metadata__alpha__balance
       size: 20
       if: (id_017__ptnairob__operation_metadata__alpha__balance_tag == ::id_017__ptnairob__operation_metadata__alpha__balance_tag::id_017__ptnairob__operation_metadata__alpha__balance_tag::commitments)
@@ -47,6 +60,12 @@ types:
     - id: id_017__ptnairob__bond_id_tag
       type: u1
       enum: id_017__ptnairob__bond_id_tag
+    - id: frozen_bonds__tx_rollup_bond_id__id_017__ptnairob__bond_id
+      size: 20
+      if: (id_017__ptnairob__bond_id_tag == ::id_017__ptnairob__bond_id_tag::id_017__ptnairob__bond_id_tag::tx_rollup_bond_id)
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
     - id: frozen_bonds__smart_rollup_bond_id__id_017__ptnairob__bond_id
       size: 20
       if: (id_017__ptnairob__bond_id_tag == ::id_017__ptnairob__bond_id_tag::id_017__ptnairob__bond_id_tag::smart_rollup_bond_id)
@@ -77,6 +96,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: frozen_bonds__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: frozen_bonds__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: frozen_bonds__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: frozen_bonds__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -96,6 +124,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: lost_endorsing_rewards__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: lost_endorsing_rewards__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: lost_endorsing_rewards__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: lost_endorsing_rewards__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -104,6 +141,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: deposits__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: deposits__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: deposits__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: deposits__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
@@ -131,6 +177,15 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
     - id: contract__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)

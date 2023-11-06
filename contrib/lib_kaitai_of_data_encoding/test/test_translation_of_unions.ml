@@ -42,7 +42,7 @@ let%expect_test "test simple union" =
       enum: simple_union_tag
     - id: some__simple_union
       type: u1
-      if: (simple_union_tag == simple_union_tag::some)
+      if: (simple_union_tag == ::simple_union_tag::simple_union_tag::some)
   |}]
 
 let%expect_test "test medium union" =
@@ -101,9 +101,15 @@ let%expect_test "test medium union" =
     - id: more_union_tag
       type: u1
       enum: more_union_tag
+    - id: a__more_union
+      type: u1
+      if: (more_union_tag == ::more_union_tag::more_union_tag::a)
+    - id: b__more_union
+      type: u2
+      if: (more_union_tag == ::more_union_tag::more_union_tag::b)
     - id: c__more_union
       type: u1
-      if: (more_union_tag == more_union_tag::c)
+      if: (more_union_tag == ::more_union_tag::more_union_tag::c)
       enum: bool
   |}]
 
@@ -167,12 +173,12 @@ let%expect_test "test union with structures inside" =
           type: b__b_field1
       b__b_field1:
         seq:
-        - id: size_of_b_field1
+        - id: len_b_field1
           type: u4
           valid:
             max: 1073741823
         - id: b_field1
-          size: size_of_b_field1
+          size: len_b_field1
     enums:
       bool:
         0: false
@@ -188,7 +194,7 @@ let%expect_test "test union with structures inside" =
       enum: more_union_tag
     - id: a__more_union
       type: u1
-      if: (more_union_tag == more_union_tag::a)
+      if: (more_union_tag == ::more_union_tag::more_union_tag::a)
     - id: b__more_union
       type: b__more_union
       if: (more_union_tag == more_union_tag::b)

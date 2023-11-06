@@ -8,6 +8,63 @@ types:
     - id: id_015__ptlimapt__operation__alpha__contents_tag
       type: u1
       enum: id_015__ptlimapt__operation__alpha__contents_tag
+    - id: endorsement__id_015__ptlimapt__operation__alpha__contents
+      type: endorsement__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::endorsement)
+    - id: preendorsement__id_015__ptlimapt__operation__alpha__contents
+      type: preendorsement__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::preendorsement)
+    - id: dal_slot_availability__id_015__ptlimapt__operation__alpha__contents
+      type: dal_slot_availability__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::dal_slot_availability)
+    - id: seed_nonce_revelation__id_015__ptlimapt__operation__alpha__contents
+      type: seed_nonce_revelation__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::seed_nonce_revelation)
+    - id: vdf_revelation__id_015__ptlimapt__operation__alpha__contents
+      type: vdf_revelation__solution
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == ::id_015__ptlimapt__operation__alpha__contents_tag::id_015__ptlimapt__operation__alpha__contents_tag::vdf_revelation)
+    - id: double_endorsement_evidence__id_015__ptlimapt__operation__alpha__contents
+      type: double_endorsement_evidence__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::double_endorsement_evidence)
+    - id: double_preendorsement_evidence__id_015__ptlimapt__operation__alpha__contents
+      type: double_preendorsement_evidence__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::double_preendorsement_evidence)
+    - id: double_baking_evidence__id_015__ptlimapt__operation__alpha__contents
+      type: double_baking_evidence__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::double_baking_evidence)
+    - id: activate_account__id_015__ptlimapt__operation__alpha__contents
+      type: activate_account__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::activate_account)
+    - id: proposals__id_015__ptlimapt__operation__alpha__contents
+      type: proposals__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::proposals)
+    - id: ballot__id_015__ptlimapt__operation__alpha__contents
+      type: ballot__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::ballot)
+    - id: reveal__id_015__ptlimapt__operation__alpha__contents
+      type: reveal__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::reveal)
+    - id: transaction__id_015__ptlimapt__operation__alpha__contents
+      type: transaction__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::transaction)
+    - id: origination__id_015__ptlimapt__operation__alpha__contents
+      type: origination__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::origination)
+    - id: delegation__id_015__ptlimapt__operation__alpha__contents
+      type: delegation__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::delegation)
+    - id: set_deposits_limit__id_015__ptlimapt__operation__alpha__contents
+      type: set_deposits_limit__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::set_deposits_limit)
+    - id: increase_paid_storage__id_015__ptlimapt__operation__alpha__contents
+      type: increase_paid_storage__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::increase_paid_storage)
+    - id: update_consensus_key__id_015__ptlimapt__operation__alpha__contents
+      type: update_consensus_key__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::update_consensus_key)
+    - id: drain_delegate__id_015__ptlimapt__operation__alpha__contents
+      type: drain_delegate__id_015__ptlimapt__operation__alpha__contents
+      if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::drain_delegate)
     - id: failing_noop__id_015__ptlimapt__operation__alpha__contents
       type: failing_noop__arbitrary
       if: (id_015__ptlimapt__operation__alpha__contents_tag == ::id_015__ptlimapt__operation__alpha__contents_tag::id_015__ptlimapt__operation__alpha__contents_tag::failing_noop)
@@ -153,6 +210,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_publish__some__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_publish__some__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: zk_rollup_publish__some__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -161,6 +224,37 @@ types:
     - id: micheline__015__ptlimapt__michelson_v1__expression_tag
       type: u1
       enum: micheline__015__ptlimapt__michelson_v1__expression_tag
+    - id: zk_rollup_publish__some__int__micheline__015__ptlimapt__michelson_v1__expression
+      type: z
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::int)
+    - id: zk_rollup_publish__some__string__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__string__string
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::string)
+    - id: zk_rollup_publish__some__sequence__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__sequence__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::sequence)
+    - id: zk_rollup_publish__some__prim__no_args__no_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: u1
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: zk_rollup_publish__some__prim__no_args__no_annots__id_015__ptlimapt__michelson__v1__primitives
+    - id: zk_rollup_publish__some__prim__no_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__no_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: zk_rollup_publish__some__prim__2_args__no_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__2_args__no_annots__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: zk_rollup_publish__some__prim__2_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__2_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: zk_rollup_publish__some__prim__generic__micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__prim__generic__micheline__015__ptlimapt__michelson_v1__expression
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__generic)
     - id: zk_rollup_publish__some__bytes__micheline__015__ptlimapt__michelson_v1__expression
       type: zk_rollup_publish__some__bytes__bytes
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::bytes)
@@ -333,6 +427,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: zk_rollup_publish__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -426,6 +526,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: zk_rollup_origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: zk_rollup_origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: zk_rollup_origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -462,6 +568,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_dal_slot_subscribe__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_dal_slot_subscribe__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_dal_slot_subscribe__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -485,6 +597,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_recover_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_recover_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_recover_bond__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -531,6 +649,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_execute_outbox_message__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_execute_outbox_message__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_execute_outbox_message__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -575,6 +699,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_timeout__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_timeout__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_timeout__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -637,6 +767,9 @@ types:
     - id: input_proof_tag
       type: u1
       enum: input_proof_tag
+    - id: sc_rollup_refute__proof__inbox__proof__input_proof
+      type: sc_rollup_refute__proof__inbox__proof__input_proof
+      if: (input_proof_tag == input_proof_tag::inbox__proof)
     - id: sc_rollup_refute__proof__reveal__proof__input_proof
       type: sc_rollup_refute__proof__reveal__proof__reveal_proof
       if: (input_proof_tag == ::input_proof_tag::input_proof_tag::reveal__proof)
@@ -677,6 +810,9 @@ types:
     - id: pvm_step_tag
       type: u1
       enum: pvm_step_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__pvm_step
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__proof
+      if: (pvm_step_tag == ::pvm_step_tag::pvm_step_tag::arithmetic__pvm__with__proof)
     - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__pvm_step
       type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__proof
       if: (pvm_step_tag == ::pvm_step_tag::pvm_step_tag::wasm__2__0__0__pvm__with__proof)
@@ -816,6 +952,411 @@ types:
     - id: tree_encoding_tag
       type: u1
       enum: tree_encoding_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__0__tree_encoding
+      type: u1
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__0)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__4)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__8__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__8__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__8)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__12__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__12__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__12)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__16__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__16__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__16)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__20__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__20__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__20)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__24__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__24__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__24)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__28__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__28__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__28)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__32__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__32__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__32)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__36__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__36__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__36)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__40__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__40__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__40)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__44__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__44__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__44)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__48__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__48__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__48)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__52__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__52__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__52)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__56__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__56__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__56)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__60)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__64__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__64__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__64)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__1__tree_encoding
+      type: u2
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__1)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__5__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__5__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__5)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__9__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__9__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__9)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__13__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__13__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__13)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__17__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__17__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__17)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__21__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__21__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__21)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__25__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__25__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__25)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__29__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__29__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__29)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__33__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__33__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__33)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__37__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__37__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__37)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__41__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__41__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__41)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__45__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__45__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__45)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__49__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__49__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__49)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__53__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__53__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__53)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__57__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__57__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__57)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__61)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__65__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__65__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__65)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__2__tree_encoding
+      type: s4
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__2)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__6__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__6__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__6)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__10__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__10__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__10)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__14__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__14__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__14)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__18__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__18__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__18)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__22__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__22__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__22)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__26__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__26__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__26)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__30__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__30__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__30)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__34__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__34__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__34)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__38__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__38__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__38)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__42__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__42__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__42)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__46__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__46__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__46)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__50__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__50__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__50)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__54__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__54__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__54)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__58__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__58__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__58)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__62)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__66__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__66__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__66)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__3__tree_encoding
+      type: s8
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__3)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__7__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__7__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__7)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__11__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__11__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__11)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__15__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__15__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__15)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__19__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__19__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__19)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__23__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__23__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__23)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__27__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__27__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__27)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__31__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__31__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__31)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__35__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__35__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__35)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__39__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__39__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__39)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__43__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__43__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__43)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__47__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__47__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__47)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__51__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__51__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__51)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__55__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__55__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__55)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__59__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__59__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__59)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__63)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__67__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__67__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__67)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__129)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__130)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__131)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__132)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__133)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__134)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__135)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__136)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__137)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__138)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__139)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__140)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__141)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__142)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__143)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__144)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__145)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__146)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__147)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__148)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__149)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__150)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__151)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__152)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__153)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__154)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__155)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__156)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__157)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__158)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__159)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__160)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__161)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__162)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__163)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__164)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__165)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__166)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__167)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__168)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__169)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__170)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__171)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__172)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__173)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__174)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__175)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__176)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__177)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__178)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__179)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__180)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__181)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__182)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__183)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__184)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__185)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__186)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__187)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__188)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__189)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_entries
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__190)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__191)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__192__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__192__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__192)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__193__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__193__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__193)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__195__tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__195__tree_encoding
+      if: (tree_encoding_tag == tree_encoding_tag::case__195)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__200__tree_encoding
+      size: 32
+      if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__200)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__208__tree_encoding
       size: 32
       if: (tree_encoding_tag == ::tree_encoding_tag::tree_encoding_tag::case__208)
@@ -3065,6 +3606,399 @@ types:
     - id: inode_tree_tag
       type: u1
       enum: inode_tree_tag
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__0__inode_tree
+      type: u1
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__0)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__4__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__4__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__4)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__8__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__8__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__8)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__12__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__12__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__12)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__16__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__16__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__16)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__20__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__20__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__20)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__24__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__24__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__24)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__28__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__28__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__28)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__32__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__32__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__32)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__36__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__36__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__36)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__40__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__40__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__40)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__44__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__44__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__44)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__48__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__48__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__48)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__52__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__52__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__52)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__56__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__56__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__56)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__60)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__64__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__64__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__64)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__1__inode_tree
+      type: u2
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__1)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__5__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__5__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__5)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__9__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__9__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__9)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__13__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__13__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__13)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__17__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__17__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__17)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__21__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__21__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__21)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__25__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__25__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__25)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__29__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__29__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__29)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__33__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__33__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__33)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__37__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__37__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__37)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__41__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__41__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__41)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__45__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__45__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__45)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__49__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__49__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__49)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__53__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__53__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__53)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__57__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__57__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__57)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__61)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__65__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__65__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__65)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__2__inode_tree
+      type: s4
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__2)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__6__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__6__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__6)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__10__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__10__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__10)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__14__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__14__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__14)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__18__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__18__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__18)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__22__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__22__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__22)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__26__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__26__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__26)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__30__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__30__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__30)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__34__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__34__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__34)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__38__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__38__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__38)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__42__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__42__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__42)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__46__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__46__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__46)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__50__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__50__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__50)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__54__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__54__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__54)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__58__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__58__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__58)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__62)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__66__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__66__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__66)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__3__inode_tree
+      type: s8
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__3)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__7__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__7__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__7)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__11__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__11__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__11)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__15__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__15__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__15)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__19__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__19__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__19)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__23__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__23__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__23)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__27__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__27__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__27)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__31__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__31__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__31)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__35__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__35__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__35)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__39__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__39__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__39)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__43__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__43__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__43)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__47__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__47__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__47)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__51__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__51__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__51)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__55__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__55__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__55)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__59__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__59__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__59)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__63)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__67__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__67__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__67)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__129)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__130)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__131)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__132)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__133)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__134)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__135)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__136)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__137)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__138)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__139)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__140)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__141)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__142)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__143)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__144)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__145)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__146)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__147)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__148)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__149)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__150)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__151)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__152)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__153)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__154)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__155)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__156)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__157)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__158)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__159)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__160)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__161)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__162)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__163)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__164)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__165)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__166)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__167)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__168)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__169)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__170)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__171)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__172)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__173)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__174)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__175)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__176)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__177)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__178)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__179)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__180)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__181)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__182)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__183)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__184)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__185)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__186)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__187)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__188)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__189)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_entries
+      if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__190)
+    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__inode_tree
+      if: (inode_tree_tag == inode_tree_tag::case__191)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__192__inode_tree
       size: 32
       if: (inode_tree_tag == ::inode_tree_tag::inode_tree_tag::case__192)
@@ -5310,6 +6244,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_refute__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_refute__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_refute__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5356,6 +6296,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_publish__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5392,6 +6338,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_cement__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_cement__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_cement__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5446,6 +6398,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_add_messages__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_add_messages__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_add_messages__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5500,6 +6458,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: sc_rollup_originate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: sc_rollup_originate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: sc_rollup_originate__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5531,6 +6495,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_publish_slot_header__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_publish_slot_header__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: dal_publish_slot_header__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5597,6 +6567,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transfer_ticket__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5621,6 +6597,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transfer_ticket__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transfer_ticket__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transfer_ticket__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5686,6 +6668,15 @@ types:
     - id: amount_tag
       type: u1
       enum: amount_tag
+    - id: tx_rollup_dispatch_tickets__case__0__amount
+      type: u1
+      if: (amount_tag == ::amount_tag::amount_tag::case__0)
+    - id: tx_rollup_dispatch_tickets__case__1__amount
+      type: u2
+      if: (amount_tag == ::amount_tag::amount_tag::case__1)
+    - id: tx_rollup_dispatch_tickets__case__2__amount
+      type: s4
+      if: (amount_tag == ::amount_tag::amount_tag::case__2)
     - id: tx_rollup_dispatch_tickets__case__3__amount
       type: s8
       if: (amount_tag == ::amount_tag::amount_tag::case__3)
@@ -5713,6 +6704,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_dispatch_tickets__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_dispatch_tickets__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_dispatch_tickets__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5751,6 +6748,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_dispatch_tickets__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_dispatch_tickets__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_dispatch_tickets__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5851,6 +6854,9 @@ types:
     - id: message_tag
       type: u1
       enum: message_tag
+    - id: tx_rollup_rejection__batch__message
+      type: tx_rollup_rejection__batch__batch
+      if: (message_tag == ::message_tag::message_tag::batch)
     - id: tx_rollup_rejection__deposit__message
       type: tx_rollup_rejection__deposit__deposit
       if: (message_tag == ::message_tag::message_tag::deposit)
@@ -5870,6 +6876,15 @@ types:
     - id: amount_tag
       type: u1
       enum: amount_tag
+    - id: tx_rollup_rejection__deposit__case__0__amount
+      type: u1
+      if: (amount_tag == ::amount_tag::amount_tag::case__0)
+    - id: tx_rollup_rejection__deposit__case__1__amount
+      type: u2
+      if: (amount_tag == ::amount_tag::amount_tag::case__1)
+    - id: tx_rollup_rejection__deposit__case__2__amount
+      type: s4
+      if: (amount_tag == ::amount_tag::amount_tag::case__2)
     - id: tx_rollup_rejection__deposit__case__3__amount
       type: s8
       if: (amount_tag == ::amount_tag::amount_tag::case__3)
@@ -5878,6 +6893,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_rejection__deposit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_rejection__deposit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_rejection__deposit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5894,6 +6915,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_rejection__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_rejection__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_rejection__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5920,6 +6947,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_remove_commitment__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_remove_commitment__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_remove_commitment__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5946,6 +6979,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_finalize_commitment__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_finalize_commitment__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_finalize_commitment__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -5972,6 +7011,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_return_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_return_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_return_bond__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6032,6 +7077,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_commit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_commit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_commit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6074,6 +7125,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_submit_batch__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_submit_batch__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_submit_batch__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6095,6 +7152,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: tx_rollup_origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: tx_rollup_origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: tx_rollup_origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6126,6 +7189,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: register_global_constant__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6153,6 +7222,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: drain_delegate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: drain_delegate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: drain_delegate__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6177,6 +7252,12 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: update_consensus_key__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
     - id: update_consensus_key__p256__public_key
       size: 33
       if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
@@ -6185,6 +7266,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: update_consensus_key__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: update_consensus_key__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6228,6 +7315,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: increase_paid_storage__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: increase_paid_storage__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: increase_paid_storage__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6255,6 +7348,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: set_deposits_limit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: set_deposits_limit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: set_deposits_limit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6283,6 +7382,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6337,6 +7442,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6424,6 +7535,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6432,6 +7549,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: transaction__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6456,6 +7579,12 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: reveal__ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
     - id: reveal__p256__public_key
       size: 33
       if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
@@ -6470,6 +7599,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: reveal__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6489,6 +7624,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: ballot__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6522,6 +7663,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: proposals__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: proposals__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: proposals__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
@@ -6785,6 +7932,12 @@ types:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
+    - id: dal_slot_availability__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+    - id: dal_slot_availability__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
     - id: dal_slot_availability__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)

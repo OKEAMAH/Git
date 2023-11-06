@@ -74,13 +74,13 @@ let%expect_test "test dynamic size list translation" =
       - id: list_of_uint8_elt
         type: u1
   seq:
-  - id: size_of_list_of_uint8
+  - id: len_list_of_uint8
     type: u4
     valid:
       max: 1073741823
   - id: list_of_uint8
     type: list_of_uint8_entries
-    size: size_of_list_of_uint8
+    size: len_list_of_uint8
     repeat: eos
   |}]
 
@@ -103,14 +103,16 @@ let%expect_test "test dynamic size list with max length" =
       - id: list_with_length_elt
         type: u1
   seq:
-  - id: size_of_list_with_length
+  - id: len_list_with_length
     type: u4
     valid:
       max: 5
   - id: list_with_length
     type: list_with_length_entries
-    size: size_of_list_with_length
+    size: len_list_with_length
     repeat: eos
+    valid:
+      max: 5
   |}]
 
 let%expect_test "test variable size list with max length" =
@@ -156,7 +158,7 @@ let%expect_test "test list with length" =
       - id: list_with_length_elt
         type: u1
   seq:
-  - id: number_of_elements_in_list_with_length
+  - id: num_list_with_length
     type: s4
     valid:
       min: -1073741824
@@ -164,7 +166,7 @@ let%expect_test "test list with length" =
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr
-    repeat-expr: number_of_elements_in_list_with_length
+    repeat-expr: num_list_with_length
   |}]
 
 let%expect_test "test list with length" =
@@ -186,14 +188,14 @@ let%expect_test "test list with length" =
       - id: list_with_length_elt
         type: u1
   seq:
-  - id: number_of_elements_in_list_with_length
+  - id: num_list_with_length
     type: u1
     valid:
       max: 255
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr
-    repeat-expr: number_of_elements_in_list_with_length
+    repeat-expr: num_list_with_length
   |}]
 
 let%expect_test "test list with length" =
@@ -215,12 +217,12 @@ let%expect_test "test list with length" =
       - id: list_with_length_elt
         type: u1
   seq:
-  - id: number_of_elements_in_list_with_length
+  - id: num_list_with_length
     type: u2
     valid:
       max: 65535
   - id: list_with_length_entries
     type: list_with_length_entries
     repeat: expr
-    repeat-expr: number_of_elements_in_list_with_length
+    repeat-expr: num_list_with_length
   |}]

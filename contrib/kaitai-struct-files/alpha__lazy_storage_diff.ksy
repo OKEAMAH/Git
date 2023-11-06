@@ -335,6 +335,37 @@ types:
     - id: micheline__alpha__michelson_v1__expression_tag
       type: u1
       enum: micheline__alpha__michelson_v1__expression_tag
+    - id: big_map__update__int__micheline__alpha__michelson_v1__expression
+      type: z
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::int)
+    - id: big_map__update__string__micheline__alpha__michelson_v1__expression
+      type: big_map__update__string__string
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::string)
+    - id: big_map__update__sequence__micheline__alpha__michelson_v1__expression
+      type: big_map__update__sequence__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
+    - id: big_map__update__prim__no_args__no_annots__micheline__alpha__michelson_v1__expression
+      type: u1
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: big_map__update__prim__no_args__no_annots__alpha__michelson__v1__primitives
+    - id: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: big_map__update__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: big_map__update__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: big_map__update__prim__generic__micheline__alpha__michelson_v1__expression
+      type: big_map__update__prim__generic__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
     - id: big_map__update__bytes__micheline__alpha__michelson_v1__expression
       type: big_map__update__bytes__bytes
       if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::bytes)

@@ -8,6 +8,37 @@ types:
     - id: micheline__alpha__michelson_v1__expression_tag
       type: u1
       enum: micheline__alpha__michelson_v1__expression_tag
+    - id: int__micheline__alpha__michelson_v1__expression
+      type: z
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::int)
+    - id: string__micheline__alpha__michelson_v1__expression
+      type: string__string
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::string)
+    - id: sequence__micheline__alpha__michelson_v1__expression
+      type: sequence__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
+    - id: prim__no_args__no_annots__micheline__alpha__michelson_v1__expression
+      type: u1
+      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: prim__no_args__no_annots__alpha__michelson__v1__primitives
+    - id: prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
+      type: prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
+      type: prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
+      type: prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
+      type: prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
+      type: prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: prim__generic__micheline__alpha__michelson_v1__expression
+      type: prim__generic__micheline__alpha__michelson_v1__expression
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
     - id: bytes__micheline__alpha__michelson_v1__expression
       type: bytes__bytes
       if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::bytes)

@@ -223,12 +223,12 @@ let%expect_test "test dynamic size bytes translation" =
       endian: be
     doc: ! 'Encoding id: ground_bytes'
     seq:
-    - id: size_of_ground_bytes
+    - id: len_ground_bytes
       type: u4
       valid:
         max: 1073741823
     - id: ground_bytes
-      size: size_of_ground_bytes |}]
+      size: len_ground_bytes |}]
 
 let%expect_test "test fixed size bytes translation" =
   let s =
@@ -278,12 +278,12 @@ let%expect_test "test dynamic size string translation" =
       endian: be
     doc: ! 'Encoding id: ground_string'
     seq:
-    - id: size_of_ground_string
+    - id: len_ground_string
       type: u4
       valid:
         max: 1073741823
     - id: ground_string
-      size: size_of_ground_string |}]
+      size: len_ground_string |}]
 
 let%expect_test "test big numbers translation" =
   let s =

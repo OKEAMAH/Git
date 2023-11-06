@@ -228,6 +228,73 @@ seq:
 - id: p2p_connection__pool_event_tag
   type: u1
   enum: p2p_connection__pool_event_tag
+- id: new_point__p2p_connection__pool_event
+  type: new_point__p2p_point__id
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::new_point)
+  doc: Identifier for a peer point
+- id: new_peer__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::new_peer)
+- id: incoming_connection__p2p_connection__pool_event
+  type: incoming_connection__p2p_point__id
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::incoming_connection)
+  doc: Identifier for a peer point
+- id: outgoing_connection__p2p_connection__pool_event
+  type: outgoing_connection__p2p_point__id
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::outgoing_connection)
+  doc: Identifier for a peer point
+- id: authentication_failed__p2p_connection__pool_event
+  type: authentication_failed__p2p_point__id
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::authentication_failed)
+  doc: Identifier for a peer point
+- id: accepting_request__p2p_connection__pool_event
+  type: accepting_request__p2p_connection__pool_event
+  if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::accepting_request)
+- id: rejecting_request__p2p_connection__pool_event
+  type: rejecting_request__p2p_connection__pool_event
+  if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::rejecting_request)
+- id: request_rejected__p2p_connection__pool_event
+  type: request_rejected__p2p_connection__pool_event
+  if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::request_rejected)
+- id: connection_established__p2p_connection__pool_event
+  type: connection_established__p2p_connection__pool_event
+  if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::connection_established)
+- id: disconnection__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::disconnection)
+- id: external_disconnection__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::external_disconnection)
+- id: swap_request_received__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_request_received)
+- id: swap_ack_received__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_ack_received)
+- id: swap_request_sent__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_request_sent)
+- id: swap_ack_sent__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_ack_sent)
+- id: swap_request_ignored__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_request_ignored)
+- id: swap_success__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_success)
+- id: swap_failure__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::swap_failure)
+- id: bootstrap_sent__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::bootstrap_sent)
+- id: bootstrap_received__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::bootstrap_received)
+- id: advertise_sent__p2p_connection__pool_event
+  size: 16
+  if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::advertise_sent)
 - id: advertise_received__p2p_connection__pool_event
   size: 16
   if: (p2p_connection__pool_event_tag == ::p2p_connection__pool_event_tag::p2p_connection__pool_event_tag::advertise_received)

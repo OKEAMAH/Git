@@ -64,6 +64,9 @@ types:
     - id: p2p_point__state_tag
       type: u1
       enum: p2p_point__state_tag
+    - id: accepted__p2p_point__state
+      size: 16
+      if: (p2p_point__state_tag == ::p2p_point__state_tag::p2p_point__state_tag::accepted)
     - id: running__p2p_point__state
       size: 16
       if: (p2p_point__state_tag == ::p2p_point__state_tag::p2p_point__state_tag::running)

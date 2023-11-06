@@ -8,6 +8,15 @@ types:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
+    - id: ed25519__public_key
+      size: 32
+      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+    - id: secp256k1__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+    - id: p256__public_key
+      size: 33
+      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
     - id: bls__public_key
       size: 48
       if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
