@@ -497,9 +497,9 @@ types:
       if: (public_key_tag == public_key_tag::bls)
 enums:
   pvm_kind:
-    2: riscv
     0: arith
     1: wasm_2_0_0
+    2: riscv
   bool:
     0: false
     255: true

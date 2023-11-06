@@ -433,6 +433,7 @@ let rec seq_field_of_data_encoding :
                  EnumValueSpec.
                    {name = escape_id m; doc = Helpers.default_doc_spec} ))
         |> List.of_seq
+        |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
       in
       let enumspec = EnumSpec.{map} in
       let enums = Helpers.add_uniq_assoc enums (id, enumspec) in

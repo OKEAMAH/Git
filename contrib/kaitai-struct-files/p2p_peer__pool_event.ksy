@@ -20,12 +20,12 @@ enums:
     0: false
     255: true
   kind:
-    2: request_rejected
-    3: connection_established
-    5: external_disconnection
-    4: disconnection
     0: incoming_request
     1: rejecting_request
+    2: request_rejected
+    3: connection_established
+    4: disconnection
+    5: external_disconnection
 seq:
 - id: kind
   type: u1

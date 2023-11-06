@@ -9,9 +9,9 @@ doc: ! >-
   (otherwise).
 enums:
   p2p_peer__state:
-    2: disconnected
     0: accepted
     1: running
+    2: disconnected
 seq:
 - id: p2p_peer__state
   type: u1
