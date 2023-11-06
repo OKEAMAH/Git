@@ -205,7 +205,7 @@ and types_spec types = mapping (types |> List.map (fun (k, v) -> (k, to_yaml v))
 
 let to_string t =
   let y = to_yaml t in
-  match Yaml.yaml_to_string y with Ok x -> x | Error (`Msg m) -> failwith m
+  match Yaml.yaml_to_string ~len:(65535 * 8) y with Ok x -> x | Error (`Msg m) -> failwith m
 
 let print_diff difftool a b =
   let a_str = Sexplib.Sexp.to_string_hum (Types.ClassSpec.sexp_of_t a) in
