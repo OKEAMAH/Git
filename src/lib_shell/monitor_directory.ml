@@ -26,16 +26,21 @@
 
 let monitor_head
     ~(head_watcher :
-       (Block_hash.t * Block_header.t) Lwt_stream.t * Lwt_watcher.stopper) store
-    chain q () =
+       (Block_hash.t * Block_header.t) Lwt_stream.t * Lwt_watcher.stopper)
+    (store : Store.t ref) chain q () =
   let open Lwt_syntax in
-  let* chain_store = Chain_directory.get_chain_store_exn store chain in
+  let* chain_store = Chain_directory.get_chain_store_exn !store chain in
   let block_stream, stopper = head_watcher in
   let* head = Store.Chain.current_head chain_store in
   let shutdown () = Lwt_watcher.shutdown stopper in
   let within_protocols header =
     let find_protocol protocol_level =
-      let+ p = Store.Chain.find_protocol chain_store ~protocol_level in
+      (* Here, we need to resolve given store ref to make sure that we
+         are accessing the latest store value. *)
+      let* updated_chain_store =
+        Chain_directory.get_chain_store_exn !store chain
+      in
+      let+ p = Store.Chain.find_protocol updated_chain_store ~protocol_level in
       WithExceptions.Option.to_exn
         ~none:
           (Failure (Format.sprintf "Cannot find protocol %d" protocol_level))
@@ -93,8 +98,8 @@ let monitor_head
 
 let applied_blocks
     ~(applied_blocks_watcher :
-       (Store.chain_store * Store.Block.t) Lwt_stream.t * Lwt_watcher.stopper)
-    store q () =
+       (Store.chain_store * Store.Block.t) Lwt_stream.t * Lwt_watcher.stopper) q
+    () =
   let open Lwt_syntax in
   let block_stream, stopper = applied_blocks_watcher in
   let shutdown () = Lwt_watcher.shutdown stopper in
@@ -105,6 +110,7 @@ let applied_blocks
         let that_chain_id = Store.Chain.chain_id chain_store in
         List.exists_p
           (fun chain ->
+            let store = Store.Chain.global_store chain_store in
             let+ o = Chain_directory.get_chain_id_opt store chain in
             match o with
             | None -> false
@@ -191,7 +197,6 @@ let build_rpc_directory ~(commit_info : Node_version.commit_info) validator
       Tezos_rpc.Answer.return_stream {next; shutdown}) ;
   gen_register0 Monitor_services.S.applied_blocks (fun q () ->
       applied_blocks
-        store
         ~applied_blocks_watcher:(Store.global_block_watcher store)
         q
         ()) ;
@@ -271,7 +276,7 @@ let build_rpc_directory ~(commit_info : Node_version.commit_info) validator
       | Error _ -> Lwt.fail Not_found
       | Ok chain_validator ->
           let head_watcher = Chain_validator.new_head_watcher chain_validator in
-          monitor_head ~head_watcher store chain q ()) ;
+          monitor_head ~head_watcher (ref store) chain q ()) ;
   gen_register0 Monitor_services.S.protocols (fun () () ->
       let stream, stopper = Store.Protocol.protocol_watcher store in
       let shutdown () = Lwt_watcher.shutdown stopper in

@@ -25,7 +25,7 @@
 val monitor_head :
   head_watcher:
     (Block_hash.t * Block_header.t) Lwt_stream.t * Lwt_watcher.stopper ->
-  Store.t ->
+  Store.t ref ->
   Chain_services.chain ->
   < next_protocols : Protocol_hash.t trace
   ; protocols : Protocol_hash.t trace
@@ -36,7 +36,6 @@ val monitor_head :
 val applied_blocks :
   applied_blocks_watcher:
     (Store.chain_store * Store.Block.t) Lwt_stream.t * Lwt_watcher.stopper ->
-  Store.t ->
   < chains : Chain_services.chain trace
   ; next_protocols : Protocol_hash.t trace
   ; protocols : Protocol_hash.t trace

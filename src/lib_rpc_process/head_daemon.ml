@@ -105,7 +105,7 @@ let init_store ~allow_testchains ~readonly parameters =
 
 let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
     (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
-    (applied_blocks_watcher :
+    (_applied_blocks_watcher :
       (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) _stopper
     (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
@@ -121,18 +121,12 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
         in
         last_status := current_status ;
         dynamic_store := Some store ;
+        Format.printf "Notify head_watcher@." ;
         Lwt_watcher.notify head_watcher (block_hash, header) ;
-        let* () =
-          (* Notify the applied_blocks monitoring RPC only if it was
-             intanciated at least once. *)
-          match !applied_blocks_watcher with
-          | None -> return_unit
-          | Some stream ->
-              let chain_store = Store.main_chain_store store in
-              let* block = Store.Block.read_block chain_store block_hash in
-              Lwt_watcher.notify stream (chain_store, block) ;
-              return_unit
-        in
+        (* let chain_store = Store.main_chain_store store in *)
+        (* let* block = Store.Block.read_block chain_store block_hash in *)
+        (* Format.printf "Notify applied_blocks_watcher@." ; *)
+        (* Lwt_watcher.notify applied_blocks_watcher (chain_store, block) ; *)
         let*! () = cleanups () in
         let*! () = Events.(emit synchronized) (block_level, block_hash) in
         return_unit
