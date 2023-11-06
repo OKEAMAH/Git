@@ -32,4 +32,4 @@ seq:
   enum: id_015__ptlimapt__gas_tag
 - id: limited__id_015__ptlimapt__gas
   type: z
-  if: (id_015__ptlimapt__gas_tag == ::id_015__ptlimapt__gas_tag::id_015__ptlimapt__gas_tag::limited)
+  if: (id_015__ptlimapt__gas_tag == id_015__ptlimapt__gas_tag::limited)

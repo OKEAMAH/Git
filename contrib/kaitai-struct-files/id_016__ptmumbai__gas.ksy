@@ -32,4 +32,4 @@ seq:
   enum: id_016__ptmumbai__gas_tag
 - id: limited__id_016__ptmumbai__gas
   type: z
-  if: (id_016__ptmumbai__gas_tag == ::id_016__ptmumbai__gas_tag::id_016__ptmumbai__gas_tag::limited)
+  if: (id_016__ptmumbai__gas_tag == id_016__ptmumbai__gas_tag::limited)

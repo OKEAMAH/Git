@@ -10,16 +10,16 @@ types:
       enum: public_key_hash_tag
     - id: supports_deterministic_nonces__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: supports_deterministic_nonces__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: supports_deterministic_nonces__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: supports_deterministic_nonces__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   deterministic_nonce_hash__signer_messages__request:
     seq:
     - id: pkh
@@ -48,16 +48,16 @@ types:
       enum: public_key_hash_tag
     - id: deterministic_nonce_hash__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: deterministic_nonce_hash__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: deterministic_nonce_hash__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: deterministic_nonce_hash__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   deterministic_nonce__signer_messages__request:
     seq:
     - id: pkh
@@ -86,16 +86,16 @@ types:
       enum: public_key_hash_tag
     - id: deterministic_nonce__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: deterministic_nonce__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: deterministic_nonce__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: deterministic_nonce__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   public_key__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -103,16 +103,16 @@ types:
       enum: public_key_hash_tag
     - id: public_key__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: public_key__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: public_key__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: public_key__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   sign__signer_messages__request:
     seq:
     - id: pkh
@@ -141,16 +141,16 @@ types:
       enum: public_key_hash_tag
     - id: sign__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: sign__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: sign__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: sign__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   bool:
     0: false
@@ -176,7 +176,7 @@ seq:
   if: (signer_messages__request_tag == signer_messages__request_tag::sign)
 - id: public_key__signer_messages__request
   type: public_key__public_key_hash
-  if: (signer_messages__request_tag == ::signer_messages__request_tag::signer_messages__request_tag::public_key)
+  if: (signer_messages__request_tag == signer_messages__request_tag::public_key)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash
 - id: deterministic_nonce__signer_messages__request
   type: deterministic_nonce__signer_messages__request
@@ -186,5 +186,5 @@ seq:
   if: (signer_messages__request_tag == signer_messages__request_tag::deterministic_nonce_hash)
 - id: supports_deterministic_nonces__signer_messages__request
   type: supports_deterministic_nonces__public_key_hash
-  if: (signer_messages__request_tag == ::signer_messages__request_tag::signer_messages__request_tag::supports_deterministic_nonces)
+  if: (signer_messages__request_tag == signer_messages__request_tag::supports_deterministic_nonces)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash

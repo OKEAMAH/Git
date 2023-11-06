@@ -13,7 +13,7 @@ types:
       if: (id_008__ptedo2zk__contract__big_map_diff_elt_tag == id_008__ptedo2zk__contract__big_map_diff_elt_tag::update)
     - id: remove__id_008__ptedo2zk__contract__big_map_diff_elt
       type: z
-      if: (id_008__ptedo2zk__contract__big_map_diff_elt_tag == ::id_008__ptedo2zk__contract__big_map_diff_elt_tag::id_008__ptedo2zk__contract__big_map_diff_elt_tag::remove)
+      if: (id_008__ptedo2zk__contract__big_map_diff_elt_tag == id_008__ptedo2zk__contract__big_map_diff_elt_tag::remove)
     - id: copy__id_008__ptedo2zk__contract__big_map_diff_elt
       type: copy__id_008__ptedo2zk__contract__big_map_diff_elt
       if: (id_008__ptedo2zk__contract__big_map_diff_elt_tag == id_008__ptedo2zk__contract__big_map_diff_elt_tag::copy)
@@ -55,16 +55,16 @@ types:
       enum: micheline__008__ptedo2zk__michelson_v1__expression_tag
     - id: update__int__micheline__008__ptedo2zk__michelson_v1__expression
       type: z
-      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == ::micheline__008__ptedo2zk__michelson_v1__expression_tag::micheline__008__ptedo2zk__michelson_v1__expression_tag::int)
+      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::int)
     - id: update__string__micheline__008__ptedo2zk__michelson_v1__expression
       type: update__string__string
-      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == ::micheline__008__ptedo2zk__michelson_v1__expression_tag::micheline__008__ptedo2zk__michelson_v1__expression_tag::string)
+      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::string)
     - id: update__sequence__micheline__008__ptedo2zk__michelson_v1__expression
       type: update__sequence__micheline__008__ptedo2zk__michelson_v1__expression
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::sequence)
     - id: update__prim__no_args__no_annots__micheline__008__ptedo2zk__michelson_v1__expression
       type: u1
-      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == ::micheline__008__ptedo2zk__michelson_v1__expression_tag::micheline__008__ptedo2zk__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: update__prim__no_args__no_annots__id_008__ptedo2zk__michelson__v1__primitives
     - id: update__prim__no_args__some_annots__micheline__008__ptedo2zk__michelson_v1__expression
       type: update__prim__no_args__some_annots__micheline__008__ptedo2zk__michelson_v1__expression
@@ -86,7 +86,7 @@ types:
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::prim__generic)
     - id: update__bytes__micheline__008__ptedo2zk__michelson_v1__expression
       type: update__bytes__bytes
-      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == ::micheline__008__ptedo2zk__michelson_v1__expression_tag::micheline__008__ptedo2zk__michelson_v1__expression_tag::bytes)
+      if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::bytes)
   update__bytes__bytes:
     seq:
     - id: len_bytes

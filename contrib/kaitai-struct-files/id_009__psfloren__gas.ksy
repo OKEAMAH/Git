@@ -32,4 +32,4 @@ seq:
   enum: id_009__psfloren__gas_tag
 - id: limited__id_009__psfloren__gas
   type: z
-  if: (id_009__psfloren__gas_tag == ::id_009__psfloren__gas_tag::id_009__psfloren__gas_tag::limited)
+  if: (id_009__psfloren__gas_tag == id_009__psfloren__gas_tag::limited)

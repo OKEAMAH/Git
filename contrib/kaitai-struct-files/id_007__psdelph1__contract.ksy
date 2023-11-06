@@ -10,7 +10,7 @@ types:
       enum: id_007__psdelph1__contract_id_tag
     - id: implicit__id_007__psdelph1__contract_id
       type: implicit__public_key_hash
-      if: (id_007__psdelph1__contract_id_tag == ::id_007__psdelph1__contract_id_tag::id_007__psdelph1__contract_id_tag::implicit)
+      if: (id_007__psdelph1__contract_id_tag == id_007__psdelph1__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated__id_007__psdelph1__contract_id
       type: originated__id_007__psdelph1__contract_id
@@ -29,13 +29,13 @@ types:
       enum: public_key_hash_tag
     - id: implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
   public_key_hash_tag:
     0: ed25519

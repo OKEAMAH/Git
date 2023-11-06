@@ -32,4 +32,4 @@ seq:
   enum: id_010__ptgranad__gas_tag
 - id: limited__id_010__ptgranad__gas
   type: z
-  if: (id_010__ptgranad__gas_tag == ::id_010__ptgranad__gas_tag::id_010__ptgranad__gas_tag::limited)
+  if: (id_010__ptgranad__gas_tag == id_010__ptgranad__gas_tag::limited)

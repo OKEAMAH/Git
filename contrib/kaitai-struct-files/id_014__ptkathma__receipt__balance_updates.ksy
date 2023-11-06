@@ -29,20 +29,20 @@ types:
       enum: id_014__ptkathma__operation_metadata__alpha__balance_tag
     - id: contract__id_014__ptkathma__operation_metadata__alpha__balance
       type: contract__id_014__ptkathma__contract_id
-      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == ::id_014__ptkathma__operation_metadata__alpha__balance_tag::id_014__ptkathma__operation_metadata__alpha__balance_tag::contract)
+      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == id_014__ptkathma__operation_metadata__alpha__balance_tag::contract)
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: deposits__id_014__ptkathma__operation_metadata__alpha__balance
       type: deposits__public_key_hash
-      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == ::id_014__ptkathma__operation_metadata__alpha__balance_tag::id_014__ptkathma__operation_metadata__alpha__balance_tag::deposits)
+      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == id_014__ptkathma__operation_metadata__alpha__balance_tag::deposits)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: lost_endorsing_rewards__id_014__ptkathma__operation_metadata__alpha__balance
       type: lost_endorsing_rewards__id_014__ptkathma__operation_metadata__alpha__balance
       if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == id_014__ptkathma__operation_metadata__alpha__balance_tag::lost_endorsing_rewards)
     - id: commitments__id_014__ptkathma__operation_metadata__alpha__balance
       size: 20
-      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == ::id_014__ptkathma__operation_metadata__alpha__balance_tag::id_014__ptkathma__operation_metadata__alpha__balance_tag::commitments)
+      if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == id_014__ptkathma__operation_metadata__alpha__balance_tag::commitments)
     - id: frozen_bonds__id_014__ptkathma__operation_metadata__alpha__balance
       type: frozen_bonds__id_014__ptkathma__operation_metadata__alpha__balance
       if: (id_014__ptkathma__operation_metadata__alpha__balance_tag == id_014__ptkathma__operation_metadata__alpha__balance_tag::frozen_bonds)
@@ -62,13 +62,13 @@ types:
       enum: id_014__ptkathma__bond_id_tag
     - id: frozen_bonds__tx_rollup_bond_id__id_014__ptkathma__bond_id
       size: 20
-      if: (id_014__ptkathma__bond_id_tag == ::id_014__ptkathma__bond_id_tag::id_014__ptkathma__bond_id_tag::tx_rollup_bond_id)
+      if: (id_014__ptkathma__bond_id_tag == id_014__ptkathma__bond_id_tag::tx_rollup_bond_id)
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
     - id: frozen_bonds__sc_rollup_bond_id__id_014__ptkathma__bond_id
       type: frozen_bonds__sc_rollup_bond_id__id_014__ptkathma__rollup_address
-      if: (id_014__ptkathma__bond_id_tag == ::id_014__ptkathma__bond_id_tag::id_014__ptkathma__bond_id_tag::sc_rollup_bond_id)
+      if: (id_014__ptkathma__bond_id_tag == id_014__ptkathma__bond_id_tag::sc_rollup_bond_id)
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -87,7 +87,7 @@ types:
       enum: id_014__ptkathma__contract_id_tag
     - id: frozen_bonds__implicit__id_014__ptkathma__contract_id
       type: frozen_bonds__implicit__public_key_hash
-      if: (id_014__ptkathma__contract_id_tag == ::id_014__ptkathma__contract_id_tag::id_014__ptkathma__contract_id_tag::implicit)
+      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: frozen_bonds__originated__id_014__ptkathma__contract_id
       type: frozen_bonds__originated__id_014__ptkathma__contract_id
@@ -106,13 +106,13 @@ types:
       enum: public_key_hash_tag
     - id: frozen_bonds__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: frozen_bonds__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: frozen_bonds__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   lost_endorsing_rewards__id_014__ptkathma__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -131,13 +131,13 @@ types:
       enum: public_key_hash_tag
     - id: lost_endorsing_rewards__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: lost_endorsing_rewards__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: lost_endorsing_rewards__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   deposits__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -145,13 +145,13 @@ types:
       enum: public_key_hash_tag
     - id: deposits__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: deposits__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: deposits__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   contract__id_014__ptkathma__contract_id:
     seq:
     - id: id_014__ptkathma__contract_id_tag
@@ -159,7 +159,7 @@ types:
       enum: id_014__ptkathma__contract_id_tag
     - id: contract__implicit__id_014__ptkathma__contract_id
       type: contract__implicit__public_key_hash
-      if: (id_014__ptkathma__contract_id_tag == ::id_014__ptkathma__contract_id_tag::id_014__ptkathma__contract_id_tag::implicit)
+      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: contract__originated__id_014__ptkathma__contract_id
       type: contract__originated__id_014__ptkathma__contract_id
@@ -178,13 +178,13 @@ types:
       enum: public_key_hash_tag
     - id: contract__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: contract__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: contract__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
   origin_tag:
     0: block_application

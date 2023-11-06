@@ -32,4 +32,4 @@ seq:
   enum: alpha__gas_tag
 - id: limited__alpha__gas
   type: z
-  if: (alpha__gas_tag == ::alpha__gas_tag::alpha__gas_tag::limited)
+  if: (alpha__gas_tag == alpha__gas_tag::limited)

@@ -76,16 +76,16 @@ types:
       enum: micheline__018__proxford__michelson_v1__expression_tag
     - id: event__int__micheline__018__proxford__michelson_v1__expression
       type: z
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::int)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::int)
     - id: event__string__micheline__018__proxford__michelson_v1__expression
       type: event__string__string
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::string)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::string)
     - id: event__sequence__micheline__018__proxford__michelson_v1__expression
       type: event__sequence__micheline__018__proxford__michelson_v1__expression
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::sequence)
     - id: event__prim__no_args__no_annots__micheline__018__proxford__michelson_v1__expression
       type: u1
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: event__prim__no_args__no_annots__id_018__proxford__michelson__v1__primitives
     - id: event__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
       type: event__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
@@ -107,7 +107,7 @@ types:
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__generic)
     - id: event__bytes__micheline__018__proxford__michelson_v1__expression
       type: event__bytes__bytes
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::bytes)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::bytes)
   event__bytes__bytes:
     seq:
     - id: len_bytes
@@ -265,16 +265,16 @@ types:
       enum: public_key_hash_tag
     - id: delegation__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: delegation__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: delegation__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   origination__id_018__proxford__apply_internal_results__alpha__operation_result:
     seq:
     - id: balance
@@ -317,16 +317,16 @@ types:
       enum: public_key_hash_tag
     - id: origination__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: origination__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: origination__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   transaction__id_018__proxford__apply_internal_results__alpha__operation_result:
     seq:
     - id: amount
@@ -385,7 +385,7 @@ types:
       enum: id_018__proxford__transaction_destination_tag
     - id: transaction__implicit__id_018__proxford__transaction_destination
       type: transaction__implicit__public_key_hash
-      if: (id_018__proxford__transaction_destination_tag == ::id_018__proxford__transaction_destination_tag::id_018__proxford__transaction_destination_tag::implicit)
+      if: (id_018__proxford__transaction_destination_tag == id_018__proxford__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: transaction__originated__id_018__proxford__transaction_destination
       type: transaction__originated__id_018__proxford__transaction_destination
@@ -424,16 +424,16 @@ types:
       enum: public_key_hash_tag
     - id: transaction__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: transaction__implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   n:
     seq:
     - id: n
@@ -453,7 +453,7 @@ types:
       enum: id_018__proxford__transaction_destination_tag
     - id: implicit__id_018__proxford__transaction_destination
       type: implicit__public_key_hash
-      if: (id_018__proxford__transaction_destination_tag == ::id_018__proxford__transaction_destination_tag::id_018__proxford__transaction_destination_tag::implicit)
+      if: (id_018__proxford__transaction_destination_tag == id_018__proxford__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: originated__id_018__proxford__transaction_destination
       type: originated__id_018__proxford__transaction_destination
@@ -492,16 +492,16 @@ types:
       enum: public_key_hash_tag
     - id: implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   event__prim__generic__id_018__proxford__michelson__v1__primitives:
     2: code

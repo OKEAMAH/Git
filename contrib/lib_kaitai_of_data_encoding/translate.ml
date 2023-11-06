@@ -661,12 +661,7 @@ and seq_field_of_union :
                                  {
                                    enumName = tag_id;
                                    label = case_id;
-                                   inType =
-                                     {
-                                       absolute = true;
-                                       names = [tag_id];
-                                       isArray = false;
-                                     };
+                                   inType = Ast.empty_typeId;
                                  };
                            });
                   };

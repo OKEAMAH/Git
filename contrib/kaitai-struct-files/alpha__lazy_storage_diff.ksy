@@ -28,7 +28,7 @@ types:
       enum: diff_tag
     - id: sapling_state__update__diff
       type: sapling_state__update__updates
-      if: (diff_tag == ::diff_tag::diff_tag::update)
+      if: (diff_tag == diff_tag::update)
     - id: sapling_state__copy__diff
       type: sapling_state__copy__diff
       if: (diff_tag == diff_tag::copy)
@@ -242,7 +242,7 @@ types:
       enum: diff_tag
     - id: big_map__update__diff
       type: big_map__update__updates
-      if: (diff_tag == ::diff_tag::diff_tag::update)
+      if: (diff_tag == diff_tag::update)
     - id: big_map__copy__diff
       type: big_map__copy__diff
       if: (diff_tag == diff_tag::copy)
@@ -337,16 +337,16 @@ types:
       enum: micheline__alpha__michelson_v1__expression_tag
     - id: big_map__update__int__micheline__alpha__michelson_v1__expression
       type: z
-      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::int)
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::int)
     - id: big_map__update__string__micheline__alpha__michelson_v1__expression
       type: big_map__update__string__string
-      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::string)
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::string)
     - id: big_map__update__sequence__micheline__alpha__michelson_v1__expression
       type: big_map__update__sequence__micheline__alpha__michelson_v1__expression
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
     - id: big_map__update__prim__no_args__no_annots__micheline__alpha__michelson_v1__expression
       type: u1
-      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: big_map__update__prim__no_args__no_annots__alpha__michelson__v1__primitives
     - id: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
       type: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
@@ -368,7 +368,7 @@ types:
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
     - id: big_map__update__bytes__micheline__alpha__michelson_v1__expression
       type: big_map__update__bytes__bytes
-      if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::bytes)
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::bytes)
   big_map__update__bytes__bytes:
     seq:
     - id: len_bytes

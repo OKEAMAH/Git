@@ -10,16 +10,16 @@ types:
       enum: micheline__016__ptmumbai__michelson_v1__expression_tag
     - id: int__micheline__016__ptmumbai__michelson_v1__expression
       type: z
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == ::micheline__016__ptmumbai__michelson_v1__expression_tag::micheline__016__ptmumbai__michelson_v1__expression_tag::int)
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::int)
     - id: string__micheline__016__ptmumbai__michelson_v1__expression
       type: string__string
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == ::micheline__016__ptmumbai__michelson_v1__expression_tag::micheline__016__ptmumbai__michelson_v1__expression_tag::string)
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::string)
     - id: sequence__micheline__016__ptmumbai__michelson_v1__expression
       type: sequence__micheline__016__ptmumbai__michelson_v1__expression
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression
       type: u1
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == ::micheline__016__ptmumbai__michelson_v1__expression_tag::micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: prim__no_args__no_annots__id_016__ptmumbai__michelson__v1__primitives
     - id: prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
       type: prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
@@ -41,7 +41,7 @@ types:
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__generic)
     - id: bytes__micheline__016__ptmumbai__michelson_v1__expression
       type: bytes__bytes
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == ::micheline__016__ptmumbai__michelson_v1__expression_tag::micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
   bytes__bytes:
     seq:
     - id: len_bytes

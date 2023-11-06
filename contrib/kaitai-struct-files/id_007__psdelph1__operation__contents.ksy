@@ -10,7 +10,7 @@ types:
       enum: id_007__psdelph1__operation__alpha__contents_tag
     - id: endorsement__id_007__psdelph1__operation__alpha__contents
       type: s4
-      if: (id_007__psdelph1__operation__alpha__contents_tag == ::id_007__psdelph1__operation__alpha__contents_tag::id_007__psdelph1__operation__alpha__contents_tag::endorsement)
+      if: (id_007__psdelph1__operation__alpha__contents_tag == id_007__psdelph1__operation__alpha__contents_tag::endorsement)
     - id: seed_nonce_revelation__id_007__psdelph1__operation__alpha__contents
       type: seed_nonce_revelation__id_007__psdelph1__operation__alpha__contents
       if: (id_007__psdelph1__operation__alpha__contents_tag == id_007__psdelph1__operation__alpha__contents_tag::seed_nonce_revelation)
@@ -68,13 +68,13 @@ types:
       enum: public_key_hash_tag
     - id: delegation__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: delegation__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   origination__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: source
@@ -128,13 +128,13 @@ types:
       enum: public_key_hash_tag
     - id: origination__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: origination__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   transaction__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: source
@@ -202,7 +202,7 @@ types:
       enum: id_007__psdelph1__contract_id_tag
     - id: transaction__implicit__id_007__psdelph1__contract_id
       type: transaction__implicit__public_key_hash
-      if: (id_007__psdelph1__contract_id_tag == ::id_007__psdelph1__contract_id_tag::id_007__psdelph1__contract_id_tag::implicit)
+      if: (id_007__psdelph1__contract_id_tag == id_007__psdelph1__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: transaction__originated__id_007__psdelph1__contract_id
       type: transaction__originated__id_007__psdelph1__contract_id
@@ -221,13 +221,13 @@ types:
       enum: public_key_hash_tag
     - id: transaction__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   transaction__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -235,13 +235,13 @@ types:
       enum: public_key_hash_tag
     - id: transaction__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   reveal__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: source
@@ -265,13 +265,13 @@ types:
       enum: public_key_tag
     - id: reveal__ed25519__public_key
       size: 32
-      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: reveal__secp256k1__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: reveal__p256__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
+      if: (public_key_tag == public_key_tag::p256)
   n:
     seq:
     - id: n
@@ -291,13 +291,13 @@ types:
       enum: public_key_hash_tag
     - id: reveal__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: reveal__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: reveal__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   ballot__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: source
@@ -316,13 +316,13 @@ types:
       enum: public_key_hash_tag
     - id: ballot__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: ballot__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: ballot__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   proposals__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: source
@@ -353,13 +353,13 @@ types:
       enum: public_key_hash_tag
     - id: proposals__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: proposals__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: proposals__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   activate_account__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: pkh
@@ -507,7 +507,7 @@ types:
       enum: id_007__psdelph1__inlined__endorsement__contents_tag
     - id: double_endorsement_evidence__endorsement__id_007__psdelph1__inlined__endorsement__contents
       type: s4
-      if: (id_007__psdelph1__inlined__endorsement__contents_tag == ::id_007__psdelph1__inlined__endorsement__contents_tag::id_007__psdelph1__inlined__endorsement__contents_tag::endorsement)
+      if: (id_007__psdelph1__inlined__endorsement__contents_tag == id_007__psdelph1__inlined__endorsement__contents_tag::endorsement)
   seed_nonce_revelation__id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: level

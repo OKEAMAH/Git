@@ -32,4 +32,4 @@ seq:
   enum: id_018__proxford__gas_tag
 - id: limited__id_018__proxford__gas
   type: z
-  if: (id_018__proxford__gas_tag == ::id_018__proxford__gas_tag::id_018__proxford__gas_tag::limited)
+  if: (id_018__proxford__gas_tag == id_018__proxford__gas_tag::limited)

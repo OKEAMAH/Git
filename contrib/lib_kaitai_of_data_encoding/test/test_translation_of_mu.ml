@@ -116,7 +116,7 @@ let%expect_test "test more mu" =
           enum: mt_tag
         - id: one__mt
           type: u1
-          if: (mt_tag == ::mt_tag::mt_tag::one)
+          if: (mt_tag == mt_tag::one)
           enum: bool
         - id: seq__mt
           type: seq__mt

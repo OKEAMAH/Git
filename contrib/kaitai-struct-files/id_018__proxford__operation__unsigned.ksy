@@ -47,7 +47,7 @@ types:
     - id: vdf_revelation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       type: vdf_revelation__solution
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
-        == ::id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::vdf_revelation)
+        == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::vdf_revelation)
     - id: double_baking_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       type: double_baking_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
@@ -95,7 +95,7 @@ types:
     - id: failing_noop__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       type: failing_noop__arbitrary
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
-        == ::id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::failing_noop)
+        == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::failing_noop)
     - id: register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       type: register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
@@ -271,16 +271,16 @@ types:
       enum: public_key_hash_tag
     - id: zk_rollup_update__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: zk_rollup_update__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: zk_rollup_update__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: zk_rollup_update__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   zk_rollup_publish__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -340,7 +340,7 @@ types:
       enum: id_018__proxford__contract_id_tag
     - id: zk_rollup_publish__some__implicit__id_018__proxford__contract_id
       type: zk_rollup_publish__some__implicit__public_key_hash
-      if: (id_018__proxford__contract_id_tag == ::id_018__proxford__contract_id_tag::id_018__proxford__contract_id_tag::implicit)
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: zk_rollup_publish__some__originated__id_018__proxford__contract_id
       type: zk_rollup_publish__some__originated__id_018__proxford__contract_id
@@ -359,16 +359,16 @@ types:
       enum: public_key_hash_tag
     - id: zk_rollup_publish__some__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: zk_rollup_publish__some__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: zk_rollup_publish__some__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: zk_rollup_publish__some__implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: micheline__018__proxford__michelson_v1__expression_tag
@@ -376,16 +376,16 @@ types:
       enum: micheline__018__proxford__michelson_v1__expression_tag
     - id: zk_rollup_publish__some__int__micheline__018__proxford__michelson_v1__expression
       type: z
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::int)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::int)
     - id: zk_rollup_publish__some__string__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__string__string
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::string)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::string)
     - id: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::sequence)
     - id: zk_rollup_publish__some__prim__no_args__no_annots__micheline__018__proxford__michelson_v1__expression
       type: u1
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: zk_rollup_publish__some__prim__no_args__no_annots__id_018__proxford__michelson__v1__primitives
     - id: zk_rollup_publish__some__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression
@@ -407,7 +407,7 @@ types:
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__generic)
     - id: zk_rollup_publish__some__bytes__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__bytes__bytes
-      if: (micheline__018__proxford__michelson_v1__expression_tag == ::micheline__018__proxford__michelson_v1__expression_tag::micheline__018__proxford__michelson_v1__expression_tag::bytes)
+      if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::bytes)
   zk_rollup_publish__some__bytes__bytes:
     seq:
     - id: len_bytes
@@ -579,16 +579,16 @@ types:
       enum: public_key_hash_tag
     - id: zk_rollup_publish__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: zk_rollup_publish__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: zk_rollup_publish__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: zk_rollup_publish__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   zk_rollup_origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -668,16 +668,16 @@ types:
       enum: public_key_hash_tag
     - id: zk_rollup_origination__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: zk_rollup_origination__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: zk_rollup_origination__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: zk_rollup_origination__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_recover_bond__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -703,16 +703,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_recover_bond__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_recover_bond__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_recover_bond__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_recover_bond__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_execute_outbox_message__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -747,16 +747,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_execute_outbox_message__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_execute_outbox_message__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_execute_outbox_message__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_execute_outbox_message__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_timeout__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -789,16 +789,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_timeout__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_timeout__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_timeout__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_timeout__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_refute__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -867,7 +867,7 @@ types:
       if: (input_proof_tag == input_proof_tag::inbox__proof)
     - id: smart_rollup_refute__move__proof__reveal__proof__input_proof
       type: smart_rollup_refute__move__proof__reveal__proof__reveal_proof
-      if: (input_proof_tag == ::input_proof_tag::input_proof_tag::reveal__proof)
+      if: (input_proof_tag == input_proof_tag::reveal__proof)
   smart_rollup_refute__move__proof__reveal__proof__reveal_proof:
     seq:
     - id: reveal_proof_tag
@@ -875,7 +875,7 @@ types:
       enum: reveal_proof_tag
     - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__reveal_proof
       type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data
-      if: (reveal_proof_tag == ::reveal_proof_tag::reveal_proof_tag::raw__data__proof)
+      if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
     - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
       type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
       if: (reveal_proof_tag == reveal_proof_tag::dal__page__proof)
@@ -969,16 +969,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_refute__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_refute__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_refute__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_refute__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_publish__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1013,16 +1013,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_publish__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_publish__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_publish__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_publish__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_cement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1045,16 +1045,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_cement__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_cement__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_cement__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_cement__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_add_messages__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1095,16 +1095,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_add_messages__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_add_messages__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_add_messages__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_add_messages__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   smart_rollup_originate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1148,16 +1148,16 @@ types:
       enum: public_key_hash_tag
     - id: smart_rollup_originate__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: smart_rollup_originate__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: smart_rollup_originate__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: smart_rollup_originate__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   dal_publish_slot_header__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1188,16 +1188,16 @@ types:
       enum: public_key_hash_tag
     - id: dal_publish_slot_header__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: dal_publish_slot_header__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: dal_publish_slot_header__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: dal_publish_slot_header__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   transfer_ticket__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1244,7 +1244,7 @@ types:
       enum: id_018__proxford__contract_id_tag
     - id: transfer_ticket__implicit__id_018__proxford__contract_id
       type: transfer_ticket__implicit__public_key_hash
-      if: (id_018__proxford__contract_id_tag == ::id_018__proxford__contract_id_tag::id_018__proxford__contract_id_tag::implicit)
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: transfer_ticket__originated__id_018__proxford__contract_id
       type: transfer_ticket__originated__id_018__proxford__contract_id
@@ -1263,16 +1263,16 @@ types:
       enum: public_key_hash_tag
     - id: transfer_ticket__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transfer_ticket__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transfer_ticket__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: transfer_ticket__implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   transfer_ticket__ticket_ty:
     seq:
     - id: len_ticket_ty
@@ -1296,16 +1296,16 @@ types:
       enum: public_key_hash_tag
     - id: transfer_ticket__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transfer_ticket__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transfer_ticket__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: transfer_ticket__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1336,16 +1336,16 @@ types:
       enum: public_key_hash_tag
     - id: register_global_constant__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: register_global_constant__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: register_global_constant__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: register_global_constant__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   failing_noop__arbitrary:
     seq:
     - id: len_arbitrary
@@ -1372,16 +1372,16 @@ types:
       enum: public_key_hash_tag
     - id: drain_delegate__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: drain_delegate__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: drain_delegate__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: drain_delegate__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   update_consensus_key__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1405,16 +1405,16 @@ types:
       enum: public_key_tag
     - id: update_consensus_key__ed25519__public_key
       size: 32
-      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: update_consensus_key__secp256k1__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: update_consensus_key__p256__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
+      if: (public_key_tag == public_key_tag::p256)
     - id: update_consensus_key__bls__public_key
       size: 48
-      if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
+      if: (public_key_tag == public_key_tag::bls)
   update_consensus_key__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1422,16 +1422,16 @@ types:
       enum: public_key_hash_tag
     - id: update_consensus_key__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: update_consensus_key__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: update_consensus_key__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: update_consensus_key__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   increase_paid_storage__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1474,16 +1474,16 @@ types:
       enum: public_key_hash_tag
     - id: increase_paid_storage__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: increase_paid_storage__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: increase_paid_storage__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: increase_paid_storage__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   delegation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1511,16 +1511,16 @@ types:
       enum: public_key_hash_tag
     - id: delegation__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: delegation__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: delegation__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1574,16 +1574,16 @@ types:
       enum: public_key_hash_tag
     - id: origination__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: origination__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: origination__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   transaction__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1651,7 +1651,7 @@ types:
       enum: id_018__proxford__contract_id_tag
     - id: transaction__implicit__id_018__proxford__contract_id
       type: transaction__implicit__public_key_hash
-      if: (id_018__proxford__contract_id_tag == ::id_018__proxford__contract_id_tag::id_018__proxford__contract_id_tag::implicit)
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: transaction__originated__id_018__proxford__contract_id
       type: transaction__originated__id_018__proxford__contract_id
@@ -1670,16 +1670,16 @@ types:
       enum: public_key_hash_tag
     - id: transaction__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: transaction__implicit__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   transaction__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1687,16 +1687,16 @@ types:
       enum: public_key_hash_tag
     - id: transaction__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: transaction__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   reveal__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1720,16 +1720,16 @@ types:
       enum: public_key_tag
     - id: reveal__ed25519__public_key
       size: 32
-      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: reveal__secp256k1__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: reveal__p256__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
+      if: (public_key_tag == public_key_tag::p256)
     - id: reveal__bls__public_key
       size: 48
-      if: (public_key_tag == ::public_key_tag::public_key_tag::bls)
+      if: (public_key_tag == public_key_tag::bls)
   n:
     seq:
     - id: n
@@ -1743,16 +1743,16 @@ types:
       enum: public_key_hash_tag
     - id: reveal__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: reveal__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: reveal__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: reveal__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   ballot__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1771,16 +1771,16 @@ types:
       enum: public_key_hash_tag
     - id: ballot__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: ballot__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: ballot__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: ballot__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   proposals__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
@@ -1813,16 +1813,16 @@ types:
       enum: public_key_hash_tag
     - id: proposals__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: proposals__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: proposals__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: proposals__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   activate_account__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: pkh
@@ -1978,16 +1978,16 @@ types:
       enum: public_key_hash_tag
     - id: dal_attestation__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: dal_attestation__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: dal_attestation__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
     - id: dal_attestation__bls__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   double_endorsement_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: double_endorsement_evidence__op1

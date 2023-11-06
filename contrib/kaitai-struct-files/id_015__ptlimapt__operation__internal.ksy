@@ -74,16 +74,16 @@ types:
       enum: micheline__015__ptlimapt__michelson_v1__expression_tag
     - id: event__int__micheline__015__ptlimapt__michelson_v1__expression
       type: z
-      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::int)
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::int)
     - id: event__string__micheline__015__ptlimapt__michelson_v1__expression
       type: event__string__string
-      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::string)
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::string)
     - id: event__sequence__micheline__015__ptlimapt__michelson_v1__expression
       type: event__sequence__micheline__015__ptlimapt__michelson_v1__expression
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::sequence)
     - id: event__prim__no_args__no_annots__micheline__015__ptlimapt__michelson_v1__expression
       type: u1
-      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__no_annots)
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__no_annots)
       enum: event__prim__no_args__no_annots__id_015__ptlimapt__michelson__v1__primitives
     - id: event__prim__no_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
       type: event__prim__no_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression
@@ -105,7 +105,7 @@ types:
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__generic)
     - id: event__bytes__micheline__015__ptlimapt__michelson_v1__expression
       type: event__bytes__bytes
-      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::bytes)
+      if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::bytes)
   event__bytes__bytes:
     seq:
     - id: len_bytes
@@ -263,13 +263,13 @@ types:
       enum: public_key_hash_tag
     - id: delegation__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: delegation__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: delegation__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   origination__id_015__ptlimapt__apply_internal_results__alpha__operation_result:
     seq:
     - id: balance
@@ -312,13 +312,13 @@ types:
       enum: public_key_hash_tag
     - id: origination__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: origination__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: origination__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   transaction__id_015__ptlimapt__apply_internal_results__alpha__operation_result:
     seq:
     - id: amount
@@ -377,7 +377,7 @@ types:
       enum: id_015__ptlimapt__transaction_destination_tag
     - id: transaction__implicit__id_015__ptlimapt__transaction_destination
       type: transaction__implicit__public_key_hash
-      if: (id_015__ptlimapt__transaction_destination_tag == ::id_015__ptlimapt__transaction_destination_tag::id_015__ptlimapt__transaction_destination_tag::implicit)
+      if: (id_015__ptlimapt__transaction_destination_tag == id_015__ptlimapt__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: transaction__originated__id_015__ptlimapt__transaction_destination
       type: transaction__originated__id_015__ptlimapt__transaction_destination
@@ -429,13 +429,13 @@ types:
       enum: public_key_hash_tag
     - id: transaction__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: transaction__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: transaction__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   n:
     seq:
     - id: n
@@ -455,7 +455,7 @@ types:
       enum: id_015__ptlimapt__contract_id_tag
     - id: implicit__id_015__ptlimapt__contract_id
       type: implicit__public_key_hash
-      if: (id_015__ptlimapt__contract_id_tag == ::id_015__ptlimapt__contract_id_tag::id_015__ptlimapt__contract_id_tag::implicit)
+      if: (id_015__ptlimapt__contract_id_tag == id_015__ptlimapt__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated__id_015__ptlimapt__contract_id
       type: originated__id_015__ptlimapt__contract_id
@@ -474,13 +474,13 @@ types:
       enum: public_key_hash_tag
     - id: implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
   event__prim__generic__id_015__ptlimapt__michelson__v1__primitives:
     2: code

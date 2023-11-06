@@ -26,7 +26,7 @@ types:
       enum: id_006__pscartha__operation_metadata__alpha__balance_tag
     - id: contract__id_006__pscartha__operation_metadata__alpha__balance
       type: contract__id_006__pscartha__contract_id
-      if: (id_006__pscartha__operation_metadata__alpha__balance_tag == ::id_006__pscartha__operation_metadata__alpha__balance_tag::id_006__pscartha__operation_metadata__alpha__balance_tag::contract)
+      if: (id_006__pscartha__operation_metadata__alpha__balance_tag == id_006__pscartha__operation_metadata__alpha__balance_tag::contract)
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
@@ -53,13 +53,13 @@ types:
       enum: public_key_hash_tag
     - id: deposits__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: deposits__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: deposits__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   fees__id_006__pscartha__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -74,13 +74,13 @@ types:
       enum: public_key_hash_tag
     - id: fees__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: fees__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: fees__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   rewards__id_006__pscartha__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -95,13 +95,13 @@ types:
       enum: public_key_hash_tag
     - id: rewards__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: rewards__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: rewards__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   contract__id_006__pscartha__contract_id:
     seq:
     - id: id_006__pscartha__contract_id_tag
@@ -109,7 +109,7 @@ types:
       enum: id_006__pscartha__contract_id_tag
     - id: contract__implicit__id_006__pscartha__contract_id
       type: contract__implicit__public_key_hash
-      if: (id_006__pscartha__contract_id_tag == ::id_006__pscartha__contract_id_tag::id_006__pscartha__contract_id_tag::implicit)
+      if: (id_006__pscartha__contract_id_tag == id_006__pscartha__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: contract__originated__id_006__pscartha__contract_id
       type: contract__originated__id_006__pscartha__contract_id
@@ -128,13 +128,13 @@ types:
       enum: public_key_hash_tag
     - id: contract__implicit__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: contract__implicit__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: contract__implicit__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
   public_key_hash_tag:
     0: ed25519

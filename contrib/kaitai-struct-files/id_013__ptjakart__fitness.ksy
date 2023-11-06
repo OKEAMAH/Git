@@ -10,7 +10,7 @@ types:
       enum: locked_round_tag
     - id: some__locked_round
       type: s4
-      if: (locked_round_tag == ::locked_round_tag::locked_round_tag::some)
+      if: (locked_round_tag == locked_round_tag::some)
 enums:
   locked_round_tag:
     0: none

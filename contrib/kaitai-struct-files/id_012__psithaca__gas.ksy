@@ -32,4 +32,4 @@ seq:
   enum: id_012__psithaca__gas_tag
 - id: limited__id_012__psithaca__gas
   type: z
-  if: (id_012__psithaca__gas_tag == ::id_012__psithaca__gas_tag::id_012__psithaca__gas_tag::limited)
+  if: (id_012__psithaca__gas_tag == id_012__psithaca__gas_tag::limited)

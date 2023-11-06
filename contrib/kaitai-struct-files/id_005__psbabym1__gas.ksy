@@ -32,4 +32,4 @@ seq:
   enum: id_005__psbabym1__gas_tag
 - id: limited__id_005__psbabym1__gas
   type: z
-  if: (id_005__psbabym1__gas_tag == ::id_005__psbabym1__gas_tag::id_005__psbabym1__gas_tag::limited)
+  if: (id_005__psbabym1__gas_tag == id_005__psbabym1__gas_tag::limited)

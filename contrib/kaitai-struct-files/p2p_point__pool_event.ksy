@@ -14,22 +14,22 @@ types:
       enum: p2p_point__pool_event_field1_tag
     - id: accepting_request__p2p_point__pool_event_field1
       size: 16
-      if: (p2p_point__pool_event_field1_tag == ::p2p_point__pool_event_field1_tag::p2p_point__pool_event_field1_tag::accepting_request)
+      if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::accepting_request)
     - id: rejecting_request__p2p_point__pool_event_field1
       size: 16
-      if: (p2p_point__pool_event_field1_tag == ::p2p_point__pool_event_field1_tag::p2p_point__pool_event_field1_tag::rejecting_request)
+      if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::rejecting_request)
     - id: rejecting_rejected__p2p_point__pool_event_field1
       type: rejecting_rejected__p2p_point__pool_event_field1
       if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::rejecting_rejected)
     - id: connection_established__p2p_point__pool_event_field1
       size: 16
-      if: (p2p_point__pool_event_field1_tag == ::p2p_point__pool_event_field1_tag::p2p_point__pool_event_field1_tag::connection_established)
+      if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::connection_established)
     - id: disconnection__p2p_point__pool_event_field1
       size: 16
-      if: (p2p_point__pool_event_field1_tag == ::p2p_point__pool_event_field1_tag::p2p_point__pool_event_field1_tag::disconnection)
+      if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::disconnection)
     - id: external_disconnection__p2p_point__pool_event_field1
       size: 16
-      if: (p2p_point__pool_event_field1_tag == ::p2p_point__pool_event_field1_tag::p2p_point__pool_event_field1_tag::external_disconnection)
+      if: (p2p_point__pool_event_field1_tag == p2p_point__pool_event_field1_tag::external_disconnection)
   rejecting_rejected__p2p_point__pool_event_field1:
     seq:
     - id: p2p_peer_id_tag

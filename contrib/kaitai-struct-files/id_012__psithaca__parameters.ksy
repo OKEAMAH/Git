@@ -43,13 +43,13 @@ types:
       enum: public_key_tag
     - id: round_robin_over_delegates__ed25519__public_key
       size: 32
-      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: round_robin_over_delegates__secp256k1__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: round_robin_over_delegates__p256__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
+      if: (public_key_tag == public_key_tag::p256)
   ratio_of_frozen_deposits_slashed_per_double_endorsement:
     seq:
     - id: numerator
@@ -145,13 +145,13 @@ types:
       enum: public_key_hash_tag
     - id: ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   bootstrap_accounts:
     seq:
     - id: len_bootstrap_accounts
@@ -191,13 +191,13 @@ types:
       enum: public_key_hash_tag
     - id: public_key_unknown__ed25519__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::ed25519)
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
     - id: public_key_unknown__secp256k1__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::secp256k1)
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: public_key_unknown__p256__public_key_hash
       size: 20
-      if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   public_key_known__bootstrap_accounts_elt:
     seq:
     - id: public_key_known_field0
@@ -228,13 +228,13 @@ types:
       enum: public_key_tag
     - id: public_key_known__ed25519__public_key
       size: 32
-      if: (public_key_tag == ::public_key_tag::public_key_tag::ed25519)
+      if: (public_key_tag == public_key_tag::ed25519)
     - id: public_key_known__secp256k1__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::secp256k1)
+      if: (public_key_tag == public_key_tag::secp256k1)
     - id: public_key_known__p256__public_key
       size: 33
-      if: (public_key_tag == ::public_key_tag::public_key_tag::p256)
+      if: (public_key_tag == public_key_tag::p256)
 enums:
   delegate_selection_tag:
     0: random_delegate_selection
