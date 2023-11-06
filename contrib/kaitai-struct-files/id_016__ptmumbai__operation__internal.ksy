@@ -60,15 +60,17 @@ types:
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
   event__named__id_016__ptmumbai__entrypoint:
     seq:
-    - id: len_named
+    - id: len_event__named__named_dyn
       type: u1
       valid:
         max: 31
+    - id: event__named__named_dyn
+      type: event__named__named_dyn
+      size: len_event__named__named_dyn
+  event__named__named_dyn:
+    seq:
     - id: named
-      size: len_named
       size-eos: true
-      valid:
-        max: 31
   event__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: micheline__016__ptmumbai__michelson_v1__expression_tag
@@ -135,14 +137,14 @@ types:
       size: len_annots
   event__prim__generic__args:
     seq:
-    - id: len_args
+    - id: len_event__prim__generic__args_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: event__prim__generic__args_
-      type: event__prim__generic__args_
-      size: len_args
-  event__prim__generic__args_:
+    - id: event__prim__generic__args_dyn
+      type: event__prim__generic__args_dyn
+      size: len_event__prim__generic__args_dyn
+  event__prim__generic__args_dyn:
     seq:
     - id: event__prim__generic__args_entries
       type: event__prim__generic__args_entries
@@ -220,14 +222,14 @@ types:
       size: len_annots
   event__sequence__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
-    - id: len_sequence
+    - id: len_event__sequence__sequence_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: event__sequence__sequence_
-      type: event__sequence__sequence_
-      size: len_sequence
-  event__sequence__sequence_:
+    - id: event__sequence__sequence_dyn
+      type: event__sequence__sequence_dyn
+      size: len_event__sequence__sequence_dyn
+  event__sequence__sequence_dyn:
     seq:
     - id: event__sequence__sequence_entries
       type: event__sequence__sequence_entries
@@ -377,15 +379,17 @@ types:
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
   transaction__named__id_016__ptmumbai__entrypoint:
     seq:
-    - id: len_named
+    - id: len_transaction__named__named_dyn
       type: u1
       valid:
         max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
     - id: named
-      size: len_named
       size-eos: true
-      valid:
-        max: 31
   transaction__id_016__ptmumbai__transaction_destination_:
     seq:
     - id: id_016__ptmumbai__transaction_destination_tag

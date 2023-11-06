@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 016-PtMumbai.lazy_storage_diff'
 types:
-  id_016__ptmumbai__lazy_storage_diff_:
+  id_016__ptmumbai__lazy_storage_diff_dyn:
     seq:
     - id: id_016__ptmumbai__lazy_storage_diff_entries
       type: id_016__ptmumbai__lazy_storage_diff_entries
@@ -54,14 +54,14 @@ types:
       type: sapling_state__alloc__nullifiers
   sapling_state__alloc__nullifiers:
     seq:
-    - id: len_nullifiers
+    - id: len_sapling_state__alloc__nullifiers_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__alloc__nullifiers_
-      type: sapling_state__alloc__nullifiers_
-      size: len_nullifiers
-  sapling_state__alloc__nullifiers_:
+    - id: sapling_state__alloc__nullifiers_dyn
+      type: sapling_state__alloc__nullifiers_dyn
+      size: len_sapling_state__alloc__nullifiers_dyn
+  sapling_state__alloc__nullifiers_dyn:
     seq:
     - id: sapling_state__alloc__nullifiers_entries
       type: sapling_state__alloc__nullifiers_entries
@@ -72,14 +72,14 @@ types:
       size: 32
   sapling_state__alloc__commitments_and_ciphertexts:
     seq:
-    - id: len_commitments_and_ciphertexts
+    - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__alloc__commitments_and_ciphertexts_
-      type: sapling_state__alloc__commitments_and_ciphertexts_
-      size: len_commitments_and_ciphertexts
-  sapling_state__alloc__commitments_and_ciphertexts_:
+    - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
+      type: sapling_state__alloc__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
+  sapling_state__alloc__commitments_and_ciphertexts_dyn:
     seq:
     - id: sapling_state__alloc__commitments_and_ciphertexts_entries
       type: sapling_state__alloc__commitments_and_ciphertexts_entries
@@ -129,14 +129,14 @@ types:
       type: sapling_state__copy__nullifiers
   sapling_state__copy__nullifiers:
     seq:
-    - id: len_nullifiers
+    - id: len_sapling_state__copy__nullifiers_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__copy__nullifiers_
-      type: sapling_state__copy__nullifiers_
-      size: len_nullifiers
-  sapling_state__copy__nullifiers_:
+    - id: sapling_state__copy__nullifiers_dyn
+      type: sapling_state__copy__nullifiers_dyn
+      size: len_sapling_state__copy__nullifiers_dyn
+  sapling_state__copy__nullifiers_dyn:
     seq:
     - id: sapling_state__copy__nullifiers_entries
       type: sapling_state__copy__nullifiers_entries
@@ -147,14 +147,14 @@ types:
       size: 32
   sapling_state__copy__commitments_and_ciphertexts:
     seq:
-    - id: len_commitments_and_ciphertexts
+    - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__copy__commitments_and_ciphertexts_
-      type: sapling_state__copy__commitments_and_ciphertexts_
-      size: len_commitments_and_ciphertexts
-  sapling_state__copy__commitments_and_ciphertexts_:
+    - id: sapling_state__copy__commitments_and_ciphertexts_dyn
+      type: sapling_state__copy__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
+  sapling_state__copy__commitments_and_ciphertexts_dyn:
     seq:
     - id: sapling_state__copy__commitments_and_ciphertexts_entries
       type: sapling_state__copy__commitments_and_ciphertexts_entries
@@ -197,14 +197,14 @@ types:
       type: sapling_state__update__nullifiers
   sapling_state__update__nullifiers:
     seq:
-    - id: len_nullifiers
+    - id: len_sapling_state__update__nullifiers_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__update__nullifiers_
-      type: sapling_state__update__nullifiers_
-      size: len_nullifiers
-  sapling_state__update__nullifiers_:
+    - id: sapling_state__update__nullifiers_dyn
+      type: sapling_state__update__nullifiers_dyn
+      size: len_sapling_state__update__nullifiers_dyn
+  sapling_state__update__nullifiers_dyn:
     seq:
     - id: sapling_state__update__nullifiers_entries
       type: sapling_state__update__nullifiers_entries
@@ -215,14 +215,14 @@ types:
       size: 32
   sapling_state__update__commitments_and_ciphertexts:
     seq:
-    - id: len_commitments_and_ciphertexts
+    - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__update__commitments_and_ciphertexts_
-      type: sapling_state__update__commitments_and_ciphertexts_
-      size: len_commitments_and_ciphertexts
-  sapling_state__update__commitments_and_ciphertexts_:
+    - id: sapling_state__update__commitments_and_ciphertexts_dyn
+      type: sapling_state__update__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__update__commitments_and_ciphertexts_dyn
+  sapling_state__update__commitments_and_ciphertexts_dyn:
     seq:
     - id: sapling_state__update__commitments_and_ciphertexts_entries
       type: sapling_state__update__commitments_and_ciphertexts_entries
@@ -288,14 +288,14 @@ types:
       type: micheline__016__ptmumbai__michelson_v1__expression
   big_map__alloc__updates:
     seq:
-    - id: len_updates
+    - id: len_big_map__alloc__updates_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__alloc__updates_
-      type: big_map__alloc__updates_
-      size: len_updates
-  big_map__alloc__updates_:
+    - id: big_map__alloc__updates_dyn
+      type: big_map__alloc__updates_dyn
+      size: len_big_map__alloc__updates_dyn
+  big_map__alloc__updates_dyn:
     seq:
     - id: big_map__alloc__updates_entries
       type: big_map__alloc__updates_entries
@@ -321,14 +321,14 @@ types:
       type: big_map__copy__updates
   big_map__copy__updates:
     seq:
-    - id: len_updates
+    - id: len_big_map__copy__updates_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__copy__updates_
-      type: big_map__copy__updates_
-      size: len_updates
-  big_map__copy__updates_:
+    - id: big_map__copy__updates_dyn
+      type: big_map__copy__updates_dyn
+      size: len_big_map__copy__updates_dyn
+  big_map__copy__updates_dyn:
     seq:
     - id: big_map__copy__updates_entries
       type: big_map__copy__updates_entries
@@ -347,14 +347,14 @@ types:
       if: (value_tag == bool::true)
   big_map__update__updates:
     seq:
-    - id: len_updates
+    - id: len_big_map__update__updates_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__update__updates_
-      type: big_map__update__updates_
-      size: len_updates
-  big_map__update__updates_:
+    - id: big_map__update__updates_dyn
+      type: big_map__update__updates_dyn
+      size: len_big_map__update__updates_dyn
+  big_map__update__updates_dyn:
     seq:
     - id: big_map__update__updates_entries
       type: big_map__update__updates_entries
@@ -437,14 +437,14 @@ types:
       size: len_annots
   big_map__update__prim__generic__args:
     seq:
-    - id: len_args
+    - id: len_big_map__update__prim__generic__args_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__update__prim__generic__args_
-      type: big_map__update__prim__generic__args_
-      size: len_args
-  big_map__update__prim__generic__args_:
+    - id: big_map__update__prim__generic__args_dyn
+      type: big_map__update__prim__generic__args_dyn
+      size: len_big_map__update__prim__generic__args_dyn
+  big_map__update__prim__generic__args_dyn:
     seq:
     - id: big_map__update__prim__generic__args_entries
       type: big_map__update__prim__generic__args_entries
@@ -522,14 +522,14 @@ types:
       size: len_annots
   big_map__update__sequence__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
-    - id: len_sequence
+    - id: len_big_map__update__sequence__sequence_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__update__sequence__sequence_
-      type: big_map__update__sequence__sequence_
-      size: len_sequence
-  big_map__update__sequence__sequence_:
+    - id: big_map__update__sequence__sequence_dyn
+      type: big_map__update__sequence__sequence_dyn
+      size: len_big_map__update__sequence__sequence_dyn
+  big_map__update__sequence__sequence_dyn:
     seq:
     - id: big_map__update__sequence__sequence_entries
       type: big_map__update__sequence__sequence_entries
@@ -3362,10 +3362,10 @@ enums:
     0: big_map
     1: sapling_state
 seq:
-- id: len_id_016__ptmumbai__lazy_storage_diff
+- id: len_id_016__ptmumbai__lazy_storage_diff_dyn
   type: u4
   valid:
     max: 1073741823
-- id: id_016__ptmumbai__lazy_storage_diff_
-  type: id_016__ptmumbai__lazy_storage_diff_
-  size: len_id_016__ptmumbai__lazy_storage_diff
+- id: id_016__ptmumbai__lazy_storage_diff_dyn
+  type: id_016__ptmumbai__lazy_storage_diff_dyn
+  size: len_id_016__ptmumbai__lazy_storage_diff_dyn

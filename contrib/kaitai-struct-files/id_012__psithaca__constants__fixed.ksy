@@ -5,14 +5,14 @@ doc: ! 'Encoding id: 012-Psithaca.constants.fixed'
 types:
   cache_layout:
     seq:
-    - id: len_cache_layout
+    - id: len_cache_layout_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: cache_layout_
-      type: cache_layout_
-      size: len_cache_layout
-  cache_layout_:
+    - id: cache_layout_dyn
+      type: cache_layout_dyn
+      size: len_cache_layout_dyn
+  cache_layout_dyn:
     seq:
     - id: cache_layout_entries
       type: cache_layout_entries

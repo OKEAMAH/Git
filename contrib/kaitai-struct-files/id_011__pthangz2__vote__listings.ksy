@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 011-PtHangz2.vote.listings'
 types:
-  id_011__pthangz2__vote__listings_:
+  id_011__pthangz2__vote__listings_dyn:
     seq:
     - id: id_011__pthangz2__vote__listings_entries
       type: id_011__pthangz2__vote__listings_entries
@@ -35,10 +35,10 @@ enums:
     1: secp256k1
     2: p256
 seq:
-- id: len_id_011__pthangz2__vote__listings
+- id: len_id_011__pthangz2__vote__listings_dyn
   type: u4
   valid:
     max: 1073741823
-- id: id_011__pthangz2__vote__listings_
-  type: id_011__pthangz2__vote__listings_
-  size: len_id_011__pthangz2__vote__listings
+- id: id_011__pthangz2__vote__listings_dyn
+  type: id_011__pthangz2__vote__listings_dyn
+  size: len_id_011__pthangz2__vote__listings_dyn

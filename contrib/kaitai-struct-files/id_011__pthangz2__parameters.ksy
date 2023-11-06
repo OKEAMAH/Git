@@ -5,14 +5,14 @@ doc: ! 'Encoding id: 011-PtHangz2.parameters'
 types:
   endorsement_reward:
     seq:
-    - id: len_endorsement_reward
+    - id: len_endorsement_reward_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: endorsement_reward_
-      type: endorsement_reward_
-      size: len_endorsement_reward
-  endorsement_reward_:
+    - id: endorsement_reward_dyn
+      type: endorsement_reward_dyn
+      size: len_endorsement_reward_dyn
+  endorsement_reward_dyn:
     seq:
     - id: endorsement_reward_entries
       type: endorsement_reward_entries
@@ -23,14 +23,14 @@ types:
       type: n
   baking_reward_per_endorsement:
     seq:
-    - id: len_baking_reward_per_endorsement
+    - id: len_baking_reward_per_endorsement_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: baking_reward_per_endorsement_
-      type: baking_reward_per_endorsement_
-      size: len_baking_reward_per_endorsement
-  baking_reward_per_endorsement_:
+    - id: baking_reward_per_endorsement_dyn
+      type: baking_reward_per_endorsement_dyn
+      size: len_baking_reward_per_endorsement_dyn
+  baking_reward_per_endorsement_dyn:
     seq:
     - id: baking_reward_per_endorsement_entries
       type: baking_reward_per_endorsement_entries
@@ -54,14 +54,14 @@ types:
       if: has_tail.as<bool>
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks
+    - id: len_time_between_blocks_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: time_between_blocks_
-      type: time_between_blocks_
-      size: len_time_between_blocks
-  time_between_blocks_:
+    - id: time_between_blocks_dyn
+      type: time_between_blocks_dyn
+      size: len_time_between_blocks_dyn
+  time_between_blocks_dyn:
     seq:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
@@ -72,14 +72,14 @@ types:
       type: s8
   commitments:
     seq:
-    - id: len_commitments
+    - id: len_commitments_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_
-      type: commitments_
-      size: len_commitments
-  commitments_:
+    - id: commitments_dyn
+      type: commitments_dyn
+      size: len_commitments_dyn
+  commitments_dyn:
     seq:
     - id: commitments_entries
       type: commitments_entries
@@ -94,14 +94,14 @@ types:
       doc: id_011__pthangz2__mutez
   bootstrap_contracts:
     seq:
-    - id: len_bootstrap_contracts
+    - id: len_bootstrap_contracts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_contracts_
-      type: bootstrap_contracts_
-      size: len_bootstrap_contracts
-  bootstrap_contracts_:
+    - id: bootstrap_contracts_dyn
+      type: bootstrap_contracts_dyn
+      size: len_bootstrap_contracts_dyn
+  bootstrap_contracts_dyn:
     seq:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
@@ -153,14 +153,14 @@ types:
       if: (public_key_hash_tag == public_key_hash_tag::p256)
   bootstrap_accounts:
     seq:
-    - id: len_bootstrap_accounts
+    - id: len_bootstrap_accounts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_accounts_
-      type: bootstrap_accounts_
-      size: len_bootstrap_accounts
-  bootstrap_accounts_:
+    - id: bootstrap_accounts_dyn
+      type: bootstrap_accounts_dyn
+      size: len_bootstrap_accounts_dyn
+  bootstrap_accounts_dyn:
     seq:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries

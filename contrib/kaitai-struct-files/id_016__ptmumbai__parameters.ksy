@@ -52,14 +52,14 @@ types:
       if: has_tail.as<bool>
   commitments:
     seq:
-    - id: len_commitments
+    - id: len_commitments_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_
-      type: commitments_
-      size: len_commitments
-  commitments_:
+    - id: commitments_dyn
+      type: commitments_dyn
+      size: len_commitments_dyn
+  commitments_dyn:
     seq:
     - id: commitments_entries
       type: commitments_entries
@@ -74,14 +74,14 @@ types:
       doc: id_016__ptmumbai__mutez
   bootstrap_contracts:
     seq:
-    - id: len_bootstrap_contracts
+    - id: len_bootstrap_contracts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_contracts_
-      type: bootstrap_contracts_
-      size: len_bootstrap_contracts
-  bootstrap_contracts_:
+    - id: bootstrap_contracts_dyn
+      type: bootstrap_contracts_dyn
+      size: len_bootstrap_contracts_dyn
+  bootstrap_contracts_dyn:
     seq:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
@@ -140,14 +140,14 @@ types:
       if: (public_key_hash_tag == public_key_hash_tag::bls)
   bootstrap_accounts:
     seq:
-    - id: len_bootstrap_accounts
+    - id: len_bootstrap_accounts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_accounts_
-      type: bootstrap_accounts_
-      size: len_bootstrap_accounts
-  bootstrap_accounts_:
+    - id: bootstrap_accounts_dyn
+      type: bootstrap_accounts_dyn
+      size: len_bootstrap_accounts_dyn
+  bootstrap_accounts_dyn:
     seq:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries

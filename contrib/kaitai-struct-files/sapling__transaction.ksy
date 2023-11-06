@@ -17,14 +17,14 @@ types:
       size: len_bound_data
   outputs:
     seq:
-    - id: len_outputs
+    - id: len_outputs_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: outputs_
-      type: outputs_
-      size: len_outputs
-  outputs_:
+    - id: outputs_dyn
+      type: outputs_dyn
+      size: len_outputs_dyn
+  outputs_dyn:
     seq:
     - id: outputs_entries
       type: outputs_entries
@@ -66,16 +66,14 @@ types:
       size: len_payload_enc
   inputs:
     seq:
-    - id: len_inputs
+    - id: len_inputs_dyn
       type: u4
       valid:
         max: 1833216
-    - id: inputs_
-      type: inputs_
-      size: len_inputs
-      valid:
-        max: 1833216
-  inputs_:
+    - id: inputs_dyn
+      type: inputs_dyn
+      size: len_inputs_dyn
+  inputs_dyn:
     seq:
     - id: inputs_entries
       type: inputs_entries

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 006-PsCARTHA.contract.big_map_diff'
 types:
-  id_006__pscartha__contract__big_map_diff_:
+  id_006__pscartha__contract__big_map_diff_dyn:
     seq:
     - id: id_006__pscartha__contract__big_map_diff_entries
       type: id_006__pscartha__contract__big_map_diff_entries
@@ -119,14 +119,14 @@ types:
       size: len_annots
   update__prim__generic__args:
     seq:
-    - id: len_args
+    - id: len_update__prim__generic__args_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: update__prim__generic__args_
-      type: update__prim__generic__args_
-      size: len_args
-  update__prim__generic__args_:
+    - id: update__prim__generic__args_dyn
+      type: update__prim__generic__args_dyn
+      size: len_update__prim__generic__args_dyn
+  update__prim__generic__args_dyn:
     seq:
     - id: update__prim__generic__args_entries
       type: update__prim__generic__args_entries
@@ -204,14 +204,14 @@ types:
       size: len_annots
   update__sequence__micheline__006__pscartha__michelson_v1__expression:
     seq:
-    - id: len_sequence
+    - id: len_update__sequence__sequence_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: update__sequence__sequence_
-      type: update__sequence__sequence_
-      size: len_sequence
-  update__sequence__sequence_:
+    - id: update__sequence__sequence_dyn
+      type: update__sequence__sequence_dyn
+      size: len_update__sequence__sequence_dyn
+  update__sequence__sequence_dyn:
     seq:
     - id: update__sequence__sequence_entries
       type: update__sequence__sequence_entries
@@ -2404,10 +2404,10 @@ enums:
     2: copy
     3: alloc
 seq:
-- id: len_id_006__pscartha__contract__big_map_diff
+- id: len_id_006__pscartha__contract__big_map_diff_dyn
   type: u4
   valid:
     max: 1073741823
-- id: id_006__pscartha__contract__big_map_diff_
-  type: id_006__pscartha__contract__big_map_diff_
-  size: len_id_006__pscartha__contract__big_map_diff
+- id: id_006__pscartha__contract__big_map_diff_dyn
+  type: id_006__pscartha__contract__big_map_diff_dyn
+  size: len_id_006__pscartha__contract__big_map_diff_dyn

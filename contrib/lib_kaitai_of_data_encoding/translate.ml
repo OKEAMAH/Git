@@ -269,30 +269,24 @@ let rec seq_field_of_data_encoding :
       let enums, types, mus, attrs =
         seq_field_of_data_encoding enums types mus encoding path id
       in
-      let size_id = size_id_of_id id in
+      let size_id = size_id_of_id (pathify path id ^ "_dyn") in
       let size_attr =
         Helpers.merge_valid
           (Ground.Attr.binary_length_kind ~id:size_id kind)
           (ValidationMax (Ast.IntNum limit))
       in
       let types, attr =
-        redirect_if_many
-          ~or_if:(fun attr ->
-            Option.is_some attr.size || Option.is_some attr.valid
-            ||
-            match attr.cond.repeat with
-            | NoRepeat -> false
-            | RepeatExpr _ | RepeatUntil _ | RepeatEos -> true)
+        redirect
           types
           attrs
           (fun attr ->
             {
               attr with
               size = Some (Ast.Name size_id);
-              valid = Some (ValidationMax (Ast.IntNum limit));
+              valid = None;
             })
           path
-          id
+          (id ^ "_dyn")
       in
       (enums, types, mus, [size_attr; attr])
   | Padded (encoding, pad) ->
@@ -368,24 +362,18 @@ let rec seq_field_of_data_encoding :
   | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
       seq_field_of_union enums types mus tag_size cases path id
   | Dynamic_size {kind; encoding} ->
-      let size_id = size_id_of_id id in
+      let size_id = size_id_of_id (pathify path id ^ "_dyn") in
       let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       let enums, types, mus, attrs =
         seq_field_of_data_encoding enums types mus encoding path id
       in
       let types, attr =
-        redirect_if_many
-          ~or_if:(fun attr ->
-            Option.is_some attr.size
-            ||
-            match attr.cond.repeat with
-            | NoRepeat -> false
-            | RepeatExpr _ | RepeatUntil _ | RepeatEos -> true)
+        redirect
           types
           attrs
           (fun attr -> {attr with size = Some (Ast.Name size_id)})
           path
-          id
+          (id ^ "_dyn")
       in
       (enums, types, mus, [size_attr; attr])
   | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->

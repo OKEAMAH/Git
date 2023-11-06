@@ -5,14 +5,14 @@ doc: ! 'Encoding id: 010-PtGRANAD.constants'
 types:
   endorsement_reward:
     seq:
-    - id: len_endorsement_reward
+    - id: len_endorsement_reward_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: endorsement_reward_
-      type: endorsement_reward_
-      size: len_endorsement_reward
-  endorsement_reward_:
+    - id: endorsement_reward_dyn
+      type: endorsement_reward_dyn
+      size: len_endorsement_reward_dyn
+  endorsement_reward_dyn:
     seq:
     - id: endorsement_reward_entries
       type: endorsement_reward_entries
@@ -23,14 +23,14 @@ types:
       type: n
   baking_reward_per_endorsement:
     seq:
-    - id: len_baking_reward_per_endorsement
+    - id: len_baking_reward_per_endorsement_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: baking_reward_per_endorsement_
-      type: baking_reward_per_endorsement_
-      size: len_baking_reward_per_endorsement
-  baking_reward_per_endorsement_:
+    - id: baking_reward_per_endorsement_dyn
+      type: baking_reward_per_endorsement_dyn
+      size: len_baking_reward_per_endorsement_dyn
+  baking_reward_per_endorsement_dyn:
     seq:
     - id: baking_reward_per_endorsement_entries
       type: baking_reward_per_endorsement_entries
@@ -66,14 +66,14 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks
+    - id: len_time_between_blocks_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: time_between_blocks_
-      type: time_between_blocks_
-      size: len_time_between_blocks
-  time_between_blocks_:
+    - id: time_between_blocks_dyn
+      type: time_between_blocks_dyn
+      size: len_time_between_blocks_dyn
+  time_between_blocks_dyn:
     seq:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries

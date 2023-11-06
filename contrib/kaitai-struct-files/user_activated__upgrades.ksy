@@ -6,7 +6,7 @@ doc: ! >-
 
   Description: User activated upgrades: at given level, switch to given protocol.
 types:
-  user_activated__upgrades_:
+  user_activated__upgrades_dyn:
     seq:
     - id: user_activated__upgrades_entries
       type: user_activated__upgrades_entries
@@ -18,10 +18,10 @@ types:
     - id: replacement_protocol
       size: 32
 seq:
-- id: len_user_activated__upgrades
+- id: len_user_activated__upgrades_dyn
   type: u4
   valid:
     max: 1073741823
-- id: user_activated__upgrades_
-  type: user_activated__upgrades_
-  size: len_user_activated__upgrades
+- id: user_activated__upgrades_dyn
+  type: user_activated__upgrades_dyn
+  size: len_user_activated__upgrades_dyn

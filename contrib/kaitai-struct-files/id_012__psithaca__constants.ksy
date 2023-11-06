@@ -13,28 +13,28 @@ types:
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   round_robin_over_delegates__delegate_selection:
     seq:
-    - id: len_round_robin_over_delegates
+    - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_
-      type: round_robin_over_delegates__round_robin_over_delegates_
-      size: len_round_robin_over_delegates
-  round_robin_over_delegates__round_robin_over_delegates_:
+    - id: round_robin_over_delegates__round_robin_over_delegates_dyn
+      type: round_robin_over_delegates__round_robin_over_delegates_dyn
+      size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
+  round_robin_over_delegates__round_robin_over_delegates_dyn:
     seq:
     - id: round_robin_over_delegates__round_robin_over_delegates_entries
       type: round_robin_over_delegates__round_robin_over_delegates_entries
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
-    - id: len_round_robin_over_delegates_elt
+    - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_
-      size: len_round_robin_over_delegates_elt
-  round_robin_over_delegates__round_robin_over_delegates_elt_:
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+  round_robin_over_delegates__round_robin_over_delegates_elt_dyn:
     seq:
     - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
       type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
@@ -97,14 +97,14 @@ types:
       type: b7be
   cache_layout:
     seq:
-    - id: len_cache_layout
+    - id: len_cache_layout_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: cache_layout_
-      type: cache_layout_
-      size: len_cache_layout
-  cache_layout_:
+    - id: cache_layout_dyn
+      type: cache_layout_dyn
+      size: len_cache_layout_dyn
+  cache_layout_dyn:
     seq:
     - id: cache_layout_entries
       type: cache_layout_entries

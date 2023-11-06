@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.vote.listings'
 types:
-  alpha__vote__listings_:
+  alpha__vote__listings_dyn:
     seq:
     - id: alpha__vote__listings_entries
       type: alpha__vote__listings_entries
@@ -39,10 +39,10 @@ enums:
     2: p256
     3: bls
 seq:
-- id: len_alpha__vote__listings
+- id: len_alpha__vote__listings_dyn
   type: u4
   valid:
     max: 1073741823
-- id: alpha__vote__listings_
-  type: alpha__vote__listings_
-  size: len_alpha__vote__listings
+- id: alpha__vote__listings_dyn
+  type: alpha__vote__listings_dyn
+  size: len_alpha__vote__listings_dyn

@@ -9,14 +9,14 @@ doc: ! >-
 types:
   modules:
     seq:
-    - id: len_modules
+    - id: len_modules_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: modules_
-      type: modules_
-      size: len_modules
-  modules_:
+    - id: modules_dyn
+      type: modules_dyn
+      size: len_modules_dyn
+  modules_dyn:
     seq:
     - id: modules_entries
       type: modules_entries

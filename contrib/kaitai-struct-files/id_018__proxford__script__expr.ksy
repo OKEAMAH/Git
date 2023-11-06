@@ -69,14 +69,14 @@ types:
       size: len_annots
   prim__generic__args:
     seq:
-    - id: len_args
+    - id: len_prim__generic__args_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: prim__generic__args_
-      type: prim__generic__args_
-      size: len_args
-  prim__generic__args_:
+    - id: prim__generic__args_dyn
+      type: prim__generic__args_dyn
+      size: len_prim__generic__args_dyn
+  prim__generic__args_dyn:
     seq:
     - id: prim__generic__args_entries
       type: prim__generic__args_entries
@@ -154,14 +154,14 @@ types:
       size: len_annots
   sequence__micheline__018__proxford__michelson_v1__expression:
     seq:
-    - id: len_sequence
+    - id: len_sequence__sequence_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: sequence__sequence_
-      type: sequence__sequence_
-      size: len_sequence
-  sequence__sequence_:
+    - id: sequence__sequence_dyn
+      type: sequence__sequence_dyn
+      size: len_sequence__sequence_dyn
+  sequence__sequence_dyn:
     seq:
     - id: sequence__sequence_entries
       type: sequence__sequence_entries

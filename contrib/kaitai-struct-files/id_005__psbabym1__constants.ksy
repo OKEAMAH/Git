@@ -30,14 +30,14 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks
+    - id: len_time_between_blocks_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: time_between_blocks_
-      type: time_between_blocks_
-      size: len_time_between_blocks
-  time_between_blocks_:
+    - id: time_between_blocks_dyn
+      type: time_between_blocks_dyn
+      size: len_time_between_blocks_dyn
+  time_between_blocks_dyn:
     seq:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 008-PtEdo2Zk.delegate.frozen_balance_by_cycles'
 types:
-  id_008__ptedo2zk__delegate__frozen_balance_by_cycles_:
+  id_008__ptedo2zk__delegate__frozen_balance_by_cycles_dyn:
     seq:
     - id: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_entries
       type: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_entries
@@ -31,10 +31,10 @@ types:
     - id: payload
       type: b7be
 seq:
-- id: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
+- id: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles_dyn
   type: u4
   valid:
     max: 1073741823
-- id: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_
-  type: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_
-  size: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
+- id: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_dyn
+  type: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_dyn
+  size: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles_dyn

@@ -140,15 +140,17 @@ types:
       if: (id_009__psfloren__entrypoint_tag == id_009__psfloren__entrypoint_tag::named)
   transaction__named__id_009__psfloren__entrypoint:
     seq:
-    - id: len_named
+    - id: len_transaction__named__named_dyn
       type: u1
       valid:
         max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
     - id: named
-      size: len_named
       size-eos: true
-      valid:
-        max: 31
   transaction__id_009__psfloren__contract_id_:
     seq:
     - id: id_009__psfloren__contract_id_tag

@@ -9,14 +9,14 @@ doc: ! >-
 types:
   components:
     seq:
-    - id: len_components
+    - id: len_components_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: components_
-      type: components_
-      size: len_components
-  components_:
+    - id: components_dyn
+      type: components_dyn
+      size: len_components_dyn
+  components_dyn:
     seq:
     - id: components_entries
       type: components_entries

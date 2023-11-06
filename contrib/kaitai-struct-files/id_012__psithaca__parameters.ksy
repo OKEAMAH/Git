@@ -13,28 +13,28 @@ types:
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   round_robin_over_delegates__delegate_selection:
     seq:
-    - id: len_round_robin_over_delegates
+    - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_
-      type: round_robin_over_delegates__round_robin_over_delegates_
-      size: len_round_robin_over_delegates
-  round_robin_over_delegates__round_robin_over_delegates_:
+    - id: round_robin_over_delegates__round_robin_over_delegates_dyn
+      type: round_robin_over_delegates__round_robin_over_delegates_dyn
+      size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
+  round_robin_over_delegates__round_robin_over_delegates_dyn:
     seq:
     - id: round_robin_over_delegates__round_robin_over_delegates_entries
       type: round_robin_over_delegates__round_robin_over_delegates_entries
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
-    - id: len_round_robin_over_delegates_elt
+    - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_
-      size: len_round_robin_over_delegates_elt
-  round_robin_over_delegates__round_robin_over_delegates_elt_:
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+  round_robin_over_delegates__round_robin_over_delegates_elt_dyn:
     seq:
     - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
       type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
@@ -85,14 +85,14 @@ types:
       if: has_tail.as<bool>
   commitments:
     seq:
-    - id: len_commitments
+    - id: len_commitments_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_
-      type: commitments_
-      size: len_commitments
-  commitments_:
+    - id: commitments_dyn
+      type: commitments_dyn
+      size: len_commitments_dyn
+  commitments_dyn:
     seq:
     - id: commitments_entries
       type: commitments_entries
@@ -107,14 +107,14 @@ types:
       doc: id_012__psithaca__mutez
   bootstrap_contracts:
     seq:
-    - id: len_bootstrap_contracts
+    - id: len_bootstrap_contracts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_contracts_
-      type: bootstrap_contracts_
-      size: len_bootstrap_contracts
-  bootstrap_contracts_:
+    - id: bootstrap_contracts_dyn
+      type: bootstrap_contracts_dyn
+      size: len_bootstrap_contracts_dyn
+  bootstrap_contracts_dyn:
     seq:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
@@ -170,14 +170,14 @@ types:
       if: (public_key_hash_tag == public_key_hash_tag::p256)
   bootstrap_accounts:
     seq:
-    - id: len_bootstrap_accounts
+    - id: len_bootstrap_accounts_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_accounts_
-      type: bootstrap_accounts_
-      size: len_bootstrap_accounts
-  bootstrap_accounts_:
+    - id: bootstrap_accounts_dyn
+      type: bootstrap_accounts_dyn
+      size: len_bootstrap_accounts_dyn
+  bootstrap_accounts_dyn:
     seq:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries
