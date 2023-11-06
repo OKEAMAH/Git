@@ -364,6 +364,7 @@ let rec seq_field_of_data_encoding :
         seq_field_of_data_encoding enums types mus encoding path id
       in
       let id =
+        (* Avoid duplicated id when translating mempool *)
         if List.mem_assoc (id ^ "_dyn") types then id ^ "_outer" else id
       in
       let size_id = size_id_of_id (pathify path id ^ "_dyn") in
