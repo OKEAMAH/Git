@@ -163,6 +163,8 @@ type 'a parameters = {
   tools : 'a Tools.tools;
 }
 
+module Operations_table = Hashtbl.Make (Operation_hash)
+
 (** The type needed for the implementation of [Make] below, but
  *  which is independent from the protocol. *)
 type ('protocol_data, 'a) types_state_shell = {
@@ -180,6 +182,7 @@ type ('protocol_data, 'a) types_state_shell = {
   mutable mempool : Mempool.t;
   mutable advertisement : [`Pending of Mempool.t | `None];
   mutable banned_operations : Operation_hash.Set.t;
+  mutable is_already_handled : unit Operations_table.t;
   worker : Tools.worker_tools;
 }
 
@@ -332,7 +335,10 @@ module Make_s
         (Unit.catch_s (fun () ->
              Events.(emit ban_operation_encountered) (origin, oph))) ;
       true)
-    else
+    else if Operations_table.mem shell.is_already_handled oph then (
+      Profiler.mark ["is in operations table"] ;
+      true)
+    else if
       ( Profiler.aggregate_f "is_pending" @@ fun () ->
         Pending_ops.mem oph shell.pending )
       || ( Profiler.aggregate_f "is_live_operation" @@ fun () ->
@@ -341,6 +347,10 @@ module Make_s
            Classification.is_in_mempool oph shell.classification <> None )
       || Profiler.aggregate_f "is_known_unparsable" @@ fun () ->
          Classification.is_known_unparsable oph shell.classification
+    then (
+      Operations_table.add shell.is_already_handled oph () ;
+      true)
+    else false
 
   let advertise (shell : ('operation_data, _) types_state_shell) mempool =
     let open Lwt_syntax in
@@ -808,6 +818,7 @@ module Make_s
       let old_predecessor = pv.shell.predecessor in
       pv.shell.predecessor <- new_predecessor ;
       pv.shell.live_blocks <- new_live_blocks ;
+      pv.shell.is_already_handled <- Operations_table.create 100 ;
       pv.shell.live_operations <- new_live_operations ;
       Lwt_watcher.shutdown_input pv.operation_stream ;
       pv.operation_stream <- Lwt_watcher.create_input () ;
@@ -1412,6 +1423,7 @@ module Make
           pending = Pending_ops.empty;
           advertisement = `None;
           banned_operations = Operation_hash.Set.empty;
+          is_already_handled = Operations_table.create 100;
           worker = mk_worker_tools w;
         }
       in
