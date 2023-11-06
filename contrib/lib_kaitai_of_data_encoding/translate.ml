@@ -360,11 +360,14 @@ let rec seq_field_of_data_encoding :
   | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
       seq_field_of_union enums types mus tag_size cases path id
   | Dynamic_size {kind; encoding} ->
-      let size_id = size_id_of_id (pathify path id ^ "_dyn") in
-      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       let enums, types, mus, attrs =
         seq_field_of_data_encoding enums types mus encoding path id
       in
+      let id =
+        if List.mem_assoc (id ^ "_dyn") types then id ^ "_outer" else id
+      in
+      let size_id = size_id_of_id (pathify path id ^ "_dyn") in
+      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
       let types, attr =
         redirect
           types

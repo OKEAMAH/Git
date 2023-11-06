@@ -70,8 +70,8 @@ let add_uniq_assoc mappings ((k, v) as mapping) =
       if v = vv then mappings
       else raise (Invalid_argument ("Mappings.add: duplicate keys (" ^ k ^ ")"))
 
-let class_spec_of_attrs ~id ?description ?(enums = [])
-    ?(types = []) ?(instances = []) attrs =
+let class_spec_of_attrs ~id ?description ?(enums = []) ?(types = [])
+    ?(instances = []) attrs =
   {
     (default_class_spec ~id ?description ()) with
     seq = attrs;
