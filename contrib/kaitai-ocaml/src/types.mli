@@ -310,8 +310,6 @@ module ClassSpec : sig
   (** [t] is an outermost type that describes Kaitai Struct specification files. *)
   type t = {
     fileName : string option;
-    isTopLevel : bool;
-        (** if [isTopLevel class_spec] is true, we have a corresponding meta section. *)
     meta : MetaSpec.t;
     doc : DocSpec.t;
     toStringExpr : Ast.expr option;

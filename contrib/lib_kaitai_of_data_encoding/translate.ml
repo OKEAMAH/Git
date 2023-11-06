@@ -864,7 +864,6 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
         seq_field_of_data_encoding [] [] MuSet.empty encoding [] descrid
       in
       Helpers.class_spec_of_attrs
-        ~top_level:true
         ~id:encoding_name
         ~description
         ~enums
@@ -877,7 +876,6 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
         seq_field_of_data_encoding [] [] MuSet.empty encoding [] encoding_name
       in
       Helpers.class_spec_of_attrs
-        ~top_level:true
         ~id:encoding_name
         ~description
         ~enums

@@ -385,7 +385,6 @@ end
 module ClassSpec = struct
   type t = {
     fileName : string option;
-    isTopLevel : bool;
     meta : MetaSpec.t;
     doc : DocSpec.t;
     toStringExpr : Ast.expr option;

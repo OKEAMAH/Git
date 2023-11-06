@@ -54,7 +54,6 @@ let default_class_spec ~id ?description () =
     {
       fileName = None;
       meta = default_meta_spec ~id;
-      isTopLevel = false;
       doc = {default_doc_spec with summary = description};
       toStringExpr = None;
       params = [];
@@ -71,7 +70,7 @@ let add_uniq_assoc mappings ((k, v) as mapping) =
       if v = vv then mappings
       else raise (Invalid_argument ("Mappings.add: duplicate keys (" ^ k ^ ")"))
 
-let class_spec_of_attrs ~id ?description ?(top_level = false) ?(enums = [])
+let class_spec_of_attrs ~id ?description ?(enums = [])
     ?(types = []) ?(instances = []) attrs =
   {
     (default_class_spec ~id ?description ()) with
@@ -79,7 +78,6 @@ let class_spec_of_attrs ~id ?description ?(top_level = false) ?(enums = [])
     enums;
     types;
     instances;
-    isTopLevel = top_level;
   }
 
 let default_instance_spec ~id value =

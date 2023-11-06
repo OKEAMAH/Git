@@ -420,7 +420,6 @@ let rec classSpec id yaml =
   ClassSpec.
     {
       meta;
-      isTopLevel = false;
       doc;
       types;
       toStringExpr = None;

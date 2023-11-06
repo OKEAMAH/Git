@@ -220,8 +220,8 @@ let%expect_test "test simple enum" =
     doc: ! 'Encoding id: enumnnumnnum'
     enums:
       enumnnumnnum:
-        1: aaaaaaaaa
         0: aaaa
+        1: aaaaaaaaa
         2: aaaaaaaaaaaa
     seq:
     - id: enumnnumnnum
