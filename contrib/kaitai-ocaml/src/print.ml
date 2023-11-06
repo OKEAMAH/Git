@@ -190,10 +190,10 @@ let seq_spec seq = sequence (List.concat_map attr_spec seq)
 let spec_if_non_empty name args f =
   match args with [] -> [] | _ :: _ -> [(name, f args)]
 
-let rec to_yaml (t : ClassSpec.t) =
+let rec to_yaml toplevel (t : ClassSpec.t) =
   mapping_flatten
     [
-      (if t.isTopLevel then [("meta", metaSpec t.meta)] else []);
+      (if toplevel then [("meta", metaSpec t.meta)] else []);
       doc_spec t.doc;
       spec_if_non_empty "types" t.types types_spec;
       spec_if_non_empty "instances" t.instances instances_spec;
@@ -201,10 +201,11 @@ let rec to_yaml (t : ClassSpec.t) =
       spec_if_non_empty "seq" t.seq seq_spec;
     ]
 
-and types_spec types = mapping (types |> List.map (fun (k, v) -> (k, to_yaml v)))
+and types_spec types =
+  mapping (types |> List.map (fun (k, v) -> (k, to_yaml false v)))
 
 let to_string t =
-  let y = to_yaml t in
+  let y = to_yaml true t in
   match Yaml.yaml_to_string ~len:(65535 * 8) y with
   | Ok x -> x
   | Error (`Msg m) -> failwith m
@@ -216,6 +217,7 @@ let print_diff difftool a b =
     let f = Filename.temp_file "kaitai" ".ksy" in
     let oc = open_out_bin f in
     output_string oc c ;
+    output_string oc "\n" ;
     close_out oc ;
     f
   in
@@ -227,7 +229,10 @@ let print_diff difftool a b =
 
 let print t =
   let s = to_string t in
-  let t' = Parse.parse s in
+  let file =
+    match t.meta.id with None -> None | Some id -> Some (id ^ ".ksy")
+  in
+  let t' = Parse.parse ?file s in
   if t <> t' then (
     match Sys.getenv_opt "KAITAIDIFF" with
     | None | Some "" ->

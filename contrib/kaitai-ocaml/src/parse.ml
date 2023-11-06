@@ -324,10 +324,10 @@ let bitendian x : BitEndianness.t =
   | "le" -> LittleBitEndian
   | _ -> raise (Error "bitendian")
 
-let meta content =
+let meta content id =
   let m = mapping content in
   let id =
-    match find_key_opt m "id" with None -> None | Some i -> Some (scalar i)
+    match find_key_opt m "id" with None -> id | Some i -> Some (scalar i)
   in
   let endian =
     match find_key_opt m "endian" with
@@ -374,7 +374,7 @@ let rec classSpec id yaml =
   let m = mapping yaml in
   let meta =
     match find_key_opt m "meta" with
-    | Some content -> meta content
+    | Some content -> meta content id
     | None ->
         MetaSpec.
           {
@@ -420,7 +420,7 @@ let rec classSpec id yaml =
   ClassSpec.
     {
       meta;
-      isTopLevel = (match id with None -> true | Some _ -> false);
+      isTopLevel = false;
       doc;
       types;
       toStringExpr = None;
@@ -431,10 +431,15 @@ let rec classSpec id yaml =
       fileName = None;
     }
 
-let parse ?file:_ s =
+let parse ?file s =
   let yaml =
     match Yaml.yaml_of_string s with
     | Ok x -> x
     | Error (`Msg msg) -> failwith msg
   in
-  classSpec None yaml
+  let id =
+    match file with
+    | None -> None
+    | Some id -> Some (Filename.chop_suffix (Filename.basename id) ".ksy")
+  in
+  classSpec id yaml
