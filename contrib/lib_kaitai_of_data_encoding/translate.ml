@@ -32,6 +32,7 @@ let escape_id id =
     id ;
   Buffer.contents b
 
+module StringSet = Set.Make (String)
 open Kaitai.Types
 
 (* We need to access the definition of data-encoding's [descr] type. For this
@@ -441,12 +442,33 @@ let rec seq_field_of_data_encoding :
         (enums, types, mus, [attr])
   | String_enum (h, a) ->
       let id = pathify path id in
+      let names =
+        Hashtbl.fold
+          (fun _ (name, _i) acc -> StringSet.add name acc)
+          h
+          StringSet.empty
+      in
       let map =
         Hashtbl.to_seq_values h
         |> Seq.map (fun (m, i) ->
+               let name = escape_id m in
+               let name =
+                 if (not (String.equal name m)) && StringSet.mem name names then
+                   name ^ "__"
+                 else name
+               in
                ( i,
                  EnumValueSpec.
-                   {name = escape_id m; doc = Helpers.default_doc_spec} ))
+                   {
+                     name;
+                     doc =
+                       DocSpec.
+                         {
+                           refs = [];
+                           summary =
+                             (if String.equal m name then None else Some m);
+                         };
+                   } ))
         |> List.of_seq
         |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
       in
