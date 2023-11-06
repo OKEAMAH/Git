@@ -195,7 +195,7 @@ types:
     - id: contents
       type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: ty
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: ticketer
       type: zk_rollup_publish__some__id_015__ptlimapt__contract_id_
       doc: ! >-
@@ -315,16 +315,16 @@ types:
   zk_rollup_publish__some__prim__generic__args_entries:
     seq:
     - id: args_elt
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
   zk_rollup_publish__some__prim__2_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: zk_rollup_publish__some__prim__2_args__some_annots__id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: zk_rollup_publish__some__prim__2_args__some_annots__annots
       type: zk_rollup_publish__some__prim__2_args__some_annots__annots
   zk_rollup_publish__some__prim__2_args__some_annots__annots:
@@ -341,16 +341,16 @@ types:
       type: u1
       enum: zk_rollup_publish__some__prim__2_args__no_annots__id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
   zk_rollup_publish__some__prim__1_arg__some_annots__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_015__ptlimapt__michelson__v1__primitives
     - id: arg
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
     - id: zk_rollup_publish__some__prim__1_arg__some_annots__annots
       type: zk_rollup_publish__some__prim__1_arg__some_annots__annots
   zk_rollup_publish__some__prim__1_arg__some_annots__annots:
@@ -367,7 +367,7 @@ types:
       type: u1
       enum: zk_rollup_publish__some__prim__1_arg__no_annots__id_015__ptlimapt__michelson__v1__primitives
     - id: arg
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
   zk_rollup_publish__some__prim__no_args__some_annots__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
@@ -400,7 +400,7 @@ types:
   zk_rollup_publish__some__sequence__sequence_entries:
     seq:
     - id: sequence_elt
-      type: micheline__015__ptlimapt__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__015__ptlimapt__michelson_v1__expression
   zk_rollup_publish__some__string__string:
     seq:
     - id: len_string
@@ -879,7 +879,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__3_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__case__1__proof:
     seq:
     - id: case__1_field0
@@ -891,7 +891,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__1_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__case__2__proof:
     seq:
     - id: case__2_field0
@@ -903,7 +903,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__2_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__case__0__proof:
     seq:
     - id: case__0_field0
@@ -915,7 +915,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__0_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__proof:
     seq:
     - id: proof_tag
@@ -944,7 +944,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__3_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__1__proof:
     seq:
     - id: case__1_field0
@@ -956,7 +956,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__1_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__2__proof:
     seq:
     - id: case__2_field0
@@ -968,7 +968,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__2_field3
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__proof:
     seq:
     - id: case__0_field0
@@ -1414,7 +1414,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__219__case__219_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__219__case__219_field1
     - id: case__219_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__219__case__219_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__219__case__219_field1_dyn
@@ -1435,7 +1435,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__218__case__218_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__218__case__218_field1
     - id: case__218_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__218__case__218_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__218__case__218_field1_dyn
@@ -1456,7 +1456,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__217__case__217_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__217__case__217_field1
     - id: case__217_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__217__case__217_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__217__case__217_field1_dyn
@@ -1477,7 +1477,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__216__case__216_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__216__case__216_field1
     - id: case__216_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__216__case__216_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__216__case__216_field1_dyn
@@ -1544,7 +1544,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_elt_field0
     - id: case__191_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_elt_field0_dyn
@@ -1563,7 +1563,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_elt_field0
     - id: case__190_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_elt_field0_dyn
@@ -1582,7 +1582,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_elt_field0
     - id: case__189_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_elt_field0_dyn
@@ -1601,7 +1601,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_elt_field0
     - id: case__188_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_elt_field0_dyn
@@ -1620,7 +1620,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_elt_field0
     - id: case__187_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_elt_field0_dyn
@@ -1639,7 +1639,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_elt_field0
     - id: case__186_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_elt_field0_dyn
@@ -1658,7 +1658,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_elt_field0
     - id: case__185_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_elt_field0_dyn
@@ -1677,7 +1677,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_elt_field0
     - id: case__184_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_elt_field0_dyn
@@ -1696,7 +1696,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_elt_field0
     - id: case__183_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_elt_field0_dyn
@@ -1715,7 +1715,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_elt_field0
     - id: case__182_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_elt_field0_dyn
@@ -1734,7 +1734,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_elt_field0
     - id: case__181_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_elt_field0_dyn
@@ -1753,7 +1753,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_elt_field0
     - id: case__180_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_elt_field0_dyn
@@ -1772,7 +1772,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_elt_field0
     - id: case__179_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_elt_field0_dyn
@@ -1791,7 +1791,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_elt_field0
     - id: case__178_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_elt_field0_dyn
@@ -1810,7 +1810,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_elt_field0
     - id: case__177_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_elt_field0_dyn
@@ -1829,7 +1829,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_elt_field0
     - id: case__176_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_elt_field0_dyn
@@ -1848,7 +1848,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_elt_field0
     - id: case__175_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_elt_field0_dyn
@@ -1867,7 +1867,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_elt_field0
     - id: case__174_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_elt_field0_dyn
@@ -1886,7 +1886,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_elt_field0
     - id: case__173_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_elt_field0_dyn
@@ -1905,7 +1905,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_elt_field0
     - id: case__172_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_elt_field0_dyn
@@ -1924,7 +1924,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_elt_field0
     - id: case__171_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_elt_field0_dyn
@@ -1943,7 +1943,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_elt_field0
     - id: case__170_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_elt_field0_dyn
@@ -1962,7 +1962,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_elt_field0
     - id: case__169_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_elt_field0_dyn
@@ -1981,7 +1981,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_elt_field0
     - id: case__168_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_elt_field0_dyn
@@ -2000,7 +2000,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_elt_field0
     - id: case__167_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_elt_field0_dyn
@@ -2019,7 +2019,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_elt_field0
     - id: case__166_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_elt_field0_dyn
@@ -2038,7 +2038,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_elt_field0
     - id: case__165_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_elt_field0_dyn
@@ -2057,7 +2057,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_elt_field0
     - id: case__164_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_elt_field0_dyn
@@ -2076,7 +2076,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_elt_field0
     - id: case__163_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_elt_field0_dyn
@@ -2095,7 +2095,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_elt_field0
     - id: case__162_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_elt_field0_dyn
@@ -2114,7 +2114,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_elt_field0
     - id: case__161_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_elt_field0_dyn
@@ -2133,7 +2133,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_elt_field0
     - id: case__160_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_elt_field0_dyn
@@ -2152,7 +2152,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_elt_field0
     - id: case__159_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_elt_field0_dyn
@@ -2171,7 +2171,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_elt_field0
     - id: case__158_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_elt_field0_dyn
@@ -2190,7 +2190,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_elt_field0
     - id: case__157_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_elt_field0_dyn
@@ -2209,7 +2209,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_elt_field0
     - id: case__156_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_elt_field0_dyn
@@ -2228,7 +2228,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_elt_field0
     - id: case__155_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_elt_field0_dyn
@@ -2247,7 +2247,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_elt_field0
     - id: case__154_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_elt_field0_dyn
@@ -2266,7 +2266,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_elt_field0
     - id: case__153_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_elt_field0_dyn
@@ -2285,7 +2285,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_elt_field0
     - id: case__152_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_elt_field0_dyn
@@ -2304,7 +2304,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_elt_field0
     - id: case__151_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_elt_field0_dyn
@@ -2323,7 +2323,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_elt_field0
     - id: case__150_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_elt_field0_dyn
@@ -2342,7 +2342,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_elt_field0
     - id: case__149_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_elt_field0_dyn
@@ -2361,7 +2361,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_elt_field0
     - id: case__148_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_elt_field0_dyn
@@ -2380,7 +2380,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_elt_field0
     - id: case__147_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_elt_field0_dyn
@@ -2399,7 +2399,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_elt_field0
     - id: case__146_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_elt_field0_dyn
@@ -2418,7 +2418,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_elt_field0
     - id: case__145_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_elt_field0_dyn
@@ -2437,7 +2437,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_elt_field0
     - id: case__144_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_elt_field0_dyn
@@ -2456,7 +2456,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_elt_field0
     - id: case__143_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_elt_field0_dyn
@@ -2475,7 +2475,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_elt_field0
     - id: case__142_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_elt_field0_dyn
@@ -2494,7 +2494,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_elt_field0
     - id: case__141_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_elt_field0_dyn
@@ -2513,7 +2513,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_elt_field0
     - id: case__140_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_elt_field0_dyn
@@ -2532,7 +2532,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_elt_field0
     - id: case__139_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_elt_field0_dyn
@@ -2551,7 +2551,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_elt_field0
     - id: case__138_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_elt_field0_dyn
@@ -2570,7 +2570,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_elt_field0
     - id: case__137_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_elt_field0_dyn
@@ -2589,7 +2589,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_elt_field0
     - id: case__136_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_elt_field0_dyn
@@ -2608,7 +2608,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_elt_field0
     - id: case__135_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_elt_field0_dyn
@@ -2627,7 +2627,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_elt_field0
     - id: case__134_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_elt_field0_dyn
@@ -2646,7 +2646,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_elt_field0
     - id: case__133_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_elt_field0_dyn
@@ -2665,7 +2665,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_elt_field0
     - id: case__132_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_elt_field0_dyn
@@ -2684,7 +2684,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_elt_field0
     - id: case__131_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_elt_field0_dyn
@@ -2703,7 +2703,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_elt_field0
     - id: case__130_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_elt_field0_dyn
@@ -2722,7 +2722,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_elt_field0
     - id: case__129_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_elt_field0_dyn
@@ -2749,7 +2749,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__67__case__67_field1_entries:
     seq:
     - id: case__67_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__tree_encoding:
     seq:
     - id: case__63_field0
@@ -2775,7 +2775,7 @@ types:
     - id: case__63_field1_elt_field0
       type: u1
     - id: case__63_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__59__tree_encoding:
     seq:
     - id: case__59_field0
@@ -2791,7 +2791,7 @@ types:
     - id: case__59_field1_elt_field0
       type: u1
     - id: case__59_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__55__tree_encoding:
     seq:
     - id: case__55_field0
@@ -2807,7 +2807,7 @@ types:
     - id: case__55_field1_elt_field0
       type: u1
     - id: case__55_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__51__tree_encoding:
     seq:
     - id: case__51_field0
@@ -2823,7 +2823,7 @@ types:
     - id: case__51_field1_elt_field0
       type: u1
     - id: case__51_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__47__tree_encoding:
     seq:
     - id: case__47_field0
@@ -2839,7 +2839,7 @@ types:
     - id: case__47_field1_elt_field0
       type: u1
     - id: case__47_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__43__tree_encoding:
     seq:
     - id: case__43_field0
@@ -2855,7 +2855,7 @@ types:
     - id: case__43_field1_elt_field0
       type: u1
     - id: case__43_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__39__tree_encoding:
     seq:
     - id: case__39_field0
@@ -2871,7 +2871,7 @@ types:
     - id: case__39_field1_elt_field0
       type: u1
     - id: case__39_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__35__tree_encoding:
     seq:
     - id: case__35_field0
@@ -2887,7 +2887,7 @@ types:
     - id: case__35_field1_elt_field0
       type: u1
     - id: case__35_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__31__tree_encoding:
     seq:
     - id: case__31_field0
@@ -2903,7 +2903,7 @@ types:
     - id: case__31_field1_elt_field0
       type: u1
     - id: case__31_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__27__tree_encoding:
     seq:
     - id: case__27_field0
@@ -2919,7 +2919,7 @@ types:
     - id: case__27_field1_elt_field0
       type: u1
     - id: case__27_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__23__tree_encoding:
     seq:
     - id: case__23_field0
@@ -2935,7 +2935,7 @@ types:
     - id: case__23_field1_elt_field0
       type: u1
     - id: case__23_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__19__tree_encoding:
     seq:
     - id: case__19_field0
@@ -2951,7 +2951,7 @@ types:
     - id: case__19_field1_elt_field0
       type: u1
     - id: case__19_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__15__tree_encoding:
     seq:
     - id: case__15_field0
@@ -2967,7 +2967,7 @@ types:
     - id: case__15_field1_elt_field0
       type: u1
     - id: case__15_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__11__tree_encoding:
     seq:
     - id: case__11_field0
@@ -2983,7 +2983,7 @@ types:
     - id: case__11_field1_elt_field0
       type: u1
     - id: case__11_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__7__tree_encoding:
     seq:
     - id: case__7_field0
@@ -2999,7 +2999,7 @@ types:
     - id: case__7_field1_elt_field0
       type: u1
     - id: case__7_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__66__tree_encoding:
     seq:
     - id: case__66_field0
@@ -3013,7 +3013,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__66__case__66_field1_entries:
     seq:
     - id: case__66_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__tree_encoding:
     seq:
     - id: case__62_field0
@@ -3039,7 +3039,7 @@ types:
     - id: case__62_field1_elt_field0
       type: u1
     - id: case__62_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__58__tree_encoding:
     seq:
     - id: case__58_field0
@@ -3055,7 +3055,7 @@ types:
     - id: case__58_field1_elt_field0
       type: u1
     - id: case__58_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__54__tree_encoding:
     seq:
     - id: case__54_field0
@@ -3071,7 +3071,7 @@ types:
     - id: case__54_field1_elt_field0
       type: u1
     - id: case__54_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__50__tree_encoding:
     seq:
     - id: case__50_field0
@@ -3087,7 +3087,7 @@ types:
     - id: case__50_field1_elt_field0
       type: u1
     - id: case__50_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__46__tree_encoding:
     seq:
     - id: case__46_field0
@@ -3103,7 +3103,7 @@ types:
     - id: case__46_field1_elt_field0
       type: u1
     - id: case__46_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__42__tree_encoding:
     seq:
     - id: case__42_field0
@@ -3119,7 +3119,7 @@ types:
     - id: case__42_field1_elt_field0
       type: u1
     - id: case__42_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__38__tree_encoding:
     seq:
     - id: case__38_field0
@@ -3135,7 +3135,7 @@ types:
     - id: case__38_field1_elt_field0
       type: u1
     - id: case__38_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__34__tree_encoding:
     seq:
     - id: case__34_field0
@@ -3151,7 +3151,7 @@ types:
     - id: case__34_field1_elt_field0
       type: u1
     - id: case__34_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__30__tree_encoding:
     seq:
     - id: case__30_field0
@@ -3167,7 +3167,7 @@ types:
     - id: case__30_field1_elt_field0
       type: u1
     - id: case__30_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__26__tree_encoding:
     seq:
     - id: case__26_field0
@@ -3183,7 +3183,7 @@ types:
     - id: case__26_field1_elt_field0
       type: u1
     - id: case__26_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__22__tree_encoding:
     seq:
     - id: case__22_field0
@@ -3199,7 +3199,7 @@ types:
     - id: case__22_field1_elt_field0
       type: u1
     - id: case__22_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__18__tree_encoding:
     seq:
     - id: case__18_field0
@@ -3215,7 +3215,7 @@ types:
     - id: case__18_field1_elt_field0
       type: u1
     - id: case__18_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__14__tree_encoding:
     seq:
     - id: case__14_field0
@@ -3231,7 +3231,7 @@ types:
     - id: case__14_field1_elt_field0
       type: u1
     - id: case__14_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__10__tree_encoding:
     seq:
     - id: case__10_field0
@@ -3247,7 +3247,7 @@ types:
     - id: case__10_field1_elt_field0
       type: u1
     - id: case__10_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__6__tree_encoding:
     seq:
     - id: case__6_field0
@@ -3263,7 +3263,7 @@ types:
     - id: case__6_field1_elt_field0
       type: u1
     - id: case__6_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__65__tree_encoding:
     seq:
     - id: case__65_field0
@@ -3277,7 +3277,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__65__case__65_field1_entries:
     seq:
     - id: case__65_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__tree_encoding:
     seq:
     - id: case__61_field0
@@ -3303,7 +3303,7 @@ types:
     - id: case__61_field1_elt_field0
       type: u1
     - id: case__61_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__57__tree_encoding:
     seq:
     - id: case__57_field0
@@ -3319,7 +3319,7 @@ types:
     - id: case__57_field1_elt_field0
       type: u1
     - id: case__57_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__53__tree_encoding:
     seq:
     - id: case__53_field0
@@ -3335,7 +3335,7 @@ types:
     - id: case__53_field1_elt_field0
       type: u1
     - id: case__53_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__49__tree_encoding:
     seq:
     - id: case__49_field0
@@ -3351,7 +3351,7 @@ types:
     - id: case__49_field1_elt_field0
       type: u1
     - id: case__49_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__45__tree_encoding:
     seq:
     - id: case__45_field0
@@ -3367,7 +3367,7 @@ types:
     - id: case__45_field1_elt_field0
       type: u1
     - id: case__45_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__41__tree_encoding:
     seq:
     - id: case__41_field0
@@ -3383,7 +3383,7 @@ types:
     - id: case__41_field1_elt_field0
       type: u1
     - id: case__41_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__37__tree_encoding:
     seq:
     - id: case__37_field0
@@ -3399,7 +3399,7 @@ types:
     - id: case__37_field1_elt_field0
       type: u1
     - id: case__37_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__33__tree_encoding:
     seq:
     - id: case__33_field0
@@ -3415,7 +3415,7 @@ types:
     - id: case__33_field1_elt_field0
       type: u1
     - id: case__33_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__29__tree_encoding:
     seq:
     - id: case__29_field0
@@ -3431,7 +3431,7 @@ types:
     - id: case__29_field1_elt_field0
       type: u1
     - id: case__29_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__25__tree_encoding:
     seq:
     - id: case__25_field0
@@ -3447,7 +3447,7 @@ types:
     - id: case__25_field1_elt_field0
       type: u1
     - id: case__25_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__21__tree_encoding:
     seq:
     - id: case__21_field0
@@ -3463,7 +3463,7 @@ types:
     - id: case__21_field1_elt_field0
       type: u1
     - id: case__21_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__17__tree_encoding:
     seq:
     - id: case__17_field0
@@ -3479,7 +3479,7 @@ types:
     - id: case__17_field1_elt_field0
       type: u1
     - id: case__17_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__13__tree_encoding:
     seq:
     - id: case__13_field0
@@ -3495,7 +3495,7 @@ types:
     - id: case__13_field1_elt_field0
       type: u1
     - id: case__13_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__9__tree_encoding:
     seq:
     - id: case__9_field0
@@ -3511,7 +3511,7 @@ types:
     - id: case__9_field1_elt_field0
       type: u1
     - id: case__9_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__5__tree_encoding:
     seq:
     - id: case__5_field0
@@ -3527,7 +3527,7 @@ types:
     - id: case__5_field1_elt_field0
       type: u1
     - id: case__5_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__64__tree_encoding:
     seq:
     - id: case__64_field0
@@ -3541,7 +3541,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__64__case__64_field1_entries:
     seq:
     - id: case__64_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__tree_encoding:
     seq:
     - id: case__60_field0
@@ -3567,7 +3567,7 @@ types:
     - id: case__60_field1_elt_field0
       type: u1
     - id: case__60_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__56__tree_encoding:
     seq:
     - id: case__56_field0
@@ -3583,7 +3583,7 @@ types:
     - id: case__56_field1_elt_field0
       type: u1
     - id: case__56_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__52__tree_encoding:
     seq:
     - id: case__52_field0
@@ -3599,7 +3599,7 @@ types:
     - id: case__52_field1_elt_field0
       type: u1
     - id: case__52_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__48__tree_encoding:
     seq:
     - id: case__48_field0
@@ -3615,7 +3615,7 @@ types:
     - id: case__48_field1_elt_field0
       type: u1
     - id: case__48_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__44__tree_encoding:
     seq:
     - id: case__44_field0
@@ -3631,7 +3631,7 @@ types:
     - id: case__44_field1_elt_field0
       type: u1
     - id: case__44_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__40__tree_encoding:
     seq:
     - id: case__40_field0
@@ -3647,7 +3647,7 @@ types:
     - id: case__40_field1_elt_field0
       type: u1
     - id: case__40_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__36__tree_encoding:
     seq:
     - id: case__36_field0
@@ -3663,7 +3663,7 @@ types:
     - id: case__36_field1_elt_field0
       type: u1
     - id: case__36_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__32__tree_encoding:
     seq:
     - id: case__32_field0
@@ -3679,7 +3679,7 @@ types:
     - id: case__32_field1_elt_field0
       type: u1
     - id: case__32_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__28__tree_encoding:
     seq:
     - id: case__28_field0
@@ -3695,7 +3695,7 @@ types:
     - id: case__28_field1_elt_field0
       type: u1
     - id: case__28_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__24__tree_encoding:
     seq:
     - id: case__24_field0
@@ -3711,7 +3711,7 @@ types:
     - id: case__24_field1_elt_field0
       type: u1
     - id: case__24_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__20__tree_encoding:
     seq:
     - id: case__20_field0
@@ -3727,7 +3727,7 @@ types:
     - id: case__20_field1_elt_field0
       type: u1
     - id: case__20_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__16__tree_encoding:
     seq:
     - id: case__16_field0
@@ -3743,7 +3743,7 @@ types:
     - id: case__16_field1_elt_field0
       type: u1
     - id: case__16_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__12__tree_encoding:
     seq:
     - id: case__12_field0
@@ -3759,7 +3759,7 @@ types:
     - id: case__12_field1_elt_field0
       type: u1
     - id: case__12_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__8__tree_encoding:
     seq:
     - id: case__8_field0
@@ -3775,7 +3775,7 @@ types:
     - id: case__8_field1_elt_field0
       type: u1
     - id: case__8_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__tree_encoding:
     seq:
     - id: case__4_field0
@@ -4214,7 +4214,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__211__case__211_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__211__case__211_field1
     - id: case__211_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__211__case__211_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__211__case__211_field1_dyn
@@ -4235,7 +4235,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__210__case__210_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__210__case__210_field1
     - id: case__210_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__210__case__210_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__210__case__210_field1_dyn
@@ -4256,7 +4256,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__209__case__209_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__209__case__209_field1
     - id: case__209_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__209__case__209_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__209__case__209_field1_dyn
@@ -4277,7 +4277,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__208__case__208_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__208__case__208_field1
     - id: case__208_field2
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__208__case__208_field1:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__208__case__208_field1_dyn
@@ -4310,7 +4310,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_elt_field0
     - id: case__191_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_elt_field0_dyn
@@ -4329,7 +4329,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_elt_field0
     - id: case__190_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_elt_field0_dyn
@@ -4348,7 +4348,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_elt_field0
     - id: case__189_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_elt_field0_dyn
@@ -4367,7 +4367,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_elt_field0
     - id: case__188_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_elt_field0_dyn
@@ -4386,7 +4386,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_elt_field0
     - id: case__187_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_elt_field0_dyn
@@ -4405,7 +4405,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_elt_field0
     - id: case__186_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_elt_field0_dyn
@@ -4424,7 +4424,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_elt_field0
     - id: case__185_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_elt_field0_dyn
@@ -4443,7 +4443,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_elt_field0
     - id: case__184_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_elt_field0_dyn
@@ -4462,7 +4462,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_elt_field0
     - id: case__183_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_elt_field0_dyn
@@ -4481,7 +4481,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_elt_field0
     - id: case__182_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_elt_field0_dyn
@@ -4500,7 +4500,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_elt_field0
     - id: case__181_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_elt_field0_dyn
@@ -4519,7 +4519,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_elt_field0
     - id: case__180_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_elt_field0_dyn
@@ -4538,7 +4538,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_elt_field0
     - id: case__179_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_elt_field0_dyn
@@ -4557,7 +4557,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_elt_field0
     - id: case__178_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_elt_field0_dyn
@@ -4576,7 +4576,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_elt_field0
     - id: case__177_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_elt_field0_dyn
@@ -4595,7 +4595,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_elt_field0
     - id: case__176_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_elt_field0_dyn
@@ -4614,7 +4614,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_elt_field0
     - id: case__175_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_elt_field0_dyn
@@ -4633,7 +4633,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_elt_field0
     - id: case__174_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_elt_field0_dyn
@@ -4652,7 +4652,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_elt_field0
     - id: case__173_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_elt_field0_dyn
@@ -4671,7 +4671,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_elt_field0
     - id: case__172_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_elt_field0_dyn
@@ -4690,7 +4690,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_elt_field0
     - id: case__171_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_elt_field0_dyn
@@ -4709,7 +4709,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_elt_field0
     - id: case__170_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_elt_field0_dyn
@@ -4728,7 +4728,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_elt_field0
     - id: case__169_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_elt_field0_dyn
@@ -4747,7 +4747,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_elt_field0
     - id: case__168_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_elt_field0_dyn
@@ -4766,7 +4766,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_elt_field0
     - id: case__167_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_elt_field0_dyn
@@ -4785,7 +4785,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_elt_field0
     - id: case__166_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_elt_field0_dyn
@@ -4804,7 +4804,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_elt_field0
     - id: case__165_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_elt_field0_dyn
@@ -4823,7 +4823,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_elt_field0
     - id: case__164_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_elt_field0_dyn
@@ -4842,7 +4842,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_elt_field0
     - id: case__163_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_elt_field0_dyn
@@ -4861,7 +4861,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_elt_field0
     - id: case__162_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_elt_field0_dyn
@@ -4880,7 +4880,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_elt_field0
     - id: case__161_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_elt_field0_dyn
@@ -4899,7 +4899,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_elt_field0
     - id: case__160_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_elt_field0_dyn
@@ -4918,7 +4918,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_elt_field0
     - id: case__159_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_elt_field0_dyn
@@ -4937,7 +4937,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_elt_field0
     - id: case__158_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_elt_field0_dyn
@@ -4956,7 +4956,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_elt_field0
     - id: case__157_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_elt_field0_dyn
@@ -4975,7 +4975,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_elt_field0
     - id: case__156_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_elt_field0_dyn
@@ -4994,7 +4994,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_elt_field0
     - id: case__155_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_elt_field0_dyn
@@ -5013,7 +5013,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_elt_field0
     - id: case__154_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_elt_field0_dyn
@@ -5032,7 +5032,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_elt_field0
     - id: case__153_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_elt_field0_dyn
@@ -5051,7 +5051,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_elt_field0
     - id: case__152_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_elt_field0_dyn
@@ -5070,7 +5070,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_elt_field0
     - id: case__151_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_elt_field0_dyn
@@ -5089,7 +5089,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_elt_field0
     - id: case__150_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_elt_field0_dyn
@@ -5108,7 +5108,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_elt_field0
     - id: case__149_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_elt_field0_dyn
@@ -5127,7 +5127,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_elt_field0
     - id: case__148_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_elt_field0_dyn
@@ -5146,7 +5146,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_elt_field0
     - id: case__147_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_elt_field0_dyn
@@ -5165,7 +5165,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_elt_field0
     - id: case__146_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_elt_field0_dyn
@@ -5184,7 +5184,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_elt_field0
     - id: case__145_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_elt_field0_dyn
@@ -5203,7 +5203,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_elt_field0
     - id: case__144_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_elt_field0_dyn
@@ -5222,7 +5222,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_elt_field0
     - id: case__143_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_elt_field0_dyn
@@ -5241,7 +5241,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_elt_field0
     - id: case__142_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_elt_field0_dyn
@@ -5260,7 +5260,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_elt_field0
     - id: case__141_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_elt_field0_dyn
@@ -5279,7 +5279,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_elt_field0
     - id: case__140_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_elt_field0_dyn
@@ -5298,7 +5298,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_elt_field0
     - id: case__139_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_elt_field0_dyn
@@ -5317,7 +5317,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_elt_field0
     - id: case__138_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_elt_field0_dyn
@@ -5336,7 +5336,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_elt_field0
     - id: case__137_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_elt_field0_dyn
@@ -5355,7 +5355,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_elt_field0
     - id: case__136_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_elt_field0_dyn
@@ -5374,7 +5374,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_elt_field0
     - id: case__135_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_elt_field0_dyn
@@ -5393,7 +5393,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_elt_field0
     - id: case__134_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_elt_field0_dyn
@@ -5412,7 +5412,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_elt_field0
     - id: case__133_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_elt_field0_dyn
@@ -5431,7 +5431,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_elt_field0
     - id: case__132_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_elt_field0_dyn
@@ -5450,7 +5450,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_elt_field0
     - id: case__131_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_elt_field0_dyn
@@ -5469,7 +5469,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_elt_field0
     - id: case__130_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_elt_field0_dyn
@@ -5488,7 +5488,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_elt_field0
     - id: case__129_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_elt_field0_dyn
@@ -5515,7 +5515,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__67__case__67_field1_entries:
     seq:
     - id: case__67_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__inode_tree:
     seq:
     - id: case__63_field0
@@ -5541,7 +5541,7 @@ types:
     - id: case__63_field1_elt_field0
       type: u1
     - id: case__63_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__59__inode_tree:
     seq:
     - id: case__59_field0
@@ -5557,7 +5557,7 @@ types:
     - id: case__59_field1_elt_field0
       type: u1
     - id: case__59_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__55__inode_tree:
     seq:
     - id: case__55_field0
@@ -5573,7 +5573,7 @@ types:
     - id: case__55_field1_elt_field0
       type: u1
     - id: case__55_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__51__inode_tree:
     seq:
     - id: case__51_field0
@@ -5589,7 +5589,7 @@ types:
     - id: case__51_field1_elt_field0
       type: u1
     - id: case__51_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__47__inode_tree:
     seq:
     - id: case__47_field0
@@ -5605,7 +5605,7 @@ types:
     - id: case__47_field1_elt_field0
       type: u1
     - id: case__47_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__43__inode_tree:
     seq:
     - id: case__43_field0
@@ -5621,7 +5621,7 @@ types:
     - id: case__43_field1_elt_field0
       type: u1
     - id: case__43_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__39__inode_tree:
     seq:
     - id: case__39_field0
@@ -5637,7 +5637,7 @@ types:
     - id: case__39_field1_elt_field0
       type: u1
     - id: case__39_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__35__inode_tree:
     seq:
     - id: case__35_field0
@@ -5653,7 +5653,7 @@ types:
     - id: case__35_field1_elt_field0
       type: u1
     - id: case__35_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__31__inode_tree:
     seq:
     - id: case__31_field0
@@ -5669,7 +5669,7 @@ types:
     - id: case__31_field1_elt_field0
       type: u1
     - id: case__31_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__27__inode_tree:
     seq:
     - id: case__27_field0
@@ -5685,7 +5685,7 @@ types:
     - id: case__27_field1_elt_field0
       type: u1
     - id: case__27_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__23__inode_tree:
     seq:
     - id: case__23_field0
@@ -5701,7 +5701,7 @@ types:
     - id: case__23_field1_elt_field0
       type: u1
     - id: case__23_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__19__inode_tree:
     seq:
     - id: case__19_field0
@@ -5717,7 +5717,7 @@ types:
     - id: case__19_field1_elt_field0
       type: u1
     - id: case__19_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__15__inode_tree:
     seq:
     - id: case__15_field0
@@ -5733,7 +5733,7 @@ types:
     - id: case__15_field1_elt_field0
       type: u1
     - id: case__15_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__11__inode_tree:
     seq:
     - id: case__11_field0
@@ -5749,7 +5749,7 @@ types:
     - id: case__11_field1_elt_field0
       type: u1
     - id: case__11_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__7__inode_tree:
     seq:
     - id: case__7_field0
@@ -5765,7 +5765,7 @@ types:
     - id: case__7_field1_elt_field0
       type: u1
     - id: case__7_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__66__inode_tree:
     seq:
     - id: case__66_field0
@@ -5779,7 +5779,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__66__case__66_field1_entries:
     seq:
     - id: case__66_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__inode_tree:
     seq:
     - id: case__62_field0
@@ -5805,7 +5805,7 @@ types:
     - id: case__62_field1_elt_field0
       type: u1
     - id: case__62_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__58__inode_tree:
     seq:
     - id: case__58_field0
@@ -5821,7 +5821,7 @@ types:
     - id: case__58_field1_elt_field0
       type: u1
     - id: case__58_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__54__inode_tree:
     seq:
     - id: case__54_field0
@@ -5837,7 +5837,7 @@ types:
     - id: case__54_field1_elt_field0
       type: u1
     - id: case__54_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__50__inode_tree:
     seq:
     - id: case__50_field0
@@ -5853,7 +5853,7 @@ types:
     - id: case__50_field1_elt_field0
       type: u1
     - id: case__50_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__46__inode_tree:
     seq:
     - id: case__46_field0
@@ -5869,7 +5869,7 @@ types:
     - id: case__46_field1_elt_field0
       type: u1
     - id: case__46_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__42__inode_tree:
     seq:
     - id: case__42_field0
@@ -5885,7 +5885,7 @@ types:
     - id: case__42_field1_elt_field0
       type: u1
     - id: case__42_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__38__inode_tree:
     seq:
     - id: case__38_field0
@@ -5901,7 +5901,7 @@ types:
     - id: case__38_field1_elt_field0
       type: u1
     - id: case__38_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__34__inode_tree:
     seq:
     - id: case__34_field0
@@ -5917,7 +5917,7 @@ types:
     - id: case__34_field1_elt_field0
       type: u1
     - id: case__34_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__30__inode_tree:
     seq:
     - id: case__30_field0
@@ -5933,7 +5933,7 @@ types:
     - id: case__30_field1_elt_field0
       type: u1
     - id: case__30_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__26__inode_tree:
     seq:
     - id: case__26_field0
@@ -5949,7 +5949,7 @@ types:
     - id: case__26_field1_elt_field0
       type: u1
     - id: case__26_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__22__inode_tree:
     seq:
     - id: case__22_field0
@@ -5965,7 +5965,7 @@ types:
     - id: case__22_field1_elt_field0
       type: u1
     - id: case__22_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__18__inode_tree:
     seq:
     - id: case__18_field0
@@ -5981,7 +5981,7 @@ types:
     - id: case__18_field1_elt_field0
       type: u1
     - id: case__18_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__14__inode_tree:
     seq:
     - id: case__14_field0
@@ -5997,7 +5997,7 @@ types:
     - id: case__14_field1_elt_field0
       type: u1
     - id: case__14_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__10__inode_tree:
     seq:
     - id: case__10_field0
@@ -6013,7 +6013,7 @@ types:
     - id: case__10_field1_elt_field0
       type: u1
     - id: case__10_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__6__inode_tree:
     seq:
     - id: case__6_field0
@@ -6029,7 +6029,7 @@ types:
     - id: case__6_field1_elt_field0
       type: u1
     - id: case__6_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__65__inode_tree:
     seq:
     - id: case__65_field0
@@ -6043,7 +6043,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__65__case__65_field1_entries:
     seq:
     - id: case__65_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__inode_tree:
     seq:
     - id: case__61_field0
@@ -6069,7 +6069,7 @@ types:
     - id: case__61_field1_elt_field0
       type: u1
     - id: case__61_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__57__inode_tree:
     seq:
     - id: case__57_field0
@@ -6085,7 +6085,7 @@ types:
     - id: case__57_field1_elt_field0
       type: u1
     - id: case__57_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__53__inode_tree:
     seq:
     - id: case__53_field0
@@ -6101,7 +6101,7 @@ types:
     - id: case__53_field1_elt_field0
       type: u1
     - id: case__53_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__49__inode_tree:
     seq:
     - id: case__49_field0
@@ -6117,7 +6117,7 @@ types:
     - id: case__49_field1_elt_field0
       type: u1
     - id: case__49_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__45__inode_tree:
     seq:
     - id: case__45_field0
@@ -6133,7 +6133,7 @@ types:
     - id: case__45_field1_elt_field0
       type: u1
     - id: case__45_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__41__inode_tree:
     seq:
     - id: case__41_field0
@@ -6149,7 +6149,7 @@ types:
     - id: case__41_field1_elt_field0
       type: u1
     - id: case__41_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__37__inode_tree:
     seq:
     - id: case__37_field0
@@ -6165,7 +6165,7 @@ types:
     - id: case__37_field1_elt_field0
       type: u1
     - id: case__37_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__33__inode_tree:
     seq:
     - id: case__33_field0
@@ -6181,7 +6181,7 @@ types:
     - id: case__33_field1_elt_field0
       type: u1
     - id: case__33_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__29__inode_tree:
     seq:
     - id: case__29_field0
@@ -6197,7 +6197,7 @@ types:
     - id: case__29_field1_elt_field0
       type: u1
     - id: case__29_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__25__inode_tree:
     seq:
     - id: case__25_field0
@@ -6213,7 +6213,7 @@ types:
     - id: case__25_field1_elt_field0
       type: u1
     - id: case__25_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__21__inode_tree:
     seq:
     - id: case__21_field0
@@ -6229,7 +6229,7 @@ types:
     - id: case__21_field1_elt_field0
       type: u1
     - id: case__21_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__17__inode_tree:
     seq:
     - id: case__17_field0
@@ -6245,7 +6245,7 @@ types:
     - id: case__17_field1_elt_field0
       type: u1
     - id: case__17_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__13__inode_tree:
     seq:
     - id: case__13_field0
@@ -6261,7 +6261,7 @@ types:
     - id: case__13_field1_elt_field0
       type: u1
     - id: case__13_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__9__inode_tree:
     seq:
     - id: case__9_field0
@@ -6277,7 +6277,7 @@ types:
     - id: case__9_field1_elt_field0
       type: u1
     - id: case__9_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__5__inode_tree:
     seq:
     - id: case__5_field0
@@ -6293,7 +6293,7 @@ types:
     - id: case__5_field1_elt_field0
       type: u1
     - id: case__5_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__64__inode_tree:
     seq:
     - id: case__64_field0
@@ -6307,7 +6307,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__64__case__64_field1_entries:
     seq:
     - id: case__64_field1_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__inode_tree:
     seq:
     - id: case__60_field0
@@ -6333,7 +6333,7 @@ types:
     - id: case__60_field1_elt_field0
       type: u1
     - id: case__60_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__56__inode_tree:
     seq:
     - id: case__56_field0
@@ -6349,7 +6349,7 @@ types:
     - id: case__56_field1_elt_field0
       type: u1
     - id: case__56_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__52__inode_tree:
     seq:
     - id: case__52_field0
@@ -6365,7 +6365,7 @@ types:
     - id: case__52_field1_elt_field0
       type: u1
     - id: case__52_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__48__inode_tree:
     seq:
     - id: case__48_field0
@@ -6381,7 +6381,7 @@ types:
     - id: case__48_field1_elt_field0
       type: u1
     - id: case__48_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__44__inode_tree:
     seq:
     - id: case__44_field0
@@ -6397,7 +6397,7 @@ types:
     - id: case__44_field1_elt_field0
       type: u1
     - id: case__44_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__40__inode_tree:
     seq:
     - id: case__40_field0
@@ -6413,7 +6413,7 @@ types:
     - id: case__40_field1_elt_field0
       type: u1
     - id: case__40_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__36__inode_tree:
     seq:
     - id: case__36_field0
@@ -6429,7 +6429,7 @@ types:
     - id: case__36_field1_elt_field0
       type: u1
     - id: case__36_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__32__inode_tree:
     seq:
     - id: case__32_field0
@@ -6445,7 +6445,7 @@ types:
     - id: case__32_field1_elt_field0
       type: u1
     - id: case__32_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__28__inode_tree:
     seq:
     - id: case__28_field0
@@ -6461,7 +6461,7 @@ types:
     - id: case__28_field1_elt_field0
       type: u1
     - id: case__28_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__24__inode_tree:
     seq:
     - id: case__24_field0
@@ -6477,7 +6477,7 @@ types:
     - id: case__24_field1_elt_field0
       type: u1
     - id: case__24_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__20__inode_tree:
     seq:
     - id: case__20_field0
@@ -6493,7 +6493,7 @@ types:
     - id: case__20_field1_elt_field0
       type: u1
     - id: case__20_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__16__inode_tree:
     seq:
     - id: case__16_field0
@@ -6509,7 +6509,7 @@ types:
     - id: case__16_field1_elt_field0
       type: u1
     - id: case__16_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__12__inode_tree:
     seq:
     - id: case__12_field0
@@ -6525,7 +6525,7 @@ types:
     - id: case__12_field1_elt_field0
       type: u1
     - id: case__12_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__8__inode_tree:
     seq:
     - id: case__8_field0
@@ -6541,7 +6541,7 @@ types:
     - id: case__8_field1_elt_field0
       type: u1
     - id: case__8_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__4__inode_tree:
     seq:
     - id: case__4_field0
@@ -6557,7 +6557,7 @@ types:
     - id: case__4_field1_elt_field0
       type: u1
     - id: case__4_field1_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__inode_tree
   sc_rollup_refute__dissection__step:
     seq:
     - id: len_sc_rollup_refute__dissection__dissection_dyn

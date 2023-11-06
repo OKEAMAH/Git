@@ -400,7 +400,7 @@ types:
     - id: sc_rollup_refute__proof__some__after
       type: sc_rollup_refute__proof__some__after
     - id: state
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
   sc_rollup_refute__proof__some__after:
     seq:
     - id: after_tag
@@ -638,7 +638,7 @@ types:
     - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after
       type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after
     - id: state
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after:
     seq:
     - id: after_tag
@@ -747,7 +747,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment
     - id: proof
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn
@@ -781,7 +781,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__dense_proof_entries:
     seq:
     - id: dense_proof_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
@@ -828,7 +828,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment
     - id: proof
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn
@@ -862,7 +862,7 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__dense_proof_entries:
     seq:
     - id: dense_proof_elt
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
@@ -882,7 +882,7 @@ types:
     - id: sparse_proof_elt_field0
       type: u1
     - id: sparse_proof_elt_field1
-      type: inode_tree
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
@@ -902,7 +902,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0
     - id: inode_values_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn
@@ -935,7 +935,7 @@ types:
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0
     - id: node_elt_field1
-      type: tree_encoding
+      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn

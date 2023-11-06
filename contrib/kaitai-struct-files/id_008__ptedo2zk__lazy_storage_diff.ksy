@@ -283,9 +283,9 @@ types:
     - id: big_map__alloc__updates
       type: big_map__alloc__updates
     - id: key_type
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: value_type
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
   big_map__alloc__updates:
     seq:
     - id: len_big_map__alloc__updates_dyn
@@ -305,12 +305,12 @@ types:
     - id: key_hash
       size: 32
     - id: key
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: value_tag
       type: u1
       enum: bool
     - id: value
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
       if: (value_tag == bool::true)
   big_map__copy__diff:
     seq:
@@ -338,12 +338,12 @@ types:
     - id: key_hash
       size: 32
     - id: key
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: value_tag
       type: u1
       enum: bool
     - id: value
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
       if: (value_tag == bool::true)
   big_map__update__updates:
     seq:
@@ -369,7 +369,7 @@ types:
       type: u1
       enum: bool
     - id: value
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
       if: (value_tag == bool::true)
   big_map__update__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
@@ -452,16 +452,16 @@ types:
   big_map__update__prim__generic__args_entries:
     seq:
     - id: args_elt
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
   big_map__update__prim__2_args__some_annots__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: big_map__update__prim__2_args__some_annots__id_008__ptedo2zk__michelson__v1__primitives
     - id: arg1
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: arg2
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: big_map__update__prim__2_args__some_annots__annots
       type: big_map__update__prim__2_args__some_annots__annots
   big_map__update__prim__2_args__some_annots__annots:
@@ -478,16 +478,16 @@ types:
       type: u1
       enum: big_map__update__prim__2_args__no_annots__id_008__ptedo2zk__michelson__v1__primitives
     - id: arg1
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: arg2
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
   big_map__update__prim__1_arg__some_annots__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: big_map__update__prim__1_arg__some_annots__id_008__ptedo2zk__michelson__v1__primitives
     - id: arg
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
     - id: big_map__update__prim__1_arg__some_annots__annots
       type: big_map__update__prim__1_arg__some_annots__annots
   big_map__update__prim__1_arg__some_annots__annots:
@@ -504,7 +504,7 @@ types:
       type: u1
       enum: big_map__update__prim__1_arg__no_annots__id_008__ptedo2zk__michelson__v1__primitives
     - id: arg
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
   big_map__update__prim__no_args__some_annots__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
@@ -537,7 +537,7 @@ types:
   big_map__update__sequence__sequence_entries:
     seq:
     - id: sequence_elt
-      type: micheline__008__ptedo2zk__michelson_v1__expression
+      type: big_map__update__micheline__008__ptedo2zk__michelson_v1__expression
   big_map__update__string__string:
     seq:
     - id: len_string

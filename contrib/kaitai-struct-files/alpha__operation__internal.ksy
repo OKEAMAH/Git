@@ -44,7 +44,7 @@ types:
       type: u1
       enum: bool
     - id: payload
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
       if: (payload_tag == bool::true)
   event__alpha__entrypoint_:
     seq:
@@ -148,16 +148,16 @@ types:
   event__prim__generic__args_entries:
     seq:
     - id: args_elt
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
   event__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: event__prim__2_args__some_annots__alpha__michelson__v1__primitives
     - id: arg1
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
     - id: arg2
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
     - id: event__prim__2_args__some_annots__annots
       type: event__prim__2_args__some_annots__annots
   event__prim__2_args__some_annots__annots:
@@ -174,16 +174,16 @@ types:
       type: u1
       enum: event__prim__2_args__no_annots__alpha__michelson__v1__primitives
     - id: arg1
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
     - id: arg2
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
   event__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: event__prim__1_arg__some_annots__alpha__michelson__v1__primitives
     - id: arg
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
     - id: event__prim__1_arg__some_annots__annots
       type: event__prim__1_arg__some_annots__annots
   event__prim__1_arg__some_annots__annots:
@@ -200,7 +200,7 @@ types:
       type: u1
       enum: event__prim__1_arg__no_annots__alpha__michelson__v1__primitives
     - id: arg
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
   event__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -233,7 +233,7 @@ types:
   event__sequence__sequence_entries:
     seq:
     - id: sequence_elt
-      type: micheline__alpha__michelson_v1__expression
+      type: event__micheline__alpha__michelson_v1__expression
   event__string__string:
     seq:
     - id: len_string

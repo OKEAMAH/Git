@@ -30,9 +30,9 @@ types:
     - id: big_map
       type: z
     - id: key_type
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
     - id: value_type
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
   copy__id_009__psfloren__contract__big_map_diff_elt:
     seq:
     - id: source_big_map
@@ -51,7 +51,7 @@ types:
       type: u1
       enum: bool
     - id: value
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
       if: (value_tag == bool::true)
   update__micheline__009__psfloren__michelson_v1__expression:
     seq:
@@ -134,16 +134,16 @@ types:
   update__prim__generic__args_entries:
     seq:
     - id: args_elt
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
   update__prim__2_args__some_annots__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: update__prim__2_args__some_annots__id_009__psfloren__michelson__v1__primitives
     - id: arg1
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
     - id: arg2
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
     - id: update__prim__2_args__some_annots__annots
       type: update__prim__2_args__some_annots__annots
   update__prim__2_args__some_annots__annots:
@@ -160,16 +160,16 @@ types:
       type: u1
       enum: update__prim__2_args__no_annots__id_009__psfloren__michelson__v1__primitives
     - id: arg1
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
     - id: arg2
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
   update__prim__1_arg__some_annots__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: update__prim__1_arg__some_annots__id_009__psfloren__michelson__v1__primitives
     - id: arg
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
     - id: update__prim__1_arg__some_annots__annots
       type: update__prim__1_arg__some_annots__annots
   update__prim__1_arg__some_annots__annots:
@@ -186,7 +186,7 @@ types:
       type: u1
       enum: update__prim__1_arg__no_annots__id_009__psfloren__michelson__v1__primitives
     - id: arg
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
   update__prim__no_args__some_annots__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
@@ -219,7 +219,7 @@ types:
   update__sequence__sequence_entries:
     seq:
     - id: sequence_elt
-      type: micheline__009__psfloren__michelson_v1__expression
+      type: update__micheline__009__psfloren__michelson_v1__expression
   update__string__string:
     seq:
     - id: len_string

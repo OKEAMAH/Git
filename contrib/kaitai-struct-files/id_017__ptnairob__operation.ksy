@@ -351,7 +351,7 @@ types:
     - id: contents
       type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: ty
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: ticketer
       type: zk_rollup_publish__some__id_017__ptnairob__contract_id_
       doc: ! >-
@@ -474,16 +474,16 @@ types:
   zk_rollup_publish__some__prim__generic__args_entries:
     seq:
     - id: args_elt
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
   zk_rollup_publish__some__prim__2_args__some_annots__micheline__017__ptnairob__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: zk_rollup_publish__some__prim__2_args__some_annots__id_017__ptnairob__michelson__v1__primitives
     - id: arg1
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: zk_rollup_publish__some__prim__2_args__some_annots__annots
       type: zk_rollup_publish__some__prim__2_args__some_annots__annots
   zk_rollup_publish__some__prim__2_args__some_annots__annots:
@@ -500,16 +500,16 @@ types:
       type: u1
       enum: zk_rollup_publish__some__prim__2_args__no_annots__id_017__ptnairob__michelson__v1__primitives
     - id: arg1
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
   zk_rollup_publish__some__prim__1_arg__some_annots__micheline__017__ptnairob__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
       enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_017__ptnairob__michelson__v1__primitives
     - id: arg
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
     - id: zk_rollup_publish__some__prim__1_arg__some_annots__annots
       type: zk_rollup_publish__some__prim__1_arg__some_annots__annots
   zk_rollup_publish__some__prim__1_arg__some_annots__annots:
@@ -526,7 +526,7 @@ types:
       type: u1
       enum: zk_rollup_publish__some__prim__1_arg__no_annots__id_017__ptnairob__michelson__v1__primitives
     - id: arg
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
   zk_rollup_publish__some__prim__no_args__some_annots__micheline__017__ptnairob__michelson_v1__expression:
     seq:
     - id: prim
@@ -559,7 +559,7 @@ types:
   zk_rollup_publish__some__sequence__sequence_entries:
     seq:
     - id: sequence_elt
-      type: micheline__017__ptnairob__michelson_v1__expression
+      type: zk_rollup_publish__some__micheline__017__ptnairob__michelson_v1__expression
   zk_rollup_publish__some__string__string:
     seq:
     - id: len_string
