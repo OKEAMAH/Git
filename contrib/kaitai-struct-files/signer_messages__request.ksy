@@ -26,12 +26,12 @@ types:
       if: (signature_tag == bool::true)
   deterministic_nonce_hash__data:
     seq:
-    - id: size_of_data
+    - id: len_data
       type: u4
       valid:
         max: 1073741823
     - id: data
-      size: size_of_data
+      size: len_data
   deterministic_nonce_hash__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -55,12 +55,12 @@ types:
       if: (signature_tag == bool::true)
   deterministic_nonce__data:
     seq:
-    - id: size_of_data
+    - id: len_data
       type: u4
       valid:
         max: 1073741823
     - id: data
-      size: size_of_data
+      size: len_data
   deterministic_nonce__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -92,12 +92,12 @@ types:
       if: (signature_tag == bool::true)
   sign__data:
     seq:
-    - id: size_of_data
+    - id: len_data
       type: u4
       valid:
         max: 1073741823
     - id: data
-      size: size_of_data
+      size: len_data
   sign__public_key_hash:
     seq:
     - id: public_key_hash_tag

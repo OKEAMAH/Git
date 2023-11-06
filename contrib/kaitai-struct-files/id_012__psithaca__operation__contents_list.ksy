@@ -35,12 +35,12 @@ types:
       type: register_global_constant__value
   register_global_constant__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   register_global_constant__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -51,12 +51,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   failing_noop__arbitrary:
     seq:
-    - id: size_of_arbitrary
+    - id: len_arbitrary
       type: u4
       valid:
         max: 1073741823
     - id: arbitrary
-      size: size_of_arbitrary
+      size: len_arbitrary
   set_deposits_limit__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: source
@@ -144,20 +144,20 @@ types:
       type: origination__storage
   origination__storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   origination__code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -201,12 +201,12 @@ types:
       type: transaction__value
   transaction__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   transaction__id_012__psithaca__entrypoint:
     seq:
     - id: id_012__psithaca__entrypoint_tag
@@ -217,12 +217,12 @@ types:
       if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
   transaction__named__id_012__psithaca__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31
@@ -335,13 +335,13 @@ types:
       type: proposals__proposals
   proposals__proposals:
     seq:
-    - id: size_of_proposals
+    - id: len_proposals
       type: u4
       valid:
         max: 1073741823
     - id: proposals
       type: proposals__proposals_entries
-      size: size_of_proposals
+      size: len_proposals
       repeat: eos
   proposals__proposals_entries:
     seq:
@@ -369,22 +369,22 @@ types:
       type: double_baking_evidence__bh2
   double_baking_evidence__bh2:
     seq:
-    - id: size_of_bh2
+    - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
       type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header
-      size: size_of_bh2
+      size: len_bh2
   double_baking_evidence__bh1:
     seq:
-    - id: size_of_bh1
+    - id: len_bh1
       type: u4
       valid:
         max: 1073741823
     - id: bh1
       type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header
-      size: size_of_bh1
+      size: len_bh1
   double_baking_evidence__id_012__psithaca__block_header__alpha__full_header:
     seq:
     - id: double_baking_evidence__block_header__shell
@@ -443,13 +443,13 @@ types:
       size: 32
   double_baking_evidence__fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: double_baking_evidence__fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   double_baking_evidence__fitness_entries:
     seq:
@@ -457,12 +457,12 @@ types:
       type: double_baking_evidence__fitness__elem
   double_baking_evidence__fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
   double_preendorsement_evidence__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: double_preendorsement_evidence__op1
@@ -471,22 +471,22 @@ types:
       type: double_preendorsement_evidence__op2
   double_preendorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement
-      size: size_of_op2
+      size: len_op2
   double_preendorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement
-      size: size_of_op1
+      size: len_op1
   double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement:
     seq:
     - id: operation__shell_header
@@ -526,22 +526,22 @@ types:
       type: double_endorsement_evidence__op2
   double_endorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement
-      size: size_of_op2
+      size: len_op2
   double_endorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement
-      size: size_of_op1
+      size: len_op1
   double_endorsement_evidence__id_012__psithaca__inlined__endorsement:
     seq:
     - id: operation__shell_header

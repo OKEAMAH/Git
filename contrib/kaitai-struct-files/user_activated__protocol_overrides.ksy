@@ -13,11 +13,11 @@ types:
     - id: replacement_protocol
       size: 32
 seq:
-- id: size_of_user_activated__protocol_overrides
+- id: len_user_activated__protocol_overrides
   type: u4
   valid:
     max: 1073741823
 - id: user_activated__protocol_overrides
   type: user_activated__protocol_overrides_entries
-  size: size_of_user_activated__protocol_overrides
+  size: len_user_activated__protocol_overrides
   repeat: eos

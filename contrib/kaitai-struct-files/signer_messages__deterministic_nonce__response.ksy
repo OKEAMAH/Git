@@ -5,12 +5,12 @@ doc: ! 'Encoding id: signer_messages.deterministic_nonce.response'
 types:
   deterministic_nonce:
     seq:
-    - id: size_of_deterministic_nonce
+    - id: len_deterministic_nonce
       type: u4
       valid:
         max: 1073741823
     - id: deterministic_nonce
-      size: size_of_deterministic_nonce
+      size: len_deterministic_nonce
 seq:
 - id: deterministic_nonce
   type: deterministic_nonce

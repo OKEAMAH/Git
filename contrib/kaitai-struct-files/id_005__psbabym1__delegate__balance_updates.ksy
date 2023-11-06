@@ -5,13 +5,13 @@ doc: ! 'Encoding id: 005-PsBabyM1.delegate.balance_updates'
 types:
   id_005__psbabym1__operation_metadata__alpha__balance_updates:
     seq:
-    - id: size_of_id_005__psbabym1__operation_metadata__alpha__balance_updates
+    - id: len_id_005__psbabym1__operation_metadata__alpha__balance_updates
       type: u4
       valid:
         max: 1073741823
     - id: id_005__psbabym1__operation_metadata__alpha__balance_updates
       type: id_005__psbabym1__operation_metadata__alpha__balance_updates_entries
-      size: size_of_id_005__psbabym1__operation_metadata__alpha__balance_updates
+      size: len_id_005__psbabym1__operation_metadata__alpha__balance_updates
       repeat: eos
   id_005__psbabym1__operation_metadata__alpha__balance_updates_entries:
     seq:

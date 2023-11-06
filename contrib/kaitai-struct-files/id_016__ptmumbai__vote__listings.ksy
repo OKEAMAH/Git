@@ -25,11 +25,11 @@ enums:
     2: p256
     3: bls
 seq:
-- id: size_of_id_016__ptmumbai__vote__listings
+- id: len_id_016__ptmumbai__vote__listings
   type: u4
   valid:
     max: 1073741823
 - id: id_016__ptmumbai__vote__listings
   type: id_016__ptmumbai__vote__listings_entries
-  size: size_of_id_016__ptmumbai__vote__listings
+  size: len_id_016__ptmumbai__vote__listings
   repeat: eos

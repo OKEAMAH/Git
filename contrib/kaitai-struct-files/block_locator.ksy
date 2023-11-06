@@ -9,13 +9,13 @@ types:
       size: 32
   current_head:
     seq:
-    - id: size_of_current_head
+    - id: len_current_head
       type: u4
       valid:
         max: 1073741823
     - id: current_head
       type: block_header
-      size: size_of_current_head
+      size: len_current_head
       doc: ! 'Block header: Block header. It contains both shell and protocol specific
         data.'
   block_header:
@@ -53,13 +53,13 @@ types:
       size: 32
   fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   fitness_entries:
     seq:
@@ -67,12 +67,12 @@ types:
       type: fitness__elem
   fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
 seq:
 - id: current_head
   type: current_head

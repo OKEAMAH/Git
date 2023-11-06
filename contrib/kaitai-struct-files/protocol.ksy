@@ -9,13 +9,13 @@ doc: ! >-
 types:
   components:
     seq:
-    - id: size_of_components
+    - id: len_components
       type: u4
       valid:
         max: 1073741823
     - id: components
       type: components_entries
-      size: size_of_components
+      size: len_components
       repeat: eos
   components_entries:
     seq:
@@ -31,28 +31,28 @@ types:
       type: implementation
   implementation:
     seq:
-    - id: size_of_implementation
+    - id: len_implementation
       type: u4
       valid:
         max: 1073741823
     - id: implementation
-      size: size_of_implementation
+      size: len_implementation
   interface:
     seq:
-    - id: size_of_interface
+    - id: len_interface
       type: u4
       valid:
         max: 1073741823
     - id: interface
-      size: size_of_interface
+      size: len_interface
   name:
     seq:
-    - id: size_of_name
+    - id: len_name
       type: u4
       valid:
         max: 1073741823
     - id: name
-      size: size_of_name
+      size: len_name
 enums:
   bool:
     0: false

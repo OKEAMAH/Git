@@ -18,13 +18,13 @@ types:
       if: has_tail.as<bool>
   time_between_blocks:
     seq:
-    - id: size_of_time_between_blocks
+    - id: len_time_between_blocks
       type: u4
       valid:
         max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
-      size: size_of_time_between_blocks
+      size: len_time_between_blocks
       repeat: eos
   time_between_blocks_entries:
     seq:
@@ -32,13 +32,13 @@ types:
       type: s8
   commitments:
     seq:
-    - id: size_of_commitments
+    - id: len_commitments
       type: u4
       valid:
         max: 1073741823
     - id: commitments
       type: commitments_entries
-      size: size_of_commitments
+      size: len_commitments
       repeat: eos
   commitments_entries:
     seq:
@@ -50,13 +50,13 @@ types:
       doc: id_005__psbabym1__mutez
   bootstrap_contracts:
     seq:
-    - id: size_of_bootstrap_contracts
+    - id: len_bootstrap_contracts
       type: u4
       valid:
         max: 1073741823
     - id: bootstrap_contracts
       type: bootstrap_contracts_entries
-      size: size_of_bootstrap_contracts
+      size: len_bootstrap_contracts
       repeat: eos
   bootstrap_contracts_entries:
     seq:
@@ -75,20 +75,20 @@ types:
       type: storage
   storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -99,13 +99,13 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   bootstrap_accounts:
     seq:
-    - id: size_of_bootstrap_accounts
+    - id: len_bootstrap_accounts
       type: u4
       valid:
         max: 1073741823
     - id: bootstrap_accounts
       type: bootstrap_accounts_entries
-      size: size_of_bootstrap_accounts
+      size: len_bootstrap_accounts
       repeat: eos
   bootstrap_accounts_entries:
     seq:

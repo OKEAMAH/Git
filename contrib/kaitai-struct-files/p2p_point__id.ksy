@@ -5,12 +5,12 @@ doc: ! 'Encoding id: p2p_point.id'
 types:
   p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
 seq:
 - id: p2p_point__id
   type: p2p_point__id

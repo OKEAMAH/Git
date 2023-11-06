@@ -54,8 +54,9 @@ let summary ~title ~description =
   | Some t, Some d -> Some (t ^ ": " ^ d)
 
 (* when an encoding has id [x],
-   then the attr for its size has id [size_id_of_id x] *)
-let size_id_of_id id = "size_of_" ^ id
+   then the attr for its size has id [size_id_of_id x].
+   Kaitia recomment to use the [len_] prefix in this case. *)
+let size_id_of_id id = "len_" ^ id
 
 (* in kaitai-struct, some fields can be added to single attributes but not to a
    group of them. When we want to attach a field to a group of attributes, we
@@ -723,7 +724,8 @@ and seq_field_of_collection :
  fun enums types mus length_limit length_encoding elts path id ->
   match (length_limit, length_encoding, elts) with
   | At_most max_length, Some le, elts ->
-      let length_id = "number_of_elements_in_" ^ id in
+      (* Kaitia recommend to use the [num_] prefix *)
+      let length_id = "num_" ^ id in
       let enums, types, mus, length_attrs =
         seq_field_of_data_encoding enums types mus le path length_id
       in

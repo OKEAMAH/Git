@@ -55,12 +55,12 @@ types:
       if: (micheline__007__psdelph1__michelson_v1__expression_tag == ::micheline__007__psdelph1__michelson_v1__expression_tag::micheline__007__psdelph1__michelson_v1__expression_tag::bytes)
   update__bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   update__prim__generic__micheline__007__psdelph1__michelson_v1__expression:
     seq:
     - id: prim
@@ -72,21 +72,21 @@ types:
       type: update__prim__generic__annots
   update__prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   update__prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: update__prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   update__prim__generic__args_entries:
     seq:
@@ -105,12 +105,12 @@ types:
       type: update__prim__2_args__some_annots__annots
   update__prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   update__prim__2_args__no_annots__micheline__007__psdelph1__michelson_v1__expression:
     seq:
     - id: prim
@@ -131,12 +131,12 @@ types:
       type: update__prim__1_arg__some_annots__annots
   update__prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   update__prim__1_arg__no_annots__micheline__007__psdelph1__michelson_v1__expression:
     seq:
     - id: prim
@@ -153,21 +153,21 @@ types:
       type: update__prim__no_args__some_annots__annots
   update__prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   update__sequence__micheline__007__psdelph1__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: update__sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   update__sequence__sequence_entries:
     seq:
@@ -175,12 +175,12 @@ types:
       type: micheline__007__psdelph1__michelson_v1__expression
   update__string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   z:
     seq:
     - id: has_tail
@@ -1069,11 +1069,11 @@ enums:
     2: copy
     3: alloc
 seq:
-- id: size_of_id_007__psdelph1__contract__big_map_diff
+- id: len_id_007__psdelph1__contract__big_map_diff
   type: u4
   valid:
     max: 1073741823
 - id: id_007__psdelph1__contract__big_map_diff
   type: id_007__psdelph1__contract__big_map_diff_entries
-  size: size_of_id_007__psdelph1__contract__big_map_diff
+  size: len_id_007__psdelph1__contract__big_map_diff
   repeat: eos

@@ -13,12 +13,12 @@ types:
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == ::micheline__008__ptedo2zk__michelson_v1__expression_tag::micheline__008__ptedo2zk__michelson_v1__expression_tag::bytes)
   bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   prim__generic__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
@@ -30,21 +30,21 @@ types:
       type: prim__generic__annots
   prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   prim__generic__args_entries:
     seq:
@@ -63,12 +63,12 @@ types:
       type: prim__2_args__some_annots__annots
   prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   prim__2_args__no_annots__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
@@ -89,12 +89,12 @@ types:
       type: prim__1_arg__some_annots__annots
   prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   prim__1_arg__no_annots__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: prim
@@ -111,21 +111,21 @@ types:
       type: prim__no_args__some_annots__annots
   prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   sequence__micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   sequence__sequence_entries:
     seq:
@@ -133,12 +133,12 @@ types:
       type: micheline__008__ptedo2zk__michelson_v1__expression
   string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   z:
     seq:
     - id: has_tail

@@ -21,12 +21,12 @@ types:
       size: 24
   payload_enc:
     seq:
-    - id: size_of_payload_enc
+    - id: len_payload_enc
       type: u4
       valid:
         max: 1073741823
     - id: payload_enc
-      size: size_of_payload_enc
+      size: len_payload_enc
 seq:
 - id: cm
   size: 32

@@ -29,12 +29,12 @@ types:
       if: (port_tag == bool::true)
   connection_established__p2p_address:
     seq:
-    - id: size_of_p2p_address
+    - id: len_p2p_address
       type: u4
       valid:
         max: 1073741823
     - id: p2p_address
-      size: size_of_p2p_address
+      size: len_p2p_address
   request_rejected__p2p_connection__pool_event:
     seq:
     - id: point
@@ -71,20 +71,20 @@ types:
       if: (port_tag == bool::true)
   request_rejected__p2p_address:
     seq:
-    - id: size_of_p2p_address
+    - id: len_p2p_address
       type: u4
       valid:
         max: 1073741823
     - id: p2p_address
-      size: size_of_p2p_address
+      size: len_p2p_address
   request_rejected__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   rejecting_request__p2p_connection__pool_event:
     seq:
     - id: point
@@ -109,20 +109,20 @@ types:
       if: (port_tag == bool::true)
   rejecting_request__p2p_address:
     seq:
-    - id: size_of_p2p_address
+    - id: len_p2p_address
       type: u4
       valid:
         max: 1073741823
     - id: p2p_address
-      size: size_of_p2p_address
+      size: len_p2p_address
   rejecting_request__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   accepting_request__p2p_connection__pool_event:
     seq:
     - id: point
@@ -147,52 +147,52 @@ types:
       if: (port_tag == bool::true)
   accepting_request__p2p_address:
     seq:
-    - id: size_of_p2p_address
+    - id: len_p2p_address
       type: u4
       valid:
         max: 1073741823
     - id: p2p_address
-      size: size_of_p2p_address
+      size: len_p2p_address
   accepting_request__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   authentication_failed__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   outgoing_connection__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   incoming_connection__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
   new_point__p2p_point__id:
     seq:
-    - id: size_of_p2p_point__id
+    - id: len_p2p_point__id
       type: u4
       valid:
         max: 1073741823
     - id: p2p_point__id
-      size: size_of_p2p_point__id
+      size: len_p2p_point__id
 enums:
   bool:
     0: false

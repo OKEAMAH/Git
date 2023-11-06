@@ -11,20 +11,20 @@ types:
       repeat-until: not (_.has_more).as<bool>
   fee:
     seq:
-    - id: size_of_fee
+    - id: len_fee
       type: u4
       valid:
         max: 1073741823
     - id: fee
-      size: size_of_fee
+      size: len_fee
   tez__amount:
     seq:
-    - id: size_of_tez__amount
+    - id: len_tez__amount
       type: u4
       valid:
         max: 1073741823
     - id: tez__amount
-      size: size_of_tez__amount
+      size: len_tez__amount
   z:
     seq:
     - id: has_tail
@@ -46,20 +46,20 @@ types:
       type: b7be
   destination:
     seq:
-    - id: size_of_destination
+    - id: len_destination
       type: u4
       valid:
         max: 1073741823
     - id: destination
-      size: size_of_destination
+      size: len_destination
   token_contract:
     seq:
-    - id: size_of_token_contract
+    - id: len_token_contract
       type: u4
       valid:
         max: 1073741823
     - id: token_contract
-      size: size_of_token_contract
+      size: len_token_contract
 enums:
   bool:
     0: false

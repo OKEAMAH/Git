@@ -5,13 +5,13 @@ doc: ! 'Encoding id: 008-PtEdo2Zk.delegate.balance_updates'
 types:
   id_008__ptedo2zk__operation_metadata__alpha__balance_updates:
     seq:
-    - id: size_of_id_008__ptedo2zk__operation_metadata__alpha__balance_updates
+    - id: len_id_008__ptedo2zk__operation_metadata__alpha__balance_updates
       type: u4
       valid:
         max: 1073741823
     - id: id_008__ptedo2zk__operation_metadata__alpha__balance_updates
       type: id_008__ptedo2zk__operation_metadata__alpha__balance_updates_entries
-      size: size_of_id_008__ptedo2zk__operation_metadata__alpha__balance_updates
+      size: len_id_008__ptedo2zk__operation_metadata__alpha__balance_updates
       repeat: eos
   id_008__ptedo2zk__operation_metadata__alpha__balance_updates_entries:
     seq:

@@ -7,13 +7,13 @@ doc: ! 'Encoding id: test.nested_list_of_bool
 types:
   test__nested_list_of_bool_entries:
     seq:
-    - id: size_of_test__nested_list_of_bool_elt
+    - id: len_test__nested_list_of_bool_elt
       type: u4
       valid:
         max: 1073741823
     - id: test__nested_list_of_bool_elt
       type: test__nested_list_of_bool_elt_entries
-      size: size_of_test__nested_list_of_bool_elt
+      size: len_test__nested_list_of_bool_elt
       repeat: eos
   test__nested_list_of_bool_elt_entries:
     seq:
@@ -25,11 +25,11 @@ enums:
     0: false
     255: true
 seq:
-- id: size_of_test__nested_list_of_bool
+- id: len_test__nested_list_of_bool
   type: u4
   valid:
     max: 1073741823
 - id: test__nested_list_of_bool
   type: test__nested_list_of_bool_entries
-  size: size_of_test__nested_list_of_bool
+  size: len_test__nested_list_of_bool
   repeat: eos

@@ -25,11 +25,11 @@ enums:
     2: p256
     3: bls
 seq:
-- id: size_of_alpha__vote__listings
+- id: len_alpha__vote__listings
   type: u4
   valid:
     max: 1073741823
 - id: alpha__vote__listings
   type: alpha__vote__listings_entries
-  size: size_of_alpha__vote__listings
+  size: len_alpha__vote__listings
   repeat: eos

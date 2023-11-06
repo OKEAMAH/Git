@@ -60,12 +60,12 @@ types:
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
   event__named__id_016__ptmumbai__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31
@@ -79,12 +79,12 @@ types:
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == ::micheline__016__ptmumbai__michelson_v1__expression_tag::micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
   event__bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   event__prim__generic__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
@@ -96,21 +96,21 @@ types:
       type: event__prim__generic__annots
   event__prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   event__prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: event__prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   event__prim__generic__args_entries:
     seq:
@@ -129,12 +129,12 @@ types:
       type: event__prim__2_args__some_annots__annots
   event__prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   event__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
@@ -155,12 +155,12 @@ types:
       type: event__prim__1_arg__some_annots__annots
   event__prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   event__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
@@ -177,21 +177,21 @@ types:
       type: event__prim__no_args__some_annots__annots
   event__prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   event__sequence__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: event__sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   event__sequence__sequence_entries:
     seq:
@@ -199,12 +199,12 @@ types:
       type: micheline__016__ptmumbai__michelson_v1__expression
   event__string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   z:
     seq:
     - id: has_tail
@@ -256,20 +256,20 @@ types:
       type: origination__storage
   origination__storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   origination__code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -304,12 +304,12 @@ types:
       type: transaction__value
   transaction__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   transaction__id_016__ptmumbai__entrypoint:
     seq:
     - id: id_016__ptmumbai__entrypoint_tag
@@ -320,12 +320,12 @@ types:
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
   transaction__named__id_016__ptmumbai__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31

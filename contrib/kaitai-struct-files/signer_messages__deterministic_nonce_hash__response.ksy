@@ -5,12 +5,12 @@ doc: ! 'Encoding id: signer_messages.deterministic_nonce_hash.response'
 types:
   deterministic_nonce_hash:
     seq:
-    - id: size_of_deterministic_nonce_hash
+    - id: len_deterministic_nonce_hash
       type: u4
       valid:
         max: 1073741823
     - id: deterministic_nonce_hash
-      size: size_of_deterministic_nonce_hash
+      size: len_deterministic_nonce_hash
 seq:
 - id: deterministic_nonce_hash
   type: deterministic_nonce_hash

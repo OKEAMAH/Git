@@ -8,9 +8,9 @@ doc: ! >-
 
   available through the RPC `/errors` (GET).
 seq:
-- id: size_of_id_017__ptnairob__errors
+- id: len_id_017__ptnairob__errors
   type: u4
   valid:
     max: 1073741823
 - id: id_017__ptnairob__errors
-  size: size_of_id_017__ptnairob__errors
+  size: len_id_017__ptnairob__errors

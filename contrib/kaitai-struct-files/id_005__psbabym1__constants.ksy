@@ -30,13 +30,13 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: size_of_time_between_blocks
+    - id: len_time_between_blocks
       type: u4
       valid:
         max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
-      size: size_of_time_between_blocks
+      size: len_time_between_blocks
       repeat: eos
   time_between_blocks_entries:
     seq:

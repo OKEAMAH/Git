@@ -104,12 +104,12 @@ types:
       type: u1
   sc_rollup_dal_slot_subscribe__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_dal_slot_subscribe__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -174,28 +174,28 @@ types:
       type: sc_rollup_execute_outbox_message__message
   sc_rollup_execute_outbox_message__message:
     seq:
-    - id: size_of_message
+    - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
-      size: size_of_message
+      size: len_message
   sc_rollup_execute_outbox_message__inclusion__proof:
     seq:
-    - id: size_of_inclusion__proof
+    - id: len_inclusion__proof
       type: u4
       valid:
         max: 1073741823
     - id: inclusion__proof
-      size: size_of_inclusion__proof
+      size: len_inclusion__proof
   sc_rollup_execute_outbox_message__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_execute_outbox_message__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -234,12 +234,12 @@ types:
       doc: A Ed25519, Secp256k1, or P256 public key hash
   sc_rollup_timeout__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_timeout__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -343,13 +343,13 @@ types:
       if: (before_tag == ::before_tag::before_tag::node)
   sc_rollup_refute__proof__some__inc:
     seq:
-    - id: size_of_inc
+    - id: len_inc
       type: u4
       valid:
         max: 1073741823
     - id: inc
       type: sc_rollup_refute__proof__some__inc_entries
-      size: size_of_inc
+      size: len_inc
       repeat: eos
   sc_rollup_refute__proof__some__inc_entries:
     seq:
@@ -385,13 +385,13 @@ types:
       type: sc_rollup_refute__proof__some__old_levels_messages
   sc_rollup_refute__proof__some__skips:
     seq:
-    - id: size_of_skips
+    - id: len_skips
       type: u4
       valid:
         max: 1073741823
     - id: skips
       type: sc_rollup_refute__proof__some__skips_entries
-      size: size_of_skips
+      size: len_skips
       repeat: eos
   sc_rollup_refute__proof__some__skips_entries:
     seq:
@@ -401,13 +401,13 @@ types:
       type: sc_rollup_refute__proof__some__skips_elt_field1
   sc_rollup_refute__proof__some__skips_elt_field1:
     seq:
-    - id: size_of_skips_elt_field1
+    - id: len_skips_elt_field1
       type: u4
       valid:
         max: 1073741823
     - id: skips_elt_field1
       type: sc_rollup_refute__proof__some__skips_elt_field1_entries
-      size: size_of_skips_elt_field1
+      size: len_skips_elt_field1
       repeat: eos
   sc_rollup_refute__proof__some__skips_elt_field1_entries:
     seq:
@@ -454,13 +454,13 @@ types:
       type: sc_rollup_refute__proof__some__back_pointers
   sc_rollup_refute__proof__some__back_pointers:
     seq:
-    - id: size_of_back_pointers
+    - id: len_back_pointers
       type: u4
       valid:
         max: 1073741823
     - id: back_pointers
       type: sc_rollup_refute__proof__some__back_pointers_entries
-      size: size_of_back_pointers
+      size: len_back_pointers
       repeat: eos
   sc_rollup_refute__proof__some__back_pointers_entries:
     seq:
@@ -468,12 +468,12 @@ types:
       size: 32
   sc_rollup_refute__proof__some__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_refute__proof__pvm_step:
     seq:
     - id: pvm_step_tag
@@ -525,12 +525,12 @@ types:
       type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__payload
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__payload:
     seq:
-    - id: size_of_payload
+    - id: len_payload
       type: u4
       valid:
         max: 1073741823
     - id: payload
-      size: size_of_payload
+      size: len_payload
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__tree_proof:
     seq:
     - id: version
@@ -597,12 +597,12 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__payload
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__payload:
     seq:
-    - id: size_of_payload
+    - id: len_payload
       type: u4
       valid:
         max: 1073741823
     - id: payload
-      size: size_of_payload
+      size: len_payload
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_proof:
     seq:
     - id: version
@@ -631,12 +631,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment:
     seq:
-    - id: size_of_segment
+    - id: len_segment
       type: u1
       valid:
         max: 255
     - id: segment
-      size: size_of_segment
+      size: len_segment
       size-eos: true
       valid:
         max: 255
@@ -660,13 +660,13 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof:
     seq:
-    - id: size_of_sparse_proof
+    - id: len_sparse_proof
       type: u4
       valid:
         max: 1073741823
     - id: sparse_proof
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_entries
-      size: size_of_sparse_proof
+      size: len_sparse_proof
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_entries:
     seq:
@@ -694,12 +694,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment:
     seq:
-    - id: size_of_segment
+    - id: len_segment
       type: u1
       valid:
         max: 255
     - id: segment
-      size: size_of_segment
+      size: len_segment
       size-eos: true
       valid:
         max: 255
@@ -723,13 +723,13 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof:
     seq:
-    - id: size_of_sparse_proof
+    - id: len_sparse_proof
       type: u4
       valid:
         max: 1073741823
     - id: sparse_proof
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_entries
-      size: size_of_sparse_proof
+      size: len_sparse_proof
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_entries:
     seq:
@@ -739,13 +739,13 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values:
     seq:
-    - id: size_of_inode_values
+    - id: len_inode_values
       type: u4
       valid:
         max: 1073741823
     - id: inode_values
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_entries
-      size: size_of_inode_values
+      size: len_inode_values
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_entries:
     seq:
@@ -755,24 +755,24 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0:
     seq:
-    - id: size_of_inode_values_elt_field0
+    - id: len_inode_values_elt_field0
       type: u1
       valid:
         max: 255
     - id: inode_values_elt_field0
-      size: size_of_inode_values_elt_field0
+      size: len_inode_values_elt_field0
       size-eos: true
       valid:
         max: 255
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node:
     seq:
-    - id: size_of_node
+    - id: len_node
       type: u4
       valid:
         max: 1073741823
     - id: node
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_entries
-      size: size_of_node
+      size: len_node
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_entries:
     seq:
@@ -782,23 +782,23 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0:
     seq:
-    - id: size_of_node_elt_field0
+    - id: len_node_elt_field0
       type: u1
       valid:
         max: 255
     - id: node_elt_field0
-      size: size_of_node_elt_field0
+      size: len_node_elt_field0
       size-eos: true
       valid:
         max: 255
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__after:
     seq:
     - id: after_tag
@@ -817,13 +817,13 @@ types:
       if: (before_tag == ::before_tag::before_tag::node)
   sc_rollup_refute__dissection__step:
     seq:
-    - id: size_of_dissection
+    - id: len_dissection
       type: u4
       valid:
         max: 1073741823
     - id: dissection
       type: sc_rollup_refute__dissection__dissection_entries
-      size: size_of_dissection
+      size: len_dissection
       repeat: eos
   sc_rollup_refute__dissection__dissection_entries:
     seq:
@@ -841,12 +841,12 @@ types:
       if: (dissection_elt_field0_tag == ::dissection_elt_field0_tag::dissection_elt_field0_tag::some)
   sc_rollup_refute__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_refute__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -889,12 +889,12 @@ types:
       type: s4
   sc_rollup_publish__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_publish__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -925,12 +925,12 @@ types:
       size: 32
   sc_rollup_cement__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_cement__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -961,30 +961,30 @@ types:
       type: sc_rollup_add_messages__message
   sc_rollup_add_messages__message:
     seq:
-    - id: size_of_message
+    - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
       type: sc_rollup_add_messages__message_entries
-      size: size_of_message
+      size: len_message
       repeat: eos
   sc_rollup_add_messages__message_entries:
     seq:
-    - id: size_of_message_elt
+    - id: len_message_elt
       type: u4
       valid:
         max: 1073741823
     - id: message_elt
-      size: size_of_message_elt
+      size: len_message_elt
   sc_rollup_add_messages__id_014__ptkathma__rollup_address:
     seq:
-    - id: size_of_id_014__ptkathma__rollup_address
+    - id: len_id_014__ptkathma__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_014__ptkathma__rollup_address
-      size: size_of_id_014__ptkathma__rollup_address
+      size: len_id_014__ptkathma__rollup_address
   sc_rollup_add_messages__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1015,20 +1015,20 @@ types:
       type: sc_rollup_originate__parameters_ty
   sc_rollup_originate__parameters_ty:
     seq:
-    - id: size_of_parameters_ty
+    - id: len_parameters_ty
       type: u4
       valid:
         max: 1073741823
     - id: parameters_ty
-      size: size_of_parameters_ty
+      size: len_parameters_ty
   sc_rollup_originate__boot_sector:
     seq:
-    - id: size_of_boot_sector
+    - id: len_boot_sector
       type: u4
       valid:
         max: 1073741823
     - id: boot_sector
-      size: size_of_boot_sector
+      size: len_boot_sector
   sc_rollup_originate__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1104,12 +1104,12 @@ types:
       type: transfer_ticket__entrypoint
   transfer_ticket__entrypoint:
     seq:
-    - id: size_of_entrypoint
+    - id: len_entrypoint
       type: u4
       valid:
         max: 1073741823
     - id: entrypoint
-      size: size_of_entrypoint
+      size: len_entrypoint
   transfer_ticket__id_014__ptkathma__contract_id:
     seq:
     - id: id_014__ptkathma__contract_id_tag
@@ -1139,20 +1139,20 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   transfer_ticket__ticket_ty:
     seq:
-    - id: size_of_ticket_ty
+    - id: len_ticket_ty
       type: u4
       valid:
         max: 1073741823
     - id: ticket_ty
-      size: size_of_ticket_ty
+      size: len_ticket_ty
   transfer_ticket__ticket_contents:
     seq:
-    - id: size_of_ticket_contents
+    - id: len_ticket_contents
       type: u4
       valid:
         max: 1073741823
     - id: ticket_contents
-      size: size_of_ticket_contents
+      size: len_ticket_contents
   transfer_ticket__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1194,13 +1194,13 @@ types:
       type: tx_rollup_dispatch_tickets__tickets_info
   tx_rollup_dispatch_tickets__tickets_info:
     seq:
-    - id: size_of_tickets_info
+    - id: len_tickets_info
       type: u4
       valid:
         max: 1073741823
     - id: tickets_info
       type: tx_rollup_dispatch_tickets__tickets_info_entries
-      size: size_of_tickets_info
+      size: len_tickets_info
       repeat: eos
   tx_rollup_dispatch_tickets__tickets_info_entries:
     seq:
@@ -1255,29 +1255,29 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   tx_rollup_dispatch_tickets__ty:
     seq:
-    - id: size_of_ty
+    - id: len_ty
       type: u4
       valid:
         max: 1073741823
     - id: ty
-      size: size_of_ty
+      size: len_ty
   tx_rollup_dispatch_tickets__contents:
     seq:
-    - id: size_of_contents
+    - id: len_contents
       type: u4
       valid:
         max: 1073741823
     - id: contents
-      size: size_of_contents
+      size: len_contents
   tx_rollup_dispatch_tickets__message_result_path:
     seq:
-    - id: size_of_message_result_path
+    - id: len_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: message_result_path
       type: tx_rollup_dispatch_tickets__message_result_path_entries
-      size: size_of_message_result_path
+      size: len_message_result_path
       repeat: eos
   tx_rollup_dispatch_tickets__message_result_path_entries:
     seq:
@@ -1358,13 +1358,13 @@ types:
       type: tx_rollup_rejection__case__3__case__3_field3
   tx_rollup_rejection__case__3__case__3_field3:
     seq:
-    - id: size_of_case__3_field3
+    - id: len_case__3_field3
       type: u4
       valid:
         max: 1073741823
     - id: case__3_field3
       type: tx_rollup_rejection__case__3__case__3_field3_entries
-      size: size_of_case__3_field3
+      size: len_case__3_field3
       repeat: eos
   tx_rollup_rejection__case__3__case__3_field3_entries:
     seq:
@@ -1409,12 +1409,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__3__case__227__case__227_field1:
     seq:
-    - id: size_of_case__227_field1
+    - id: len_case__227_field1
       type: u1
       valid:
         max: 255
     - id: case__227_field1
-      size: size_of_case__227_field1
+      size: len_case__227_field1
       size-eos: true
       valid:
         max: 255
@@ -1429,12 +1429,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__3__case__226__case__226_field1:
     seq:
-    - id: size_of_case__226_field1
+    - id: len_case__226_field1
       type: u1
       valid:
         max: 255
     - id: case__226_field1
-      size: size_of_case__226_field1
+      size: len_case__226_field1
       size-eos: true
       valid:
         max: 255
@@ -1449,12 +1449,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__3__case__225__case__225_field1:
     seq:
-    - id: size_of_case__225_field1
+    - id: len_case__225_field1
       type: u1
       valid:
         max: 255
     - id: case__225_field1
-      size: size_of_case__225_field1
+      size: len_case__225_field1
       size-eos: true
       valid:
         max: 255
@@ -1469,54 +1469,54 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__3__case__224__case__224_field1:
     seq:
-    - id: size_of_case__224_field1
+    - id: len_case__224_field1
       type: u1
       valid:
         max: 255
     - id: case__224_field1
-      size: size_of_case__224_field1
+      size: len_case__224_field1
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__3__case__195__case__3_field3_elt:
     seq:
-    - id: size_of_case__195
+    - id: len_case__195
       type: u4
       valid:
         max: 1073741823
     - id: case__195
-      size: size_of_case__195
+      size: len_case__195
   tx_rollup_rejection__case__3__case__193__case__3_field3_elt:
     seq:
-    - id: size_of_case__193
+    - id: len_case__193
       type: u2
       valid:
         max: 65535
     - id: case__193
-      size: size_of_case__193
+      size: len_case__193
       size-eos: true
       valid:
         max: 65535
   tx_rollup_rejection__case__3__case__192__case__3_field3_elt:
     seq:
-    - id: size_of_case__192
+    - id: len_case__192
       type: u1
       valid:
         max: 255
     - id: case__192
-      size: size_of_case__192
+      size: len_case__192
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__3__case__131__case__3_field3_elt:
     seq:
-    - id: size_of_case__131
+    - id: len_case__131
       type: u4
       valid:
         max: 1073741823
     - id: case__131
       type: tx_rollup_rejection__case__3__case__131__case__131_entries
-      size: size_of_case__131
+      size: len_case__131
       repeat: eos
   tx_rollup_rejection__case__3__case__131__case__131_entries:
     seq:
@@ -1534,12 +1534,12 @@ types:
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
   tx_rollup_rejection__case__3__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1559,12 +1559,12 @@ types:
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
   tx_rollup_rejection__case__3__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1584,12 +1584,12 @@ types:
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
   tx_rollup_rejection__case__3__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1743,13 +1743,13 @@ types:
       type: tx_rollup_rejection__case__1__case__1_field3
   tx_rollup_rejection__case__1__case__1_field3:
     seq:
-    - id: size_of_case__1_field3
+    - id: len_case__1_field3
       type: u4
       valid:
         max: 1073741823
     - id: case__1_field3
       type: tx_rollup_rejection__case__1__case__1_field3_entries
-      size: size_of_case__1_field3
+      size: len_case__1_field3
       repeat: eos
   tx_rollup_rejection__case__1__case__1_field3_entries:
     seq:
@@ -1794,12 +1794,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__1__case__227__case__227_field1:
     seq:
-    - id: size_of_case__227_field1
+    - id: len_case__227_field1
       type: u1
       valid:
         max: 255
     - id: case__227_field1
-      size: size_of_case__227_field1
+      size: len_case__227_field1
       size-eos: true
       valid:
         max: 255
@@ -1814,12 +1814,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__1__case__226__case__226_field1:
     seq:
-    - id: size_of_case__226_field1
+    - id: len_case__226_field1
       type: u1
       valid:
         max: 255
     - id: case__226_field1
-      size: size_of_case__226_field1
+      size: len_case__226_field1
       size-eos: true
       valid:
         max: 255
@@ -1834,12 +1834,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__1__case__225__case__225_field1:
     seq:
-    - id: size_of_case__225_field1
+    - id: len_case__225_field1
       type: u1
       valid:
         max: 255
     - id: case__225_field1
-      size: size_of_case__225_field1
+      size: len_case__225_field1
       size-eos: true
       valid:
         max: 255
@@ -1854,54 +1854,54 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__1__case__224__case__224_field1:
     seq:
-    - id: size_of_case__224_field1
+    - id: len_case__224_field1
       type: u1
       valid:
         max: 255
     - id: case__224_field1
-      size: size_of_case__224_field1
+      size: len_case__224_field1
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__1__case__195__case__1_field3_elt:
     seq:
-    - id: size_of_case__195
+    - id: len_case__195
       type: u4
       valid:
         max: 1073741823
     - id: case__195
-      size: size_of_case__195
+      size: len_case__195
   tx_rollup_rejection__case__1__case__193__case__1_field3_elt:
     seq:
-    - id: size_of_case__193
+    - id: len_case__193
       type: u2
       valid:
         max: 65535
     - id: case__193
-      size: size_of_case__193
+      size: len_case__193
       size-eos: true
       valid:
         max: 65535
   tx_rollup_rejection__case__1__case__192__case__1_field3_elt:
     seq:
-    - id: size_of_case__192
+    - id: len_case__192
       type: u1
       valid:
         max: 255
     - id: case__192
-      size: size_of_case__192
+      size: len_case__192
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__1__case__131__case__1_field3_elt:
     seq:
-    - id: size_of_case__131
+    - id: len_case__131
       type: u4
       valid:
         max: 1073741823
     - id: case__131
       type: tx_rollup_rejection__case__1__case__131__case__131_entries
-      size: size_of_case__131
+      size: len_case__131
       repeat: eos
   tx_rollup_rejection__case__1__case__131__case__131_entries:
     seq:
@@ -1919,12 +1919,12 @@ types:
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
   tx_rollup_rejection__case__1__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1944,12 +1944,12 @@ types:
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
   tx_rollup_rejection__case__1__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1969,12 +1969,12 @@ types:
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
   tx_rollup_rejection__case__1__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2128,13 +2128,13 @@ types:
       type: tx_rollup_rejection__case__2__case__2_field3
   tx_rollup_rejection__case__2__case__2_field3:
     seq:
-    - id: size_of_case__2_field3
+    - id: len_case__2_field3
       type: u4
       valid:
         max: 1073741823
     - id: case__2_field3
       type: tx_rollup_rejection__case__2__case__2_field3_entries
-      size: size_of_case__2_field3
+      size: len_case__2_field3
       repeat: eos
   tx_rollup_rejection__case__2__case__2_field3_entries:
     seq:
@@ -2179,12 +2179,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__2__case__227__case__227_field1:
     seq:
-    - id: size_of_case__227_field1
+    - id: len_case__227_field1
       type: u1
       valid:
         max: 255
     - id: case__227_field1
-      size: size_of_case__227_field1
+      size: len_case__227_field1
       size-eos: true
       valid:
         max: 255
@@ -2199,12 +2199,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__2__case__226__case__226_field1:
     seq:
-    - id: size_of_case__226_field1
+    - id: len_case__226_field1
       type: u1
       valid:
         max: 255
     - id: case__226_field1
-      size: size_of_case__226_field1
+      size: len_case__226_field1
       size-eos: true
       valid:
         max: 255
@@ -2219,12 +2219,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__2__case__225__case__225_field1:
     seq:
-    - id: size_of_case__225_field1
+    - id: len_case__225_field1
       type: u1
       valid:
         max: 255
     - id: case__225_field1
-      size: size_of_case__225_field1
+      size: len_case__225_field1
       size-eos: true
       valid:
         max: 255
@@ -2239,54 +2239,54 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__2__case__224__case__224_field1:
     seq:
-    - id: size_of_case__224_field1
+    - id: len_case__224_field1
       type: u1
       valid:
         max: 255
     - id: case__224_field1
-      size: size_of_case__224_field1
+      size: len_case__224_field1
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__2__case__195__case__2_field3_elt:
     seq:
-    - id: size_of_case__195
+    - id: len_case__195
       type: u4
       valid:
         max: 1073741823
     - id: case__195
-      size: size_of_case__195
+      size: len_case__195
   tx_rollup_rejection__case__2__case__193__case__2_field3_elt:
     seq:
-    - id: size_of_case__193
+    - id: len_case__193
       type: u2
       valid:
         max: 65535
     - id: case__193
-      size: size_of_case__193
+      size: len_case__193
       size-eos: true
       valid:
         max: 65535
   tx_rollup_rejection__case__2__case__192__case__2_field3_elt:
     seq:
-    - id: size_of_case__192
+    - id: len_case__192
       type: u1
       valid:
         max: 255
     - id: case__192
-      size: size_of_case__192
+      size: len_case__192
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__2__case__131__case__2_field3_elt:
     seq:
-    - id: size_of_case__131
+    - id: len_case__131
       type: u4
       valid:
         max: 1073741823
     - id: case__131
       type: tx_rollup_rejection__case__2__case__131__case__131_entries
-      size: size_of_case__131
+      size: len_case__131
       repeat: eos
   tx_rollup_rejection__case__2__case__131__case__131_entries:
     seq:
@@ -2304,12 +2304,12 @@ types:
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
   tx_rollup_rejection__case__2__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2329,12 +2329,12 @@ types:
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
   tx_rollup_rejection__case__2__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2354,12 +2354,12 @@ types:
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
   tx_rollup_rejection__case__2__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2513,13 +2513,13 @@ types:
       type: tx_rollup_rejection__case__0__case__0_field3
   tx_rollup_rejection__case__0__case__0_field3:
     seq:
-    - id: size_of_case__0_field3
+    - id: len_case__0_field3
       type: u4
       valid:
         max: 1073741823
     - id: case__0_field3
       type: tx_rollup_rejection__case__0__case__0_field3_entries
-      size: size_of_case__0_field3
+      size: len_case__0_field3
       repeat: eos
   tx_rollup_rejection__case__0__case__0_field3_entries:
     seq:
@@ -2564,12 +2564,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__0__case__227__case__227_field1:
     seq:
-    - id: size_of_case__227_field1
+    - id: len_case__227_field1
       type: u1
       valid:
         max: 255
     - id: case__227_field1
-      size: size_of_case__227_field1
+      size: len_case__227_field1
       size-eos: true
       valid:
         max: 255
@@ -2584,12 +2584,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__0__case__226__case__226_field1:
     seq:
-    - id: size_of_case__226_field1
+    - id: len_case__226_field1
       type: u1
       valid:
         max: 255
     - id: case__226_field1
-      size: size_of_case__226_field1
+      size: len_case__226_field1
       size-eos: true
       valid:
         max: 255
@@ -2604,12 +2604,12 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__0__case__225__case__225_field1:
     seq:
-    - id: size_of_case__225_field1
+    - id: len_case__225_field1
       type: u1
       valid:
         max: 255
     - id: case__225_field1
-      size: size_of_case__225_field1
+      size: len_case__225_field1
       size-eos: true
       valid:
         max: 255
@@ -2624,54 +2624,54 @@ types:
       doc: context_hash
   tx_rollup_rejection__case__0__case__224__case__224_field1:
     seq:
-    - id: size_of_case__224_field1
+    - id: len_case__224_field1
       type: u1
       valid:
         max: 255
     - id: case__224_field1
-      size: size_of_case__224_field1
+      size: len_case__224_field1
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__0__case__195__case__0_field3_elt:
     seq:
-    - id: size_of_case__195
+    - id: len_case__195
       type: u4
       valid:
         max: 1073741823
     - id: case__195
-      size: size_of_case__195
+      size: len_case__195
   tx_rollup_rejection__case__0__case__193__case__0_field3_elt:
     seq:
-    - id: size_of_case__193
+    - id: len_case__193
       type: u2
       valid:
         max: 65535
     - id: case__193
-      size: size_of_case__193
+      size: len_case__193
       size-eos: true
       valid:
         max: 65535
   tx_rollup_rejection__case__0__case__192__case__0_field3_elt:
     seq:
-    - id: size_of_case__192
+    - id: len_case__192
       type: u1
       valid:
         max: 255
     - id: case__192
-      size: size_of_case__192
+      size: len_case__192
       size-eos: true
       valid:
         max: 255
   tx_rollup_rejection__case__0__case__131__case__0_field3_elt:
     seq:
-    - id: size_of_case__131
+    - id: len_case__131
       type: u4
       valid:
         max: 1073741823
     - id: case__131
       type: tx_rollup_rejection__case__0__case__131__case__131_entries
-      size: size_of_case__131
+      size: len_case__131
       repeat: eos
   tx_rollup_rejection__case__0__case__131__case__131_entries:
     seq:
@@ -2689,12 +2689,12 @@ types:
       if: (case__131_elt_field1_tag == ::case__131_elt_field1_tag::case__131_elt_field1_tag::case__1)
   tx_rollup_rejection__case__0__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2714,12 +2714,12 @@ types:
       if: (case__130_elt_field1_tag == ::case__130_elt_field1_tag::case__130_elt_field1_tag::case__1)
   tx_rollup_rejection__case__0__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2739,12 +2739,12 @@ types:
       if: (case__129_elt_field1_tag == ::case__129_elt_field1_tag::case__129_elt_field1_tag::case__1)
   tx_rollup_rejection__case__0__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2886,13 +2886,13 @@ types:
         case__8_field1_field1'
   tx_rollup_rejection__previous_message_result_path:
     seq:
-    - id: size_of_previous_message_result_path
+    - id: len_previous_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: previous_message_result_path
       type: tx_rollup_rejection__previous_message_result_path_entries
-      size: size_of_previous_message_result_path
+      size: len_previous_message_result_path
       repeat: eos
   tx_rollup_rejection__previous_message_result_path_entries:
     seq:
@@ -2906,13 +2906,13 @@ types:
       size: 32
   tx_rollup_rejection__message_result_path:
     seq:
-    - id: size_of_message_result_path
+    - id: len_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: message_result_path
       type: tx_rollup_rejection__message_result_path_entries
-      size: size_of_message_result_path
+      size: len_message_result_path
       repeat: eos
   tx_rollup_rejection__message_result_path_entries:
     seq:
@@ -2920,13 +2920,13 @@ types:
       size: 32
   tx_rollup_rejection__message_path:
     seq:
-    - id: size_of_message_path
+    - id: len_message_path
       type: u4
       valid:
         max: 1073741823
     - id: message_path
       type: tx_rollup_rejection__message_path_entries
-      size: size_of_message_path
+      size: len_message_path
       repeat: eos
   tx_rollup_rejection__message_path_entries:
     seq:
@@ -2969,12 +2969,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   tx_rollup_rejection__batch__batch:
     seq:
-    - id: size_of_batch
+    - id: len_batch
       type: u4
       valid:
         max: 1073741823
     - id: batch
-      size: size_of_batch
+      size: len_batch
   tx_rollup_rejection__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -3101,13 +3101,13 @@ types:
       if: (predecessor_tag == ::predecessor_tag::predecessor_tag::some)
   tx_rollup_commit__messages:
     seq:
-    - id: size_of_messages
+    - id: len_messages
       type: u4
       valid:
         max: 1073741823
     - id: messages
       type: tx_rollup_commit__messages_entries
-      size: size_of_messages
+      size: len_messages
       repeat: eos
   tx_rollup_commit__messages_entries:
     seq:
@@ -3149,12 +3149,12 @@ types:
       if: (burn_limit_tag == bool::true)
   tx_rollup_submit_batch__content:
     seq:
-    - id: size_of_content
+    - id: len_content
       type: u4
       valid:
         max: 1073741823
     - id: content
-      size: size_of_content
+      size: len_content
   tx_rollup_submit_batch__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -3201,12 +3201,12 @@ types:
       type: register_global_constant__value
   register_global_constant__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   register_global_constant__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -3217,12 +3217,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   failing_noop__arbitrary:
     seq:
-    - id: size_of_arbitrary
+    - id: len_arbitrary
       type: u4
       valid:
         max: 1073741823
     - id: arbitrary
-      size: size_of_arbitrary
+      size: len_arbitrary
   increase_paid_storage__id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: source
@@ -3353,20 +3353,20 @@ types:
       type: origination__storage
   origination__storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   origination__code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -3410,12 +3410,12 @@ types:
       type: transaction__value
   transaction__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   transaction__id_014__ptkathma__entrypoint:
     seq:
     - id: id_014__ptkathma__entrypoint_tag
@@ -3426,12 +3426,12 @@ types:
       if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
   transaction__named__id_014__ptkathma__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31
@@ -3538,13 +3538,13 @@ types:
       type: proposals__proposals
   proposals__proposals:
     seq:
-    - id: size_of_proposals
+    - id: len_proposals
       type: u4
       valid:
         max: 1073741823
     - id: proposals
       type: proposals__proposals_entries
-      size: size_of_proposals
+      size: len_proposals
       repeat: eos
   proposals__proposals_entries:
     seq:
@@ -3572,22 +3572,22 @@ types:
       type: double_baking_evidence__bh2
   double_baking_evidence__bh2:
     seq:
-    - id: size_of_bh2
+    - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
       type: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header
-      size: size_of_bh2
+      size: len_bh2
   double_baking_evidence__bh1:
     seq:
-    - id: size_of_bh1
+    - id: len_bh1
       type: u4
       valid:
         max: 1073741823
     - id: bh1
       type: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header
-      size: size_of_bh1
+      size: len_bh1
   double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header:
     seq:
     - id: double_baking_evidence__block_header__shell
@@ -3645,13 +3645,13 @@ types:
       size: 32
   double_baking_evidence__fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: double_baking_evidence__fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   double_baking_evidence__fitness_entries:
     seq:
@@ -3659,12 +3659,12 @@ types:
       type: double_baking_evidence__fitness__elem
   double_baking_evidence__fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
   double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: double_preendorsement_evidence__op1
@@ -3673,22 +3673,22 @@ types:
       type: double_preendorsement_evidence__op2
   double_preendorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement
-      size: size_of_op2
+      size: len_op2
   double_preendorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement
-      size: size_of_op1
+      size: len_op1
   double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement:
     seq:
     - id: operation__shell_header
@@ -3728,22 +3728,22 @@ types:
       type: double_endorsement_evidence__op2
   double_endorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement
-      size: size_of_op2
+      size: len_op2
   double_endorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement
-      size: size_of_op1
+      size: len_op1
   double_endorsement_evidence__id_014__ptkathma__inlined__endorsement:
     seq:
     - id: operation__shell_header

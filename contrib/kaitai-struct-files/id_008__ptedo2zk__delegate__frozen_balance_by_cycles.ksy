@@ -26,11 +26,11 @@ types:
     - id: payload
       type: b7be
 seq:
-- id: size_of_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
+- id: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
   type: u4
   valid:
     max: 1073741823
 - id: id_008__ptedo2zk__delegate__frozen_balance_by_cycles
   type: id_008__ptedo2zk__delegate__frozen_balance_by_cycles_entries
-  size: size_of_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
+  size: len_id_008__ptedo2zk__delegate__frozen_balance_by_cycles
   repeat: eos

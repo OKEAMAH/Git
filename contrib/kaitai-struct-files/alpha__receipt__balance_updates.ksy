@@ -5,13 +5,13 @@ doc: ! 'Encoding id: alpha.receipt.balance_updates'
 types:
   alpha__operation_metadata__alpha__balance_updates:
     seq:
-    - id: size_of_alpha__operation_metadata__alpha__balance_updates
+    - id: len_alpha__operation_metadata__alpha__balance_updates
       type: u4
       valid:
         max: 1073741823
     - id: alpha__operation_metadata__alpha__balance_updates
       type: alpha__operation_metadata__alpha__balance_updates_entries
-      size: size_of_alpha__operation_metadata__alpha__balance_updates
+      size: len_alpha__operation_metadata__alpha__balance_updates
       repeat: eos
   alpha__operation_metadata__alpha__balance_updates_entries:
     seq:

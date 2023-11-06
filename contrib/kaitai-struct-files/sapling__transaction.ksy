@@ -9,21 +9,21 @@ doc: ! >-
 types:
   bound_data:
     seq:
-    - id: size_of_bound_data
+    - id: len_bound_data
       type: u4
       valid:
         max: 1073741823
     - id: bound_data
-      size: size_of_bound_data
+      size: len_bound_data
   outputs:
     seq:
-    - id: size_of_outputs
+    - id: len_outputs
       type: u4
       valid:
         max: 1073741823
     - id: outputs
       type: outputs_entries
-      size: size_of_outputs
+      size: len_outputs
       repeat: eos
   outputs_entries:
     seq:
@@ -54,21 +54,21 @@ types:
       size: 24
   payload_enc:
     seq:
-    - id: size_of_payload_enc
+    - id: len_payload_enc
       type: u4
       valid:
         max: 1073741823
     - id: payload_enc
-      size: size_of_payload_enc
+      size: len_payload_enc
   inputs:
     seq:
-    - id: size_of_inputs
+    - id: len_inputs
       type: u4
       valid:
         max: 1833216
     - id: inputs
       type: inputs_entries
-      size: size_of_inputs
+      size: len_inputs
       repeat: eos
       valid:
         max: 1833216

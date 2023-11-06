@@ -11,20 +11,20 @@ types:
       type: storage
   storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
 seq:
 - id: id_012__psithaca__scripted__contracts
   type: id_012__psithaca__scripted__contracts

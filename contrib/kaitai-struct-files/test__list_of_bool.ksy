@@ -15,11 +15,11 @@ enums:
     0: false
     255: true
 seq:
-- id: size_of_test__list_of_bool
+- id: len_test__list_of_bool
   type: u4
   valid:
     max: 1073741823
 - id: test__list_of_bool
   type: test__list_of_bool_entries
-  size: size_of_test__list_of_bool
+  size: len_test__list_of_bool
   repeat: eos

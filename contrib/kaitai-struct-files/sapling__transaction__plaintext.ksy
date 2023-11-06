@@ -5,12 +5,12 @@ doc: ! 'Encoding id: sapling.transaction.plaintext'
 types:
   memo:
     seq:
-    - id: size_of_memo
+    - id: len_memo
       type: u4
       valid:
         max: 1073741823
     - id: memo
-      size: size_of_memo
+      size: len_memo
 seq:
 - id: diversifier
   size: 11

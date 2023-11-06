@@ -94,21 +94,21 @@ types:
       type: zk_rollup_update__proof
   zk_rollup_update__proof:
     seq:
-    - id: size_of_proof
+    - id: len_proof
       type: u4
       valid:
         max: 1073741823
     - id: proof
-      size: size_of_proof
+      size: len_proof
   zk_rollup_update__private_pis:
     seq:
-    - id: size_of_private_pis
+    - id: len_private_pis
       type: u4
       valid:
         max: 1073741823
     - id: private_pis
       type: zk_rollup_update__private_pis_entries
-      size: size_of_private_pis
+      size: len_private_pis
       repeat: eos
   zk_rollup_update__private_pis_entries:
     seq:
@@ -124,21 +124,21 @@ types:
       size: 32
   zk_rollup_update__private_pis_elt_field0:
     seq:
-    - id: size_of_private_pis_elt_field0
+    - id: len_private_pis_elt_field0
       type: u4
       valid:
         max: 1073741823
     - id: private_pis_elt_field0
-      size: size_of_private_pis_elt_field0
+      size: len_private_pis_elt_field0
   zk_rollup_update__pending_pis:
     seq:
-    - id: size_of_pending_pis
+    - id: len_pending_pis
       type: u4
       valid:
         max: 1073741823
     - id: pending_pis
       type: zk_rollup_update__pending_pis_entries
-      size: size_of_pending_pis
+      size: len_pending_pis
       repeat: eos
   zk_rollup_update__pending_pis_entries:
     seq:
@@ -157,13 +157,13 @@ types:
       enum: bool
   zk_rollup_update__new_state:
     seq:
-    - id: size_of_new_state
+    - id: len_new_state
       type: u4
       valid:
         max: 1073741823
     - id: new_state
       type: zk_rollup_update__new_state_entries
-      size: size_of_new_state
+      size: len_new_state
       repeat: eos
   zk_rollup_update__new_state_entries:
     seq:
@@ -171,12 +171,12 @@ types:
       size: 32
   zk_rollup_update__pending_pis_elt_field0:
     seq:
-    - id: size_of_pending_pis_elt_field0
+    - id: len_pending_pis_elt_field0
       type: u4
       valid:
         max: 1073741823
     - id: pending_pis_elt_field0
-      size: size_of_pending_pis_elt_field0
+      size: len_pending_pis_elt_field0
   zk_rollup_update__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -204,13 +204,13 @@ types:
       type: zk_rollup_publish__op
   zk_rollup_publish__op:
     seq:
-    - id: size_of_op
+    - id: len_op
       type: u4
       valid:
         max: 1073741823
     - id: op
       type: zk_rollup_publish__op_entries
-      size: size_of_op
+      size: len_op
       repeat: eos
   zk_rollup_publish__op_entries:
     seq:
@@ -274,12 +274,12 @@ types:
       if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::bytes)
   zk_rollup_publish__some__bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   zk_rollup_publish__some__prim__generic__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -291,21 +291,21 @@ types:
       type: zk_rollup_publish__some__prim__generic__annots
   zk_rollup_publish__some__prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: zk_rollup_publish__some__prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   zk_rollup_publish__some__prim__generic__args_entries:
     seq:
@@ -324,12 +324,12 @@ types:
       type: zk_rollup_publish__some__prim__2_args__some_annots__annots
   zk_rollup_publish__some__prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -350,12 +350,12 @@ types:
       type: zk_rollup_publish__some__prim__1_arg__some_annots__annots
   zk_rollup_publish__some__prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -372,21 +372,21 @@ types:
       type: zk_rollup_publish__some__prim__no_args__some_annots__annots
   zk_rollup_publish__some__prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__sequence__micheline__alpha__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: zk_rollup_publish__some__sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   zk_rollup_publish__some__sequence__sequence_entries:
     seq:
@@ -394,12 +394,12 @@ types:
       type: micheline__alpha__michelson_v1__expression
   zk_rollup_publish__some__string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   zk_rollup_publish__op_elt_field0:
     seq:
     - id: op_code
@@ -418,13 +418,13 @@ types:
       type: zk_rollup_publish__payload
   zk_rollup_publish__payload:
     seq:
-    - id: size_of_payload
+    - id: len_payload
       type: u4
       valid:
         max: 1073741823
     - id: payload
       type: zk_rollup_publish__payload_entries
-      size: size_of_payload
+      size: len_payload
       repeat: eos
   zk_rollup_publish__payload_entries:
     seq:
@@ -470,13 +470,13 @@ types:
         max: 1073741823
   zk_rollup_origination__init_state:
     seq:
-    - id: size_of_init_state
+    - id: len_init_state
       type: u4
       valid:
         max: 1073741823
     - id: init_state
       type: zk_rollup_origination__init_state_entries
-      size: size_of_init_state
+      size: len_init_state
       repeat: eos
   zk_rollup_origination__init_state_entries:
     seq:
@@ -484,13 +484,13 @@ types:
       size: 32
   zk_rollup_origination__circuits_info:
     seq:
-    - id: size_of_circuits_info
+    - id: len_circuits_info
       type: u4
       valid:
         max: 1073741823
     - id: circuits_info
       type: zk_rollup_origination__circuits_info_entries
-      size: size_of_circuits_info
+      size: len_circuits_info
       repeat: eos
   zk_rollup_origination__circuits_info_entries:
     seq:
@@ -502,20 +502,20 @@ types:
       doc: circuits_info_elt_field1_tag
   zk_rollup_origination__circuits_info_elt_field0:
     seq:
-    - id: size_of_circuits_info_elt_field0
+    - id: len_circuits_info_elt_field0
       type: u4
       valid:
         max: 1073741823
     - id: circuits_info_elt_field0
-      size: size_of_circuits_info_elt_field0
+      size: len_circuits_info_elt_field0
   zk_rollup_origination__public_parameters:
     seq:
-    - id: size_of_public_parameters
+    - id: len_public_parameters
       type: u4
       valid:
         max: 1073741823
     - id: public_parameters
-      size: size_of_public_parameters
+      size: len_public_parameters
   zk_rollup_origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -571,12 +571,12 @@ types:
       type: smart_rollup_execute_outbox_message__output_proof
   smart_rollup_execute_outbox_message__output_proof:
     seq:
-    - id: size_of_output_proof
+    - id: len_output_proof
       type: u4
       valid:
         max: 1073741823
     - id: output_proof
-      size: size_of_output_proof
+      size: len_output_proof
   smart_rollup_execute_outbox_message__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -703,12 +703,12 @@ types:
       type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_proof
   smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_proof:
     seq:
-    - id: size_of_dal_proof
+    - id: len_dal_proof
       type: u4
       valid:
         max: 1073741823
     - id: dal_proof
-      size: size_of_dal_proof
+      size: len_dal_proof
   smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id:
     seq:
     - id: published_level
@@ -719,12 +719,12 @@ types:
       type: s2
   smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data:
     seq:
-    - id: size_of_raw_data
+    - id: len_raw_data
       type: u2
       valid:
         max: 4096
     - id: raw_data
-      size: size_of_raw_data
+      size: len_raw_data
       size-eos: true
       valid:
         max: 4096
@@ -738,29 +738,29 @@ types:
       type: smart_rollup_refute__move__proof__inbox__proof__serialized_proof
   smart_rollup_refute__move__proof__inbox__proof__serialized_proof:
     seq:
-    - id: size_of_serialized_proof
+    - id: len_serialized_proof
       type: u4
       valid:
         max: 1073741823
     - id: serialized_proof
-      size: size_of_serialized_proof
+      size: len_serialized_proof
   smart_rollup_refute__move__proof__pvm_step:
     seq:
-    - id: size_of_pvm_step
+    - id: len_pvm_step
       type: u4
       valid:
         max: 1073741823
     - id: pvm_step
-      size: size_of_pvm_step
+      size: len_pvm_step
   smart_rollup_refute__move__dissection__step:
     seq:
-    - id: size_of_dissection
+    - id: len_dissection
       type: u4
       valid:
         max: 1073741823
     - id: dissection
       type: smart_rollup_refute__move__dissection__dissection_entries
-      size: size_of_dissection
+      size: len_dissection
       repeat: eos
   smart_rollup_refute__move__dissection__dissection_entries:
     seq:
@@ -861,22 +861,22 @@ types:
       type: smart_rollup_add_messages__message
   smart_rollup_add_messages__message:
     seq:
-    - id: size_of_message
+    - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
       type: smart_rollup_add_messages__message_entries
-      size: size_of_message
+      size: len_message
       repeat: eos
   smart_rollup_add_messages__message_entries:
     seq:
-    - id: size_of_message_elt
+    - id: len_message_elt
       type: u4
       valid:
         max: 1073741823
     - id: message_elt
-      size: size_of_message_elt
+      size: len_message_elt
   smart_rollup_add_messages__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -913,13 +913,13 @@ types:
       if: (whitelist_tag == bool::true)
   smart_rollup_originate__whitelist:
     seq:
-    - id: size_of_whitelist
+    - id: len_whitelist
       type: u4
       valid:
         max: 1073741823
     - id: whitelist
       type: smart_rollup_originate__whitelist_entries
-      size: size_of_whitelist
+      size: len_whitelist
       repeat: eos
   smart_rollup_originate__whitelist_entries:
     seq:
@@ -928,20 +928,20 @@ types:
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   smart_rollup_originate__parameters_ty:
     seq:
-    - id: size_of_parameters_ty
+    - id: len_parameters_ty
       type: u4
       valid:
         max: 1073741823
     - id: parameters_ty
-      size: size_of_parameters_ty
+      size: len_parameters_ty
   smart_rollup_originate__kernel:
     seq:
-    - id: size_of_kernel
+    - id: len_kernel
       type: u4
       valid:
         max: 1073741823
     - id: kernel
-      size: size_of_kernel
+      size: len_kernel
   smart_rollup_originate__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1014,12 +1014,12 @@ types:
       type: transfer_ticket__entrypoint
   transfer_ticket__entrypoint:
     seq:
-    - id: size_of_entrypoint
+    - id: len_entrypoint
       type: u4
       valid:
         max: 1073741823
     - id: entrypoint
-      size: size_of_entrypoint
+      size: len_entrypoint
   transfer_ticket__alpha__contract_id:
     seq:
     - id: alpha__contract_id_tag
@@ -1049,20 +1049,20 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
   transfer_ticket__ticket_ty:
     seq:
-    - id: size_of_ticket_ty
+    - id: len_ticket_ty
       type: u4
       valid:
         max: 1073741823
     - id: ticket_ty
-      size: size_of_ticket_ty
+      size: len_ticket_ty
   transfer_ticket__ticket_contents:
     seq:
-    - id: size_of_ticket_contents
+    - id: len_ticket_contents
       type: u4
       valid:
         max: 1073741823
     - id: ticket_contents
-      size: size_of_ticket_contents
+      size: len_ticket_contents
   transfer_ticket__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1088,12 +1088,12 @@ types:
       type: register_global_constant__value
   register_global_constant__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   register_global_constant__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1104,12 +1104,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
   failing_noop__arbitrary:
     seq:
-    - id: size_of_arbitrary
+    - id: len_arbitrary
       type: u4
       valid:
         max: 1073741823
     - id: arbitrary
-      size: size_of_arbitrary
+      size: len_arbitrary
   drain_delegate__alpha__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: consensus_key
@@ -1264,20 +1264,20 @@ types:
       type: origination__storage
   origination__storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   origination__code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -1321,12 +1321,12 @@ types:
       type: transaction__value
   transaction__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   transaction__alpha__entrypoint:
     seq:
     - id: alpha__entrypoint_tag
@@ -1337,12 +1337,12 @@ types:
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
   transaction__named__alpha__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31
@@ -1449,13 +1449,13 @@ types:
       type: proposals__proposals
   proposals__proposals:
     seq:
-    - id: size_of_proposals
+    - id: len_proposals
       type: u4
       valid:
         max: 640
     - id: proposals
       type: proposals__proposals_entries
-      size: size_of_proposals
+      size: len_proposals
       repeat: eos
       valid:
         max: 640
@@ -1485,22 +1485,22 @@ types:
       type: double_baking_evidence__bh2
   double_baking_evidence__bh2:
     seq:
-    - id: size_of_bh2
+    - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
       type: double_baking_evidence__alpha__block_header__alpha__full_header
-      size: size_of_bh2
+      size: len_bh2
   double_baking_evidence__bh1:
     seq:
-    - id: size_of_bh1
+    - id: len_bh1
       type: u4
       valid:
         max: 1073741823
     - id: bh1
       type: double_baking_evidence__alpha__block_header__alpha__full_header
-      size: size_of_bh1
+      size: len_bh1
   double_baking_evidence__alpha__block_header__alpha__full_header:
     seq:
     - id: double_baking_evidence__block_header__shell
@@ -1559,13 +1559,13 @@ types:
       size: 32
   double_baking_evidence__fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: double_baking_evidence__fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   double_baking_evidence__fitness_entries:
     seq:
@@ -1573,12 +1573,12 @@ types:
       type: double_baking_evidence__fitness__elem
   double_baking_evidence__fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
   vdf_revelation__solution:
     seq:
     - id: solution_field0
@@ -1626,22 +1626,22 @@ types:
       type: double_endorsement_evidence__op2
   double_endorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_endorsement_evidence__alpha__inlined__endorsement
-      size: size_of_op2
+      size: len_op2
   double_endorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_endorsement_evidence__alpha__inlined__endorsement
-      size: size_of_op1
+      size: len_op1
   double_endorsement_evidence__alpha__inlined__endorsement:
     seq:
     - id: operation__shell_header
@@ -1681,22 +1681,22 @@ types:
       type: double_preendorsement_evidence__op2
   double_preendorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_preendorsement_evidence__alpha__inlined__preendorsement
-      size: size_of_op2
+      size: len_op2
   double_preendorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_preendorsement_evidence__alpha__inlined__preendorsement
-      size: size_of_op1
+      size: len_op1
   double_preendorsement_evidence__alpha__inlined__preendorsement:
     seq:
     - id: operation__shell_header

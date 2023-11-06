@@ -24,11 +24,11 @@ enums:
     1: secp256k1
     2: p256
 seq:
-- id: size_of_id_007__psdelph1__vote__listings
+- id: len_id_007__psdelph1__vote__listings
   type: u4
   valid:
     max: 1073741823
 - id: id_007__psdelph1__vote__listings
   type: id_007__psdelph1__vote__listings_entries
-  size: size_of_id_007__psdelph1__vote__listings
+  size: len_id_007__psdelph1__vote__listings
   repeat: eos

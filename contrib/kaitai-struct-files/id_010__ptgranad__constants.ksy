@@ -5,13 +5,13 @@ doc: ! 'Encoding id: 010-PtGRANAD.constants'
 types:
   endorsement_reward:
     seq:
-    - id: size_of_endorsement_reward
+    - id: len_endorsement_reward
       type: u4
       valid:
         max: 1073741823
     - id: endorsement_reward
       type: endorsement_reward_entries
-      size: size_of_endorsement_reward
+      size: len_endorsement_reward
       repeat: eos
   endorsement_reward_entries:
     seq:
@@ -19,13 +19,13 @@ types:
       type: n
   baking_reward_per_endorsement:
     seq:
-    - id: size_of_baking_reward_per_endorsement
+    - id: len_baking_reward_per_endorsement
       type: u4
       valid:
         max: 1073741823
     - id: baking_reward_per_endorsement
       type: baking_reward_per_endorsement_entries
-      size: size_of_baking_reward_per_endorsement
+      size: len_baking_reward_per_endorsement
       repeat: eos
   baking_reward_per_endorsement_entries:
     seq:
@@ -58,13 +58,13 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: size_of_time_between_blocks
+    - id: len_time_between_blocks
       type: u4
       valid:
         max: 1073741823
     - id: time_between_blocks
       type: time_between_blocks_entries
-      size: size_of_time_between_blocks
+      size: len_time_between_blocks
       repeat: eos
   time_between_blocks_entries:
     seq:

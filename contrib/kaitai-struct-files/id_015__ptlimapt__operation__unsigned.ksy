@@ -108,13 +108,13 @@ types:
       type: zk_rollup_publish__op
   zk_rollup_publish__op:
     seq:
-    - id: size_of_op
+    - id: len_op
       type: u4
       valid:
         max: 1073741823
     - id: op
       type: zk_rollup_publish__op_entries
-      size: size_of_op
+      size: len_op
       repeat: eos
   zk_rollup_publish__op_entries:
     seq:
@@ -178,12 +178,12 @@ types:
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == ::micheline__015__ptlimapt__michelson_v1__expression_tag::micheline__015__ptlimapt__michelson_v1__expression_tag::bytes)
   zk_rollup_publish__some__bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   zk_rollup_publish__some__prim__generic__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
@@ -195,21 +195,21 @@ types:
       type: zk_rollup_publish__some__prim__generic__annots
   zk_rollup_publish__some__prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: zk_rollup_publish__some__prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   zk_rollup_publish__some__prim__generic__args_entries:
     seq:
@@ -228,12 +228,12 @@ types:
       type: zk_rollup_publish__some__prim__2_args__some_annots__annots
   zk_rollup_publish__some__prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__2_args__no_annots__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
@@ -254,12 +254,12 @@ types:
       type: zk_rollup_publish__some__prim__1_arg__some_annots__annots
   zk_rollup_publish__some__prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__prim__1_arg__no_annots__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
     - id: prim
@@ -276,21 +276,21 @@ types:
       type: zk_rollup_publish__some__prim__no_args__some_annots__annots
   zk_rollup_publish__some__prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   zk_rollup_publish__some__sequence__micheline__015__ptlimapt__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: zk_rollup_publish__some__sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   zk_rollup_publish__some__sequence__sequence_entries:
     seq:
@@ -298,12 +298,12 @@ types:
       type: micheline__015__ptlimapt__michelson_v1__expression
   zk_rollup_publish__some__string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   zk_rollup_publish__op_elt_field0:
     seq:
     - id: op_code
@@ -322,13 +322,13 @@ types:
       type: zk_rollup_publish__payload
   zk_rollup_publish__payload:
     seq:
-    - id: size_of_payload
+    - id: len_payload
       type: u4
       valid:
         max: 1073741823
     - id: payload
       type: zk_rollup_publish__payload_entries
-      size: size_of_payload
+      size: len_payload
       repeat: eos
   zk_rollup_publish__payload_entries:
     seq:
@@ -374,13 +374,13 @@ types:
         max: 1073741823
   zk_rollup_origination__init_state:
     seq:
-    - id: size_of_init_state
+    - id: len_init_state
       type: u4
       valid:
         max: 1073741823
     - id: init_state
       type: zk_rollup_origination__init_state_entries
-      size: size_of_init_state
+      size: len_init_state
       repeat: eos
   zk_rollup_origination__init_state_entries:
     seq:
@@ -388,13 +388,13 @@ types:
       size: 32
   zk_rollup_origination__circuits_info:
     seq:
-    - id: size_of_circuits_info
+    - id: len_circuits_info
       type: u4
       valid:
         max: 1073741823
     - id: circuits_info
       type: zk_rollup_origination__circuits_info_entries
-      size: size_of_circuits_info
+      size: len_circuits_info
       repeat: eos
   zk_rollup_origination__circuits_info_entries:
     seq:
@@ -405,12 +405,12 @@ types:
       enum: bool
   zk_rollup_origination__circuits_info_elt_field0:
     seq:
-    - id: size_of_circuits_info_elt_field0
+    - id: len_circuits_info_elt_field0
       type: u4
       valid:
         max: 1073741823
     - id: circuits_info_elt_field0
-      size: size_of_circuits_info_elt_field0
+      size: len_circuits_info_elt_field0
   zk_rollup_origination__public_parameters:
     seq:
     - id: zk_rollup_origination__public_parameters_field0
@@ -419,20 +419,20 @@ types:
       type: zk_rollup_origination__public_parameters_field1
   zk_rollup_origination__public_parameters_field1:
     seq:
-    - id: size_of_public_parameters_field1
+    - id: len_public_parameters_field1
       type: u4
       valid:
         max: 1073741823
     - id: public_parameters_field1
-      size: size_of_public_parameters_field1
+      size: len_public_parameters_field1
   zk_rollup_origination__public_parameters_field0:
     seq:
-    - id: size_of_public_parameters_field0
+    - id: len_public_parameters_field0
       type: u4
       valid:
         max: 1073741823
     - id: public_parameters_field0
-      size: size_of_public_parameters_field0
+      size: len_public_parameters_field0
   zk_rollup_origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -463,12 +463,12 @@ types:
       type: u1
   sc_rollup_dal_slot_subscribe__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_dal_slot_subscribe__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -524,20 +524,20 @@ types:
       type: sc_rollup_execute_outbox_message__output_proof
   sc_rollup_execute_outbox_message__output_proof:
     seq:
-    - id: size_of_output_proof
+    - id: len_output_proof
       type: u4
       valid:
         max: 1073741823
     - id: output_proof
-      size: size_of_output_proof
+      size: len_output_proof
   sc_rollup_execute_outbox_message__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_execute_outbox_message__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -576,12 +576,12 @@ types:
       doc: A Ed25519, Secp256k1, or P256 public key hash
   sc_rollup_timeout__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_timeout__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -662,12 +662,12 @@ types:
       if: (reveal_proof_tag == ::reveal_proof_tag::reveal_proof_tag::raw__data__proof)
   sc_rollup_refute__proof__reveal__proof__raw__data__proof__raw_data:
     seq:
-    - id: size_of_raw_data
+    - id: len_raw_data
       type: u4
       valid:
         max: 1073741823
     - id: raw_data
-      size: size_of_raw_data
+      size: len_raw_data
   sc_rollup_refute__proof__inbox__proof__input_proof:
     seq:
     - id: level
@@ -678,12 +678,12 @@ types:
       type: sc_rollup_refute__proof__inbox__proof__serialized_proof
   sc_rollup_refute__proof__inbox__proof__serialized_proof:
     seq:
-    - id: size_of_serialized_proof
+    - id: len_serialized_proof
       type: u4
       valid:
         max: 1073741823
     - id: serialized_proof
-      size: size_of_serialized_proof
+      size: len_serialized_proof
   sc_rollup_refute__proof__pvm_step:
     seq:
     - id: pvm_step_tag
@@ -853,12 +853,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__219__case__219_field1:
     seq:
-    - id: size_of_case__219_field1
+    - id: len_case__219_field1
       type: u1
       valid:
         max: 255
     - id: case__219_field1
-      size: size_of_case__219_field1
+      size: len_case__219_field1
       size-eos: true
       valid:
         max: 255
@@ -872,12 +872,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__218__case__218_field1:
     seq:
-    - id: size_of_case__218_field1
+    - id: len_case__218_field1
       type: u1
       valid:
         max: 255
     - id: case__218_field1
-      size: size_of_case__218_field1
+      size: len_case__218_field1
       size-eos: true
       valid:
         max: 255
@@ -891,12 +891,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__217__case__217_field1:
     seq:
-    - id: size_of_case__217_field1
+    - id: len_case__217_field1
       type: u1
       valid:
         max: 255
     - id: case__217_field1
-      size: size_of_case__217_field1
+      size: len_case__217_field1
       size-eos: true
       valid:
         max: 255
@@ -910,54 +910,54 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__216__case__216_field1:
     seq:
-    - id: size_of_case__216_field1
+    - id: len_case__216_field1
       type: u1
       valid:
         max: 255
     - id: case__216_field1
-      size: size_of_case__216_field1
+      size: len_case__216_field1
       size-eos: true
       valid:
         max: 255
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__195__tree_encoding:
     seq:
-    - id: size_of_case__195
+    - id: len_case__195
       type: u4
       valid:
         max: 1073741823
     - id: case__195
-      size: size_of_case__195
+      size: len_case__195
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__193__tree_encoding:
     seq:
-    - id: size_of_case__193
+    - id: len_case__193
       type: u2
       valid:
         max: 65535
     - id: case__193
-      size: size_of_case__193
+      size: len_case__193
       size-eos: true
       valid:
         max: 65535
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__192__tree_encoding:
     seq:
-    - id: size_of_case__192
+    - id: len_case__192
       type: u1
       valid:
         max: 255
     - id: case__192
-      size: size_of_case__192
+      size: len_case__192
       size-eos: true
       valid:
         max: 255
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__tree_encoding:
     seq:
-    - id: size_of_case__191
+    - id: len_case__191
       type: u4
       valid:
         max: 1073741823
     - id: case__191
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_entries
-      size: size_of_case__191
+      size: len_case__191
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_entries:
     seq:
@@ -967,12 +967,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__191__case__191_elt_field0:
     seq:
-    - id: size_of_case__191_elt_field0
+    - id: len_case__191_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__191_elt_field0
-      size: size_of_case__191_elt_field0
+      size: len_case__191_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -984,12 +984,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__190__case__190_elt_field0:
     seq:
-    - id: size_of_case__190_elt_field0
+    - id: len_case__190_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__190_elt_field0
-      size: size_of_case__190_elt_field0
+      size: len_case__190_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1001,12 +1001,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__189__case__189_elt_field0:
     seq:
-    - id: size_of_case__189_elt_field0
+    - id: len_case__189_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__189_elt_field0
-      size: size_of_case__189_elt_field0
+      size: len_case__189_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1018,12 +1018,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__188__case__188_elt_field0:
     seq:
-    - id: size_of_case__188_elt_field0
+    - id: len_case__188_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__188_elt_field0
-      size: size_of_case__188_elt_field0
+      size: len_case__188_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1035,12 +1035,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__187__case__187_elt_field0:
     seq:
-    - id: size_of_case__187_elt_field0
+    - id: len_case__187_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__187_elt_field0
-      size: size_of_case__187_elt_field0
+      size: len_case__187_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1052,12 +1052,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__186__case__186_elt_field0:
     seq:
-    - id: size_of_case__186_elt_field0
+    - id: len_case__186_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__186_elt_field0
-      size: size_of_case__186_elt_field0
+      size: len_case__186_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1069,12 +1069,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__185__case__185_elt_field0:
     seq:
-    - id: size_of_case__185_elt_field0
+    - id: len_case__185_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__185_elt_field0
-      size: size_of_case__185_elt_field0
+      size: len_case__185_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1086,12 +1086,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__184__case__184_elt_field0:
     seq:
-    - id: size_of_case__184_elt_field0
+    - id: len_case__184_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__184_elt_field0
-      size: size_of_case__184_elt_field0
+      size: len_case__184_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1103,12 +1103,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__183__case__183_elt_field0:
     seq:
-    - id: size_of_case__183_elt_field0
+    - id: len_case__183_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__183_elt_field0
-      size: size_of_case__183_elt_field0
+      size: len_case__183_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1120,12 +1120,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__182__case__182_elt_field0:
     seq:
-    - id: size_of_case__182_elt_field0
+    - id: len_case__182_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__182_elt_field0
-      size: size_of_case__182_elt_field0
+      size: len_case__182_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1137,12 +1137,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__181__case__181_elt_field0:
     seq:
-    - id: size_of_case__181_elt_field0
+    - id: len_case__181_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__181_elt_field0
-      size: size_of_case__181_elt_field0
+      size: len_case__181_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1154,12 +1154,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__180__case__180_elt_field0:
     seq:
-    - id: size_of_case__180_elt_field0
+    - id: len_case__180_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__180_elt_field0
-      size: size_of_case__180_elt_field0
+      size: len_case__180_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1171,12 +1171,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__179__case__179_elt_field0:
     seq:
-    - id: size_of_case__179_elt_field0
+    - id: len_case__179_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__179_elt_field0
-      size: size_of_case__179_elt_field0
+      size: len_case__179_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1188,12 +1188,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__178__case__178_elt_field0:
     seq:
-    - id: size_of_case__178_elt_field0
+    - id: len_case__178_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__178_elt_field0
-      size: size_of_case__178_elt_field0
+      size: len_case__178_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1205,12 +1205,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__177__case__177_elt_field0:
     seq:
-    - id: size_of_case__177_elt_field0
+    - id: len_case__177_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__177_elt_field0
-      size: size_of_case__177_elt_field0
+      size: len_case__177_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1222,12 +1222,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__176__case__176_elt_field0:
     seq:
-    - id: size_of_case__176_elt_field0
+    - id: len_case__176_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__176_elt_field0
-      size: size_of_case__176_elt_field0
+      size: len_case__176_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1239,12 +1239,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__175__case__175_elt_field0:
     seq:
-    - id: size_of_case__175_elt_field0
+    - id: len_case__175_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__175_elt_field0
-      size: size_of_case__175_elt_field0
+      size: len_case__175_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1256,12 +1256,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__174__case__174_elt_field0:
     seq:
-    - id: size_of_case__174_elt_field0
+    - id: len_case__174_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__174_elt_field0
-      size: size_of_case__174_elt_field0
+      size: len_case__174_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1273,12 +1273,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__173__case__173_elt_field0:
     seq:
-    - id: size_of_case__173_elt_field0
+    - id: len_case__173_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__173_elt_field0
-      size: size_of_case__173_elt_field0
+      size: len_case__173_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1290,12 +1290,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__172__case__172_elt_field0:
     seq:
-    - id: size_of_case__172_elt_field0
+    - id: len_case__172_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__172_elt_field0
-      size: size_of_case__172_elt_field0
+      size: len_case__172_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1307,12 +1307,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__171__case__171_elt_field0:
     seq:
-    - id: size_of_case__171_elt_field0
+    - id: len_case__171_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__171_elt_field0
-      size: size_of_case__171_elt_field0
+      size: len_case__171_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1324,12 +1324,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__170__case__170_elt_field0:
     seq:
-    - id: size_of_case__170_elt_field0
+    - id: len_case__170_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__170_elt_field0
-      size: size_of_case__170_elt_field0
+      size: len_case__170_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1341,12 +1341,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__169__case__169_elt_field0:
     seq:
-    - id: size_of_case__169_elt_field0
+    - id: len_case__169_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__169_elt_field0
-      size: size_of_case__169_elt_field0
+      size: len_case__169_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1358,12 +1358,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__168__case__168_elt_field0:
     seq:
-    - id: size_of_case__168_elt_field0
+    - id: len_case__168_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__168_elt_field0
-      size: size_of_case__168_elt_field0
+      size: len_case__168_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1375,12 +1375,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__167__case__167_elt_field0:
     seq:
-    - id: size_of_case__167_elt_field0
+    - id: len_case__167_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__167_elt_field0
-      size: size_of_case__167_elt_field0
+      size: len_case__167_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1392,12 +1392,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__166__case__166_elt_field0:
     seq:
-    - id: size_of_case__166_elt_field0
+    - id: len_case__166_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__166_elt_field0
-      size: size_of_case__166_elt_field0
+      size: len_case__166_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1409,12 +1409,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__165__case__165_elt_field0:
     seq:
-    - id: size_of_case__165_elt_field0
+    - id: len_case__165_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__165_elt_field0
-      size: size_of_case__165_elt_field0
+      size: len_case__165_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1426,12 +1426,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__164__case__164_elt_field0:
     seq:
-    - id: size_of_case__164_elt_field0
+    - id: len_case__164_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__164_elt_field0
-      size: size_of_case__164_elt_field0
+      size: len_case__164_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1443,12 +1443,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__163__case__163_elt_field0:
     seq:
-    - id: size_of_case__163_elt_field0
+    - id: len_case__163_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__163_elt_field0
-      size: size_of_case__163_elt_field0
+      size: len_case__163_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1460,12 +1460,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__162__case__162_elt_field0:
     seq:
-    - id: size_of_case__162_elt_field0
+    - id: len_case__162_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__162_elt_field0
-      size: size_of_case__162_elt_field0
+      size: len_case__162_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1477,12 +1477,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__161__case__161_elt_field0:
     seq:
-    - id: size_of_case__161_elt_field0
+    - id: len_case__161_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__161_elt_field0
-      size: size_of_case__161_elt_field0
+      size: len_case__161_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1494,12 +1494,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__160__case__160_elt_field0:
     seq:
-    - id: size_of_case__160_elt_field0
+    - id: len_case__160_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__160_elt_field0
-      size: size_of_case__160_elt_field0
+      size: len_case__160_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1511,12 +1511,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__159__case__159_elt_field0:
     seq:
-    - id: size_of_case__159_elt_field0
+    - id: len_case__159_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__159_elt_field0
-      size: size_of_case__159_elt_field0
+      size: len_case__159_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1528,12 +1528,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__158__case__158_elt_field0:
     seq:
-    - id: size_of_case__158_elt_field0
+    - id: len_case__158_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__158_elt_field0
-      size: size_of_case__158_elt_field0
+      size: len_case__158_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1545,12 +1545,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__157__case__157_elt_field0:
     seq:
-    - id: size_of_case__157_elt_field0
+    - id: len_case__157_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__157_elt_field0
-      size: size_of_case__157_elt_field0
+      size: len_case__157_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1562,12 +1562,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__156__case__156_elt_field0:
     seq:
-    - id: size_of_case__156_elt_field0
+    - id: len_case__156_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__156_elt_field0
-      size: size_of_case__156_elt_field0
+      size: len_case__156_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1579,12 +1579,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__155__case__155_elt_field0:
     seq:
-    - id: size_of_case__155_elt_field0
+    - id: len_case__155_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__155_elt_field0
-      size: size_of_case__155_elt_field0
+      size: len_case__155_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1596,12 +1596,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__154__case__154_elt_field0:
     seq:
-    - id: size_of_case__154_elt_field0
+    - id: len_case__154_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__154_elt_field0
-      size: size_of_case__154_elt_field0
+      size: len_case__154_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1613,12 +1613,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__153__case__153_elt_field0:
     seq:
-    - id: size_of_case__153_elt_field0
+    - id: len_case__153_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__153_elt_field0
-      size: size_of_case__153_elt_field0
+      size: len_case__153_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1630,12 +1630,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__152__case__152_elt_field0:
     seq:
-    - id: size_of_case__152_elt_field0
+    - id: len_case__152_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__152_elt_field0
-      size: size_of_case__152_elt_field0
+      size: len_case__152_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1647,12 +1647,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__151__case__151_elt_field0:
     seq:
-    - id: size_of_case__151_elt_field0
+    - id: len_case__151_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__151_elt_field0
-      size: size_of_case__151_elt_field0
+      size: len_case__151_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1664,12 +1664,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__150__case__150_elt_field0:
     seq:
-    - id: size_of_case__150_elt_field0
+    - id: len_case__150_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__150_elt_field0
-      size: size_of_case__150_elt_field0
+      size: len_case__150_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1681,12 +1681,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__149__case__149_elt_field0:
     seq:
-    - id: size_of_case__149_elt_field0
+    - id: len_case__149_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__149_elt_field0
-      size: size_of_case__149_elt_field0
+      size: len_case__149_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1698,12 +1698,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__148__case__148_elt_field0:
     seq:
-    - id: size_of_case__148_elt_field0
+    - id: len_case__148_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__148_elt_field0
-      size: size_of_case__148_elt_field0
+      size: len_case__148_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1715,12 +1715,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__147__case__147_elt_field0:
     seq:
-    - id: size_of_case__147_elt_field0
+    - id: len_case__147_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__147_elt_field0
-      size: size_of_case__147_elt_field0
+      size: len_case__147_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1732,12 +1732,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__146__case__146_elt_field0:
     seq:
-    - id: size_of_case__146_elt_field0
+    - id: len_case__146_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__146_elt_field0
-      size: size_of_case__146_elt_field0
+      size: len_case__146_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1749,12 +1749,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__145__case__145_elt_field0:
     seq:
-    - id: size_of_case__145_elt_field0
+    - id: len_case__145_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__145_elt_field0
-      size: size_of_case__145_elt_field0
+      size: len_case__145_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1766,12 +1766,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__144__case__144_elt_field0:
     seq:
-    - id: size_of_case__144_elt_field0
+    - id: len_case__144_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__144_elt_field0
-      size: size_of_case__144_elt_field0
+      size: len_case__144_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1783,12 +1783,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__143__case__143_elt_field0:
     seq:
-    - id: size_of_case__143_elt_field0
+    - id: len_case__143_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__143_elt_field0
-      size: size_of_case__143_elt_field0
+      size: len_case__143_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1800,12 +1800,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__142__case__142_elt_field0:
     seq:
-    - id: size_of_case__142_elt_field0
+    - id: len_case__142_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__142_elt_field0
-      size: size_of_case__142_elt_field0
+      size: len_case__142_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1817,12 +1817,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__141__case__141_elt_field0:
     seq:
-    - id: size_of_case__141_elt_field0
+    - id: len_case__141_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__141_elt_field0
-      size: size_of_case__141_elt_field0
+      size: len_case__141_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1834,12 +1834,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__140__case__140_elt_field0:
     seq:
-    - id: size_of_case__140_elt_field0
+    - id: len_case__140_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__140_elt_field0
-      size: size_of_case__140_elt_field0
+      size: len_case__140_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1851,12 +1851,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__139__case__139_elt_field0:
     seq:
-    - id: size_of_case__139_elt_field0
+    - id: len_case__139_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__139_elt_field0
-      size: size_of_case__139_elt_field0
+      size: len_case__139_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1868,12 +1868,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__138__case__138_elt_field0:
     seq:
-    - id: size_of_case__138_elt_field0
+    - id: len_case__138_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__138_elt_field0
-      size: size_of_case__138_elt_field0
+      size: len_case__138_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1885,12 +1885,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__137__case__137_elt_field0:
     seq:
-    - id: size_of_case__137_elt_field0
+    - id: len_case__137_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__137_elt_field0
-      size: size_of_case__137_elt_field0
+      size: len_case__137_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1902,12 +1902,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__136__case__136_elt_field0:
     seq:
-    - id: size_of_case__136_elt_field0
+    - id: len_case__136_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__136_elt_field0
-      size: size_of_case__136_elt_field0
+      size: len_case__136_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1919,12 +1919,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__135__case__135_elt_field0:
     seq:
-    - id: size_of_case__135_elt_field0
+    - id: len_case__135_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__135_elt_field0
-      size: size_of_case__135_elt_field0
+      size: len_case__135_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1936,12 +1936,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__134__case__134_elt_field0:
     seq:
-    - id: size_of_case__134_elt_field0
+    - id: len_case__134_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__134_elt_field0
-      size: size_of_case__134_elt_field0
+      size: len_case__134_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1953,12 +1953,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__133__case__133_elt_field0:
     seq:
-    - id: size_of_case__133_elt_field0
+    - id: len_case__133_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__133_elt_field0
-      size: size_of_case__133_elt_field0
+      size: len_case__133_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1970,12 +1970,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__132__case__132_elt_field0:
     seq:
-    - id: size_of_case__132_elt_field0
+    - id: len_case__132_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__132_elt_field0
-      size: size_of_case__132_elt_field0
+      size: len_case__132_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -1987,12 +1987,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2004,12 +2004,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2021,12 +2021,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -2052,13 +2052,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__case__63_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__case__63_field1:
     seq:
-    - id: size_of_case__63_field1
+    - id: len_case__63_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__63_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__case__63_field1_entries
-      size: size_of_case__63_field1
+      size: len_case__63_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__63__case__63_field1_entries:
     seq:
@@ -2312,13 +2312,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__case__62_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__case__62_field1:
     seq:
-    - id: size_of_case__62_field1
+    - id: len_case__62_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__62_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__case__62_field1_entries
-      size: size_of_case__62_field1
+      size: len_case__62_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__62__case__62_field1_entries:
     seq:
@@ -2572,13 +2572,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__case__61_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__case__61_field1:
     seq:
-    - id: size_of_case__61_field1
+    - id: len_case__61_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__61_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__case__61_field1_entries
-      size: size_of_case__61_field1
+      size: len_case__61_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__61__case__61_field1_entries:
     seq:
@@ -2832,13 +2832,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__case__60_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__case__60_field1:
     seq:
-    - id: size_of_case__60_field1
+    - id: len_case__60_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__60_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__case__60_field1_entries
-      size: size_of_case__60_field1
+      size: len_case__60_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__60__case__60_field1_entries:
     seq:
@@ -3102,12 +3102,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__211__case__211_field1:
     seq:
-    - id: size_of_case__211_field1
+    - id: len_case__211_field1
       type: u1
       valid:
         max: 255
     - id: case__211_field1
-      size: size_of_case__211_field1
+      size: len_case__211_field1
       size-eos: true
       valid:
         max: 255
@@ -3121,12 +3121,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__210__case__210_field1:
     seq:
-    - id: size_of_case__210_field1
+    - id: len_case__210_field1
       type: u1
       valid:
         max: 255
     - id: case__210_field1
-      size: size_of_case__210_field1
+      size: len_case__210_field1
       size-eos: true
       valid:
         max: 255
@@ -3140,12 +3140,12 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__209__case__209_field1:
     seq:
-    - id: size_of_case__209_field1
+    - id: len_case__209_field1
       type: u1
       valid:
         max: 255
     - id: case__209_field1
-      size: size_of_case__209_field1
+      size: len_case__209_field1
       size-eos: true
       valid:
         max: 255
@@ -3159,24 +3159,24 @@ types:
       type: inode_tree
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__208__case__208_field1:
     seq:
-    - id: size_of_case__208_field1
+    - id: len_case__208_field1
       type: u1
       valid:
         max: 255
     - id: case__208_field1
-      size: size_of_case__208_field1
+      size: len_case__208_field1
       size-eos: true
       valid:
         max: 255
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__inode_tree:
     seq:
-    - id: size_of_case__191
+    - id: len_case__191
       type: u4
       valid:
         max: 1073741823
     - id: case__191
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_entries
-      size: size_of_case__191
+      size: len_case__191
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_entries:
     seq:
@@ -3186,12 +3186,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__191__case__191_elt_field0:
     seq:
-    - id: size_of_case__191_elt_field0
+    - id: len_case__191_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__191_elt_field0
-      size: size_of_case__191_elt_field0
+      size: len_case__191_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3203,12 +3203,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__190__case__190_elt_field0:
     seq:
-    - id: size_of_case__190_elt_field0
+    - id: len_case__190_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__190_elt_field0
-      size: size_of_case__190_elt_field0
+      size: len_case__190_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3220,12 +3220,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__189__case__189_elt_field0:
     seq:
-    - id: size_of_case__189_elt_field0
+    - id: len_case__189_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__189_elt_field0
-      size: size_of_case__189_elt_field0
+      size: len_case__189_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3237,12 +3237,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__188__case__188_elt_field0:
     seq:
-    - id: size_of_case__188_elt_field0
+    - id: len_case__188_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__188_elt_field0
-      size: size_of_case__188_elt_field0
+      size: len_case__188_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3254,12 +3254,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__187__case__187_elt_field0:
     seq:
-    - id: size_of_case__187_elt_field0
+    - id: len_case__187_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__187_elt_field0
-      size: size_of_case__187_elt_field0
+      size: len_case__187_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3271,12 +3271,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__186__case__186_elt_field0:
     seq:
-    - id: size_of_case__186_elt_field0
+    - id: len_case__186_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__186_elt_field0
-      size: size_of_case__186_elt_field0
+      size: len_case__186_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3288,12 +3288,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__185__case__185_elt_field0:
     seq:
-    - id: size_of_case__185_elt_field0
+    - id: len_case__185_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__185_elt_field0
-      size: size_of_case__185_elt_field0
+      size: len_case__185_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3305,12 +3305,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__184__case__184_elt_field0:
     seq:
-    - id: size_of_case__184_elt_field0
+    - id: len_case__184_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__184_elt_field0
-      size: size_of_case__184_elt_field0
+      size: len_case__184_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3322,12 +3322,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__183__case__183_elt_field0:
     seq:
-    - id: size_of_case__183_elt_field0
+    - id: len_case__183_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__183_elt_field0
-      size: size_of_case__183_elt_field0
+      size: len_case__183_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3339,12 +3339,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__182__case__182_elt_field0:
     seq:
-    - id: size_of_case__182_elt_field0
+    - id: len_case__182_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__182_elt_field0
-      size: size_of_case__182_elt_field0
+      size: len_case__182_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3356,12 +3356,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__181__case__181_elt_field0:
     seq:
-    - id: size_of_case__181_elt_field0
+    - id: len_case__181_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__181_elt_field0
-      size: size_of_case__181_elt_field0
+      size: len_case__181_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3373,12 +3373,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__180__case__180_elt_field0:
     seq:
-    - id: size_of_case__180_elt_field0
+    - id: len_case__180_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__180_elt_field0
-      size: size_of_case__180_elt_field0
+      size: len_case__180_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3390,12 +3390,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__179__case__179_elt_field0:
     seq:
-    - id: size_of_case__179_elt_field0
+    - id: len_case__179_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__179_elt_field0
-      size: size_of_case__179_elt_field0
+      size: len_case__179_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3407,12 +3407,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__178__case__178_elt_field0:
     seq:
-    - id: size_of_case__178_elt_field0
+    - id: len_case__178_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__178_elt_field0
-      size: size_of_case__178_elt_field0
+      size: len_case__178_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3424,12 +3424,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__177__case__177_elt_field0:
     seq:
-    - id: size_of_case__177_elt_field0
+    - id: len_case__177_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__177_elt_field0
-      size: size_of_case__177_elt_field0
+      size: len_case__177_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3441,12 +3441,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__176__case__176_elt_field0:
     seq:
-    - id: size_of_case__176_elt_field0
+    - id: len_case__176_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__176_elt_field0
-      size: size_of_case__176_elt_field0
+      size: len_case__176_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3458,12 +3458,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__175__case__175_elt_field0:
     seq:
-    - id: size_of_case__175_elt_field0
+    - id: len_case__175_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__175_elt_field0
-      size: size_of_case__175_elt_field0
+      size: len_case__175_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3475,12 +3475,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__174__case__174_elt_field0:
     seq:
-    - id: size_of_case__174_elt_field0
+    - id: len_case__174_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__174_elt_field0
-      size: size_of_case__174_elt_field0
+      size: len_case__174_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3492,12 +3492,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__173__case__173_elt_field0:
     seq:
-    - id: size_of_case__173_elt_field0
+    - id: len_case__173_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__173_elt_field0
-      size: size_of_case__173_elt_field0
+      size: len_case__173_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3509,12 +3509,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__172__case__172_elt_field0:
     seq:
-    - id: size_of_case__172_elt_field0
+    - id: len_case__172_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__172_elt_field0
-      size: size_of_case__172_elt_field0
+      size: len_case__172_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3526,12 +3526,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__171__case__171_elt_field0:
     seq:
-    - id: size_of_case__171_elt_field0
+    - id: len_case__171_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__171_elt_field0
-      size: size_of_case__171_elt_field0
+      size: len_case__171_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3543,12 +3543,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__170__case__170_elt_field0:
     seq:
-    - id: size_of_case__170_elt_field0
+    - id: len_case__170_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__170_elt_field0
-      size: size_of_case__170_elt_field0
+      size: len_case__170_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3560,12 +3560,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__169__case__169_elt_field0:
     seq:
-    - id: size_of_case__169_elt_field0
+    - id: len_case__169_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__169_elt_field0
-      size: size_of_case__169_elt_field0
+      size: len_case__169_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3577,12 +3577,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__168__case__168_elt_field0:
     seq:
-    - id: size_of_case__168_elt_field0
+    - id: len_case__168_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__168_elt_field0
-      size: size_of_case__168_elt_field0
+      size: len_case__168_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3594,12 +3594,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__167__case__167_elt_field0:
     seq:
-    - id: size_of_case__167_elt_field0
+    - id: len_case__167_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__167_elt_field0
-      size: size_of_case__167_elt_field0
+      size: len_case__167_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3611,12 +3611,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__166__case__166_elt_field0:
     seq:
-    - id: size_of_case__166_elt_field0
+    - id: len_case__166_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__166_elt_field0
-      size: size_of_case__166_elt_field0
+      size: len_case__166_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3628,12 +3628,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__165__case__165_elt_field0:
     seq:
-    - id: size_of_case__165_elt_field0
+    - id: len_case__165_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__165_elt_field0
-      size: size_of_case__165_elt_field0
+      size: len_case__165_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3645,12 +3645,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__164__case__164_elt_field0:
     seq:
-    - id: size_of_case__164_elt_field0
+    - id: len_case__164_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__164_elt_field0
-      size: size_of_case__164_elt_field0
+      size: len_case__164_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3662,12 +3662,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__163__case__163_elt_field0:
     seq:
-    - id: size_of_case__163_elt_field0
+    - id: len_case__163_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__163_elt_field0
-      size: size_of_case__163_elt_field0
+      size: len_case__163_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3679,12 +3679,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__162__case__162_elt_field0:
     seq:
-    - id: size_of_case__162_elt_field0
+    - id: len_case__162_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__162_elt_field0
-      size: size_of_case__162_elt_field0
+      size: len_case__162_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3696,12 +3696,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__161__case__161_elt_field0:
     seq:
-    - id: size_of_case__161_elt_field0
+    - id: len_case__161_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__161_elt_field0
-      size: size_of_case__161_elt_field0
+      size: len_case__161_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3713,12 +3713,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__160__case__160_elt_field0:
     seq:
-    - id: size_of_case__160_elt_field0
+    - id: len_case__160_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__160_elt_field0
-      size: size_of_case__160_elt_field0
+      size: len_case__160_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3730,12 +3730,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__159__case__159_elt_field0:
     seq:
-    - id: size_of_case__159_elt_field0
+    - id: len_case__159_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__159_elt_field0
-      size: size_of_case__159_elt_field0
+      size: len_case__159_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3747,12 +3747,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__158__case__158_elt_field0:
     seq:
-    - id: size_of_case__158_elt_field0
+    - id: len_case__158_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__158_elt_field0
-      size: size_of_case__158_elt_field0
+      size: len_case__158_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3764,12 +3764,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__157__case__157_elt_field0:
     seq:
-    - id: size_of_case__157_elt_field0
+    - id: len_case__157_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__157_elt_field0
-      size: size_of_case__157_elt_field0
+      size: len_case__157_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3781,12 +3781,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__156__case__156_elt_field0:
     seq:
-    - id: size_of_case__156_elt_field0
+    - id: len_case__156_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__156_elt_field0
-      size: size_of_case__156_elt_field0
+      size: len_case__156_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3798,12 +3798,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__155__case__155_elt_field0:
     seq:
-    - id: size_of_case__155_elt_field0
+    - id: len_case__155_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__155_elt_field0
-      size: size_of_case__155_elt_field0
+      size: len_case__155_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3815,12 +3815,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__154__case__154_elt_field0:
     seq:
-    - id: size_of_case__154_elt_field0
+    - id: len_case__154_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__154_elt_field0
-      size: size_of_case__154_elt_field0
+      size: len_case__154_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3832,12 +3832,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__153__case__153_elt_field0:
     seq:
-    - id: size_of_case__153_elt_field0
+    - id: len_case__153_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__153_elt_field0
-      size: size_of_case__153_elt_field0
+      size: len_case__153_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3849,12 +3849,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__152__case__152_elt_field0:
     seq:
-    - id: size_of_case__152_elt_field0
+    - id: len_case__152_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__152_elt_field0
-      size: size_of_case__152_elt_field0
+      size: len_case__152_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3866,12 +3866,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__151__case__151_elt_field0:
     seq:
-    - id: size_of_case__151_elt_field0
+    - id: len_case__151_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__151_elt_field0
-      size: size_of_case__151_elt_field0
+      size: len_case__151_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3883,12 +3883,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__150__case__150_elt_field0:
     seq:
-    - id: size_of_case__150_elt_field0
+    - id: len_case__150_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__150_elt_field0
-      size: size_of_case__150_elt_field0
+      size: len_case__150_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3900,12 +3900,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__149__case__149_elt_field0:
     seq:
-    - id: size_of_case__149_elt_field0
+    - id: len_case__149_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__149_elt_field0
-      size: size_of_case__149_elt_field0
+      size: len_case__149_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3917,12 +3917,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__148__case__148_elt_field0:
     seq:
-    - id: size_of_case__148_elt_field0
+    - id: len_case__148_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__148_elt_field0
-      size: size_of_case__148_elt_field0
+      size: len_case__148_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3934,12 +3934,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__147__case__147_elt_field0:
     seq:
-    - id: size_of_case__147_elt_field0
+    - id: len_case__147_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__147_elt_field0
-      size: size_of_case__147_elt_field0
+      size: len_case__147_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3951,12 +3951,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__146__case__146_elt_field0:
     seq:
-    - id: size_of_case__146_elt_field0
+    - id: len_case__146_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__146_elt_field0
-      size: size_of_case__146_elt_field0
+      size: len_case__146_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3968,12 +3968,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__145__case__145_elt_field0:
     seq:
-    - id: size_of_case__145_elt_field0
+    - id: len_case__145_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__145_elt_field0
-      size: size_of_case__145_elt_field0
+      size: len_case__145_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -3985,12 +3985,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__144__case__144_elt_field0:
     seq:
-    - id: size_of_case__144_elt_field0
+    - id: len_case__144_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__144_elt_field0
-      size: size_of_case__144_elt_field0
+      size: len_case__144_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4002,12 +4002,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__143__case__143_elt_field0:
     seq:
-    - id: size_of_case__143_elt_field0
+    - id: len_case__143_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__143_elt_field0
-      size: size_of_case__143_elt_field0
+      size: len_case__143_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4019,12 +4019,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__142__case__142_elt_field0:
     seq:
-    - id: size_of_case__142_elt_field0
+    - id: len_case__142_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__142_elt_field0
-      size: size_of_case__142_elt_field0
+      size: len_case__142_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4036,12 +4036,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__141__case__141_elt_field0:
     seq:
-    - id: size_of_case__141_elt_field0
+    - id: len_case__141_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__141_elt_field0
-      size: size_of_case__141_elt_field0
+      size: len_case__141_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4053,12 +4053,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__140__case__140_elt_field0:
     seq:
-    - id: size_of_case__140_elt_field0
+    - id: len_case__140_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__140_elt_field0
-      size: size_of_case__140_elt_field0
+      size: len_case__140_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4070,12 +4070,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__139__case__139_elt_field0:
     seq:
-    - id: size_of_case__139_elt_field0
+    - id: len_case__139_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__139_elt_field0
-      size: size_of_case__139_elt_field0
+      size: len_case__139_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4087,12 +4087,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__138__case__138_elt_field0:
     seq:
-    - id: size_of_case__138_elt_field0
+    - id: len_case__138_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__138_elt_field0
-      size: size_of_case__138_elt_field0
+      size: len_case__138_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4104,12 +4104,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__137__case__137_elt_field0:
     seq:
-    - id: size_of_case__137_elt_field0
+    - id: len_case__137_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__137_elt_field0
-      size: size_of_case__137_elt_field0
+      size: len_case__137_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4121,12 +4121,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__136__case__136_elt_field0:
     seq:
-    - id: size_of_case__136_elt_field0
+    - id: len_case__136_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__136_elt_field0
-      size: size_of_case__136_elt_field0
+      size: len_case__136_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4138,12 +4138,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__135__case__135_elt_field0:
     seq:
-    - id: size_of_case__135_elt_field0
+    - id: len_case__135_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__135_elt_field0
-      size: size_of_case__135_elt_field0
+      size: len_case__135_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4155,12 +4155,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__134__case__134_elt_field0:
     seq:
-    - id: size_of_case__134_elt_field0
+    - id: len_case__134_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__134_elt_field0
-      size: size_of_case__134_elt_field0
+      size: len_case__134_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4172,12 +4172,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__133__case__133_elt_field0:
     seq:
-    - id: size_of_case__133_elt_field0
+    - id: len_case__133_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__133_elt_field0
-      size: size_of_case__133_elt_field0
+      size: len_case__133_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4189,12 +4189,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__132__case__132_elt_field0:
     seq:
-    - id: size_of_case__132_elt_field0
+    - id: len_case__132_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__132_elt_field0
-      size: size_of_case__132_elt_field0
+      size: len_case__132_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4206,12 +4206,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__131__case__131_elt_field0:
     seq:
-    - id: size_of_case__131_elt_field0
+    - id: len_case__131_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__131_elt_field0
-      size: size_of_case__131_elt_field0
+      size: len_case__131_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4223,12 +4223,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__130__case__130_elt_field0:
     seq:
-    - id: size_of_case__130_elt_field0
+    - id: len_case__130_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__130_elt_field0
-      size: size_of_case__130_elt_field0
+      size: len_case__130_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4240,12 +4240,12 @@ types:
       type: tree_encoding
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__129__case__129_elt_field0:
     seq:
-    - id: size_of_case__129_elt_field0
+    - id: len_case__129_elt_field0
       type: u1
       valid:
         max: 255
     - id: case__129_elt_field0
-      size: size_of_case__129_elt_field0
+      size: len_case__129_elt_field0
       size-eos: true
       valid:
         max: 255
@@ -4271,13 +4271,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__case__63_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__case__63_field1:
     seq:
-    - id: size_of_case__63_field1
+    - id: len_case__63_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__63_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__case__63_field1_entries
-      size: size_of_case__63_field1
+      size: len_case__63_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__63__case__63_field1_entries:
     seq:
@@ -4531,13 +4531,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__case__62_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__case__62_field1:
     seq:
-    - id: size_of_case__62_field1
+    - id: len_case__62_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__62_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__case__62_field1_entries
-      size: size_of_case__62_field1
+      size: len_case__62_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__62__case__62_field1_entries:
     seq:
@@ -4791,13 +4791,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__case__61_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__case__61_field1:
     seq:
-    - id: size_of_case__61_field1
+    - id: len_case__61_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__61_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__case__61_field1_entries
-      size: size_of_case__61_field1
+      size: len_case__61_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__61__case__61_field1_entries:
     seq:
@@ -5051,13 +5051,13 @@ types:
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__case__60_field1
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__case__60_field1:
     seq:
-    - id: size_of_case__60_field1
+    - id: len_case__60_field1
       type: u4
       valid:
         max: 1073741823
     - id: case__60_field1
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__case__60_field1_entries
-      size: size_of_case__60_field1
+      size: len_case__60_field1
       repeat: eos
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__case__0__case__4__case__60__case__60_field1_entries:
     seq:
@@ -5291,13 +5291,13 @@ types:
       type: inode_tree
   sc_rollup_refute__dissection__step:
     seq:
-    - id: size_of_dissection
+    - id: len_dissection
       type: u4
       valid:
         max: 1073741823
     - id: dissection
       type: sc_rollup_refute__dissection__dissection_entries
-      size: size_of_dissection
+      size: len_dissection
       repeat: eos
   sc_rollup_refute__dissection__dissection_entries:
     seq:
@@ -5311,12 +5311,12 @@ types:
       type: n
   sc_rollup_refute__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_refute__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5357,12 +5357,12 @@ types:
       type: s8
   sc_rollup_publish__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_publish__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5393,12 +5393,12 @@ types:
       size: 32
   sc_rollup_cement__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_cement__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5429,30 +5429,30 @@ types:
       type: sc_rollup_add_messages__message
   sc_rollup_add_messages__message:
     seq:
-    - id: size_of_message
+    - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
       type: sc_rollup_add_messages__message_entries
-      size: size_of_message
+      size: len_message
       repeat: eos
   sc_rollup_add_messages__message_entries:
     seq:
-    - id: size_of_message_elt
+    - id: len_message_elt
       type: u4
       valid:
         max: 1073741823
     - id: message_elt
-      size: size_of_message_elt
+      size: len_message_elt
   sc_rollup_add_messages__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   sc_rollup_add_messages__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5485,28 +5485,28 @@ types:
       type: sc_rollup_originate__parameters_ty
   sc_rollup_originate__parameters_ty:
     seq:
-    - id: size_of_parameters_ty
+    - id: len_parameters_ty
       type: u4
       valid:
         max: 1073741823
     - id: parameters_ty
-      size: size_of_parameters_ty
+      size: len_parameters_ty
   sc_rollup_originate__origination_proof:
     seq:
-    - id: size_of_origination_proof
+    - id: len_origination_proof
       type: u4
       valid:
         max: 1073741823
     - id: origination_proof
-      size: size_of_origination_proof
+      size: len_origination_proof
   sc_rollup_originate__boot_sector:
     seq:
-    - id: size_of_boot_sector
+    - id: len_boot_sector
       type: u4
       valid:
         max: 1073741823
     - id: boot_sector
-      size: size_of_boot_sector
+      size: len_boot_sector
   sc_rollup_originate__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5579,12 +5579,12 @@ types:
       type: transfer_ticket__entrypoint
   transfer_ticket__entrypoint:
     seq:
-    - id: size_of_entrypoint
+    - id: len_entrypoint
       type: u4
       valid:
         max: 1073741823
     - id: entrypoint
-      size: size_of_entrypoint
+      size: len_entrypoint
   transfer_ticket__id_015__ptlimapt__contract_id:
     seq:
     - id: id_015__ptlimapt__contract_id_tag
@@ -5614,20 +5614,20 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   transfer_ticket__ticket_ty:
     seq:
-    - id: size_of_ticket_ty
+    - id: len_ticket_ty
       type: u4
       valid:
         max: 1073741823
     - id: ticket_ty
-      size: size_of_ticket_ty
+      size: len_ticket_ty
   transfer_ticket__ticket_contents:
     seq:
-    - id: size_of_ticket_contents
+    - id: len_ticket_contents
       type: u4
       valid:
         max: 1073741823
     - id: ticket_contents
-      size: size_of_ticket_contents
+      size: len_ticket_contents
   transfer_ticket__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -5669,13 +5669,13 @@ types:
       type: tx_rollup_dispatch_tickets__tickets_info
   tx_rollup_dispatch_tickets__tickets_info:
     seq:
-    - id: size_of_tickets_info
+    - id: len_tickets_info
       type: u4
       valid:
         max: 1073741823
     - id: tickets_info
       type: tx_rollup_dispatch_tickets__tickets_info_entries
-      size: size_of_tickets_info
+      size: len_tickets_info
       repeat: eos
   tx_rollup_dispatch_tickets__tickets_info_entries:
     seq:
@@ -5730,29 +5730,29 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   tx_rollup_dispatch_tickets__ty:
     seq:
-    - id: size_of_ty
+    - id: len_ty
       type: u4
       valid:
         max: 1073741823
     - id: ty
-      size: size_of_ty
+      size: len_ty
   tx_rollup_dispatch_tickets__contents:
     seq:
-    - id: size_of_contents
+    - id: len_contents
       type: u4
       valid:
         max: 1073741823
     - id: contents
-      size: size_of_contents
+      size: len_contents
   tx_rollup_dispatch_tickets__message_result_path:
     seq:
-    - id: size_of_message_result_path
+    - id: len_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: message_result_path
       type: tx_rollup_dispatch_tickets__message_result_path_entries
-      size: size_of_message_result_path
+      size: len_message_result_path
       repeat: eos
   tx_rollup_dispatch_tickets__message_result_path_entries:
     seq:
@@ -5804,21 +5804,21 @@ types:
       type: tx_rollup_rejection__proof
   tx_rollup_rejection__proof:
     seq:
-    - id: size_of_proof
+    - id: len_proof
       type: u4
       valid:
         max: 1073741823
     - id: proof
-      size: size_of_proof
+      size: len_proof
   tx_rollup_rejection__previous_message_result_path:
     seq:
-    - id: size_of_previous_message_result_path
+    - id: len_previous_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: previous_message_result_path
       type: tx_rollup_rejection__previous_message_result_path_entries
-      size: size_of_previous_message_result_path
+      size: len_previous_message_result_path
       repeat: eos
   tx_rollup_rejection__previous_message_result_path_entries:
     seq:
@@ -5832,13 +5832,13 @@ types:
       size: 32
   tx_rollup_rejection__message_result_path:
     seq:
-    - id: size_of_message_result_path
+    - id: len_message_result_path
       type: u4
       valid:
         max: 1073741823
     - id: message_result_path
       type: tx_rollup_rejection__message_result_path_entries
-      size: size_of_message_result_path
+      size: len_message_result_path
       repeat: eos
   tx_rollup_rejection__message_result_path_entries:
     seq:
@@ -5846,13 +5846,13 @@ types:
       size: 32
   tx_rollup_rejection__message_path:
     seq:
-    - id: size_of_message_path
+    - id: len_message_path
       type: u4
       valid:
         max: 1073741823
     - id: message_path
       type: tx_rollup_rejection__message_path_entries
-      size: size_of_message_path
+      size: len_message_path
       repeat: eos
   tx_rollup_rejection__message_path_entries:
     seq:
@@ -5895,12 +5895,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   tx_rollup_rejection__batch__batch:
     seq:
-    - id: size_of_batch
+    - id: len_batch
       type: u4
       valid:
         max: 1073741823
     - id: batch
-      size: size_of_batch
+      size: len_batch
   tx_rollup_rejection__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -6027,13 +6027,13 @@ types:
       if: (predecessor_tag == ::predecessor_tag::predecessor_tag::some)
   tx_rollup_commit__messages:
     seq:
-    - id: size_of_messages
+    - id: len_messages
       type: u4
       valid:
         max: 1073741823
     - id: messages
       type: tx_rollup_commit__messages_entries
-      size: size_of_messages
+      size: len_messages
       repeat: eos
   tx_rollup_commit__messages_entries:
     seq:
@@ -6075,12 +6075,12 @@ types:
       if: (burn_limit_tag == bool::true)
   tx_rollup_submit_batch__content:
     seq:
-    - id: size_of_content
+    - id: len_content
       type: u4
       valid:
         max: 1073741823
     - id: content
-      size: size_of_content
+      size: len_content
   tx_rollup_submit_batch__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -6127,12 +6127,12 @@ types:
       type: register_global_constant__value
   register_global_constant__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   register_global_constant__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -6143,12 +6143,12 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::p256)
   failing_noop__arbitrary:
     seq:
-    - id: size_of_arbitrary
+    - id: len_arbitrary
       type: u4
       valid:
         max: 1073741823
     - id: arbitrary
-      size: size_of_arbitrary
+      size: len_arbitrary
   drain_delegate__id_015__ptlimapt__operation__alpha__contents:
     seq:
     - id: consensus_key
@@ -6330,20 +6330,20 @@ types:
       type: origination__storage
   origination__storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   origination__code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   origination__public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -6387,12 +6387,12 @@ types:
       type: transaction__value
   transaction__value:
     seq:
-    - id: size_of_value
+    - id: len_value
       type: u4
       valid:
         max: 1073741823
     - id: value
-      size: size_of_value
+      size: len_value
   transaction__id_015__ptlimapt__entrypoint:
     seq:
     - id: id_015__ptlimapt__entrypoint_tag
@@ -6403,12 +6403,12 @@ types:
       if: (id_015__ptlimapt__entrypoint_tag == id_015__ptlimapt__entrypoint_tag::named)
   transaction__named__id_015__ptlimapt__entrypoint:
     seq:
-    - id: size_of_named
+    - id: len_named
       type: u1
       valid:
         max: 31
     - id: named
-      size: size_of_named
+      size: len_named
       size-eos: true
       valid:
         max: 31
@@ -6515,13 +6515,13 @@ types:
       type: proposals__proposals
   proposals__proposals:
     seq:
-    - id: size_of_proposals
+    - id: len_proposals
       type: u4
       valid:
         max: 640
     - id: proposals
       type: proposals__proposals_entries
-      size: size_of_proposals
+      size: len_proposals
       repeat: eos
       valid:
         max: 640
@@ -6551,22 +6551,22 @@ types:
       type: double_baking_evidence__bh2
   double_baking_evidence__bh2:
     seq:
-    - id: size_of_bh2
+    - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
       type: double_baking_evidence__id_015__ptlimapt__block_header__alpha__full_header
-      size: size_of_bh2
+      size: len_bh2
   double_baking_evidence__bh1:
     seq:
-    - id: size_of_bh1
+    - id: len_bh1
       type: u4
       valid:
         max: 1073741823
     - id: bh1
       type: double_baking_evidence__id_015__ptlimapt__block_header__alpha__full_header
-      size: size_of_bh1
+      size: len_bh1
   double_baking_evidence__id_015__ptlimapt__block_header__alpha__full_header:
     seq:
     - id: double_baking_evidence__block_header__shell
@@ -6624,13 +6624,13 @@ types:
       size: 32
   double_baking_evidence__fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: double_baking_evidence__fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   double_baking_evidence__fitness_entries:
     seq:
@@ -6638,12 +6638,12 @@ types:
       type: double_baking_evidence__fitness__elem
   double_baking_evidence__fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
   double_preendorsement_evidence__id_015__ptlimapt__operation__alpha__contents:
     seq:
     - id: double_preendorsement_evidence__op1
@@ -6652,22 +6652,22 @@ types:
       type: double_preendorsement_evidence__op2
   double_preendorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_preendorsement_evidence__id_015__ptlimapt__inlined__preendorsement
-      size: size_of_op2
+      size: len_op2
   double_preendorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_preendorsement_evidence__id_015__ptlimapt__inlined__preendorsement
-      size: size_of_op1
+      size: len_op1
   double_preendorsement_evidence__id_015__ptlimapt__inlined__preendorsement:
     seq:
     - id: operation__shell_header
@@ -6707,22 +6707,22 @@ types:
       type: double_endorsement_evidence__op2
   double_endorsement_evidence__op2:
     seq:
-    - id: size_of_op2
+    - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
       type: double_endorsement_evidence__id_015__ptlimapt__inlined__endorsement
-      size: size_of_op2
+      size: len_op2
   double_endorsement_evidence__op1:
     seq:
-    - id: size_of_op1
+    - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
       type: double_endorsement_evidence__id_015__ptlimapt__inlined__endorsement
-      size: size_of_op1
+      size: len_op1
   double_endorsement_evidence__id_015__ptlimapt__inlined__endorsement:
     seq:
     - id: operation__shell_header

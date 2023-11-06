@@ -8,9 +8,9 @@ doc: ! >-
 
   available through the RPC `/errors` (GET).
 seq:
-- id: size_of_id_012__psithaca__errors
+- id: len_id_012__psithaca__errors
   type: u4
   valid:
     max: 1073741823
 - id: id_012__psithaca__errors
-  size: size_of_id_012__psithaca__errors
+  size: len_id_012__psithaca__errors

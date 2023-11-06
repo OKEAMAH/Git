@@ -61,13 +61,13 @@ types:
       size: 32
   fitness:
     seq:
-    - id: size_of_fitness
+    - id: len_fitness
       type: u4
       valid:
         max: 1073741823
     - id: fitness
       type: fitness_entries
-      size: size_of_fitness
+      size: len_fitness
       repeat: eos
   fitness_entries:
     seq:
@@ -75,12 +75,12 @@ types:
       type: fitness__elem
   fitness__elem:
     seq:
-    - id: size_of_fitness__elem
+    - id: len_fitness__elem
       type: u4
       valid:
         max: 1073741823
     - id: fitness__elem
-      size: size_of_fitness__elem
+      size: len_fitness__elem
 enums:
   bool:
     0: false

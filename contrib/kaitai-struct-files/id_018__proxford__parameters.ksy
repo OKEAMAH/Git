@@ -128,13 +128,13 @@ types:
       if: has_tail.as<bool>
   commitments:
     seq:
-    - id: size_of_commitments
+    - id: len_commitments
       type: u4
       valid:
         max: 1073741823
     - id: commitments
       type: commitments_entries
-      size: size_of_commitments
+      size: len_commitments
       repeat: eos
   commitments_entries:
     seq:
@@ -146,13 +146,13 @@ types:
       doc: id_018__proxford__mutez
   bootstrap_smart_rollups:
     seq:
-    - id: size_of_bootstrap_smart_rollups
+    - id: len_bootstrap_smart_rollups
       type: u4
       valid:
         max: 1073741823
     - id: bootstrap_smart_rollups
       type: bootstrap_smart_rollups_entries
-      size: size_of_bootstrap_smart_rollups
+      size: len_bootstrap_smart_rollups
       repeat: eos
   bootstrap_smart_rollups_entries:
     seq:
@@ -167,29 +167,29 @@ types:
       type: parameters_ty
   parameters_ty:
     seq:
-    - id: size_of_parameters_ty
+    - id: len_parameters_ty
       type: u4
       valid:
         max: 1073741823
     - id: parameters_ty
-      size: size_of_parameters_ty
+      size: len_parameters_ty
   kernel:
     seq:
-    - id: size_of_kernel
+    - id: len_kernel
       type: u4
       valid:
         max: 1073741823
     - id: kernel
-      size: size_of_kernel
+      size: len_kernel
   bootstrap_contracts:
     seq:
-    - id: size_of_bootstrap_contracts
+    - id: len_bootstrap_contracts
       type: u4
       valid:
         max: 1073741823
     - id: bootstrap_contracts
       type: bootstrap_contracts_entries
-      size: size_of_bootstrap_contracts
+      size: len_bootstrap_contracts
       repeat: eos
   bootstrap_contracts_entries:
     seq:
@@ -218,20 +218,20 @@ types:
       type: storage
   storage:
     seq:
-    - id: size_of_storage
+    - id: len_storage
       type: u4
       valid:
         max: 1073741823
     - id: storage
-      size: size_of_storage
+      size: len_storage
   code:
     seq:
-    - id: size_of_code
+    - id: len_code
       type: u4
       valid:
         max: 1073741823
     - id: code
-      size: size_of_code
+      size: len_code
   public_key_hash:
     seq:
     - id: public_key_hash_tag
@@ -242,13 +242,13 @@ types:
       if: (public_key_hash_tag == ::public_key_hash_tag::public_key_hash_tag::bls)
   bootstrap_accounts:
     seq:
-    - id: size_of_bootstrap_accounts
+    - id: len_bootstrap_accounts
       type: u4
       valid:
         max: 1073741823
     - id: bootstrap_accounts
       type: bootstrap_accounts_entries
-      size: size_of_bootstrap_accounts
+      size: len_bootstrap_accounts
       repeat: eos
   bootstrap_accounts_entries:
     seq:

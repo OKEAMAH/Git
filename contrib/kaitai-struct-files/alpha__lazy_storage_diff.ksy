@@ -49,13 +49,13 @@ types:
       type: sapling_state__alloc__nullifiers
   sapling_state__alloc__nullifiers:
     seq:
-    - id: size_of_nullifiers
+    - id: len_nullifiers
       type: u4
       valid:
         max: 1073741823
     - id: nullifiers
       type: sapling_state__alloc__nullifiers_entries
-      size: size_of_nullifiers
+      size: len_nullifiers
       repeat: eos
   sapling_state__alloc__nullifiers_entries:
     seq:
@@ -63,13 +63,13 @@ types:
       size: 32
   sapling_state__alloc__commitments_and_ciphertexts:
     seq:
-    - id: size_of_commitments_and_ciphertexts
+    - id: len_commitments_and_ciphertexts
       type: u4
       valid:
         max: 1073741823
     - id: commitments_and_ciphertexts
       type: sapling_state__alloc__commitments_and_ciphertexts_entries
-      size: size_of_commitments_and_ciphertexts
+      size: len_commitments_and_ciphertexts
       repeat: eos
   sapling_state__alloc__commitments_and_ciphertexts_entries:
     seq:
@@ -95,12 +95,12 @@ types:
       size: 24
   sapling_state__alloc__payload_enc:
     seq:
-    - id: size_of_payload_enc
+    - id: len_payload_enc
       type: u4
       valid:
         max: 1073741823
     - id: payload_enc
-      size: size_of_payload_enc
+      size: len_payload_enc
   sapling_state__copy__diff:
     seq:
     - id: source
@@ -116,13 +116,13 @@ types:
       type: sapling_state__copy__nullifiers
   sapling_state__copy__nullifiers:
     seq:
-    - id: size_of_nullifiers
+    - id: len_nullifiers
       type: u4
       valid:
         max: 1073741823
     - id: nullifiers
       type: sapling_state__copy__nullifiers_entries
-      size: size_of_nullifiers
+      size: len_nullifiers
       repeat: eos
   sapling_state__copy__nullifiers_entries:
     seq:
@@ -130,13 +130,13 @@ types:
       size: 32
   sapling_state__copy__commitments_and_ciphertexts:
     seq:
-    - id: size_of_commitments_and_ciphertexts
+    - id: len_commitments_and_ciphertexts
       type: u4
       valid:
         max: 1073741823
     - id: commitments_and_ciphertexts
       type: sapling_state__copy__commitments_and_ciphertexts_entries
-      size: size_of_commitments_and_ciphertexts
+      size: len_commitments_and_ciphertexts
       repeat: eos
   sapling_state__copy__commitments_and_ciphertexts_entries:
     seq:
@@ -162,12 +162,12 @@ types:
       size: 24
   sapling_state__copy__payload_enc:
     seq:
-    - id: size_of_payload_enc
+    - id: len_payload_enc
       type: u4
       valid:
         max: 1073741823
     - id: payload_enc
-      size: size_of_payload_enc
+      size: len_payload_enc
   sapling_state__update__updates:
     seq:
     - id: sapling_state__update__commitments_and_ciphertexts
@@ -176,13 +176,13 @@ types:
       type: sapling_state__update__nullifiers
   sapling_state__update__nullifiers:
     seq:
-    - id: size_of_nullifiers
+    - id: len_nullifiers
       type: u4
       valid:
         max: 1073741823
     - id: nullifiers
       type: sapling_state__update__nullifiers_entries
-      size: size_of_nullifiers
+      size: len_nullifiers
       repeat: eos
   sapling_state__update__nullifiers_entries:
     seq:
@@ -190,13 +190,13 @@ types:
       size: 32
   sapling_state__update__commitments_and_ciphertexts:
     seq:
-    - id: size_of_commitments_and_ciphertexts
+    - id: len_commitments_and_ciphertexts
       type: u4
       valid:
         max: 1073741823
     - id: commitments_and_ciphertexts
       type: sapling_state__update__commitments_and_ciphertexts_entries
-      size: size_of_commitments_and_ciphertexts
+      size: len_commitments_and_ciphertexts
       repeat: eos
   sapling_state__update__commitments_and_ciphertexts_entries:
     seq:
@@ -222,12 +222,12 @@ types:
       size: 24
   sapling_state__update__payload_enc:
     seq:
-    - id: size_of_payload_enc
+    - id: len_payload_enc
       type: u4
       valid:
         max: 1073741823
     - id: payload_enc
-      size: size_of_payload_enc
+      size: len_payload_enc
   big_map__alpha__lazy_storage_diff_elt:
     seq:
     - id: id
@@ -259,13 +259,13 @@ types:
       type: micheline__alpha__michelson_v1__expression
   big_map__alloc__updates:
     seq:
-    - id: size_of_updates
+    - id: len_updates
       type: u4
       valid:
         max: 1073741823
     - id: updates
       type: big_map__alloc__updates_entries
-      size: size_of_updates
+      size: len_updates
       repeat: eos
   big_map__alloc__updates_entries:
     seq:
@@ -288,13 +288,13 @@ types:
       type: big_map__copy__updates
   big_map__copy__updates:
     seq:
-    - id: size_of_updates
+    - id: len_updates
       type: u4
       valid:
         max: 1073741823
     - id: updates
       type: big_map__copy__updates_entries
-      size: size_of_updates
+      size: len_updates
       repeat: eos
   big_map__copy__updates_entries:
     seq:
@@ -310,13 +310,13 @@ types:
       if: (value_tag == bool::true)
   big_map__update__updates:
     seq:
-    - id: size_of_updates
+    - id: len_updates
       type: u4
       valid:
         max: 1073741823
     - id: updates
       type: big_map__update__updates_entries
-      size: size_of_updates
+      size: len_updates
       repeat: eos
   big_map__update__updates_entries:
     seq:
@@ -340,12 +340,12 @@ types:
       if: (micheline__alpha__michelson_v1__expression_tag == ::micheline__alpha__michelson_v1__expression_tag::micheline__alpha__michelson_v1__expression_tag::bytes)
   big_map__update__bytes__bytes:
     seq:
-    - id: size_of_bytes
+    - id: len_bytes
       type: u4
       valid:
         max: 1073741823
     - id: bytes
-      size: size_of_bytes
+      size: len_bytes
   big_map__update__prim__generic__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -357,21 +357,21 @@ types:
       type: big_map__update__prim__generic__annots
   big_map__update__prim__generic__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   big_map__update__prim__generic__args:
     seq:
-    - id: size_of_args
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
     - id: args
       type: big_map__update__prim__generic__args_entries
-      size: size_of_args
+      size: len_args
       repeat: eos
   big_map__update__prim__generic__args_entries:
     seq:
@@ -390,12 +390,12 @@ types:
       type: big_map__update__prim__2_args__some_annots__annots
   big_map__update__prim__2_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -416,12 +416,12 @@ types:
       type: big_map__update__prim__1_arg__some_annots__annots
   big_map__update__prim__1_arg__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -438,21 +438,21 @@ types:
       type: big_map__update__prim__no_args__some_annots__annots
   big_map__update__prim__no_args__some_annots__annots:
     seq:
-    - id: size_of_annots
+    - id: len_annots
       type: u4
       valid:
         max: 1073741823
     - id: annots
-      size: size_of_annots
+      size: len_annots
   big_map__update__sequence__micheline__alpha__michelson_v1__expression:
     seq:
-    - id: size_of_sequence
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
     - id: sequence
       type: big_map__update__sequence__sequence_entries
-      size: size_of_sequence
+      size: len_sequence
       repeat: eos
   big_map__update__sequence__sequence_entries:
     seq:
@@ -460,12 +460,12 @@ types:
       type: micheline__alpha__michelson_v1__expression
   big_map__update__string__string:
     seq:
-    - id: size_of_string
+    - id: len_string
       type: u4
       valid:
         max: 1073741823
     - id: string
-      size: size_of_string
+      size: len_string
   z:
     seq:
     - id: has_tail
@@ -1630,11 +1630,11 @@ enums:
     0: big_map
     1: sapling_state
 seq:
-- id: size_of_alpha__lazy_storage_diff
+- id: len_alpha__lazy_storage_diff
   type: u4
   valid:
     max: 1073741823
 - id: alpha__lazy_storage_diff
   type: alpha__lazy_storage_diff_entries
-  size: size_of_alpha__lazy_storage_diff
+  size: len_alpha__lazy_storage_diff
   repeat: eos

@@ -5,13 +5,13 @@ doc: ! 'Encoding id: 015-PtLimaPt.receipt.balance_updates'
 types:
   id_015__ptlimapt__operation_metadata__alpha__balance_updates:
     seq:
-    - id: size_of_id_015__ptlimapt__operation_metadata__alpha__balance_updates
+    - id: len_id_015__ptlimapt__operation_metadata__alpha__balance_updates
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__operation_metadata__alpha__balance_updates
       type: id_015__ptlimapt__operation_metadata__alpha__balance_updates_entries
-      size: size_of_id_015__ptlimapt__operation_metadata__alpha__balance_updates
+      size: len_id_015__ptlimapt__operation_metadata__alpha__balance_updates
       repeat: eos
   id_015__ptlimapt__operation_metadata__alpha__balance_updates_entries:
     seq:
@@ -55,12 +55,12 @@ types:
         a base58 address starting with scr1
   frozen_bonds__sc_rollup_bond_id__id_015__ptlimapt__rollup_address:
     seq:
-    - id: size_of_id_015__ptlimapt__rollup_address
+    - id: len_id_015__ptlimapt__rollup_address
       type: u4
       valid:
         max: 1073741823
     - id: id_015__ptlimapt__rollup_address
-      size: size_of_id_015__ptlimapt__rollup_address
+      size: len_id_015__ptlimapt__rollup_address
   frozen_bonds__id_015__ptlimapt__contract_id:
     seq:
     - id: id_015__ptlimapt__contract_id_tag

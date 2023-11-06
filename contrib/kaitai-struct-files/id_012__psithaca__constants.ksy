@@ -13,23 +13,23 @@ types:
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   round_robin_over_delegates__delegate_selection:
     seq:
-    - id: size_of_round_robin_over_delegates
+    - id: len_round_robin_over_delegates
       type: u4
       valid:
         max: 1073741823
     - id: round_robin_over_delegates
       type: round_robin_over_delegates__round_robin_over_delegates_entries
-      size: size_of_round_robin_over_delegates
+      size: len_round_robin_over_delegates
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
-    - id: size_of_round_robin_over_delegates_elt
+    - id: len_round_robin_over_delegates_elt
       type: u4
       valid:
         max: 1073741823
     - id: round_robin_over_delegates_elt
       type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
-      size: size_of_round_robin_over_delegates_elt
+      size: len_round_robin_over_delegates_elt
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_elt_entries:
     seq:
@@ -83,13 +83,13 @@ types:
       type: b7be
   cache_layout:
     seq:
-    - id: size_of_cache_layout
+    - id: len_cache_layout
       type: u4
       valid:
         max: 1073741823
     - id: cache_layout
       type: cache_layout_entries
-      size: size_of_cache_layout
+      size: len_cache_layout
       repeat: eos
   cache_layout_entries:
     seq:
