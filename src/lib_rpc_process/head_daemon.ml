@@ -57,21 +57,21 @@ module Events = struct
 end
 
 module Daemon = struct
-  (** [make_stream_daemon handler streamed_call] calls [handler] on
-      each newly received value from [streamed_call].
+  (** [make_stream_daemon ~on_head ~head_stream] calls [on_head] on
+      each newly received value from [head_stream].
 
       It returns a couple [(p, stopper)] where [p] is a promise
       resolving when the stream closes and [stopper] a function
       closing the stream. *)
-  let make_stream_daemon handle streamed_call =
+  let make_stream_daemon ~on_head ~head_stream =
     let open Lwt_result_syntax in
-    let* stream, stopper = streamed_call in
+    let* head_stream, stopper = head_stream in
     let rec go () =
-      let*! tok = Lwt_stream.get stream in
+      let*! tok = Lwt.choose [Lwt_stream.get head_stream] in
       match tok with
       | None -> return_unit
       | Some element ->
-          let*! r = handle stopper element in
+          let*! r = on_head stopper element in
           let*! () =
             match r with
             | Ok () -> Lwt.return_unit
@@ -81,7 +81,7 @@ module Daemon = struct
           in
           go ()
     in
-    return (go (), stopper)
+    return (go ())
 end
 
 (*
@@ -145,5 +145,5 @@ let init dynamic_store parameters =
       (Media_type.Command_line.of_command_line rpc_config.media_type)
   in
   Daemon.make_stream_daemon
-    (handle_new_head dynamic_store parameters)
-    (Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)
+    ~on_head:(handle_new_head dynamic_store parameters)
+    ~head_stream:(Tezos_shell_services.Monitor_services.heads rpc_ctxt `Main)

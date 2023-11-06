@@ -190,7 +190,7 @@ let run socket_dir =
   (* Send the config ack as synchronisation barrier for the init_rpc
      phase. *)
   let* () = Socket.send init_socket_fd Data_encoding.unit () in
-  let* _head_daemon_stream, _stopper =
+  let* (_ : (unit, 'a) result Lwt.t) =
     Head_daemon.init dynamic_store parameters
   in
   Lwt_utils.never_ending ()
