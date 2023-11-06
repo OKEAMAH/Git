@@ -44,7 +44,7 @@ module DataEncoding = Data_encoding__Encoding
    cases is not related to the type of encodings in unions. *)
 type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding
 
-module MuSet = Set.Make (String)
+module MuSet = Map.Make (String)
 
 let pathify path id = String.concat "__" (List.rev (id :: path))
 
@@ -115,11 +115,14 @@ let rec seq_field_of_data_encoding :
     type a.
     Ground.Enum.assoc ->
     Ground.Type.assoc ->
-    MuSet.t ->
+    string list MuSet.t ->
     a DataEncoding.t ->
     string list ->
     string ->
-    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+    Ground.Enum.assoc
+    * Ground.Type.assoc
+    * string list MuSet.t
+    * AttrSpec.t list =
  fun enums types mus ({encoding; _} as whole_encoding) path id ->
   let id = escape_id id in
   match encoding with
@@ -279,12 +282,7 @@ let rec seq_field_of_data_encoding :
         redirect
           types
           attrs
-          (fun attr ->
-            {
-              attr with
-              size = Some (Ast.Name size_id);
-              valid = None;
-            })
+          (fun attr -> {attr with size = Some (Ast.Name size_id); valid = None})
           path
           (id ^ "_dyn")
       in
@@ -396,48 +394,48 @@ let rec seq_field_of_data_encoding :
   | Check_size {limit = _; encoding} ->
       (* TODO: Add a guard for check size.*)
       seq_field_of_data_encoding enums types mus encoding path id
-  | Mu {name; title; description; fix; kind = _} ->
+  | Mu {name; title; description; fix; kind = _} -> (
       let summary = summary ~title ~description in
       let name = escape_id name in
-      if MuSet.mem name mus then
-        (* This node was already visited, we just put a pointer. *)
-        ( enums,
-          types,
-          mus,
-          [
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType =
-                (* We don't have the full type, we just put a dummy with the correct
-                   [id] which is all that gets printed *)
-                ComplexDataType (UserType name);
-            };
-          ] )
-      else
-        let mus = MuSet.add name mus in
-        let fixed = fix whole_encoding in
-        let enums, types, mus, attrs =
-          seq_field_of_data_encoding enums types mus fixed path name
-        in
-        let types, attr =
-          redirect
-            types
-            attrs
-            (fun attr -> Helpers.merge_summaries attr summary)
-            path
-            name
-        in
-        (enums, types, mus, [attr])
+      match MuSet.find_opt name mus with
+      | Some path ->
+          (* This node was already visited, we just put a pointer. *)
+          ( enums,
+            types,
+            mus,
+            [
+              {
+                (Helpers.default_attr_spec ~id) with
+                dataType =
+                  (* We don't have the full type, we just put a dummy with the correct
+                     [id] which is all that gets printed *)
+                  ComplexDataType (UserType (pathify path name));
+              };
+            ] )
+      | None ->
+          let mus = MuSet.add name path mus in
+          let fixed = fix whole_encoding in
+          let enums, types, mus, attrs =
+            seq_field_of_data_encoding enums types mus fixed path name
+          in
+          let types, attr =
+            redirect
+              types
+              attrs
+              (fun attr -> Helpers.merge_summaries attr summary)
+              path
+              name
+          in
+          (enums, types, mus, [attr]))
   | String_enum (h, a) ->
       let id = pathify path id in
       let names =
         let t = Hashtbl.create 17 in
         Hashtbl.iter
           (fun _ (name, _i) ->
-             let name' = escape_id name in
-             if String.equal name' name
-             then Hashtbl.add t name' ())
-          h;
+            let name' = escape_id name in
+            if String.equal name' name then Hashtbl.add t name' ())
+          h ;
         t
       in
       let map =
@@ -445,18 +443,16 @@ let rec seq_field_of_data_encoding :
         |> Seq.map (fun (m, i) ->
                let name = escape_id m in
                let name =
-                 if String.equal name m || not (Hashtbl.mem names name) then
-                   (Hashtbl.add names name ();
-                    name)
+                 if String.equal name m || not (Hashtbl.mem names name) then (
+                   Hashtbl.add names name () ;
+                   name)
                  else
                    let rec find name =
                      let name' = name ^ "_" in
-                     if Hashtbl.mem names name'
-                     then find name'
-                     else name'
+                     if Hashtbl.mem names name' then find name' else name'
                    in
                    let name' = find name in
-                   Hashtbl.add names name' ();
+                   Hashtbl.add names name' () ;
                    name'
                in
                ( i,
@@ -499,11 +495,14 @@ and seq_field_of_tups :
     type a.
     Ground.Enum.assoc ->
     Ground.Type.assoc ->
-    MuSet.t ->
+    string list MuSet.t ->
     string list ->
     Helpers.tid_gen ->
     a DataEncoding.desc ->
-    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+    Ground.Enum.assoc
+    * Ground.Type.assoc
+    * string list MuSet.t
+    * AttrSpec.t list =
  fun enums types mus path tid_gen d ->
   (* TODO? add indices in the path? *)
   match d with
@@ -545,10 +544,13 @@ and seq_field_of_field :
     type a.
     Ground.Enum.assoc ->
     Ground.Type.assoc ->
-    MuSet.t ->
+    string list MuSet.t ->
     string list ->
     a DataEncoding.field ->
-    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+    Ground.Enum.assoc
+    * Ground.Type.assoc
+    * string list MuSet.t
+    * AttrSpec.t list =
  fun enums types mus path f ->
   match f with
   | Req {name; encoding; title; description} ->
@@ -625,12 +627,15 @@ and seq_field_of_union :
     type a.
     Ground.Enum.assoc ->
     Ground.Type.assoc ->
-    MuSet.t ->
+    string list MuSet.t ->
     Data_encoding__Binary_size.tag_size ->
     a DataEncoding.case list ->
     string list ->
     string ->
-    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+    Ground.Enum.assoc
+    * Ground.Type.assoc
+    * string list MuSet.t
+    * AttrSpec.t list =
  fun enums types mus tag_size cases path id ->
   let tagged_cases : (int * string * string option * anyEncoding) list =
     (* Some cases are JSON-only, we filter those out and we also get rid of
@@ -748,13 +753,16 @@ and seq_field_of_collection :
     type a.
     Ground.Enum.assoc ->
     Ground.Type.assoc ->
-    MuSet.t ->
+    string list MuSet.t ->
     DataEncoding.limit ->
     int DataEncoding.encoding option ->
     a DataEncoding.encoding ->
     string list ->
     string ->
-    Ground.Enum.assoc * Ground.Type.assoc * MuSet.t * AttrSpec.t list =
+    Ground.Enum.assoc
+    * Ground.Type.assoc
+    * string list MuSet.t
+    * AttrSpec.t list =
  fun enums types mus length_limit length_encoding elts path id ->
   match (length_limit, length_encoding, elts) with
   | At_most max_length, Some le, elts ->
