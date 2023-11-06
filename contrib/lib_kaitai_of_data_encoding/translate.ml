@@ -443,19 +443,33 @@ let rec seq_field_of_data_encoding :
   | String_enum (h, a) ->
       let id = pathify path id in
       let names =
-        Hashtbl.fold
-          (fun _ (name, _i) acc -> StringSet.add name acc)
-          h
-          StringSet.empty
+        let t = Hashtbl.create 17 in
+        Hashtbl.iter
+          (fun _ (name, _i) ->
+             let name' = escape_id name in
+             if String.equal name' name
+             then Hashtbl.add t name' ())
+          h;
+        t
       in
       let map =
         Hashtbl.to_seq_values h
         |> Seq.map (fun (m, i) ->
                let name = escape_id m in
                let name =
-                 if (not (String.equal name m)) && StringSet.mem name names then
-                   name ^ "__"
-                 else name
+                 if String.equal name m || not (Hashtbl.mem names name) then
+                   (Hashtbl.add names name ();
+                    name)
+                 else
+                   let rec find name =
+                     let name' = name ^ "_" in
+                     if Hashtbl.mem names name'
+                     then find name'
+                     else name'
+                   in
+                   let name' = find name in
+                   Hashtbl.add names name' ();
+                   name'
                in
                ( i,
                  EnumValueSpec.

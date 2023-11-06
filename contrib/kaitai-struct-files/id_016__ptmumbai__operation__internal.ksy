@@ -551,7 +551,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -560,13 +560,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -677,16 +677,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -701,7 +701,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -728,16 +728,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -785,10 +785,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -838,7 +838,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -848,7 +848,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -901,7 +901,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -920,16 +920,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__2_args__some_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -945,7 +945,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -954,13 +954,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -1071,16 +1071,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -1095,7 +1095,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -1122,16 +1122,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -1179,10 +1179,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -1232,7 +1232,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -1242,7 +1242,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -1295,7 +1295,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -1314,16 +1314,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__2_args__no_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -1339,7 +1339,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -1348,13 +1348,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -1465,16 +1465,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -1489,7 +1489,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -1516,16 +1516,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -1573,10 +1573,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -1626,7 +1626,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -1636,7 +1636,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -1689,7 +1689,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -1708,16 +1708,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__1_arg__some_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -1733,7 +1733,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -1742,13 +1742,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -1859,16 +1859,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -1883,7 +1883,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -1910,16 +1910,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -1967,10 +1967,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -2020,7 +2020,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -2030,7 +2030,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -2083,7 +2083,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -2102,16 +2102,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__1_arg__no_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -2127,7 +2127,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -2136,13 +2136,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -2253,16 +2253,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -2277,7 +2277,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -2304,16 +2304,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -2361,10 +2361,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -2414,7 +2414,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -2424,7 +2424,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -2477,7 +2477,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -2496,16 +2496,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__no_args__some_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -2521,7 +2521,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -2530,13 +2530,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -2647,16 +2647,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -2671,7 +2671,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -2698,16 +2698,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -2755,10 +2755,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -2808,7 +2808,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -2818,7 +2818,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -2871,7 +2871,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -2890,16 +2890,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   event__prim__no_args__no_annots__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
@@ -2915,7 +2915,7 @@ enums:
       id: left
       doc: Left
     6:
-      id: none
+      id: none_
       doc: None
     7:
       id: pair__
@@ -2924,13 +2924,13 @@ enums:
       id: right
       doc: Right
     9:
-      id: some
+      id: some_
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_
       doc: Unit
     12:
       id: pack
@@ -3041,16 +3041,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int__
+      id: int_
       doc: INT
     49:
-      id: lambda__
+      id: lambda_
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left
+      id: left_
       doc: LEFT
     52:
       id: loop
@@ -3065,7 +3065,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map__
+      id: map_
       doc: MAP
     57:
       id: mem
@@ -3092,16 +3092,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or__
+      id: or_
       doc: OR
     66:
-      id: pair__
+      id: pair_
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right
+      id: right_
       doc: RIGHT
     69:
       id: size
@@ -3149,10 +3149,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address__
+      id: address_
       doc: ADDRESS
     85:
-      id: contract__
+      id: contract_
       doc: CONTRACT
     86:
       id: isnat
@@ -3202,7 +3202,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id__
+      id: chain_id_
       doc: CHAIN_ID
     118:
       id: level
@@ -3212,7 +3212,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never__
+      id: never_
       doc: NEVER
     122:
       id: unpair
@@ -3265,7 +3265,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view__
+      id: view_
       doc: VIEW
     145: view
     146: constant
@@ -3284,16 +3284,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec
+      id: lambda_rec_
       doc: LAMBDA_REC
     154:
-      id: ticket__
+      id: ticket_
       doc: TICKET
     155:
-      id: bytes__
+      id: bytes_
       doc: BYTES
     156:
-      id: nat__
+      id: nat_
       doc: NAT
   micheline__016__ptmumbai__michelson_v1__expression_tag:
     0: int
