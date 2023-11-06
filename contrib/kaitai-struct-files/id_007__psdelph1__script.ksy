@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 007-PsDELPH1.script'
 types:
-  id_007__psdelph1__scripted__contracts:
+  id_007__psdelph1__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_007__psdelph1__scripted__contracts
-  type: id_007__psdelph1__scripted__contracts
+- id: id_007__psdelph1__scripted__contracts_
+  type: id_007__psdelph1__scripted__contracts_

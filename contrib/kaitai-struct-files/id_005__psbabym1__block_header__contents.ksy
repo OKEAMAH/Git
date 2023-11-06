@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 005-PsBabyM1.block_header.contents'
 types:
-  id_005__psbabym1__block_header__alpha__unsigned_contents:
+  id_005__psbabym1__block_header__alpha__unsigned_contents_:
     seq:
     - id: priority
       type: u2
@@ -20,5 +20,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_005__psbabym1__block_header__alpha__unsigned_contents
-  type: id_005__psbabym1__block_header__alpha__unsigned_contents
+- id: id_005__psbabym1__block_header__alpha__unsigned_contents_
+  type: id_005__psbabym1__block_header__alpha__unsigned_contents_

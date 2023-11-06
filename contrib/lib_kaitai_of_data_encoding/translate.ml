@@ -95,17 +95,20 @@ let redirect_if_any :
 (* [redirect_if_many] is like [redirect] but it only does the redirection when
    there are multiple attributes, otherwise it adds the field directly. *)
 let redirect_if_many :
+    ?or_if:(AttrSpec.t -> bool) ->
     Ground.Type.assoc ->
     AttrSpec.t list ->
     (AttrSpec.t -> AttrSpec.t) ->
     string list ->
     string ->
     Ground.Type.assoc * AttrSpec.t =
- fun types attrs fattr path id ->
+ fun ?(or_if = fun _ -> false) types attrs fattr path id ->
+  let redirected_id = id ^ "_" in
   match attrs with
   | [] -> failwith "Not supported (empty redirect)"
+  | [attr] when or_if attr -> redirect types attrs fattr path redirected_id
   | [attr] -> (types, {(fattr attr) with id})
-  | _ :: _ :: _ as attrs -> redirect types attrs fattr path id
+  | _ :: _ :: _ as attrs -> redirect types attrs fattr path redirected_id
 
 let rec seq_field_of_data_encoding :
     type a.
@@ -273,6 +276,12 @@ let rec seq_field_of_data_encoding :
       in
       let types, attr =
         redirect_if_many
+          ~or_if:(fun attr ->
+            Option.is_some attr.size || Option.is_some attr.valid
+            ||
+            match attr.cond.repeat with
+            | NoRepeat -> false
+            | RepeatExpr _ | RepeatUntil _ | RepeatEos -> true)
           types
           attrs
           (fun attr ->
@@ -365,6 +374,12 @@ let rec seq_field_of_data_encoding :
       in
       let types, attr =
         redirect_if_many
+          ~or_if:(fun attr ->
+            Option.is_some attr.size
+            ||
+            match attr.cond.repeat with
+            | NoRepeat -> false
+            | RepeatExpr _ | RepeatUntil _ | RepeatEos -> true)
           types
           attrs
           (fun attr -> {attr with size = Some (Ast.Name size_id)})

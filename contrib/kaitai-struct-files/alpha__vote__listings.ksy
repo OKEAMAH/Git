@@ -3,14 +3,19 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.vote.listings'
 types:
+  alpha__vote__listings_:
+    seq:
+    - id: alpha__vote__listings_entries
+      type: alpha__vote__listings_entries
+      repeat: eos
   alpha__vote__listings_entries:
     seq:
     - id: pkh
-      type: public_key_hash
+      type: public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: voting_power
       type: s8
-  public_key_hash:
+  public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -38,7 +43,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: alpha__vote__listings
-  type: alpha__vote__listings_entries
+- id: alpha__vote__listings_
+  type: alpha__vote__listings_
   size: len_alpha__vote__listings
-  repeat: eos

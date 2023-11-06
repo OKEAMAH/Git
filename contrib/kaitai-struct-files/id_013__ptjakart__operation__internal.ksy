@@ -3,10 +3,10 @@ meta:
   endian: be
 doc: ! 'Encoding id: 013-PtJakart.operation.internal'
 types:
-  id_013__ptjakart__apply_results__alpha__internal_operation_result:
+  id_013__ptjakart__apply_results__alpha__internal_operation_result_:
     seq:
     - id: source
-      type: id_013__ptjakart__contract_id
+      type: id_013__ptjakart__contract_id_
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
@@ -33,10 +33,10 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: delegation__public_key_hash
+      type: delegation__public_key_hash_
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-  delegation__public_key_hash:
+  delegation__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -58,12 +58,12 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: origination__public_key_hash
+      type: origination__public_key_hash_
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
-      type: origination__id_013__ptjakart__scripted__contracts
-  origination__id_013__ptjakart__scripted__contracts:
+      type: origination__id_013__ptjakart__scripted__contracts_
+  origination__id_013__ptjakart__scripted__contracts_:
     seq:
     - id: origination__code
       type: origination__code
@@ -85,7 +85,7 @@ types:
         max: 1073741823
     - id: code
       size: len_code
-  origination__public_key_hash:
+  origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -104,7 +104,7 @@ types:
     - id: amount
       type: n
     - id: destination
-      type: transaction__id_013__ptjakart__transaction_destination
+      type: transaction__id_013__ptjakart__transaction_destination_
       doc: ! >-
         A destination of a transaction: A destination notation compatible with the
         contract notation as given to an RPC or inside scripts. Can be a base58 implicit
@@ -113,13 +113,13 @@ types:
     - id: parameters_tag
       type: u1
       enum: bool
-    - id: transaction__parameters
-      type: transaction__parameters
+    - id: transaction__parameters_
+      type: transaction__parameters_
       if: (parameters_tag == bool::true)
-  transaction__parameters:
+  transaction__parameters_:
     seq:
     - id: entrypoint
-      type: transaction__id_013__ptjakart__entrypoint
+      type: transaction__id_013__ptjakart__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: transaction__value
       type: transaction__value
@@ -131,7 +131,7 @@ types:
         max: 1073741823
     - id: value
       size: len_value
-  transaction__id_013__ptjakart__entrypoint:
+  transaction__id_013__ptjakart__entrypoint_:
     seq:
     - id: id_013__ptjakart__entrypoint_tag
       type: u1
@@ -150,13 +150,13 @@ types:
       size-eos: true
       valid:
         max: 31
-  transaction__id_013__ptjakart__transaction_destination:
+  transaction__id_013__ptjakart__transaction_destination_:
     seq:
     - id: id_013__ptjakart__transaction_destination_tag
       type: u1
       enum: id_013__ptjakart__transaction_destination_tag
     - id: transaction__implicit__id_013__ptjakart__transaction_destination
-      type: transaction__implicit__public_key_hash
+      type: transaction__implicit__public_key_hash_
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: transaction__originated__id_013__ptjakart__transaction_destination
@@ -182,7 +182,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  transaction__implicit__public_key_hash:
+  transaction__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -208,13 +208,13 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  id_013__ptjakart__contract_id:
+  id_013__ptjakart__contract_id_:
     seq:
     - id: id_013__ptjakart__contract_id_tag
       type: u1
       enum: id_013__ptjakart__contract_id_tag
     - id: implicit__id_013__ptjakart__contract_id
-      type: implicit__public_key_hash
+      type: implicit__public_key_hash_
       if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated__id_013__ptjakart__contract_id
@@ -227,7 +227,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  implicit__public_key_hash:
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -268,5 +268,5 @@ enums:
     0: implicit
     1: originated
 seq:
-- id: id_013__ptjakart__apply_results__alpha__internal_operation_result
-  type: id_013__ptjakart__apply_results__alpha__internal_operation_result
+- id: id_013__ptjakart__apply_results__alpha__internal_operation_result_
+  type: id_013__ptjakart__apply_results__alpha__internal_operation_result_

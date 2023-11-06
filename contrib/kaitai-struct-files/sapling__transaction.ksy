@@ -21,24 +21,28 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: outputs
-      type: outputs_entries
+    - id: outputs_
+      type: outputs_
       size: len_outputs
+  outputs_:
+    seq:
+    - id: outputs_entries
+      type: outputs_entries
       repeat: eos
   outputs_entries:
     seq:
-    - id: sapling__transaction__output
-      type: sapling__transaction__output
+    - id: sapling__transaction__output_
+      type: sapling__transaction__output_
       doc: Output of a transaction
-  sapling__transaction__output:
+  sapling__transaction__output_:
     seq:
     - id: cm
       size: 32
     - id: proof_o
       size: 192
     - id: ciphertext
-      type: sapling__transaction__ciphertext
-  sapling__transaction__ciphertext:
+      type: sapling__transaction__ciphertext_
+  sapling__transaction__ciphertext_:
     seq:
     - id: cv
       size: 32
@@ -66,18 +70,22 @@ types:
       type: u4
       valid:
         max: 1833216
-    - id: inputs
-      type: inputs_entries
+    - id: inputs_
+      type: inputs_
       size: len_inputs
-      repeat: eos
       valid:
         max: 1833216
+  inputs_:
+    seq:
+    - id: inputs_entries
+      type: inputs_entries
+      repeat: eos
   inputs_entries:
     seq:
-    - id: sapling__transaction__input
-      type: sapling__transaction__input
+    - id: sapling__transaction__input_
+      type: sapling__transaction__input_
       doc: Input of a transaction
-  sapling__transaction__input:
+  sapling__transaction__input_:
     seq:
     - id: cv
       size: 32

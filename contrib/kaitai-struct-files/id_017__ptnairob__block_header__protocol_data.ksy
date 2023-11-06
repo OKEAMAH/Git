@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 017-PtNairob.block_header.protocol_data'
 types:
-  id_017__ptnairob__block_header__alpha__signed_contents:
+  id_017__ptnairob__block_header__alpha__signed_contents_:
     seq:
-    - id: id_017__ptnairob__block_header__alpha__unsigned_contents
-      type: id_017__ptnairob__block_header__alpha__unsigned_contents
+    - id: id_017__ptnairob__block_header__alpha__unsigned_contents_
+      type: id_017__ptnairob__block_header__alpha__unsigned_contents_
     - id: signature
       size-eos: true
-  id_017__ptnairob__block_header__alpha__unsigned_contents:
+  id_017__ptnairob__block_header__alpha__unsigned_contents_:
     seq:
     - id: payload_hash
       size: 32
@@ -30,5 +30,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_017__ptnairob__block_header__alpha__signed_contents
-  type: id_017__ptnairob__block_header__alpha__signed_contents
+- id: id_017__ptnairob__block_header__alpha__signed_contents_
+  type: id_017__ptnairob__block_header__alpha__signed_contents_

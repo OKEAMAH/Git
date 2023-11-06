@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.script'
 types:
-  alpha__scripted__contracts:
+  alpha__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: alpha__scripted__contracts
-  type: alpha__scripted__contracts
+- id: alpha__scripted__contracts_
+  type: alpha__scripted__contracts_

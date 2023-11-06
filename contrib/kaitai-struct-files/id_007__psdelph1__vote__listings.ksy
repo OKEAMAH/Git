@@ -3,14 +3,19 @@ meta:
   endian: be
 doc: ! 'Encoding id: 007-PsDELPH1.vote.listings'
 types:
+  id_007__psdelph1__vote__listings_:
+    seq:
+    - id: id_007__psdelph1__vote__listings_entries
+      type: id_007__psdelph1__vote__listings_entries
+      repeat: eos
   id_007__psdelph1__vote__listings_entries:
     seq:
     - id: pkh
-      type: public_key_hash
+      type: public_key_hash_
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: rolls
       type: s4
-  public_key_hash:
+  public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -34,7 +39,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: id_007__psdelph1__vote__listings
-  type: id_007__psdelph1__vote__listings_entries
+- id: id_007__psdelph1__vote__listings_
+  type: id_007__psdelph1__vote__listings_
   size: len_id_007__psdelph1__vote__listings
-  repeat: eos

@@ -13,9 +13,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: components
-      type: components_entries
+    - id: components_
+      type: components_
       size: len_components
+  components_:
+    seq:
+    - id: components_entries
+      type: components_entries
       repeat: eos
   components_entries:
     seq:
@@ -24,8 +28,8 @@ types:
     - id: interface_tag
       type: u1
       enum: bool
-    - id: interface
-      type: interface
+    - id: interface_
+      type: interface_
       if: (interface_tag == bool::true)
     - id: implementation
       type: implementation
@@ -37,7 +41,7 @@ types:
         max: 1073741823
     - id: implementation
       size: len_implementation
-  interface:
+  interface_:
     seq:
     - id: len_interface
       type: u4

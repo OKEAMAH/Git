@@ -17,9 +17,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates
-      type: round_robin_over_delegates__round_robin_over_delegates_entries
+    - id: round_robin_over_delegates__round_robin_over_delegates_
+      type: round_robin_over_delegates__round_robin_over_delegates_
       size: len_round_robin_over_delegates
+  round_robin_over_delegates__round_robin_over_delegates_:
+    seq:
+    - id: round_robin_over_delegates__round_robin_over_delegates_entries
+      type: round_robin_over_delegates__round_robin_over_delegates_entries
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
@@ -27,16 +31,20 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates_elt
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_
       size: len_round_robin_over_delegates_elt
+  round_robin_over_delegates__round_robin_over_delegates_elt_:
+    seq:
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
       repeat: eos
   round_robin_over_delegates__round_robin_over_delegates_elt_entries:
     seq:
     - id: signature__v0__public_key
-      type: round_robin_over_delegates__public_key
+      type: round_robin_over_delegates__public_key_
       doc: A Ed25519, Secp256k1, or P256 public key
-  round_robin_over_delegates__public_key:
+  round_robin_over_delegates__public_key_:
     seq:
     - id: public_key_tag
       type: u1

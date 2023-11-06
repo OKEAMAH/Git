@@ -73,9 +73,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: args
-      type: prim__generic__args_entries
+    - id: prim__generic__args_
+      type: prim__generic__args_
       size: len_args
+  prim__generic__args_:
+    seq:
+    - id: prim__generic__args_entries
+      type: prim__generic__args_entries
       repeat: eos
   prim__generic__args_entries:
     seq:
@@ -154,9 +158,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: sequence
-      type: sequence__sequence_entries
+    - id: sequence__sequence_
+      type: sequence__sequence_
       size: len_sequence
+  sequence__sequence_:
+    seq:
+    - id: sequence__sequence_entries
+      type: sequence__sequence_entries
       repeat: eos
   sequence__sequence_entries:
     seq:

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 018-Proxford.staker'
 types:
-  id_018__proxford__staker:
+  id_018__proxford__staker_:
     seq:
     - id: id_018__proxford__staker_tag
       type: u1
@@ -12,10 +12,10 @@ types:
       type: single__id_018__proxford__staker
       if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::single)
     - id: shared__id_018__proxford__staker
-      type: shared__public_key_hash
+      type: shared__public_key_hash_
       if: (id_018__proxford__staker_tag == id_018__proxford__staker_tag::shared)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  shared__public_key_hash:
+  shared__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -35,14 +35,14 @@ types:
   single__id_018__proxford__staker:
     seq:
     - id: contract
-      type: single__id_018__proxford__contract_id
+      type: single__id_018__proxford__contract_id_
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: delegate
-      type: single__public_key_hash
+      type: single__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  single__public_key_hash:
+  single__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -59,13 +59,13 @@ types:
     - id: single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  single__id_018__proxford__contract_id:
+  single__id_018__proxford__contract_id_:
     seq:
     - id: id_018__proxford__contract_id_tag
       type: u1
       enum: id_018__proxford__contract_id_tag
     - id: single__implicit__id_018__proxford__contract_id
-      type: single__implicit__public_key_hash
+      type: single__implicit__public_key_hash_
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: single__originated__id_018__proxford__contract_id
@@ -78,7 +78,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  single__implicit__public_key_hash:
+  single__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -108,8 +108,8 @@ enums:
     0: single
     1: shared
 seq:
-- id: id_018__proxford__staker
-  type: id_018__proxford__staker
+- id: id_018__proxford__staker_
+  type: id_018__proxford__staker_
   doc: ! >-
     staker: Abstract notion of staker used in operation receipts, either a single
     staker or all the stakers delegating to some delegate.

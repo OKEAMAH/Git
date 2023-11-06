@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 012-Psithaca.operation.raw'
 types:
-  operation:
+  operation_:
     seq:
     - id: operation__shell_header
       size: 32
@@ -11,8 +11,8 @@ types:
     - id: data
       size-eos: true
 seq:
-- id: operation
-  type: operation
+- id: operation_
+  type: operation_
   doc: ! >-
     An operation. The shell_header part indicates a block an operation is meant to
     apply on top of. The proto part is protocol-specific and appears as a binary blob.

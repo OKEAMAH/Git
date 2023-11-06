@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 009-PsFLoren.script'
 types:
-  id_009__psfloren__scripted__contracts:
+  id_009__psfloren__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_009__psfloren__scripted__contracts
-  type: id_009__psfloren__scripted__contracts
+- id: id_009__psfloren__scripted__contracts_
+  type: id_009__psfloren__scripted__contracts_

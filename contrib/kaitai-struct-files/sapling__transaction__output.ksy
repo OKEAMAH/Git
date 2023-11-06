@@ -5,7 +5,7 @@ doc: ! 'Encoding id: sapling.transaction.output
 
   Description: Output of a transaction'
 types:
-  sapling__transaction__ciphertext:
+  sapling__transaction__ciphertext_:
     seq:
     - id: cv
       size: 32
@@ -33,4 +33,4 @@ seq:
 - id: proof_o
   size: 192
 - id: ciphertext
-  type: sapling__transaction__ciphertext
+  type: sapling__transaction__ciphertext_

@@ -5,15 +5,24 @@ doc: ! 'Encoding id: test.nested_list_of_bool
 
   Description: Nested list of boolean values'
 types:
+  test__nested_list_of_bool_:
+    seq:
+    - id: test__nested_list_of_bool_entries
+      type: test__nested_list_of_bool_entries
+      repeat: eos
   test__nested_list_of_bool_entries:
     seq:
     - id: len_test__nested_list_of_bool_elt
       type: u4
       valid:
         max: 1073741823
-    - id: test__nested_list_of_bool_elt
-      type: test__nested_list_of_bool_elt_entries
+    - id: test__nested_list_of_bool_elt_
+      type: test__nested_list_of_bool_elt_
       size: len_test__nested_list_of_bool_elt
+  test__nested_list_of_bool_elt_:
+    seq:
+    - id: test__nested_list_of_bool_elt_entries
+      type: test__nested_list_of_bool_elt_entries
       repeat: eos
   test__nested_list_of_bool_elt_entries:
     seq:
@@ -29,7 +38,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: test__nested_list_of_bool
-  type: test__nested_list_of_bool_entries
+- id: test__nested_list_of_bool_
+  type: test__nested_list_of_bool_
   size: len_test__nested_list_of_bool
-  repeat: eos

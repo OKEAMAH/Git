@@ -25,7 +25,7 @@ types:
         max: 1073741823
     - id: number_of_shards
       type: u2
-  public_key_hash:
+  public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -174,7 +174,7 @@ seq:
   type: u1
   enum: bool
 - id: testnet_dictator
-  type: public_key_hash
+  type: public_key_hash_
   if: (testnet_dictator_tag == bool::true)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash
 - id: initial_seed_tag

@@ -11,15 +11,15 @@ types:
   connection_established__p2p_connection__pool_event:
     seq:
     - id: id_point
-      type: connection_established__p2p_connection__id
+      type: connection_established__p2p_connection__id_
       doc: The identifier for a p2p connection. It includes an address and a port
         number.
     - id: peer_id
       size: 16
-  connection_established__p2p_connection__id:
+  connection_established__p2p_connection__id_:
     seq:
     - id: addr
-      type: connection_established__p2p_address
+      type: connection_established__p2p_address_
       doc: An address for locating peers.
     - id: port_tag
       type: u1
@@ -27,7 +27,7 @@ types:
     - id: port
       type: u2
       if: (port_tag == bool::true)
-  connection_established__p2p_address:
+  connection_established__p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -38,30 +38,30 @@ types:
   request_rejected__p2p_connection__pool_event:
     seq:
     - id: point
-      type: request_rejected__p2p_point__id
+      type: request_rejected__p2p_point__id_
       doc: Identifier for a peer point
     - id: identity_tag
       type: u1
       enum: bool
-    - id: request_rejected__identity
-      type: request_rejected__identity
+    - id: request_rejected__identity_
+      type: request_rejected__identity_
       if: (identity_tag == bool::true)
-  request_rejected__identity:
+  request_rejected__identity_:
     seq:
     - id: identity_field0
-      type: request_rejected__p2p_connection__id
+      type: request_rejected__p2p_connection__id_
       doc: ! >-
         The identifier for a p2p connection. It includes an address and a port number.
 
 
-        request_rejected__p2p_connection__id
+        request_rejected__p2p_connection__id_
     - id: identity_field1
       size: 16
       doc: crypto_box__public_key_hash
-  request_rejected__p2p_connection__id:
+  request_rejected__p2p_connection__id_:
     seq:
     - id: addr
-      type: request_rejected__p2p_address
+      type: request_rejected__p2p_address_
       doc: An address for locating peers.
     - id: port_tag
       type: u1
@@ -69,7 +69,7 @@ types:
     - id: port
       type: u2
       if: (port_tag == bool::true)
-  request_rejected__p2p_address:
+  request_rejected__p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -77,7 +77,7 @@ types:
         max: 1073741823
     - id: p2p_address
       size: len_p2p_address
-  request_rejected__p2p_point__id:
+  request_rejected__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -88,18 +88,18 @@ types:
   rejecting_request__p2p_connection__pool_event:
     seq:
     - id: point
-      type: rejecting_request__p2p_point__id
+      type: rejecting_request__p2p_point__id_
       doc: Identifier for a peer point
     - id: id_point
-      type: rejecting_request__p2p_connection__id
+      type: rejecting_request__p2p_connection__id_
       doc: The identifier for a p2p connection. It includes an address and a port
         number.
     - id: peer_id
       size: 16
-  rejecting_request__p2p_connection__id:
+  rejecting_request__p2p_connection__id_:
     seq:
     - id: addr
-      type: rejecting_request__p2p_address
+      type: rejecting_request__p2p_address_
       doc: An address for locating peers.
     - id: port_tag
       type: u1
@@ -107,7 +107,7 @@ types:
     - id: port
       type: u2
       if: (port_tag == bool::true)
-  rejecting_request__p2p_address:
+  rejecting_request__p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -115,7 +115,7 @@ types:
         max: 1073741823
     - id: p2p_address
       size: len_p2p_address
-  rejecting_request__p2p_point__id:
+  rejecting_request__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -126,18 +126,18 @@ types:
   accepting_request__p2p_connection__pool_event:
     seq:
     - id: point
-      type: accepting_request__p2p_point__id
+      type: accepting_request__p2p_point__id_
       doc: Identifier for a peer point
     - id: id_point
-      type: accepting_request__p2p_connection__id
+      type: accepting_request__p2p_connection__id_
       doc: The identifier for a p2p connection. It includes an address and a port
         number.
     - id: peer_id
       size: 16
-  accepting_request__p2p_connection__id:
+  accepting_request__p2p_connection__id_:
     seq:
     - id: addr
-      type: accepting_request__p2p_address
+      type: accepting_request__p2p_address_
       doc: An address for locating peers.
     - id: port_tag
       type: u1
@@ -145,7 +145,7 @@ types:
     - id: port
       type: u2
       if: (port_tag == bool::true)
-  accepting_request__p2p_address:
+  accepting_request__p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -153,7 +153,7 @@ types:
         max: 1073741823
     - id: p2p_address
       size: len_p2p_address
-  accepting_request__p2p_point__id:
+  accepting_request__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -161,7 +161,7 @@ types:
         max: 1073741823
     - id: p2p_point__id
       size: len_p2p_point__id
-  authentication_failed__p2p_point__id:
+  authentication_failed__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -169,7 +169,7 @@ types:
         max: 1073741823
     - id: p2p_point__id
       size: len_p2p_point__id
-  outgoing_connection__p2p_point__id:
+  outgoing_connection__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -177,7 +177,7 @@ types:
         max: 1073741823
     - id: p2p_point__id
       size: len_p2p_point__id
-  incoming_connection__p2p_point__id:
+  incoming_connection__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -185,7 +185,7 @@ types:
         max: 1073741823
     - id: p2p_point__id
       size: len_p2p_point__id
-  new_point__p2p_point__id:
+  new_point__p2p_point__id_:
     seq:
     - id: len_p2p_point__id
       type: u4
@@ -229,22 +229,22 @@ seq:
   type: u1
   enum: p2p_connection__pool_event_tag
 - id: new_point__p2p_connection__pool_event
-  type: new_point__p2p_point__id
+  type: new_point__p2p_point__id_
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::new_point)
   doc: Identifier for a peer point
 - id: new_peer__p2p_connection__pool_event
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::new_peer)
 - id: incoming_connection__p2p_connection__pool_event
-  type: incoming_connection__p2p_point__id
+  type: incoming_connection__p2p_point__id_
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::incoming_connection)
   doc: Identifier for a peer point
 - id: outgoing_connection__p2p_connection__pool_event
-  type: outgoing_connection__p2p_point__id
+  type: outgoing_connection__p2p_point__id_
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::outgoing_connection)
   doc: Identifier for a peer point
 - id: authentication_failed__p2p_connection__pool_event
-  type: authentication_failed__p2p_point__id
+  type: authentication_failed__p2p_point__id_
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::authentication_failed)
   doc: Identifier for a peer point
 - id: accepting_request__p2p_connection__pool_event

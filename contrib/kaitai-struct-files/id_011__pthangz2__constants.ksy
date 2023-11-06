@@ -9,9 +9,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: endorsement_reward
-      type: endorsement_reward_entries
+    - id: endorsement_reward_
+      type: endorsement_reward_
       size: len_endorsement_reward
+  endorsement_reward_:
+    seq:
+    - id: endorsement_reward_entries
+      type: endorsement_reward_entries
       repeat: eos
   endorsement_reward_entries:
     seq:
@@ -23,9 +27,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: baking_reward_per_endorsement
-      type: baking_reward_per_endorsement_entries
+    - id: baking_reward_per_endorsement_
+      type: baking_reward_per_endorsement_
       size: len_baking_reward_per_endorsement
+  baking_reward_per_endorsement_:
+    seq:
+    - id: baking_reward_per_endorsement_entries
+      type: baking_reward_per_endorsement_entries
       repeat: eos
   baking_reward_per_endorsement_entries:
     seq:
@@ -62,9 +70,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: time_between_blocks
-      type: time_between_blocks_entries
+    - id: time_between_blocks_
+      type: time_between_blocks_
       size: len_time_between_blocks
+  time_between_blocks_:
+    seq:
+    - id: time_between_blocks_entries
+      type: time_between_blocks_entries
       repeat: eos
   time_between_blocks_entries:
     seq:
@@ -76,9 +88,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: cache_layout
-      type: cache_layout_entries
+    - id: cache_layout_
+      type: cache_layout_
       size: len_cache_layout
+  cache_layout_:
+    seq:
+    - id: cache_layout_entries
+      type: cache_layout_entries
       repeat: eos
   cache_layout_entries:
     seq:

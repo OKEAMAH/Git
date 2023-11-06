@@ -9,9 +9,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: cache_layout
-      type: cache_layout_entries
+    - id: cache_layout_
+      type: cache_layout_
       size: len_cache_layout
+  cache_layout_:
+    seq:
+    - id: cache_layout_entries
+      type: cache_layout_entries
       repeat: eos
   cache_layout_entries:
     seq:

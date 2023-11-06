@@ -3,6 +3,11 @@ meta:
   endian: be
 doc: ! 'Encoding id: 008-PtEdo2Zk.lazy_storage_diff'
 types:
+  id_008__ptedo2zk__lazy_storage_diff_:
+    seq:
+    - id: id_008__ptedo2zk__lazy_storage_diff_entries
+      type: id_008__ptedo2zk__lazy_storage_diff_entries
+      repeat: eos
   id_008__ptedo2zk__lazy_storage_diff_entries:
     seq:
     - id: id_008__ptedo2zk__lazy_storage_diff_elt_tag
@@ -53,9 +58,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: nullifiers
-      type: sapling_state__alloc__nullifiers_entries
+    - id: sapling_state__alloc__nullifiers_
+      type: sapling_state__alloc__nullifiers_
       size: len_nullifiers
+  sapling_state__alloc__nullifiers_:
+    seq:
+    - id: sapling_state__alloc__nullifiers_entries
+      type: sapling_state__alloc__nullifiers_entries
       repeat: eos
   sapling_state__alloc__nullifiers_entries:
     seq:
@@ -67,9 +76,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_and_ciphertexts
-      type: sapling_state__alloc__commitments_and_ciphertexts_entries
+    - id: sapling_state__alloc__commitments_and_ciphertexts_
+      type: sapling_state__alloc__commitments_and_ciphertexts_
       size: len_commitments_and_ciphertexts
+  sapling_state__alloc__commitments_and_ciphertexts_:
+    seq:
+    - id: sapling_state__alloc__commitments_and_ciphertexts_entries
+      type: sapling_state__alloc__commitments_and_ciphertexts_entries
       repeat: eos
   sapling_state__alloc__commitments_and_ciphertexts_entries:
     seq:
@@ -77,9 +90,9 @@ types:
       size: 32
       doc: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__alloc__sapling__transaction__ciphertext
-      doc: sapling_state__alloc__sapling__transaction__ciphertext
-  sapling_state__alloc__sapling__transaction__ciphertext:
+      type: sapling_state__alloc__sapling__transaction__ciphertext_
+      doc: sapling_state__alloc__sapling__transaction__ciphertext_
+  sapling_state__alloc__sapling__transaction__ciphertext_:
     seq:
     - id: cv
       size: 32
@@ -120,9 +133,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: nullifiers
-      type: sapling_state__copy__nullifiers_entries
+    - id: sapling_state__copy__nullifiers_
+      type: sapling_state__copy__nullifiers_
       size: len_nullifiers
+  sapling_state__copy__nullifiers_:
+    seq:
+    - id: sapling_state__copy__nullifiers_entries
+      type: sapling_state__copy__nullifiers_entries
       repeat: eos
   sapling_state__copy__nullifiers_entries:
     seq:
@@ -134,9 +151,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_and_ciphertexts
-      type: sapling_state__copy__commitments_and_ciphertexts_entries
+    - id: sapling_state__copy__commitments_and_ciphertexts_
+      type: sapling_state__copy__commitments_and_ciphertexts_
       size: len_commitments_and_ciphertexts
+  sapling_state__copy__commitments_and_ciphertexts_:
+    seq:
+    - id: sapling_state__copy__commitments_and_ciphertexts_entries
+      type: sapling_state__copy__commitments_and_ciphertexts_entries
       repeat: eos
   sapling_state__copy__commitments_and_ciphertexts_entries:
     seq:
@@ -144,9 +165,9 @@ types:
       size: 32
       doc: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__copy__sapling__transaction__ciphertext
-      doc: sapling_state__copy__sapling__transaction__ciphertext
-  sapling_state__copy__sapling__transaction__ciphertext:
+      type: sapling_state__copy__sapling__transaction__ciphertext_
+      doc: sapling_state__copy__sapling__transaction__ciphertext_
+  sapling_state__copy__sapling__transaction__ciphertext_:
     seq:
     - id: cv
       size: 32
@@ -180,9 +201,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: nullifiers
-      type: sapling_state__update__nullifiers_entries
+    - id: sapling_state__update__nullifiers_
+      type: sapling_state__update__nullifiers_
       size: len_nullifiers
+  sapling_state__update__nullifiers_:
+    seq:
+    - id: sapling_state__update__nullifiers_entries
+      type: sapling_state__update__nullifiers_entries
       repeat: eos
   sapling_state__update__nullifiers_entries:
     seq:
@@ -194,9 +219,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: commitments_and_ciphertexts
-      type: sapling_state__update__commitments_and_ciphertexts_entries
+    - id: sapling_state__update__commitments_and_ciphertexts_
+      type: sapling_state__update__commitments_and_ciphertexts_
       size: len_commitments_and_ciphertexts
+  sapling_state__update__commitments_and_ciphertexts_:
+    seq:
+    - id: sapling_state__update__commitments_and_ciphertexts_entries
+      type: sapling_state__update__commitments_and_ciphertexts_entries
       repeat: eos
   sapling_state__update__commitments_and_ciphertexts_entries:
     seq:
@@ -204,9 +233,9 @@ types:
       size: 32
       doc: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__update__sapling__transaction__ciphertext
-      doc: sapling_state__update__sapling__transaction__ciphertext
-  sapling_state__update__sapling__transaction__ciphertext:
+      type: sapling_state__update__sapling__transaction__ciphertext_
+      doc: sapling_state__update__sapling__transaction__ciphertext_
+  sapling_state__update__sapling__transaction__ciphertext_:
     seq:
     - id: cv
       size: 32
@@ -263,9 +292,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: updates
-      type: big_map__alloc__updates_entries
+    - id: big_map__alloc__updates_
+      type: big_map__alloc__updates_
       size: len_updates
+  big_map__alloc__updates_:
+    seq:
+    - id: big_map__alloc__updates_entries
+      type: big_map__alloc__updates_entries
       repeat: eos
   big_map__alloc__updates_entries:
     seq:
@@ -292,9 +325,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: updates
-      type: big_map__copy__updates_entries
+    - id: big_map__copy__updates_
+      type: big_map__copy__updates_
       size: len_updates
+  big_map__copy__updates_:
+    seq:
+    - id: big_map__copy__updates_entries
+      type: big_map__copy__updates_entries
       repeat: eos
   big_map__copy__updates_entries:
     seq:
@@ -314,9 +351,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: updates
-      type: big_map__update__updates_entries
+    - id: big_map__update__updates_
+      type: big_map__update__updates_
       size: len_updates
+  big_map__update__updates_:
+    seq:
+    - id: big_map__update__updates_entries
+      type: big_map__update__updates_entries
       repeat: eos
   big_map__update__updates_entries:
     seq:
@@ -400,9 +441,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: args
-      type: big_map__update__prim__generic__args_entries
+    - id: big_map__update__prim__generic__args_
+      type: big_map__update__prim__generic__args_
       size: len_args
+  big_map__update__prim__generic__args_:
+    seq:
+    - id: big_map__update__prim__generic__args_entries
+      type: big_map__update__prim__generic__args_entries
       repeat: eos
   big_map__update__prim__generic__args_entries:
     seq:
@@ -481,9 +526,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: sequence
-      type: big_map__update__sequence__sequence_entries
+    - id: big_map__update__sequence__sequence_
+      type: big_map__update__sequence__sequence_
       size: len_sequence
+  big_map__update__sequence__sequence_:
+    seq:
+    - id: big_map__update__sequence__sequence_entries
+      type: big_map__update__sequence__sequence_entries
       repeat: eos
   big_map__update__sequence__sequence_entries:
     seq:
@@ -1553,7 +1602,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: id_008__ptedo2zk__lazy_storage_diff
-  type: id_008__ptedo2zk__lazy_storage_diff_entries
+- id: id_008__ptedo2zk__lazy_storage_diff_
+  type: id_008__ptedo2zk__lazy_storage_diff_
   size: len_id_008__ptedo2zk__lazy_storage_diff
-  repeat: eos

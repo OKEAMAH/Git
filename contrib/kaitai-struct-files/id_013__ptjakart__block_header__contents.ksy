@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 013-PtJakart.block_header.contents'
 types:
-  id_013__ptjakart__block_header__alpha__unsigned_contents:
+  id_013__ptjakart__block_header__alpha__unsigned_contents_:
     seq:
     - id: payload_hash
       size: 32
@@ -24,5 +24,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_013__ptjakart__block_header__alpha__unsigned_contents
-  type: id_013__ptjakart__block_header__alpha__unsigned_contents
+- id: id_013__ptjakart__block_header__alpha__unsigned_contents_
+  type: id_013__ptjakart__block_header__alpha__unsigned_contents_

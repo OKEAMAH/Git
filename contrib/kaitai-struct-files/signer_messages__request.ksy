@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: signer_messages.request'
 types:
-  supports_deterministic_nonces__public_key_hash:
+  supports_deterministic_nonces__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -23,7 +23,7 @@ types:
   deterministic_nonce_hash__signer_messages__request:
     seq:
     - id: pkh
-      type: deterministic_nonce_hash__public_key_hash
+      type: deterministic_nonce_hash__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: deterministic_nonce_hash__data
       type: deterministic_nonce_hash__data
@@ -41,7 +41,7 @@ types:
         max: 1073741823
     - id: data
       size: len_data
-  deterministic_nonce_hash__public_key_hash:
+  deterministic_nonce_hash__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -61,7 +61,7 @@ types:
   deterministic_nonce__signer_messages__request:
     seq:
     - id: pkh
-      type: deterministic_nonce__public_key_hash
+      type: deterministic_nonce__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: deterministic_nonce__data
       type: deterministic_nonce__data
@@ -79,7 +79,7 @@ types:
         max: 1073741823
     - id: data
       size: len_data
-  deterministic_nonce__public_key_hash:
+  deterministic_nonce__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -96,7 +96,7 @@ types:
     - id: deterministic_nonce__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  public_key__public_key_hash:
+  public_key__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -116,7 +116,7 @@ types:
   sign__signer_messages__request:
     seq:
     - id: pkh
-      type: sign__public_key_hash
+      type: sign__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: sign__data
       type: sign__data
@@ -134,7 +134,7 @@ types:
         max: 1073741823
     - id: data
       size: len_data
-  sign__public_key_hash:
+  sign__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -175,7 +175,7 @@ seq:
   type: sign__signer_messages__request
   if: (signer_messages__request_tag == signer_messages__request_tag::sign)
 - id: public_key__signer_messages__request
-  type: public_key__public_key_hash
+  type: public_key__public_key_hash_
   if: (signer_messages__request_tag == signer_messages__request_tag::public_key)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash
 - id: deterministic_nonce__signer_messages__request
@@ -185,6 +185,6 @@ seq:
   type: deterministic_nonce_hash__signer_messages__request
   if: (signer_messages__request_tag == signer_messages__request_tag::deterministic_nonce_hash)
 - id: supports_deterministic_nonces__signer_messages__request
-  type: supports_deterministic_nonces__public_key_hash
+  type: supports_deterministic_nonces__public_key_hash_
   if: (signer_messages__request_tag == signer_messages__request_tag::supports_deterministic_nonces)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash

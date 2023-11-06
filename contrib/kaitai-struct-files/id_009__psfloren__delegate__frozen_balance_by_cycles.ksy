@@ -3,6 +3,11 @@ meta:
   endian: be
 doc: ! 'Encoding id: 009-PsFLoren.delegate.frozen_balance_by_cycles'
 types:
+  id_009__psfloren__delegate__frozen_balance_by_cycles_:
+    seq:
+    - id: id_009__psfloren__delegate__frozen_balance_by_cycles_entries
+      type: id_009__psfloren__delegate__frozen_balance_by_cycles_entries
+      repeat: eos
   id_009__psfloren__delegate__frozen_balance_by_cycles_entries:
     seq:
     - id: cycle
@@ -30,7 +35,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: id_009__psfloren__delegate__frozen_balance_by_cycles
-  type: id_009__psfloren__delegate__frozen_balance_by_cycles_entries
+- id: id_009__psfloren__delegate__frozen_balance_by_cycles_
+  type: id_009__psfloren__delegate__frozen_balance_by_cycles_
   size: len_id_009__psfloren__delegate__frozen_balance_by_cycles
-  repeat: eos

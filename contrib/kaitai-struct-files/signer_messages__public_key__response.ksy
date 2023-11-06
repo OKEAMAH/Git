@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: signer_messages.public_key.response'
 types:
-  public_key:
+  public_key_:
     seq:
     - id: public_key_tag
       type: u1
@@ -28,5 +28,5 @@ enums:
     3: bls
 seq:
 - id: pubkey
-  type: public_key
+  type: public_key_
   doc: A Ed25519, Secp256k1, or P256 public key

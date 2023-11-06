@@ -7,7 +7,7 @@ doc: ! >-
   Description: Information about a peer point. Includes flags, state, and records
   about past events.
 types:
-  last_seen:
+  last_seen_:
     seq:
     - id: last_seen_field0
       size: 16
@@ -20,7 +20,7 @@ types:
 
 
         timestamp__system
-  last_disconnection:
+  last_disconnection_:
     seq:
     - id: last_disconnection_field0
       size: 16
@@ -33,7 +33,7 @@ types:
 
 
         timestamp__system
-  last_established_connection:
+  last_established_connection_:
     seq:
     - id: last_established_connection_field0
       size: 16
@@ -46,7 +46,7 @@ types:
 
 
         timestamp__system
-  last_rejected_connection:
+  last_rejected_connection_:
     seq:
     - id: last_rejected_connection_field0
       size: 16
@@ -59,7 +59,7 @@ types:
 
 
         timestamp__system
-  p2p_point__state:
+  p2p_point__state_:
     seq:
     - id: p2p_point__state_tag
       type: u1
@@ -93,7 +93,7 @@ seq:
     A timestamp as seen by the underlying, local computer: subsecond-level precision,
     epoch or rfc3339 based.
 - id: state
-  type: p2p_point__state
+  type: p2p_point__state_
   doc: ! >-
     The state a connection to a peer point can be in: requested (connection open from
     here), accepted (handshake), running (connection already established), disconnected
@@ -116,26 +116,26 @@ seq:
 - id: last_rejected_connection_tag
   type: u1
   enum: bool
-- id: last_rejected_connection
-  type: last_rejected_connection
+- id: last_rejected_connection_
+  type: last_rejected_connection_
   if: (last_rejected_connection_tag == bool::true)
 - id: last_established_connection_tag
   type: u1
   enum: bool
-- id: last_established_connection
-  type: last_established_connection
+- id: last_established_connection_
+  type: last_established_connection_
   if: (last_established_connection_tag == bool::true)
 - id: last_disconnection_tag
   type: u1
   enum: bool
-- id: last_disconnection
-  type: last_disconnection
+- id: last_disconnection_
+  type: last_disconnection_
   if: (last_disconnection_tag == bool::true)
 - id: last_seen_tag
   type: u1
   enum: bool
-- id: last_seen
-  type: last_seen
+- id: last_seen_
+  type: last_seen_
   if: (last_seen_tag == bool::true)
 - id: last_miss_tag
   type: u1

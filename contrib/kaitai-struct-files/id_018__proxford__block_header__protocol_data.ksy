@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 018-Proxford.block_header.protocol_data'
 types:
-  id_018__proxford__block_header__alpha__signed_contents:
+  id_018__proxford__block_header__alpha__signed_contents_:
     seq:
-    - id: id_018__proxford__block_header__alpha__unsigned_contents
-      type: id_018__proxford__block_header__alpha__unsigned_contents
+    - id: id_018__proxford__block_header__alpha__unsigned_contents_
+      type: id_018__proxford__block_header__alpha__unsigned_contents_
     - id: signature
       size-eos: true
-  id_018__proxford__block_header__alpha__unsigned_contents:
+  id_018__proxford__block_header__alpha__unsigned_contents_:
     seq:
     - id: payload_hash
       size: 32
@@ -41,5 +41,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_018__proxford__block_header__alpha__signed_contents
-  type: id_018__proxford__block_header__alpha__signed_contents
+- id: id_018__proxford__block_header__alpha__signed_contents_
+  type: id_018__proxford__block_header__alpha__signed_contents_

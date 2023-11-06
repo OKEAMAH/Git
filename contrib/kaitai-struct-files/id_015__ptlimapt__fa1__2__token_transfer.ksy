@@ -9,7 +9,7 @@ types:
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-  fee:
+  fee_:
     seq:
     - id: len_fee
       type: u4
@@ -17,7 +17,7 @@ types:
         max: 1073741823
     - id: fee
       size: len_fee
-  tez__amount:
+  tez__amount_:
     seq:
     - id: len_tez__amount
       type: u4
@@ -74,14 +74,14 @@ seq:
 - id: tez__amount_tag
   type: u1
   enum: bool
-- id: tez__amount
-  type: tez__amount
+- id: tez__amount_
+  type: tez__amount_
   if: (tez__amount_tag == bool::true)
 - id: fee_tag
   type: u1
   enum: bool
-- id: fee
-  type: fee
+- id: fee_
+  type: fee_
   if: (fee_tag == bool::true)
 - id: gas__limit_tag
   type: u1

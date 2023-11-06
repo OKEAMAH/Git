@@ -7,7 +7,7 @@ doc: ! >-
   Description: An event that may happen during maintenance of and other operations
   on the connection to a specific peer.
 types:
-  p2p_address:
+  p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -36,7 +36,7 @@ seq:
     A timestamp as seen by the underlying, local computer: subsecond-level precision,
     epoch or rfc3339 based.
 - id: addr
-  type: p2p_address
+  type: p2p_address_
   doc: An address for locating peers.
 - id: port_tag
   type: u1

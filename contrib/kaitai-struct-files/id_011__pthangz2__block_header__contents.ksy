@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 011-PtHangz2.block_header.contents'
 types:
-  id_011__pthangz2__block_header__alpha__unsigned_contents:
+  id_011__pthangz2__block_header__alpha__unsigned_contents_:
     seq:
     - id: priority
       type: u2
@@ -23,5 +23,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_011__pthangz2__block_header__alpha__unsigned_contents
-  type: id_011__pthangz2__block_header__alpha__unsigned_contents
+- id: id_011__pthangz2__block_header__alpha__unsigned_contents_
+  type: id_011__pthangz2__block_header__alpha__unsigned_contents_

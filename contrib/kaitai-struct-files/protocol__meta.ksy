@@ -13,9 +13,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: modules
-      type: modules_entries
+    - id: modules_
+      type: modules_
       size: len_modules
+  modules_:
+    seq:
+    - id: modules_entries
+      type: modules_entries
       repeat: eos
   modules_entries:
     seq:

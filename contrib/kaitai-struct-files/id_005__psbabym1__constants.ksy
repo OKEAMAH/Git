@@ -34,9 +34,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: time_between_blocks
-      type: time_between_blocks_entries
+    - id: time_between_blocks_
+      type: time_between_blocks_
       size: len_time_between_blocks
+  time_between_blocks_:
+    seq:
+    - id: time_between_blocks_entries
+      type: time_between_blocks_entries
       repeat: eos
   time_between_blocks_entries:
     seq:

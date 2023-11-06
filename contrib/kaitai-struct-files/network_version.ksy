@@ -7,7 +7,7 @@ doc: ! >-
   Description: A version number for the network protocol (includes distributed DB
   version and p2p version)
 types:
-  distributed_db_version__name:
+  distributed_db_version__name_:
     seq:
     - id: len_distributed_db_version__name
       type: u4
@@ -17,7 +17,7 @@ types:
       size: len_distributed_db_version__name
 seq:
 - id: chain_name
-  type: distributed_db_version__name
+  type: distributed_db_version__name_
   doc: A name for the distributed DB protocol
 - id: distributed_db_version
   type: u2

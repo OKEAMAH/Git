@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 006-PsCARTHA.script'
 types:
-  id_006__pscartha__scripted__contracts:
+  id_006__pscartha__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_006__pscartha__scripted__contracts
-  type: id_006__pscartha__scripted__contracts
+- id: id_006__pscartha__scripted__contracts_
+  type: id_006__pscartha__scripted__contracts_

@@ -56,9 +56,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: commitments
-      type: commitments_entries
+    - id: commitments_
+      type: commitments_
       size: len_commitments
+  commitments_:
+    seq:
+    - id: commitments_entries
+      type: commitments_entries
       repeat: eos
   commitments_entries:
     seq:
@@ -74,9 +78,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_contracts
-      type: bootstrap_contracts_entries
+    - id: bootstrap_contracts_
+      type: bootstrap_contracts_
       size: len_bootstrap_contracts
+  bootstrap_contracts_:
+    seq:
+    - id: bootstrap_contracts_entries
+      type: bootstrap_contracts_entries
       repeat: eos
   bootstrap_contracts_entries:
     seq:
@@ -84,14 +92,14 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: public_key_hash
+      type: public_key_hash_
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: amount
       type: n
     - id: script
-      type: id_015__ptlimapt__scripted__contracts
-  id_015__ptlimapt__scripted__contracts:
+      type: id_015__ptlimapt__scripted__contracts_
+  id_015__ptlimapt__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -113,7 +121,7 @@ types:
         max: 1073741823
     - id: code
       size: len_code
-  public_key_hash:
+  public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -133,9 +141,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: bootstrap_accounts
-      type: bootstrap_accounts_entries
+    - id: bootstrap_accounts_
+      type: bootstrap_accounts_
       size: len_bootstrap_accounts
+  bootstrap_accounts_:
+    seq:
+    - id: bootstrap_accounts_entries
+      type: bootstrap_accounts_entries
       repeat: eos
   bootstrap_accounts_entries:
     seq:
@@ -160,7 +172,7 @@ types:
   public_key_known_with_consensus_key__bootstrap_accounts_elt:
     seq:
     - id: public_key_known_with_consensus_key_field0
-      type: public_key_known_with_consensus_key__public_key
+      type: public_key_known_with_consensus_key__public_key_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key
 
 
@@ -169,12 +181,12 @@ types:
       type: n
       doc: id_015__ptlimapt__mutez
     - id: public_key_known_with_consensus_key_field2
-      type: public_key_known_with_consensus_key__public_key
+      type: public_key_known_with_consensus_key__public_key_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key
 
 
         signature__v0__public_key'
-  public_key_known_with_consensus_key__public_key:
+  public_key_known_with_consensus_key__public_key_:
     seq:
     - id: public_key_tag
       type: u1
@@ -191,7 +203,7 @@ types:
   public_key_unknown_with_delegate__bootstrap_accounts_elt:
     seq:
     - id: public_key_unknown_with_delegate_field0
-      type: public_key_unknown_with_delegate__public_key_hash
+      type: public_key_unknown_with_delegate__public_key_hash_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key hash
 
 
@@ -200,12 +212,12 @@ types:
       type: n
       doc: id_015__ptlimapt__mutez
     - id: public_key_unknown_with_delegate_field2
-      type: public_key_unknown_with_delegate__public_key_hash
+      type: public_key_unknown_with_delegate__public_key_hash_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key hash
 
 
         signature__v0__public_key_hash'
-  public_key_unknown_with_delegate__public_key_hash:
+  public_key_unknown_with_delegate__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -222,7 +234,7 @@ types:
   public_key_known_with_delegate__bootstrap_accounts_elt:
     seq:
     - id: public_key_known_with_delegate_field0
-      type: public_key_known_with_delegate__public_key
+      type: public_key_known_with_delegate__public_key_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key
 
 
@@ -231,12 +243,12 @@ types:
       type: n
       doc: id_015__ptlimapt__mutez
     - id: public_key_known_with_delegate_field2
-      type: public_key_known_with_delegate__public_key_hash
+      type: public_key_known_with_delegate__public_key_hash_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key hash
 
 
         signature__v0__public_key_hash'
-  public_key_known_with_delegate__public_key_hash:
+  public_key_known_with_delegate__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -250,7 +262,7 @@ types:
     - id: public_key_known_with_delegate__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  public_key_known_with_delegate__public_key:
+  public_key_known_with_delegate__public_key_:
     seq:
     - id: public_key_tag
       type: u1
@@ -267,7 +279,7 @@ types:
   public_key_unknown__bootstrap_accounts_elt:
     seq:
     - id: public_key_unknown_field0
-      type: public_key_unknown__public_key_hash
+      type: public_key_unknown__public_key_hash_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key hash
 
 
@@ -275,7 +287,7 @@ types:
     - id: public_key_unknown_field1
       type: n
       doc: id_015__ptlimapt__mutez
-  public_key_unknown__public_key_hash:
+  public_key_unknown__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -292,7 +304,7 @@ types:
   public_key_known__bootstrap_accounts_elt:
     seq:
     - id: public_key_known_field0
-      type: public_key_known__public_key
+      type: public_key_known__public_key_
       doc: ! 'A Ed25519, Secp256k1, or P256 public key
 
 
@@ -312,7 +324,7 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  public_key_known__public_key:
+  public_key_known__public_key_:
     seq:
     - id: public_key_tag
       type: u1
@@ -454,7 +466,7 @@ seq:
   type: u1
   enum: bool
 - id: testnet_dictator
-  type: public_key_hash
+  type: public_key_hash_
   if: (testnet_dictator_tag == bool::true)
   doc: A Ed25519, Secp256k1, or P256 public key hash
 - id: initial_seed_tag

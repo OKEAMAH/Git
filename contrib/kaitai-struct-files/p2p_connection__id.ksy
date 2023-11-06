@@ -7,7 +7,7 @@ doc: ! >-
   Description: The identifier for a p2p connection. It includes an address and a port
   number.
 types:
-  p2p_address:
+  p2p_address_:
     seq:
     - id: len_p2p_address
       type: u4
@@ -21,7 +21,7 @@ enums:
     255: true
 seq:
 - id: addr
-  type: p2p_address
+  type: p2p_address_
   doc: An address for locating peers.
 - id: port_tag
   type: u1

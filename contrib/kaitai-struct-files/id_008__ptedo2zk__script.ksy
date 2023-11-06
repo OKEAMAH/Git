@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 008-PtEdo2Zk.script'
 types:
-  id_008__ptedo2zk__scripted__contracts:
+  id_008__ptedo2zk__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_008__ptedo2zk__scripted__contracts
-  type: id_008__ptedo2zk__scripted__contracts
+- id: id_008__ptedo2zk__scripted__contracts_
+  type: id_008__ptedo2zk__scripted__contracts_

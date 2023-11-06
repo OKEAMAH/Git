@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 005-PsBabyM1.script'
 types:
-  id_005__psbabym1__scripted__contracts:
+  id_005__psbabym1__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_005__psbabym1__scripted__contracts
-  type: id_005__psbabym1__scripted__contracts
+- id: id_005__psbabym1__scripted__contracts_
+  type: id_005__psbabym1__scripted__contracts_

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 011-PtHangz2.script'
 types:
-  id_011__pthangz2__scripted__contracts:
+  id_011__pthangz2__scripted__contracts_:
     seq:
     - id: code
       type: code
@@ -26,5 +26,5 @@ types:
     - id: code
       size: len_code
 seq:
-- id: id_011__pthangz2__scripted__contracts
-  type: id_011__pthangz2__scripted__contracts
+- id: id_011__pthangz2__scripted__contracts_
+  type: id_011__pthangz2__scripted__contracts_

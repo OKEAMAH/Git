@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 016-PtMumbai.block_header.contents'
 types:
-  id_016__ptmumbai__block_header__alpha__unsigned_contents:
+  id_016__ptmumbai__block_header__alpha__unsigned_contents_:
     seq:
     - id: payload_hash
       size: 32
@@ -24,5 +24,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_016__ptmumbai__block_header__alpha__unsigned_contents
-  type: id_016__ptmumbai__block_header__alpha__unsigned_contents
+- id: id_016__ptmumbai__block_header__alpha__unsigned_contents_
+  type: id_016__ptmumbai__block_header__alpha__unsigned_contents_

@@ -3,10 +3,10 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.operation.internal'
 types:
-  alpha__apply_internal_results__alpha__operation_result:
+  alpha__apply_internal_results__alpha__operation_result_:
     seq:
     - id: source
-      type: alpha__transaction_destination
+      type: alpha__transaction_destination_
       doc: ! >-
         A destination of a transaction: A destination notation compatible with the
         contract notation as given to an RPC or inside scripts. Can be a base58 implicit
@@ -37,7 +37,7 @@ types:
       type: u1
       enum: bool
     - id: tag
-      type: event__alpha__entrypoint
+      type: event__alpha__entrypoint_
       if: (tag_tag == bool::true)
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: payload_tag
@@ -46,7 +46,7 @@ types:
     - id: payload
       type: micheline__alpha__michelson_v1__expression
       if: (payload_tag == bool::true)
-  event__alpha__entrypoint:
+  event__alpha__entrypoint_:
     seq:
     - id: alpha__entrypoint_tag
       type: u1
@@ -135,9 +135,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: args
-      type: event__prim__generic__args_entries
+    - id: event__prim__generic__args_
+      type: event__prim__generic__args_
       size: len_args
+  event__prim__generic__args_:
+    seq:
+    - id: event__prim__generic__args_entries
+      type: event__prim__generic__args_entries
       repeat: eos
   event__prim__generic__args_entries:
     seq:
@@ -216,9 +220,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: sequence
-      type: event__sequence__sequence_entries
+    - id: event__sequence__sequence_
+      type: event__sequence__sequence_
       size: len_sequence
+  event__sequence__sequence_:
+    seq:
+    - id: event__sequence__sequence_entries
+      type: event__sequence__sequence_entries
       repeat: eos
   event__sequence__sequence_entries:
     seq:
@@ -251,10 +259,10 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: delegation__public_key_hash
+      type: delegation__public_key_hash_
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  delegation__public_key_hash:
+  delegation__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -279,12 +287,12 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: origination__public_key_hash
+      type: origination__public_key_hash_
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: script
-      type: origination__alpha__scripted__contracts
-  origination__alpha__scripted__contracts:
+      type: origination__alpha__scripted__contracts_
+  origination__alpha__scripted__contracts_:
     seq:
     - id: origination__code
       type: origination__code
@@ -306,7 +314,7 @@ types:
         max: 1073741823
     - id: code
       size: len_code
-  origination__public_key_hash:
+  origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -328,7 +336,7 @@ types:
     - id: amount
       type: n
     - id: destination
-      type: transaction__alpha__transaction_destination
+      type: transaction__alpha__transaction_destination_
       doc: ! >-
         A destination of a transaction: A destination notation compatible with the
         contract notation as given to an RPC or inside scripts. Can be a base58 implicit
@@ -337,13 +345,13 @@ types:
     - id: parameters_tag
       type: u1
       enum: bool
-    - id: transaction__parameters
-      type: transaction__parameters
+    - id: transaction__parameters_
+      type: transaction__parameters_
       if: (parameters_tag == bool::true)
-  transaction__parameters:
+  transaction__parameters_:
     seq:
     - id: entrypoint
-      type: transaction__alpha__entrypoint
+      type: transaction__alpha__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: transaction__value
       type: transaction__value
@@ -355,7 +363,7 @@ types:
         max: 1073741823
     - id: value
       size: len_value
-  transaction__alpha__entrypoint:
+  transaction__alpha__entrypoint_:
     seq:
     - id: alpha__entrypoint_tag
       type: u1
@@ -374,13 +382,13 @@ types:
       size-eos: true
       valid:
         max: 31
-  transaction__alpha__transaction_destination:
+  transaction__alpha__transaction_destination_:
     seq:
     - id: alpha__transaction_destination_tag
       type: u1
       enum: alpha__transaction_destination_tag
     - id: transaction__implicit__alpha__transaction_destination
-      type: transaction__implicit__public_key_hash
+      type: transaction__implicit__public_key_hash_
       if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: transaction__originated__alpha__transaction_destination
@@ -413,7 +421,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  transaction__implicit__public_key_hash:
+  transaction__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -442,13 +450,13 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  alpha__transaction_destination:
+  alpha__transaction_destination_:
     seq:
     - id: alpha__transaction_destination_tag
       type: u1
       enum: alpha__transaction_destination_tag
     - id: implicit__alpha__transaction_destination
-      type: implicit__public_key_hash
+      type: implicit__public_key_hash_
       if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: originated__alpha__transaction_destination
@@ -481,7 +489,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  implicit__public_key_hash:
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -1662,5 +1670,5 @@ enums:
     3: smart_rollup
     4: zk_rollup
 seq:
-- id: alpha__apply_internal_results__alpha__operation_result
-  type: alpha__apply_internal_results__alpha__operation_result
+- id: alpha__apply_internal_results__alpha__operation_result_
+  type: alpha__apply_internal_results__alpha__operation_result_

@@ -137,9 +137,13 @@ let%expect_test "test more mu" =
           type: u4
           valid:
             max: 1073741823
-        - id: branches
-          type: branch__branches_entries
+        - id: branch__branches_
+          type: branch__branches_
           size: len_branches
+      branch__branches_:
+        seq:
+        - id: branch__branches_entries
+          type: branch__branches_entries
           repeat: eos
       branch__branches_entries:
         seq:
@@ -163,5 +167,4 @@ let%expect_test "test more mu" =
         3: branch
     seq:
     - id: mt
-      type: mt
-  |}]
+      type: mt |}]

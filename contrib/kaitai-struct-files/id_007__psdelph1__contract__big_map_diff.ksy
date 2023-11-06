@@ -3,6 +3,11 @@ meta:
   endian: be
 doc: ! 'Encoding id: 007-PsDELPH1.contract.big_map_diff'
 types:
+  id_007__psdelph1__contract__big_map_diff_:
+    seq:
+    - id: id_007__psdelph1__contract__big_map_diff_entries
+      type: id_007__psdelph1__contract__big_map_diff_entries
+      repeat: eos
   id_007__psdelph1__contract__big_map_diff_entries:
     seq:
     - id: id_007__psdelph1__contract__big_map_diff_elt_tag
@@ -118,9 +123,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: args
-      type: update__prim__generic__args_entries
+    - id: update__prim__generic__args_
+      type: update__prim__generic__args_
       size: len_args
+  update__prim__generic__args_:
+    seq:
+    - id: update__prim__generic__args_entries
+      type: update__prim__generic__args_entries
       repeat: eos
   update__prim__generic__args_entries:
     seq:
@@ -199,9 +208,13 @@ types:
       type: u4
       valid:
         max: 1073741823
-    - id: sequence
-      type: update__sequence__sequence_entries
+    - id: update__sequence__sequence_
+      type: update__sequence__sequence_
       size: len_sequence
+  update__sequence__sequence_:
+    seq:
+    - id: update__sequence__sequence_entries
+      type: update__sequence__sequence_entries
       repeat: eos
   update__sequence__sequence_entries:
     seq:
@@ -1107,7 +1120,6 @@ seq:
   type: u4
   valid:
     max: 1073741823
-- id: id_007__psdelph1__contract__big_map_diff
-  type: id_007__psdelph1__contract__big_map_diff_entries
+- id: id_007__psdelph1__contract__big_map_diff_
+  type: id_007__psdelph1__contract__big_map_diff_
   size: len_id_007__psdelph1__contract__big_map_diff
-  repeat: eos

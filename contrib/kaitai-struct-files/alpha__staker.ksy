@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.staker'
 types:
-  alpha__staker:
+  alpha__staker_:
     seq:
     - id: alpha__staker_tag
       type: u1
@@ -12,10 +12,10 @@ types:
       type: single__alpha__staker
       if: (alpha__staker_tag == alpha__staker_tag::single)
     - id: shared__alpha__staker
-      type: shared__public_key_hash
+      type: shared__public_key_hash_
       if: (alpha__staker_tag == alpha__staker_tag::shared)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  shared__public_key_hash:
+  shared__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -35,14 +35,14 @@ types:
   single__alpha__staker:
     seq:
     - id: contract
-      type: single__alpha__contract_id
+      type: single__alpha__contract_id_
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: delegate
-      type: single__public_key_hash
+      type: single__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  single__public_key_hash:
+  single__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -59,13 +59,13 @@ types:
     - id: single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  single__alpha__contract_id:
+  single__alpha__contract_id_:
     seq:
     - id: alpha__contract_id_tag
       type: u1
       enum: alpha__contract_id_tag
     - id: single__implicit__alpha__contract_id
-      type: single__implicit__public_key_hash
+      type: single__implicit__public_key_hash_
       if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: single__originated__alpha__contract_id
@@ -78,7 +78,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  single__implicit__public_key_hash:
+  single__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -108,8 +108,8 @@ enums:
     0: single
     1: shared
 seq:
-- id: alpha__staker
-  type: alpha__staker
+- id: alpha__staker_
+  type: alpha__staker_
   doc: ! >-
     staker: Abstract notion of staker used in operation receipts, either a single
     staker or all the stakers delegating to some delegate.

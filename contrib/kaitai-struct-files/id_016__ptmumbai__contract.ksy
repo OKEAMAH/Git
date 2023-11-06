@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 016-PtMumbai.contract'
 types:
-  id_016__ptmumbai__contract_id:
+  id_016__ptmumbai__contract_id_:
     seq:
     - id: id_016__ptmumbai__contract_id_tag
       type: u1
       enum: id_016__ptmumbai__contract_id_tag
     - id: implicit__id_016__ptmumbai__contract_id
-      type: implicit__public_key_hash
+      type: implicit__public_key_hash_
       if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: originated__id_016__ptmumbai__contract_id
@@ -22,7 +22,7 @@ types:
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  implicit__public_key_hash:
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -49,8 +49,8 @@ enums:
     0: implicit
     1: originated
 seq:
-- id: id_016__ptmumbai__contract_id
-  type: id_016__ptmumbai__contract_id
+- id: id_016__ptmumbai__contract_id_
+  type: id_016__ptmumbai__contract_id_
   doc: ! >-
     A contract handle: A contract notation as given to an RPC or inside scripts. Can
     be a base58 implicit contract hash or a base58 originated contract hash.
