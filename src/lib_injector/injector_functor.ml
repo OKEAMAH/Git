@@ -468,10 +468,14 @@ module Make (Parameters : PARAMETERS) = struct
         state.injected.injected_operations
         (List.to_seq infos)
     in
-    Injected_ophs.replace
-      state.injected.injected_ophs
-      oph
-      {level = injection_level; inj_ops = List.map fst infos}
+    let+ () =
+      Injected_ophs.replace
+        state.injected.injected_ophs
+        oph
+        {level = injection_level; inj_ops = List.map fst infos}
+    in
+    Metrics.set_injected_operations_queue_size
+      (Included_operations.length state.included.included_operations)
 
   (** [add_included_operations state oph l1_block l1_level operations] marks the
     [operations] as included (in the L1 batch [oph]) in the Tezos block
@@ -499,10 +503,14 @@ module Make (Parameters : PARAMETERS) = struct
         state.included.included_operations
         (List.to_seq infos)
     in
-    Included_in_blocks.replace
-      state.included.included_in_blocks
-      l1_block
-      {level = l1_level; inj_ops = List.map fst infos}
+    let+ () =
+      Included_in_blocks.replace
+        state.included.included_in_blocks
+        l1_block
+        {level = l1_level; inj_ops = List.map fst infos}
+    in
+    Metrics.set_injected_operations_queue_size
+      (Included_operations.length state.included.included_operations)
 
   (** [remove state oph] removes the operations that correspond to the L1 batch
     [oph] from the injected operations in the injector state. This function is
