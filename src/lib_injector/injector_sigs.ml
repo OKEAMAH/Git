@@ -166,6 +166,8 @@ module type PARAMETERS = sig
      allows to incrementally build "or-batches" by iteratively removing
      operations that fail from the desired batch. *)
   val batch_must_succeed : Operation.t list -> [`All | `At_least_one]
+
+  val metrics_registry : Prometheus.CollectorRegistry.t
 end
 
 module type PROTOCOL_CLIENT = sig

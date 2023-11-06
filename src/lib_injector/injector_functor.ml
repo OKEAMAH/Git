@@ -475,6 +475,7 @@ module Make (Parameters : PARAMETERS) = struct
         {level = injection_level; inj_ops = List.map fst infos}
     in
     Metrics.set_injected_operations_queue_size
+      ~registry:Parameters.metrics_registry
       (Included_operations.length state.included.included_operations)
 
   (** [add_included_operations state oph l1_block l1_level operations] marks the
@@ -510,6 +511,7 @@ module Make (Parameters : PARAMETERS) = struct
         {level = l1_level; inj_ops = List.map fst infos}
     in
     Metrics.set_injected_operations_queue_size
+      ~registry:Parameters.metrics_registry
       (Included_operations.length state.included.included_operations)
 
   (** [remove state oph] removes the operations that correspond to the L1 batch
@@ -1498,10 +1500,15 @@ module Make (Parameters : PARAMETERS) = struct
   let add_pending_operation op =
     let open Lwt_result_syntax in
     let operation = Inj_operation.make op in
-    let*? w = worker_of_tag (Parameters.operation_tag op) in
+    let tag = Parameters.operation_tag op in
+    let*? w = worker_of_tag tag in
     let*! (_pushed : bool) =
       Worker.Queue.push_request w (Request.Add_pending operation)
     in
+    Metrics.set_worker_queue_size
+      ~registry:Parameters.metrics_registry
+      ~tag:(Format.asprintf "%a" Parameters.Tag.pp tag)
+      (Worker.Queue.pending_requests_length w) ;
     return operation.hash
 
   let shutdown () =

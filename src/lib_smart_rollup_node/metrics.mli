@@ -83,3 +83,11 @@ module Batcher : sig
 
   val set_last_batch_time : Ptime.t -> unit
 end
+
+module Injector : sig
+  val set_injected_operations_queue_size : int -> unit
+
+  val set_included_operations_queue_size : int -> unit
+
+  val set_worker_queue_size : tag:string -> int -> unit
+end

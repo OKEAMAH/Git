@@ -5,6 +5,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-val set_injected_operations_queue_size : int -> unit
+val set_injected_operations_queue_size :
+  registry:Prometheus.CollectorRegistry.t -> int -> unit
 
-val set_included_operations_queue_size : int -> unit
+val set_included_operations_queue_size :
+  registry:Prometheus.CollectorRegistry.t -> int -> unit
+
+val set_worker_queue_size :
+  registry:Prometheus.CollectorRegistry.t -> tag:string -> int -> unit

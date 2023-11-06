@@ -125,6 +125,8 @@ module Parameters :
     | Never_included ->
         (* Forget operations that are never included *)
         return Forget
+
+  let metrics_registry = Metrics.sc_rollup_node_registry
 end
 
 include Injector_functor.Make (Parameters)

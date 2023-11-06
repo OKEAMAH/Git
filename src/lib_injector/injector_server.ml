@@ -103,6 +103,8 @@ module Parameters :
     | Never_included ->
         (* Forget operations that are never included *)
         return Forget
+
+  let metrics_registry = Prometheus.CollectorRegistry.create ()
 end
 
 include Injector_functor.Make (Parameters)

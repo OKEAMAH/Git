@@ -289,3 +289,33 @@ module Batcher = struct
   let set_last_batch_time pt =
     Prometheus.Gauge.set last_batch_time (Ptime.to_float_s pt)
 end
+
+module Injector = struct
+  let injected_operations_queue_size =
+    v_gauge
+      ~help:"Size of Injector's injected operations queue size"
+      "injected_operations_queue_size"
+
+  let set_injected_operations_queue_size s =
+    Prometheus.Gauge.set injected_operations_queue_size (Int.to_float s)
+
+  let included_operations_queue_size =
+    v_gauge
+      ~help:"Size of Injector's included operations queue size"
+      "included_operations_queue_size"
+
+  let set_included_operations_queue_size s =
+    Prometheus.Gauge.set included_operations_queue_size (Int.to_float s)
+
+  let worker_queue_size ~tag =
+    v_gauge
+      ~help:
+        (Format.asprintf
+           "Size of Injector's worker queue for operation tag %s"
+           tag)
+      (Format.asprintf "injector_worker_queue_size_%s" tag)
+
+  let set_worker_queue_size : tag:string -> int -> unit =
+   fun ~tag sz ->
+    Prometheus.Gauge.set (worker_queue_size ~tag) (Int.to_float sz)
+end
