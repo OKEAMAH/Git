@@ -133,16 +133,14 @@ $(ALL_EXECUTABLES):
 
 .PHONY: kaitai-struct-files
 kaitai-struct-files:
-	@dune build contrib/bin_codec_kaitai/codec.exe
 	@dune exec contrib/bin_codec_kaitai/codec.exe dump kaitai specs in contrib/kaitai-struct-files/
 	@$(MAKE) -i -C contrib/kaitai-struct-files/
 
 .PHONY: check-kaitai-struct-files
 check-kaitai-struct-files:
-	@dune build contrib/bin_codec_kaitai/codec.exe
 	@git diff --exit-code contrib/kaitai-struct-files || (echo "Cannot check kaitai struct files, some changes are uncommitted"; exit 1)
 	@rm contrib/kaitai-struct-files/*.ksy
-	@_build/default/contrib/bin_codec_kaitai/codec.exe dump kaitai specs in contrib/kaitai-struct-files/ 2>/dev/null
+	@dune exec contrib/bin_codec_kaitai/codec.exe dump kaitai specs in contrib/kaitai-struct-files/ 2>/dev/null
 	@git diff --exit-code contrib/kaitai-struct-files || (echo "Kaitai struct files mismatch. Update the files."; exit 1)
 
 # Remove the old names of executables.
