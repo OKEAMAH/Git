@@ -141,6 +141,12 @@ module Span : sig
   val mul : t -> int -> t
 end
 
+module Score : sig
+  type t = float
+
+  include ENCODABLE with type t := t
+end
+
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/4562
    Use a bitset instead, when available in the standard library. *)
 
@@ -215,6 +221,8 @@ val slot_id_query : (level option * shard_index option) Resto.Query.t
 
 val wait_query : < wait : bool > Resto.Query.t
 
+val connected_query : < connected : bool > Resto.Query.t
+
 val opt_header_status_query : header_status option Resto.Query.t
 
 val slot_encoding : Cryptobox.slot Data_encoding.t
@@ -241,4 +249,63 @@ module Store : sig
   val encoding : kind Data_encoding.t
 
   val to_string : kind -> string
+end
+
+module P2P : sig
+  module Metadata : sig
+    module Peer : sig
+      (** Peer metadata is not used. So, its value is [unit]. *)
+      type t = unit
+
+      val config : t P2p_params.peer_meta_config
+    end
+
+    module Connection : sig
+      (** {!connection_metadata} type.
+
+          A value of this type is exchanged through the handshake
+          protocol of the P2P.
+
+          The {!advertised_net_port} is not mandatory, as it is
+          already sent via the first P2P message after a connection is
+          authenticated. But, we decide to duplicate the information
+          here for consistency. The [is_bootstrap_peer] indicates
+          whether the remote peer has a bootstrap profile or not. *)
+      type t = {
+        advertised_net_addr : P2p_addr.t option;
+            (** The public address for which the local node can be
+                reached from the outside. This is useful if the node
+                is behind a NAT or a load balancer for example. *)
+        advertised_net_port : int option;
+            (** The port at which the local node can be reached. It is
+                a bit redundant since the handshaking protocol already
+                exchange this piece of information. *)
+        is_bootstrap_peer : bool;
+            (** [true] if the node advertises itself as a bootstrap
+                node. This is to prevent a race condition from
+                Gossipsub where a node may send full messages to a
+                bootstrap node while this is not necessary. *)
+      }
+
+      include ENCODABLE with type t := t
+
+      val config : t -> t P2p_params.conn_meta_config
+    end
+  end
+
+  module Peer : sig
+    module Info : sig
+      type t = (Metadata.Peer.t, Metadata.Connection.t) P2p_peer.Info.t
+
+      include ENCODABLE with type t := t
+    end
+  end
+end
+
+module Gossipsub : sig
+  (** See {!Tezos_gossipsub.Introspection.connection}. Ideally we should reuse
+      that type, but that would require a new dependency to be added. *)
+  type connection = {topics : Topic.t list; direct : bool; outbound : bool}
+
+  val connection_encoding : connection Data_encoding.t
 end

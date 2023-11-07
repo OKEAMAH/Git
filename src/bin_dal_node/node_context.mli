@@ -170,8 +170,52 @@ module P2P : sig
       it may occur that a discconnection takes several minutes. *)
   val disconnect_peer : t -> ?wait:bool -> P2p_peer.Id.t -> unit Lwt.t
 
+  (** [get_points ?connected t] returns a list of points. If
+      [connected] is [true] (default), it returns only points we are
+      currently connected. Otherwise, it returns a list of known
+      points (points for which we were already successfully connected
+      in the past.) *)
+  val get_points : ?connected:bool -> t -> P2p_point.Id.t list tzresult Lwt.t
+
+  (** [get_points_info ?connected t] returns a list of info for
+      points. If [connected] is [true] (default), it returns only info
+      for points we are currently connected. Otherwise, it returns a
+      list of infos for known points (points for which we were already
+      successfully connected in the past.) *)
+  val get_points_info :
+    ?connected:bool ->
+    t ->
+    (P2p_point.Id.t * P2p_point.Info.t) list tzresult Lwt.t
+
+  (** [get_point_info t point] returns the info of the corresponding
+    point if found. *)
+  val get_point_info :
+    t -> P2p_point.Id.t -> P2p_point.Info.t option tzresult Lwt.t
+
+  (** [get_peers ?connected t] returns a list of peers. If [connected]
+      is [true] (default), it returns only the peers we are connected
+      to. Otherwise, it returns a list of known peers (peers for which
+      we were already successfully connected in the past.) *)
+  val get_peers : ?connected:bool -> t -> P2p_peer.Id.t list tzresult Lwt.t
+
+  (** [get_peers_info ?connected t] returns a list of info for
+      peers. If [connected] is [true] (default), it returns only info
+      for peers we are currently connected. Otherwise, it returns a
+      list of infos for known peers (peers for which we were already
+      successfully connected in the past.) *)
+  val get_peers_info :
+    ?connected:bool ->
+    t ->
+    (P2p_peer.Id.t * Types.P2P.Peer.Info.t) list tzresult Lwt.t
+
   module Gossipsub : sig
     (** [get_topics t] returns the list of topics the node is subscribed to. *)
     val get_topics : t -> Types.Topic.t list
+
+    (** [get_connections t] returns the list of connections. *)
+    val get_connections : t -> (Types.Peer.t * Types.Gossipsub.connection) list
+
+    (** [get_scores t] returns the score of peers with a known score. *)
+    val get_scores : t -> (Types.Peer.t * Types.Score.t) list
   end
 end

@@ -228,6 +228,12 @@ module Span = struct
          (obj1 (req "span" int16))
 end
 
+module Score = struct
+  type t = float
+
+  let encoding = Data_encoding.float
+end
+
 (* Declaration of types used as inputs and/or outputs. *)
 type slot_id = {slot_level : level; slot_index : slot_index}
 
@@ -419,6 +425,15 @@ let wait_query =
   |+ flag "wait" (fun t -> t#wait)
   |> seal
 
+let connected_query =
+  let open Tezos_rpc.Query in
+  query (fun connected ->
+      object
+        method connected = connected
+      end)
+  |+ flag "connected" (fun t -> t#connected)
+  |> seal
+
 let slot_id_query =
   let open Tezos_rpc in
   let open Query in
@@ -450,4 +465,72 @@ module Store = struct
 
   let to_string data_kind =
     Data_encoding.Binary.to_string_exn encoding data_kind
+end
+
+module P2P = struct
+  module Metadata = struct
+    module Peer = struct
+      type t = unit
+
+      let encoding = Data_encoding.unit
+
+      let config : t P2p_params.peer_meta_config =
+        let empty () = () in
+        let score (_ : t) = 1.0 in
+        {peer_meta_encoding = encoding; peer_meta_initial = empty; score}
+    end
+
+    module Connection = struct
+      type t = {
+        advertised_net_addr : P2p_addr.t option;
+        advertised_net_port : int option;
+        is_bootstrap_peer : bool;
+      }
+
+      let encoding =
+        let open Data_encoding in
+        (conv
+           (fun {advertised_net_addr; advertised_net_port; is_bootstrap_peer} ->
+             (advertised_net_addr, advertised_net_port, is_bootstrap_peer))
+           (fun (advertised_net_addr, advertised_net_port, is_bootstrap_peer) ->
+             {advertised_net_addr; advertised_net_port; is_bootstrap_peer}))
+          (obj3
+             (opt "advertised_net_addr" P2p_addr.encoding)
+             (opt "advertised_net_port" uint16)
+             (req "is_bootstrap_peer" bool))
+
+      let config cfg : t P2p_params.conn_meta_config =
+        P2p_params.
+          {
+            conn_meta_encoding = encoding;
+            private_node = (fun _cfg -> false);
+            conn_meta_value = (fun () -> cfg);
+          }
+    end
+  end
+
+  module Peer = struct
+    module Info = struct
+      type t = (Metadata.Peer.t, Metadata.Connection.t) P2p_peer.Info.t
+
+      let encoding =
+        P2p_peer.Info.encoding
+          Metadata.Peer.encoding
+          Metadata.Connection.encoding
+    end
+  end
+end
+
+module Gossipsub = struct
+  type connection = {topics : Topic.t list; direct : bool; outbound : bool}
+
+  let connection_encoding =
+    let open Data_encoding in
+    conv
+      (fun {topics; direct; outbound} -> (topics, direct, outbound))
+      (fun (topics, direct, outbound) -> {topics; direct; outbound})
+      (obj3
+         (req "topics" (list Topic.encoding))
+         (req "direct" bool)
+         (req "outbound" bool))
 end

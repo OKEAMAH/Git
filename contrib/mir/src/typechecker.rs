@@ -17,7 +17,7 @@ use crate::lexer::Prim;
 use crate::stack::*;
 
 /// Typechecker error type.
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum TcError {
     #[error("type stacks not equal: {0:?} != {1:?}")]
     StacksNotEqual(TypeStack, TypeStack, StacksNotEqualReason),
@@ -51,7 +51,7 @@ pub enum TcError {
     TypeNotPackable(Type),
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum NoMatchingOverloadReason {
     #[error("stack too short, expected {expected}")]
     StackTooShort { expected: usize },
@@ -65,7 +65,7 @@ pub enum NoMatchingOverloadReason {
     TypeNotComparable(Type),
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum StacksNotEqualReason {
     #[error(transparent)]
     TypesNotEqual(#[from] TypesNotEqual),
@@ -73,7 +73,7 @@ pub enum StacksNotEqualReason {
     LengthsDiffer(usize, usize),
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 #[error("types not equal: {0:?} != {1:?}")]
 pub struct TypesNotEqual(Type, Type);
 
@@ -364,6 +364,15 @@ fn typecheck_instruction(
         }
         (I::Pair, [] | [_]) => no_overload!(PAIR, len 2),
 
+        (I::Unpair, [.., T::Pair(..)]) => {
+            let (l, r) = *pop!(T::Pair);
+            stack.push(r);
+            stack.push(l);
+            I::Unpair
+        }
+        (I::Unpair, [.., ty]) => no_overload!(UNPAIR, NMOR::ExpectedPair(ty.clone())),
+        (I::Unpair, []) => no_overload!(UNPAIR, len 1),
+
         (I::ISome, [.., _]) => {
             let ty = pop!();
             stack.push(T::new_option(ty));
@@ -440,7 +449,7 @@ impl Value {
     }
 }
 
-fn typecheck_value(ctx: &mut Ctx, t: &Type, v: Value) -> Result<TypedValue, TcError> {
+pub fn typecheck_value(ctx: &mut Ctx, t: &Type, v: Value) -> Result<TypedValue, TcError> {
     use Type::*;
     use TypedValue as TV;
     use Value as V;
@@ -1030,6 +1039,20 @@ mod typecheck_tests {
     }
 
     #[test]
+    fn unpair() {
+        let mut stack = tc_stk![Type::new_pair(Type::Nat, Type::Int)];
+        assert_eq!(
+            typecheck(
+                parse("{ UNPAIR }").unwrap(),
+                &mut Ctx::default(),
+                &mut stack
+            ),
+            Ok(vec![Unpair])
+        );
+        assert_eq!(stack, tc_stk![Type::Int, Type::Nat]);
+    }
+
+    #[test]
     fn pair_car() {
         let mut stack = tc_stk![Type::Int, Type::Nat]; // NB: nat is top
         assert_eq!(
@@ -1572,6 +1595,20 @@ mod typecheck_tests {
     }
 
     #[test]
+    fn test_unpair_mismatch() {
+        let mut stack = tc_stk![Type::String];
+        let mut ctx = Ctx::default();
+        assert_eq!(
+            typecheck_instruction(Unpair, &mut ctx, &mut stack),
+            Err(TcError::NoMatchingOverload {
+                instr: Prim::UNPAIR,
+                stack: stk![Type::String],
+                reason: Some(NoMatchingOverloadReason::ExpectedPair(Type::String)),
+            })
+        );
+    }
+
+    #[test]
     fn test_swap_short() {
         too_short_test(Swap, Prim::SWAP, 2);
     }
@@ -1614,6 +1651,11 @@ mod typecheck_tests {
     #[test]
     fn test_compare_short() {
         too_short_test(Compare, Prim::COMPARE, 2);
+    }
+
+    #[test]
+    fn test_unpair_short() {
+        too_short_test(Unpair, Prim::UNPAIR, 1);
     }
 
     #[test]

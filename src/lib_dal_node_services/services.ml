@@ -291,7 +291,7 @@ module P2P = struct
       ~description:"Disconnect from a point"
       ~query:wait_query
       ~output:Data_encoding.unit
-      (open_root / "point" /: P2p_point.Id.rpc_arg / "disconnect")
+      (open_root / "points" / "disconnect" /: P2p_point.Id.rpc_arg)
 
   let delete_disconnect_peer :
       < meth : [`DELETE]
@@ -305,7 +305,91 @@ module P2P = struct
       ~description:"Disconnect from a peer"
       ~query:wait_query
       ~output:Data_encoding.unit
-      (open_root / "peer" /: P2p_peer.Id.rpc_arg / "disconnect")
+      (open_root / "peers" / "disconnect" /: P2p_peer.Id.rpc_arg)
+
+  let get_points :
+      < meth : [`GET]
+      ; input : unit
+      ; output : P2p_point.Id.t list
+      ; prefix : unit
+      ; params : unit
+      ; query : < connected : bool > >
+      service =
+    Tezos_rpc.Service.get_service
+      ~description:"Get the list of known points"
+      ~query:connected_query
+      ~output:Data_encoding.(list (obj1 (req "point" P2p_point.Id.encoding)))
+      (open_root / "points")
+
+  let get_points_info :
+      < meth : [`GET]
+      ; input : unit
+      ; output : (P2p_point.Id.t * P2p_point.Info.t) list
+      ; prefix : unit
+      ; params : unit
+      ; query : < connected : bool > >
+      service =
+    Tezos_rpc.Service.get_service
+      ~description:"Get the list of known points and their corresponding info"
+      ~query:connected_query
+      ~output:
+        Data_encoding.(
+          list
+            (obj2
+               (req "point" P2p_point.Id.encoding)
+               (req "info" P2p_point.Info.encoding)))
+      (open_root / "points" / "info")
+
+  module Points = struct
+    let open_root = open_root / "points"
+
+    let get_point_info :
+        < meth : [`GET]
+        ; input : unit
+        ; output : P2p_point.Info.t
+        ; prefix : unit
+        ; params : unit * P2p_point.Id.t
+        ; query : unit >
+        service =
+      Tezos_rpc.Service.get_service
+        ~description:"Get info of the requested point"
+        ~query:Tezos_rpc.Query.empty
+        ~output:Data_encoding.(obj1 (req "info" P2p_point.Info.encoding))
+        (open_root / "by-id" /: P2p_point.Id.rpc_arg)
+  end
+
+  let get_peers :
+      < meth : [`GET]
+      ; input : unit
+      ; output : P2p_peer.Id.t list
+      ; prefix : unit
+      ; params : unit
+      ; query : < connected : bool > >
+      service =
+    Tezos_rpc.Service.get_service
+      ~description:"Get the list of known peers"
+      ~query:connected_query
+      ~output:Data_encoding.(list (obj1 (req "peer" P2p_peer.Id.encoding)))
+      (open_root / "peers")
+
+  let get_peers_info :
+      < meth : [`GET]
+      ; input : unit
+      ; output : (P2p_peer.Id.t * Types.P2P.Peer.Info.t) list
+      ; prefix : unit
+      ; params : unit
+      ; query : < connected : bool > >
+      service =
+    Tezos_rpc.Service.get_service
+      ~description:"Get list of known peers and their corresponding info"
+      ~query:connected_query
+      ~output:
+        Data_encoding.(
+          list
+            (obj2
+               (req "point" P2p_peer.Id.encoding)
+               (req "info" Types.P2P.Peer.Info.encoding)))
+      (open_root / "peers" / "info")
 
   module Gossipsub = struct
     let open_root = open_root / "gossipsub"
@@ -319,9 +403,47 @@ module P2P = struct
         ; query : unit >
         service =
       Tezos_rpc.Service.get_service
-        ~description:"get the topics this node is currently subscribed to"
+        ~description:"Get the topics this node is currently subscribed to"
         ~query:Tezos_rpc.Query.empty
         ~output:(Data_encoding.list Types.Topic.encoding)
         (open_root / "topics")
+
+    let get_connections :
+        < meth : [`GET]
+        ; input : unit
+        ; output : (Types.Peer.t * Types.Gossipsub.connection) list
+        ; prefix : unit
+        ; params : unit
+        ; query : unit >
+        service =
+      Tezos_rpc.Service.get_service
+        ~description:"Get this node's currently active connections"
+        ~query:Tezos_rpc.Query.empty
+        ~output:
+          Data_encoding.(
+            list
+              (obj2
+                 (req "peer" Types.Peer.encoding)
+                 (req "connection" Types.Gossipsub.connection_encoding)))
+        (open_root / "connections")
+
+    let get_scores :
+        < meth : [`GET]
+        ; input : unit
+        ; output : (Types.Peer.t * Types.Score.t) list
+        ; prefix : unit
+        ; params : unit
+        ; query : unit >
+        service =
+      Tezos_rpc.Service.get_service
+        ~description:"Get the scores of the peers with a known score."
+        ~query:Tezos_rpc.Query.empty
+        ~output:
+          Data_encoding.(
+            list
+              (obj2
+                 (req "peer" Types.Peer.encoding)
+                 (req "score" Types.Score.encoding)))
+        (open_root / "scores")
   end
 end

@@ -212,11 +212,76 @@ module P2P : sig
     ; query : < wait : bool > >
     service
 
+  val get_points :
+    < meth : [`GET]
+    ; input : unit
+    ; output : P2p_point.Id.t list
+    ; prefix : unit
+    ; params : unit
+    ; query : < connected : bool > >
+    service
+
+  val get_points_info :
+    < meth : [`GET]
+    ; input : unit
+    ; output : (P2p_point.Id.t * P2p_point.Info.t) list
+    ; prefix : unit
+    ; params : unit
+    ; query : < connected : bool > >
+    service
+
+  module Points : sig
+    val get_point_info :
+      < meth : [`GET]
+      ; input : unit
+      ; output : P2p_point.Info.t
+      ; prefix : unit
+      ; params : unit * P2p_point.Id.t
+      ; query : unit >
+      service
+  end
+
+  val get_peers :
+    < meth : [`GET]
+    ; input : unit
+    ; output : P2p_peer.Id.t list
+    ; prefix : unit
+    ; params : unit
+    ; query : < connected : bool > >
+    service
+
+  val get_peers_info :
+    < meth : [`GET]
+    ; input : unit
+    ; output : (P2p_peer.Id.t * Types.P2P.Peer.Info.t) list
+    ; prefix : unit
+    ; params : unit
+    ; query : < connected : bool > >
+    service
+
   module Gossipsub : sig
     val get_topics :
       < meth : [`GET]
       ; input : unit
       ; output : Types.Topic.t list
+      ; prefix : unit
+      ; params : unit
+      ; query : unit >
+      service
+
+    val get_connections :
+      < meth : [`GET]
+      ; input : unit
+      ; output : (Types.Peer.t * Types.Gossipsub.connection) list
+      ; prefix : unit
+      ; params : unit
+      ; query : unit >
+      service
+
+    val get_scores :
+      < meth : [`GET]
+      ; input : unit
+      ; output : (Types.Peer.t * Types.Score.t) list
       ; prefix : unit
       ; params : unit
       ; query : unit >

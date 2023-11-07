@@ -288,21 +288,21 @@ let rec seq_field_of_data_encoding :
           (state, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
       | Dynamic_size
           {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
-          let state, attrs =
-            seq_field_of_data_encoding state encoding path id
-          in
           let size_id = size_id_of_id (pathify path id ^ "_dyn") in
           let size_attr =
             Helpers.merge_valid
               (Ground.Attr.binary_length_kind ~id:size_id kind)
               (ValidationMax (Ast.IntNum limit))
           in
+          let state, attrs =
+            seq_field_of_data_encoding state encoding path id
+          in
           let state, attr =
             redirect
               state
               attrs
               (fun attr ->
-                {attr with size = Some (Ast.Name size_id); valid = None})
+                {attr with size = Some (Ast.Name size_id)})
               path
               (id ^ "_dyn")
           in
@@ -372,16 +372,16 @@ let rec seq_field_of_data_encoding :
       | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
           seq_field_of_union state tag_size cases path id
       | Dynamic_size {kind; encoding} ->
-          let state, attrs =
-            seq_field_of_data_encoding state encoding path id
-          in
-          let id =
+          let dyn_id =
             (* Avoid duplicated id when translating mempool *)
             if List.mem_assoc (id ^ "_dyn") state.types then id ^ "_outer"
             else id
           in
-          let size_id = size_id_of_id (pathify path id ^ "_dyn") in
+          let size_id = size_id_of_id (pathify path dyn_id ^ "_dyn") in
           let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+          let state, attrs =
+            seq_field_of_data_encoding state encoding path id
+          in
           let state, attr =
             redirect
               state
@@ -411,6 +411,10 @@ let rec seq_field_of_data_encoding :
       | Check_size {limit = _; encoding} ->
           (* TODO: Add a guard for check size.*)
           seq_field_of_data_encoding state encoding path id
+      | Delayed mk ->
+          (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
+          let e = mk () in
+          seq_field_of_data_encoding state e path id
       | Mu {name; title; description; fix; kind = _} -> (
           let summary = summary ~title ~description in
           let name = escape_id name in
@@ -500,11 +504,7 @@ let rec seq_field_of_data_encoding :
           let attr =
             {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
           in
-          (state, [attr])
-      | Delayed mk ->
-          (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
-          let e = mk () in
-          seq_field_of_data_encoding state e path id)
+          (state, [attr]))
 
 and seq_field_of_tups :
     type a.
@@ -743,7 +743,7 @@ and seq_field_of_collection :
  fun state length_limit length_encoding elts path id ->
   match (length_limit, length_encoding, elts) with
   | At_most max_length, Some le, elts ->
-      (* Kaitia recommend to use the [num_] prefix *)
+      (* Kaitai recommend to use the [num_] prefix *)
       let length_id = "num_" ^ id in
       let state, length_attrs =
         seq_field_of_data_encoding state le path length_id

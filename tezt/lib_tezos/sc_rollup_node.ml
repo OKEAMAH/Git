@@ -281,13 +281,13 @@ let legacy_node_args ~loser_mode ~allow_degraded ~gc_frequency ~history_mode
       sc_node
 
 let spawn_config_init sc_node ?(force = false) ?loser_mode ?gc_frequency
-    ?history_mode rollup_address =
+    ?(history_mode = Full) rollup_address =
   let mode, args =
     node_args
       ~loser_mode
       ~allow_degraded:true
       ~gc_frequency
-      ~history_mode
+      ~history_mode:(Some history_mode)
       sc_node
       rollup_address
   in
@@ -439,7 +439,7 @@ let create_with_endpoint ?runner ?path ?name ?color ?data_dir ~base_dir
   let rpc_port =
     match rpc_port with None -> Port.fresh () | Some port -> port
   in
-  let path = Option.value ~default:Constant.smart_rollup_node path in
+  let path = Option.value ~default:Constant.octez_smart_rollup_node path in
   let sc_node =
     create
       ~path
@@ -536,7 +536,7 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
 let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
     ?(allow_degraded = false)
     ?(gc_frequency = 1 (* Make GC run more frequently for tests *))
-    ?history_mode ?(wait_ready = true) node rollup_address arguments =
+    ?(history_mode = Full) ?(wait_ready = true) node rollup_address arguments =
   let* () =
     run
       ?legacy
@@ -547,7 +547,7 @@ let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
       ~loser_mode
       ~allow_degraded
       ~gc_frequency:(Some gc_frequency)
-      ~history_mode
+      ~history_mode:(Some history_mode)
       node
       rollup_address
       arguments
@@ -574,14 +574,14 @@ let run_sequencer ?event_level ?event_sections_levels ?(allow_degraded = false)
 
 let spawn_run ?loser_mode ?(allow_degraded = false)
     ?(gc_frequency = 1 (* Make GC run more frequently for tests *))
-    ?history_mode node rollup_address extra_arguments =
+    ?(history_mode = Full) node rollup_address extra_arguments =
   let mode, args =
     node_args
       ~loser_mode
       ~allow_degraded
       node
       ~gc_frequency:(Some gc_frequency)
-      ~history_mode
+      ~history_mode:(Some history_mode)
       rollup_address
   in
   spawn_command node (["run"; mode] @ args @ extra_arguments)
@@ -613,3 +613,39 @@ let dump_durable_storage ~sc_rollup_node ~dump ?(block = "head") () =
   in
   let process = spawn_command sc_rollup_node cmd in
   Process.check process
+
+let as_rpc_endpoint (t : t) =
+  let state = t.persistent_state in
+  let scheme = "http" in
+  Endpoint.{scheme; host = state.rpc_host; port = state.rpc_port}
+
+module RPC = struct
+  module RPC_callers : RPC_core.CALLERS with type uri_provider := t = struct
+    let call ?log_request ?log_response_status ?log_response_body node rpc =
+      RPC_core.call
+        ?log_request
+        ?log_response_status
+        ?log_response_body
+        (as_rpc_endpoint node)
+        rpc
+
+    let call_raw ?log_request ?log_response_status ?log_response_body node rpc =
+      RPC_core.call_raw
+        ?log_request
+        ?log_response_status
+        ?log_response_body
+        (as_rpc_endpoint node)
+        rpc
+
+    let call_json ?log_request ?log_response_status ?log_response_body node rpc
+        =
+      RPC_core.call_json
+        ?log_request
+        ?log_response_status
+        ?log_response_body
+        (as_rpc_endpoint node)
+        rpc
+  end
+
+  include RPC_callers
+end

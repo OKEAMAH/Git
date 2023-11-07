@@ -19,11 +19,13 @@
   mockup. (!10427)
 - The binary `evm-proxy-server` is renamed to `evm-node`. (!10656)
 - Renamed node's argument `mode` to `version`. (!10657)
+- The node's mode is no longer `proxy` by default. The command becomes `run proxy ..` (!12345)
 
 ### Bug fixes
 
 - The internal kernel version is now automatically updated at each upgrade. (!10321)
 - Genesis parent hash is 0xff..ff, all parent hashes are now unique. (!10332)
+- Fix the bug that nested contract calls returns `OutOfGas` (!10283)
 
 ### Breaking changes
 

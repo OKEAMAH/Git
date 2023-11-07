@@ -167,4 +167,5 @@ let%expect_test "test more mu" =
         3: branch
     seq:
     - id: mt
-      type: mt |}]
+      type: mt
+  |}]

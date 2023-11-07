@@ -56,6 +56,7 @@ type reveal_proof =
       page_id : Dal_slot_repr.Page.t;
       proof : Dal_slot_repr.History.proof;
     }
+  | Dal_parameters_proof
 
 let reveal_proof_encoding =
   let open Data_encoding in
@@ -95,7 +96,15 @@ let reveal_proof_encoding =
         | _ -> None)
       (fun ((), page_id, proof) -> Dal_page_proof {page_id; proof})
   in
-  union [case_raw_data; case_metadata_proof; case_dal_page]
+  let case_dal_parameters =
+    case
+      ~title:"dal parameters proof"
+      (Tag 3)
+      (obj1 (req "reveal_proof_kind" (constant "dal_parameters_proof")))
+      (function Dal_parameters_proof -> Some () | _ -> None)
+      (fun () -> Dal_parameters_proof)
+  in
+  union [case_raw_data; case_metadata_proof; case_dal_page; case_dal_parameters]
 
 type input_proof =
   | Inbox_proof of {
@@ -300,7 +309,7 @@ end
 let valid (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation) ~metadata
     snapshot commit_inbox_level dal_snapshot dal_parameters ~dal_attestation_lag
-    ~is_reveal_enabled (proof : proof t) =
+    ~dal_number_of_slots ~is_reveal_enabled (proof : proof t) =
   let open Lwt_result_syntax in
   let (module P) = pvm in
   let origination_level = metadata.Sc_rollup_metadata_repr.origination_level in
@@ -336,6 +345,22 @@ let valid (type state proof output)
           dal_snapshot
           proof
         |> Lwt.return
+    | Some (Reveal_proof Dal_parameters_proof) ->
+        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6562
+           Support revealing historical DAL parameters.
+
+           Currently, we do not support revealing DAL parameters for the past.
+           We ignore the given [published_level] and use the DAL parameters. *)
+        return_some
+          (Sc_rollup_PVM_sig.Reveal
+             (Dal_parameters
+                Sc_rollup_dal_parameters_repr.
+                  {
+                    number_of_slots = Int64.of_int dal_number_of_slots;
+                    attestation_lag = Int64.of_int dal_attestation_lag;
+                    slot_size = Int64.of_int dal_parameters.slot_size;
+                    page_size = Int64.of_int dal_parameters.page_size;
+                  }))
   in
   let input =
     Option.bind input (cut_at_level ~origination_level ~commit_inbox_level)
@@ -371,6 +396,9 @@ let valid (type state proof output)
         check
           (Dal_slot_repr.Page.equal page_id pid)
           "Dal proof's page ID is not the one expected in input request."
+    | ( Some (Reveal_proof Dal_parameters_proof),
+        Needs_reveal Reveal_dal_parameters ) ->
+        return_unit
     | None, (Initial | First_after _ | Needs_reveal _)
     | Some _, No_input_required
     | Some (Inbox_proof _), Needs_reveal _
@@ -414,6 +442,8 @@ module type PVM_with_context_and_state = sig
     val dal_parameters : Dal_slot_repr.parameters
 
     val dal_attestation_lag : int
+
+    val dal_number_of_slots : int
   end
 end
 
@@ -487,12 +517,21 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
           ~page_info
           ~get_history
           confirmed_slots_history
-    | Needs_reveal (Reveal_dal_parameters _) ->
-        (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6555
-           Support reveal_dal_parameters in refutation game. *)
-        (* This should not happen as long as [Reveal_dal_parameters] is disabled
-           in {!Constant_parametric_level.sc_rollup_reveal_activation_level}. *)
-        assert false
+    | Needs_reveal Reveal_dal_parameters ->
+        let open Dal_with_history in
+        return
+          ( Some (Reveal_proof Dal_parameters_proof),
+            Some
+              Sc_rollup_PVM_sig.(
+                Reveal
+                  (Dal_parameters
+                     Sc_rollup_dal_parameters_repr.
+                       {
+                         number_of_slots = Int64.of_int dal_number_of_slots;
+                         attestation_lag = Int64.of_int dal_attestation_lag;
+                         slot_size = Int64.of_int dal_parameters.slot_size;
+                         page_size = Int64.of_int dal_parameters.page_size;
+                       })) )
   in
   let input_given =
     Option.bind

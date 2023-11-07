@@ -4906,6 +4906,7 @@ enums:
     0: raw__data__proof
     1: metadata__proof
     2: dal__page__proof
+    3: dal__parameters__proof
   input_proof_tag:
     0: inbox__proof
     1: reveal__proof

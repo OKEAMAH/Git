@@ -241,9 +241,10 @@ module Tx_kernel = struct
     @@ [multiaccount_tx_of accounts_ops]
 end
 
-let assert_state_changed ?block sc_rollup_client prev_state_hash =
-  let*! state_hash =
-    Sc_rollup_client.state_hash ?block ~hooks sc_rollup_client
+let assert_state_changed ?block sc_rollup_node prev_state_hash =
+  let* state_hash =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ?block ()
   in
   Check.(state_hash <> prev_state_hash)
     Check.string
@@ -414,12 +415,15 @@ let tx_kernel_e2e setup protocol =
   in
 
   (* Send transfers *)
-  let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+  let* prev_state_hash =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ()
+  in
   let* () = send_message client (sf "hex:[%S]" transfer_message) in
   let level = level + 1 in
 
   let* _ = Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node level in
-  let* () = assert_state_changed sc_rollup_client prev_state_hash in
+  let* () = assert_state_changed sc_rollup_node prev_state_hash in
 
   (* After that pkh1 has 400 tickets, pkh2 has 50 tickets *)
 
@@ -457,7 +461,10 @@ let tx_kernel_e2e setup protocol =
       |> hex_encode)
   in
   (* Send withdrawal *)
-  let*! prev_state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+  let* prev_state_hash =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ()
+  in
   let* prev_ticks = Sc_rollup_helpers.total_ticks sc_rollup_node in
   let* () = send_message client (sf "hex:[%S]" withdraw_message) in
   let level = level + 1 in
@@ -489,7 +496,7 @@ let tx_kernel_e2e setup protocol =
   in
 
   let block = string_of_int next_lcc_level in
-  let* () = assert_state_changed ~block sc_rollup_client prev_state_hash in
+  let* () = assert_state_changed ~block sc_rollup_node prev_state_hash in
   let* () = assert_ticks_advanced ~block sc_rollup_node prev_ticks in
 
   (* EXECUTE withdrawal *)

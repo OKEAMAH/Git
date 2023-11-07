@@ -1111,8 +1111,9 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
   in
   (* Called with monotonically increasing [i] *)
   let test_message i =
-    let*! prev_state_hash =
-      Sc_rollup_client.state_hash ~hooks sc_rollup_client
+    let* prev_state_hash =
+      Sc_rollup_node.RPC.call sc_rollup_node
+      @@ Sc_rollup_rpc.get_global_block_state_hash ()
     in
     let* prev_ticks = Sc_rollup_helpers.total_ticks sc_rollup_node in
     let message = sf "%d %d + value" i ((i + 2) * 2) in
@@ -1176,7 +1177,10 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
       | _otherwise -> raise (Invalid_argument kind)
     in
 
-    let*! state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client in
+    let* state_hash =
+      Sc_rollup_node.RPC.call sc_rollup_node
+      @@ Sc_rollup_rpc.get_global_block_state_hash ()
+    in
     Check.(state_hash <> prev_state_hash)
       Check.string
       ~error_msg:"State hash has not changed (%L <> %R)" ;
@@ -1418,12 +1422,14 @@ let mode_publish mode publishes protocol sc_rollup_node sc_rollup_client
   let* _ = Sc_rollup_node.wait_for_level sc_rollup_node level
   and* _ = Sc_rollup_node.wait_for_level sc_rollup_other_node level in
   Log.info "Both rollup nodes have reached level %d." level ;
-  let state_hash = Sc_rollup_client.state_hash ~hooks sc_rollup_client
-  and state_hash_other =
-    Sc_rollup_client.state_hash ~hooks sc_rollup_other_client
+  let* state_hash =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ()
   in
-  let*! state_hash in
-  let*! state_hash_other in
+  let* state_hash_other =
+    Sc_rollup_node.RPC.call sc_rollup_other_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ()
+  in
   Check.((state_hash = state_hash_other) string)
     ~error_msg:
       "State hash of other rollup node is %R but the first rollup node has %L" ;
@@ -1905,8 +1911,9 @@ let commitments_reproposal _protocol sc_rollup_node sc_rollup_client sc_rollup
     unit
   in
   let* () = check_sc_head hash1 in
-  let*! state_hash1 =
-    Sc_rollup_client.state_hash sc_rollup_client ~block:hash1
+  let* state_hash1 =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ~block:hash1 ()
   in
   Log.info "Changing L1 node for rollup node (1st reorg)" ;
   let* () =
@@ -1918,8 +1925,9 @@ let commitments_reproposal _protocol sc_rollup_node sc_rollup_client sc_rollup
   in
   let* _ = Sc_rollup_node.wait_sync ~timeout:10. sc_rollup_node in
   let* () = check_sc_head hash2 in
-  let*! state_hash2 =
-    Sc_rollup_client.state_hash sc_rollup_client ~block:hash2
+  let* state_hash2 =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ~block:hash2 ()
   in
   Log.info
     "Changing L1 node for rollup node (2nd reorg), back to first node to \
@@ -2358,7 +2366,7 @@ let test_rollup_origination_boot_sector ~boot_sector ~kind =
       tags = ["boot_sector"];
       description = "boot_sector is correctly set";
     }
-  @@ fun _protocol rollup_node rollup_client sc_rollup _tezos_node tezos_client
+  @@ fun _protocol rollup_node _rollup_client sc_rollup _tezos_node tezos_client
     ->
   let* genesis_info =
     Client.RPC.call ~hooks tezos_client
@@ -2379,7 +2387,10 @@ let test_rollup_origination_boot_sector ~boot_sector ~kind =
   let init_hash = JSON.(init_commitment |-> "compressed_state" |> as_string) in
   let* () = Sc_rollup_node.run rollup_node sc_rollup [] in
   let* _ = Sc_rollup_node.wait_for_level ~timeout:3. rollup_node init_level in
-  let*! node_state_hash = Sc_rollup_client.state_hash ~hooks rollup_client in
+  let* node_state_hash =
+    Sc_rollup_node.RPC.call rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_hash ()
+  in
   Check.(
     (init_hash = node_state_hash)
       string
@@ -2588,84 +2599,6 @@ let test_reveals_above_4k =
     Test.fail "The rollup node processed the incorrect reveal without failing"
   in
   Lwt.choose [error_promise; should_not_sync]
-
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/4147
-
-    remove the need to have a scoru to run wallet command. In tezt the
-    {!Sc_rollup_client.create} takes a node where the command tested here does
-    not need to have a originated scoru nor a rollup node.
-*)
-
-(** Initializes a client with an account.*)
-let test_scenario_client_with_account ~account ~variant ~kind f =
-  test_full_scenario
-    ~kind
-    {
-      tags = ["rollup_client"; "wallet"];
-      variant = Some variant;
-      description = "rollup client wallet is valid";
-    }
-  @@ fun _protocol
-             _rollup_node
-             rollup_client
-             _sc_rollup
-             _tezos_node
-             _tezos_client ->
-  let* () = Sc_rollup_client.import_secret_key account rollup_client in
-  f rollup_client
-
-(* Check that the client can show the address of a registered account.
-   -------------------------------------------------------------------
-*)
-let test_rollup_client_show_address ~kind =
-  let account = Constant.aggregate_tz4_account in
-  test_scenario_client_with_account ~account ~kind ~variant:"show address"
-  @@ fun rollup_client ->
-  let* shown_account =
-    Sc_rollup_client.show_address ~alias:account.aggregate_alias rollup_client
-  in
-  Check.(
-    (account.aggregate_public_key_hash = shown_account.aggregate_public_key_hash)
-      string
-      ~error_msg:"Expecting %L, got %R as public key hash from the client.") ;
-  Check.(
-    (account.aggregate_public_key = shown_account.aggregate_public_key)
-      string
-      ~error_msg:"Expecting %L, got %R as public key from the client.") ;
-  Check.(
-    (shown_account.aggregate_secret_key = account.aggregate_secret_key)
-      Account.secret_key_typ
-      ~error_msg:"Expecting %L, got %R as secret key from the client.") ;
-  unit
-
-(* Check that the client can generate keys.
-   ----------------------------------------
-*)
-let test_rollup_client_generate_keys ~kind =
-  let account = Constant.aggregate_tz4_account in
-  test_scenario_client_with_account ~account ~kind ~variant:"gen address"
-  @@ fun rollup_client ->
-  let alias = "test_key" in
-  let* () = Sc_rollup_client.generate_keys ~alias rollup_client in
-  let* _account = Sc_rollup_client.show_address ~alias rollup_client in
-  unit
-
-(* Check that the client can list keys.
-   ------------------------------------
-*)
-let test_rollup_client_list_keys ~kind =
-  let account = Constant.aggregate_tz4_account in
-  test_scenario_client_with_account ~account ~kind ~variant:"list alias"
-  @@ fun rollup_client ->
-  let* maybe_keys = Sc_rollup_client.list_keys rollup_client in
-  let expected_keys =
-    [(account.aggregate_alias, account.aggregate_public_key_hash)]
-  in
-  Check.(
-    (expected_keys = maybe_keys)
-      (list (tuple2 string string))
-      ~error_msg:"Expecting\n%L\ngot\n%R\nas keys from the client.") ;
-  unit
 
 let test_consecutive_commitments _protocol _rollup_node _rollup_client sc_rollup
     _tezos_node tezos_client =
@@ -3029,7 +2962,7 @@ let bailout_mode_fail_to_start_without_operator ~kind =
     Process.check_error
       process
       ~exit_code:1
-      ~msg:(rex "Missing operators operating for mode bailout.")
+      ~msg:(rex "Missing operator for the purpose of operating.")
   in
   unit
 
@@ -5264,9 +5197,6 @@ let register ~protocols =
   test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
   test_rollup_list protocols ~kind:"wasm_2_0_0" ;
   test_rollup_client_wallet protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_show_address protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_generate_keys protocols ~kind:"wasm_2_0_0" ;
-  test_rollup_client_list_keys protocols ~kind:"wasm_2_0_0" ;
   test_valid_dispute_dissection ~kind:"arith" protocols ;
   test_refutation_reward_and_punishment protocols ~kind:"arith" ;
   test_timeout ~kind:"arith" protocols ;

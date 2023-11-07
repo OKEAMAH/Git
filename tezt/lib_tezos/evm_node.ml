@@ -46,8 +46,6 @@ end
 open Parameters
 include Daemon.Make (Parameters)
 
-let path = "./octez-evm-node"
-
 let string_of_version = function `Development -> "dev" | `Production -> "prod"
 
 let connection_arguments ?version ?rpc_addr ?rpc_port () =
@@ -101,7 +99,7 @@ let create ?runner ?version ?rpc_addr ?rpc_port rollup_node =
   in
   let evm_node =
     create
-      ~path
+      ~path:Constant.octez_evm_node
       {
         arguments;
         pending_ready = [];
@@ -129,7 +127,7 @@ let run evm_node =
     run
       evm_node
       {ready = false}
-      (["run"; "with"; "endpoint"]
+      (["run"; "proxy"; "with"; "endpoint"]
       @ [rollup_node_endpoint evm_node]
       @ evm_node.persistent_state.arguments)
   in
@@ -137,12 +135,13 @@ let run evm_node =
   unit
 
 let spawn_command evm_node args =
-  Process.spawn ?runner:evm_node.persistent_state.runner path @@ args
+  Process.spawn ?runner:evm_node.persistent_state.runner Constant.octez_evm_node
+  @@ args
 
 let spawn_run evm_node =
   spawn_command
     evm_node
-    (["run"; "with"; "endpoint"]
+    (["run"; "proxy"; "with"; "endpoint"]
     @ [rollup_node_endpoint evm_node]
     @ evm_node.persistent_state.arguments)
 

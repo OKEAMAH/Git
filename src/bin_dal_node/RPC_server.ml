@@ -191,10 +191,33 @@ module P2P = struct
     let*! () = Node_context.P2P.disconnect_peer ctxt ~wait:q#wait peer in
     return_unit
 
+  let get_points ctxt q () =
+    Node_context.P2P.get_points ~connected:q#connected ctxt
+
+  let get_points_info ctxt q () =
+    Node_context.P2P.get_points_info ~connected:q#connected ctxt
+
+  let get_point_info ctxt point () () =
+    Node_context.P2P.get_point_info ctxt point
+
+  let get_peers ctxt q () =
+    Node_context.P2P.get_peers ~connected:q#connected ctxt
+
+  let get_peers_info ctxt q () =
+    Node_context.P2P.get_peers_info ~connected:q#connected ctxt
+
   module Gossipsub = struct
     let get_topics ctxt () () =
       let open Lwt_result_syntax in
       return @@ Node_context.P2P.Gossipsub.get_topics ctxt
+
+    let get_connections ctxt () () =
+      let open Lwt_result_syntax in
+      return @@ Node_context.P2P.Gossipsub.get_connections ctxt
+
+    let get_scores ctxt () () =
+      let open Lwt_result_syntax in
+      return @@ Node_context.P2P.Gossipsub.get_scores ctxt
   end
 end
 
@@ -263,6 +286,14 @@ let register_new :
        (P2P.Gossipsub.get_topics ctxt)
   |> add_service
        Tezos_rpc.Directory.register0
+       Services.P2P.Gossipsub.get_connections
+       (P2P.Gossipsub.get_connections ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.Gossipsub.get_scores
+       (P2P.Gossipsub.get_scores ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
        Services.P2P.post_connect
        (P2P.connect ctxt)
   |> add_service
@@ -273,6 +304,26 @@ let register_new :
        Tezos_rpc.Directory.register1
        Services.P2P.delete_disconnect_peer
        (P2P.disconnect_peer ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.get_points
+       (P2P.get_points ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.get_points_info
+       (P2P.get_points_info ctxt)
+  |> add_service
+       Tezos_rpc.Directory.opt_register1
+       Services.P2P.Points.get_point_info
+       (P2P.get_point_info ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.get_peers
+       (P2P.get_peers ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.get_peers_info
+       (P2P.get_peers_info ctxt)
 
 let register_legacy ctxt =
   let open RPC_server_legacy in

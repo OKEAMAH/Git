@@ -28,23 +28,30 @@ const print_full = function (rawTx) {
     console.log("s = " + rawTx.signature.slice(32, 64).toString('hex'));
 }
 
-exports.transfer = function (playera, playerb, amount) {
-    let tx = { ...transfer_prototype_json };
+exports.transfer = function (playera, playerb, amount, options = {}) {
+    let tx = { 
+        ...transfer_prototype_json,
+        ...options 
+    };
     tx.nonce = playera.nonce;
     playera.nonce += 1;
     tx.to = playerb.addr;
-    tx.value = amount;
+    // Enforce amount to be in Eth, not Wei
+    tx.value = Math.round(amount * 1_000_000_000_000_000_000);
     tx.gasLimit = 21000;
     let rawTx = sign(tx, playera.privateKey)
     return rawTx.rawTx;
 }
 
-exports.create = function (player, amount, data) {
-    let tx = { ...create_prototype_json };
+exports.create = function (player, amount, data, options = {}) {
+    let tx = { 
+        ...create_prototype_json,
+        ...options,
+    };
     tx.nonce = player.nonce;
     let address = legacy_contract_address(player.addr, player.nonce);
     player.nonce += 1;
-    tx.value = amount;
+    tx.value = Math.round(amount * 1_000_000_000_000_000_000);
     tx.data = data;
     let rawTx = sign(tx, player.privateKey)
     return {
@@ -53,14 +60,16 @@ exports.create = function (player, amount, data) {
     };
 }
 
-exports.send = function (player, contract_addr, amount, data, gasLimit = undefined) {
-    let tx = { ...transfer_prototype_json };
+exports.send = function (player, contract_addr, amount, data, options = {}) {
+    let tx = { 
+        ...transfer_prototype_json,
+        ...options 
+    };
     tx.nonce = player.nonce;
     player.nonce += 1;
     tx.to = contract_addr;
-    tx.value = amount;
+    tx.value = Math.round(amount * 1_000_000_000_000_000_000);
     tx.data = data;
-    tx.gasLimit = gasLimit == undefined ? transfer_prototype_json.gasLimit : gasLimit;
     let rawTx = sign(tx, player.privateKey)
     return rawTx.rawTx;
 }
@@ -80,7 +89,7 @@ const print_list = function (src) {
 }
 
 const chunk_data = function (src) {
-    run_chunker_command = `${CHUNKER} chunk data "${src}" --mode dev`
+    run_chunker_command = `${CHUNKER} chunk data "${src}" --version dev`
     chunked_message = new Buffer.from(execSync(run_chunker_command)).toString();
     return chunked_message.split("\n").slice(1, -1);
 }

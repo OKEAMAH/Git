@@ -10,7 +10,7 @@ pub struct Gas {
     milligas_amount: Option<u32>,
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 #[error("out of gas")]
 pub struct OutOfGas;
 
@@ -67,7 +67,7 @@ impl AsGasCost for checked::Checked<usize> {
 /// A hack to get the integral logarithm base 2, rounded up.
 /// Rounds up to the nearest power of 2 and counts trailing zeroes. Thus,
 ///
-/// ```
+/// ```text
 /// log2i(1) = log2i(0b1) = 0;
 /// log2i(2) = log2i(0b10) = 1;
 /// log2i(3) = log2i(4) = log2i(0b100) = 2;
@@ -148,6 +148,7 @@ pub mod interpret_cost {
     pub const CAR: u32 = 10;
     pub const CDR: u32 = 10;
     pub const PAIR: u32 = 10;
+    pub const UNPAIR: u32 = 10;
     pub const SOME: u32 = 10;
     pub const AMOUNT: u32 = 10;
     pub const NIL: u32 = 10;

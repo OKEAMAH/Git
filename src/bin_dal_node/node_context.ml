@@ -196,9 +196,51 @@ module P2P = struct
   let disconnect_peer {transport_layer; _} ?wait peer =
     Gossipsub.Transport_layer.disconnect_peer transport_layer ?wait peer
 
+  let get_points ?connected {transport_layer; _} =
+    Gossipsub.Transport_layer.get_points ?connected transport_layer
+
+  let get_points_info ?connected {transport_layer; _} =
+    Gossipsub.Transport_layer.get_points_info ?connected transport_layer
+
+  let get_point_info {transport_layer; _} point =
+    Gossipsub.Transport_layer.get_point_info transport_layer point
+
+  let get_peers ?connected {transport_layer; _} =
+    Gossipsub.Transport_layer.get_peers ?connected transport_layer
+
+  let get_peers_info ?connected {transport_layer; _} =
+    Gossipsub.Transport_layer.get_peers_info ?connected transport_layer
+
   module Gossipsub = struct
     let get_topics {gs_worker; _} =
       let state = Gossipsub.Worker.state gs_worker in
       Gossipsub.Worker.GS.Topic.Map.bindings state.mesh |> List.rev_map fst
+
+    let get_connections {gs_worker; _} =
+      let state = Gossipsub.Worker.state gs_worker in
+      Gossipsub.Worker.GS.Introspection.Connections.fold
+        (fun peer connection acc ->
+          ( peer,
+            Types.Gossipsub.
+              {
+                topics = Gossipsub.Worker.GS.Topic.Set.elements connection.topics;
+                direct = connection.direct;
+                outbound = connection.outbound;
+              } )
+          :: acc)
+        state.connections
+        []
+
+    let get_scores {gs_worker; _} =
+      let state = Gossipsub.Worker.state gs_worker in
+      Gossipsub.Worker.GS.Peer.Map.fold
+        (fun peer score acc ->
+          let v =
+            Gossipsub.Worker.GS.Score.value score
+            |> Gossipsub.Worker.GS.Score.Introspection.to_float
+          in
+          (peer, v) :: acc)
+        state.scores
+        []
   end
 end

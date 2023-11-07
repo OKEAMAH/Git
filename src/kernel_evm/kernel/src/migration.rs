@@ -3,13 +3,17 @@
 //
 // SPDX-License-Identifier: MIT
 
+use std::cmp;
+
 use crate::error::Error;
 use crate::error::StorageError::InvalidLoadValue;
 use crate::error::UpgradeProcessError::Fallback;
+
 use crate::storage::{
-    block_path, index_block, init_blocks_index, init_transaction_hashes_index,
-    object_path, read_current_block_number, read_storage_version, receipt_path,
-    store_rlp, store_storage_version, STORAGE_VERSION,
+    block_path, init_blocks_index, init_transaction_hashes_index, object_path,
+    read_current_block_number, read_storage_version, receipt_path, store_block_by_hash,
+    store_rlp, store_storage_version, EVM_BLOCKS, EVM_TRANSACTIONS_OBJECTS,
+    EVM_TRANSACTIONS_RECEIPTS, STORAGE_VERSION,
 };
 use ethbloom::Bloom;
 use ethereum::Log;
@@ -21,12 +25,12 @@ use tezos_ethereum::transaction::{
     TransactionHash, TransactionObject, TransactionReceipt, TransactionStatus,
     TransactionType, TRANSACTION_HASH_SIZE,
 };
-use tezos_ethereum::{
-    rlp_helpers::*,
-    tx_signature::{rlp_decode_opt, TxSignature},
-};
+use tezos_ethereum::{rlp_helpers::*, tx_signature::TxSignature};
 use tezos_smart_rollup_encoding::timestamp::Timestamp;
-use tezos_smart_rollup_host::runtime::Runtime;
+use tezos_smart_rollup_host::path::RefPath;
+use tezos_smart_rollup_host::runtime::{Runtime, RuntimeError};
+
+use tezos_evm_logging::{log, Level::Debug};
 
 pub enum MigrationStatus {
     None,
@@ -155,16 +159,126 @@ fn migrate_one_block<Host: Runtime>(
         transactions: old_block.transactions,
     };
     // Write new block
-    store_rlp(&new_block, host, &path)
+    store_block_by_hash(host, &new_block)
 }
 
-fn migrate_blocks<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
-    let head = read_current_block_number(host)?.as_u32();
-    for number in 0..(head + 1) {
+pub const MAX_MIGRATABLE_BLOCKS_PER_REBOOT: usize = 5000;
+
+const NEXT_BLOCK_NUMBER_TO_MIGRATE: RefPath =
+    RefPath::assert_from(b"/__migration/block_number");
+
+pub fn store_next_block_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+    block_number: U256,
+) -> Result<(), Error> {
+    let mut le_block_number: [u8; 32] = [0; 32];
+    block_number.to_little_endian(&mut le_block_number);
+    host.store_write_all(&NEXT_BLOCK_NUMBER_TO_MIGRATE, &le_block_number)
+        .map_err(Error::from)
+}
+
+pub fn read_next_block_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+) -> Result<U256, Error> {
+    match host.store_read_all(&NEXT_BLOCK_NUMBER_TO_MIGRATE) {
+        Ok(next_block_number_to_migrate) => {
+            Ok(U256::from_little_endian(&next_block_number_to_migrate))
+        }
+        Err(RuntimeError::PathNotFound) => Ok(U256::zero()),
+        Err(e) => Err(Error::from(e)),
+    }
+}
+
+pub fn delete_next_block_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+) -> Result<(), Error> {
+    match host.store_delete(&NEXT_BLOCK_NUMBER_TO_MIGRATE) {
+        Ok(()) | Err(RuntimeError::PathNotFound) => Ok(()),
+        Err(e) => Err(Error::from(e)),
+    }
+}
+
+const TMP_BLOCK_MIGRATION: RefPath = RefPath::assert_from(b"/__migration/blocks");
+
+pub fn store_old_blocks<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+    host.store_copy(&EVM_BLOCKS, &TMP_BLOCK_MIGRATION)
+        .map_err(Error::from)
+}
+
+pub fn commit_block_migration_changes<Host: Runtime>(
+    host: &mut Host,
+    success: bool,
+) -> Result<(), Error> {
+    if success {
+        match host.store_delete(&TMP_BLOCK_MIGRATION) {
+            Ok(()) | Err(RuntimeError::PathNotFound) => Ok(()),
+            Err(e) => Err(Error::from(e)),
+        }
+    } else {
+        host.store_move(&TMP_BLOCK_MIGRATION, &EVM_BLOCKS)
+            .map_err(Error::from)
+    }
+}
+
+fn migrate_blocks<Host: Runtime>(host: &mut Host) -> Result<MigrationStatus, Error> {
+    let head = read_current_block_number(host)?;
+    let next_block_number_to_migrate =
+        read_next_block_number_to_migrate(host)?.as_usize();
+
+    // There is nothing to migrate anymore
+    if next_block_number_to_migrate > head.as_usize() {
+        return Ok(MigrationStatus::Done);
+    }
+
+    // When we migrated the blocks in the previous upgrade, we re-indexed by mistake
+    // all the blocks.
+    // Therefore:
+    // - /evm/blocks/indexes/0 -> 0x00..00
+    // - /evm/blocks/indexes/772940 -> 0x00..00
+    //
+    // One other way to understand is: |indexes| = HEAD * 2.
+    //
+    // There are two ways to fix this problem.
+    // 1. Remove the extra indexes and relocate the misplaced ones. Closer to
+    //    what we would do in production.
+    // 2. Recompute all the indexes because we know how block hashes work. Much
+    //    easier to implement because you start from scratch again.
+    //
+    // This function fixes the block indexes using the second approach.
+    // The indexes are reset at the beginning of the migration
+    if next_block_number_to_migrate == 0 {
+        let index = init_blocks_index()?;
+        host.store_delete(&index.path)?;
+        store_old_blocks(host)?;
+    }
+
+    let max_migration_threshold =
+        next_block_number_to_migrate + MAX_MIGRATABLE_BLOCKS_PER_REBOOT - 1;
+    let last_block_to_migrate = cmp::min(max_migration_threshold, head.as_usize());
+
+    log!(
+        host,
+        Debug,
+        "Migration of L2 blocks from {} to {} begins",
+        next_block_number_to_migrate,
+        last_block_to_migrate
+    );
+    for number in next_block_number_to_migrate..=last_block_to_migrate {
         let hash: H256 = H256(U256::from(number).into());
         migrate_one_block(host, hash)?;
     }
-    Ok(())
+    log!(
+        host,
+        Debug,
+        "L2 blocks from {} to {} have been migrated",
+        next_block_number_to_migrate,
+        last_block_to_migrate
+    );
+
+    store_next_block_number_to_migrate(host, (last_block_to_migrate + 1).into())?;
+
+    host.mark_for_reboot()?;
+    Ok(MigrationStatus::InProgress)
 }
 
 // The genesis block hash 0x00..00, its parent hash is itself.
@@ -190,37 +304,6 @@ fn replace_genesis_parent_hash<Host: Runtime>(host: &mut Host) -> Result<(), Err
     // Write again genesis block. We go through `store_rlp` to avoid
     // an additional indexing of the block.
     store_rlp(&block, host, &path)
-}
-
-// When we migrated the blocks in the previous upgrade, we re-indexed by mistake
-// all the blocks.
-// Therefore:
-// - /evm/blocks/indexes/0 -> 0x00..00
-// - /evm/blocks/indexes/772940 -> 0x00..00
-//
-// One other way to understand is: |indexes| = HEAD * 2.
-//
-// There are two ways to fix this problem.
-// 1. Remove the extra indexes and relocate the misplaced ones. Closer to
-//    what we would do in production.
-// 2. Recompute all the indexes because we know how block hashes work. Much
-//    easier to implement because you start from scratch again.
-//
-// This function fixes the block indexes using the second approach.
-fn fix_block_indexes<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
-    let mut index = init_blocks_index()?;
-
-    // Remove current indexes.
-    host.store_delete(&index.path)?;
-
-    // Repush all blocks to indexes.
-    let head = read_current_block_number(host)?.as_u32();
-    for number in 0..(head + 1) {
-        let hash: H256 = H256(U256::from(number).into());
-        index_block(host, &hash, &mut index)?;
-    }
-
-    Ok(())
 }
 
 // The Transaction Receipt used to include the block hash.
@@ -327,7 +410,11 @@ impl Decodable for OldTransactionObject {
                 let to: Option<H160> = decode_option(&next(&mut it)?, "to")?;
                 let index: u32 = decode_field(&next(&mut it)?, "index")?;
                 let value: U256 = decode_field_u256_le(&next(&mut it)?, "value")?;
-                let signature = rlp_decode_opt(&mut it)?;
+                let v_bytes: Vec<u8> = next(&mut it)?.as_val()?;
+                let v: U256 = U256::from_big_endian(&v_bytes);
+                let r: H256 = decode_field_h256(&next(&mut it)?, "r")?;
+                let s: H256 = decode_field_h256(&next(&mut it)?, "s")?;
+                let signature = TxSignature::new(v, r, s).ok();
                 Ok(OldTransactionObject {
                     block_hash,
                     block_number,
@@ -357,7 +444,6 @@ fn migrate_one_receipt<Host: Runtime>(
 ) -> Result<(), Error> {
     let path = receipt_path(receipt_hash)?;
     let bytes = host.store_read_all(&path)?;
-    host.store_delete(&path)?;
     // Read old receipt
     let old_receipt = OldTransactionReceipt::from_rlp_bytes(&bytes)?;
     let new_receipt = TransactionReceipt {
@@ -376,6 +462,7 @@ fn migrate_one_receipt<Host: Runtime>(
         status: old_receipt.status,
     };
     // Write new receipt
+    host.store_delete(&path)?;
     store_rlp(&new_receipt, host, &path)
 }
 
@@ -385,7 +472,6 @@ fn migrate_one_object<Host: Runtime>(
 ) -> Result<(), Error> {
     let path = object_path(tx_hash)?;
     let bytes = host.store_read_all(&path)?;
-    host.store_delete(&path)?;
     // Read old object
     let old_object = OldTransactionObject::from_rlp_bytes(&bytes)?;
     let new_receipt = TransactionObject {
@@ -402,23 +488,163 @@ fn migrate_one_object<Host: Runtime>(
         signature: old_object.signature,
     };
     // Write new receipt
+    host.store_delete(&path)?;
     store_rlp(&new_receipt, host, &path)
 }
 
-fn migrate_receipts_and_objects<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+pub const MAX_MIGRATABLE_TRANSACTION_PER_REBOOT: u64 = 2000;
+
+const NEXT_TRANSACTION_NUMBER_TO_MIGRATE: RefPath =
+    RefPath::assert_from(b"/__migration/transaction_number");
+
+pub fn store_next_transaction_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+    transaction_number: U256,
+) -> Result<(), Error> {
+    let mut le_transaction_number: [u8; 32] = [0; 32];
+    transaction_number.to_little_endian(&mut le_transaction_number);
+    host.store_write_all(&NEXT_TRANSACTION_NUMBER_TO_MIGRATE, &le_transaction_number)
+        .map_err(Error::from)
+}
+
+pub fn read_next_transaction_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+) -> Result<U256, Error> {
+    match host.store_read_all(&NEXT_TRANSACTION_NUMBER_TO_MIGRATE) {
+        Ok(next_transaction_number_to_migrate) => Ok(U256::from_little_endian(
+            &next_transaction_number_to_migrate,
+        )),
+        Err(RuntimeError::PathNotFound) => Ok(U256::zero()),
+        Err(e) => Err(Error::from(e)),
+    }
+}
+
+pub fn delete_next_transaction_number_to_migrate<Host: Runtime>(
+    host: &mut Host,
+) -> Result<(), Error> {
+    match host.store_delete(&NEXT_TRANSACTION_NUMBER_TO_MIGRATE) {
+        Ok(()) | Err(RuntimeError::PathNotFound) => Ok(()),
+        Err(e) => Err(Error::from(e)),
+    }
+}
+
+const TMP_OBJECTS_MIGRATION: RefPath =
+    RefPath::assert_from(b"/__migration/transactions_objects");
+
+pub fn store_old_objects<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+    host.store_copy(&EVM_TRANSACTIONS_OBJECTS, &TMP_OBJECTS_MIGRATION)
+        .map_err(Error::from)
+}
+
+pub fn commit_tx_objects_changes<Host: Runtime>(
+    host: &mut Host,
+    success: bool,
+) -> Result<(), Error> {
+    if success {
+        match host.store_delete(&TMP_RECEIPTS_MIGRATION) {
+            Ok(()) | Err(RuntimeError::PathNotFound) => Ok(()),
+            Err(e) => Err(Error::from(e)),
+        }
+    } else {
+        host.store_move(&TMP_OBJECTS_MIGRATION, &EVM_TRANSACTIONS_OBJECTS)
+            .map_err(Error::from)
+    }
+}
+
+const TMP_RECEIPTS_MIGRATION: RefPath =
+    RefPath::assert_from(b"/__migration/transactions_receipts");
+
+pub fn store_old_receipts<Host: Runtime>(host: &mut Host) -> Result<(), Error> {
+    host.store_copy(&EVM_TRANSACTIONS_RECEIPTS, &TMP_RECEIPTS_MIGRATION)
+        .map_err(Error::from)
+}
+
+pub fn commit_tx_receipts_changes<Host: Runtime>(
+    host: &mut Host,
+    success: bool,
+) -> Result<(), Error> {
+    if success {
+        match host.store_delete(&TMP_RECEIPTS_MIGRATION) {
+            Ok(()) | Err(RuntimeError::PathNotFound) => Ok(()),
+            Err(e) => Err(Error::from(e)),
+        }
+    } else {
+        host.store_move(&TMP_RECEIPTS_MIGRATION, &EVM_TRANSACTIONS_RECEIPTS)
+            .map_err(Error::from)
+    }
+}
+
+fn has_txs<Host: Runtime>(host: &mut Host) -> bool {
+    matches!(host.store_has(&EVM_TRANSACTIONS_OBJECTS), Ok(Some(_)))
+}
+
+fn migrate_receipts_and_objects<Host: Runtime>(
+    host: &mut Host,
+) -> Result<MigrationStatus, Error> {
+    if !has_txs(host) {
+        return Ok(MigrationStatus::None);
+    }
+
     let indexed_transaction_hashes = init_transaction_hashes_index()?;
     let tx_len = indexed_transaction_hashes.length(host)?;
-    for index in 0..tx_len {
+
+    let next_transaction_number_to_migrate =
+        read_next_transaction_number_to_migrate(host)?.as_u64();
+
+    if next_transaction_number_to_migrate == 0 {
+        store_old_objects(host)?;
+        store_old_receipts(host)?;
+    }
+
+    // There is nothing to migrate anymore
+    if next_transaction_number_to_migrate >= tx_len {
+        return Ok(MigrationStatus::Done);
+    }
+
+    let max_migration_threshold =
+        next_transaction_number_to_migrate + MAX_MIGRATABLE_TRANSACTION_PER_REBOOT - 1;
+    let last_transaction_to_migrate = cmp::min(max_migration_threshold, tx_len - 1);
+
+    log!(
+        host,
+        Debug,
+        "Migration of transactions from {} to {} begins",
+        next_transaction_number_to_migrate,
+        last_transaction_to_migrate
+    );
+    for index in next_transaction_number_to_migrate..=last_transaction_to_migrate {
         let bytes = indexed_transaction_hashes.unsafe_get_value(host, index)?;
         let tx_hash: TransactionHash =
             bytes.as_slice().try_into().map_err(|_| InvalidLoadValue {
                 expected: TRANSACTION_HASH_SIZE,
                 actual: bytes.len(),
             })?;
-        migrate_one_receipt(host, &tx_hash)?;
-        migrate_one_object(host, &tx_hash)?;
+        let left = migrate_one_receipt(host, &tx_hash);
+        let right = migrate_one_object(host, &tx_hash);
+        match (left, right) {
+            (Ok(()), Ok(())) => (),
+            // We have transactions indexed multiple times, the
+            // migration fail for both the receipt and the object
+            // because we try to migrate twice.
+            (Err(_), Err(_)) => (),
+            (Err(err), _) | (_, Err(err)) => return Err(err),
+        }
     }
-    Ok(())
+    log!(
+        host,
+        Debug,
+        "Transactions from {} to {} have been migrated",
+        next_transaction_number_to_migrate,
+        last_transaction_to_migrate
+    );
+
+    store_next_transaction_number_to_migrate(
+        host,
+        (last_transaction_to_migrate + 1).into(),
+    )?;
+
+    host.mark_for_reboot()?;
+    Ok(MigrationStatus::InProgress)
 }
 
 // The workflow for migration is the following:
@@ -433,13 +659,25 @@ fn migration<Host: Runtime>(host: &mut Host) -> Result<MigrationStatus, Error> {
     if STORAGE_VERSION == current_version + 1 {
         // MIGRATION CODE - START
 
-        migrate_blocks(host)?;
+        match migrate_receipts_and_objects(host)? {
+            MigrationStatus::Done | MigrationStatus::None => (),
+            MigrationStatus::InProgress => return Ok(MigrationStatus::InProgress),
+        }
 
-        migrate_receipts_and_objects(host)?;
+        match migrate_blocks(host)? {
+            MigrationStatus::Done | MigrationStatus::None => (),
+            MigrationStatus::InProgress => return Ok(MigrationStatus::InProgress),
+        }
 
         replace_genesis_parent_hash(host)?;
 
-        fix_block_indexes(host)?;
+        // At the end, after blocks and transaction migrations are done we have to clean
+        // up the temporary paths used for migration
+        delete_next_transaction_number_to_migrate(host)?;
+        commit_tx_objects_changes(host, true)?;
+        commit_tx_receipts_changes(host, true)?;
+        delete_next_block_number_to_migrate(host)?;
+        commit_block_migration_changes(host, true)?;
 
         // MIGRATION CODE - END
         store_storage_version(host, STORAGE_VERSION)?;
@@ -455,6 +693,9 @@ pub fn storage_migration<Host: Runtime>(
     migration_result.map_err(|_| {
         // Something went wrong during the migration.
         // The fallback mechanism is triggered to retrograde to the previous kernel.
+        let _ = commit_block_migration_changes(host, false);
+        let _ = commit_tx_objects_changes(host, false);
+        let _ = commit_tx_receipts_changes(host, false);
 
         Error::UpgradeError(Fallback)
     })

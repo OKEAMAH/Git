@@ -873,7 +873,7 @@ struct
               go ~our_states (consume_fuel fuel) (tick + 1) state
           | Needs_reveal (Reveal_raw_data _)
           | Needs_reveal Reveal_metadata
-          | Needs_reveal (Reveal_dal_parameters _)
+          | Needs_reveal Reveal_dal_parameters
           | Initial | First_after _ ->
               return (state, fuel, tick, our_states))
     in
@@ -1004,5 +1004,8 @@ let make_pvm_with_context_and_state (type context state)
 
       let dal_attestation_lag =
         Default_parameters.constants_test.dal.attestation_lag
+
+      let dal_number_of_slots =
+        Default_parameters.constants_test.dal.number_of_slots
     end
   end)

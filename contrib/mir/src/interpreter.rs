@@ -10,7 +10,7 @@ use crate::context::Ctx;
 use crate::gas::{interpret_cost, OutOfGas};
 use crate::stack::*;
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum InterpretError {
     #[error(transparent)]
     OutOfGas(#[from] OutOfGas),
@@ -242,6 +242,12 @@ fn interpret_one(
             let l = pop!();
             let r = pop!();
             stack.push(V::new_pair(l, r));
+        }
+        I::Unpair => {
+            ctx.gas.consume(interpret_cost::UNPAIR)?;
+            let (l, r) = *pop!(V::Pair);
+            stack.push(r);
+            stack.push(l);
         }
         I::ISome => {
             ctx.gas.consume(interpret_cost::SOME)?;
@@ -674,6 +680,13 @@ mod interpreter_tests {
         let mut stack = stk![V::Nat(42), V::Bool(false)]; // NB: bool is top
         assert!(interpret(&vec![Pair], &mut Ctx::default(), &mut stack).is_ok());
         assert_eq!(stack, stk![V::new_pair(V::Bool(false), V::Nat(42))]);
+    }
+
+    #[test]
+    fn unpair() {
+        let mut stack = stk![V::new_pair(V::Bool(false), V::Nat(42))];
+        assert!(interpret(&vec![Unpair], &mut Ctx::default(), &mut stack).is_ok());
+        assert_eq!(stack, stk![V::Nat(42), V::Bool(false)]);
     }
 
     #[test]

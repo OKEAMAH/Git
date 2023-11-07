@@ -417,7 +417,8 @@ val import_encrypted_secret_key :
   ?force:bool ->
   ?endpoint:endpoint ->
   t ->
-  Account.key ->
+  Account.secret_key ->
+  alias:string ->
   password:string ->
   unit Lwt.t
 
@@ -427,24 +428,48 @@ val spawn_import_encrypted_secret_key :
   ?force:bool ->
   ?endpoint:endpoint ->
   t ->
-  Account.key ->
+  Account.secret_key ->
+  alias:string ->
   Process.t * Lwt_io.output_channel
 
 (** Run [octez-client import secret key]. *)
-val import_secret_key : ?endpoint:endpoint -> t -> Account.key -> unit Lwt.t
+val import_secret_key :
+  ?force:bool ->
+  ?endpoint:endpoint ->
+  t ->
+  Account.secret_key ->
+  alias:string ->
+  unit Lwt.t
 
 (** Run [octez-client import secret key] for remote signer. *)
 val import_signer_key :
-  ?endpoint:endpoint -> ?force:bool -> t -> Account.key -> Uri.t -> unit Lwt.t
+  ?endpoint:endpoint ->
+  ?force:bool ->
+  t ->
+  public_key_hash:string ->
+  alias:string ->
+  Uri.t ->
+  unit Lwt.t
 
 (** Same as [import_secret_key] for signer, but do not wait for the
     process to exit. *)
 val spawn_import_signer_key :
-  ?endpoint:endpoint -> ?force:bool -> t -> Account.key -> Uri.t -> Process.t
+  ?endpoint:endpoint ->
+  ?force:bool ->
+  t ->
+  public_key_hash:string ->
+  alias:string ->
+  Uri.t ->
+  Process.t
 
 (** Same as [import_secret_key], but do not wait for the process to exit. *)
 val spawn_import_secret_key :
-  ?endpoint:endpoint -> t -> Account.key -> Process.t
+  ?force:bool ->
+  ?endpoint:endpoint ->
+  t ->
+  Account.secret_key ->
+  alias:string ->
+  Process.t
 
 (** Run [octez-client activate protocol].
 
@@ -708,7 +733,8 @@ val spawn_list_known_addresses : t -> Process.t
 (** Run [octez-client gen keys] and return the key alias.
 
     The default value for [alias] is a fresh alias of the form [tezt_<n>]. *)
-val gen_keys : ?alias:string -> ?sig_alg:string -> t -> string Lwt.t
+val gen_keys :
+  ?force:bool -> ?alias:string -> ?sig_alg:string -> t -> string Lwt.t
 
 (** A helper to run [octez-client gen keys] followed by
     [octez-client show address] to get the generated key. *)
@@ -1343,6 +1369,8 @@ val run_script :
   ?trace_stack:bool ->
   ?level:int ->
   ?now:string ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   prg:string ->
   storage:string ->
   input:string ->
@@ -1362,6 +1390,8 @@ val spawn_run_script :
   ?trace_stack:bool ->
   ?level:int ->
   ?now:string ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   prg:string ->
   storage:string ->
   input:string ->
@@ -1388,6 +1418,8 @@ val run_script_at :
   ?now:string ->
   ?trace_stack:bool ->
   ?level:int ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   storage:string ->
   input:string ->
   t ->
@@ -1407,6 +1439,8 @@ val spawn_run_script_at :
   ?now:string ->
   ?trace_stack:bool ->
   ?level:int ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   storage:string ->
   input:string ->
   t ->
@@ -1622,6 +1656,8 @@ val spawn_run_tzip4_view :
   ?payer:string ->
   ?gas:int ->
   ?unparsing_mode:normalize_mode ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   entrypoint:string ->
   contract:string ->
   ?input:string ->
@@ -1641,6 +1677,8 @@ val run_tzip4_view :
   ?payer:string ->
   ?gas:int ->
   ?unparsing_mode:normalize_mode ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   entrypoint:string ->
   contract:string ->
   ?input:string ->
@@ -1655,6 +1693,8 @@ val spawn_run_view :
   ?payer:string ->
   ?gas:int ->
   ?unparsing_mode:normalize_mode ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   view:string ->
   contract:string ->
   ?input:string ->
@@ -1674,6 +1714,8 @@ val run_view :
   ?payer:string ->
   ?gas:int ->
   ?unparsing_mode:normalize_mode ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
   view:string ->
   contract:string ->
   ?input:string ->

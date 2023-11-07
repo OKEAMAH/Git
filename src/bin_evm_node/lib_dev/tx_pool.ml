@@ -25,8 +25,9 @@ module Pool = struct
 
   (** Add a transacion to the pool.*)
   let add t pkey (raw_tx : Ethereum_types.hex) =
+    let open Result_syntax in
     let {transactions; global_index} = t in
-    let nonce = Ethereum_types.transaction_nonce raw_tx in
+    let* nonce = Ethereum_types.transaction_nonce raw_tx in
     let txs = Pkey_map.find pkey transactions |> Option.value ~default:[] in
     let txs = {index = global_index; nonce; raw_tx} :: txs in
     (* Sort txs by nonce*)
@@ -38,7 +39,7 @@ module Pool = struct
     in
     (* Update the pool for the given pkey *)
     let transactions = Pkey_map.add pkey txs transactions in
-    {transactions; global_index = Int64.(add global_index one)}
+    return {transactions; global_index = Int64.(add global_index one)}
 
   (** Returns all the addresses of the pool *)
   let addresses {transactions; _} =
@@ -62,6 +63,24 @@ module Pool = struct
   let remove pkey predicate t =
     let _txs, t = partition pkey predicate t in
     t
+
+  (** Returns the next nonce for a given user.
+      Returns the given nonce if the user does not have any transactions in the pool. *)
+  let next_nonce pkey current_nonce (t : t) =
+    let {transactions; global_index = _} = t in
+    let txs = Pkey_map.find pkey transactions |> Option.value ~default:[] in
+    let rec aux current_nonce = function
+      | [] -> current_nonce
+      | {nonce; _} :: txs ->
+          if current_nonce > nonce then aux current_nonce txs
+          else if current_nonce = nonce then
+            let (Qty current_nonce) = current_nonce in
+            (aux [@tailcall])
+              Z.(add current_nonce one |> Ethereum_types.quantity_of_z)
+              txs
+          else current_nonce
+    in
+    aux current_nonce txs
 end
 
 module Types = struct
@@ -140,18 +159,26 @@ let on_transaction state tx_raw =
   let open Lwt_result_syntax in
   let open Types in
   let {rollup_node = (module Rollup_node); pool; _} = state in
+  Format.printf "[tx-pool] Incoming transaction.\n%!" ;
   let* is_valid = Rollup_node.is_tx_valid tx_raw in
   match is_valid with
-  | Error err -> return (Error err)
+  | Error err ->
+      (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+      Format.printf "[tx-pool] Transaction is not valid.\n%!" ;
+      return (Error err)
   | Ok pkey ->
       (* Add the tx to the pool*)
-      let pool = Pool.add pool pkey tx_raw in
+      let*? pool = Pool.add pool pkey tx_raw in
       (* compute the hash *)
       let tx_raw = Ethereum_types.hex_to_bytes tx_raw in
       let tx_hash = Ethereum_types.hash_raw_tx tx_raw in
       let hash =
         Ethereum_types.hash_of_string Hex.(of_string tx_hash |> show)
       in
+      Format.printf
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+        "[tx-pool] Transaction %s added to the tx-pool.\n%!"
+        (Ethereum_types.hash_to_string hash) ;
       state.pool <- pool ;
       return (Ok hash)
 
@@ -168,6 +195,7 @@ let on_head state block_height =
     Lwt_list.map_p
       (fun address ->
         let* nonce = Rollup_node.nonce address in
+        let nonce = Option.value ~default:(Qty Z.zero) nonce in
         Lwt.return_ok (address, nonce))
       addresses
   in
@@ -218,10 +246,18 @@ let on_head state block_height =
     Lwt_list.iter_s
       (fun raw_tx ->
         let open Lwt_syntax in
-        let* _hash =
+        let+ hash_result =
           Rollup_node.inject_raw_transaction ~smart_rollup_address raw_tx
         in
-        return_unit)
+        match hash_result with
+        | Error _ ->
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+            Format.printf "[tx-pool] Error when sending transaction.\n%!"
+        | Ok _ ->
+            Format.printf
+              (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+              "[tx-pool] Transaction %s sent to the rollup.\n%!"
+              (Ethereum_types.hex_to_string raw_tx))
       txs
   in
   (* update the pool *)
@@ -327,7 +363,13 @@ let start ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) =
       ((module Rollup_node_rpc), smart_rollup_address)
       (module Handlers)
   in
-  let () = Lwt.dont_wait (fun () -> subscribe_l2_block worker) (fun _ -> ()) in
+  let () =
+    Lwt.dont_wait
+      (fun () -> subscribe_l2_block worker)
+      (fun _ ->
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+        Format.printf "[tx-pool] Pool has been stopped.\n%!")
+  in
   Lwt.wakeup worker_waker worker
 
 let shutdown () =
@@ -343,3 +385,15 @@ let add raw_tx =
   let*? w = Lazy.force worker in
   Worker.Queue.push_request_and_wait w (Request.Add_transaction raw_tx)
   |> handle_request_error
+
+let nonce pkey =
+  let open Lwt_result_syntax in
+  let*? w = Lazy.force worker in
+  let Types.{rollup_node = (module Rollup_node); pool; _} = Worker.state w in
+  let* current_nonce = Rollup_node.nonce pkey in
+  let next_nonce =
+    match current_nonce with
+    | None -> Ethereum_types.Qty Z.zero
+    | Some current_nonce -> Pool.next_nonce pkey current_nonce pool
+  in
+  return next_nonce
