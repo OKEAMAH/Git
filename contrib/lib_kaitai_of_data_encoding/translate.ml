@@ -345,7 +345,64 @@ let rec seq_field_of_data_encoding :
             name
         in
         (state, [attr])
-  | String_enum _ -> failwith "String_enum not implemented"
+  | String_enum (h, a) ->
+      let names =
+        let t = Hashtbl.create 17 in
+        Hashtbl.iter
+          (fun _ (name, _i) ->
+            let name' = escape_id name in
+            if String.equal name' name then Hashtbl.add t name' ())
+          h ;
+        t
+      in
+      let map =
+        Hashtbl.to_seq_values h
+        |> Seq.map (fun (m, i) ->
+               let name = escape_id m in
+               let name =
+                 if String.equal name m || not (Hashtbl.mem names name) then (
+                   Hashtbl.add names name () ;
+                   name)
+                 else
+                   let rec find name =
+                     let name' = name ^ "_" in
+                     if Hashtbl.mem names name' then find name' else name'
+                   in
+                   let name' = find name in
+                   Hashtbl.add names name' () ;
+                   name'
+               in
+               ( i,
+                 EnumValueSpec.
+                   {
+                     name;
+                     doc =
+                       DocSpec.
+                         {
+                           refs = [];
+                           summary =
+                             (if String.equal m name then None else Some m);
+                         };
+                   } ))
+        |> List.of_seq
+        |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
+      in
+      let enumspec = EnumSpec.{map} in
+      let state = add_enum state (id, enumspec) in
+      let dataType =
+        DataType.NumericType
+          (Int_type
+             (match Data_encoding__Binary_size.enum_size a with
+             | `Uint8 -> Int1Type {signed = false}
+             | `Uint16 ->
+                 IntMultiType {signed = false; width = W2; endian = None}
+             | `Uint30 ->
+                 IntMultiType {signed = false; width = W4; endian = None}))
+      in
+      let attr =
+        {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
+      in
+      (state, [attr])
 
 and seq_field_of_tups :
     type a.
