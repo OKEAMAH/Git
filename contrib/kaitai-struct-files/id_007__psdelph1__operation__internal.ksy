@@ -73,17 +73,13 @@ types:
   origination__storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   origination__code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   origination__public_key_hash_:
@@ -125,11 +121,15 @@ types:
   transaction__value:
     seq:
     - id: len_value
+      type: uint30
+    - id: value
+      size: len_value
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: value
-      size: len_value
   transaction__id_007__psdelph1__entrypoint_:
     seq:
     - id: id_007__psdelph1__entrypoint_tag

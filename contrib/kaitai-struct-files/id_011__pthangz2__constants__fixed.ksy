@@ -6,9 +6,7 @@ types:
   cache_layout:
     seq:
     - id: len_cache_layout_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: cache_layout_dyn
       type: cache_layout_dyn
       size: len_cache_layout_dyn
@@ -21,6 +19,12 @@ types:
     seq:
     - id: cache_layout_elt
       type: s8
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 seq:
 - id: proof_of_work_nonce_size
   type: u1

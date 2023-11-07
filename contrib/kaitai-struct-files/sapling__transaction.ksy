@@ -15,17 +15,13 @@ types:
   bound_data:
     seq:
     - id: len_bound_data
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bound_data
       size: len_bound_data
   outputs:
     seq:
     - id: len_outputs_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: outputs_dyn
       type: outputs_dyn
       size: len_outputs_dyn
@@ -41,7 +37,7 @@ types:
   inputs:
     seq:
     - id: len_inputs_dyn
-      type: u4
+      type: uint30
       valid:
         max: 1833216
     - id: inputs_dyn
@@ -56,6 +52,12 @@ types:
     seq:
     - id: inputs_elt
       type: sapling__transaction__input
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 seq:
 - id: inputs
   type: inputs

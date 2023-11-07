@@ -21,11 +21,15 @@ types:
     seq:
     - id: test__list_of_fixed_list_of_uint8_elt_elt
       type: u1
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 seq:
 - id: len_test__list_of_fixed_list_of_uint8_dyn
-  type: u4
-  valid:
-    max: 1073741823
+  type: uint30
 - id: test__list_of_fixed_list_of_uint8_dyn
   type: test__list_of_fixed_list_of_uint8_dyn
   size: len_test__list_of_fixed_list_of_uint8_dyn

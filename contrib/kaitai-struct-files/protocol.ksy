@@ -10,9 +10,7 @@ types:
   components:
     seq:
     - id: len_components_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: components_dyn
       type: components_dyn
       size: len_components_dyn
@@ -36,27 +34,27 @@ types:
   implementation:
     seq:
     - id: len_implementation
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: implementation
       size: len_implementation
   interface_:
     seq:
     - id: len_interface
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: interface
       size: len_interface
   name:
     seq:
     - id: len_name
+      type: uint30
+    - id: name
+      size: len_name
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: name
-      size: len_name
 enums:
   bool:
     0: false

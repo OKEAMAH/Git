@@ -95,9 +95,7 @@ types:
   update__bytes__bytes:
     seq:
     - id: len_bytes
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bytes
       size: len_bytes
   update__prim__generic__micheline__012__psithaca__michelson_v1__expression:
@@ -112,17 +110,13 @@ types:
   update__prim__generic__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   update__prim__generic__args:
     seq:
     - id: len_update__prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: update__prim__generic__args_dyn
       type: update__prim__generic__args_dyn
       size: len_update__prim__generic__args_dyn
@@ -149,9 +143,7 @@ types:
   update__prim__2_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   update__prim__2_args__no_annots__micheline__012__psithaca__michelson_v1__expression:
@@ -175,9 +167,7 @@ types:
   update__prim__1_arg__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   update__prim__1_arg__no_annots__micheline__012__psithaca__michelson_v1__expression:
@@ -197,17 +187,13 @@ types:
   update__prim__no_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   update__sequence__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: len_update__sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: update__sequence__sequence_dyn
       type: update__sequence__sequence_dyn
       size: len_update__sequence__sequence_dyn
@@ -223,9 +209,7 @@ types:
   update__string__string:
     seq:
     - id: len_string
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: string
       size: len_string
   z:
@@ -247,6 +231,12 @@ types:
       type: b1be
     - id: payload
       type: b7be
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   bool:
     0: false
@@ -2881,9 +2871,7 @@ enums:
     3: alloc
 seq:
 - id: len_id_012__psithaca__contract__big_map_diff_dyn
-  type: u4
-  valid:
-    max: 1073741823
+  type: uint30
 - id: id_012__psithaca__contract__big_map_diff_dyn
   type: id_012__psithaca__contract__big_map_diff_dyn
   size: len_id_012__psithaca__contract__big_map_diff_dyn

@@ -113,9 +113,7 @@ types:
   event__bytes__bytes:
     seq:
     - id: len_bytes
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bytes
       size: len_bytes
   event__prim__generic__micheline__018__proxford__michelson_v1__expression:
@@ -130,17 +128,13 @@ types:
   event__prim__generic__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   event__prim__generic__args:
     seq:
     - id: len_event__prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: event__prim__generic__args_dyn
       type: event__prim__generic__args_dyn
       size: len_event__prim__generic__args_dyn
@@ -167,9 +161,7 @@ types:
   event__prim__2_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   event__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression:
@@ -193,9 +185,7 @@ types:
   event__prim__1_arg__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   event__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression:
@@ -215,17 +205,13 @@ types:
   event__prim__no_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   event__sequence__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: len_event__sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: event__sequence__sequence_dyn
       type: event__sequence__sequence_dyn
       size: len_event__sequence__sequence_dyn
@@ -241,9 +227,7 @@ types:
   event__string__string:
     seq:
     - id: len_string
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: string
       size: len_string
   z:
@@ -307,17 +291,13 @@ types:
   origination__storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   origination__code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   origination__public_key_hash_:
@@ -364,11 +344,15 @@ types:
   transaction__value:
     seq:
     - id: len_value
+      type: uint30
+    - id: value
+      size: len_value
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: value
-      size: len_value
   transaction__id_018__proxford__entrypoint_:
     seq:
     - id: id_018__proxford__entrypoint_tag

@@ -12,9 +12,7 @@ types:
   fitness_:
     seq:
     - id: len_fitness_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: fitness_dyn
       type: fitness_dyn
       size: len_fitness_dyn
@@ -30,11 +28,15 @@ types:
   fitness__elem_:
     seq:
     - id: len_fitness__elem
+      type: uint30
+    - id: fitness__elem
+      size: len_fitness__elem
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: fitness__elem
-      size: len_fitness__elem
 seq:
 - id: level
   type: s4

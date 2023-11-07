@@ -8,11 +8,15 @@ types:
   payload_enc:
     seq:
     - id: len_payload_enc
+      type: uint30
+    - id: payload_enc
+      size: len_payload_enc
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: payload_enc
-      size: len_payload_enc
 seq:
 - id: cv
   type: sapling__transaction__commitment_value

@@ -59,9 +59,7 @@ types:
   sapling_state__alloc__nullifiers:
     seq:
     - id: len_sapling_state__alloc__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__alloc__nullifiers_dyn
       type: sapling_state__alloc__nullifiers_dyn
       size: len_sapling_state__alloc__nullifiers_dyn
@@ -77,9 +75,7 @@ types:
   sapling_state__alloc__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
       type: sapling_state__alloc__commitments_and_ciphertexts_dyn
       size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
@@ -110,9 +106,7 @@ types:
   sapling_state__copy__nullifiers:
     seq:
     - id: len_sapling_state__copy__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__copy__nullifiers_dyn
       type: sapling_state__copy__nullifiers_dyn
       size: len_sapling_state__copy__nullifiers_dyn
@@ -128,9 +122,7 @@ types:
   sapling_state__copy__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__copy__commitments_and_ciphertexts_dyn
       type: sapling_state__copy__commitments_and_ciphertexts_dyn
       size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
@@ -154,9 +146,7 @@ types:
   sapling_state__update__nullifiers:
     seq:
     - id: len_sapling_state__update__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__update__nullifiers_dyn
       type: sapling_state__update__nullifiers_dyn
       size: len_sapling_state__update__nullifiers_dyn
@@ -172,9 +162,7 @@ types:
   sapling_state__update__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sapling_state__update__commitments_and_ciphertexts_dyn
       type: sapling_state__update__commitments_and_ciphertexts_dyn
       size: len_sapling_state__update__commitments_and_ciphertexts_dyn
@@ -221,9 +209,7 @@ types:
   big_map__alloc__updates:
     seq:
     - id: len_big_map__alloc__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: big_map__alloc__updates_dyn
       type: big_map__alloc__updates_dyn
       size: len_big_map__alloc__updates_dyn
@@ -254,9 +240,7 @@ types:
   big_map__copy__updates:
     seq:
     - id: len_big_map__copy__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: big_map__copy__updates_dyn
       type: big_map__copy__updates_dyn
       size: len_big_map__copy__updates_dyn
@@ -280,9 +264,7 @@ types:
   big_map__update__updates:
     seq:
     - id: len_big_map__update__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: big_map__update__updates_dyn
       type: big_map__update__updates_dyn
       size: len_big_map__update__updates_dyn
@@ -345,9 +327,7 @@ types:
   big_map__update__bytes__bytes:
     seq:
     - id: len_bytes
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bytes
       size: len_bytes
   big_map__update__prim__generic__micheline__012__psithaca__michelson_v1__expression:
@@ -362,17 +342,13 @@ types:
   big_map__update__prim__generic__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   big_map__update__prim__generic__args:
     seq:
     - id: len_big_map__update__prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: big_map__update__prim__generic__args_dyn
       type: big_map__update__prim__generic__args_dyn
       size: len_big_map__update__prim__generic__args_dyn
@@ -399,9 +375,7 @@ types:
   big_map__update__prim__2_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   big_map__update__prim__2_args__no_annots__micheline__012__psithaca__michelson_v1__expression:
@@ -425,9 +399,7 @@ types:
   big_map__update__prim__1_arg__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   big_map__update__prim__1_arg__no_annots__micheline__012__psithaca__michelson_v1__expression:
@@ -447,17 +419,13 @@ types:
   big_map__update__prim__no_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   big_map__update__sequence__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: len_big_map__update__sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: big_map__update__sequence__sequence_dyn
       type: big_map__update__sequence__sequence_dyn
       size: len_big_map__update__sequence__sequence_dyn
@@ -473,9 +441,7 @@ types:
   big_map__update__string__string:
     seq:
     - id: len_string
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: string
       size: len_string
   z:
@@ -497,6 +463,12 @@ types:
       type: b1be
     - id: payload
       type: b7be
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   bool:
     0: false
@@ -3134,9 +3106,7 @@ enums:
     1: sapling_state
 seq:
 - id: len_id_012__psithaca__lazy_storage_diff_dyn
-  type: u4
-  valid:
-    max: 1073741823
+  type: uint30
 - id: id_012__psithaca__lazy_storage_diff_dyn
   type: id_012__psithaca__lazy_storage_diff_dyn
   size: len_id_012__psithaca__lazy_storage_diff_dyn

@@ -222,11 +222,16 @@ let%expect_test "test dynamic size bytes translation" =
       id: ground_bytes
       endian: be
     doc: ! 'Encoding id: ground_bytes'
+    types:
+      uint30:
+        seq:
+        - id: uint30
+          type: u4
+          valid:
+            max: 1073741823
     seq:
     - id: len_ground_bytes
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: ground_bytes
       size: len_ground_bytes |}]
 
@@ -277,11 +282,16 @@ let%expect_test "test dynamic size string translation" =
       id: ground_string
       endian: be
     doc: ! 'Encoding id: ground_string'
+    types:
+      uint30:
+        seq:
+        - id: uint30
+          type: u4
+          valid:
+            max: 1073741823
     seq:
     - id: len_ground_string
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: ground_string
       size: len_ground_string |}]
 

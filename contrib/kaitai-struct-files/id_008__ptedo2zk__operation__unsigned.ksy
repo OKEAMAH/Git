@@ -122,17 +122,13 @@ types:
   origination__storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   origination__code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   origination__public_key_hash_:
@@ -185,9 +181,7 @@ types:
   transaction__value:
     seq:
     - id: len_value
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: value
       size: len_value
   transaction__id_008__ptedo2zk__entrypoint_:
@@ -351,9 +345,7 @@ types:
   proposals__proposals:
     seq:
     - id: len_proposals__proposals_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: proposals__proposals_dyn
       type: proposals__proposals_dyn
       size: len_proposals__proposals_dyn
@@ -395,9 +387,7 @@ types:
   double_baking_evidence__bh2:
     seq:
     - id: len_double_baking_evidence__bh2_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: double_baking_evidence__bh2_dyn
       type: double_baking_evidence__bh2_dyn
       size: len_double_baking_evidence__bh2_dyn
@@ -408,9 +398,7 @@ types:
   double_baking_evidence__bh1:
     seq:
     - id: len_double_baking_evidence__bh1_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: double_baking_evidence__bh1_dyn
       type: double_baking_evidence__bh1_dyn
       size: len_double_baking_evidence__bh1_dyn
@@ -451,9 +439,7 @@ types:
   double_endorsement_evidence__op2:
     seq:
     - id: len_double_endorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: double_endorsement_evidence__op2_dyn
       type: double_endorsement_evidence__op2_dyn
       size: len_double_endorsement_evidence__op2_dyn
@@ -464,9 +450,7 @@ types:
   double_endorsement_evidence__op1:
     seq:
     - id: len_double_endorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: double_endorsement_evidence__op1_dyn
       type: double_endorsement_evidence__op1_dyn
       size: len_double_endorsement_evidence__op1_dyn
@@ -494,6 +478,12 @@ types:
     - id: double_endorsement_evidence__endorsement__id_008__ptedo2zk__inlined__endorsement__contents
       type: s4
       if: (id_008__ptedo2zk__inlined__endorsement__contents_tag == id_008__ptedo2zk__inlined__endorsement__contents_tag::endorsement)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   seed_nonce_revelation__id_008__ptedo2zk__operation__alpha__contents:
     seq:
     - id: level

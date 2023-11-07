@@ -14,9 +14,7 @@ types:
   round_robin_over_delegates__delegate_selection:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: round_robin_over_delegates__round_robin_over_delegates_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
@@ -28,9 +26,7 @@ types:
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
@@ -86,9 +82,7 @@ types:
   commitments:
     seq:
     - id: len_commitments_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: commitments_dyn
       type: commitments_dyn
       size: len_commitments_dyn
@@ -108,9 +102,7 @@ types:
   bootstrap_contracts:
     seq:
     - id: len_bootstrap_contracts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bootstrap_contracts_dyn
       type: bootstrap_contracts_dyn
       size: len_bootstrap_contracts_dyn
@@ -141,17 +133,13 @@ types:
   storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   public_key_hash_:
@@ -171,9 +159,7 @@ types:
   bootstrap_accounts:
     seq:
     - id: len_bootstrap_accounts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bootstrap_accounts_dyn
       type: bootstrap_accounts_dyn
       size: len_bootstrap_accounts_dyn
@@ -255,6 +241,12 @@ types:
     - id: public_key_known__p256__public_key
       size: 33
       if: (public_key_tag == public_key_tag::p256)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   delegate_selection_tag:
     0: random_delegate_selection

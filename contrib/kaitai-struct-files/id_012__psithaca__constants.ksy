@@ -14,9 +14,7 @@ types:
   round_robin_over_delegates__delegate_selection:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: round_robin_over_delegates__round_robin_over_delegates_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
@@ -28,9 +26,7 @@ types:
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
@@ -98,9 +94,7 @@ types:
   cache_layout:
     seq:
     - id: len_cache_layout_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: cache_layout_dyn
       type: cache_layout_dyn
       size: len_cache_layout_dyn
@@ -113,6 +107,12 @@ types:
     seq:
     - id: cache_layout_elt
       type: s8
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   public_key_tag:
     0: ed25519

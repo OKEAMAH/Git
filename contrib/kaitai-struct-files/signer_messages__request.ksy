@@ -36,9 +36,7 @@ types:
   deterministic_nonce_hash__data:
     seq:
     - id: len_data
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: data
       size: len_data
   deterministic_nonce_hash__public_key_hash_:
@@ -74,9 +72,7 @@ types:
   deterministic_nonce__data:
     seq:
     - id: len_data
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: data
       size: len_data
   deterministic_nonce__public_key_hash_:
@@ -129,11 +125,15 @@ types:
   sign__data:
     seq:
     - id: len_data
+      type: uint30
+    - id: data
+      size: len_data
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: data
-      size: len_data
   sign__public_key_hash_:
     seq:
     - id: public_key_hash_tag

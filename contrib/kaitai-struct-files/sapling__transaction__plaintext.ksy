@@ -8,11 +8,15 @@ types:
   memo:
     seq:
     - id: len_memo
+      type: uint30
+    - id: memo
+      size: len_memo
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: memo
-      size: len_memo
 seq:
 - id: diversifier
   size: 11

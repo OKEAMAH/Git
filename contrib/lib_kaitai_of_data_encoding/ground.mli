@@ -46,6 +46,9 @@ module Type : sig
   (** [z] is an association for z (arbitrarily large integer) type. Requires to
       also assoc [n] and [n_chunk]. *)
   val z : string * ClassSpec.t
+
+  (** uint30 is u4 with a bound check. *)
+  val uint30 : string * ClassSpec.t
 end
 
 (** [Attr] is module for getting [AttrSpec.t] of ground types.
@@ -121,5 +124,7 @@ module Attr : sig
   (** [binary_length_kind ~id k] is an [AttrSpec.t] definition for the
     [Data_encoding__Binary_length.length] type. *)
   val binary_length_kind :
-    id:string -> [`N | `Uint30 | `Uint16 | `Uint8] -> AttrSpec.t
+    id:string ->
+    [`N | `Uint30 | `Uint16 | `Uint8] ->
+    (string * ClassSpec.t) option * AttrSpec.t
 end

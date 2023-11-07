@@ -10,9 +10,7 @@ types:
   modules:
     seq:
     - id: len_modules_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: modules_dyn
       type: modules_dyn
       size: len_modules_dyn
@@ -24,11 +22,15 @@ types:
   modules_entries:
     seq:
     - id: len_modules_elt
+      type: uint30
+    - id: modules_elt
+      size: len_modules_elt
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: modules_elt
-      size: len_modules_elt
 enums:
   bool:
     0: false

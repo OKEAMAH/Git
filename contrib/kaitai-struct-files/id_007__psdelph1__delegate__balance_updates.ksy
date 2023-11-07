@@ -6,9 +6,7 @@ types:
   id_007__psdelph1__operation_metadata__alpha__balance_updates_:
     seq:
     - id: len_id_007__psdelph1__operation_metadata__alpha__balance_updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: id_007__psdelph1__operation_metadata__alpha__balance_updates_dyn
       type: id_007__psdelph1__operation_metadata__alpha__balance_updates_dyn
       size: len_id_007__psdelph1__operation_metadata__alpha__balance_updates_dyn
@@ -139,6 +137,12 @@ types:
     - id: contract__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   public_key_hash_tag:
     0: ed25519

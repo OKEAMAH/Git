@@ -45,9 +45,7 @@ types:
   register_global_constant__value:
     seq:
     - id: len_value
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: value
       size: len_value
   delegation__id_012__psithaca__operation__alpha__internal_operation:
@@ -95,17 +93,13 @@ types:
   origination__storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   origination__code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   origination__public_key_hash_:
@@ -147,11 +141,15 @@ types:
   transaction__value:
     seq:
     - id: len_value
+      type: uint30
+    - id: value
+      size: len_value
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: value
-      size: len_value
   transaction__id_012__psithaca__entrypoint_:
     seq:
     - id: id_012__psithaca__entrypoint_tag

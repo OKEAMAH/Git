@@ -7,10 +7,15 @@ doc: ! >-
   Description: The full list of RPC errors would be too long to include.It is
 
   available through the RPC `/errors` (GET).
+types:
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 seq:
 - id: len_id_018__proxford__errors
-  type: u4
-  valid:
-    max: 1073741823
+  type: uint30
 - id: id_018__proxford__errors
   size: len_id_018__proxford__errors

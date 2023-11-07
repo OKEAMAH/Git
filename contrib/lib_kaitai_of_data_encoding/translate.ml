@@ -182,6 +182,7 @@ let rec seq_field_of_data_encoding :
             | `Uint16 ->
                 (state, [{(Ground.Attr.uint16 ~id) with valid = uvalid}])
             | `Uint30 ->
+                let state = add_type state Ground.Type.uint30 in
                 (state, [{(Ground.Attr.uint30 ~id) with valid = uvalid}])
             | `Int8 -> (state, [{(Ground.Attr.int8 ~id) with valid}])
             | `Int16 -> (state, [{(Ground.Attr.int16 ~id) with valid}])
@@ -278,21 +279,41 @@ let rec seq_field_of_data_encoding :
       | Bytes (`Variable, _) -> (state, [Ground.Attr.bytes ~id Variable])
       | Dynamic_size {kind; encoding = {encoding = Bytes (`Variable, _); _}} ->
           let size_id = size_id_of_id id in
-          let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+          let type_o, size_attr =
+            Ground.Attr.binary_length_kind ~id:size_id kind
+          in
+          let state =
+            match type_o with
+            | Some some_type -> add_type state some_type
+            | None -> state
+          in
           (state, [size_attr; Ground.Attr.bytes ~id (Dynamic size_id)])
       | String (`Fixed n, _) -> (state, [Ground.Attr.string ~id (Fixed n)])
       | String (`Variable, _) -> (state, [Ground.Attr.string ~id Variable])
       | Dynamic_size {kind; encoding = {encoding = String (`Variable, _); _}} ->
           let size_id = size_id_of_id id in
-          let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+          let type_o, size_attr =
+            Ground.Attr.binary_length_kind ~id:size_id kind
+          in
+          let state =
+            match type_o with
+            | Some some_type -> add_type state some_type
+            | None -> state
+          in
           (state, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
       | Dynamic_size
           {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
           let size_id = size_id_of_id (pathify path id ^ "_dyn") in
+          let type_o, size_attr =
+            Ground.Attr.binary_length_kind ~id:size_id kind
+          in
+          let state =
+            match type_o with
+            | Some some_type -> add_type state some_type
+            | None -> state
+          in
           let size_attr =
-            Helpers.merge_valid
-              (Ground.Attr.binary_length_kind ~id:size_id kind)
-              (ValidationMax (Ast.IntNum limit))
+            Helpers.merge_valid size_attr (ValidationMax (Ast.IntNum limit))
           in
           let state, attrs =
             seq_field_of_data_encoding state encoding path id
@@ -301,8 +322,7 @@ let rec seq_field_of_data_encoding :
             redirect
               state
               attrs
-              (fun attr ->
-                {attr with size = Some (Ast.Name size_id)})
+              (fun attr -> {attr with size = Some (Ast.Name size_id)})
               path
               (id ^ "_dyn")
           in
@@ -378,7 +398,14 @@ let rec seq_field_of_data_encoding :
             else id
           in
           let size_id = size_id_of_id (pathify path dyn_id ^ "_dyn") in
-          let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+          let type_o, size_attr =
+            Ground.Attr.binary_length_kind ~id:size_id kind
+          in
+          let state =
+            match type_o with
+            | Some some_type -> add_type state some_type
+            | None -> state
+          in
           let state, attrs =
             seq_field_of_data_encoding state encoding path id
           in

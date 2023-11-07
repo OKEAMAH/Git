@@ -134,9 +134,7 @@ let%expect_test "test more mu" =
       branch__branches:
         seq:
         - id: len_branch__branches_dyn
-          type: u4
-          valid:
-            max: 1073741823
+          type: uint30
         - id: branch__branches_dyn
           type: branch__branches_dyn
           size: len_branch__branches_dyn
@@ -149,6 +147,12 @@ let%expect_test "test more mu" =
         seq:
         - id: branches_elt
           type: mt
+      uint30:
+        seq:
+        - id: uint30
+          type: u4
+          valid:
+            max: 1073741823
       seq__mt:
         seq:
         - id: payload

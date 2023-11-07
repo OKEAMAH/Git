@@ -12,17 +12,13 @@ types:
   fee_:
     seq:
     - id: len_fee
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: fee
       size: len_fee
   tez__amount_:
     seq:
     - id: len_tez__amount
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: tez__amount
       size: len_tez__amount
   z:
@@ -47,19 +43,21 @@ types:
   destination:
     seq:
     - id: len_destination
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: destination
       size: len_destination
   token_contract:
     seq:
     - id: len_token_contract
+      type: uint30
+    - id: token_contract
+      size: len_token_contract
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: token_contract
-      size: len_token_contract
 enums:
   bool:
     0: false

@@ -6,9 +6,7 @@ types:
   endorsement_reward:
     seq:
     - id: len_endorsement_reward_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: endorsement_reward_dyn
       type: endorsement_reward_dyn
       size: len_endorsement_reward_dyn
@@ -24,9 +22,7 @@ types:
   baking_reward_per_endorsement:
     seq:
     - id: len_baking_reward_per_endorsement_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: baking_reward_per_endorsement_dyn
       type: baking_reward_per_endorsement_dyn
       size: len_baking_reward_per_endorsement_dyn
@@ -55,9 +51,7 @@ types:
   time_between_blocks:
     seq:
     - id: len_time_between_blocks_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: time_between_blocks_dyn
       type: time_between_blocks_dyn
       size: len_time_between_blocks_dyn
@@ -73,9 +67,7 @@ types:
   commitments:
     seq:
     - id: len_commitments_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: commitments_dyn
       type: commitments_dyn
       size: len_commitments_dyn
@@ -95,9 +87,7 @@ types:
   bootstrap_contracts:
     seq:
     - id: len_bootstrap_contracts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bootstrap_contracts_dyn
       type: bootstrap_contracts_dyn
       size: len_bootstrap_contracts_dyn
@@ -124,17 +114,13 @@ types:
   storage:
     seq:
     - id: len_storage
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: storage
       size: len_storage
   code:
     seq:
     - id: len_code
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: code
       size: len_code
   public_key_hash_:
@@ -154,9 +140,7 @@ types:
   bootstrap_accounts:
     seq:
     - id: len_bootstrap_accounts_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bootstrap_accounts_dyn
       type: bootstrap_accounts_dyn
       size: len_bootstrap_accounts_dyn
@@ -238,6 +222,12 @@ types:
     - id: public_key_known__p256__public_key
       size: 33
       if: (public_key_tag == public_key_tag::p256)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   bool:
     0: false

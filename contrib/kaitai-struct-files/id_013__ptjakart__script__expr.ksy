@@ -45,9 +45,7 @@ types:
   bytes__bytes:
     seq:
     - id: len_bytes
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: bytes
       size: len_bytes
   prim__generic__micheline__013__ptjakart__michelson_v1__expression:
@@ -62,17 +60,13 @@ types:
   prim__generic__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   prim__generic__args:
     seq:
     - id: len_prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: prim__generic__args_dyn
       type: prim__generic__args_dyn
       size: len_prim__generic__args_dyn
@@ -99,9 +93,7 @@ types:
   prim__2_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   prim__2_args__no_annots__micheline__013__ptjakart__michelson_v1__expression:
@@ -125,9 +117,7 @@ types:
   prim__1_arg__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   prim__1_arg__no_annots__micheline__013__ptjakart__michelson_v1__expression:
@@ -147,17 +137,13 @@ types:
   prim__no_args__some_annots__annots:
     seq:
     - id: len_annots
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: annots
       size: len_annots
   sequence__micheline__013__ptjakart__michelson_v1__expression:
     seq:
     - id: len_sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
+      type: uint30
     - id: sequence__sequence_dyn
       type: sequence__sequence_dyn
       size: len_sequence__sequence_dyn
@@ -173,11 +159,15 @@ types:
   string__string:
     seq:
     - id: len_string
+      type: uint30
+    - id: string
+      size: len_string
+  uint30:
+    seq:
+    - id: uint30
       type: u4
       valid:
         max: 1073741823
-    - id: string
-      size: len_string
   z:
     seq:
     - id: has_tail
