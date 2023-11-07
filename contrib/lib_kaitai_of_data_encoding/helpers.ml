@@ -35,7 +35,7 @@ let default_attr_spec ~id =
       size = None;
     }
 
-let default_meta_spec ~id =
+let default_meta_spec ?(imports = []) ~id () =
   MetaSpec.
     {
       isOpaque = false;
@@ -46,14 +46,14 @@ let default_meta_spec ~id =
       forceDebug = false;
       opaqueTypes = None;
       zeroCopySubstream = None;
-      imports = [];
+      imports;
     }
 
-let default_class_spec ~id ?description () =
+let default_class_spec ~id ?description ?imports () =
   ClassSpec.
     {
       fileName = None;
-      meta = default_meta_spec ~id;
+      meta = default_meta_spec ?imports ~id ();
       doc = {default_doc_spec with summary = description};
       toStringExpr = None;
       params = [];
@@ -71,9 +71,9 @@ let add_uniq_assoc mappings ((k, v) as mapping) =
       else raise (Invalid_argument ("Mappings.add: duplicate keys (" ^ k ^ ")"))
 
 let class_spec_of_attrs ~id ?description ?(enums = []) ?(types = [])
-    ?(instances = []) attrs =
+    ?(instances = []) ?imports attrs =
   {
-    (default_class_spec ~id ?description ()) with
+    (default_class_spec ~id ?description ?imports ()) with
     seq = attrs;
     enums;
     types;

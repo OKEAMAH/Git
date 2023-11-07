@@ -1,6 +1,10 @@
 meta:
   id: id_016__ptmumbai__lazy_storage_diff
   endian: be
+  imports:
+  - sapling__transaction__ciphertext
+  - sapling__transaction__commitment
+  - sapling__transaction__nullifier
 doc: ! 'Encoding id: 016-PtMumbai.lazy_storage_diff'
 types:
   id_016__ptmumbai__lazy_storage_diff_dyn:
@@ -68,8 +72,8 @@ types:
       repeat: eos
   sapling_state__alloc__nullifiers_entries:
     seq:
-    - id: sapling__transaction__nullifier
-      size: 32
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
   sapling_state__alloc__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
@@ -87,33 +91,9 @@ types:
   sapling_state__alloc__commitments_and_ciphertexts_entries:
     seq:
     - id: commitments_and_ciphertexts_elt_field0
-      size: 32
-      doc: sapling__transaction__commitment
+      type: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__alloc__sapling__transaction__ciphertext_
-      doc: sapling_state__alloc__sapling__transaction__ciphertext_
-  sapling_state__alloc__sapling__transaction__ciphertext_:
-    seq:
-    - id: cv
-      size: 32
-    - id: epk
-      size: 32
-    - id: sapling_state__alloc__payload_enc
-      type: sapling_state__alloc__payload_enc
-    - id: nonce_enc
-      size: 24
-    - id: payload_out
-      size: 80
-    - id: nonce_out
-      size: 24
-  sapling_state__alloc__payload_enc:
-    seq:
-    - id: len_payload_enc
-      type: u4
-      valid:
-        max: 1073741823
-    - id: payload_enc
-      size: len_payload_enc
+      type: sapling__transaction__ciphertext
   sapling_state__copy__diff:
     seq:
     - id: source
@@ -143,8 +123,8 @@ types:
       repeat: eos
   sapling_state__copy__nullifiers_entries:
     seq:
-    - id: sapling__transaction__nullifier
-      size: 32
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
   sapling_state__copy__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
@@ -162,33 +142,9 @@ types:
   sapling_state__copy__commitments_and_ciphertexts_entries:
     seq:
     - id: commitments_and_ciphertexts_elt_field0
-      size: 32
-      doc: sapling__transaction__commitment
+      type: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__copy__sapling__transaction__ciphertext_
-      doc: sapling_state__copy__sapling__transaction__ciphertext_
-  sapling_state__copy__sapling__transaction__ciphertext_:
-    seq:
-    - id: cv
-      size: 32
-    - id: epk
-      size: 32
-    - id: sapling_state__copy__payload_enc
-      type: sapling_state__copy__payload_enc
-    - id: nonce_enc
-      size: 24
-    - id: payload_out
-      size: 80
-    - id: nonce_out
-      size: 24
-  sapling_state__copy__payload_enc:
-    seq:
-    - id: len_payload_enc
-      type: u4
-      valid:
-        max: 1073741823
-    - id: payload_enc
-      size: len_payload_enc
+      type: sapling__transaction__ciphertext
   sapling_state__update__updates:
     seq:
     - id: sapling_state__update__commitments_and_ciphertexts
@@ -211,8 +167,8 @@ types:
       repeat: eos
   sapling_state__update__nullifiers_entries:
     seq:
-    - id: sapling__transaction__nullifier
-      size: 32
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
   sapling_state__update__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
@@ -230,33 +186,9 @@ types:
   sapling_state__update__commitments_and_ciphertexts_entries:
     seq:
     - id: commitments_and_ciphertexts_elt_field0
-      size: 32
-      doc: sapling__transaction__commitment
+      type: sapling__transaction__commitment
     - id: commitments_and_ciphertexts_elt_field1
-      type: sapling_state__update__sapling__transaction__ciphertext_
-      doc: sapling_state__update__sapling__transaction__ciphertext_
-  sapling_state__update__sapling__transaction__ciphertext_:
-    seq:
-    - id: cv
-      size: 32
-    - id: epk
-      size: 32
-    - id: sapling_state__update__payload_enc
-      type: sapling_state__update__payload_enc
-    - id: nonce_enc
-      size: 24
-    - id: payload_out
-      size: 80
-    - id: nonce_out
-      size: 24
-  sapling_state__update__payload_enc:
-    seq:
-    - id: len_payload_enc
-      type: u4
-      valid:
-        max: 1073741823
-    - id: payload_enc
-      size: len_payload_enc
+      type: sapling__transaction__ciphertext
   big_map__id_016__ptmumbai__lazy_storage_diff_elt:
     seq:
     - id: id

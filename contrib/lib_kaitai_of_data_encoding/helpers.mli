@@ -34,13 +34,18 @@ val default_attr_spec : id:string -> AttrSpec.t
     - [endian] is set to [BE] (as per data-encoding default).
     - [id] is set to [~id].
     - Other fields are [[]] or [None]. *)
-val default_meta_spec : id:string -> MetaSpec.t
+val default_meta_spec : ?imports:string list -> id:string -> unit -> MetaSpec.t
 
 (** [default_class_spec ~id] builds an default (empty) [ClassSpec.t].
 
     @param [~id] is added to meta section as [id].
     @param [?description] is added into [doc] section as [summary]. *)
-val default_class_spec : id:string -> ?description:string -> unit -> ClassSpec.t
+val default_class_spec :
+  id:string ->
+  ?description:string ->
+  ?imports:string list ->
+  unit ->
+  ClassSpec.t
 
 (** [add_uniq_assoc kvs kv] returns an association list with associations from
     [kvs] as well as [kv].
@@ -65,6 +70,7 @@ val class_spec_of_attrs :
   ?enums:(string * EnumSpec.t) list ->
   ?types:(string * ClassSpec.t) list ->
   ?instances:(string * InstanceSpec.t) list ->
+  ?imports:string list ->
   AttrSpec.t list ->
   ClassSpec.t
 

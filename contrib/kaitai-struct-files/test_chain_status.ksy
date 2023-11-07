@@ -1,6 +1,8 @@
 meta:
   id: test_chain_status
   endian: be
+  imports:
+  - timestamp__protocol
 doc: ! >-
   Encoding id: test_chain_status
 
@@ -17,15 +19,13 @@ types:
     - id: protocol
       size: 32
     - id: expiration
-      type: s8
-      doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
+      type: timestamp__protocol
   forking__test_chain_status:
     seq:
     - id: protocol
       size: 32
     - id: expiration
-      type: s8
-      doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
+      type: timestamp__protocol
 enums:
   test_chain_status_tag:
     0: not_running

@@ -463,40 +463,54 @@ let commands () =
       @@ stop)
       (fun () dir (cctxt : #Client_context.printer) ->
         let open Lwt_syntax in
-        let* () =
-          List.iter_s
+        let all = Data_encoding.Registration.list () in
+        let all =
+          List.map
             (fun (id, _registered) ->
               (* TODO: avoid this lookup by exporting `t -> introspectable` *)
               match Data_encoding.Registration.find_introspectable id with
               | None ->
                   (* [id] is from iterating over the list of registered encodings *)
                   assert false
-              | Some (Any e) -> (
-                  match
-                    Kaitai_of_data_encoding.Translate.from_data_encoding ~id e
-                  with
+              | Some (Any e) ->
+                  (id, Kaitai_of_data_encoding.Translate.AnyEncoding e))
+            all
+        in
+        let name_of_id id = Kaitai_of_data_encoding.Translate.escape_id id in
+        let tbl =
+          let t = Stdlib.Hashtbl.create 200 in
+          List.iter
+            (fun (id, encoding) ->
+              Stdlib.Hashtbl.add t encoding (name_of_id id))
+            all ;
+          t
+        in
+        let* () =
+          List.iter_s
+            (fun (id, Kaitai_of_data_encoding.Translate.AnyEncoding e) ->
+              match
+                Kaitai_of_data_encoding.Translate.from_data_encoding ~id ~tbl e
+              with
+              | exception e ->
+                  (* TODO: offer a [result] variant of conversion function *)
+                  cctxt#warning
+                    "Failed to generate ksy file for %s (%s)"
+                    id
+                    (Printexc.to_string e)
+              | spec -> (
+                  match Kaitai.Print.print spec with
                   | exception e ->
                       (* TODO: offer a [result] variant of conversion function *)
                       cctxt#warning
-                        "Failed to generate ksy file for %s (%s)"
+                        "Failed to print ksy file for %s (%s)"
                         id
                         (Printexc.to_string e)
-                  | spec -> (
-                      match Kaitai.Print.print spec with
-                      | exception e ->
-                          (* TODO: offer a [result] variant of conversion function *)
-                          cctxt#warning
-                            "Failed to print ksy file for %s (%s)"
-                            id
-                            (Printexc.to_string e)
-                      | yml ->
-                          Lwt_io.with_file
-                            ~mode:Output
-                            (dir ^ "/"
-                            ^ Kaitai_of_data_encoding.Translate.escape_id id
-                            ^ ".ksy")
-                            (fun oc -> Lwt_io.write oc yml))))
-            (Data_encoding.Registration.list ())
+                  | yml ->
+                      Lwt_io.with_file
+                        ~mode:Output
+                        (dir ^ "/" ^ name_of_id id ^ ".ksy")
+                        (fun oc -> Lwt_io.write oc yml)))
+            all
         in
         return_ok_unit);
   ]

@@ -1,20 +1,14 @@
 meta:
   id: p2p_peer__pool_event
   endian: be
+  imports:
+  - p2p_address
+  - timestamp__system
 doc: ! >-
   Encoding id: p2p_peer.pool_event
 
   Description: An event that may happen during maintenance of and other operations
   on the connection to a specific peer.
-types:
-  p2p_address_:
-    seq:
-    - id: len_p2p_address
-      type: u4
-      valid:
-        max: 1073741823
-    - id: p2p_address
-      size: len_p2p_address
 enums:
   bool:
     0: false
@@ -31,13 +25,9 @@ seq:
   type: u1
   enum: kind
 - id: timestamp
-  type: s8
-  doc: ! >-
-    A timestamp as seen by the underlying, local computer: subsecond-level precision,
-    epoch or rfc3339 based.
+  type: timestamp__system
 - id: addr
-  type: p2p_address_
-  doc: An address for locating peers.
+  type: p2p_address
 - id: port_tag
   type: u1
   enum: bool

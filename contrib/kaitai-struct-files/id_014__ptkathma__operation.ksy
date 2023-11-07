@@ -1,6 +1,9 @@
 meta:
   id: id_014__ptkathma__operation
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
 doc: ! 'Encoding id: 014-PtKathma.operation'
 types:
   id_014__ptkathma__operation__alpha__contents_and_signature_:
@@ -4338,11 +4341,8 @@ types:
       type: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_
   double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_:
     seq:
-    - id: double_baking_evidence__block_header__shell_
-      type: double_baking_evidence__block_header__shell_
-      doc: ! >-
-        Shell header: Block header's shell-related content. It contains information
-        such as the block level, its predecessor and timestamp.
+    - id: id_014__ptkathma__block_header__alpha__full_header
+      type: block_header__shell
     - id: double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_
       type: double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_
   double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_:
@@ -4367,56 +4367,6 @@ types:
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
       type: s1
-  double_baking_evidence__block_header__shell_:
-    seq:
-    - id: level
-      type: s4
-    - id: proto
-      type: u1
-    - id: predecessor
-      size: 32
-    - id: timestamp
-      type: s8
-      doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
-    - id: validation_pass
-      type: u1
-    - id: operations_hash
-      size: 32
-    - id: fitness
-      type: double_baking_evidence__fitness_
-      doc: ! >-
-        Block fitness: The fitness, or score, of a block, that allow the Tezos to
-        decide which chain is the best. A fitness value is a list of byte sequences.
-        They are compared as follows: shortest lists are smaller; lists of the same
-        length are compared according to the lexicographical order.
-    - id: context
-      size: 32
-  double_baking_evidence__fitness_:
-    seq:
-    - id: len_double_baking_evidence__fitness_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__fitness_dyn
-      type: double_baking_evidence__fitness_dyn
-      size: len_double_baking_evidence__fitness_dyn
-  double_baking_evidence__fitness_dyn:
-    seq:
-    - id: double_baking_evidence__fitness_entries
-      type: double_baking_evidence__fitness_entries
-      repeat: eos
-  double_baking_evidence__fitness_entries:
-    seq:
-    - id: double_baking_evidence__fitness__elem_
-      type: double_baking_evidence__fitness__elem_
-  double_baking_evidence__fitness__elem_:
-    seq:
-    - id: len_fitness__elem
-      type: u4
-      valid:
-        max: 1073741823
-    - id: fitness__elem
-      size: len_fitness__elem
   double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: double_preendorsement_evidence__op1
@@ -4451,9 +4401,8 @@ types:
       type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_
   double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_:
     seq:
-    - id: operation__shell_header
-      size: 32
-      doc: An operation's shell header.
+    - id: id_014__ptkathma__inlined__preendorsement
+      type: operation__shell_header
     - id: operations
       type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement__contents_
     - id: signature_tag
@@ -4514,9 +4463,8 @@ types:
       type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_
   double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_:
     seq:
-    - id: operation__shell_header
-      size: 32
-      doc: An operation's shell header.
+    - id: id_014__ptkathma__inlined__endorsement
+      type: operation__shell_header
     - id: operations
       type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_mempool__contents_
     - id: signature_tag
@@ -4865,8 +4813,7 @@ enums:
     208: sc_rollup_dal_slot_subscribe
     230: dal_publish_slot_header
 seq:
-- id: operation__shell_header
-  size: 32
-  doc: An operation's shell header.
+- id: id_014__ptkathma__operation
+  type: operation__shell_header
 - id: id_014__ptkathma__operation__alpha__contents_and_signature_
   type: id_014__ptkathma__operation__alpha__contents_and_signature_
