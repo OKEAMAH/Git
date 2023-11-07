@@ -205,7 +205,10 @@ let run socket_dir =
   Updater.init (Data_version.protocol_dir parameters.data_dir) ;
   let head_watcher = Lwt_watcher.create_input () in
   let dynamic_store : Store.t option ref = ref None in
-  let applied_blocks_watcher = ref None in
+  let applied_blocks_watcher =
+    (* ref (Directory.Filled (Lwt_watcher.create_input ())) *)
+    ref Directory.Empty
+  in
   let* (_ : (unit, 'a) result Lwt.t) =
     Head_daemon.init
       dynamic_store

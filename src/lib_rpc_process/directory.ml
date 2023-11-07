@@ -22,9 +22,11 @@ let monitor_head dir (store : Store.t option ref)
       Tezos_shell.Monitor_directory.monitor_head ~head_watcher store chain q ()) ;
   !dir
 
-let applied_blocks dir
-    (applied_blocks_watcher :
-      (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) =
+type applied_watcher_kind =
+  | Empty
+  | Filled of (Store.chain_store * Store.Block.t) Lwt_watcher.input
+
+let applied_blocks dir (applied_blocks_watcher : applied_watcher_kind ref) =
   let dir = ref dir in
   let gen_register0 s f =
     dir := Tezos_rpc.Directory.gen_register !dir s (fun () p q -> f p q)
@@ -35,12 +37,12 @@ let applied_blocks dir
       let open Lwt_syntax in
       let* applied_blocks_watcher =
         match !applied_blocks_watcher with
-        | Some v -> return v
-        | None ->
+        | Filled v -> return v
+        | Empty ->
             (* The applied_blocks_watcher is initialized only if it is
                requested at least once. *)
             let watcher = Lwt_watcher.create_input () in
-            applied_blocks_watcher := Some watcher ;
+            applied_blocks_watcher := Filled watcher ;
             return watcher
       in
       let applied_blocks_watcher =
@@ -51,8 +53,7 @@ let applied_blocks dir
 
 let build_rpc_directory node_version config dynamic_store
     ~(head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
-    ~(applied_blocks_watcher :
-       (Store.chain_store * Store.Block.t) Lwt_watcher.input option ref) =
+    ~(applied_blocks_watcher : applied_watcher_kind ref) =
   let static_dir = Tezos_shell.Version_directory.rpc_directory node_version in
   let static_dir =
     Tezos_shell.Config_directory.build_rpc_directory_for_rpc_process
