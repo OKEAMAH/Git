@@ -20,6 +20,6 @@ val escape_id : string -> string
     section of the class-spec. *)
 val from_data_encoding :
   id:string ->
-  ?tbl:(anyEncoding, string) Hashtbl.t ->
+  ?extern:(anyEncoding, string) Hashtbl.t ->
   'a Data_encoding.t ->
   Kaitai.Types.ClassSpec.t

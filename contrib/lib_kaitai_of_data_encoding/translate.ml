@@ -828,8 +828,8 @@ let add_original_id_to_description ?description id =
   | Some description -> "Encoding id: " ^ id ^ "\nDescription: " ^ description
 
 let from_data_encoding :
-    type a. id:string -> ?tbl:_ -> a DataEncoding.t -> ClassSpec.t =
- fun ~id ?(tbl = Hashtbl.create 0) encoding ->
+    type a. id:string -> ?extern:_ -> a DataEncoding.t -> ClassSpec.t =
+ fun ~id ?(extern = Hashtbl.create 0) encoding ->
   let encoding_name = escape_id id in
   let state =
     {
@@ -837,7 +837,7 @@ let from_data_encoding :
       types = [];
       mus = MuSet.empty;
       imports = StringSet.empty;
-      extern = tbl;
+      extern;
     }
   in
   match encoding.encoding with

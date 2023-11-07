@@ -477,7 +477,7 @@ let commands () =
             all
         in
         let name_of_id id = Kaitai_of_data_encoding.Translate.escape_id id in
-        let tbl =
+        let extern =
           let t = Stdlib.Hashtbl.create 200 in
           List.iter
             (fun (id, encoding) ->
@@ -489,7 +489,10 @@ let commands () =
           List.iter_s
             (fun (id, Kaitai_of_data_encoding.Translate.AnyEncoding e) ->
               match
-                Kaitai_of_data_encoding.Translate.from_data_encoding ~id ~tbl e
+                Kaitai_of_data_encoding.Translate.from_data_encoding
+                  ~id
+                  ~extern
+                  e
               with
               | exception e ->
                   (* TODO: offer a [result] variant of conversion function *)
