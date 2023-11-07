@@ -50,6 +50,13 @@ types:
       type: u4
       valid:
         max: 1073741823
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
 seq:
 - id: proof_of_work_nonce_size
   type: u1
@@ -58,10 +65,7 @@ seq:
 - id: max_revelations_per_block
   type: u1
 - id: max_operation_data_length
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: max_proposals_per_delegate
   type: u1
 - id: preserved_cycles
@@ -91,10 +95,7 @@ seq:
 - id: seed_nonce_revelation_tip
   type: n
 - id: origination_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

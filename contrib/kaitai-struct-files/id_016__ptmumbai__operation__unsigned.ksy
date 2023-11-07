@@ -529,10 +529,7 @@ types:
   zk_rollup_publish__op_elt_field0:
     seq:
     - id: op_code
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: zk_rollup_publish__price
       type: zk_rollup_publish__price
     - id: l1_dst
@@ -601,10 +598,7 @@ types:
     - id: zk_rollup_origination__init_state
       type: zk_rollup_origination__init_state
     - id: nb_ops
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
   zk_rollup_origination__init_state:
     seq:
     - id: len_zk_rollup_origination__init_state_dyn
@@ -1334,10 +1328,7 @@ types:
     - id: context_hash
       size: 32
     - id: message_index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: tx_rollup_dispatch_tickets__message_result_path
       type: tx_rollup_dispatch_tickets__message_result_path
     - id: tx_rollup_dispatch_tickets__tickets_info
@@ -1451,6 +1442,13 @@ types:
     seq:
     - id: message_result_list_hash
       size: 32
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   tx_rollup_dispatch_tickets__public_key_hash_:
     seq:
     - id: public_key_hash_tag

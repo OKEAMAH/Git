@@ -35,6 +35,13 @@ types:
     seq:
     - id: id_009__psfloren__mutez
       type: n
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   n:
     seq:
     - id: n
@@ -110,10 +117,7 @@ seq:
 - id: seed_nonce_revelation_tip
   type: n
 - id: origination_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

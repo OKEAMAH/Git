@@ -72,6 +72,13 @@ types:
       type: u2
     - id: denominator
       type: u2
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   n:
     seq:
     - id: n
@@ -127,10 +134,7 @@ seq:
 - id: seed_nonce_revelation_tip
   type: n
 - id: origination_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: baking_reward_fixed_portion
   type: n
 - id: baking_reward_bonus_per_slot
@@ -160,27 +164,15 @@ seq:
 - id: delay_increment_per_round
   type: s8
 - id: consensus_committee_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: consensus_threshold
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: frozen_deposits_percentage
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement

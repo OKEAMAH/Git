@@ -185,6 +185,27 @@ module Type = struct
             };
           ];
       } )
+
+  let int31 =
+    ( "int31",
+      (* the integer literal bounds are from data-encoding source, specifically
+         the binary reader *)
+      {
+        (Helpers.default_class_spec ~id:"int31" ()) with
+        seq =
+          [
+            {
+              (int_multi_type_atrr_spec ~id:"int31" ~signed:true DataType.W4) with
+              valid =
+                Some
+                  (ValidationSpec.ValidationRange
+                     {
+                       min = Ast.IntNum (-0x4000_0000);
+                       max = Ast.IntNum 0x3fff_ffff;
+                     });
+            };
+          ];
+      } )
 end
 
 module Attr = struct
@@ -229,14 +250,9 @@ module Attr = struct
   let int64 ~id = int_multi_type_atrr_spec ~id ~signed:true DataType.W8
 
   let int31 ~id =
-    (* the integer literal bounds are from data-encoding source, specifically
-       the binary reader *)
     {
-      (int_multi_type_atrr_spec ~id ~signed:true DataType.W4) with
-      valid =
-        Some
-          (ValidationSpec.ValidationRange
-             {min = Ast.IntNum (-0x4000_0000); max = Ast.IntNum 0x3fff_ffff});
+      (Helpers.default_attr_spec ~id) with
+      dataType = Helpers.usertype (snd Type.int31);
     }
 
   let uint30 ~id =

@@ -161,7 +161,9 @@ let rec seq_field_of_data_encoding :
       | Int16 -> (state, [Ground.Attr.int16 ~id])
       | Int32 -> (state, [Ground.Attr.int32 ~id])
       | Int64 -> (state, [Ground.Attr.int64 ~id])
-      | Int31 -> (state, [Ground.Attr.int31 ~id])
+      | Int31 ->
+          let state = add_type state Ground.Type.int31 in
+          (state, [Ground.Attr.int31 ~id])
       | RangedInt {minimum; maximum} ->
           let size =
             Data_encoding__Binary_size.range_to_size ~minimum ~maximum
@@ -186,7 +188,9 @@ let rec seq_field_of_data_encoding :
                 (state, [{(Ground.Attr.uint30 ~id) with valid = uvalid}])
             | `Int8 -> (state, [{(Ground.Attr.int8 ~id) with valid}])
             | `Int16 -> (state, [{(Ground.Attr.int16 ~id) with valid}])
-            | `Int31 -> (state, [{(Ground.Attr.int31 ~id) with valid}])
+            | `Int31 ->
+                let state = add_type state Ground.Type.int31 in
+                (state, [{(Ground.Attr.int31 ~id) with valid}])
           else
             (* when [minimum > 0] (as is the case in this branch), data-encoding
                shifts the value of the binary representation so that the minimum is at

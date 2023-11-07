@@ -32,6 +32,13 @@ types:
     seq:
     - id: time_between_blocks_elt
       type: s8
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   commitments:
     seq:
     - id: len_commitments_dyn
@@ -222,20 +229,14 @@ seq:
   type: u1
   enum: bool
 - id: security_deposit_ramp_up_cycles
-  type: s4
+  type: int31
   if: (security_deposit_ramp_up_cycles_tag == bool::true)
-  valid:
-    min: -1073741824
-    max: 1073741823
 - id: no_reward_cycles_tag
   type: u1
   enum: bool
 - id: no_reward_cycles
-  type: s4
+  type: int31
   if: (no_reward_cycles_tag == bool::true)
-  valid:
-    min: -1073741824
-    max: 1073741823
 - id: preserved_cycles
   type: u1
 - id: blocks_per_cycle
@@ -263,10 +264,7 @@ seq:
 - id: seed_nonce_revelation_tip
   type: n
 - id: origination_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: block_security_deposit
   type: n
 - id: endorsement_security_deposit

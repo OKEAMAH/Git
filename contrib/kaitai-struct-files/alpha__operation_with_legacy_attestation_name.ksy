@@ -506,10 +506,7 @@ types:
   zk_rollup_publish__op_elt_field0:
     seq:
     - id: op_code
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: zk_rollup_publish__price
       type: zk_rollup_publish__price
     - id: l1_dst
@@ -578,6 +575,10 @@ types:
     - id: zk_rollup_origination__init_state
       type: zk_rollup_origination__init_state
     - id: nb_ops
+      type: int31
+  int31:
+    seq:
+    - id: int31
       type: s4
       valid:
         min: -1073741824

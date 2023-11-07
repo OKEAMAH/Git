@@ -79,6 +79,13 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   commitments:
     seq:
     - id: len_commitments_dyn
@@ -276,20 +283,14 @@ seq:
   type: u1
   enum: bool
 - id: security_deposit_ramp_up_cycles
-  type: s4
+  type: int31
   if: (security_deposit_ramp_up_cycles_tag == bool::true)
-  valid:
-    min: -1073741824
-    max: 1073741823
 - id: no_reward_cycles_tag
   type: u1
   enum: bool
 - id: no_reward_cycles
-  type: s4
+  type: int31
   if: (no_reward_cycles_tag == bool::true)
-  valid:
-    min: -1073741824
-    max: 1073741823
 - id: preserved_cycles
   type: u1
 - id: blocks_per_cycle
@@ -311,10 +312,7 @@ seq:
 - id: seed_nonce_revelation_tip
   type: n
 - id: origination_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: baking_reward_fixed_portion
   type: n
 - id: baking_reward_bonus_per_slot
@@ -344,27 +342,15 @@ seq:
 - id: delay_increment_per_round
   type: s8
 - id: consensus_committee_size
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: consensus_threshold
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: minimal_participation_ratio
   type: minimal_participation_ratio
 - id: max_slashing_period
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: frozen_deposits_percentage
-  type: s4
-  valid:
-    min: -1073741824
-    max: 1073741823
+  type: int31
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement

@@ -160,12 +160,17 @@ let%expect_test "test int31 translation" =
       id: ground_int31
       endian: be
     doc: ! 'Encoding id: ground_int31'
+    types:
+      int31:
+        seq:
+        - id: int31
+          type: s4
+          valid:
+            min: -1073741824
+            max: 1073741823
     seq:
     - id: ground_int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
   |}]
 
 let%expect_test "test float translation" =

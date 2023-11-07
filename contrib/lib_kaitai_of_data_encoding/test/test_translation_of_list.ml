@@ -173,11 +173,17 @@ let%expect_test "test list with length" =
       seq:
       - id: list_with_length_elt
         type: u1
+    int31:
+      seq:
+      - id: int31
+        type: s4
+        valid:
+          min: -1073741824
+          max: 1073741823
   seq:
   - id: num_list_with_length
-    type: s4
+    type: int31
     valid:
-      min: -1073741824
       max: 1073741823
   - id: list_with_length_entries
     type: list_with_length_entries

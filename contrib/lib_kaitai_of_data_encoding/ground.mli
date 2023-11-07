@@ -49,6 +49,9 @@ module Type : sig
 
   (** uint30 is u4 with a bound check. *)
   val uint30 : string * ClassSpec.t
+
+  (** int31 is s4 with a bound check. *)
+  val int31 : string * ClassSpec.t
 end
 
 (** [Attr] is module for getting [AttrSpec.t] of ground types.

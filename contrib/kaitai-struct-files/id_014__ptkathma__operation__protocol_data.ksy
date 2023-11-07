@@ -228,10 +228,7 @@ types:
     - id: outbox_level
       type: s4
     - id: message_index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: sc_rollup_execute_outbox_message__inclusion__proof
       type: sc_rollup_execute_outbox_message__inclusion__proof
     - id: sc_rollup_execute_outbox_message__message
@@ -430,10 +427,7 @@ types:
   sc_rollup_refute__proof__some__inc_entries:
     seq:
     - id: index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: content
       size: 32
     - id: sc_rollup_refute__proof__some__back_pointers
@@ -492,10 +486,7 @@ types:
   sc_rollup_refute__proof__some__skips_elt_field1_entries:
     seq:
     - id: index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: content
       size: 32
     - id: sc_rollup_refute__proof__some__back_pointers
@@ -524,10 +515,7 @@ types:
   sc_rollup_refute__proof__some__old_levels_messages:
     seq:
     - id: index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: content
       size: 32
     - id: sc_rollup_refute__proof__some__back_pointers
@@ -1211,10 +1199,7 @@ types:
     - id: index
       type: u1
     - id: header
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
   dal_publish_slot_header__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1348,10 +1333,7 @@ types:
     - id: context_hash
       size: 32
     - id: message_index
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+      type: int31
     - id: tx_rollup_dispatch_tickets__message_result_path
       type: tx_rollup_dispatch_tickets__message_result_path
     - id: tx_rollup_dispatch_tickets__tickets_info
@@ -1462,6 +1444,13 @@ types:
     seq:
     - id: message_result_list_hash
       size: 32
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   tx_rollup_dispatch_tickets__public_key_hash_:
     seq:
     - id: public_key_hash_tag
