@@ -78,6 +78,20 @@ let redirect state attrs fattr id =
   in
   (state, attr)
 
+let redirect_if_any :
+    state ->
+    AttrSpec.t list ->
+    (AttrSpec.t -> AttrSpec.t) ->
+    string ->
+    state * AttrSpec.t option =
+ fun state attrs fattr id ->
+  match attrs with
+  | [] -> (state, None)
+  | [attr] -> (state, Some {(fattr attr) with id})
+  | _ :: _ :: _ as attrs ->
+      let state, attr = redirect state attrs fattr id in
+      (state, Some attr)
+
 (* [redirect_if_many] is like [redirect] but it only does the redirection when
    there are multiple attributes, otherwise it adds the field directly. *)
 let redirect_if_many :
@@ -445,14 +459,14 @@ and seq_field_of_field :
       let id = escape_id name in
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
-      let state, attr =
-        redirect_if_many
+      let state, attr_o =
+        redirect_if_any
           state
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
           id
       in
-      (state, [attr])
+      (state, Option.to_list attr_o)
   | Opt {name; kind = _; encoding; title; description} ->
       let cond_id = escape_id (name ^ "_tag") in
       let state = add_enum state Ground.Enum.bool in
@@ -493,14 +507,14 @@ and seq_field_of_field :
       let id = escape_id name in
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
-      let state, attr =
-        redirect_if_many
+      let state, attr_o =
+        redirect_if_any
           state
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
           id
       in
-      (state, [attr])
+      (state, Option.to_list attr_o)
 
 and seq_field_of_union :
     type a.
