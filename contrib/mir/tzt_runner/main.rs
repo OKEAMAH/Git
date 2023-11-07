@@ -8,11 +8,15 @@
 use std::env;
 use std::fs::read_to_string;
 
+use mir::parser::Parser;
 use mir::tzt::*;
 
 fn run_test(file: &str) -> Result<(), String> {
     let contents = read_to_string(file).map_err(|e| e.to_string())?;
-    let tzt_test = parse_tzt_test(&contents).map_err(|e| e.to_string())?;
+    let parser = Parser::new();
+    let tzt_test = parser
+        .parse_tzt_test(&contents)
+        .map_err(|e| e.to_string())?;
 
     run_tzt_test(tzt_test).map_err(|e| format!("{:?}", e))
 }
@@ -41,73 +45,94 @@ fn main() {
 
 #[cfg(test)]
 mod tztrunner_tests {
-    use mir::tzt::*;
+    use mir::{parser::Parser, tzt::*};
     use TztTestError::*;
 
     #[test]
     fn test_runner_success() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_ADD).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser.parse_tzt_test(TZT_SAMPLE_ADD).unwrap();
         assert!(run_tzt_test(tzt_test).is_ok());
     }
 
     #[test]
     fn test_runner_mismatch_stack() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_ADD_MISMATCH_STACK).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser
+            .parse_tzt_test(TZT_SAMPLE_ADD_MISMATCH_STACK)
+            .unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Err(StackMismatch(_, _))));
     }
 
     #[test]
     fn test_runner_mismatch_stack_2() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_ADD_MISMATCH_STACK_2).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser
+            .parse_tzt_test(TZT_SAMPLE_ADD_MISMATCH_STACK_2)
+            .unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Err(StackMismatch(_, _))));
     }
 
     #[test]
     fn test_runner_push() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_PUSH).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser.parse_tzt_test(TZT_SAMPLE_PUSH).unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Ok(())));
     }
 
     #[test]
     fn test_runner_amount() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_AMOUNT).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser.parse_tzt_test(TZT_SAMPLE_AMOUNT).unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Ok(())));
     }
 
     #[should_panic(expected = "Duplicate field 'input' in test")]
     #[test]
     fn test_duplicate_field() {
-        let _ = parse_tzt_test(TZT_SAMPLE_DUPLICATE_FIELD).unwrap();
+        let parser = Parser::new();
+        let _ = parser.parse_tzt_test(TZT_SAMPLE_DUPLICATE_FIELD).unwrap();
     }
 
     #[should_panic(expected = "Duplicate field 'output' in test")]
     #[test]
     fn test_duplicate_field_output() {
-        let _ = parse_tzt_test(TZT_SAMPLE_DUPLICATE_FIELD_OUTPUT).unwrap();
+        let parser = Parser::new();
+        let _ = parser
+            .parse_tzt_test(TZT_SAMPLE_DUPLICATE_FIELD_OUTPUT)
+            .unwrap();
     }
 
     #[test]
     fn test_runner_interpreter_error() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_MUTEZ_OVERFLOW).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser.parse_tzt_test(TZT_SAMPLE_MUTEZ_OVERFLOW).unwrap();
         let result = run_tzt_test(tzt_test);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_runner_interpreter_unexpected_fail() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_EXP_SUCC_BUT_FAIL).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser.parse_tzt_test(TZT_SAMPLE_EXP_SUCC_BUT_FAIL).unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Err(UnexpectedError(_))));
     }
 
     #[test]
     fn test_runner_interpreter_unexpected_success() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_EXP_FAIL_BUT_SUCCEED).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser
+            .parse_tzt_test(TZT_SAMPLE_EXP_FAIL_BUT_SUCCEED)
+            .unwrap();
         assert!(matches!(run_tzt_test(tzt_test), Err(UnexpectedSuccess(_))));
     }
 
     #[test]
     fn test_runner_interpreter_unexpected_fail_val() {
-        let tzt_test = parse_tzt_test(TZT_SAMPLE_FAIL_WITH_UNEXPECTED).unwrap();
+        let parser = Parser::new();
+        let tzt_test = parser
+            .parse_tzt_test(TZT_SAMPLE_FAIL_WITH_UNEXPECTED)
+            .unwrap();
         assert!(matches!(
             run_tzt_test(tzt_test),
             Err(ExpectedDifferentError(_, _))
@@ -116,27 +141,31 @@ mod tztrunner_tests {
 
     #[test]
     fn test_runner_chain_id() {
+        let parser = Parser::new();
         assert_eq!(
             run_tzt_test(
-                parse_tzt_test(
-                    r#"code { CHAIN_ID };
+                parser
+                    .parse_tzt_test(
+                        r#"code { CHAIN_ID };
                     input {};
                     chain_id "NetXdQprcVkpaWU";
                     output { Stack_elt chain_id 0x7a06a770 }"#,
-                )
-                .unwrap()
+                    )
+                    .unwrap()
             ),
             Ok(())
         );
+        let parser = Parser::new();
         assert_eq!(
             run_tzt_test(
-                parse_tzt_test(
-                    r#"code { CHAIN_ID };
+                parser
+                    .parse_tzt_test(
+                        r#"code { CHAIN_ID };
                     input {};
                     chain_id 0xbeaff00d;
                     output { Stack_elt chain_id 0xbeaff00d }"#,
-                )
-                .unwrap()
+                    )
+                    .unwrap()
             ),
             Ok(())
         );
@@ -144,16 +173,18 @@ mod tztrunner_tests {
 
     #[test]
     fn test_runner_self_parameter() {
+        let parser = Parser::new();
         assert_eq!(
             run_tzt_test(
-                parse_tzt_test(
-                    r#"code { SELF };
+                parser
+                    .parse_tzt_test(
+                        r#"code { SELF };
                     input {};
                     parameter int;
                     self "KT1Wr7sqVqpbuELSD5xpTBPSCjyNRFj9Xpba";
                     output { Stack_elt (contract int) "KT1Wr7sqVqpbuELSD5xpTBPSCjyNRFj9Xpba" }"#,
-                )
-                .unwrap()
+                    )
+                    .unwrap()
             ),
             Ok(())
         );

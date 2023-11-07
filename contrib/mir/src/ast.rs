@@ -9,19 +9,29 @@ pub mod comparable;
 pub mod michelson_address;
 pub mod michelson_list;
 pub mod or;
-pub mod parsed;
-pub mod typechecked;
+pub mod overloads;
 
 use std::collections::BTreeMap;
 pub use tezos_crypto_rs::hash::ChainId;
+use typed_arena::Arena;
 
-use crate::gas::{tc_cost, Gas, OutOfGas};
+use crate::{
+    gas::{tc_cost, Gas, OutOfGas},
+    lexer::Prim,
+};
 
 pub use michelson_address::{Address, AddressError};
 pub use michelson_list::MichelsonList;
 pub use or::Or;
-pub use parsed::{ParsedInstruction, ParsedStage};
-pub use typechecked::{overloads, TypecheckedInstruction, TypecheckedStage};
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Micheline<'a> {
+    Int(i128),
+    String(String),
+    Bytes(Vec<u8>),
+    App(Prim, &'a [Micheline<'a>], Vec<&'a str>),
+    Seq(&'a [Micheline<'a>]),
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Type {
@@ -164,42 +174,10 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Value {
-    Number(i128),
-    Boolean(bool),
-    String(String),
-    Unit,
-    Pair(Box<(Value, Value)>),
-    Option(Option<Box<Value>>),
-    Seq(Vec<Value>),
-    Elt(Box<(Value, Value)>),
-    Or(Box<Or<Value, Value>>),
-    Bytes(Vec<u8>),
-}
-
-impl Value {
-    pub fn new_pair(l: Self, r: Self) -> Self {
-        Self::Pair(Box::new((l, r)))
-    }
-
-    pub fn new_option(x: Option<Self>) -> Self {
-        Self::Option(x.map(Box::new))
-    }
-
-    pub fn new_elt(k: Self, v: Self) -> Self {
-        Self::Elt(Box::new((k, v)))
-    }
-
-    pub fn new_or(v: Or<Self, Self>) -> Self {
-        Self::Or(Box::new(v))
-    }
-}
-
 macro_rules! valuefrom {
     ($( <$($gs:ident),*> $ty:ty, $cons:expr );* $(;)*) => {
         $(
-        impl<$($gs),*> From<$ty> for Value where $($gs: Into<Value>),* {
+        impl<'a, $($gs),*> From<$ty> for Micheline<'a> where $($gs: Into<Micheline<'a>>),* {
             fn from(x: $ty) -> Self {
                 $cons(x)
             }
@@ -216,21 +194,16 @@ macro_rules! valuefrom {
 pub struct Elt<K, V>(pub K, pub V);
 
 valuefrom! {
-  <> i128, Value::Number;
-  <> bool, Value::Boolean;
-  <> String, Value::String;
-  <> (), |_| Value::Unit;
-  <> Vec<u8>, Value::Bytes;
-  <L, R> (L, R), |(l, r): (L, R)| Value::new_pair(l.into(), r.into());
-  <L, R> Elt<L, R>, |Elt(l, r): Elt<L, R>| Value::new_elt(l.into(), r.into());
-  <T> Option<T>, |x: Option<T>| Value::new_option(x.map(Into::into));
-  <T> Vec<T>, |x: Vec<T>| Value::Seq(x.into_iter().map(Into::into).collect());
-  <L, R> Or<L, R>, |x: Or<L, R>| Value::new_or(x.bimap(Into::into, Into::into));
+  <> i128, Micheline::Int;
+  <> bool, |v: bool| { Micheline::App(if v { Prim::True } else { Prim::False }, &[], vec![]) };
+  <> String, Micheline::String;
+  <> (), |_| Micheline::App(Prim::Unit, &[], vec![]);
+  <> Vec<u8>, Micheline::Bytes;
 }
 
-impl From<&str> for Value {
+impl<'a> From<&str> for Micheline<'a> {
     fn from(s: &str) -> Self {
-        Value::String(s.to_owned())
+        Micheline::from(s.to_owned())
     }
 }
 
@@ -252,53 +225,61 @@ pub enum TypedValue {
     Contract(Address),
 }
 
-pub fn typed_value_to_value_optimized(tv: TypedValue) -> Value {
-    use TypedValue as TV;
-    use Value as V;
-    match tv {
-        TV::Int(i) => V::Number(i),
-        TV::Nat(u) => V::Number(u.try_into().unwrap()),
-        TV::Mutez(u) => V::Number(u.try_into().unwrap()),
-        TV::Bool(b) => V::Boolean(b),
-        TV::String(s) => V::String(s),
-        TV::Unit => V::Unit,
-        // This transformation for pairs deviates from the optimized representation of the
-        // reference implementation, because reference implementation optimizes the size of combs
-        // and uses an untyped representation that is the shortest.
-        TV::Pair(b) => V::new_pair(
-            typed_value_to_value_optimized(b.0),
-            typed_value_to_value_optimized(b.1),
-        ),
-        TV::List(l) => V::Seq(l.into_iter().map(typed_value_to_value_optimized).collect()),
-        TV::Map(m) => V::Seq(
-            m.into_iter()
-                .map(|(key, val)| {
-                    V::new_elt(
-                        typed_value_to_value_optimized(key),
-                        typed_value_to_value_optimized(val),
-                    )
-                })
-                .collect(),
-        ),
-        TV::Option(None) => V::Option(None),
-        TV::Option(Some(r)) => V::new_option(Some(typed_value_to_value_optimized(*r))),
-        TV::Or(x) => V::new_or(x.map(typed_value_to_value_optimized)),
-        TV::Address(x) => V::Bytes(x.to_bytes_vec()),
-        TV::ChainId(x) => V::Bytes(x.into()),
-        TV::Contract(x) => typed_value_to_value_optimized(TV::Address(x)),
+impl<'a> Micheline<'a> {
+    fn new_pair(arena: &'a Arena<Micheline<'a>>, l: Micheline<'a>, r: Micheline<'a>) -> Self {
+        Micheline::App(Prim::Pair, arena.alloc_extend([l, r]), vec![])
+    }
+
+    fn new_elt(arena: &'a Arena<Micheline<'a>>, l: Micheline<'a>, r: Micheline<'a>) -> Self {
+        Micheline::App(Prim::Elt, arena.alloc_extend([l, r]), vec![])
+    }
+
+    fn new_or(arena: &'a Arena<Micheline<'a>>, l: Or<Micheline<'a>, Micheline<'a>>) -> Self {
+        match l {
+            Or::Left(x) => Micheline::App(Prim::Left, arena.alloc_extend([x]), vec![]),
+            Or::Right(x) => Micheline::App(Prim::Right, arena.alloc_extend([x]), vec![]),
+        }
+    }
+
+    fn new_option(arena: &'a Arena<Micheline<'a>>, l: Option<Micheline<'a>>) -> Self {
+        match l {
+            Some(l) => Micheline::App(Prim::Some, arena.alloc_extend([l]), vec![]),
+            None => Micheline::App(Prim::None, &[], vec![]),
+        }
     }
 }
 
-// Note that there are more than one way to do this conversion. Here we use the optimized untyped
-// representation as the target, since that is what the typed to untyped conversion during a
-// FAILWITH call does in the reference implementation, and this logic is primarily used in the
-// corresponding section of MIR now.
-//
-// TODO: This implementation will be moved to interpreter in the context of issue,
-// https://gitlab.com/tezos/tezos/-/issues/6504
-impl From<TypedValue> for Value {
-    fn from(tv: TypedValue) -> Self {
-        typed_value_to_value_optimized(tv)
+pub fn typed_value_to_value_optimized<'a>(
+    arena: &'a Arena<Micheline<'a>>,
+    tv: TypedValue,
+) -> Micheline<'a> {
+    use Micheline as V;
+    use TypedValue as TV;
+    let go = |x| typed_value_to_value_optimized(arena, x);
+    match tv {
+        TV::Int(i) => V::Int(i),
+        TV::Nat(u) => V::Int(u.try_into().unwrap()),
+        TV::Mutez(u) => V::Int(u.try_into().unwrap()),
+        TV::Bool(true) => V::App(Prim::True, &[], vec![]),
+        TV::Bool(false) => V::App(Prim::False, &[], vec![]),
+        TV::String(s) => V::String(s),
+        TV::Unit => V::App(Prim::Unit, &[], vec![]),
+        // This transformation for pairs deviates from the optimized representation of the
+        // reference implementation, because reference implementation optimizes the size of combs
+        // and uses an untyped representation that is the shortest.
+        TV::Pair(b) => V::new_pair(arena, go(b.0), go(b.1)),
+        TV::List(l) => V::Seq(arena.alloc_extend(l.into_iter().map(go))),
+        TV::Map(m) => V::Seq(
+            arena.alloc_extend(
+                m.into_iter()
+                    .map(|(key, val)| V::new_elt(arena, go(key), go(val))),
+            ),
+        ),
+        TV::Option(x) => V::new_option(arena, x.map(|x| go(*x))),
+        TV::Or(x) => V::new_or(arena, x.map(|x| typed_value_to_value_optimized(arena, x))),
+        TV::Address(x) => V::Bytes(x.to_bytes_vec()),
+        TV::ChainId(x) => V::Bytes(x.into()),
+        TV::Contract(x) => typed_value_to_value_optimized(arena, TV::Address(x)),
     }
 }
 
@@ -316,40 +297,20 @@ impl TypedValue {
     }
 }
 
-pub type ParsedInstructionBlock = Vec<ParsedInstruction>;
-
-macro_rules! meta_types {
-    ($($i:ident),* $(,)*) => {
-        $(type $i: std::fmt::Debug + PartialEq + Clone;)*
-    };
-}
-
-pub trait Stage {
-    meta_types! {
-      AddMeta,
-      PushValue,
-      NilType,
-      GetOverload,
-      UpdateOverload,
-      FailwithType,
-      IterOverload,
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Instruction<T: Stage> {
-    Add(T::AddMeta),
-    Dip(Option<u16>, Vec<Instruction<T>>),
+pub enum Instruction {
+    Add(overloads::Add),
+    Dip(Option<u16>, Vec<Self>),
     Drop(Option<u16>),
     Dup(Option<u16>),
     Gt,
-    If(Vec<Instruction<T>>, Vec<Instruction<T>>),
-    IfNone(Vec<Instruction<T>>, Vec<Instruction<T>>),
+    If(Vec<Self>, Vec<Self>),
+    IfNone(Vec<Self>, Vec<Self>),
     Int,
-    Loop(Vec<Instruction<T>>),
-    Push(T::PushValue),
+    Loop(Vec<Self>),
+    Push(TypedValue),
     Swap,
-    Failwith(T::FailwithType),
+    Failwith(Type),
     Unit,
     Car,
     Cdr,
@@ -358,27 +319,45 @@ pub enum Instruction<T: Stage> {
     ISome,
     Compare,
     Amount,
-    Nil(T::NilType),
-    Get(T::GetOverload),
-    Update(T::UpdateOverload),
-    Seq(Vec<Instruction<T>>),
+    Nil,
+    Get(overloads::Get),
+    Update(overloads::Update),
+    Seq(Vec<Self>),
     Unpair,
     Cons,
-    IfCons(Vec<Instruction<T>>, Vec<Instruction<T>>),
-    Iter(T::IterOverload, Vec<Instruction<T>>),
-    IfLeft(Vec<Instruction<T>>, Vec<Instruction<T>>),
+    IfCons(Vec<Self>, Vec<Self>),
+    Iter(overloads::Iter, Vec<Self>),
+    IfLeft(Vec<Self>, Vec<Self>),
     ChainId,
     /// `ISelf` because `Self` is a reserved keyword
     ISelf,
 }
 
-pub type ParsedAST = Vec<ParsedInstruction>;
+pub type TypecheckedAST = Vec<Instruction>;
 
-pub type TypecheckedAST = Vec<TypecheckedInstruction>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ContractScript<T: Stage> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContractScript {
     pub parameter: Type,
     pub storage: Type,
-    pub code: Instruction<T>,
+    pub code: Instruction,
 }
+
+#[cfg(test)]
+macro_rules! app {
+    ($prim:ident [$($args:expr),*]) => {
+        Micheline::App($crate::lexer::Prim::$prim, &[$(Micheline::from($args)),*], vec![])
+    };
+    ($prim:ident) => {
+        Micheline::App($crate::lexer::Prim::$prim, &[], vec![])
+    };
+}
+
+#[cfg(test)]
+macro_rules! seq {
+    {$($elt:expr);* $(;)*} => {
+        Micheline::Seq(&[$(Micheline::from($elt)),*])
+    }
+}
+
+#[cfg(test)]
+pub(crate) use {app, seq};
