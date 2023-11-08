@@ -446,6 +446,7 @@ let run ({node_ctxt; configuration; plugin; _} as state) =
     ~id:configuration.sc_rollup_address
     ~mode:configuration.mode
     ~genesis_level:node_ctxt.genesis_info.level
+    ~genesis_hash: node_ctxt.genesis_info.commitment_hash
     ~pvm_kind:(Octez_smart_rollup.Kind.to_string node_ctxt.kind) ;
   let fatal_error_exit e =
     Format.eprintf "%!%a@.Exiting.@." pp_print_trace e ;

@@ -42,6 +42,7 @@ module Info : sig
     id:Tezos_crypto.Hashed.Smart_rollup_address.t ->
     mode:Configuration.mode ->
     genesis_level:int32 ->
+    genesis_hash:Commitment.Hash.t ->
     pvm_kind:string ->
     unit
 

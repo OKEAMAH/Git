@@ -127,15 +127,19 @@ module Info = struct
     let help = "Rollup node info" in
     v_labels_counter
       ~help
-      ~label_names:["rollup_address"; "mode"; "genesis_level"; "pvm_kind"]
+      ~label_names:
+        ["rollup_address"; "mode"; "genesis_level"; "genesis_hash"; "pvm_kind"]
       "rollup_node_info"
 
-  let init_rollup_node_info ~id ~mode ~genesis_level ~pvm_kind =
+  let init_rollup_node_info ~id ~mode ~genesis_level ~genesis_hash ~pvm_kind =
     let id = Tezos_crypto.Hashed.Smart_rollup_address.to_b58check id in
     let mode = Configuration.string_of_mode mode in
     let genesis_level = Int32.to_string genesis_level in
+    let genesis_hash = Commitment.Hash.to_b58check genesis_hash in
     ignore
-    @@ Counter.labels rollup_node_info [id; mode; genesis_level; pvm_kind] ;
+    @@ Counter.labels
+         rollup_node_info
+         [id; mode; genesis_level; genesis_hash; pvm_kind] ;
     ()
 
   let () =
