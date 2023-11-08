@@ -35,34 +35,20 @@ let create_storage file_name =
     Commitment.commit_single srs (Evaluations.interpolation_fft2 domain fst_lvl)
   in
   let root_bytes = G1.to_bytes root in
-  let _ = Unix.write file_descr root_bytes 0 G1.size_in_bytes in
   let fst_lvl_bytes =
     Bytes.concat
       Bytes.empty
-      (Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
+      (root_bytes :: Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
   in
-  let _ =
-    Unix.write
-      file_descr
-      fst_lvl_bytes
-      G1.size_in_bytes
-      (Scalar.size_in_bytes * Array.length fst_lvl)
-  in
+  let _ = Unix.write file_descr fst_lvl_bytes 0 (Bytes.length fst_lvl_bytes) in
 
   ()
 
 let read_storage file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  let buffer = Bytes.create G1.size_in_bytes in
-  let _ = Unix.read file_descr buffer 0 G1.size_in_bytes in
-  let _ec = G1.of_bytes_exn buffer in
-  let buffer = Bytes.create (Scalar.size_in_bytes * array_size) in
-  let _ =
-    Unix.read
-      file_descr
-      buffer
-      G1.size_in_bytes
-      (Scalar.size_in_bytes * array_size)
-  in
+  let buffer_size = G1.size_in_bytes + (Scalar.size_in_bytes * array_size) in
+  let buffer = Bytes.create buffer_size in
+  let _ = Unix.read file_descr buffer 0 buffer_size in
+  let _ec = Bytes.sub buffer 0 G1.size_in_bytes |> G1.of_bytes_exn in
 
   ()
