@@ -183,6 +183,15 @@ val monitor_shards :
   ; query : unit >
   service
 
+val version :
+  < meth : [`GET]
+  ; input : unit
+  ; output : Types.Version.t
+  ; prefix : unit
+  ; params : unit
+  ; query : unit >
+  service
+
 module P2P : sig
   (** A service to initiate a connection with another point. *)
   val post_connect :
@@ -259,6 +268,17 @@ module P2P : sig
     ; query : < connected : bool > >
     service
 
+  module Peers : sig
+    val get_peer_info :
+      < meth : [`GET]
+      ; input : unit
+      ; output : Types.P2P.Peer.Info.t
+      ; prefix : unit
+      ; params : unit * P2p_peer.Id.t
+      ; query : unit >
+      service
+  end
+
   module Gossipsub : sig
     val get_topics :
       < meth : [`GET]
@@ -285,6 +305,15 @@ module P2P : sig
       ; prefix : unit
       ; params : unit
       ; query : unit >
+      service
+
+    val get_topics_peers :
+      < meth : [`GET]
+      ; input : unit
+      ; output : (Types.Topic.t * Types.Peer.t list) list
+      ; prefix : unit
+      ; params : unit
+      ; query : < subscribed : bool > >
       service
   end
 end

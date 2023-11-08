@@ -4332,7 +4332,6 @@ let octez_dal_node_services =
         octez_base |> open_ ~m:"TzPervasives" |> open_;
         octez_rpc;
         octez_crypto_dal;
-        prometheus;
       ]
     ~linkall:true
 
@@ -8044,6 +8043,7 @@ let _octez_dal_node =
          irmin_pack_unix;
          irmin;
          prometheus_app;
+         prometheus;
        ]
       @ protocol_deps)
     ~conflicts:[Conflicts.checkseum]

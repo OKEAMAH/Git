@@ -163,6 +163,10 @@ module Transport_layer : sig
     ?connected:bool ->
     t ->
     (P2p_peer.Id.t * Types.P2P.Peer.Info.t) list tzresult Lwt.t
+
+  (** [get_peer_info t peer] returns the info of the corresponding peer if found. *)
+  val get_peer_info :
+    t -> P2p_peer.Id.t -> Types.P2P.Peer.Info.t option tzresult Lwt.t
 end
 
 (** This module implements the list of hooks that allow interconnecting the
@@ -177,3 +181,6 @@ module Transport_layer_hooks : sig
       (Types.Message.t -> Types.Message_id.t -> unit tzresult Lwt.t) ->
     unit Lwt.t
 end
+
+(** [version ~network_name] returns the current version of the P2P. *)
+val version : network_name:string -> Network_version.t

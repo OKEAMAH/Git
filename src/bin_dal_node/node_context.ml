@@ -186,6 +186,10 @@ let fetch_assigned_shard_indices ctxt ~level ~pkh =
          instead of [int list] *)
       Stdlib.List.init offset (fun i -> start_index + i)
 
+let version {config; _} =
+  let network_name = config.Configuration_file.network_name in
+  Types.Version.make ~network_version:(Gossipsub.version ~network_name)
+
 module P2P = struct
   let connect {transport_layer; _} ?timeout point =
     Gossipsub.Transport_layer.connect transport_layer ?timeout point
@@ -211,10 +215,36 @@ module P2P = struct
   let get_peers_info ?connected {transport_layer; _} =
     Gossipsub.Transport_layer.get_peers_info ?connected transport_layer
 
+  let get_peer_info {transport_layer; _} peer =
+    Gossipsub.Transport_layer.get_peer_info transport_layer peer
+
   module Gossipsub = struct
     let get_topics {gs_worker; _} =
       let state = Gossipsub.Worker.state gs_worker in
-      Gossipsub.Worker.GS.Topic.Map.bindings state.mesh |> List.rev_map fst
+      Gossipsub.Worker.GS.Topic.Map.fold
+        (fun topic _peers acc -> topic :: acc)
+        state.mesh
+        []
+
+    let get_topics_peers ~subscribed ctx =
+      let state = Gossipsub.Worker.state ctx.gs_worker in
+      let topic_to_peers_map =
+        Gossipsub.Worker.GS.Introspection.Connections.peers_per_topic_map
+          state.connections
+      in
+      let subscribed_topics = lazy (get_topics ctx) in
+      Gossipsub.Worker.GS.Topic.Map.fold
+        (fun topic peers acc ->
+          if
+            (not subscribed)
+            || List.mem
+                 ~equal:Types.Topic.equal
+                 topic
+                 (Lazy.force subscribed_topics)
+          then (topic, Gossipsub.Worker.GS.Peer.Set.elements peers) :: acc
+          else acc)
+        topic_to_peers_map
+        []
 
     let get_connections {gs_worker; _} =
       let state = Gossipsub.Worker.state gs_worker in

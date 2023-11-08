@@ -94,7 +94,7 @@ let get_commitment_proof :
     ; query : unit >
     service =
   Tezos_rpc.Service.get_service
-    ~description:"Compute the proof associated with a commitment"
+    ~description:"Compute the proof associated with a commitment."
     ~query:Tezos_rpc.Query.empty
     ~output:Cryptobox.Commitment_proof.encoding
     Tezos_rpc.Path.(
@@ -194,7 +194,7 @@ let get_profiles :
     ; query : unit >
     service =
   Tezos_rpc.Service.get_service
-    ~description:"Return the list of current profiles tracked by the DAL node"
+    ~description:"Return the list of current profiles tracked by the DAL node."
     ~query:Tezos_rpc.Query.empty
     ~output:Types.profiles_encoding
     Tezos_rpc.Path.(open_root / "profiles")
@@ -247,10 +247,24 @@ let monitor_shards :
     ; query : unit >
     service =
   Tezos_rpc.Service.get_service
-    ~description:"Monitor put shards"
+    ~description:"Monitor put shards."
     ~query:Tezos_rpc.Query.empty
     ~output:Cryptobox.Commitment.encoding
     Tezos_rpc.Path.(open_root / "monitor_shards")
+
+let version :
+    < meth : [`GET]
+    ; input : unit
+    ; output : Types.Version.t
+    ; prefix : unit
+    ; params : unit
+    ; query : unit >
+    service =
+  Tezos_rpc.Service.get_service
+    ~description:"version"
+    ~query:Tezos_rpc.Query.empty
+    ~output:Types.Version.encoding
+    Tezos_rpc.Path.(open_root / "version")
 
 module P2P = struct
   open Tezos_rpc.Path
@@ -266,7 +280,7 @@ module P2P = struct
       ; query : < timeout : Ptime.Span.t option > >
       service =
     Tezos_rpc.Service.post_service
-      ~description:"Connect to a new peer"
+      ~description:"Connect to a new peer."
       ~query:
         (let open Tezos_rpc.Query in
         query (fun timeout ->
@@ -288,7 +302,7 @@ module P2P = struct
       ; query : < wait : bool > >
       service =
     Tezos_rpc.Service.delete_service
-      ~description:"Disconnect from a point"
+      ~description:"Disconnect from a point."
       ~query:wait_query
       ~output:Data_encoding.unit
       (open_root / "points" / "disconnect" /: P2p_point.Id.rpc_arg)
@@ -302,7 +316,7 @@ module P2P = struct
       ; query : < wait : bool > >
       service =
     Tezos_rpc.Service.delete_service
-      ~description:"Disconnect from a peer"
+      ~description:"Disconnect from a peer."
       ~query:wait_query
       ~output:Data_encoding.unit
       (open_root / "peers" / "disconnect" /: P2p_peer.Id.rpc_arg)
@@ -316,7 +330,9 @@ module P2P = struct
       ; query : < connected : bool > >
       service =
     Tezos_rpc.Service.get_service
-      ~description:"Get the list of known points"
+      ~description:
+        "By default, get the list of known points. When the 'connected' flag \
+         is given, only get the connected points."
       ~query:connected_query
       ~output:Data_encoding.(list (obj1 (req "point" P2p_point.Id.encoding)))
       (open_root / "points")
@@ -330,7 +346,10 @@ module P2P = struct
       ; query : < connected : bool > >
       service =
     Tezos_rpc.Service.get_service
-      ~description:"Get the list of known points and their corresponding info"
+      ~description:
+        "By default, get the list of known points and their corresponding \
+         info. When the 'connected' flag is given, then only get the connected \
+         points."
       ~query:connected_query
       ~output:
         Data_encoding.(
@@ -367,10 +386,12 @@ module P2P = struct
       ; query : < connected : bool > >
       service =
     Tezos_rpc.Service.get_service
-      ~description:"Get the list of known peers"
+      ~description:
+        "By default, get the list of known peers. When the 'connected' flag is \
+         given, then only get the connected peers."
       ~query:connected_query
       ~output:Data_encoding.(list (obj1 (req "peer" P2p_peer.Id.encoding)))
-      (open_root / "peers")
+      (open_root / "peers" / "list")
 
   let get_peers_info :
       < meth : [`GET]
@@ -381,7 +402,7 @@ module P2P = struct
       ; query : < connected : bool > >
       service =
     Tezos_rpc.Service.get_service
-      ~description:"Get list of known peers and their corresponding info"
+      ~description:"Get list of known peers and their corresponding info."
       ~query:connected_query
       ~output:
         Data_encoding.(
@@ -390,6 +411,24 @@ module P2P = struct
                (req "point" P2p_peer.Id.encoding)
                (req "info" Types.P2P.Peer.Info.encoding)))
       (open_root / "peers" / "info")
+
+  module Peers = struct
+    let open_root = open_root / "peers"
+
+    let get_peer_info :
+        < meth : [`GET]
+        ; input : unit
+        ; output : Types.P2P.Peer.Info.t
+        ; prefix : unit
+        ; params : unit * P2p_peer.Id.t
+        ; query : unit >
+        service =
+      Tezos_rpc.Service.get_service
+        ~description:"Get info of the requested peer"
+        ~query:Tezos_rpc.Query.empty
+        ~output:Data_encoding.(obj1 (req "info" Types.P2P.Peer.Info.encoding))
+        (open_root / "by-id" /: P2p_peer.Id.rpc_arg)
+  end
 
   module Gossipsub = struct
     let open_root = open_root / "gossipsub"
@@ -403,7 +442,7 @@ module P2P = struct
         ; query : unit >
         service =
       Tezos_rpc.Service.get_service
-        ~description:"Get the topics this node is currently subscribed to"
+        ~description:"Get the topics this node is currently subscribed to."
         ~query:Tezos_rpc.Query.empty
         ~output:(Data_encoding.list Types.Topic.encoding)
         (open_root / "topics")
@@ -417,7 +456,7 @@ module P2P = struct
         ; query : unit >
         service =
       Tezos_rpc.Service.get_service
-        ~description:"Get this node's currently active connections"
+        ~description:"Get this node's currently active connections."
         ~query:Tezos_rpc.Query.empty
         ~output:
           Data_encoding.(
@@ -445,5 +484,28 @@ module P2P = struct
                  (req "peer" Types.Peer.encoding)
                  (req "score" Types.Score.encoding)))
         (open_root / "scores")
+
+    let get_topics_peers :
+        < meth : [`GET]
+        ; input : unit
+        ; output : (Types.Topic.t * Types.Peer.t list) list
+        ; prefix : unit
+        ; params : unit
+        ; query : < subscribed : bool > >
+        service =
+      Tezos_rpc.Service.get_service
+        ~description:
+          "Get an association list between each topic subscribed to by the \
+           connected peers and the remote peers subscribed to that topic. If \
+           the 'subscribed' flag is given, then restrict the output to the \
+           topics this node is subscribed to."
+        ~query:subscribed_query
+        ~output:
+          Data_encoding.(
+            list
+              (obj2
+                 (req "topic" Types.Topic.encoding)
+                 (req "peers" (list Types.Peer.encoding))))
+        (open_root / "topics" / "peers")
   end
 end

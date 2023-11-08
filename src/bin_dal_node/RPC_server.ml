@@ -177,6 +177,10 @@ module Profile_handlers = struct
         |> Errors.to_tzresult)
 end
 
+let version ctxt () () =
+  let open Lwt_result_syntax in
+  Node_context.version ctxt |> return
+
 module P2P = struct
   let connect ctxt q point =
     Node_context.P2P.connect ctxt ?timeout:q#timeout point
@@ -206,10 +210,19 @@ module P2P = struct
   let get_peers_info ctxt q () =
     Node_context.P2P.get_peers_info ~connected:q#connected ctxt
 
+  let get_peer_info ctxt peer () () = Node_context.P2P.get_peer_info ctxt peer
+
   module Gossipsub = struct
     let get_topics ctxt () () =
       let open Lwt_result_syntax in
       return @@ Node_context.P2P.Gossipsub.get_topics ctxt
+
+    let get_topics_peers ctxt q () =
+      let open Lwt_result_syntax in
+      return
+      @@ Node_context.P2P.Gossipsub.get_topics_peers
+           ~subscribed:q#subscribed
+           ctxt
 
     let get_connections ctxt () () =
       let open Lwt_result_syntax in
@@ -280,10 +293,15 @@ let register_new :
        Tezos_rpc.Directory.gen_register
        Services.monitor_shards
        (Slots_handlers.monitor_shards ctxt)
+  |> add_service Tezos_rpc.Directory.register0 Services.version (version ctxt)
   |> add_service
        Tezos_rpc.Directory.register0
        Services.P2P.Gossipsub.get_topics
        (P2P.Gossipsub.get_topics ctxt)
+  |> add_service
+       Tezos_rpc.Directory.register0
+       Services.P2P.Gossipsub.get_topics_peers
+       (P2P.Gossipsub.get_topics_peers ctxt)
   |> add_service
        Tezos_rpc.Directory.register0
        Services.P2P.Gossipsub.get_connections
@@ -324,6 +342,10 @@ let register_new :
        Tezos_rpc.Directory.register0
        Services.P2P.get_peers_info
        (P2P.get_peers_info ctxt)
+  |> add_service
+       Tezos_rpc.Directory.opt_register1
+       Services.P2P.Peers.get_peer_info
+       (P2P.get_peer_info ctxt)
 
 let register_legacy ctxt =
   let open RPC_server_legacy in

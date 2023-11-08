@@ -909,6 +909,8 @@ module type AUTOMATON = sig
       val iter : (Peer.t -> connection -> unit) -> t -> unit
 
       val peers_in_topic : Topic.t -> t -> Peer.Set.t
+
+      val peers_per_topic_map : t -> Peer.Set.t Topic.Map.t
     end
 
     module Message_cache : sig
@@ -1056,6 +1058,9 @@ module type WORKER_CONFIGURATION = sig
     (** Returns and removes all available elements of the stream l without
         blocking. *)
     val get_available : 'a t -> 'a list
+
+    (** Returns the number of elements in the stream. *)
+    val length : 'a t -> int
   end
 end
 
@@ -1165,6 +1170,10 @@ module type WORKER = sig
       application layer. *)
   val app_output_stream : t -> app_output Stream.t
 
+  (** [input_events_stream t] returns the input stream in which we push events
+      to be processed by the worker. *)
+  val input_events_stream : t -> event Stream.t
+
   (** [is_subscribed t topic] checks whether [topic] is in the mesh of [t]. *)
   val is_subscribed : t -> GS.Topic.t -> bool
 
@@ -1179,36 +1188,38 @@ module type WORKER = sig
     (** A record containing some stats about what happened in the Gossipsub
         worker.  *)
     type stats = private {
-      mutable count_topics : int;
+      mutable count_topics : int64;
           (** Counts the number of topics of the node. It's the diff between Join
             and Leave topics events. *)
-      mutable count_connections : int;
+      mutable count_connections : int64;
           (** Counts the number of connections of the node. It's the diff between
             New_connection and Disconnection events. *)
-      mutable count_bootstrap_connections : int;
+      mutable count_bootstrap_connections : int64;
           (** Counts the number of connections of the node to bootstrap
             peers. It's a refinement of [count_connections] for when the remote
             peer declares itself as a bootstrap peer. *)
-      mutable count_sent_app_messages : int;  (** Count sent app messages. *)
-      mutable count_sent_grafts : int;  (** Count sent grafts. *)
-      mutable count_sent_prunes : int;  (** Count sent prunes. *)
-      mutable count_sent_ihaves : int;  (** Count sent ihaves. *)
-      mutable count_sent_iwants : int;  (** Count sent iwants. *)
-      mutable count_recv_valid_app_messages : int;
+      mutable count_sent_app_messages : int64;  (** Count sent app messages. *)
+      mutable count_sent_grafts : int64;  (** Count sent grafts. *)
+      mutable count_sent_prunes : int64;  (** Count sent prunes. *)
+      mutable count_sent_ihaves : int64;  (** Count sent ihaves. *)
+      mutable count_sent_iwants : int64;  (** Count sent iwants. *)
+      mutable count_recv_valid_app_messages : int64;
           (** Count received app messages that are known to be valid. *)
-      mutable count_recv_invalid_app_messages : int;
+      mutable count_recv_invalid_app_messages : int64;
           (** Count received app messages that are known to be invalid. *)
-      mutable count_recv_unknown_validity_app_messages : int;
+      mutable count_recv_unknown_validity_app_messages : int64;
           (** Count received app messages we won't validate. *)
-      mutable count_recv_grafts : int;
+      mutable count_recv_grafts : int64;
           (** Count successfully received & processed grafts. *)
-      mutable count_recv_prunes : int;
+      mutable count_recv_prunes : int64;
           (** Count successfully received & processed prunes. *)
-      mutable count_recv_ihaves : int;
+      mutable count_recv_ihaves : int64;
           (** Count successfully received & processed ihaves. *)
-      mutable count_recv_iwants : int;
+      mutable count_recv_iwants : int64;
           (** Count successfully received & processed iwants. *)
     }
+
+    val empty_stats : unit -> stats
   end
 
   val stats : t -> Introspection.stats

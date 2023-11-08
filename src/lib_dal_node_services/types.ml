@@ -434,6 +434,15 @@ let connected_query =
   |+ flag "connected" (fun t -> t#connected)
   |> seal
 
+let subscribed_query =
+  let open Tezos_rpc.Query in
+  query (fun subscribed ->
+      object
+        method subscribed = subscribed
+      end)
+  |+ flag "subscribed" (fun t -> t#subscribed)
+  |> seal
+
 let slot_id_query =
   let open Tezos_rpc in
   let open Query in
@@ -533,4 +542,31 @@ module Gossipsub = struct
          (req "topics" (list Topic.encoding))
          (req "direct" bool)
          (req "outbound" bool))
+end
+
+module Version = struct
+  type t = {network_version : Network_version.t}
+
+  let make ~network_version = {network_version}
+
+  (* We redefine the encoding so that we can specify the correct name
+     for the "distributed_db_version" field. *)
+  let network_version_encoding =
+    let open Data_encoding in
+    conv
+      (fun Network_version.{chain_name; distributed_db_version; p2p_version} ->
+        (chain_name, distributed_db_version, p2p_version))
+      (fun (chain_name, distributed_db_version, p2p_version) ->
+        Network_version.{chain_name; distributed_db_version; p2p_version})
+      (obj3
+         (req "chain_name" Distributed_db_version.Name.encoding)
+         (req "gossipsub" Distributed_db_version.encoding)
+         (req "p2p_version" P2p_version.encoding))
+
+  let encoding =
+    let open Data_encoding in
+    conv
+      (fun {network_version} -> network_version)
+      (fun network_version -> {network_version})
+      (obj1 (req "network_version" network_version_encoding))
 end

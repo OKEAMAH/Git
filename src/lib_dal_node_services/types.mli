@@ -223,6 +223,8 @@ val wait_query : < wait : bool > Resto.Query.t
 
 val connected_query : < connected : bool > Resto.Query.t
 
+val subscribed_query : < subscribed : bool > Resto.Query.t
+
 val opt_header_status_query : header_status option Resto.Query.t
 
 val slot_encoding : Cryptobox.slot Data_encoding.t
@@ -308,4 +310,13 @@ module Gossipsub : sig
   type connection = {topics : Topic.t list; direct : bool; outbound : bool}
 
   val connection_encoding : connection Data_encoding.t
+end
+
+module Version : sig
+  type t = private {network_version : Network_version.t}
+
+  (** [make ~network_version] makes a version out of a [network_version]. *)
+  val make : network_version:Network_version.t -> t
+
+  include ENCODABLE with type t := t
 end
