@@ -70,7 +70,13 @@ let pre_export_checks_and_get_snapshot_metadata ~data_dir =
   (* Closing context and stores after checks *)
   let*! () = Context.close context in
   let* () = Store.close store in
-  return (history_mode, metadata.rollup_address, head.header.level)
+  return
+    {
+      history_mode;
+      address = metadata.rollup_address;
+      head_level = head.header.level;
+      last_commitment = Sc_rollup_block.most_recent_commitment head.header;
+    }
 
 let operator_local_file_regexp =
   Re.Str.regexp "^storage/\\(commitments_published_at_level.*\\|lpc$\\)"
@@ -88,17 +94,15 @@ let export _cctxt ~data_dir ~dest =
     Format.eprintf "Acquiring process lock@." ;
     Utils.with_lockfile (Node_context.processing_lockfile_path ~data_dir)
     @@ fun () ->
-    let* history_mode, address, head_level =
-      pre_export_checks_and_get_snapshot_metadata ~data_dir
-    in
+    let* metadata = pre_export_checks_and_get_snapshot_metadata ~data_dir in
     let dest_file =
       Filename.concat dest
       @@ Format.asprintf
            "snapshot-%a-%ld.%s.uncompressed"
            Address.pp_short
-           address
-           head_level
-           (Configuration.string_of_history_mode history_mode)
+           metadata.address
+           metadata.head_level
+           (Configuration.string_of_history_mode metadata.history_mode)
     in
     let*! () =
       let open Lwt_syntax in
@@ -110,6 +114,7 @@ let export _cctxt ~data_dir ~dest =
       create
         stdlib_reader
         stdlib_writer
+        metadata
         ~dir:data_dir
         ~include_file
         ~dest:dest_file ;
