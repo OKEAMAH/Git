@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
 // SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
 // SPDX-FileCopyrightText: 2022-2023 Nomadic Labs <contact@nomadic-labs.com>
+// SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 //
 // SPDX-License-Identifier: MIT
 
@@ -15,6 +16,8 @@ use core::{
     ptr,
     slice::{from_raw_parts, from_raw_parts_mut},
 };
+use std::fs::OpenOptions;
+use std::io::Write;
 use tezos_smart_rollup_core::smart_rollup_core::{ReadInputMessageInfo, SmartRollupCore};
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
 use tezos_smart_rollup_host::metadata::METADATA_SIZE;
@@ -25,6 +28,7 @@ impl From<HostState> for MockHost {
         Self {
             info: super::info_for_level(state.curr_level as i32),
             state: RefCell::new(state),
+            output_file: None,
         }
     }
 }
@@ -66,7 +70,24 @@ unsafe impl SmartRollupCore for MockHost {
 
         let debug = String::from_utf8(debug_out).expect("unexpected non-utf8 debug log");
 
-        eprint!("{}", &debug);
+        match &self.output_file {
+            Some(output_file) => {
+                let output_file = OpenOptions::new()
+                    .append(true)
+                    .truncate(false)
+                    .create(true)
+                    .open(output_file);
+                match output_file {
+                    Ok(mut output_file) => {
+                        if let Err(e) = write!(output_file, "{}", &debug) {
+                            eprint!("Error due to: {}", e)
+                        }
+                    }
+                    Err(e) => eprint!("Error due to: {}", e),
+                }
+            }
+            None => eprint!("{}", &debug),
+        }
     }
 
     unsafe fn write_output(&self, src: *const u8, num_bytes: usize) -> i32 {

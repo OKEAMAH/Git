@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
+// SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 //
 // SPDX-License-Identifier: MIT
 
@@ -45,10 +46,10 @@ const NAIROBI_BLOCK_TIME: i64 = 15;
 const NAIROBI_ACTIVATION_TIMESTAMP: i64 = 1_687_561_630;
 
 /// The runtime host when _not_ running in **wasm**.
-#[derive(Debug)]
 pub struct MockHost {
     state: RefCell<HostState>,
     info: inbox::InfoPerLevel,
+    output_file: Option<String>,
 }
 
 impl Default for MockHost {
@@ -59,7 +60,7 @@ impl Default for MockHost {
                     .size()
             ]));
 
-        Self::with_address(&address)
+        Self::with_address(&address, None)
     }
 }
 
@@ -94,8 +95,23 @@ impl TransferMetadata {
 }
 
 impl MockHost {
+    /// Create a new instance of the `MockHost`, additionally provide the file's
+    /// name where the logs will be outputed.
+    pub fn default_with_output_file(output_file: String) -> Self {
+        let address = SmartRollupAddress::new(SmartRollupHash(vec![
+                0;
+                HashType::SmartRollupHash
+                    .size()
+            ]));
+
+        Self::with_address(&address, Some(output_file))
+    }
+
     /// Create a new instance of the `MockHost`, specifying the rollup address.
-    pub fn with_address(address: &SmartRollupAddress) -> Self {
+    pub fn with_address(
+        address: &SmartRollupAddress,
+        output_file: Option<String>,
+    ) -> Self {
         let raw_rollup_address = address
             .hash()
             .0
@@ -121,6 +137,7 @@ impl MockHost {
         Self {
             state: state.into(),
             info,
+            output_file,
         }
     }
 
