@@ -294,7 +294,7 @@ types:
       type: z
       if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::int)
     - id: big_map__update__string__micheline__011__pthangz2__michelson_v1__expression
-      type: big_map__update__string__string
+      type: bytes_dyn_uint30
       if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::string)
     - id: big_map__update__sequence__micheline__011__pthangz2__michelson_v1__expression
       type: big_map__update__sequence__micheline__011__pthangz2__michelson_v1__expression
@@ -322,14 +322,8 @@ types:
       type: big_map__update__prim__generic__micheline__011__pthangz2__michelson_v1__expression
       if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::prim__generic)
     - id: big_map__update__bytes__micheline__011__pthangz2__michelson_v1__expression
-      type: big_map__update__bytes__bytes
+      type: bytes_dyn_uint30
       if: (micheline__011__pthangz2__michelson_v1__expression_tag == micheline__011__pthangz2__michelson_v1__expression_tag::bytes)
-  big_map__update__bytes__bytes:
-    seq:
-    - id: len_bytes
-      type: uint30
-    - id: bytes
-      size: len_bytes
   big_map__update__prim__generic__micheline__011__pthangz2__michelson_v1__expression:
     seq:
     - id: prim
@@ -337,14 +331,8 @@ types:
       enum: big_map__update__prim__generic__id_011__pthangz2__michelson__v1__primitives
     - id: big_map__update__prim__generic__args
       type: big_map__update__prim__generic__args
-    - id: big_map__update__prim__generic__annots
-      type: big_map__update__prim__generic__annots
-  big_map__update__prim__generic__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   big_map__update__prim__generic__args:
     seq:
     - id: len_big_map__update__prim__generic__args_dyn
@@ -370,14 +358,8 @@ types:
       type: big_map__update__micheline__011__pthangz2__michelson_v1__expression
     - id: arg2
       type: big_map__update__micheline__011__pthangz2__michelson_v1__expression
-    - id: big_map__update__prim__2_args__some_annots__annots
-      type: big_map__update__prim__2_args__some_annots__annots
-  big_map__update__prim__2_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   big_map__update__prim__2_args__no_annots__micheline__011__pthangz2__michelson_v1__expression:
     seq:
     - id: prim
@@ -394,14 +376,8 @@ types:
       enum: big_map__update__prim__1_arg__some_annots__id_011__pthangz2__michelson__v1__primitives
     - id: arg
       type: big_map__update__micheline__011__pthangz2__michelson_v1__expression
-    - id: big_map__update__prim__1_arg__some_annots__annots
-      type: big_map__update__prim__1_arg__some_annots__annots
-  big_map__update__prim__1_arg__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   big_map__update__prim__1_arg__no_annots__micheline__011__pthangz2__michelson_v1__expression:
     seq:
     - id: prim
@@ -414,14 +390,8 @@ types:
     - id: prim
       type: u1
       enum: big_map__update__prim__no_args__some_annots__id_011__pthangz2__michelson__v1__primitives
-    - id: big_map__update__prim__no_args__some_annots__annots
-      type: big_map__update__prim__no_args__some_annots__annots
-  big_map__update__prim__no_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   big_map__update__sequence__micheline__011__pthangz2__michelson_v1__expression:
     seq:
     - id: len_big_map__update__sequence__sequence_dyn
@@ -438,12 +408,12 @@ types:
     seq:
     - id: sequence_elt
       type: big_map__update__micheline__011__pthangz2__michelson_v1__expression
-  big_map__update__string__string:
+  bytes_dyn_uint30:
     seq:
-    - id: len_string
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: string
-      size: len_string
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   z:
     seq:
     - id: has_tail

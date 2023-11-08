@@ -62,7 +62,7 @@ types:
       type: z
       if: (micheline__012__psithaca__michelson_v1__expression_tag == micheline__012__psithaca__michelson_v1__expression_tag::int)
     - id: update__string__micheline__012__psithaca__michelson_v1__expression
-      type: update__string__string
+      type: bytes_dyn_uint30
       if: (micheline__012__psithaca__michelson_v1__expression_tag == micheline__012__psithaca__michelson_v1__expression_tag::string)
     - id: update__sequence__micheline__012__psithaca__michelson_v1__expression
       type: update__sequence__micheline__012__psithaca__michelson_v1__expression
@@ -90,14 +90,8 @@ types:
       type: update__prim__generic__micheline__012__psithaca__michelson_v1__expression
       if: (micheline__012__psithaca__michelson_v1__expression_tag == micheline__012__psithaca__michelson_v1__expression_tag::prim__generic)
     - id: update__bytes__micheline__012__psithaca__michelson_v1__expression
-      type: update__bytes__bytes
+      type: bytes_dyn_uint30
       if: (micheline__012__psithaca__michelson_v1__expression_tag == micheline__012__psithaca__michelson_v1__expression_tag::bytes)
-  update__bytes__bytes:
-    seq:
-    - id: len_bytes
-      type: uint30
-    - id: bytes
-      size: len_bytes
   update__prim__generic__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
@@ -105,14 +99,8 @@ types:
       enum: update__prim__generic__id_012__psithaca__michelson__v1__primitives
     - id: update__prim__generic__args
       type: update__prim__generic__args
-    - id: update__prim__generic__annots
-      type: update__prim__generic__annots
-  update__prim__generic__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   update__prim__generic__args:
     seq:
     - id: len_update__prim__generic__args_dyn
@@ -138,14 +126,8 @@ types:
       type: update__micheline__012__psithaca__michelson_v1__expression
     - id: arg2
       type: update__micheline__012__psithaca__michelson_v1__expression
-    - id: update__prim__2_args__some_annots__annots
-      type: update__prim__2_args__some_annots__annots
-  update__prim__2_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   update__prim__2_args__no_annots__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
@@ -162,14 +144,8 @@ types:
       enum: update__prim__1_arg__some_annots__id_012__psithaca__michelson__v1__primitives
     - id: arg
       type: update__micheline__012__psithaca__michelson_v1__expression
-    - id: update__prim__1_arg__some_annots__annots
-      type: update__prim__1_arg__some_annots__annots
-  update__prim__1_arg__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   update__prim__1_arg__no_annots__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
@@ -182,14 +158,8 @@ types:
     - id: prim
       type: u1
       enum: update__prim__no_args__some_annots__id_012__psithaca__michelson__v1__primitives
-    - id: update__prim__no_args__some_annots__annots
-      type: update__prim__no_args__some_annots__annots
-  update__prim__no_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   update__sequence__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: len_update__sequence__sequence_dyn
@@ -206,12 +176,12 @@ types:
     seq:
     - id: sequence_elt
       type: update__micheline__012__psithaca__michelson_v1__expression
-  update__string__string:
+  bytes_dyn_uint30:
     seq:
-    - id: len_string
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: string
-      size: len_string
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   z:
     seq:
     - id: has_tail

@@ -17,14 +17,14 @@ types:
       repeat: eos
   fitness_entries:
     seq:
-    - id: fitness__elem_
-      type: fitness__elem_
-  fitness__elem_:
-    seq:
-    - id: len_fitness__elem
-      type: uint30
     - id: fitness__elem
-      size: len_fitness__elem
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

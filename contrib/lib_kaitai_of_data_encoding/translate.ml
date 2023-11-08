@@ -281,30 +281,34 @@ let rec seq_field_of_data_encoding :
           (state, [{(Ground.Attr.float ~id) with valid}])
       | Bytes (`Fixed n, _) -> (state, [Ground.Attr.bytes ~id (Fixed n)])
       | Bytes (`Variable, _) -> (state, [Ground.Attr.bytes ~id Variable])
-      | Dynamic_size {kind; encoding = {encoding = Bytes (`Variable, _); _}} ->
-          let size_id = size_id_of_id id in
-          let type_o, size_attr =
-            Ground.Attr.binary_length_kind ~id:size_id kind
-          in
-          let state =
-            match type_o with
-            | Some some_type -> add_type state some_type
-            | None -> state
-          in
-          (state, [size_attr; Ground.Attr.bytes ~id (Dynamic size_id)])
+      | Dynamic_size
+          {kind = `Uint8; encoding = {encoding = Bytes (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.bytes_dyn_uint8 in
+          (state, [Ground.Attr.bytes ~id Dynamic8])
+      | Dynamic_size
+          {kind = `Uint16; encoding = {encoding = Bytes (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.bytes_dyn_uint16 in
+          (state, [Ground.Attr.bytes ~id Dynamic16])
+      | Dynamic_size
+          {kind = `Uint30; encoding = {encoding = Bytes (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.uint30 in
+          let state = add_type state Ground.Type.bytes_dyn_uint30 in
+          (state, [Ground.Attr.bytes ~id Dynamic30])
       | String (`Fixed n, _) -> (state, [Ground.Attr.string ~id (Fixed n)])
       | String (`Variable, _) -> (state, [Ground.Attr.string ~id Variable])
-      | Dynamic_size {kind; encoding = {encoding = String (`Variable, _); _}} ->
-          let size_id = size_id_of_id id in
-          let type_o, size_attr =
-            Ground.Attr.binary_length_kind ~id:size_id kind
-          in
-          let state =
-            match type_o with
-            | Some some_type -> add_type state some_type
-            | None -> state
-          in
-          (state, [size_attr; Ground.Attr.string ~id (Dynamic size_id)])
+      | Dynamic_size
+          {kind = `Uint8; encoding = {encoding = String (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.bytes_dyn_uint8 in
+          (state, [Ground.Attr.bytes ~id Dynamic8])
+      | Dynamic_size
+          {kind = `Uint16; encoding = {encoding = String (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.bytes_dyn_uint16 in
+          (state, [Ground.Attr.bytes ~id Dynamic16])
+      | Dynamic_size
+          {kind = `Uint30; encoding = {encoding = String (`Variable, _); _}} ->
+          let state = add_type state Ground.Type.uint30 in
+          let state = add_type state Ground.Type.bytes_dyn_uint30 in
+          (state, [Ground.Attr.bytes ~id Dynamic30])
       | Dynamic_size
           {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
           let size_id = size_id_of_id (pathify path id ^ "_dyn") in

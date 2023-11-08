@@ -228,6 +228,12 @@ let%expect_test "test dynamic size bytes translation" =
       endian: be
     doc: ! 'Encoding id: ground_bytes'
     types:
+      bytes_dyn_uint30:
+        seq:
+        - id: len_bytes_dyn_uint30
+          type: uint30
+        - id: bytes_dyn_uint30
+          size: len_bytes_dyn_uint30
       uint30:
         seq:
         - id: uint30
@@ -235,10 +241,8 @@ let%expect_test "test dynamic size bytes translation" =
           valid:
             max: 1073741823
     seq:
-    - id: len_ground_bytes
-      type: uint30
     - id: ground_bytes
-      size: len_ground_bytes |}]
+      type: bytes_dyn_uint30 |}]
 
 let%expect_test "test fixed size bytes translation" =
   let s =
@@ -288,6 +292,12 @@ let%expect_test "test dynamic size string translation" =
       endian: be
     doc: ! 'Encoding id: ground_string'
     types:
+      bytes_dyn_uint30:
+        seq:
+        - id: len_bytes_dyn_uint30
+          type: uint30
+        - id: bytes_dyn_uint30
+          size: len_bytes_dyn_uint30
       uint30:
         seq:
         - id: uint30
@@ -295,10 +305,8 @@ let%expect_test "test dynamic size string translation" =
           valid:
             max: 1073741823
     seq:
-    - id: len_ground_string
-      type: uint30
     - id: ground_string
-      size: len_ground_string |}]
+      type: bytes_dyn_uint30 |}]
 
 let%expect_test "test big numbers translation" =
   let s =

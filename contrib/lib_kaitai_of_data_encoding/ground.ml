@@ -152,6 +152,12 @@ let z_type =
       ];
   }
 
+let int1_type_attr_spec ~id ~signed =
+  {
+    (Helpers.default_attr_spec ~id) with
+    dataType = DataType.(NumericType (Int_type (Int1Type {signed})));
+  }
+
 let int_multi_type_atrr_spec ~id ~signed width =
   {
     (Helpers.default_attr_spec ~id) with
@@ -203,6 +209,90 @@ module Type = struct
                        min = Ast.IntNum (-0x4000_0000);
                        max = Ast.IntNum 0x3fff_ffff;
                      });
+            };
+          ];
+      } )
+
+  let bytes_dyn_uint8 =
+    let id = "bytes_dyn_uint8" in
+    let size_id = "len_" ^ id in
+    ( id,
+      {
+        (Helpers.default_class_spec ~id ()) with
+        seq =
+          [
+            int1_type_attr_spec ~id:size_id ~signed:false;
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType =
+                DataType.(
+                  BytesType
+                    (BytesLimitType
+                       {
+                         size = Ast.Name size_id;
+                         terminator = None;
+                         include_ = false;
+                         padRight = None;
+                         process = None;
+                       }));
+              size = Some (Ast.Name size_id);
+            };
+          ];
+      } )
+
+  let bytes_dyn_uint16 =
+    let id = "bytes_dyn_uint16" in
+    let size_id = "len_" ^ id in
+    ( id,
+      {
+        (Helpers.default_class_spec ~id ()) with
+        seq =
+          [
+            int_multi_type_atrr_spec ~id:size_id ~signed:false DataType.W2;
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType =
+                DataType.(
+                  BytesType
+                    (BytesLimitType
+                       {
+                         size = Ast.Name size_id;
+                         terminator = None;
+                         include_ = false;
+                         padRight = None;
+                         process = None;
+                       }));
+              size = Some (Ast.Name size_id);
+            };
+          ];
+      } )
+
+  let bytes_dyn_uint30 =
+    let id = "bytes_dyn_uint30" in
+    let size_id = "len_" ^ id in
+    ( id,
+      {
+        (Helpers.default_class_spec ~id ()) with
+        seq =
+          [
+            {
+              (Helpers.default_attr_spec ~id:size_id) with
+              dataType = Helpers.usertype (snd uint30);
+            };
+            {
+              (Helpers.default_attr_spec ~id) with
+              dataType =
+                DataType.(
+                  BytesType
+                    (BytesLimitType
+                       {
+                         size = Ast.Name size_id;
+                         terminator = None;
+                         include_ = false;
+                         padRight = None;
+                         process = None;
+                       }));
+              size = Some (Ast.Name size_id);
             };
           ];
       } )
@@ -265,7 +355,9 @@ module Attr = struct
 
   type byte_size =
     | Fixed of int  (** [size: <int>] *)
-    | Dynamic of string  (** [size: <name>] *)
+    | Dynamic8  (** pointer to [Type.bytes_dyn_uint8] *)
+    | Dynamic16  (** pointer to [Type.bytes_dyn_uint16] *)
+    | Dynamic30  (** pointer to [Type.bytes_dyn_uint30] *)
     | Variable  (** [size-eos: true] *)
 
   let bytes ~id = function
@@ -285,21 +377,20 @@ module Attr = struct
                    }));
           size = Some (Ast.IntNum n);
         }
-    | Dynamic size_id ->
+    | Dynamic8 ->
         {
           (Helpers.default_attr_spec ~id) with
-          dataType =
-            DataType.(
-              BytesType
-                (BytesLimitType
-                   {
-                     size = Ast.Name size_id;
-                     terminator = None;
-                     include_ = false;
-                     padRight = None;
-                     process = None;
-                   }));
-          size = Some (Ast.Name size_id);
+          dataType = Helpers.usertype (snd Type.bytes_dyn_uint8);
+        }
+    | Dynamic16 ->
+        {
+          (Helpers.default_attr_spec ~id) with
+          dataType = Helpers.usertype (snd Type.bytes_dyn_uint16);
+        }
+    | Dynamic30 ->
+        {
+          (Helpers.default_attr_spec ~id) with
+          dataType = Helpers.usertype (snd Type.bytes_dyn_uint30);
         }
     | Variable ->
         {

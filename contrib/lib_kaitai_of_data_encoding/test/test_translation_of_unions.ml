@@ -169,14 +169,14 @@ let%expect_test "test union with structures inside" =
         seq:
         - id: b_field0
           type: u2
-        - id: b__b_field1
-          type: b__b_field1
-      b__b_field1:
-        seq:
-        - id: len_b_field1
-          type: uint30
         - id: b_field1
-          size: len_b_field1
+          type: bytes_dyn_uint30
+      bytes_dyn_uint30:
+        seq:
+        - id: len_bytes_dyn_uint30
+          type: uint30
+        - id: bytes_dyn_uint30
+          size: len_bytes_dyn_uint30
       uint30:
         seq:
         - id: uint30

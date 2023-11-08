@@ -12,7 +12,7 @@ types:
       type: z
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::int)
     - id: string__micheline__009__psfloren__michelson_v1__expression
-      type: string__string
+      type: bytes_dyn_uint30
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::string)
     - id: sequence__micheline__009__psfloren__michelson_v1__expression
       type: sequence__micheline__009__psfloren__michelson_v1__expression
@@ -40,14 +40,8 @@ types:
       type: prim__generic__micheline__009__psfloren__michelson_v1__expression
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::prim__generic)
     - id: bytes__micheline__009__psfloren__michelson_v1__expression
-      type: bytes__bytes
+      type: bytes_dyn_uint30
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::bytes)
-  bytes__bytes:
-    seq:
-    - id: len_bytes
-      type: uint30
-    - id: bytes
-      size: len_bytes
   prim__generic__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
@@ -55,14 +49,8 @@ types:
       enum: prim__generic__id_009__psfloren__michelson__v1__primitives
     - id: prim__generic__args
       type: prim__generic__args
-    - id: prim__generic__annots
-      type: prim__generic__annots
-  prim__generic__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   prim__generic__args:
     seq:
     - id: len_prim__generic__args_dyn
@@ -88,14 +76,8 @@ types:
       type: micheline__009__psfloren__michelson_v1__expression
     - id: arg2
       type: micheline__009__psfloren__michelson_v1__expression
-    - id: prim__2_args__some_annots__annots
-      type: prim__2_args__some_annots__annots
-  prim__2_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   prim__2_args__no_annots__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
@@ -112,14 +94,8 @@ types:
       enum: prim__1_arg__some_annots__id_009__psfloren__michelson__v1__primitives
     - id: arg
       type: micheline__009__psfloren__michelson_v1__expression
-    - id: prim__1_arg__some_annots__annots
-      type: prim__1_arg__some_annots__annots
-  prim__1_arg__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   prim__1_arg__no_annots__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: prim
@@ -132,14 +108,8 @@ types:
     - id: prim
       type: u1
       enum: prim__no_args__some_annots__id_009__psfloren__michelson__v1__primitives
-    - id: prim__no_args__some_annots__annots
-      type: prim__no_args__some_annots__annots
-  prim__no_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   sequence__micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: len_sequence__sequence_dyn
@@ -156,12 +126,12 @@ types:
     seq:
     - id: sequence_elt
       type: micheline__009__psfloren__michelson_v1__expression
-  string__string:
+  bytes_dyn_uint30:
     seq:
-    - id: len_string
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: string
-      size: len_string
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

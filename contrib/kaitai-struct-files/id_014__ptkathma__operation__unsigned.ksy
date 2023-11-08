@@ -74,7 +74,7 @@ types:
       type: increase_paid_storage__id_014__ptkathma__operation__alpha__contents
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::increase_paid_storage)
     - id: failing_noop__id_014__ptkathma__operation__alpha__contents
-      type: failing_noop__arbitrary
+      type: bytes_dyn_uint30
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::failing_noop)
     - id: register_global_constant__id_014__ptkathma__operation__alpha__contents
       type: register_global_constant__id_014__ptkathma__operation__alpha__contents
@@ -150,18 +150,12 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_dal_slot_subscribe__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: slot_index
       type: u1
-  sc_rollup_dal_slot_subscribe__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_dal_slot_subscribe__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -219,7 +213,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_execute_outbox_message__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -229,28 +223,10 @@ types:
       type: s4
     - id: message_index
       type: int31
-    - id: sc_rollup_execute_outbox_message__inclusion__proof
-      type: sc_rollup_execute_outbox_message__inclusion__proof
-    - id: sc_rollup_execute_outbox_message__message
-      type: sc_rollup_execute_outbox_message__message
-  sc_rollup_execute_outbox_message__message:
-    seq:
-    - id: len_message
-      type: uint30
-    - id: message
-      size: len_message
-  sc_rollup_execute_outbox_message__inclusion__proof:
-    seq:
-    - id: len_inclusion__proof
-      type: uint30
     - id: inclusion__proof
-      size: len_inclusion__proof
-  sc_rollup_execute_outbox_message__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
+      type: bytes_dyn_uint30
+    - id: message
+      type: bytes_dyn_uint30
   sc_rollup_execute_outbox_message__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -279,7 +255,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_timeout__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -293,12 +269,6 @@ types:
     - id: bob
       type: sc_rollup_timeout__public_key_hash_
       doc: A Ed25519, Secp256k1, or P256 public key hash
-  sc_rollup_timeout__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_timeout__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -327,7 +297,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_refute__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -435,7 +405,7 @@ types:
   sc_rollup_refute__proof__some__level:
     seq:
     - id: rollup
-      type: sc_rollup_refute__proof__some__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -494,7 +464,7 @@ types:
   sc_rollup_refute__proof__some__skips_elt_field0:
     seq:
     - id: rollup
-      type: sc_rollup_refute__proof__some__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -536,12 +506,6 @@ types:
     seq:
     - id: inbox_hash
       size: 32
-  sc_rollup_refute__proof__some__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_refute__proof__pvm_step:
     seq:
     - id: pvm_step_tag
@@ -589,14 +553,8 @@ types:
       type: s4
     - id: message_counter
       type: n
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__payload
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__payload
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__payload:
-    seq:
-    - id: len_payload
-      type: uint30
     - id: payload
-      size: len_payload
+      type: bytes_dyn_uint30
   sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__tree_proof:
     seq:
     - id: version
@@ -665,14 +623,8 @@ types:
       type: s4
     - id: message_counter
       type: n
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__payload
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__payload
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__payload:
-    seq:
-    - id: len_payload
-      type: uint30
     - id: payload
-      size: len_payload
+      type: bytes_dyn_uint30
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_proof:
     seq:
     - id: version
@@ -689,7 +641,7 @@ types:
       type: u1
       enum: tree_encoding_tag
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__tree_encoding
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__value
+      type: bytes_dyn_uint30
       if: (tree_encoding_tag == tree_encoding_tag::value)
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__blinded_value__tree_encoding
       size: 32
@@ -907,12 +859,6 @@ types:
     seq:
     - id: node_elt_field0
       size-eos: true
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__value:
-    seq:
-    - id: len_value
-      type: uint30
-    - id: value
-      size: len_value
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__after:
     seq:
     - id: after_tag
@@ -961,12 +907,6 @@ types:
     - id: sc_rollup_refute__dissection__some__dissection_elt_field0
       size: 32
       if: (dissection_elt_field0_tag == dissection_elt_field0_tag::some)
-  sc_rollup_refute__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_refute__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -995,7 +935,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_publish__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1013,12 +953,6 @@ types:
       type: s4
     - id: number_of_ticks
       type: s4
-  sc_rollup_publish__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_publish__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1047,18 +981,12 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_cement__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: commitment
       size: 32
-  sc_rollup_cement__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
   sc_rollup_cement__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1087,7 +1015,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: sc_rollup_add_messages__id_014__ptkathma__rollup_address_
+      type: bytes_dyn_uint30
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1107,16 +1035,8 @@ types:
       repeat: eos
   sc_rollup_add_messages__message_entries:
     seq:
-    - id: len_message_elt
-      type: uint30
     - id: message_elt
-      size: len_message_elt
-  sc_rollup_add_messages__id_014__ptkathma__rollup_address_:
-    seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: uint30
-    - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
+      type: bytes_dyn_uint30
   sc_rollup_add_messages__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1147,22 +1067,10 @@ types:
     - id: kind
       type: u2
       enum: kind_tag
-    - id: sc_rollup_originate__boot_sector
-      type: sc_rollup_originate__boot_sector
-    - id: sc_rollup_originate__parameters_ty
-      type: sc_rollup_originate__parameters_ty
-  sc_rollup_originate__parameters_ty:
-    seq:
-    - id: len_parameters_ty
-      type: uint30
-    - id: parameters_ty
-      size: len_parameters_ty
-  sc_rollup_originate__boot_sector:
-    seq:
-    - id: len_boot_sector
-      type: uint30
     - id: boot_sector
-      size: len_boot_sector
+      type: bytes_dyn_uint30
+    - id: parameters_ty
+      type: bytes_dyn_uint30
   sc_rollup_originate__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1227,10 +1135,10 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: transfer_ticket__ticket_contents
-      type: transfer_ticket__ticket_contents
-    - id: transfer_ticket__ticket_ty
-      type: transfer_ticket__ticket_ty
+    - id: ticket_contents
+      type: bytes_dyn_uint30
+    - id: ticket_ty
+      type: bytes_dyn_uint30
     - id: ticket_ticketer
       type: transfer_ticket__id_014__ptkathma__contract_id_
       doc: ! >-
@@ -1243,14 +1151,8 @@ types:
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: transfer_ticket__entrypoint
-      type: transfer_ticket__entrypoint
-  transfer_ticket__entrypoint:
-    seq:
-    - id: len_entrypoint
-      type: uint30
     - id: entrypoint
-      size: len_entrypoint
+      type: bytes_dyn_uint30
   transfer_ticket__id_014__ptkathma__contract_id_:
     seq:
     - id: id_014__ptkathma__contract_id_tag
@@ -1284,18 +1186,6 @@ types:
     - id: transfer_ticket__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transfer_ticket__ticket_ty:
-    seq:
-    - id: len_ticket_ty
-      type: uint30
-    - id: ticket_ty
-      size: len_ticket_ty
-  transfer_ticket__ticket_contents:
-    seq:
-    - id: len_ticket_contents
-      type: uint30
-    - id: ticket_contents
-      size: len_ticket_contents
   transfer_ticket__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1352,10 +1242,10 @@ types:
       repeat: eos
   tx_rollup_dispatch_tickets__tickets_info_entries:
     seq:
-    - id: tx_rollup_dispatch_tickets__contents
-      type: tx_rollup_dispatch_tickets__contents
-    - id: tx_rollup_dispatch_tickets__ty
-      type: tx_rollup_dispatch_tickets__ty
+    - id: contents
+      type: bytes_dyn_uint30
+    - id: ty
+      type: bytes_dyn_uint30
     - id: ticketer
       type: tx_rollup_dispatch_tickets__id_014__ptkathma__contract_id_
       doc: ! >-
@@ -1416,18 +1306,6 @@ types:
     - id: tx_rollup_dispatch_tickets__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_dispatch_tickets__ty:
-    seq:
-    - id: len_ty
-      type: uint30
-    - id: ty
-      size: len_ty
-  tx_rollup_dispatch_tickets__contents:
-    seq:
-    - id: len_contents
-      type: uint30
-    - id: contents
-      size: len_contents
   tx_rollup_dispatch_tickets__message_result_path:
     seq:
     - id: len_tx_rollup_dispatch_tickets__message_result_path_dyn
@@ -1611,7 +1489,7 @@ types:
       type: tx_rollup_rejection__case__3__case__193__case__3_field3_elt
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: tx_rollup_rejection__case__3__case__195__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__195__case__3_field3_elt
+      type: bytes_dyn_uint30
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__195)
     - id: tx_rollup_rejection__case__3__case__224__case__3_field3_elt
       type: tx_rollup_rejection__case__3__case__224__case__3_field3_elt
@@ -1713,12 +1591,6 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  tx_rollup_rejection__case__3__case__195__case__3_field3_elt:
-    seq:
-    - id: len_case__195
-      type: uint30
-    - id: case__195
-      size: len_case__195
   tx_rollup_rejection__case__3__case__193__case__3_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__3__case__193__case__193_dyn
@@ -2076,7 +1948,7 @@ types:
       type: tx_rollup_rejection__case__1__case__193__case__1_field3_elt
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: tx_rollup_rejection__case__1__case__195__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__195__case__1_field3_elt
+      type: bytes_dyn_uint30
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__195)
     - id: tx_rollup_rejection__case__1__case__224__case__1_field3_elt
       type: tx_rollup_rejection__case__1__case__224__case__1_field3_elt
@@ -2178,12 +2050,6 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  tx_rollup_rejection__case__1__case__195__case__1_field3_elt:
-    seq:
-    - id: len_case__195
-      type: uint30
-    - id: case__195
-      size: len_case__195
   tx_rollup_rejection__case__1__case__193__case__1_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__1__case__193__case__193_dyn
@@ -2541,7 +2407,7 @@ types:
       type: tx_rollup_rejection__case__2__case__193__case__2_field3_elt
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: tx_rollup_rejection__case__2__case__195__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__195__case__2_field3_elt
+      type: bytes_dyn_uint30
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__195)
     - id: tx_rollup_rejection__case__2__case__224__case__2_field3_elt
       type: tx_rollup_rejection__case__2__case__224__case__2_field3_elt
@@ -2643,12 +2509,6 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  tx_rollup_rejection__case__2__case__195__case__2_field3_elt:
-    seq:
-    - id: len_case__195
-      type: uint30
-    - id: case__195
-      size: len_case__195
   tx_rollup_rejection__case__2__case__193__case__2_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__2__case__193__case__193_dyn
@@ -3006,7 +2866,7 @@ types:
       type: tx_rollup_rejection__case__0__case__193__case__0_field3_elt
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
     - id: tx_rollup_rejection__case__0__case__195__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__195__case__0_field3_elt
+      type: bytes_dyn_uint30
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__195)
     - id: tx_rollup_rejection__case__0__case__224__case__0_field3_elt
       type: tx_rollup_rejection__case__0__case__224__case__0_field3_elt
@@ -3108,12 +2968,6 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  tx_rollup_rejection__case__0__case__195__case__0_field3_elt:
-    seq:
-    - id: len_case__195
-      type: uint30
-    - id: case__195
-      size: len_case__195
   tx_rollup_rejection__case__0__case__193__case__0_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__0__case__193__case__193_dyn
@@ -3438,7 +3292,7 @@ types:
       type: u1
       enum: message_tag
     - id: tx_rollup_rejection__batch__message
-      type: tx_rollup_rejection__batch__batch
+      type: bytes_dyn_uint30
       if: (message_tag == message_tag::batch)
     - id: tx_rollup_rejection__deposit__message
       type: tx_rollup_rejection__deposit__deposit
@@ -3485,12 +3339,6 @@ types:
     - id: tx_rollup_rejection__deposit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_rejection__batch__batch:
-    seq:
-    - id: len_batch
-      type: uint30
-    - id: batch
-      size: len_batch
   tx_rollup_rejection__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -3687,20 +3535,14 @@ types:
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
-    - id: tx_rollup_submit_batch__content
-      type: tx_rollup_submit_batch__content
+    - id: content
+      type: bytes_dyn_uint30
     - id: burn_limit_tag
       type: u1
       enum: bool
     - id: burn_limit
       type: n
       if: (burn_limit_tag == bool::true)
-  tx_rollup_submit_batch__content:
-    seq:
-    - id: len_content
-      type: uint30
-    - id: content
-      size: len_content
   tx_rollup_submit_batch__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -3755,14 +3597,8 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: register_global_constant__value
-      type: register_global_constant__value
-  register_global_constant__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
   register_global_constant__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -3777,12 +3613,6 @@ types:
     - id: register_global_constant__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  failing_noop__arbitrary:
-    seq:
-    - id: len_arbitrary
-      type: uint30
-    - id: arbitrary
-      size: len_arbitrary
   increase_paid_storage__id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: source
@@ -3925,22 +3755,10 @@ types:
       type: origination__id_014__ptkathma__scripted__contracts_
   origination__id_014__ptkathma__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -3986,14 +3804,14 @@ types:
     - id: entrypoint
       type: transaction__id_014__ptkathma__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   transaction__id_014__ptkathma__entrypoint_:
     seq:
     - id: id_014__ptkathma__entrypoint_tag

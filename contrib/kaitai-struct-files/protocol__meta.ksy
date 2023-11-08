@@ -21,10 +21,14 @@ types:
       repeat: eos
   modules_entries:
     seq:
-    - id: len_modules_elt
-      type: uint30
     - id: modules_elt
-      size: len_modules_elt
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

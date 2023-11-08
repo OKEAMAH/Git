@@ -76,7 +76,7 @@ types:
       type: z
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::int)
     - id: event__string__micheline__alpha__michelson_v1__expression
-      type: event__string__string
+      type: bytes_dyn_uint30
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::string)
     - id: event__sequence__micheline__alpha__michelson_v1__expression
       type: event__sequence__micheline__alpha__michelson_v1__expression
@@ -104,14 +104,8 @@ types:
       type: event__prim__generic__micheline__alpha__michelson_v1__expression
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
     - id: event__bytes__micheline__alpha__michelson_v1__expression
-      type: event__bytes__bytes
+      type: bytes_dyn_uint30
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::bytes)
-  event__bytes__bytes:
-    seq:
-    - id: len_bytes
-      type: uint30
-    - id: bytes
-      size: len_bytes
   event__prim__generic__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -119,14 +113,8 @@ types:
       enum: event__prim__generic__alpha__michelson__v1__primitives
     - id: event__prim__generic__args
       type: event__prim__generic__args
-    - id: event__prim__generic__annots
-      type: event__prim__generic__annots
-  event__prim__generic__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   event__prim__generic__args:
     seq:
     - id: len_event__prim__generic__args_dyn
@@ -152,14 +140,8 @@ types:
       type: event__micheline__alpha__michelson_v1__expression
     - id: arg2
       type: event__micheline__alpha__michelson_v1__expression
-    - id: event__prim__2_args__some_annots__annots
-      type: event__prim__2_args__some_annots__annots
-  event__prim__2_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   event__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -176,14 +158,8 @@ types:
       enum: event__prim__1_arg__some_annots__alpha__michelson__v1__primitives
     - id: arg
       type: event__micheline__alpha__michelson_v1__expression
-    - id: event__prim__1_arg__some_annots__annots
-      type: event__prim__1_arg__some_annots__annots
-  event__prim__1_arg__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   event__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -196,14 +172,8 @@ types:
     - id: prim
       type: u1
       enum: event__prim__no_args__some_annots__alpha__michelson__v1__primitives
-    - id: event__prim__no_args__some_annots__annots
-      type: event__prim__no_args__some_annots__annots
-  event__prim__no_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   event__sequence__micheline__alpha__michelson_v1__expression:
     seq:
     - id: len_event__sequence__sequence_dyn
@@ -220,12 +190,6 @@ types:
     seq:
     - id: sequence_elt
       type: event__micheline__alpha__michelson_v1__expression
-  event__string__string:
-    seq:
-    - id: len_string
-      type: uint30
-    - id: string
-      size: len_string
   z:
     seq:
     - id: has_tail
@@ -280,22 +244,10 @@ types:
       type: origination__alpha__scripted__contracts_
   origination__alpha__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -335,14 +287,14 @@ types:
     - id: entrypoint
       type: transaction__alpha__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

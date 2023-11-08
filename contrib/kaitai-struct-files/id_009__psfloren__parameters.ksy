@@ -115,21 +115,15 @@ types:
   id_009__psfloren__scripted__contracts_:
     seq:
     - id: code
-      type: code
+      type: bytes_dyn_uint30
     - id: storage
-      type: storage
-  storage:
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
     seq:
-    - id: len_storage
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: storage
-      size: len_storage
-  code:
-    seq:
-    - id: len_code
-      type: uint30
-    - id: code
-      size: len_code
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   public_key_hash_:
     seq:
     - id: public_key_hash_tag

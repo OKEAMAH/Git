@@ -52,7 +52,7 @@ types:
       type: delegation__id_011__pthangz2__operation__alpha__contents
       if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::delegation)
     - id: failing_noop__id_011__pthangz2__operation__alpha__contents
-      type: failing_noop__arbitrary
+      type: bytes_dyn_uint30
       if: (id_011__pthangz2__operation__alpha__contents_tag == id_011__pthangz2__operation__alpha__contents_tag::failing_noop)
     - id: register_global_constant__id_011__pthangz2__operation__alpha__contents
       type: register_global_constant__id_011__pthangz2__operation__alpha__contents
@@ -70,14 +70,8 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: register_global_constant__value
-      type: register_global_constant__value
-  register_global_constant__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
   register_global_constant__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -92,12 +86,6 @@ types:
     - id: register_global_constant__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  failing_noop__arbitrary:
-    seq:
-    - id: len_arbitrary
-      type: uint30
-    - id: arbitrary
-      size: len_arbitrary
   delegation__id_011__pthangz2__operation__alpha__contents:
     seq:
     - id: source
@@ -158,22 +146,10 @@ types:
       type: origination__id_011__pthangz2__scripted__contracts_
   origination__id_011__pthangz2__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -219,14 +195,14 @@ types:
     - id: entrypoint
       type: transaction__id_011__pthangz2__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   transaction__id_011__pthangz2__entrypoint_:
     seq:
     - id: id_011__pthangz2__entrypoint_tag

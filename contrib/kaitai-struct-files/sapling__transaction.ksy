@@ -12,12 +12,12 @@ doc: ! >-
   Description: A Sapling transaction with inputs, outputs, balance, root, bound_data
   and binding sig.
 types:
-  bound_data:
+  bytes_dyn_uint30:
     seq:
-    - id: len_bound_data
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: bound_data
-      size: len_bound_data
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   outputs:
     seq:
     - id: len_outputs_dyn
@@ -70,4 +70,4 @@ seq:
 - id: root
   type: sapling__transaction__commitment_hash
 - id: bound_data
-  type: bound_data
+  type: bytes_dyn_uint30

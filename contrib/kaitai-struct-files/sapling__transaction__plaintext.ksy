@@ -5,12 +5,12 @@ meta:
   - sapling__transaction__rcm
 doc: ! 'Encoding id: sapling.transaction.plaintext'
 types:
-  memo:
+  bytes_dyn_uint30:
     seq:
-    - id: len_memo
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: memo
-      size: len_memo
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -25,4 +25,4 @@ seq:
 - id: rcm
   type: sapling__transaction__rcm
 - id: memo
-  type: memo
+  type: bytes_dyn_uint30

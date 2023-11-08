@@ -6,6 +6,12 @@ doc: ! >-
 
   Description: A name for the distributed DB protocol
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -13,7 +19,5 @@ types:
       valid:
         max: 1073741823
 seq:
-- id: len_distributed_db_version__name
-  type: uint30
 - id: distributed_db_version__name
-  size: len_distributed_db_version__name
+  type: bytes_dyn_uint30

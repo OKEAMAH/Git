@@ -69,17 +69,17 @@ types:
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
     - id: frozen_bonds__sc_rollup_bond_id__id_015__ptlimapt__bond_id
-      type: frozen_bonds__sc_rollup_bond_id__id_015__ptlimapt__rollup_address_
+      type: bytes_dyn_uint30
       if: (id_015__ptlimapt__bond_id_tag == id_015__ptlimapt__bond_id_tag::sc_rollup_bond_id)
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
-  frozen_bonds__sc_rollup_bond_id__id_015__ptlimapt__rollup_address_:
+  bytes_dyn_uint30:
     seq:
-    - id: len_id_015__ptlimapt__rollup_address
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: id_015__ptlimapt__rollup_address
-      size: len_id_015__ptlimapt__rollup_address
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   frozen_bonds__id_015__ptlimapt__contract_id_:
     seq:
     - id: id_015__ptlimapt__contract_id_tag

@@ -9,18 +9,6 @@ types:
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-  fee_:
-    seq:
-    - id: len_fee
-      type: uint30
-    - id: fee
-      size: len_fee
-  tez__amount_:
-    seq:
-    - id: len_tez__amount
-      type: uint30
-    - id: tez__amount
-      size: len_tez__amount
   z:
     seq:
     - id: has_tail
@@ -40,18 +28,12 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  destination:
+  bytes_dyn_uint30:
     seq:
-    - id: len_destination
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: destination
-      size: len_destination
-  token_contract:
-    seq:
-    - id: len_token_contract
-      type: uint30
-    - id: token_contract
-      size: len_token_contract
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -64,22 +46,22 @@ enums:
     255: true
 seq:
 - id: token_contract
-  type: token_contract
+  type: bytes_dyn_uint30
 - id: destination
-  type: destination
+  type: bytes_dyn_uint30
 - id: amount
   type: z
 - id: tez__amount_tag
   type: u1
   enum: bool
-- id: tez__amount_
-  type: tez__amount_
+- id: tez__amount
+  type: bytes_dyn_uint30
   if: (tez__amount_tag == bool::true)
 - id: fee_tag
   type: u1
   enum: bool
-- id: fee_
-  type: fee_
+- id: fee
+  type: bytes_dyn_uint30
   if: (fee_tag == bool::true)
 - id: gas__limit_tag
   type: u1

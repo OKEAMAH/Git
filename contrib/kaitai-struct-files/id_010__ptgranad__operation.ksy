@@ -59,14 +59,8 @@ types:
       type: delegation__id_010__ptgranad__operation__alpha__contents
       if: (id_010__ptgranad__operation__alpha__contents_tag == id_010__ptgranad__operation__alpha__contents_tag::delegation)
     - id: failing_noop__id_010__ptgranad__operation__alpha__contents
-      type: failing_noop__arbitrary
+      type: bytes_dyn_uint30
       if: (id_010__ptgranad__operation__alpha__contents_tag == id_010__ptgranad__operation__alpha__contents_tag::failing_noop)
-  failing_noop__arbitrary:
-    seq:
-    - id: len_arbitrary
-      type: uint30
-    - id: arbitrary
-      size: len_arbitrary
   delegation__id_010__ptgranad__operation__alpha__contents:
     seq:
     - id: source
@@ -127,22 +121,10 @@ types:
       type: origination__id_010__ptgranad__scripted__contracts_
   origination__id_010__ptgranad__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -188,14 +170,14 @@ types:
     - id: entrypoint
       type: transaction__id_010__ptgranad__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   transaction__id_010__ptgranad__entrypoint_:
     seq:
     - id: id_010__ptgranad__entrypoint_tag

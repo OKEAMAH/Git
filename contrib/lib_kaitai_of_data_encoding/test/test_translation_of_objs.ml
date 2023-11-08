@@ -209,12 +209,12 @@ let%expect_test "test nested object translation" =
     endian: be
   doc: ! 'Encoding id: nested_objects'
   types:
-    protocol_hash:
+    bytes_dyn_uint30:
       seq:
-      - id: len_protocol_hash
+      - id: len_bytes_dyn_uint30
         type: uint30
-      - id: protocol_hash
-        size: len_protocol_hash
+      - id: bytes_dyn_uint30
+        size: len_bytes_dyn_uint30
     uint30:
       seq:
       - id: uint30
@@ -223,7 +223,7 @@ let%expect_test "test nested object translation" =
           max: 1073741823
   seq:
   - id: replaced_protocol
-    type: protocol_hash
+    type: bytes_dyn_uint30
   - id: replacement_protocol
-    type: protocol_hash
+    type: bytes_dyn_uint30
   |}]

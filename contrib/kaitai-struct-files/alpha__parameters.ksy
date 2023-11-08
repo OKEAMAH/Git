@@ -160,9 +160,9 @@ types:
       type: u1
       enum: pvm_kind
     - id: kernel
-      type: kernel
+      type: bytes_dyn_uint30
     - id: parameters_ty
-      type: parameters_ty
+      type: bytes_dyn_uint30
     - id: whitelist_tag
       type: u1
       enum: bool
@@ -186,18 +186,6 @@ types:
     - id: signature__public_key_hash
       type: public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  parameters_ty:
-    seq:
-    - id: len_parameters_ty
-      type: uint30
-    - id: parameters_ty
-      size: len_parameters_ty
-  kernel:
-    seq:
-    - id: len_kernel
-      type: uint30
-    - id: kernel
-      size: len_kernel
   bootstrap_contracts:
     seq:
     - id: len_bootstrap_contracts_dyn
@@ -232,21 +220,15 @@ types:
   alpha__scripted__contracts_:
     seq:
     - id: code
-      type: code
+      type: bytes_dyn_uint30
     - id: storage
-      type: storage
-  storage:
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
     seq:
-    - id: len_storage
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: storage
-      size: len_storage
-  code:
-    seq:
-    - id: len_code
-      type: uint30
-    - id: code
-      size: len_code
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   public_key_hash_:
     seq:
     - id: public_key_hash_tag

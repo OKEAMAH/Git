@@ -22,33 +22,21 @@ types:
   components_entries:
     seq:
     - id: name
-      type: name
+      type: bytes_dyn_uint30
     - id: interface_tag
       type: u1
       enum: bool
-    - id: interface_
-      type: interface_
+    - id: interface
+      type: bytes_dyn_uint30
       if: (interface_tag == bool::true)
     - id: implementation
-      type: implementation
-  implementation:
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
     seq:
-    - id: len_implementation
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: implementation
-      size: len_implementation
-  interface_:
-    seq:
-    - id: len_interface
-      type: uint30
-    - id: interface
-      size: len_interface
-  name:
-    seq:
-    - id: len_name
-      type: uint30
-    - id: name
-      size: len_name
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

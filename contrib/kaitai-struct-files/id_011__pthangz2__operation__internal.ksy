@@ -29,14 +29,8 @@ types:
       type: delegation__id_011__pthangz2__operation__alpha__internal_operation
       if: (id_011__pthangz2__operation__alpha__internal_operation_tag == id_011__pthangz2__operation__alpha__internal_operation_tag::delegation)
     - id: register_global_constant__id_011__pthangz2__operation__alpha__internal_operation
-      type: register_global_constant__value
+      type: bytes_dyn_uint30
       if: (id_011__pthangz2__operation__alpha__internal_operation_tag == id_011__pthangz2__operation__alpha__internal_operation_tag::register_global_constant)
-  register_global_constant__value:
-    seq:
-    - id: len_value
-      type: uint30
-    - id: value
-      size: len_value
   delegation__id_011__pthangz2__operation__alpha__internal_operation:
     seq:
     - id: delegate_tag
@@ -75,22 +69,10 @@ types:
       type: origination__id_011__pthangz2__scripted__contracts_
   origination__id_011__pthangz2__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -125,14 +107,14 @@ types:
     - id: entrypoint
       type: transaction__id_011__pthangz2__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

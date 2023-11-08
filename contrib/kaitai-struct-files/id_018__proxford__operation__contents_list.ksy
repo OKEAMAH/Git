@@ -88,7 +88,7 @@ types:
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::drain_delegate)
     - id: failing_noop__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
-      type: failing_noop__arbitrary
+      type: bytes_dyn_uint30
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::failing_noop)
     - id: register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
@@ -172,14 +172,8 @@ types:
       type: zk_rollup_update__private_pis
     - id: fee_pi
       type: zk_rollup_update__new_state
-    - id: zk_rollup_update__proof
-      type: zk_rollup_update__proof
-  zk_rollup_update__proof:
-    seq:
-    - id: len_proof
-      type: uint30
     - id: proof
-      size: len_proof
+      type: bytes_dyn_uint30
   zk_rollup_update__private_pis:
     seq:
     - id: len_zk_rollup_update__private_pis_dyn
@@ -194,8 +188,8 @@ types:
       repeat: eos
   zk_rollup_update__private_pis_entries:
     seq:
-    - id: zk_rollup_update__private_pis_elt_field0
-      type: zk_rollup_update__private_pis_elt_field0
+    - id: private_pis_elt_field0
+      type: bytes_dyn_uint30
     - id: zk_rollup_update__private_pis_elt_field1
       type: zk_rollup_update__private_pis_elt_field1
   zk_rollup_update__private_pis_elt_field1:
@@ -204,12 +198,6 @@ types:
       type: zk_rollup_update__new_state
     - id: fee
       size: 32
-  zk_rollup_update__private_pis_elt_field0:
-    seq:
-    - id: len_private_pis_elt_field0
-      type: uint30
-    - id: private_pis_elt_field0
-      size: len_private_pis_elt_field0
   zk_rollup_update__pending_pis:
     seq:
     - id: len_zk_rollup_update__pending_pis_dyn
@@ -224,8 +212,8 @@ types:
       repeat: eos
   zk_rollup_update__pending_pis_entries:
     seq:
-    - id: zk_rollup_update__pending_pis_elt_field0
-      type: zk_rollup_update__pending_pis_elt_field0
+    - id: pending_pis_elt_field0
+      type: bytes_dyn_uint30
     - id: zk_rollup_update__pending_pis_elt_field1
       type: zk_rollup_update__pending_pis_elt_field1
   zk_rollup_update__pending_pis_elt_field1:
@@ -253,12 +241,6 @@ types:
     seq:
     - id: new_state_elt
       size: 32
-  zk_rollup_update__pending_pis_elt_field0:
-    seq:
-    - id: len_pending_pis_elt_field0
-      type: uint30
-    - id: pending_pis_elt_field0
-      size: len_pending_pis_elt_field0
   zk_rollup_update__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -375,7 +357,7 @@ types:
       type: z
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::int)
     - id: zk_rollup_publish__some__string__micheline__018__proxford__michelson_v1__expression
-      type: zk_rollup_publish__some__string__string
+      type: bytes_dyn_uint30
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::string)
     - id: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
       type: zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression
@@ -403,14 +385,8 @@ types:
       type: zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__generic)
     - id: zk_rollup_publish__some__bytes__micheline__018__proxford__michelson_v1__expression
-      type: zk_rollup_publish__some__bytes__bytes
+      type: bytes_dyn_uint30
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::bytes)
-  zk_rollup_publish__some__bytes__bytes:
-    seq:
-    - id: len_bytes
-      type: uint30
-    - id: bytes
-      size: len_bytes
   zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
@@ -418,14 +394,8 @@ types:
       enum: zk_rollup_publish__some__prim__generic__id_018__proxford__michelson__v1__primitives
     - id: zk_rollup_publish__some__prim__generic__args
       type: zk_rollup_publish__some__prim__generic__args
-    - id: zk_rollup_publish__some__prim__generic__annots
-      type: zk_rollup_publish__some__prim__generic__annots
-  zk_rollup_publish__some__prim__generic__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   zk_rollup_publish__some__prim__generic__args:
     seq:
     - id: len_zk_rollup_publish__some__prim__generic__args_dyn
@@ -451,14 +421,8 @@ types:
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
     - id: arg2
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: zk_rollup_publish__some__prim__2_args__some_annots__annots
-      type: zk_rollup_publish__some__prim__2_args__some_annots__annots
-  zk_rollup_publish__some__prim__2_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   zk_rollup_publish__some__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
@@ -475,14 +439,8 @@ types:
       enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_018__proxford__michelson__v1__primitives
     - id: arg
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: zk_rollup_publish__some__prim__1_arg__some_annots__annots
-      type: zk_rollup_publish__some__prim__1_arg__some_annots__annots
-  zk_rollup_publish__some__prim__1_arg__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   zk_rollup_publish__some__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
@@ -495,14 +453,8 @@ types:
     - id: prim
       type: u1
       enum: zk_rollup_publish__some__prim__no_args__some_annots__id_018__proxford__michelson__v1__primitives
-    - id: zk_rollup_publish__some__prim__no_args__some_annots__annots
-      type: zk_rollup_publish__some__prim__no_args__some_annots__annots
-  zk_rollup_publish__some__prim__no_args__some_annots__annots:
-    seq:
-    - id: len_annots
-      type: uint30
     - id: annots
-      size: len_annots
+      type: bytes_dyn_uint30
   zk_rollup_publish__some__sequence__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: len_zk_rollup_publish__some__sequence__sequence_dyn
@@ -519,12 +471,6 @@ types:
     seq:
     - id: sequence_elt
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-  zk_rollup_publish__some__string__string:
-    seq:
-    - id: len_string
-      type: uint30
-    - id: string
-      size: len_string
   zk_rollup_publish__op_elt_field0:
     seq:
     - id: op_code
@@ -590,8 +536,8 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: zk_rollup_origination__public_parameters
-      type: zk_rollup_origination__public_parameters
+    - id: public_parameters
+      type: bytes_dyn_uint30
     - id: zk_rollup_origination__circuits_info
       type: zk_rollup_origination__circuits_info
     - id: zk_rollup_origination__init_state
@@ -635,24 +581,12 @@ types:
       repeat: eos
   zk_rollup_origination__circuits_info_entries:
     seq:
-    - id: zk_rollup_origination__circuits_info_elt_field0
-      type: zk_rollup_origination__circuits_info_elt_field0
+    - id: circuits_info_elt_field0
+      type: bytes_dyn_uint30
     - id: circuits_info_elt_field1
       type: u1
       enum: circuits_info_elt_field1_tag
       doc: circuits_info_elt_field1_tag
-  zk_rollup_origination__circuits_info_elt_field0:
-    seq:
-    - id: len_circuits_info_elt_field0
-      type: uint30
-    - id: circuits_info_elt_field0
-      size: len_circuits_info_elt_field0
-  zk_rollup_origination__public_parameters:
-    seq:
-    - id: len_public_parameters
-      type: uint30
-    - id: public_parameters
-      size: len_public_parameters
   zk_rollup_origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -722,14 +656,8 @@ types:
       size: 20
     - id: cemented_commitment
       size: 32
-    - id: smart_rollup_execute_outbox_message__output_proof
-      type: smart_rollup_execute_outbox_message__output_proof
-  smart_rollup_execute_outbox_message__output_proof:
-    seq:
-    - id: len_output_proof
-      type: uint30
     - id: output_proof
-      size: len_output_proof
+      type: bytes_dyn_uint30
   smart_rollup_execute_outbox_message__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -839,8 +767,8 @@ types:
       if: (step_tag == step_tag::proof)
   smart_rollup_refute__move__proof__step:
     seq:
-    - id: smart_rollup_refute__move__proof__pvm_step
-      type: smart_rollup_refute__move__proof__pvm_step
+    - id: pvm_step
+      type: bytes_dyn_uint30
     - id: input_proof_tag
       type: u1
       enum: bool
@@ -873,14 +801,8 @@ types:
     seq:
     - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
       type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
-    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_proof
-  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_proof:
-    seq:
-    - id: len_dal_proof
-      type: uint30
     - id: dal_proof
-      size: len_dal_proof
+      type: bytes_dyn_uint30
   smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id:
     seq:
     - id: published_level
@@ -908,20 +830,8 @@ types:
       type: s4
     - id: message_counter
       type: n
-    - id: smart_rollup_refute__move__proof__inbox__proof__serialized_proof
-      type: smart_rollup_refute__move__proof__inbox__proof__serialized_proof
-  smart_rollup_refute__move__proof__inbox__proof__serialized_proof:
-    seq:
-    - id: len_serialized_proof
-      type: uint30
     - id: serialized_proof
-      size: len_serialized_proof
-  smart_rollup_refute__move__proof__pvm_step:
-    seq:
-    - id: len_pvm_step
-      type: uint30
-    - id: pvm_step
-      size: len_pvm_step
+      type: bytes_dyn_uint30
   smart_rollup_refute__move__dissection__step:
     seq:
     - id: len_smart_rollup_refute__move__dissection__dissection_dyn
@@ -1072,10 +982,8 @@ types:
       repeat: eos
   smart_rollup_add_messages__message_entries:
     seq:
-    - id: len_message_elt
-      type: uint30
     - id: message_elt
-      size: len_message_elt
+      type: bytes_dyn_uint30
   smart_rollup_add_messages__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1109,22 +1017,10 @@ types:
     - id: pvm_kind
       type: u1
       enum: smart_rollup_originate__pvm_kind
-    - id: smart_rollup_originate__kernel
-      type: smart_rollup_originate__kernel
-    - id: smart_rollup_originate__parameters_ty
-      type: smart_rollup_originate__parameters_ty
-  smart_rollup_originate__parameters_ty:
-    seq:
-    - id: len_parameters_ty
-      type: uint30
-    - id: parameters_ty
-      size: len_parameters_ty
-  smart_rollup_originate__kernel:
-    seq:
-    - id: len_kernel
-      type: uint30
     - id: kernel
-      size: len_kernel
+      type: bytes_dyn_uint30
+    - id: parameters_ty
+      type: bytes_dyn_uint30
   smart_rollup_originate__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1195,10 +1091,10 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: transfer_ticket__ticket_contents
-      type: transfer_ticket__ticket_contents
-    - id: transfer_ticket__ticket_ty
-      type: transfer_ticket__ticket_ty
+    - id: ticket_contents
+      type: bytes_dyn_uint30
+    - id: ticket_ty
+      type: bytes_dyn_uint30
     - id: ticket_ticketer
       type: transfer_ticket__id_018__proxford__contract_id_
       doc: ! >-
@@ -1211,14 +1107,8 @@ types:
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: transfer_ticket__entrypoint
-      type: transfer_ticket__entrypoint
-  transfer_ticket__entrypoint:
-    seq:
-    - id: len_entrypoint
-      type: uint30
     - id: entrypoint
-      size: len_entrypoint
+      type: bytes_dyn_uint30
   transfer_ticket__id_018__proxford__contract_id_:
     seq:
     - id: id_018__proxford__contract_id_tag
@@ -1255,18 +1145,6 @@ types:
     - id: transfer_ticket__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transfer_ticket__ticket_ty:
-    seq:
-    - id: len_ticket_ty
-      type: uint30
-    - id: ticket_ty
-      size: len_ticket_ty
-  transfer_ticket__ticket_contents:
-    seq:
-    - id: len_ticket_contents
-      type: uint30
-    - id: ticket_contents
-      size: len_ticket_contents
   transfer_ticket__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1297,14 +1175,8 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: register_global_constant__value
-      type: register_global_constant__value
-  register_global_constant__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
   register_global_constant__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1322,12 +1194,6 @@ types:
     - id: register_global_constant__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  failing_noop__arbitrary:
-    seq:
-    - id: len_arbitrary
-      type: uint30
-    - id: arbitrary
-      size: len_arbitrary
   drain_delegate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: consensus_key
@@ -1521,22 +1387,10 @@ types:
       type: origination__id_018__proxford__scripted__contracts_
   origination__id_018__proxford__scripted__contracts_:
     seq:
-    - id: origination__code
-      type: origination__code
-    - id: origination__storage
-      type: origination__storage
-  origination__storage:
-    seq:
-    - id: len_storage
-      type: uint30
-    - id: storage
-      size: len_storage
-  origination__code:
-    seq:
-    - id: len_code
-      type: uint30
     - id: code
-      size: len_code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   origination__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -1585,14 +1439,14 @@ types:
     - id: entrypoint
       type: transaction__id_018__proxford__entrypoint_
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: transaction__value
-      type: transaction__value
-  transaction__value:
-    seq:
-    - id: len_value
-      type: uint30
     - id: value
-      size: len_value
+      type: bytes_dyn_uint30
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   transaction__id_018__proxford__entrypoint_:
     seq:
     - id: id_018__proxford__entrypoint_tag

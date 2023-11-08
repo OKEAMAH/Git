@@ -8,6 +8,12 @@ doc: ! >-
 
   available through the RPC `/errors` (GET).
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: uint30
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -15,7 +21,5 @@ types:
       valid:
         max: 1073741823
 seq:
-- id: len_id_009__psfloren__errors
-  type: uint30
 - id: id_009__psfloren__errors
-  size: len_id_009__psfloren__errors
+  type: bytes_dyn_uint30

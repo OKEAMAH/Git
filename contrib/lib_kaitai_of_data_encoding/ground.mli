@@ -52,6 +52,12 @@ module Type : sig
 
   (** int31 is s4 with a bound check. *)
   val int31 : string * ClassSpec.t
+
+  val bytes_dyn_uint8 : string * ClassSpec.t
+
+  val bytes_dyn_uint16 : string * ClassSpec.t
+
+  val bytes_dyn_uint30 : string * ClassSpec.t
 end
 
 (** [Attr] is module for getting [AttrSpec.t] of ground types.
@@ -103,9 +109,9 @@ module Attr : sig
       (and strings) can have in data-encoding. *)
   type byte_size =
     | Fixed of int  (** Fixed known size, makes [size: <int>] in kaitai *)
-    | Dynamic of string
-        (** Dynamic size header, the string is the [id] of the
-                             header field, makes [size: <name>] in kaitai *)
+    | Dynamic8
+    | Dynamic16
+    | Dynamic30
     | Variable
         (** Unknown size (until end of stream), makes [size-eos: true]
                     in kaitai *)

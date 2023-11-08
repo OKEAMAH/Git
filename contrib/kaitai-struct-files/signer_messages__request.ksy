@@ -25,20 +25,14 @@ types:
     - id: pkh
       type: deterministic_nonce_hash__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: deterministic_nonce_hash__data
-      type: deterministic_nonce_hash__data
+    - id: data
+      type: bytes_dyn_uint30
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  deterministic_nonce_hash__data:
-    seq:
-    - id: len_data
-      type: uint30
-    - id: data
-      size: len_data
   deterministic_nonce_hash__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -61,20 +55,14 @@ types:
     - id: pkh
       type: deterministic_nonce__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: deterministic_nonce__data
-      type: deterministic_nonce__data
+    - id: data
+      type: bytes_dyn_uint30
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  deterministic_nonce__data:
-    seq:
-    - id: len_data
-      type: uint30
-    - id: data
-      size: len_data
   deterministic_nonce__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -114,20 +102,20 @@ types:
     - id: pkh
       type: sign__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: sign__data
-      type: sign__data
+    - id: data
+      type: bytes_dyn_uint30
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  sign__data:
+  bytes_dyn_uint30:
     seq:
-    - id: len_data
+    - id: len_bytes_dyn_uint30
       type: uint30
-    - id: data
-      size: len_data
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
