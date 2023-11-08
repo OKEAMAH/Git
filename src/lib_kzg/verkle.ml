@@ -46,9 +46,16 @@ let create_storage file_name =
 
 let read_storage file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  let buffer_size = G1.size_in_bytes + (Scalar.size_in_bytes * array_size) in
-  let buffer = Bytes.create buffer_size in
-  let _ = Unix.read file_descr buffer 0 buffer_size in
-  let _ec = Bytes.sub buffer 0 G1.size_in_bytes |> G1.of_bytes_exn in
-
+  let buffer_fr_size = Scalar.size_in_bytes * array_size in
+  let buffer_root = Bytes.create G1.size_in_bytes in
+  let buffer_fr = Bytes.create buffer_fr_size in
+  (* Read root *)
+  let _ = Unix.read file_descr buffer_root 0 G1.size_in_bytes in
+  let _ec = G1.of_bytes_exn buffer_root in
+  (* Moving cursor at the end of root *)
+  let _ = Unix.lseek file_descr G1.size_in_bytes Unix.SEEK_SET in
+  (* Read the rest *)
+  let _ = Unix.read file_descr buffer_fr 0 buffer_fr_size in
+  (* Puting pointer in the file at the begining *)
+  let _ = Unix.lseek file_descr 0 Unix.SEEK_SET in
   ()
