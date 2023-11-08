@@ -38,26 +38,6 @@ let v_labels_counter =
 (** Registers a gauge in [sc_rollup_node_registry] *)
 let v_gauge = Gauge.v ~registry:sc_rollup_node_registry ~namespace ~subsystem
 
-(** Creates a metric with a given [collector] *)
-let metric ~help ~name collector =
-  let info =
-    {
-      MetricInfo.name =
-        MetricName.v (String.concat "_" [namespace; subsystem; name]);
-      help;
-      metric_type = Gauge;
-      label_names = [];
-    }
-  in
-  let collect () =
-    LabelSetMap.singleton [] [Prometheus.Sample_set.sample (collector ())]
-  in
-  (info, collect)
-
-(** Registers a metric defined with [info] associated to its [collector] *)
-let add_metric (info, collector) =
-  CollectorRegistry.(register sc_rollup_node_registry) info collector
-
 module Cohttp (Server : Cohttp_lwt.S.Server) = struct
   let callback _conn req _body =
     let open Cohttp in
@@ -179,25 +159,31 @@ end
 module Inbox = struct
   type t = {head_inbox_level : Gauge.t}
 
+  let head_inbox_level =
+    v_gauge ~help:"The level of the last inbox" "head_inbox_level"
+
+  let head_internal_messages_number =
+    v_gauge
+      ~help:"The number of internal messages in head's inbox"
+      "head_inbox_internal_messages_number"
+
+  let head_external_messages_number =
+    v_gauge
+      ~help:"The number of external messages in head's inbox"
+      "head_inbox_external_messages_number"
+
   module Stats = struct
-    let internal_messages_number = ref 0.
-
-    let external_messages_number = ref 0.
-
-    let zero () =
-      internal_messages_number := 0. ;
-      external_messages_number := 0.
-
     let set ~is_internal l =
-      zero () ;
-      List.iter
-        (fun x ->
-          let r =
-            if is_internal x then internal_messages_number
-            else external_messages_number
-          in
-          r := !r +. 1.)
-        l
+      let internal, external_ =
+        List.fold_left
+          (fun (internal, external_) x ->
+            if is_internal x then (internal +. 1., external_)
+            else (internal, external_ +. 1.))
+          (0., 0.)
+          l
+      in
+      Prometheus.Gauge.set head_internal_messages_number internal ;
+      Prometheus.Gauge.set head_external_messages_number external_
   end
 
   let head_process_time =
@@ -226,26 +212,8 @@ module Inbox = struct
     Prometheus.Gauge.set head_process_time pt ;
     Head_process_time_histogram.observe head_process_time_histogram pt
 
-  let metrics =
-    let head_inbox_level =
-      v_gauge ~help:"The level of the last inbox" "head_inbox_level"
-    in
-    let head_internal_messages_number =
-      metric
-        ~help:"The number of internal messages in head's inbox"
-        ~name:"head_inbox_internal_messages_number"
-        (fun () -> !Stats.internal_messages_number)
-    in
-    let head_external_messages_number =
-      metric
-        ~help:"The number of external messages in head's inbox"
-        ~name:"head_inbox_external_messages_number"
-        (fun () -> !Stats.external_messages_number)
-    in
-    List.iter
-      add_metric
-      [head_internal_messages_number; head_external_messages_number] ;
-    {head_inbox_level}
+  let set_head_inbox_level l =
+    Prometheus.Gauge.set head_inbox_level (Int32.to_float l)
 end
 
 module Gc = struct

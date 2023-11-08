@@ -62,8 +62,7 @@ module Inbox : sig
   (** Set the time the rollup node used to process the head *)
   val set_process_time : Ptime.Span.t -> unit
 
-  (** The inboxes metrics *)
-  val metrics : t
+  val set_head_inbox_level : int32 -> unit
 end
 
 module Gc : sig

@@ -137,8 +137,7 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
     Node_context.inbox_of_head node_ctxt (Layer1.head_of_header predecessor)
   in
   let predecessor_timestamp = predecessor.header.timestamp in
-  let inbox_metrics = Metrics.Inbox.metrics in
-  Prometheus.Gauge.set inbox_metrics.head_inbox_level @@ Int32.to_float level ;
+  Metrics.Inbox.set_head_inbox_level level ;
   let inbox = Sc_rollup_proto_types.Inbox.of_octez inbox in
   let serialized_messages = messages in
   let*? messages =
