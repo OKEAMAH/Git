@@ -3,42 +3,42 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.contract'
 types:
-  alpha__contract_id_:
-    seq:
-    - id: alpha__contract_id_tag
-      type: u1
-      enum: alpha__contract_id_tag
-    - id: implicit__alpha__contract_id
-      type: implicit__public_key_hash_
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: originated__alpha__contract_id
-      type: originated__alpha__contract_id
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  originated__alpha__contract_id:
+  alpha__contract_id:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
+  alpha__contract_id_:
+    seq:
+    - id: alpha__contract_id_tag
+      type: u1
+      enum: alpha__contract_id_tag
+    - id: alpha__contract_id
+      type: public_key_hash_
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: alpha__contract_id
+      type: alpha__contract_id
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
+  public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   public_key_hash_tag:
     0: ed25519

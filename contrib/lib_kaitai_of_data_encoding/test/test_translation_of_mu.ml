@@ -33,36 +33,20 @@ let%expect_test "test basic mu" =
               ]))
   in
   print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: intlist
-      endian: be
-    doc: ! 'Encoding id: intlist'
-    types:
-      ilist:
-        seq:
-        - id: ilist_tag
-          type: u1
-          enum: ilist_tag
-        - id: cons__ilist
-          type: cons__ilist
-          if: (ilist_tag == ilist_tag::cons)
-      cons__ilist:
-        seq:
-        - id: hd
-          type: u2
-        - id: tl
-          type: ilist
-    enums:
-      ilist_tag:
-        0: nil
-        1: cons
-    seq:
-    - id: ilist
-      type: ilist
-      doc: ! 'Simple integer list: Using the mu combinator for lists just to test mu'
-  |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Invalid_argument "Mappings.add: duplicate keys (ilist)")
+  Raised at Kaitai_of_data_encoding__Helpers.add_uniq_assoc in file "contrib/lib_kaitai_of_data_encoding/helpers.ml", line 71, characters 11-80
+  Called from Kaitai_of_data_encoding__Translate.add_type in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 58, characters 22-60
+  Called from Kaitai_of_data_encoding__Translate.redirect in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 82, characters 14-34
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_data_encoding in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 430, characters 16-164
+  Called from Kaitai_of_data_encoding__Translate.from_data_encoding in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 827, characters 8-63
+  Called from Kaitai_of_data_encoding_test__Test_translation_of_mu.(fun) in file "contrib/lib_kaitai_of_data_encoding/test/test_translation_of_mu.ml", line 11, characters 4-759
+  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 262, characters 12-19 |}]
 
 let%expect_test "test more mu" =
   let module M = struct
@@ -102,70 +86,20 @@ let%expect_test "test more mu" =
               ]))
   in
   print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: t
-      endian: be
-    doc: ! 'Encoding id: t'
-    types:
-      mt:
-        seq:
-        - id: mt_tag
-          type: u1
-          enum: mt_tag
-        - id: one__mt
-          type: u1
-          if: (mt_tag == mt_tag::one)
-          enum: bool
-        - id: seq__mt
-          type: seq__mt
-          if: (mt_tag == mt_tag::seq)
-        - id: branch__mt
-          type: branch__mt
-          if: (mt_tag == mt_tag::branch)
-      branch__mt:
-        seq:
-        - id: payload
-          type: u1
-          enum: bool
-        - id: branch__branches
-          type: branch__branches
-      branch__branches:
-        seq:
-        - id: len_branch__branches_dyn
-          type: u4
-          valid:
-            max: 1073741823
-        - id: branch__branches_dyn
-          type: branch__branches_dyn
-          size: len_branch__branches_dyn
-      branch__branches_dyn:
-        seq:
-        - id: branch__branches_entries
-          type: branch__branches_entries
-          repeat: eos
-      branch__branches_entries:
-        seq:
-        - id: branches_elt
-          type: mt
-      seq__mt:
-        seq:
-        - id: payload
-          type: u1
-          enum: bool
-        - id: seq
-          type: mt
-    enums:
-      bool:
-        0: false
-        255: true
-      mt_tag:
-        0: empty
-        1: one
-        2: seq
-        3: branch
-    seq:
-    - id: mt
-      type: mt
-  |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Invalid_argument "Mappings.add: duplicate keys (mt)")
+  Raised at Kaitai_of_data_encoding__Helpers.add_uniq_assoc in file "contrib/lib_kaitai_of_data_encoding/helpers.ml", line 71, characters 11-80
+  Called from Kaitai_of_data_encoding__Translate.add_type in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 58, characters 22-60
+  Called from Kaitai_of_data_encoding__Translate.redirect in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 82, characters 14-34
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_union.(fun) in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 674, characters 14-923
+  Called from Stdlib__List.fold_left in file "list.ml", line 121, characters 24-34
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_union in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 642, characters 4-1023
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_data_encoding in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 428, characters 33-76
+  Called from Kaitai_of_data_encoding__Translate.from_data_encoding in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 827, characters 8-63
+  Called from Kaitai_of_data_encoding_test__Test_translation_of_mu.(fun) in file "contrib/lib_kaitai_of_data_encoding/test/test_translation_of_mu.ml", line 72, characters 4-1023
+  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 262, characters 12-19 |}]

@@ -6,7 +6,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module MuSet = Map.Make (String)
+module MuSet = Set.Make (String)
 module StringSet = Set.Make (String)
 
 (* We need to access the definition of data-encoding's [descr] type. For this
@@ -21,7 +21,7 @@ type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding [@@unboxed]
 type state = {
   enums : Ground.Enum.assoc;
   types : Ground.Type.assoc;
-  mus : string list MuSet.t;
+  mus : MuSet.t;
   imports : StringSet.t;
   extern : (anyEncoding, string) Hashtbl.t;
 }
@@ -60,8 +60,6 @@ let add_type state typ =
 let add_enum state enum =
   {state with enums = Helpers.add_uniq_assoc state.enums enum}
 
-let pathify path id = String.concat "__" (List.rev (id :: path))
-
 let summary ~title ~description =
   match (title, description) with
   | None, None -> None
@@ -77,8 +75,7 @@ let size_id_of_id id = "len_" ^ id
    group of them. When we want to attach a field to a group of attributes, we
    need to create an indirection to a named type. [redirect] is a function for
    adding a field to an indirection. *)
-let redirect state attrs fattr path id =
-  let id = pathify path id in
+let redirect state attrs fattr id =
   let ((_, user_type_classpec) as type_) =
     (id, Helpers.class_spec_of_attrs ~id attrs)
   in
@@ -96,15 +93,14 @@ let redirect_if_any :
     state ->
     AttrSpec.t list ->
     (AttrSpec.t -> AttrSpec.t) ->
-    string list ->
     string ->
     state * AttrSpec.t option =
- fun state attrs fattr path id ->
+ fun state attrs fattr id ->
   match attrs with
   | [] -> (state, None)
   | [attr] -> (state, Some {(fattr attr) with id})
   | _ :: _ :: _ as attrs ->
-      let state, attr = redirect state attrs fattr path id in
+      let state, attr = redirect state attrs fattr id in
       (state, Some attr)
 
 (* [redirect_if_many] is like [redirect] but it only does the redirection when
@@ -114,25 +110,19 @@ let redirect_if_many :
     state ->
     AttrSpec.t list ->
     (AttrSpec.t -> AttrSpec.t) ->
-    string list ->
     string ->
     state * AttrSpec.t =
- fun ?(or_if = fun _ -> false) state attrs fattr path id ->
+ fun ?(or_if = fun _ -> false) state attrs fattr id ->
   let redirected_id = id ^ "_" in
   match attrs with
   | [] -> failwith "Not supported (empty redirect)"
-  | [attr] when or_if attr -> redirect state attrs fattr path redirected_id
+  | [attr] when or_if attr -> redirect state attrs fattr redirected_id
   | [attr] -> (state, {(fattr attr) with id})
-  | _ :: _ :: _ as attrs -> redirect state attrs fattr path redirected_id
+  | _ :: _ :: _ as attrs -> redirect state attrs fattr redirected_id
 
 let rec seq_field_of_data_encoding :
-    type a.
-    state ->
-    a DataEncoding.t ->
-    string list ->
-    string ->
-    state * AttrSpec.t list =
- fun state ({encoding; _} as whole_encoding) path id ->
+    type a. state -> a DataEncoding.t -> string -> state * AttrSpec.t list =
+ fun state ({encoding; _} as whole_encoding) id ->
   (* We rely on [AnyEncoding] to be unboxed so that we can preserve physical equality *)
   match Hashtbl.find_opt state.extern (AnyEncoding whole_encoding) with
   | Some name ->
@@ -207,7 +197,7 @@ let rec seq_field_of_data_encoding :
               }
             in
             let state, represented_interval_attrs =
-              seq_field_of_data_encoding state shifted_encoding path shifted_id
+              seq_field_of_data_encoding state shifted_encoding shifted_id
             in
             let instance_type : Kaitai.Types.DataType.int_type =
               match size with
@@ -310,29 +300,24 @@ let rec seq_field_of_data_encoding :
           (state, [Ground.Attr.bytes ~id Dynamic30])
       | Dynamic_size
           {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
-          let size_id = size_id_of_id (pathify path id ^ "_dyn") in
+          let size_id = size_id_of_id (id ^ "_dyn") in
           let size_attr =
             Helpers.merge_valid
               (Ground.Attr.binary_length_kind ~id:size_id kind)
               (ValidationMax (Ast.IntNum limit))
           in
-          let state, attrs =
-            seq_field_of_data_encoding state encoding path id
-          in
+          let state, attrs = seq_field_of_data_encoding state encoding id in
           let state, attr =
             redirect
               state
               attrs
               (fun attr ->
                 {attr with size = Some (Ast.Name size_id)})
-              path
               (id ^ "_dyn")
           in
           (state, [size_attr; attr])
       | Padded (encoding, pad) ->
-          let state, attrs =
-            seq_field_of_data_encoding state encoding path id
-          in
+          let state, attrs = seq_field_of_data_encoding state encoding id in
           let pad_attr =
             let id = id ^ "_padding" in
             let doc =
@@ -352,7 +337,7 @@ let rec seq_field_of_data_encoding :
           let state = add_type state Ground.Type.n_chunk in
           let state = add_type state Ground.Type.z in
           (state, [Ground.Attr.z ~id])
-      | Conv {encoding; _} -> seq_field_of_data_encoding state encoding path id
+      | Conv {encoding; _} -> seq_field_of_data_encoding state encoding id
       | Tup _ ->
           (* single-field tup *)
           let tid_gen =
@@ -364,84 +349,68 @@ let rec seq_field_of_data_encoding :
               already_called := true ;
               id
           in
-          seq_field_of_tups state path tid_gen encoding
+          seq_field_of_tups state tid_gen encoding
       | Tups _ ->
           (* multi-field tup *)
           let tid_gen = Helpers.mk_tid_gen id in
-          seq_field_of_tups state path tid_gen encoding
+          seq_field_of_tups state tid_gen encoding
       | List {length_limit; length_encoding; elts} ->
-          seq_field_of_collection
-            state
-            length_limit
-            length_encoding
-            elts
-            path
-            id
+          seq_field_of_collection state length_limit length_encoding elts id
       | Array {length_limit; length_encoding; elts} ->
-          seq_field_of_collection
-            state
-            length_limit
-            length_encoding
-            elts
-            path
-            id
-      | Obj f -> seq_field_of_field state path f
+          seq_field_of_collection state length_limit length_encoding elts id
+      | Obj f -> seq_field_of_field state f
       | Objs {kind = _; left; right} ->
-          let state, left = seq_field_of_data_encoding state left path id in
-          let state, right = seq_field_of_data_encoding state right path id in
+          let state, left = seq_field_of_data_encoding state left id in
+          let state, right = seq_field_of_data_encoding state right id in
           let seq = left @ right in
           (state, seq)
       | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
-          seq_field_of_union state tag_size cases path id
+          seq_field_of_union state tag_size cases id
       | Dynamic_size {kind; encoding} ->
           let dyn_id =
             (* Avoid duplicated id when translating mempool *)
             if List.mem_assoc (id ^ "_dyn") state.types then id ^ "_outer"
             else id
           in
-          let size_id = size_id_of_id (pathify path dyn_id ^ "_dyn") in
+          let size_id = size_id_of_id (dyn_id ^ "_dyn") in
           let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
           let state, attrs =
-            seq_field_of_data_encoding state encoding path id
+            seq_field_of_data_encoding state encoding id
           in
           let state, attr =
             redirect
               state
               attrs
               (fun attr -> {attr with size = Some (Ast.Name size_id)})
-              path
               (id ^ "_dyn")
           in
           (state, [size_attr; attr])
       | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
-          seq_field_of_data_encoding state encoding path id
+          seq_field_of_data_encoding state encoding id
       | Describe {encoding; id; description; title} ->
           let id = escape_id id in
           let summary = summary ~title ~description in
-          let state, attrs =
-            seq_field_of_data_encoding state encoding path id
-          in
+          let state, attrs = seq_field_of_data_encoding state encoding id in
           let state, attr =
             redirect_if_many
               state
               attrs
               (fun attr -> Helpers.merge_summaries attr summary)
-              path
               id
           in
           (state, [attr])
       | Check_size {limit = _; encoding} ->
           (* TODO: Add a guard for check size.*)
-          seq_field_of_data_encoding state encoding path id
+          seq_field_of_data_encoding state encoding id
       | Delayed mk ->
           (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
           let e = mk () in
-          seq_field_of_data_encoding state e path id
+          seq_field_of_data_encoding state e id
       | Mu {name; title; description; fix; kind = _} -> (
           let summary = summary ~title ~description in
           let name = escape_id name in
-          match MuSet.find_opt name state.mus with
-          | Some path ->
+          match MuSet.mem name state.mus with
+          | true ->
               (* This node was already visited, we just put a pointer. *)
               ( state,
                 [
@@ -450,26 +419,22 @@ let rec seq_field_of_data_encoding :
                     dataType =
                       (* We don't have the full type, we just put a dummy with the correct
                          [id] which is all that gets printed *)
-                      ComplexDataType (UserType (pathify path name));
+                      ComplexDataType (UserType name);
                   };
                 ] )
-          | None ->
-              let state = {state with mus = MuSet.add name path state.mus} in
+          | false ->
+              let state = {state with mus = MuSet.add name state.mus} in
               let fixed = fix whole_encoding in
-              let state, attrs =
-                seq_field_of_data_encoding state fixed path name
-              in
+              let state, attrs = seq_field_of_data_encoding state fixed name in
               let state, attr =
                 redirect
                   state
                   attrs
                   (fun attr -> Helpers.merge_summaries attr summary)
-                  path
                   name
               in
               (state, [attr]))
       | String_enum (h, a) ->
-          let id = pathify path id in
           let names =
             let t = Hashtbl.create 17 in
             Hashtbl.iter
@@ -530,21 +495,17 @@ let rec seq_field_of_data_encoding :
 
 and seq_field_of_tups :
     type a.
-    state ->
-    string list ->
-    Helpers.tid_gen ->
-    a DataEncoding.desc ->
-    state * AttrSpec.t list =
- fun state path tid_gen d ->
+    state -> Helpers.tid_gen -> a DataEncoding.desc -> state * AttrSpec.t list =
+ fun state tid_gen d ->
   (* TODO? add indices in the path? *)
   match d with
   | Tup {encoding = Tup _ as e; json_encoding = _} ->
-      seq_field_of_tups state path tid_gen e
+      seq_field_of_tups state tid_gen e
   | Tup {encoding = Tups _ as e; json_encoding = _} ->
-      seq_field_of_tups state path tid_gen e
+      seq_field_of_tups state tid_gen e
   | Tup e ->
       let id = tid_gen () in
-      let state, attrs = seq_field_of_data_encoding state e path id in
+      let state, attrs = seq_field_of_data_encoding state e id in
       let state, attrs =
         match attrs with
         | [] -> (state, [])
@@ -555,32 +516,30 @@ and seq_field_of_tups :
                  restore it here to guarantee names are unique. *)
               (state, [Helpers.merge_summaries {attr with id} (Some attr.id)])
         | _ :: _ ->
-            let state, attr = redirect state attrs Fun.id path id in
+            let state, attr = redirect state attrs Fun.id id in
             (state, [attr])
       in
       (state, attrs)
   | Tups {kind = _; left; right} ->
-      let state, left = seq_field_of_tups state path tid_gen left.encoding in
-      let state, right = seq_field_of_tups state path tid_gen right.encoding in
+      let state, left = seq_field_of_tups state tid_gen left.encoding in
+      let state, right = seq_field_of_tups state tid_gen right.encoding in
       let seq = left @ right in
       (state, seq)
   | _ -> failwith "Non-tup(s) inside a tups"
 
 and seq_field_of_field :
-    type a.
-    state -> string list -> a DataEncoding.field -> state * AttrSpec.t list =
- fun state path f ->
+    type a. state -> a DataEncoding.field -> state * AttrSpec.t list =
+ fun state f ->
   match f with
   | Req {name; encoding; title; description} ->
       let id = escape_id name in
-      let state, attrs = seq_field_of_data_encoding state encoding path id in
+      let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
       let state, attr_o =
         redirect_if_any
           state
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
-          path
           id
       in
       (state, Option.to_list attr_o)
@@ -609,28 +568,26 @@ and seq_field_of_field :
         }
       in
       let id = escape_id name in
-      let state, attrs = seq_field_of_data_encoding state encoding path id in
+      let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
       let state, attr =
         redirect_if_many
           state
           attrs
           (fun attr -> {(Helpers.merge_summaries attr summary) with cond})
-          path
           id
       in
       (state, [cond_attr; attr])
   | Dft {name; encoding; default = _; title; description} ->
       (* NOTE: in binary format Dft is the same as Req *)
       let id = escape_id name in
-      let state, attrs = seq_field_of_data_encoding state encoding path id in
+      let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
       let state, attr_o =
         redirect_if_any
           state
           attrs
           (fun attr -> Helpers.merge_summaries attr summary)
-          path
           id
       in
       (state, Option.to_list attr_o)
@@ -640,10 +597,9 @@ and seq_field_of_union :
     state ->
     Data_encoding__Binary_size.tag_size ->
     a DataEncoding.case list ->
-    string list ->
     string ->
     state * AttrSpec.t list =
- fun state tag_size cases path id ->
+ fun state tag_size cases id ->
   let tagged_cases : (int * string * string option * anyEncoding) list =
     (* Some cases are JSON-only, we filter those out and we also get rid of
        parts we don't care about like injection and projection functions. *)
@@ -685,17 +641,14 @@ and seq_field_of_union :
   let state, payload_attrs =
     List.fold_left
       (fun (state, payload_attrs) (_, case_id, _, AnyEncoding encoding) ->
-        let path = case_id :: path in
-        let state, attrs =
-          seq_field_of_data_encoding state encoding path case_id
-        in
+        let state, attrs = seq_field_of_data_encoding state encoding case_id in
         match attrs with
         | [] -> (state, payload_attrs)
         | [attr] ->
             ( state,
               {
                 attr with
-                id = pathify path id;
+                id;
                 cond =
                   {
                     Helpers.cond_no_cond with
@@ -743,7 +696,6 @@ and seq_field_of_union :
                                });
                       };
                   })
-                path
                 id
             in
             (state, attr :: payload_attrs))
@@ -759,17 +711,14 @@ and seq_field_of_collection :
     DataEncoding.limit ->
     int DataEncoding.encoding option ->
     a DataEncoding.encoding ->
-    string list ->
     string ->
     state * AttrSpec.t list =
- fun state length_limit length_encoding elts path id ->
+ fun state length_limit length_encoding elts id ->
   match (length_limit, length_encoding, elts) with
   | At_most max_length, Some le, elts ->
       (* Kaitai recommend to use the [num_] prefix *)
       let length_id = "num_" ^ id in
-      let state, length_attrs =
-        seq_field_of_data_encoding state le path length_id
-      in
+      let state, length_attrs = seq_field_of_data_encoding state le length_id in
       let length_attr =
         match length_attrs with
         | [] -> assert false
@@ -783,7 +732,7 @@ and seq_field_of_collection :
             failwith "Not supported (N-like header)"
       in
       let elt_id = id ^ "_elt" in
-      let state, attrs = seq_field_of_data_encoding state elts path elt_id in
+      let state, attrs = seq_field_of_data_encoding state elts elt_id in
       let state, attr =
         (* We do uncoditional redirect because there can be issues where the
            [size] of elements and the [size] of the list get mixed up.
@@ -800,7 +749,6 @@ and seq_field_of_collection :
                   repeat = RepeatExpr (Ast.Name length_id);
                 };
             })
-          path
           (id ^ "_entries")
       in
       (state, [length_attr; attr])
@@ -812,7 +760,7 @@ and seq_field_of_collection :
       assert false
   | length_limit, None, elts ->
       let elt_id = id ^ "_elt" in
-      let state, attrs = seq_field_of_data_encoding state elts path elt_id in
+      let state, attrs = seq_field_of_data_encoding state elts elt_id in
       let state, attr =
         redirect
           state
@@ -839,7 +787,6 @@ and seq_field_of_collection :
                       repeat = RepeatExpr (Ast.IntNum exact_length);
                     };
                 })
-          path
           (id ^ "_entries")
       in
       (state, [attr])
@@ -866,7 +813,7 @@ let from_data_encoding :
   match encoding.encoding with
   | Describe {encoding; description; id = descrid; _} ->
       let description = add_original_id_to_description ?description id in
-      let state, attrs = seq_field_of_data_encoding state encoding [] descrid in
+      let state, attrs = seq_field_of_data_encoding state encoding descrid in
       Helpers.class_spec_of_attrs
         ~id:encoding_name
         ~description
@@ -878,7 +825,7 @@ let from_data_encoding :
   | _ ->
       let description = add_original_id_to_description id in
       let state, attrs =
-        seq_field_of_data_encoding state encoding [] encoding_name
+        seq_field_of_data_encoding state encoding encoding_name
       in
       Helpers.class_spec_of_attrs
         ~id:encoding_name

@@ -30,6 +30,6 @@ seq:
 - id: id_013__ptjakart__gas_tag
   type: u1
   enum: id_013__ptjakart__gas_tag
-- id: limited__id_013__ptjakart__gas
+- id: id_013__ptjakart__gas
   type: z
   if: (id_013__ptjakart__gas_tag == id_013__ptjakart__gas_tag::limited)

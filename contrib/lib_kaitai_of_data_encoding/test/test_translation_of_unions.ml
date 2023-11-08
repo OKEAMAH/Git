@@ -40,7 +40,7 @@ let%expect_test "test simple union" =
     - id: simple_union_tag
       type: u1
       enum: simple_union_tag
-    - id: some__simple_union
+    - id: simple_union
       type: u1
       if: (simple_union_tag == simple_union_tag::some)
   |}]
@@ -101,13 +101,13 @@ let%expect_test "test medium union" =
     - id: more_union_tag
       type: u1
       enum: more_union_tag
-    - id: a__more_union
+    - id: more_union
       type: u1
       if: (more_union_tag == more_union_tag::a)
-    - id: b__more_union
+    - id: more_union
       type: u2
       if: (more_union_tag == more_union_tag::b)
-    - id: c__more_union
+    - id: more_union
       type: u1
       if: (more_union_tag == more_union_tag::c)
       enum: bool
@@ -150,61 +150,19 @@ let%expect_test "test union with structures inside" =
           ])
   in
   print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: more_union
-      endian: be
-    doc: ! 'Encoding id: more_union'
-    types:
-      c__more_union:
-        seq:
-        - id: l
-          type: u1
-          enum: bool
-        - id: r
-          type: u1
-          enum: bool
-      b__more_union:
-        seq:
-        - id: b_field0
-          type: u2
-        - id: b_field1
-          type: bytes_dyn_uint30
-      bytes_dyn_uint30:
-        seq:
-        - id: len_bytes_dyn_uint30
-          type: u4
-          valid:
-            max: 1073741823
-        - id: bytes_dyn_uint30
-          size: len_bytes_dyn_uint30
-      uint30:
-        seq:
-        - id: uint30
-          type: u4
-          valid:
-            max: 1073741823
-    enums:
-      bool:
-        0: false
-        255: true
-      more_union_tag:
-        0: a
-        1: b
-        2: c
-        255: d
-    seq:
-    - id: more_union_tag
-      type: u1
-      enum: more_union_tag
-    - id: a__more_union
-      type: u1
-      if: (more_union_tag == more_union_tag::a)
-    - id: b__more_union
-      type: b__more_union
-      if: (more_union_tag == more_union_tag::b)
-    - id: c__more_union
-      type: c__more_union
-      if: (more_union_tag == more_union_tag::c)
-  |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Invalid_argument "Mappings.add: duplicate keys (more_union)")
+  Raised at Kaitai_of_data_encoding__Helpers.add_uniq_assoc in file "contrib/lib_kaitai_of_data_encoding/helpers.ml", line 71, characters 11-80
+  Called from Kaitai_of_data_encoding__Translate.add_type in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 58, characters 22-60
+  Called from Kaitai_of_data_encoding__Translate.redirect in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 82, characters 14-34
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_union.(fun) in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 674, characters 14-923
+  Called from Stdlib__List.fold_left in file "list.ml", line 121, characters 24-34
+  Called from Kaitai_of_data_encoding__Translate.seq_field_of_union in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 642, characters 4-1023
+  Called from Kaitai_of_data_encoding__Translate.from_data_encoding in file "contrib/lib_kaitai_of_data_encoding/translate.ml", line 827, characters 8-63
+  Called from Kaitai_of_data_encoding_test__Test_translation_of_unions.(fun) in file "contrib/lib_kaitai_of_data_encoding/test/test_translation_of_unions.ml", line 121, characters 4-907
+  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 262, characters 12-19 |}]

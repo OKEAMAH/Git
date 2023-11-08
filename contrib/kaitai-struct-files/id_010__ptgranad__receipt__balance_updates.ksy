@@ -3,100 +3,51 @@ meta:
   endian: be
 doc: ! 'Encoding id: 010-PtGRANAD.receipt.balance_updates'
 types:
-  contract__id_010__ptgranad__contract_id_:
-    seq:
-    - id: id_010__ptgranad__contract_id_tag
-      type: u1
-      enum: id_010__ptgranad__contract_id_tag
-    - id: contract__implicit__id_010__ptgranad__contract_id
-      type: contract__implicit__public_key_hash_
-      if: (id_010__ptgranad__contract_id_tag == id_010__ptgranad__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: contract__originated__id_010__ptgranad__contract_id
-      type: contract__originated__id_010__ptgranad__contract_id
-      if: (id_010__ptgranad__contract_id_tag == id_010__ptgranad__contract_id_tag::originated)
-  contract__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: contract__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: contract__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: contract__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  contract__originated__id_010__ptgranad__contract_id:
+  id_010__ptgranad__contract_id:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  deposits__id_010__ptgranad__operation_metadata__alpha__balance:
+  id_010__ptgranad__contract_id_:
+    seq:
+    - id: id_010__ptgranad__contract_id_tag
+      type: u1
+      enum: id_010__ptgranad__contract_id_tag
+    - id: id_010__ptgranad__contract_id
+      type: public_key_hash_
+      if: (id_010__ptgranad__contract_id_tag == id_010__ptgranad__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: id_010__ptgranad__contract_id
+      type: id_010__ptgranad__contract_id
+      if: (id_010__ptgranad__contract_id_tag == id_010__ptgranad__contract_id_tag::originated)
+  id_010__ptgranad__operation_metadata__alpha__balance:
     seq:
     - id: delegate
-      type: deposits__public_key_hash_
+      type: public_key_hash_
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: cycle
       type: s4
-  deposits__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: deposits__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: deposits__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: deposits__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  fees__id_010__ptgranad__operation_metadata__alpha__balance:
-    seq:
-    - id: delegate
-      type: fees__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: cycle
-      type: s4
-  fees__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: fees__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: fees__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: fees__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
   id_010__ptgranad__operation_metadata__alpha__balance_:
     seq:
     - id: id_010__ptgranad__operation_metadata__alpha__balance_tag
       type: u1
       enum: id_010__ptgranad__operation_metadata__alpha__balance_tag
-    - id: contract__id_010__ptgranad__operation_metadata__alpha__balance
-      type: contract__id_010__ptgranad__contract_id_
+    - id: id_010__ptgranad__operation_metadata__alpha__balance
+      type: id_010__ptgranad__contract_id_
       if: (id_010__ptgranad__operation_metadata__alpha__balance_tag == id_010__ptgranad__operation_metadata__alpha__balance_tag::contract)
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: rewards__id_010__ptgranad__operation_metadata__alpha__balance
-      type: rewards__id_010__ptgranad__operation_metadata__alpha__balance
+    - id: id_010__ptgranad__operation_metadata__alpha__balance
+      type: id_010__ptgranad__operation_metadata__alpha__balance
       if: (id_010__ptgranad__operation_metadata__alpha__balance_tag == id_010__ptgranad__operation_metadata__alpha__balance_tag::rewards)
-    - id: fees__id_010__ptgranad__operation_metadata__alpha__balance
-      type: fees__id_010__ptgranad__operation_metadata__alpha__balance
+    - id: id_010__ptgranad__operation_metadata__alpha__balance
+      type: id_010__ptgranad__operation_metadata__alpha__balance
       if: (id_010__ptgranad__operation_metadata__alpha__balance_tag == id_010__ptgranad__operation_metadata__alpha__balance_tag::fees)
-    - id: deposits__id_010__ptgranad__operation_metadata__alpha__balance
-      type: deposits__id_010__ptgranad__operation_metadata__alpha__balance
+    - id: id_010__ptgranad__operation_metadata__alpha__balance
+      type: id_010__ptgranad__operation_metadata__alpha__balance
       if: (id_010__ptgranad__operation_metadata__alpha__balance_tag == id_010__ptgranad__operation_metadata__alpha__balance_tag::deposits)
   id_010__ptgranad__operation_metadata__alpha__balance_updates_:
     seq:
@@ -121,25 +72,18 @@ types:
     - id: id_010__ptgranad__operation_metadata__alpha__update_origin
       type: u1
       enum: origin_tag
-  rewards__id_010__ptgranad__operation_metadata__alpha__balance:
-    seq:
-    - id: delegate
-      type: rewards__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: cycle
-      type: s4
-  rewards__public_key_hash_:
+  public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: rewards__ed25519__public_key_hash
+    - id: public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: rewards__secp256k1__public_key_hash
+    - id: public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: rewards__p256__public_key_hash
+    - id: public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:

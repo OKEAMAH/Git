@@ -30,6 +30,6 @@ seq:
 - id: alpha__gas_tag
   type: u1
   enum: alpha__gas_tag
-- id: limited__alpha__gas
+- id: alpha__gas
   type: z
   if: (alpha__gas_tag == alpha__gas_tag::limited)

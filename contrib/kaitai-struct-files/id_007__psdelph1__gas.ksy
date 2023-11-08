@@ -30,6 +30,6 @@ seq:
 - id: id_007__psdelph1__gas_tag
   type: u1
   enum: id_007__psdelph1__gas_tag
-- id: limited__id_007__psdelph1__gas
+- id: id_007__psdelph1__gas
   type: z
   if: (id_007__psdelph1__gas_tag == id_007__psdelph1__gas_tag::limited)
