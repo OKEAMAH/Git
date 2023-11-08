@@ -1137,6 +1137,7 @@ let gc node_ctxt ~(level : int32) =
             Event.gc_finished ~gc_level ~head_level:level
           in
           Lwt.dont_wait gc_waiter (fun _exn -> ()) ;
+          let* () = return @@ Metrics.Gc.set_last_gc (Ptime_clock.now ()) in
           return_unit)
   | _ -> return_unit
 
