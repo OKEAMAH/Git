@@ -383,7 +383,7 @@ let export_snapshot =
     (prefixes ["export"; "snapshot"; "into"] @@ Cli.snapshot_dir_param @@ stop)
     (fun data_dir dest cctxt ->
       let open Lwt_result_syntax in
-      let* snapshot_file = Snapshots.export cctxt ~data_dir ~dest in
+      let* snapshot_file = Snapshots.export ~data_dir ~dest in
       let*! () = cctxt#message "Snapshot exported to %s@." snapshot_file in
       return_unit)
 
