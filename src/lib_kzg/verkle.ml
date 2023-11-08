@@ -2,6 +2,10 @@ open Bls
 
 let log_size = 8
 
+let array_size = 1 lsl (log_size / 2)
+
+let () = assert (log_size mod 2 = 0)
+
 let trap_door = Scalar.random ()
 
 let srs = Srs_g1.generate_insecure (1 lsl log_size) trap_door
@@ -32,6 +36,19 @@ let create_storage file_name =
   in
   let root_bytes = G1.to_bytes root in
   let _ = Unix.write file_descr root_bytes 0 G1.size_in_bytes in
+  let fst_lvl_bytes =
+    Bytes.concat
+      Bytes.empty
+      (Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
+  in
+  let _ =
+    Unix.write
+      file_descr
+      fst_lvl_bytes
+      G1.size_in_bytes
+      (Scalar.size_in_bytes * Array.length fst_lvl)
+  in
+
   ()
 
 let read_storage file_name =
@@ -39,4 +56,13 @@ let read_storage file_name =
   let buffer = Bytes.create G1.size_in_bytes in
   let _ = Unix.read file_descr buffer 0 G1.size_in_bytes in
   let _ec = G1.of_bytes_exn buffer in
+  let buffer = Bytes.create (Scalar.size_in_bytes * array_size) in
+  let _ =
+    Unix.read
+      file_descr
+      buffer
+      G1.size_in_bytes
+      (Scalar.size_in_bytes * array_size)
+  in
+
   ()
