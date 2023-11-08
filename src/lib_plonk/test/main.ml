@@ -43,4 +43,5 @@ let () =
               ("Main_Protocol", Test_main_protocol.tests);
               ("Circuit", Test_circuit.tests);
               ("Cq", Test_cq.tests);
+              ("Verkle", Test_verkle.tests);
             ]))
