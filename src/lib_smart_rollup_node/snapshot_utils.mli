@@ -5,6 +5,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** {2 Snapshot archives creation and extraction} *)
+
 (** The type of snapshot archive readers. *)
 type reader
 
