@@ -1,4 +1,12 @@
 open Bls
+module IntMap = Map.Make (Int)
+
+(*
+root : G1
+fst_lvl : array of array_size of FR
+snd_lvl array_size array of array_size of FR
+all of them are put in that order on disk
+*)
 
 let log_size = 8
 
@@ -41,11 +49,12 @@ let write_file file_descr buffer ~offset ~len =
   assert (i = 0)
 
 (*2^(square_root_log*2)= size of the storage*)
-let create_storage file_name =
+let create_storage ?(test = false) file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
   let random_vector () =
     let length = 1 lsl (log_size / 2) in
-    Array.init length (fun _ -> Scalar.random ())
+    Array.init length (fun i ->
+        if test then Scalar.of_int i else Scalar.random ())
   in
   let nb_vectors = 1 lsl (log_size / 2) in
   let domain = Domain.build (1 lsl (log_size / 2)) in
@@ -79,22 +88,34 @@ let create_storage file_name =
     let list_list = Array.map Array.to_list array_array |> Array.to_list in
     Bytes.concat Bytes.empty (List.flatten list_list)
   in
-  let snd_lvl_len = total_size * Scalar.size_in_bytes in
-  write_file file_descr snd_lvl_bytes ~offset:snd_level_offset ~len:snd_lvl_len ;
-  snd_lvl_bytes
+  write_file file_descr snd_lvl_bytes ~offset:snd_level_offset ~len:snd_lvl_len
 
 let read_storage file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
   let buffer_fr_size = Scalar.size_in_bytes * array_size in
   let buffer_root = Bytes.create G1.size_in_bytes in
-  let buffer_fr = Bytes.create buffer_fr_size in
+  let buffer_fst_lvl = Bytes.create buffer_fr_size in
   (* Read root *)
-  let _root =
+  let root =
     let () = read_file file_descr buffer_root ~offset:0 ~len:G1.size_in_bytes in
     G1.of_bytes_exn buffer_root
   in
   let () =
-    read_file file_descr buffer_fr ~offset:G1.size_in_bytes ~len:buffer_fr_size
+    read_file
+      file_descr
+      buffer_fst_lvl
+      ~offset:G1.size_in_bytes
+      ~len:buffer_fr_size
+  in
+  let fst_lvl =
+    Array.init array_size (fun i ->
+        let bytes_i =
+          Bytes.sub
+            buffer_fst_lvl
+            (i * Scalar.size_in_bytes)
+            Scalar.size_in_bytes
+        in
+        Scalar.of_bytes_exn bytes_i)
   in
   let buffer_snd_lvl = Bytes.create snd_lvl_len in
   let () =
@@ -104,4 +125,41 @@ let read_storage file_name =
       ~offset:snd_level_offset
       ~len:snd_lvl_len
   in
-  buffer_snd_lvl
+  let snd_lvl =
+    Array.init array_size (fun fst ->
+        Array.init array_size (fun snd ->
+            let bytes =
+              Bytes.sub
+                buffer_snd_lvl
+                ((fst * array_size * Scalar.size_in_bytes)
+                + (snd * Scalar.size_in_bytes))
+                Scalar.size_in_bytes
+            in
+            Scalar.of_bytes_exn bytes))
+  in
+  (root, fst_lvl, snd_lvl)
+
+let create_diff size =
+  let init = IntMap.empty in
+  let rec repeat f diff n = if n = 0 then diff else repeat f (f diff) (n - 1) in
+  let rec my_update map_opt =
+    let snd = Random.int array_size in
+    match map_opt with
+    | None -> Some (IntMap.singleton snd (Scalar.random ()))
+    | Some map ->
+        if IntMap.mem snd map then my_update map_opt
+        else if IntMap.cardinal map = array_size then
+          failwith "fix that function"
+        else Some (IntMap.add snd (Scalar.random ()) map)
+  in
+
+  let f diff =
+    let fst = Random.int array_size in
+    IntMap.update fst my_update diff
+  in
+  repeat f init size
+
+(* let update_storage file_name diff =
+ *   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+ *   () *)
+(*update sndlvl *)
