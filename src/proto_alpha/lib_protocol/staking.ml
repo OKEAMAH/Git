@@ -242,7 +242,8 @@ let stake_from_unstake_for_delegate ctxt ~delegate ~unfinalizable_requests_opt
           in
           return (ctxt, balance_updates, remaining_amount_to_transfer)
 
-let stake ctxt ~amount_strictness ~sender ~delegate amount =
+let stake ctxt ~(amount_strictness : [`Best_effort | `Exact]) ~sender ~delegate
+    amount =
   let open Lwt_result_syntax in
   let check_unfinalizable ctxt
       Unstake_requests_storage.{delegate = unstake_delegate; requests} =
@@ -258,7 +259,47 @@ let stake ctxt ~amount_strictness ~sender ~delegate amount =
   let* ctxt, finalize_balance_updates, unfinalizable_requests_opt =
     finalize_unstake_and_check ~check_unfinalizable ctxt sender_contract
   in
-  let amount = match amount_strictness with `Exact -> amount in
+  let* amount =
+    let unfinalizable_requests =
+      Option.fold
+        ~none:[]
+        ~some:(fun x -> x.Unstake_requests_storage.requests)
+        unfinalizable_requests_opt
+    in
+    match amount_strictness with
+    | `Exact -> return amount
+    | `Best_effort ->
+        let* ({own_frozen; _} : Full_staking_balance_repr.t) =
+          Stake_storage.get_full_staking_balance ctxt delegate
+        in
+        let*? unstake_frozen_balance =
+          List.fold_left_e
+            (fun acc (_, t) -> Tez_repr.(acc +? t))
+            Tez_repr.zero
+            unfinalizable_requests
+        in
+        let* deposit_limit =
+          Delegate_storage.frozen_deposits_limit ctxt delegate
+        in
+        let* spendable =
+          Contract_storage.get_balance ctxt (Implicit delegate)
+        in
+        let*? max_stakable =
+          let open Result_syntax in
+          match deposit_limit with
+          | None -> return spendable
+          | Some deposit_limit -> (
+              let* total_frozen =
+                Tez_repr.(unstake_frozen_balance +? own_frozen)
+              in
+              ok
+              @@
+              match Tez_repr.sub_opt deposit_limit total_frozen with
+              | None -> Tez_repr.zero
+              | Some limit -> Tez_repr.min limit spendable)
+        in
+        return Tez_repr.(min amount max_stakable)
+  in
   let* ctxt, stake_balance_updates1, amount_from_liquid =
     if Signature.Public_key_hash.(sender <> delegate) then
       let* ctxt, stake_balance_updates_pseudotoken =
