@@ -22,7 +22,8 @@ type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding [@@unboxed]
 type state = {
   toplevel_encoding : anyEncoding;
   enums : Ground.Enum.assoc;
-  types : Ground.Type.assoc;
+  types_rev : (string, ClassSpec.t) Hashtbl.t;
+  types : (ClassSpec.t, string) Hashtbl.t;
   mus : MuSet.t;
   imports : StringSet.t;
   extern : (anyEncoding, string) Hashtbl.t;
@@ -54,11 +55,37 @@ let escape_id id =
     id ;
   Buffer.contents b
 
+let find_name state ~prefix =
+  if not (Hashtbl.mem state.types_rev prefix) then prefix
+  else
+    let rec loop i =
+      let candidate = Printf.sprintf "%s_%d" prefix i in
+      if Hashtbl.mem state.types_rev candidate then loop (succ i) else candidate
+    in
+    loop 0
+
+let new_type state id attrs =
+  let name, typ = (id, Helpers.class_spec_of_attrs ~id attrs) in
+  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
+  match Hashtbl.find_opt state.types typ with
+  | None -> (find_name state ~prefix:name, typ)
+  | Some id_prev ->
+      if String.starts_with id_prev ~prefix:id then (id_prev, typ)
+      else (find_name state ~prefix:name, typ)
+
+let add_type state (name, typ) =
+  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
+  match Hashtbl.find_opt state.types_rev name with
+  | None ->
+      Hashtbl.add state.types_rev name typ ;
+      Hashtbl.add state.types typ name ;
+      state
+  | Some cl ->
+      if typ = cl then state
+      else invalid_arg (Printf.sprintf "Duplicated types %s" name)
+
 let add_enum state enum =
   {state with enums = Helpers.add_uniq_assoc state.enums enum}
-
-let add_type state typ =
-  {state with types = Helpers.add_uniq_assoc state.types typ}
 
 let summary ~title ~description =
   match (title, description) with
@@ -70,14 +97,14 @@ let summary ~title ~description =
    group of them. When we want to attach a field to a group of attributes, we
    need to create an indirection to a named type. [redirect] is a function for
    adding a field to an indirection. *)
-let redirect state attrs fattr id =
-  let ((_, user_type) as type_) = (id, Helpers.class_spec_of_attrs ~id attrs) in
+let redirect state attrs fattr id_orig =
+  let ((id, _) as type_) = new_type state id_orig attrs in
   let state = add_type state type_ in
   let attr =
     fattr
       {
-        (Helpers.default_attr_spec ~id) with
-        dataType = Helpers.usertype user_type;
+        (Helpers.default_attr_spec ~id:id_orig) with
+        dataType = DataType.(ComplexDataType (UserType id));
       }
   in
   (state, attr)
@@ -298,7 +325,7 @@ let rec seq_field_of_data_encoding0 :
       in
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let state, attr =
-        redirect_if_many
+        redirect
           state
           attrs
           (fun attr -> {attr with size = Some (Ast.Name len_id)})
@@ -307,31 +334,18 @@ let rec seq_field_of_data_encoding0 :
       (state, [len_attr; attr])
   | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
       seq_field_of_data_encoding state encoding id
-  | Describe {encoding; id; description; title} -> (
+  | Describe {encoding; id; description; title} ->
       let id = escape_id id in
-      let description = summary ~title ~description in
+      let summary = summary ~title ~description in
       let state, attrs = seq_field_of_data_encoding state encoding id in
-      match attrs with
-      | [] -> failwith "Describe: empty attributes not supported"
-      | [attr] -> (state, [Helpers.merge_summaries attr description])
-      | _ :: _ :: _ as attrs ->
-          let described_class =
-            Helpers.class_spec_of_attrs
-              ~id
-              ?description
-              ~enums:[]
-              ~types:[]
-              ~instances:[]
-              attrs
-          in
-          let state = add_type state (id, described_class) in
-          let attr =
-            {
-              (Helpers.default_attr_spec ~id) with
-              dataType = Helpers.usertype described_class;
-            }
-          in
-          (state, [attr]))
+      let state, attr =
+        redirect
+          state
+          attrs
+          (fun attr -> Helpers.merge_summaries attr summary)
+          id
+      in
+      (state, [attr])
   | Check_size {limit = _; encoding} ->
       (* TODO: Add a guard for check size.*)
       seq_field_of_data_encoding state encoding id
@@ -729,11 +743,19 @@ let from_data_encoding :
     {
       toplevel_encoding = AnyEncoding encoding;
       enums = [];
-      types = [];
+      types_rev = Hashtbl.create 20;
+      types = Hashtbl.create 20;
       mus = MuSet.empty;
       imports = StringSet.empty;
       extern;
     }
+  in
+  let types () =
+    Hashtbl.to_seq state.types_rev
+    |> Seq.map (fun (name, (typ : ClassSpec.t)) ->
+           let typ = {typ with meta = {typ.meta with id = Some name}} in
+           (name, typ))
+    |> List.of_seq
   in
   let sort l = List.sort (fun (t1, _) (t2, _) -> compare t1 t2) l in
   match encoding.encoding with
@@ -744,7 +766,7 @@ let from_data_encoding :
         ~id:encoding_name
         ~description
         ~enums:(sort state.enums)
-        ~types:(sort state.types)
+        ~types:(types () |> sort)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
@@ -757,7 +779,7 @@ let from_data_encoding :
         ~id:encoding_name
         ~description
         ~enums:(sort state.enums)
-        ~types:(sort state.types)
+        ~types:(types () |> sort)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
