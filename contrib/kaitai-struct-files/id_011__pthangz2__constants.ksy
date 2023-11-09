@@ -6,7 +6,9 @@ types:
   endorsement_reward:
     seq:
     - id: len_endorsement_reward_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: endorsement_reward_dyn
       type: endorsement_reward_dyn
       size: len_endorsement_reward_dyn
@@ -22,7 +24,9 @@ types:
   baking_reward_per_endorsement:
     seq:
     - id: len_baking_reward_per_endorsement_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: baking_reward_per_endorsement_dyn
       type: baking_reward_per_endorsement_dyn
       size: len_baking_reward_per_endorsement_dyn
@@ -63,7 +67,9 @@ types:
   time_between_blocks:
     seq:
     - id: len_time_between_blocks_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: time_between_blocks_dyn
       type: time_between_blocks_dyn
       size: len_time_between_blocks_dyn
@@ -79,7 +85,9 @@ types:
   cache_layout:
     seq:
     - id: len_cache_layout_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: cache_layout_dyn
       type: cache_layout_dyn
       size: len_cache_layout_dyn
@@ -92,12 +100,6 @@ types:
     seq:
     - id: cache_layout_elt
       type: s8
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   int31:
     seq:
     - id: int31

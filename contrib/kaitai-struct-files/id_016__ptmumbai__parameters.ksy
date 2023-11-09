@@ -57,7 +57,9 @@ types:
   commitments:
     seq:
     - id: len_commitments_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: commitments_dyn
       type: commitments_dyn
       size: len_commitments_dyn
@@ -77,7 +79,9 @@ types:
   bootstrap_contracts:
     seq:
     - id: len_bootstrap_contracts_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_contracts_dyn
       type: bootstrap_contracts_dyn
       size: len_bootstrap_contracts_dyn
@@ -108,9 +112,17 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -131,7 +143,9 @@ types:
   bootstrap_accounts:
     seq:
     - id: len_bootstrap_accounts_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bootstrap_accounts_dyn
       type: bootstrap_accounts_dyn
       size: len_bootstrap_accounts_dyn
@@ -347,12 +361,6 @@ types:
     - id: public_key_known__bls__public_key
       size: 48
       if: (public_key_tag == public_key_tag::bls)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

@@ -12,7 +12,9 @@ types:
   current_head:
     seq:
     - id: len_current_head_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: current_head_dyn
       type: current_head_dyn
       size: len_current_head_dyn
@@ -20,12 +22,6 @@ types:
     seq:
     - id: current_head
       type: block_header
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: current_head
   type: current_head

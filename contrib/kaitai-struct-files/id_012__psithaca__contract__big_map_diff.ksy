@@ -104,7 +104,9 @@ types:
   update__prim__generic__args:
     seq:
     - id: len_update__prim__generic__args_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: update__prim__generic__args_dyn
       type: update__prim__generic__args_dyn
       size: len_update__prim__generic__args_dyn
@@ -163,7 +165,9 @@ types:
   update__sequence__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: len_update__sequence__sequence_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: update__sequence__sequence_dyn
       type: update__sequence__sequence_dyn
       size: len_update__sequence__sequence_dyn
@@ -179,9 +183,17 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   z:
     seq:
     - id: has_tail
@@ -201,12 +213,6 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false
@@ -2841,7 +2847,9 @@ enums:
     3: alloc
 seq:
 - id: len_id_012__psithaca__contract__big_map_diff_dyn
-  type: uint30
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_012__psithaca__contract__big_map_diff_dyn
   type: id_012__psithaca__contract__big_map_diff_dyn
   size: len_id_012__psithaca__contract__big_map_diff_dyn

@@ -32,12 +32,6 @@ types:
     - id: bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   public_key_hash_tag:
     0: ed25519
@@ -46,7 +40,9 @@ enums:
     3: bls
 seq:
 - id: len_alpha__vote__listings_dyn
-  type: uint30
+  type: u4
+  valid:
+    max: 1073741823
 - id: alpha__vote__listings_dyn
   type: alpha__vote__listings_dyn
   size: len_alpha__vote__listings_dyn

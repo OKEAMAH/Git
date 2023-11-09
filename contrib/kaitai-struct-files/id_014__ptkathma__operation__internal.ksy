@@ -120,7 +120,9 @@ types:
   event__prim__generic__args:
     seq:
     - id: len_event__prim__generic__args_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: event__prim__generic__args_dyn
       type: event__prim__generic__args_dyn
       size: len_event__prim__generic__args_dyn
@@ -179,7 +181,9 @@ types:
   event__sequence__micheline__014__ptkathma__michelson_v1__expression:
     seq:
     - id: len_event__sequence__sequence_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: event__sequence__sequence_dyn
       type: event__sequence__sequence_dyn
       size: len_event__sequence__sequence_dyn
@@ -288,7 +292,9 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
   uint30:

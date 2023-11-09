@@ -246,9 +246,17 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   transaction__id_012__psithaca__entrypoint_:
     seq:
     - id: id_012__psithaca__entrypoint_tag
@@ -410,7 +418,9 @@ types:
   proposals__proposals:
     seq:
     - id: len_proposals__proposals_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: proposals__proposals_dyn
       type: proposals__proposals_dyn
       size: len_proposals__proposals_dyn
@@ -452,7 +462,9 @@ types:
   double_baking_evidence__bh2:
     seq:
     - id: len_double_baking_evidence__bh2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_baking_evidence__bh2_dyn
       type: double_baking_evidence__bh2_dyn
       size: len_double_baking_evidence__bh2_dyn
@@ -463,7 +475,9 @@ types:
   double_baking_evidence__bh1:
     seq:
     - id: len_double_baking_evidence__bh1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_baking_evidence__bh1_dyn
       type: double_baking_evidence__bh1_dyn
       size: len_double_baking_evidence__bh1_dyn
@@ -509,7 +523,9 @@ types:
   double_preendorsement_evidence__op2:
     seq:
     - id: len_double_preendorsement_evidence__op2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_preendorsement_evidence__op2_dyn
       type: double_preendorsement_evidence__op2_dyn
       size: len_double_preendorsement_evidence__op2_dyn
@@ -520,7 +536,9 @@ types:
   double_preendorsement_evidence__op1:
     seq:
     - id: len_double_preendorsement_evidence__op1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_preendorsement_evidence__op1_dyn
       type: double_preendorsement_evidence__op1_dyn
       size: len_double_preendorsement_evidence__op1_dyn
@@ -567,7 +585,9 @@ types:
   double_endorsement_evidence__op2:
     seq:
     - id: len_double_endorsement_evidence__op2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_endorsement_evidence__op2_dyn
       type: double_endorsement_evidence__op2_dyn
       size: len_double_endorsement_evidence__op2_dyn
@@ -578,7 +598,9 @@ types:
   double_endorsement_evidence__op1:
     seq:
     - id: len_double_endorsement_evidence__op1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_endorsement_evidence__op1_dyn
       type: double_endorsement_evidence__op1_dyn
       size: len_double_endorsement_evidence__op1_dyn
@@ -616,12 +638,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   seed_nonce_revelation__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: level

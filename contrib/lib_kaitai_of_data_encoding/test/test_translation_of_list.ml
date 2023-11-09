@@ -78,15 +78,11 @@ let%expect_test "test dynamic size list translation" =
       seq:
       - id: list_of_uint8_elt
         type: u1
-    uint30:
-      seq:
-      - id: uint30
-        type: u4
-        valid:
-          max: 1073741823
   seq:
   - id: len_list_of_uint8_dyn
-    type: uint30
+    type: u4
+    valid:
+      max: 1073741823
   - id: list_of_uint8_dyn
     type: list_of_uint8_dyn
     size: len_list_of_uint8_dyn
@@ -115,15 +111,9 @@ let%expect_test "test dynamic size list with max length" =
       seq:
       - id: list_with_length_elt
         type: u1
-    uint30:
-      seq:
-      - id: uint30
-        type: u4
-        valid:
-          max: 1073741823
   seq:
   - id: len_list_with_length_dyn
-    type: uint30
+    type: u4
     valid:
       max: 5
   - id: list_with_length_dyn

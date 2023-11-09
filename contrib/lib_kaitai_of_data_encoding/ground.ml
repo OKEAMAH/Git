@@ -166,6 +166,15 @@ let int_multi_type_atrr_spec ~id ~signed width =
         NumericType (Int_type (IntMultiType {signed; width; endian = None})));
   }
 
+let uint30_attr ~id =
+  (* the integer literal bounds are from data-encoding source, specifically
+     the binary reader *)
+  {
+    (int_multi_type_atrr_spec ~id ~signed:false DataType.W4) with
+    valid = Some (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
+  }
+
+
 module Type = struct
   type assoc = (string * Kaitai.Types.ClassSpec.t) list
 
@@ -183,14 +192,9 @@ module Type = struct
         (Helpers.default_class_spec ~id:"uint30" ()) with
         seq =
           [
-            {
-              (int_multi_type_atrr_spec ~id:"uint30" ~signed:false DataType.W4) with
-              valid =
-                Some
-                  (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
-            };
+            uint30_attr ~id:"uint30"            
           ];
-      } )
+      })
 
   let int31 =
     ( "int31",
@@ -275,10 +279,7 @@ module Type = struct
         (Helpers.default_class_spec ~id ()) with
         seq =
           [
-            {
-              (Helpers.default_attr_spec ~id:size_id) with
-              dataType = Helpers.usertype (snd uint30);
-            };
+            uint30_attr ~id:size_id;
             {
               (Helpers.default_attr_spec ~id) with
               dataType =
@@ -310,6 +311,14 @@ module Attr = struct
     {
       (Helpers.default_attr_spec ~id) with
       dataType = DataType.(NumericType (Int_type (Int1Type {signed})));
+    }
+
+  let int_multi_type_atrr_spec ~id ~signed width =
+    {
+      (Helpers.default_attr_spec ~id) with
+      dataType =
+        DataType.(
+          NumericType (Int_type (IntMultiType {signed; width; endian = None})));
     }
 
   let float_multi_type_attr_spec ~id =
@@ -346,9 +355,11 @@ module Attr = struct
     }
 
   let uint30 ~id =
+    (* the integer literal bounds are from data-encoding source, specifically
+       the binary reader *)
     {
-      (Helpers.default_attr_spec ~id) with
-      dataType = Helpers.usertype (snd Type.uint30);
+      (int_multi_type_atrr_spec ~id ~signed:false DataType.W4) with
+      valid = Some (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
     }
 
   let float ~id = float_multi_type_attr_spec ~id
@@ -424,7 +435,7 @@ module Attr = struct
   let binary_length_kind ~id kind =
     match kind with
     | `N -> failwith "Not implemented"
-    | `Uint30 -> (Some Type.uint30, uint30 ~id)
-    | `Uint16 -> (None, uint16 ~id)
-    | `Uint8 -> (None, uint8 ~id)
+    | `Uint30 -> uint30 ~id
+    | `Uint16 -> uint16 ~id
+    | `Uint8 -> uint8 ~id
 end

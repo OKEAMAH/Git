@@ -385,7 +385,9 @@ types:
   sc_rollup_refute__proof__some__inc:
     seq:
     - id: len_sc_rollup_refute__proof__some__inc_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__some__inc_dyn
       type: sc_rollup_refute__proof__some__inc_dyn
       size: len_sc_rollup_refute__proof__some__inc_dyn
@@ -426,7 +428,9 @@ types:
   sc_rollup_refute__proof__some__skips:
     seq:
     - id: len_sc_rollup_refute__proof__some__skips_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__some__skips_dyn
       type: sc_rollup_refute__proof__some__skips_dyn
       size: len_sc_rollup_refute__proof__some__skips_dyn
@@ -444,7 +448,9 @@ types:
   sc_rollup_refute__proof__some__skips_elt_field1:
     seq:
     - id: len_sc_rollup_refute__proof__some__skips_elt_field1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__some__skips_elt_field1_dyn
       type: sc_rollup_refute__proof__some__skips_elt_field1_dyn
       size: len_sc_rollup_refute__proof__some__skips_elt_field1_dyn
@@ -493,7 +499,9 @@ types:
   sc_rollup_refute__proof__some__back_pointers:
     seq:
     - id: len_sc_rollup_refute__proof__some__back_pointers_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__some__back_pointers_dyn
       type: sc_rollup_refute__proof__some__back_pointers_dyn
       size: len_sc_rollup_refute__proof__some__back_pointers_dyn
@@ -703,7 +711,9 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
       size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
@@ -782,7 +792,9 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
       size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
@@ -800,7 +812,9 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
       size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
@@ -831,7 +845,9 @@ types:
   sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node:
     seq:
     - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
       type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
       size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
@@ -884,7 +900,9 @@ types:
   sc_rollup_refute__dissection__step:
     seq:
     - id: len_sc_rollup_refute__dissection__dissection_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_refute__dissection__dissection_dyn
       type: sc_rollup_refute__dissection__dissection_dyn
       size: len_sc_rollup_refute__dissection__dissection_dyn
@@ -1024,7 +1042,9 @@ types:
   sc_rollup_add_messages__message:
     seq:
     - id: len_sc_rollup_add_messages__message_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sc_rollup_add_messages__message_dyn
       type: sc_rollup_add_messages__message_dyn
       size: len_sc_rollup_add_messages__message_dyn
@@ -1231,7 +1251,9 @@ types:
   tx_rollup_dispatch_tickets__tickets_info:
     seq:
     - id: len_tx_rollup_dispatch_tickets__tickets_info_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_dispatch_tickets__tickets_info_dyn
       type: tx_rollup_dispatch_tickets__tickets_info_dyn
       size: len_tx_rollup_dispatch_tickets__tickets_info_dyn
@@ -1309,7 +1331,9 @@ types:
   tx_rollup_dispatch_tickets__message_result_path:
     seq:
     - id: len_tx_rollup_dispatch_tickets__message_result_path_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_dispatch_tickets__message_result_path_dyn
       type: tx_rollup_dispatch_tickets__message_result_path_dyn
       size: len_tx_rollup_dispatch_tickets__message_result_path_dyn
@@ -1411,7 +1435,9 @@ types:
   tx_rollup_rejection__case__3__case__3_field3:
     seq:
     - id: len_tx_rollup_rejection__case__3__case__3_field3_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__3__case__3_field3_dyn
       type: tx_rollup_rejection__case__3__case__3_field3_dyn
       size: len_tx_rollup_rejection__case__3__case__3_field3_dyn
@@ -1620,7 +1646,9 @@ types:
   tx_rollup_rejection__case__3__case__131__case__3_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__3__case__131__case__131_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__3__case__131__case__131_dyn
       type: tx_rollup_rejection__case__3__case__131__case__131_dyn
       size: len_tx_rollup_rejection__case__3__case__131__case__131_dyn
@@ -1870,7 +1898,9 @@ types:
   tx_rollup_rejection__case__1__case__1_field3:
     seq:
     - id: len_tx_rollup_rejection__case__1__case__1_field3_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__1__case__1_field3_dyn
       type: tx_rollup_rejection__case__1__case__1_field3_dyn
       size: len_tx_rollup_rejection__case__1__case__1_field3_dyn
@@ -2079,7 +2109,9 @@ types:
   tx_rollup_rejection__case__1__case__131__case__1_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__1__case__131__case__131_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__1__case__131__case__131_dyn
       type: tx_rollup_rejection__case__1__case__131__case__131_dyn
       size: len_tx_rollup_rejection__case__1__case__131__case__131_dyn
@@ -2329,7 +2361,9 @@ types:
   tx_rollup_rejection__case__2__case__2_field3:
     seq:
     - id: len_tx_rollup_rejection__case__2__case__2_field3_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__2__case__2_field3_dyn
       type: tx_rollup_rejection__case__2__case__2_field3_dyn
       size: len_tx_rollup_rejection__case__2__case__2_field3_dyn
@@ -2538,7 +2572,9 @@ types:
   tx_rollup_rejection__case__2__case__131__case__2_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__2__case__131__case__131_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__2__case__131__case__131_dyn
       type: tx_rollup_rejection__case__2__case__131__case__131_dyn
       size: len_tx_rollup_rejection__case__2__case__131__case__131_dyn
@@ -2788,7 +2824,9 @@ types:
   tx_rollup_rejection__case__0__case__0_field3:
     seq:
     - id: len_tx_rollup_rejection__case__0__case__0_field3_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__0__case__0_field3_dyn
       type: tx_rollup_rejection__case__0__case__0_field3_dyn
       size: len_tx_rollup_rejection__case__0__case__0_field3_dyn
@@ -2997,7 +3035,9 @@ types:
   tx_rollup_rejection__case__0__case__131__case__0_field3_elt:
     seq:
     - id: len_tx_rollup_rejection__case__0__case__131__case__131_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__case__0__case__131__case__131_dyn
       type: tx_rollup_rejection__case__0__case__131__case__131_dyn
       size: len_tx_rollup_rejection__case__0__case__131__case__131_dyn
@@ -3235,7 +3275,9 @@ types:
   tx_rollup_rejection__previous_message_result_path:
     seq:
     - id: len_tx_rollup_rejection__previous_message_result_path_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__previous_message_result_path_dyn
       type: tx_rollup_rejection__previous_message_result_path_dyn
       size: len_tx_rollup_rejection__previous_message_result_path_dyn
@@ -3257,7 +3299,9 @@ types:
   tx_rollup_rejection__message_result_path:
     seq:
     - id: len_tx_rollup_rejection__message_result_path_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__message_result_path_dyn
       type: tx_rollup_rejection__message_result_path_dyn
       size: len_tx_rollup_rejection__message_result_path_dyn
@@ -3273,7 +3317,9 @@ types:
   tx_rollup_rejection__message_path:
     seq:
     - id: len_tx_rollup_rejection__message_path_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_rejection__message_path_dyn
       type: tx_rollup_rejection__message_path_dyn
       size: len_tx_rollup_rejection__message_path_dyn
@@ -3490,7 +3536,9 @@ types:
   tx_rollup_commit__messages:
     seq:
     - id: len_tx_rollup_commit__messages_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: tx_rollup_commit__messages_dyn
       type: tx_rollup_commit__messages_dyn
       size: len_tx_rollup_commit__messages_dyn
@@ -3809,9 +3857,17 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   transaction__id_014__ptkathma__entrypoint_:
     seq:
     - id: id_014__ptkathma__entrypoint_tag
@@ -3967,7 +4023,9 @@ types:
   proposals__proposals:
     seq:
     - id: len_proposals__proposals_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: proposals__proposals_dyn
       type: proposals__proposals_dyn
       size: len_proposals__proposals_dyn
@@ -4009,7 +4067,9 @@ types:
   double_baking_evidence__bh2:
     seq:
     - id: len_double_baking_evidence__bh2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_baking_evidence__bh2_dyn
       type: double_baking_evidence__bh2_dyn
       size: len_double_baking_evidence__bh2_dyn
@@ -4020,7 +4080,9 @@ types:
   double_baking_evidence__bh1:
     seq:
     - id: len_double_baking_evidence__bh1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_baking_evidence__bh1_dyn
       type: double_baking_evidence__bh1_dyn
       size: len_double_baking_evidence__bh1_dyn
@@ -4065,7 +4127,9 @@ types:
   double_preendorsement_evidence__op2:
     seq:
     - id: len_double_preendorsement_evidence__op2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_preendorsement_evidence__op2_dyn
       type: double_preendorsement_evidence__op2_dyn
       size: len_double_preendorsement_evidence__op2_dyn
@@ -4076,7 +4140,9 @@ types:
   double_preendorsement_evidence__op1:
     seq:
     - id: len_double_preendorsement_evidence__op1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_preendorsement_evidence__op1_dyn
       type: double_preendorsement_evidence__op1_dyn
       size: len_double_preendorsement_evidence__op1_dyn
@@ -4123,7 +4189,9 @@ types:
   double_endorsement_evidence__op2:
     seq:
     - id: len_double_endorsement_evidence__op2_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_endorsement_evidence__op2_dyn
       type: double_endorsement_evidence__op2_dyn
       size: len_double_endorsement_evidence__op2_dyn
@@ -4134,7 +4202,9 @@ types:
   double_endorsement_evidence__op1:
     seq:
     - id: len_double_endorsement_evidence__op1_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: double_endorsement_evidence__op1_dyn
       type: double_endorsement_evidence__op1_dyn
       size: len_double_endorsement_evidence__op1_dyn
@@ -4172,12 +4242,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   vdf_revelation__solution:
     seq:
     - id: solution_field0

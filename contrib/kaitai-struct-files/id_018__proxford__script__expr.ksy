@@ -54,7 +54,9 @@ types:
   prim__generic__args:
     seq:
     - id: len_prim__generic__args_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: prim__generic__args_dyn
       type: prim__generic__args_dyn
       size: len_prim__generic__args_dyn
@@ -113,7 +115,9 @@ types:
   sequence__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: len_sequence__sequence_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sequence__sequence_dyn
       type: sequence__sequence_dyn
       size: len_sequence__sequence_dyn
@@ -129,7 +133,9 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
   uint30:

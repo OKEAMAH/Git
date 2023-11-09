@@ -14,7 +14,9 @@ types:
   round_robin_over_delegates__delegate_selection:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates__round_robin_over_delegates_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
@@ -26,7 +28,9 @@ types:
   round_robin_over_delegates__round_robin_over_delegates_entries:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
@@ -54,12 +58,6 @@ types:
     - id: round_robin_over_delegates__p256__public_key
       size: 33
       if: (public_key_tag == public_key_tag::p256)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   ratio_of_frozen_deposits_slashed_per_double_endorsement:
     seq:
     - id: numerator

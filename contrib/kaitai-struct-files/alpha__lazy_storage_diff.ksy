@@ -59,7 +59,9 @@ types:
   sapling_state__alloc__nullifiers:
     seq:
     - id: len_sapling_state__alloc__nullifiers_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__alloc__nullifiers_dyn
       type: sapling_state__alloc__nullifiers_dyn
       size: len_sapling_state__alloc__nullifiers_dyn
@@ -75,7 +77,9 @@ types:
   sapling_state__alloc__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
       type: sapling_state__alloc__commitments_and_ciphertexts_dyn
       size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
@@ -106,7 +110,9 @@ types:
   sapling_state__copy__nullifiers:
     seq:
     - id: len_sapling_state__copy__nullifiers_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__copy__nullifiers_dyn
       type: sapling_state__copy__nullifiers_dyn
       size: len_sapling_state__copy__nullifiers_dyn
@@ -122,7 +128,9 @@ types:
   sapling_state__copy__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__copy__commitments_and_ciphertexts_dyn
       type: sapling_state__copy__commitments_and_ciphertexts_dyn
       size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
@@ -146,7 +154,9 @@ types:
   sapling_state__update__nullifiers:
     seq:
     - id: len_sapling_state__update__nullifiers_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__update__nullifiers_dyn
       type: sapling_state__update__nullifiers_dyn
       size: len_sapling_state__update__nullifiers_dyn
@@ -162,7 +172,9 @@ types:
   sapling_state__update__commitments_and_ciphertexts:
     seq:
     - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: sapling_state__update__commitments_and_ciphertexts_dyn
       type: sapling_state__update__commitments_and_ciphertexts_dyn
       size: len_sapling_state__update__commitments_and_ciphertexts_dyn
@@ -209,7 +221,9 @@ types:
   big_map__alloc__updates:
     seq:
     - id: len_big_map__alloc__updates_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: big_map__alloc__updates_dyn
       type: big_map__alloc__updates_dyn
       size: len_big_map__alloc__updates_dyn
@@ -240,7 +254,9 @@ types:
   big_map__copy__updates:
     seq:
     - id: len_big_map__copy__updates_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: big_map__copy__updates_dyn
       type: big_map__copy__updates_dyn
       size: len_big_map__copy__updates_dyn
@@ -264,7 +280,9 @@ types:
   big_map__update__updates:
     seq:
     - id: len_big_map__update__updates_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: big_map__update__updates_dyn
       type: big_map__update__updates_dyn
       size: len_big_map__update__updates_dyn
@@ -336,7 +354,9 @@ types:
   big_map__update__prim__generic__args:
     seq:
     - id: len_big_map__update__prim__generic__args_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: big_map__update__prim__generic__args_dyn
       type: big_map__update__prim__generic__args_dyn
       size: len_big_map__update__prim__generic__args_dyn
@@ -395,7 +415,9 @@ types:
   big_map__update__sequence__micheline__alpha__michelson_v1__expression:
     seq:
     - id: len_big_map__update__sequence__sequence_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: big_map__update__sequence__sequence_dyn
       type: big_map__update__sequence__sequence_dyn
       size: len_big_map__update__sequence__sequence_dyn
@@ -411,9 +433,17 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   z:
     seq:
     - id: has_tail
@@ -433,12 +463,6 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false
@@ -3237,7 +3261,9 @@ enums:
     1: sapling_state
 seq:
 - id: len_alpha__lazy_storage_diff_dyn
-  type: uint30
+  type: u4
+  valid:
+    max: 1073741823
 - id: alpha__lazy_storage_diff_dyn
   type: alpha__lazy_storage_diff_dyn
   size: len_alpha__lazy_storage_diff_dyn

@@ -10,7 +10,9 @@ types:
   components:
     seq:
     - id: len_components_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: components_dyn
       type: components_dyn
       size: len_components_dyn
@@ -34,7 +36,9 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
   uint30:

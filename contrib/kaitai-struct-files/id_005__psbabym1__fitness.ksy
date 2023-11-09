@@ -6,7 +6,9 @@ types:
   fitness_:
     seq:
     - id: len_fitness_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: fitness_dyn
       type: fitness_dyn
       size: len_fitness_dyn
@@ -22,7 +24,9 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
   uint30:

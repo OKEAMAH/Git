@@ -142,15 +142,9 @@ let%expect_test "test bigger shifted range" =
               corrects the shift.
         seq:
         - id: shifted_big_range_shifted_to_zero
-          type: uint30
-          valid:
-            max: 99899
-      uint30:
-        seq:
-        - id: uint30
           type: u4
           valid:
-            max: 1073741823
+            max: 99899
     seq:
     - id: shifted_big_range
       type: shifted_big_range_shifted_to_zero

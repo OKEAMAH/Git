@@ -15,13 +15,23 @@ types:
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   outputs:
     seq:
     - id: len_outputs_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: outputs_dyn
       type: outputs_dyn
       size: len_outputs_dyn
@@ -37,7 +47,7 @@ types:
   inputs:
     seq:
     - id: len_inputs_dyn
-      type: uint30
+      type: u4
       valid:
         max: 1833216
     - id: inputs_dyn
@@ -52,12 +62,6 @@ types:
     seq:
     - id: inputs_elt
       type: sapling__transaction__input
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: inputs
   type: inputs

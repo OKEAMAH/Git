@@ -29,12 +29,6 @@ types:
     - id: p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   public_key_hash_tag:
     0: ed25519
@@ -42,7 +36,9 @@ enums:
     2: p256
 seq:
 - id: len_id_014__ptkathma__vote__listings_dyn
-  type: uint30
+  type: u4
+  valid:
+    max: 1073741823
 - id: id_014__ptkathma__vote__listings_dyn
   type: id_014__ptkathma__vote__listings_dyn
   size: len_id_014__ptkathma__vote__listings_dyn

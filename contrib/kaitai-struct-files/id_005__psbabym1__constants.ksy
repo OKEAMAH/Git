@@ -31,7 +31,9 @@ types:
   time_between_blocks:
     seq:
     - id: len_time_between_blocks_dyn
-      type: uint30
+      type: u4
+      valid:
+        max: 1073741823
     - id: time_between_blocks_dyn
       type: time_between_blocks_dyn
       size: len_time_between_blocks_dyn
@@ -44,12 +46,6 @@ types:
     seq:
     - id: time_between_blocks_elt
       type: s8
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   int31:
     seq:
     - id: int31
