@@ -2254,7 +2254,7 @@ mod typecheck_tests {
             let exp = Ok(Push(TypedValue::Address(exp)));
             assert_eq!(
                 &typecheck_instruction(
-                    parse(&format!("PUSH address {}", lit)).unwrap(),
+                    parse(&format!("PUSH address {lit}")).unwrap(),
                     &mut Ctx::default(),
                     &mut tc_stk![],
                 ),
@@ -2262,7 +2262,7 @@ mod typecheck_tests {
             );
             assert_eq!(
                 &typecheck_instruction(
-                    parse(&format!("PUSH address {}", bytes)).unwrap(),
+                    parse(&format!("PUSH address {bytes}")).unwrap(),
                     &mut Ctx::default(),
                     &mut tc_stk![],
                 ),
@@ -2386,79 +2386,87 @@ mod typecheck_tests {
                 "foo",
             ),
         );
-        assert_eq!(
+
+        macro_rules! assert_matches {
+            ($e:expr, $p:pat $(if $cond:expr)?) => {
+                match $e {
+                    $p $(if $cond)? => (),
+                    _ => panic!("expected {:?} to match {}", $e, stringify!($p)),
+                }
+            };
+        }
+
+        assert_matches!(
             typecheck_instruction(
-                parse("PUSH address \"tz1foobar\"").unwrap(),
+                parse("PUSH address \"tz1foobarfoobarfoobarfoobarfoobarfoo\"").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(TcError::AddressError(
-                tezos_crypto_rs::base58::FromBase58CheckError::InvalidChecksum.into()
-            ))
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
-                parse("PUSH address \"tz9foobar\"").unwrap(),
+                parse("PUSH address \"tz9foobarfoobarfoobarfoobarfoobarfoo\"").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::UnknownStrPrefix("tz9".to_owned()).into())
+            Err(TcError::AddressError(AddressError::UnknownPrefix(s))) if s == "tz9"
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address \"tz\"").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::TooShort(2).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0x0001fffe").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::TooShort(4).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0xff00fe0000000000000000000000000000000000000000").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::UnknownBytesPrefix(vec![255]).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0x00fffe0000000000000000000000000000000000000000").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::UnknownBytesPrefix(vec![0, 255]).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0x00").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::TooShort(1).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0x011f2d825fdd9da219235510335e558520235f4f5401666f6f").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::InvalidSeparatorByte(1).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
-        assert_eq!(
+        assert_matches!(
             typecheck_instruction(
                 parse("PUSH address 0x03d601f22256d2ad1faec0c64374e527c6e62f2e5a666f6f").unwrap(),
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(AddressError::InvalidSeparatorByte(0x66).into())
+            Err(TcError::AddressError(AddressError::WrongFormat(_)))
         );
     }
 }

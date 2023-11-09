@@ -5,8 +5,6 @@
 /*                                                                            */
 /******************************************************************************/
 
-use std::str::Utf8Error;
-
 use tezos_crypto_rs::base58::FromBase58CheckError;
 use tezos_crypto_rs::hash::{
     ContractKt1Hash, ContractTz1Hash, ContractTz2Hash, ContractTz3Hash, ContractTz4Hash,
@@ -16,39 +14,20 @@ use tezos_crypto_rs::hash::{
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum AddressError {
     #[error("unknown address prefix: {0}")]
-    UnknownStrPrefix(String),
-    #[error("unknown address prefix: {0:?}")]
-    UnknownBytesPrefix(Vec<u8>),
-    #[error("too short to be an address with length {0}")]
-    TooShort(usize),
-    #[error("{0}")]
-    FromBase58CheckError(String),
-    #[error("{0}")]
-    FromBytesError(String),
-    #[error(transparent)]
-    FromUtf8Error(#[from] Utf8Error),
-    #[error("invalid separator byte: {0}")]
-    InvalidSeparatorByte(u8),
+    UnknownPrefix(String),
+    #[error("wrong address format: {0}")]
+    WrongFormat(String),
 }
-
-/* Note: tezos_crypto_rs errors
-
-this is silly, but PartialEq and Clone aren't implemented for tezos_crypto_rs
-errors for some reason, and coherence rules forbid us from implementing those
-here. to avoid a terrifyingly long and brittle match expression, especially
-considering some errors are entirely opaque, we're using strings instead.
-
-*/
 
 impl From<FromBase58CheckError> for AddressError {
     fn from(value: FromBase58CheckError) -> Self {
-        Self::FromBase58CheckError(value.to_string())
+        Self::WrongFormat(value.to_string())
     }
 }
 
 impl From<FromBytesError> for AddressError {
     fn from(value: FromBytesError) -> Self {
-        Self::FromBase58CheckError(value.to_string())
+        Self::WrongFormat(value.to_string())
     }
 }
 
@@ -114,6 +93,17 @@ impl TryFrom<&str> for AddressHash {
     }
 }
 
+fn check_size(data: &[u8], min_size: usize, name: &str) -> Result<(), AddressError> {
+    let size = data.len();
+    if size < min_size {
+        Err(AddressError::WrongFormat(format!(
+            "address must be at least {min_size} {name} long, but it is {size} {name} long"
+        )))
+    } else {
+        Ok(())
+    }
+}
+
 impl AddressHash {
     const TAG_IMPLICIT: u8 = 0;
     const TAG_KT1: u8 = 1;
@@ -122,14 +112,20 @@ impl AddressHash {
     const TAG_TZ2: u8 = 1;
     const TAG_TZ3: u8 = 2;
     const TAG_TZ4: u8 = 3;
-    const SEP_IMPLICIT: &[u8] = &[];
-    const SEP_SMART: &[u8] = &[0];
+    const PADDING_IMPLICIT: &[u8] = &[];
+    const PADDING_SMART: &[u8] = &[0];
+    // all address hashes are 20 bytes in length
+    const HASH_SIZE: usize = 20;
+    // +2 for tags: implicit addresses use 2-byte, and KT1/sr1 add a
+    // zero-byte separator to the end
+    const BYTE_SIZE: usize = Self::HASH_SIZE + 2;
+    const BASE58_SIZE: usize = 36;
 
     pub fn from_base58_check(data: &str) -> Result<Self, AddressError> {
         use AddressHash::*;
-        if data.len() < 3 {
-            return Err(AddressError::TooShort(data.len()));
-        }
+
+        check_size(data.as_bytes(), Self::BASE58_SIZE, "characters")?;
+
         Ok(match &data[0..3] {
             "KT1" => Kt1(HashTrait::from_b58check(data)?),
             "sr1" => Sr1(HashTrait::from_b58check(data)?),
@@ -137,40 +133,50 @@ impl AddressHash {
             "tz2" => Tz2(HashTrait::from_b58check(data)?),
             "tz3" => Tz3(HashTrait::from_b58check(data)?),
             "tz4" => Tz4(HashTrait::from_b58check(data)?),
-            s => return Err(AddressError::UnknownStrPrefix(s.to_owned())),
+            s => return Err(AddressError::UnknownPrefix(s.to_owned())),
         })
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, AddressError> {
         use AddressHash::*;
-        let too_short_err = || AddressError::TooShort(bytes.len());
-        let validate_separator_byte = || {
-            match bytes.last() {
-                Some(0) => Ok(()),
-                Some(b) => Err(AddressError::InvalidSeparatorByte(*b)),
-                // should be impossible to hit
-                None => Err(AddressError::TooShort(0)),
-            }
+
+        check_size(bytes, Self::BYTE_SIZE, "bytes")?;
+        let validate_padding_byte = || match bytes.last().unwrap() {
+            0 => Ok(()),
+            b => Err(AddressError::WrongFormat(format!(
+                "address must be padded with byte 0x00, but it was padded with 0x{}",
+                hex::encode([*b])
+            ))),
         };
-        Ok(match *bytes.first().ok_or_else(too_short_err)? {
+        Ok(match bytes[0] {
             // implicit addresses
-            Self::TAG_IMPLICIT => match *bytes.get(1).ok_or_else(too_short_err)? {
+            Self::TAG_IMPLICIT => match bytes[1] {
                 Self::TAG_TZ1 => Tz1(HashTrait::try_from_bytes(&bytes[2..])?),
                 Self::TAG_TZ2 => Tz2(HashTrait::try_from_bytes(&bytes[2..])?),
                 Self::TAG_TZ3 => Tz3(HashTrait::try_from_bytes(&bytes[2..])?),
                 Self::TAG_TZ4 => Tz4(HashTrait::try_from_bytes(&bytes[2..])?),
-                _ => return Err(AddressError::UnknownBytesPrefix(bytes[..2].to_vec())),
+                _ => {
+                    return Err(AddressError::UnknownPrefix(format!(
+                        "0x{}",
+                        hex::encode(&bytes[..2])
+                    )))
+                }
             },
             Self::TAG_KT1 => {
-                validate_separator_byte()?;
+                validate_padding_byte()?;
                 Kt1(HashTrait::try_from_bytes(&bytes[1..bytes.len() - 1])?)
             }
             // 2 is txr1 addresses, which are deprecated
             Self::TAG_SR1 => {
-                validate_separator_byte()?;
+                validate_padding_byte()?;
                 Sr1(HashTrait::try_from_bytes(&bytes[1..bytes.len() - 1])?)
             }
-            _ => return Err(AddressError::UnknownBytesPrefix(bytes[..1].to_vec())),
+            _ => {
+                return Err(AddressError::UnknownPrefix(format!(
+                    "0x{}",
+                    hex::encode(&bytes[..1])
+                )))
+            }
         })
     }
 
@@ -186,28 +192,28 @@ impl AddressHash {
                 out,
                 &[Self::TAG_IMPLICIT, Self::TAG_TZ1],
                 hash,
-                Self::SEP_IMPLICIT,
+                Self::PADDING_IMPLICIT,
             ),
             Tz2(hash) => go(
                 out,
                 &[Self::TAG_IMPLICIT, Self::TAG_TZ2],
                 hash,
-                Self::SEP_IMPLICIT,
+                Self::PADDING_IMPLICIT,
             ),
             Tz3(hash) => go(
                 out,
                 &[Self::TAG_IMPLICIT, Self::TAG_TZ3],
                 hash,
-                Self::SEP_IMPLICIT,
+                Self::PADDING_IMPLICIT,
             ),
             Tz4(hash) => go(
                 out,
                 &[Self::TAG_IMPLICIT, Self::TAG_TZ4],
                 hash,
-                Self::SEP_IMPLICIT,
+                Self::PADDING_IMPLICIT,
             ),
-            Kt1(hash) => go(out, &[Self::TAG_KT1], hash, Self::SEP_SMART),
-            Sr1(hash) => go(out, &[Self::TAG_SR1], hash, Self::SEP_SMART),
+            Kt1(hash) => go(out, &[Self::TAG_KT1], hash, Self::PADDING_SMART),
+            Sr1(hash) => go(out, &[Self::TAG_SR1], hash, Self::PADDING_SMART),
         }
     }
 
@@ -228,10 +234,41 @@ pub struct Address {
 // affects comparision for addresses.
 const DEFAULT_EP_NAME: &str = "default";
 
+fn check_ep_name(ep: &[u8]) -> Result<&str, AddressError> {
+    if ep.len() > Address::MAX_EP_LEN {
+        return Err(AddressError::WrongFormat(format!(
+            "entrypoint name must be at most {} characters long, but it is {} characters long",
+            Address::MAX_EP_LEN,
+            ep.len()
+        )));
+    }
+    let mut first_char = true;
+    for c in ep {
+        // direct encoding of the regex defined in
+        // https://tezos.gitlab.io/alpha/michelson.html#syntax
+        match c {
+            b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' => Ok(()),
+            b'.' | b'%' | b'@' if !first_char => Ok(()),
+            c => Err(AddressError::WrongFormat(format!(
+                "forbidden byte in entrypoint name: {}",
+                hex::encode([*c])
+            ))),
+        }?;
+        first_char = false;
+    }
+    // SAFETY: we just checked all bytes are valid ASCII
+    Ok(unsafe { std::str::from_utf8_unchecked(ep) })
+}
+
 impl Address {
+    const MAX_EP_LEN: usize = 31;
+
     pub fn from_base58_check(data: &str) -> Result<Self, AddressError> {
         let (hash, ep) = if let Some(ep_sep_pos) = data.find('%') {
-            (&data[..ep_sep_pos], Some(&data[ep_sep_pos + 1..]))
+            (
+                &data[..ep_sep_pos],
+                Some(check_ep_name(data[ep_sep_pos + 1..].as_bytes())?),
+            )
         } else {
             (data, None)
         };
@@ -242,21 +279,20 @@ impl Address {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, AddressError> {
-        // all address hashes are 20 bytes in length
-        const HASH_SIZE: usize = 20;
-        // +2 for tags: implicit addresses use 2-byte, and KT1/sr1 add a
-        // zero-byte separator to the end
-        const EP_START: usize = HASH_SIZE + 2;
+        check_size(bytes, AddressHash::BYTE_SIZE, "bytes")?;
 
-        if bytes.len() < EP_START {
-            return Err(AddressError::TooShort(bytes.len()));
-        }
-
-        let (hash, ep) = bytes.split_at(EP_START);
+        let (hash, ep) = bytes.split_at(AddressHash::BYTE_SIZE);
         let ep = if ep.is_empty() {
             DEFAULT_EP_NAME
         } else {
-            std::str::from_utf8(ep)?
+            match check_ep_name(ep)? {
+                DEFAULT_EP_NAME => {
+                    return Err(AddressError::WrongFormat(
+                        "explicit default entrypoint is forbidden in binary encoding".to_owned(),
+                    ))
+                }
+                ep => ep,
+            }
         };
         Ok(Address {
             hash: AddressHash::from_bytes(hash)?,
@@ -309,7 +345,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_ep_format() {
+        assert_eq!(check_ep_name(&[b'q'; 31]), Ok("q".repeat(31).as_str()));
+
+        // more than 31 bytes
+        assert!(matches!(
+            check_ep_name(&[b'q'; 32]),
+            Err(AddressError::WrongFormat(_))
+        ));
+
+        // '.', '%', '@' are allowed
+        for i in ['.', '%', '@'] {
+            assert_eq!(
+                check_ep_name(format!("foo{i}bar").as_bytes()),
+                Ok(format!("foo{i}bar").as_str())
+            );
+
+            // but not as the first character
+            assert!(matches!(
+                check_ep_name(format!("{i}bar").as_bytes()),
+                Err(AddressError::WrongFormat(_))
+            ));
+        }
+
+        // ! is forbidden
+        assert!(matches!(
+            check_ep_name(b"foo!"),
+            Err(AddressError::WrongFormat(_))
+        ));
+
+        // unicode is forbidden
+        assert!(matches!(
+            check_ep_name("नमस्ते".as_bytes()),
+            Err(AddressError::WrongFormat(_))
+        ));
+    }
+
+    #[test]
     fn test_base58_to_bin() {
+        // address with explicit, but empty, entrypoint
+        assert_eq!(
+            Address::from_base58_check("tz1Nw5nr152qddEjKT2dKBH8XcBMDAg72iLw%")
+                .unwrap()
+                .to_bytes_vec(),
+            hex::decode("00002422090f872dfd3a39471bb23f180e6dfed030f3").unwrap(),
+        );
+
+        // address with explicit default entrypoint
+        assert_eq!(
+            Address::from_base58_check("tz1Nw5nr152qddEjKT2dKBH8XcBMDAg72iLw%default")
+                .unwrap()
+                .to_bytes_vec(),
+            hex::decode("00002422090f872dfd3a39471bb23f180e6dfed030f3").unwrap(),
+        );
+
         for (b58, hex) in FIXTURES {
             assert_eq!(
                 Address::from_base58_check(b58).unwrap().to_bytes_vec(),
@@ -320,6 +409,30 @@ mod tests {
 
     #[test]
     fn test_bin_to_base58() {
+        // explicit default entrypoint is apparently forbidden in binary encoding
+        assert!(matches!(
+            Address::from_bytes(
+                &hex::decode("00007b09f782e0bcd67739510afa819d85976119d5ef64656661756c74").unwrap()
+            ),
+            Err(AddressError::WrongFormat(_)),
+        ));
+
+        // unknown implicit tag
+        assert!(matches!(
+            Address::from_bytes(
+                &hex::decode("00ff7b09f782e0bcd67739510afa819d85976119d5ef64656661756c74").unwrap()
+            ),
+            Err(AddressError::WrongFormat(_)),
+        ));
+
+        // unknown tag
+        assert!(matches!(
+            Address::from_bytes(
+                &hex::decode("ffff7b09f782e0bcd67739510afa819d85976119d5ef64656661756c74").unwrap()
+            ),
+            Err(AddressError::WrongFormat(_)),
+        ));
+
         for (b58, hex) in FIXTURES {
             assert_eq!(
                 Address::from_bytes(&hex::decode(hex).unwrap())
