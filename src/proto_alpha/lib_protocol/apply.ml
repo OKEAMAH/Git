@@ -604,6 +604,57 @@ let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
           level;
         }
       in
+      let* ctxt =
+        match parameter with
+        | Untyped_arg parameter ->
+            let (Ex_script (Script {arg_type; entrypoints; _})) = script_ir in
+            let*? res, ctxt =
+              Gas_monad.run
+                ctxt
+                (Script_ir_translator.find_entrypoint
+                   ~error_details:(Informative ())
+                   arg_type
+                   entrypoints
+                   entrypoint)
+            in
+            let*? (Ex_ty_cstr {ty = entrypoint_ty; _}) = res in
+            let*? has_tickets, ctxt =
+              Ticket_scanner.type_has_tickets ctxt entrypoint_ty
+            in
+            let arg = Micheline.root parameter in
+            let* entrypoint_arg, ctxt =
+              Script_ir_translator.parse_data
+                ctxt
+                ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+                ~allow_forged:true
+                entrypoint_ty
+                arg
+            in
+            let* tickets, ctxt =
+              Ticket_scanner.tickets_of_value
+                ~include_lazy:true
+                ctxt
+                has_tickets
+                entrypoint_arg
+            in
+            List.fold_left_es
+              (fun ctxt ticket ->
+                let ticket_token, amount =
+                  Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
+                in
+                let* ctxt, _bytes =
+                  Ticket_transfer.transfer_ticket
+                    ctxt
+                    ~sender
+                    ~dst:(Contract (Originated contract_hash))
+                    ticket_token
+                    amount
+                in
+                return ctxt)
+              ctxt
+              tickets
+        | Typed_arg (_location, _parameter_ty, _parameter) -> return ctxt
+      in
       let execute =
         match parameter with
         | Untyped_arg parameter -> Script_interpreter.execute ~parameter
