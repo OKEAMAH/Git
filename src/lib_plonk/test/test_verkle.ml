@@ -13,7 +13,14 @@ let test_verkle () =
         v)
     expected_snd_lvl
 
+let test_update () =
+  let open Kzg.Verkle in
+  let () = create_storage "test" in
+  let diff = create_diff 10 in
+  let () = update_storage "test" diff in
+  ()
+
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
-    [("Verkle", test_verkle)]
+    [("Verkle", test_verkle); ("Update", test_update)]
