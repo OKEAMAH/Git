@@ -52,7 +52,7 @@ module Preprocess = struct
     let () =
       G1_carray.interpolation_ecfft_inplace ~domain ~points:srs_c_array
     in
-    srs_c_array
+    Array.to_list @@ G1_carray.to_array srs_c_array
 end
 
 open Preprocess
@@ -169,7 +169,7 @@ let read_storage file_name =
 
 (** Generates a random diff for [nb] elements *)
 let create_diff nb =
-  (*Gets a random index that does not belong to the diff*)
+  (* Gets a random index that does not belong to the diff *)
   let rec random_index diff =
     let i, j = (Random.int arity, Random.int arity) in
     if IntMap.mem i diff && IntMap.mem j (IntMap.find i diff) then
@@ -190,53 +190,51 @@ let create_diff nb =
 let map_to_array map =
   List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
 
+(** Modifies the storage and recomputes the commitment according to [diff]. *)
 let update_storage file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  (*this function computes the EC diff to apply to the fst lvl from a snd lvl diff*)
+
+  (* this function computes the EC diff to apply to the fst lvl from a snd lvl diff *)
   let update_i_fst_lvl snd_lvl_diff =
-    let srs_lagrange_list = G1_carray.to_array srs_lagrange |> Array.to_list in
     let filtered_list =
-      List.filteri (fun i _ -> IntMap.mem i snd_lvl_diff) srs_lagrange_list
+      List.filteri (fun i _ -> IntMap.mem i snd_lvl_diff) srs_lagrange
     in
     let to_pippinger_ec = filtered_list |> Array.of_list in
     let to_pippinger_fr = map_to_array snd_lvl_diff in
     G1.pippenger to_pippinger_ec to_pippinger_fr
   in
-  (*diff to apply to the fst lvl*)
+  (* diff to apply to the fst lvl *)
   let fst_lvl_diff_ec = IntMap.map update_i_fst_lvl diff in
 
   let to_pippinger_fr_root =
     IntMap.mapi
       (fun i _ ->
         let buffer = Bytes.create cell_size in
-        let () =
-          read_file
-            file_descr
-            buffer
-            ~offset:(get_offset_fst_lvl i)
-            ~len:cell_size
-        in
+        read_file
+          file_descr
+          buffer
+          ~offset:(get_offset_fst_lvl i)
+          ~len:cell_size ;
         let old_hash = buffer |> Scalar.of_bytes_exn in
         let new_hash = IntMap.find i fst_lvl_diff_ec |> hash_ec_to_fr in
         Scalar.(sub new_hash old_hash))
       diff
   in
 
-  let srs_lagrange_list = G1_carray.to_array srs_lagrange |> Array.to_list in
   let filtered_list =
-    List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange_list
+    List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
   in
   let to_pippinger_ec_root = filtered_list |> Array.of_list in
-  (*the diff to apply to the root*)
+  (* the diff to apply to the root *)
   let update_root =
     G1.pippenger to_pippinger_ec_root (map_to_array to_pippinger_fr_root)
   in
-  let old_root = Bytes.create G1.size_in_bytes in
-  let () = read_file file_descr old_root ~offset:0 ~len:G1.size_in_bytes in
+  let old_root = Bytes.create root_size in
+  let () = read_file file_descr old_root ~offset:0 ~len:root_size in
   let root_to_write =
     G1.(add (of_bytes_exn old_root) update_root) |> G1.to_bytes
   in
-  (*update sndlvl *)
+  (* update sndlvl *)
   let fr_buffer = Bytes.create cell_size in
   let snd_lvl_map fst snd_lvl_diff =
     IntMap.mapi
@@ -263,7 +261,7 @@ let update_storage file_name diff =
       snd_lvl_to_write
   in
   let () = IntMap.iter snd_lvl_iter to_write in
-  (*update fst lvl*)
+  (* update fst lvl *)
   let update_fst_lvl (to_pippinger_fr_root : Scalar.t IntMap.t) =
     let to_iter i scalar =
       let bytes = Scalar.to_bytes scalar in
@@ -272,5 +270,5 @@ let update_storage file_name diff =
     IntMap.iter to_iter to_pippinger_fr_root
   in
   let () = update_fst_lvl to_pippinger_fr_root in
-  (*update_root*)
-  write_file file_descr root_to_write ~offset:0 ~len:G1.size_in_bytes
+  (* update_root *)
+  write_file file_descr root_to_write ~offset:0 ~len:root_size
