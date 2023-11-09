@@ -2363,8 +2363,8 @@ module Sc_rollup = struct
           "whitelist"
           (fun v -> JSON.encode_u (`A (List.map (fun s -> `String s) v)))
           whitelist
-      @ optional_arg "burn-cap" Tez.to_string burn_cap
-      @ optional_switch "force" force)
+      @ optional_switch "force" force
+      @ optional_arg "burn-cap" Tez.to_string burn_cap)
 
   let parse_rollup_address_in_receipt output =
     match output =~* rex "Address: (.*)" with
@@ -2377,9 +2377,9 @@ module Sc_rollup = struct
       spawn_originate
         ?hooks
         ?wait
-        ?force
         ?burn_cap
         ?whitelist
+        ?force
         ~alias
         ~src
         ~kind
