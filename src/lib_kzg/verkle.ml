@@ -8,44 +8,67 @@ snd_lvl array_size array of array_size of FR
 all of them are put in that order on disk
 *)
 
-let log_size = 8
+module Parameters = struct
+  (** The parameters of Verkle Tree *)
+  let log_nb_cells = 8
 
-let array_size = 1 lsl (log_size / 2)
+  (* the square root should be a power of two  *)
+  let () = assert (log_nb_cells mod 2 = 0)
 
-let total_size = 1 lsl log_size
+  (* We want the same arity of the fst and snd levels *)
+  let arity = 1 lsl (log_nb_cells / 2)
 
-let snd_lvl_len = total_size * Scalar.size_in_bytes
+  let nb_cells = 1 lsl log_nb_cells
 
-let fst_lvl_len = array_size * Scalar.size_in_bytes
+  let root_size = G1.size_in_bytes
 
-let snd_level_offset = G1.size_in_bytes + fst_lvl_len
+  let cell_size = Scalar.size_in_bytes
 
-let () = assert (log_size mod 2 = 0)
+  let vector_size = arity * cell_size
 
-let trap_door = Scalar.random ()
+  let fst_lvl_size = vector_size
 
-let srs = Srs_g1.generate_insecure array_size trap_door
+  let snd_lvl_size = nb_cells * cell_size
 
-let domain = Domain.build array_size
+  (* We store the tree in the following order: [root; fst_lvl; snd_lvl] *)
+  let fst_lvl_offset = root_size
 
-let srs_c_array = G1_carray.init array_size (fun i -> Srs_g1.get srs i)
+  let snd_lvl_offset = fst_lvl_offset + fst_lvl_size
+end
 
-(*TODO : check*)
-let srs_lagrange =
-  let () = G1_carray.interpolation_ecfft_inplace ~domain ~points:srs_c_array in
-  srs_c_array
+open Parameters
+
+module Preprocess = struct
+  (** The parameters of KZG *)
+  let trap_door = Scalar.random ()
+
+  let srs = Srs_g1.generate_insecure arity trap_door
+
+  let domain = Domain.build arity
+
+  (* SRS in Lagrange form *)
+  let srs_lagrange =
+    let srs_c_array = G1_carray.init arity (fun i -> Srs_g1.get srs i) in
+    let () =
+      G1_carray.interpolation_ecfft_inplace ~domain ~points:srs_c_array
+    in
+    srs_c_array
+end
+
+open Preprocess
 
 let hash_ec_to_fr ec =
   let hash = Hacl_star.Hacl.Blake2b_32.hash (G1.to_bytes ec) 32 in
   Z.of_bits (Bytes.to_string hash) |> Scalar.of_z
 
-let formula_snd fst snd =
-  G1.size_in_bytes + fst_lvl_len
-  + (fst * array_size * Scalar.size_in_bytes)
-  + (snd * Scalar.size_in_bytes)
+(* Get the i-th element of the first level *)
+let get_offset_fst_lvl i = fst_lvl_offset + (i * cell_size)
 
-let formula_fst_level i = G1.size_in_bytes + (Scalar.size_in_bytes * i)
+(* Get the j-th element from the second level of the i-th element of the first level *)
+let get_offset_snd_lvl i j = snd_lvl_offset + (i * vector_size) + (j * cell_size)
 
+(** Reads [len] bytes from descriptor [file_descr], storing them in
+    byte sequence [buffer], starting at position [offset] in [file_descr].*)
 let read_file file_descr buffer ~offset ~len =
   assert (Bytes.length buffer = len) ;
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
@@ -55,6 +78,8 @@ let read_file file_descr buffer ~offset ~len =
   let i = Unix.lseek file_descr 0 Unix.SEEK_SET in
   assert (i = 0)
 
+(** Writes [len] bytes to descriptor [file_descr], taking them from
+    byte sequence [buffer], starting at position [offset] in [file_descr].*)
 let write_file file_descr buffer ~offset ~len =
   assert (Bytes.length buffer = len) ;
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
@@ -64,16 +89,7 @@ let write_file file_descr buffer ~offset ~len =
   let i = Unix.lseek file_descr 0 Unix.SEEK_SET in
   assert (i = 0)
 
-(*2^(square_root_log*2)= size of the storage*)
-let create_storage ?(test = false) file_name =
-  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  let random_vector () =
-    let length = 1 lsl (log_size / 2) in
-    Array.init length (fun i ->
-        if test then Scalar.of_int i else Scalar.random ())
-  in
-  let nb_vectors = 1 lsl (log_size / 2) in
-  let snd_lvl = Array.init nb_vectors (fun _ -> random_vector ()) in
+let commit snd_lvl =
   let fst_lvl =
     Array.map
       (fun eval ->
@@ -84,95 +100,92 @@ let create_storage ?(test = false) file_name =
   let root =
     Commitment.commit_single srs (Evaluations.interpolation_fft2 domain fst_lvl)
   in
-  let root_bytes = G1.to_bytes root in
-  let fst_lvl_bytes =
-    Bytes.concat
-      Bytes.empty
-      (Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
-  in
-  let () = write_file file_descr root_bytes ~offset:0 ~len:G1.size_in_bytes in
-  let () =
-    write_file
-      file_descr
-      fst_lvl_bytes
-      ~offset:G1.size_in_bytes
-      ~len:(Bytes.length fst_lvl_bytes)
-  in
-  let snd_lvl_bytes =
-    let array_array = Array.map (Array.map Scalar.to_bytes) snd_lvl in
-    let list_list = Array.map Array.to_list array_array |> Array.to_list in
-    Bytes.concat Bytes.empty (List.flatten list_list)
-  in
-  write_file file_descr snd_lvl_bytes ~offset:snd_level_offset ~len:snd_lvl_len
+  (root, fst_lvl)
 
+let serialize_snd_lvl snd_lvl =
+  let array_array = Array.map (Array.map Scalar.to_bytes) snd_lvl in
+  let list_list = Array.map Array.to_list array_array |> Array.to_list in
+  Bytes.concat Bytes.empty (List.flatten list_list)
+
+let serialize_fst_lvl fst_lvl =
+  Bytes.concat
+    Bytes.empty
+    (Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
+
+let serialize_root root = G1.to_bytes root
+
+(** Writes in the file [root; fst_lvl; snd_level] in bytes. *)
+let create_storage ?(test = false) file_name =
+  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+
+  let snd_lvl =
+    let random_vector () =
+      Array.init arity (fun i ->
+          if test then Scalar.of_int i else Scalar.random ())
+    in
+    Array.init arity (fun _ -> random_vector ())
+  in
+
+  let root, fst_lvl = commit snd_lvl in
+
+  let root_bytes = serialize_root root in
+  let fst_lvl_bytes = serialize_fst_lvl fst_lvl in
+  let snd_lvl_bytes = serialize_snd_lvl snd_lvl in
+
+  write_file file_descr root_bytes ~offset:0 ~len:root_size ;
+  write_file file_descr fst_lvl_bytes ~offset:fst_lvl_offset ~len:fst_lvl_size ;
+  write_file file_descr snd_lvl_bytes ~offset:snd_lvl_offset ~len:snd_lvl_size
+
+(** Returns [root; fst_lvl; snd_level] not in bytes. *)
 let read_storage file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  let buffer_fr_size = Scalar.size_in_bytes * array_size in
-  let buffer_root = Bytes.create G1.size_in_bytes in
-  let buffer_fst_lvl = Bytes.create buffer_fr_size in
-  (* Read root *)
-  let root =
-    let () = read_file file_descr buffer_root ~offset:0 ~len:G1.size_in_bytes in
-    G1.of_bytes_exn buffer_root
-  in
-  let () =
-    read_file
-      file_descr
-      buffer_fst_lvl
-      ~offset:G1.size_in_bytes
-      ~len:buffer_fr_size
-  in
+
+  let buffer_root = Bytes.create root_size in
+  let buffer_fst_lvl = Bytes.create fst_lvl_size in
+  let buffer_snd_lvl = Bytes.create snd_lvl_size in
+
+  read_file file_descr buffer_root ~offset:0 ~len:root_size ;
+  read_file file_descr buffer_fst_lvl ~offset:fst_lvl_offset ~len:fst_lvl_size ;
+  read_file file_descr buffer_snd_lvl ~offset:snd_lvl_offset ~len:snd_lvl_size ;
+
+  let root = G1.of_bytes_exn buffer_root in
   let fst_lvl =
-    Array.init array_size (fun i ->
-        let bytes_i =
-          Bytes.sub
-            buffer_fst_lvl
-            (i * Scalar.size_in_bytes)
-            Scalar.size_in_bytes
-        in
+    Array.init arity (fun i ->
+        let bytes_i = Bytes.sub buffer_fst_lvl (i * cell_size) cell_size in
         Scalar.of_bytes_exn bytes_i)
   in
-  let buffer_snd_lvl = Bytes.create snd_lvl_len in
-  let () =
-    read_file
-      file_descr
-      buffer_snd_lvl
-      ~offset:snd_level_offset
-      ~len:snd_lvl_len
-  in
   let snd_lvl =
-    Array.init array_size (fun fst ->
-        Array.init array_size (fun snd ->
+    Array.init arity (fun fst ->
+        Array.init arity (fun snd ->
             let bytes =
               Bytes.sub
                 buffer_snd_lvl
-                ((fst * array_size * Scalar.size_in_bytes)
-                + (snd * Scalar.size_in_bytes))
-                Scalar.size_in_bytes
+                ((fst * vector_size) + (snd * cell_size))
+                cell_size
             in
             Scalar.of_bytes_exn bytes))
   in
   (root, fst_lvl, snd_lvl)
 
-let create_diff size =
+(** Generates a random diff for [nb] elements *)
+let create_diff nb =
   let init = IntMap.empty in
   let rec repeat f diff n = if n = 0 then diff else repeat f (f diff) (n - 1) in
   let rec my_update map_opt =
-    let snd = Random.int array_size in
+    let snd = Random.int arity in
     match map_opt with
     | None -> Some (IntMap.singleton snd (Scalar.random ()))
     | Some map ->
         if IntMap.mem snd map then my_update map_opt
-        else if IntMap.cardinal map = array_size then
-          failwith "fix that function"
+        else if IntMap.cardinal map = arity then failwith "fix that function"
         else Some (IntMap.add snd (Scalar.random ()) map)
   in
 
   let f diff =
-    let fst = Random.int array_size in
+    let fst = Random.int arity in
     IntMap.update fst my_update diff
   in
-  repeat f init size
+  repeat f init nb
 
 let map_to_array map =
   List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
@@ -195,13 +208,13 @@ let update_storage file_name diff =
   let to_pippinger_fr_root =
     IntMap.mapi
       (fun i _ ->
-        let buffer = Bytes.create Scalar.size_in_bytes in
+        let buffer = Bytes.create cell_size in
         let () =
           read_file
             file_descr
             buffer
-            ~offset:(formula_fst_level i)
-            ~len:Scalar.size_in_bytes
+            ~offset:(get_offset_fst_lvl i)
+            ~len:cell_size
         in
         let old_hash = buffer |> Scalar.of_bytes_exn in
         let new_hash = IntMap.find i fst_lvl_diff_ec |> hash_ec_to_fr in
@@ -224,7 +237,7 @@ let update_storage file_name diff =
     G1.(add (of_bytes_exn old_root) update_root) |> G1.to_bytes
   in
   (*update sndlvl *)
-  let fr_buffer = Bytes.create Scalar.size_in_bytes in
+  let fr_buffer = Bytes.create cell_size in
   let snd_lvl_map fst snd_lvl_diff =
     IntMap.mapi
       (fun snd diff ->
@@ -232,8 +245,8 @@ let update_storage file_name diff =
           read_file
             file_descr
             fr_buffer
-            ~offset:(formula_snd fst snd)
-            ~len:Scalar.size_in_bytes
+            ~offset:(get_offset_snd_lvl fst snd)
+            ~len:cell_size
         in
         Scalar.(of_bytes_exn fr_buffer + diff))
       snd_lvl_diff
@@ -245,8 +258,8 @@ let update_storage file_name diff =
         write_file
           file_descr
           (Scalar.to_bytes to_write)
-          ~offset:(formula_snd fst snd)
-          ~len:Scalar.size_in_bytes)
+          ~offset:(get_offset_snd_lvl fst snd)
+          ~len:cell_size)
       snd_lvl_to_write
   in
   let () = IntMap.iter snd_lvl_iter to_write in
@@ -254,11 +267,7 @@ let update_storage file_name diff =
   let update_fst_lvl (to_pippinger_fr_root : Scalar.t IntMap.t) =
     let to_iter i scalar =
       let bytes = Scalar.to_bytes scalar in
-      write_file
-        file_descr
-        bytes
-        ~offset:(formula_fst_level i)
-        ~len:Scalar.size_in_bytes
+      write_file file_descr bytes ~offset:(get_offset_fst_lvl i) ~len:cell_size
     in
     IntMap.iter to_iter to_pippinger_fr_root
   in
