@@ -179,6 +179,7 @@ let map_to_array map =
 
 let update_storage file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+  (*this function computes the EC diff to apply to the fst lvl from a snd lvl diff*)
   let update_i_fst_lvl snd_lvl_diff =
     let srs_lagrange_list = G1_carray.to_array srs_lagrange |> Array.to_list in
     let filtered_list =
@@ -188,6 +189,7 @@ let update_storage file_name diff =
     let to_pippinger_fr = map_to_array snd_lvl_diff in
     G1.pippenger to_pippinger_ec to_pippinger_fr
   in
+  (*diff to apply to the fst lvl*)
   let fst_lvl_diff_ec = IntMap.map update_i_fst_lvl diff in
 
   let to_pippinger_fr_root =
@@ -212,10 +214,15 @@ let update_storage file_name diff =
     List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange_list
   in
   let to_pippinger_ec_root = filtered_list |> Array.of_list in
+  (*the diff to apply to the root*)
   let update_root =
     G1.pippenger to_pippinger_ec_root (map_to_array to_pippinger_fr_root)
   in
-
+  let old_root = Bytes.create G1.size_in_bytes in
+  let () = read_file file_descr old_root ~offset:0 ~len:G1.size_in_bytes in
+  let root_to_write =
+    G1.(add (of_bytes_exn old_root) update_root) |> G1.to_bytes
+  in
   (*update sndlvl *)
   let fr_buffer = Bytes.create Scalar.size_in_bytes in
   let snd_lvl_map fst snd_lvl_diff =
@@ -242,4 +249,19 @@ let update_storage file_name diff =
           ~len:Scalar.size_in_bytes)
       snd_lvl_to_write
   in
-  IntMap.iter snd_lvl_iter to_write
+  let () = IntMap.iter snd_lvl_iter to_write in
+  (*update fst lvl*)
+  let update_fst_lvl (to_pippinger_fr_root : Scalar.t IntMap.t) =
+    let to_iter i scalar =
+      let bytes = Scalar.to_bytes scalar in
+      write_file
+        file_descr
+        bytes
+        ~offset:(formula_fst_level i)
+        ~len:Scalar.size_in_bytes
+    in
+    IntMap.iter to_iter to_pippinger_fr_root
+  in
+  let () = update_fst_lvl to_pippinger_fr_root in
+  (*update_root*)
+  write_file file_descr root_to_write ~offset:0 ~len:G1.size_in_bytes
