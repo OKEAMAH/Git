@@ -50,7 +50,6 @@ fn typecheck_stack(stk: Vec<(Type, Value)>) -> Result<Vec<(Type, TypedValue)>, T
         .collect()
 }
 
-#[allow(dead_code)]
 pub fn parse_tzt_test(src: &str) -> Result<TztTest, Box<dyn Error + '_>> {
     tztTestEntitiesParser::new()
         .parse(spanned_lexer(src))?
@@ -136,14 +135,12 @@ pub enum TestExpectation {
     ExpectError(ErrorExpectation),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorExpectation {
     TypecheckerError(TcError),
     InterpreterError(InterpreterErrorExpectation),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InterpreterErrorExpectation {
     GeneralOverflow(i128, i128),
@@ -191,7 +188,6 @@ fn execute_tzt_test_code(
     Ok((t_stack, i_stack))
 }
 
-#[allow(dead_code)]
 pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
     // Here we compare the outcome of the interpreting with the
     // expectation from the test, and declare the result of the test
