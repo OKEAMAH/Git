@@ -1,0 +1,18 @@
+kaitai_e2e_checks:
+  extends:
+    - .default_settings_template
+    - .image_template__client_libs
+  # These tests are not flaky at all so we overwrite the retry value
+  retry: 0
+  needs:
+    - "kaitai_checks"
+  script:
+    - ./contrib/lib_kaitai_of_data_encoding/test/kaitai_e2e.sh
+      contrib/lib_kaitai_of_data_encoding/test/expected
+      contrib/lib_kaitai_of_data_encoding/test/input
+    # TODO:
+    # - Given an optional `testing` flag register test encodings as well
+    # - For every `.ksy` files inside `contrib/kaitai-struct-files`
+    #   find its coresponding inputs and run `kaitai_e2e.sh` script.
+    # - Generated HTML files should became a explicit target, that trigers
+    #   deployment to a website.

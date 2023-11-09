@@ -1,0 +1,18 @@
+kaitai_checks:
+  extends:
+    - .test_template
+  # These tests are not flaky at all so we overwrite the retry value
+  retry: 0
+  needs: [trigger]
+  needs:
+    - "build_x86_64-released"
+  before_script:
+    - . ./scripts/version.sh
+  script:
+    # TODO: Pipelines should automate developers work. This command check
+    # developer has run `make kaitai-struct-files` locally and committed the
+    # changes. We should consider running this as part of the pipeline and
+    # storing it as an artefact for the duration of pipeline execution. 
+    # Additionally, later as the pipeline evolves we may want to deploy
+    # this way generated documentation?
+    - make -C ${CI_PROJECT_DIR} check-kaitai-struct-files

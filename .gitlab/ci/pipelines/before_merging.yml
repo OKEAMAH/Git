@@ -19,6 +19,7 @@ include:
   - .gitlab/ci/jobs/build/docker_arm64_test_manual.yml
   - .gitlab/ci/jobs/build/bin_packages_manual.yml
   - .gitlab/ci/jobs/build/tezt_fetch_records.yml
+  - .gitlab/ci/jobs/build/codec_kaitai.yml
 
   # Stage: test
   - .gitlab/ci/jobs/test/check_precommit_hook.yml
@@ -34,6 +35,7 @@ include:
   - .gitlab/ci/jobs/test/tezt.yml
   - .gitlab/ci/jobs/test/tezt_build_long.yml
   - .gitlab/ci/jobs/test/kernels.yml
+  - .gitlab/ci/jobs/test/kaitai_checks.yml
 
   # Stage: test_coverage
   # Only run on merge requests that do not have the label `ci--no-coverage`
