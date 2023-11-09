@@ -3,12 +3,6 @@ meta:
   endian: be
 doc: ! 'Encoding id: 006-PsCARTHA.script'
 types:
-  id_006__pscartha__scripted__contracts_:
-    seq:
-    - id: code
-      type: bytes_dyn_uint30
-    - id: storage
-      type: bytes_dyn_uint30
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
@@ -17,6 +11,12 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  id_006__pscartha__scripted__contracts_:
+    seq:
+    - id: code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

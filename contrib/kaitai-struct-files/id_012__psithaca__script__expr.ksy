@@ -3,6 +3,14 @@ meta:
   endian: be
 doc: ! 'Encoding id: 012-Psithaca.script.expr'
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: micheline__012__psithaca__michelson_v1__expression_tag
@@ -42,13 +50,46 @@ types:
     - id: bytes__micheline__012__psithaca__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__012__psithaca__michelson_v1__expression_tag == micheline__012__psithaca__michelson_v1__expression_tag::bytes)
-  prim__generic__micheline__012__psithaca__michelson_v1__expression:
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  prim__1_arg__no_annots__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: prim__generic__id_012__psithaca__michelson__v1__primitives
-    - id: prim__generic__args
-      type: prim__generic__args
+      enum: prim__1_arg__no_annots__id_012__psithaca__michelson__v1__primitives
+    - id: arg
+      type: micheline__012__psithaca__michelson_v1__expression
+  prim__1_arg__some_annots__micheline__012__psithaca__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: prim__1_arg__some_annots__id_012__psithaca__michelson__v1__primitives
+    - id: arg
+      type: micheline__012__psithaca__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__2_args__no_annots__micheline__012__psithaca__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: prim__2_args__no_annots__id_012__psithaca__michelson__v1__primitives
+    - id: arg1
+      type: micheline__012__psithaca__michelson_v1__expression
+    - id: arg2
+      type: micheline__012__psithaca__michelson_v1__expression
+  prim__2_args__some_annots__micheline__012__psithaca__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: prim__2_args__some_annots__id_012__psithaca__michelson__v1__primitives
+    - id: arg1
+      type: micheline__012__psithaca__michelson_v1__expression
+    - id: arg2
+      type: micheline__012__psithaca__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   prim__generic__args:
@@ -69,42 +110,15 @@ types:
     seq:
     - id: args_elt
       type: micheline__012__psithaca__michelson_v1__expression
-  prim__2_args__some_annots__micheline__012__psithaca__michelson_v1__expression:
+  prim__generic__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: prim__2_args__some_annots__id_012__psithaca__michelson__v1__primitives
-    - id: arg1
-      type: micheline__012__psithaca__michelson_v1__expression
-    - id: arg2
-      type: micheline__012__psithaca__michelson_v1__expression
+      enum: prim__generic__id_012__psithaca__michelson__v1__primitives
+    - id: prim__generic__args
+      type: prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  prim__2_args__no_annots__micheline__012__psithaca__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: prim__2_args__no_annots__id_012__psithaca__michelson__v1__primitives
-    - id: arg1
-      type: micheline__012__psithaca__michelson_v1__expression
-    - id: arg2
-      type: micheline__012__psithaca__michelson_v1__expression
-  prim__1_arg__some_annots__micheline__012__psithaca__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: prim__1_arg__some_annots__id_012__psithaca__michelson__v1__primitives
-    - id: arg
-      type: micheline__012__psithaca__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  prim__1_arg__no_annots__micheline__012__psithaca__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: prim__1_arg__no_annots__id_012__psithaca__michelson__v1__primitives
-    - id: arg
-      type: micheline__012__psithaca__michelson_v1__expression
   prim__no_args__some_annots__micheline__012__psithaca__michelson_v1__expression:
     seq:
     - id: prim
@@ -130,14 +144,6 @@ types:
     seq:
     - id: sequence_elt
       type: micheline__012__psithaca__michelson_v1__expression
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -157,12 +163,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
 enums:
   prim__generic__id_012__psithaca__michelson__v1__primitives:
     0: parameter

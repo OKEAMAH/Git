@@ -3,6 +3,37 @@ meta:
   endian: be
 doc: ! 'Encoding id: 013-PtJakart.operation.internal'
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  delegation__id_013__ptjakart__apply_results__alpha__internal_operation_result:
+    seq:
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: delegation__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+  delegation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   id_013__ptjakart__apply_results__alpha__internal_operation_result_:
     seq:
     - id: source
@@ -27,29 +58,51 @@ types:
       type: delegation__id_013__ptjakart__apply_results__alpha__internal_operation_result
       if: (id_013__ptjakart__apply_results__alpha__internal_operation_result_tag ==
         id_013__ptjakart__apply_results__alpha__internal_operation_result_tag::delegation)
-  delegation__id_013__ptjakart__apply_results__alpha__internal_operation_result:
+  id_013__ptjakart__contract_id_:
     seq:
-    - id: delegate_tag
+    - id: id_013__ptjakart__contract_id_tag
       type: u1
-      enum: bool
-    - id: delegate
-      type: delegation__public_key_hash_
-      if: (delegate_tag == bool::true)
+      enum: id_013__ptjakart__contract_id_tag
+    - id: implicit__id_013__ptjakart__contract_id
+      type: implicit__public_key_hash_
+      if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-  delegation__public_key_hash_:
+    - id: originated__id_013__ptjakart__contract_id
+      type: originated__id_013__ptjakart__contract_id
+      if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::originated)
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
+    - id: implicit__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
+    - id: implicit__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
+    - id: implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  originated__id_013__ptjakart__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
   origination__id_013__ptjakart__apply_results__alpha__internal_operation_result:
     seq:
     - id: balance
@@ -100,27 +153,6 @@ types:
     - id: transaction__parameters_
       type: transaction__parameters_
       if: (parameters_tag == bool::true)
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_013__ptjakart__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   transaction__id_013__ptjakart__entrypoint_:
     seq:
     - id: id_013__ptjakart__entrypoint_tag
@@ -129,19 +161,6 @@ types:
     - id: transaction__named__id_013__ptjakart__entrypoint
       type: transaction__named__id_013__ptjakart__entrypoint
       if: (id_013__ptjakart__entrypoint_tag == id_013__ptjakart__entrypoint_tag::named)
-  transaction__named__id_013__ptjakart__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
   transaction__id_013__ptjakart__transaction_destination_:
     seq:
     - id: id_013__ptjakart__transaction_destination_tag
@@ -157,23 +176,6 @@ types:
     - id: transaction__tx_rollup__id_013__ptjakart__transaction_destination
       type: transaction__tx_rollup__id_013__ptjakart__transaction_destination
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::tx_rollup)
-  transaction__tx_rollup__id_013__ptjakart__transaction_destination:
-    seq:
-    - id: id_013__ptjakart__tx_rollup_id
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-    - id: tx_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__originated__id_013__ptjakart__transaction_destination:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   transaction__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -188,51 +190,49 @@ types:
     - id: transaction__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  n:
+  transaction__named__id_013__ptjakart__entrypoint:
     seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  id_013__ptjakart__contract_id_:
-    seq:
-    - id: id_013__ptjakart__contract_id_tag
+    - id: len_transaction__named__named_dyn
       type: u1
-      enum: id_013__ptjakart__contract_id_tag
-    - id: implicit__id_013__ptjakart__contract_id
-      type: implicit__public_key_hash_
-      if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: originated__id_013__ptjakart__contract_id
-      type: originated__id_013__ptjakart__contract_id
-      if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::originated)
-  originated__id_013__ptjakart__contract_id:
+      valid:
+        max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  transaction__originated__id_013__ptjakart__transaction_destination:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  implicit__public_key_hash_:
+  transaction__parameters_:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: implicit__ed25519__public_key_hash
+    - id: entrypoint
+      type: transaction__id_013__ptjakart__entrypoint_
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
+      type: bytes_dyn_uint30
+  transaction__tx_rollup__id_013__ptjakart__transaction_destination:
+    seq:
+    - id: id_013__ptjakart__tx_rollup_id
       size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
+    - id: tx_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   id_013__ptjakart__entrypoint_tag:
     0: default

@@ -3,27 +3,6 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.receipt.balance_updates'
 types:
-  alpha__operation_metadata__alpha__balance_updates_:
-    seq:
-    - id: len_alpha__operation_metadata__alpha__balance_updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: alpha__operation_metadata__alpha__balance_updates_dyn
-      type: alpha__operation_metadata__alpha__balance_updates_dyn
-      size: len_alpha__operation_metadata__alpha__balance_updates_dyn
-  alpha__operation_metadata__alpha__balance_updates_dyn:
-    seq:
-    - id: alpha__operation_metadata__alpha__balance_updates_entries
-      type: alpha__operation_metadata__alpha__balance_updates_entries
-      repeat: eos
-  alpha__operation_metadata__alpha__balance_updates_entries:
-    seq:
-    - id: alpha__operation_metadata__alpha__balance_and_update_
-      type: alpha__operation_metadata__alpha__balance_and_update_
-    - id: alpha__operation_metadata__alpha__update_origin
-      type: u1
-      enum: origin_tag
   alpha__operation_metadata__alpha__balance_and_update_:
     seq:
     - id: alpha__operation_metadata__alpha__balance_and_update_tag
@@ -98,6 +77,264 @@ types:
     - id: staking_delegate_denominator__alpha__operation_metadata__alpha__balance_and_update
       type: staking_delegate_denominator__alpha__operation_metadata__alpha__balance_and_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::staking_delegate_denominator)
+  alpha__operation_metadata__alpha__balance_updates_:
+    seq:
+    - id: len_alpha__operation_metadata__alpha__balance_updates_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: alpha__operation_metadata__alpha__balance_updates_dyn
+      type: alpha__operation_metadata__alpha__balance_updates_dyn
+      size: len_alpha__operation_metadata__alpha__balance_updates_dyn
+  alpha__operation_metadata__alpha__balance_updates_dyn:
+    seq:
+    - id: alpha__operation_metadata__alpha__balance_updates_entries
+      type: alpha__operation_metadata__alpha__balance_updates_entries
+      repeat: eos
+  alpha__operation_metadata__alpha__balance_updates_entries:
+    seq:
+    - id: alpha__operation_metadata__alpha__balance_and_update_
+      type: alpha__operation_metadata__alpha__balance_and_update_
+    - id: alpha__operation_metadata__alpha__update_origin
+      type: u1
+      enum: origin_tag
+  commitments__alpha__operation_metadata__alpha__balance_and_update:
+    seq:
+    - id: committer
+      size: 20
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: s8
+  contract__alpha__contract_id_:
+    seq:
+    - id: alpha__contract_id_tag
+      type: u1
+      enum: alpha__contract_id_tag
+    - id: contract__implicit__alpha__contract_id
+      type: contract__implicit__public_key_hash_
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: contract__originated__alpha__contract_id
+      type: contract__originated__alpha__contract_id
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
+  contract__alpha__operation_metadata__alpha__balance_and_update:
+    seq:
+    - id: contract
+      type: contract__alpha__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: s8
+  contract__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: contract__implicit__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  contract__originated__alpha__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  deposits__alpha__operation_metadata__alpha__balance_and_update:
+    seq:
+    - id: staker
+      type: deposits__alpha__staker_
+      doc: ! >-
+        staker: Abstract notion of staker used in operation receipts, either a single
+        staker or all the stakers delegating to some delegate.
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: s8
+  deposits__alpha__staker_:
+    seq:
+    - id: alpha__staker_tag
+      type: u1
+      enum: alpha__staker_tag
+    - id: deposits__single__alpha__staker
+      type: deposits__single__alpha__staker
+      if: (alpha__staker_tag == alpha__staker_tag::single)
+    - id: deposits__shared__alpha__staker
+      type: deposits__shared__public_key_hash_
+      if: (alpha__staker_tag == alpha__staker_tag::shared)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  deposits__shared__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: deposits__shared__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: deposits__shared__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: deposits__shared__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: deposits__shared__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  deposits__single__alpha__contract_id_:
+    seq:
+    - id: alpha__contract_id_tag
+      type: u1
+      enum: alpha__contract_id_tag
+    - id: deposits__single__implicit__alpha__contract_id
+      type: deposits__single__implicit__public_key_hash_
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: deposits__single__originated__alpha__contract_id
+      type: deposits__single__originated__alpha__contract_id
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
+  deposits__single__alpha__staker:
+    seq:
+    - id: contract
+      type: deposits__single__alpha__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: delegate
+      type: deposits__single__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  deposits__single__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: deposits__single__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: deposits__single__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: deposits__single__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: deposits__single__implicit__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  deposits__single__originated__alpha__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  deposits__single__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: deposits__single__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: deposits__single__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: deposits__single__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: deposits__single__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  frozen_bonds__alpha__bond_id_:
+    seq:
+    - id: alpha__bond_id_tag
+      type: u1
+      enum: alpha__bond_id_tag
+    - id: frozen_bonds__smart_rollup_bond_id__alpha__bond_id
+      size: 20
+      if: (alpha__bond_id_tag == alpha__bond_id_tag::smart_rollup_bond_id)
+  frozen_bonds__alpha__contract_id_:
+    seq:
+    - id: alpha__contract_id_tag
+      type: u1
+      enum: alpha__contract_id_tag
+    - id: frozen_bonds__implicit__alpha__contract_id
+      type: frozen_bonds__implicit__public_key_hash_
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: frozen_bonds__originated__alpha__contract_id
+      type: frozen_bonds__originated__alpha__contract_id
+      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
+  frozen_bonds__alpha__operation_metadata__alpha__balance_and_update:
+    seq:
+    - id: contract
+      type: frozen_bonds__alpha__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: bond_id
+      type: frozen_bonds__alpha__bond_id_
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: s8
+  frozen_bonds__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: frozen_bonds__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: frozen_bonds__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: frozen_bonds__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: frozen_bonds__implicit__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  frozen_bonds__originated__alpha__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  lost_attesting_rewards__alpha__operation_metadata__alpha__balance_and_update:
+    seq:
+    - id: delegate
+      type: lost_attesting_rewards__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: participation
+      type: u1
+      enum: bool
+    - id: revelation
+      type: u1
+      enum: bool
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: s8
+  lost_attesting_rewards__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: lost_attesting_rewards__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: lost_attesting_rewards__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: lost_attesting_rewards__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: lost_attesting_rewards__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   staking_delegate_denominator__alpha__operation_metadata__alpha__balance_and_update:
     seq:
     - id: delegate
@@ -122,15 +359,6 @@ types:
     - id: staking_delegate_denominator__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  staking_delegator_numerator__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: delegator
-      type: staking_delegator_numerator__alpha__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: alpha__operation_metadata__alpha__staking_abstract_quantity
-      type: s8
   staking_delegator_numerator__alpha__contract_id_:
     seq:
     - id: alpha__contract_id_tag
@@ -143,13 +371,15 @@ types:
     - id: staking_delegator_numerator__originated__alpha__contract_id
       type: staking_delegator_numerator__originated__alpha__contract_id
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  staking_delegator_numerator__originated__alpha__contract_id:
+  staking_delegator_numerator__alpha__operation_metadata__alpha__balance_and_update:
     seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
+    - id: delegator
+      type: staking_delegator_numerator__alpha__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: alpha__operation_metadata__alpha__staking_abstract_quantity
+      type: s8
   staking_delegator_numerator__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -167,6 +397,13 @@ types:
     - id: staking_delegator_numerator__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  staking_delegator_numerator__originated__alpha__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
   unstaked_deposits__alpha__operation_metadata__alpha__balance_and_update:
     seq:
     - id: staker
@@ -207,33 +444,6 @@ types:
     - id: unstaked_deposits__shared__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  unstaked_deposits__single__alpha__staker:
-    seq:
-    - id: contract
-      type: unstaked_deposits__single__alpha__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: delegate
-      type: unstaked_deposits__single__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  unstaked_deposits__single__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: unstaked_deposits__single__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: unstaked_deposits__single__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: unstaked_deposits__single__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: unstaked_deposits__single__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
   unstaked_deposits__single__alpha__contract_id_:
     seq:
     - id: alpha__contract_id_tag
@@ -246,13 +456,16 @@ types:
     - id: unstaked_deposits__single__originated__alpha__contract_id
       type: unstaked_deposits__single__originated__alpha__contract_id
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  unstaked_deposits__single__originated__alpha__contract_id:
+  unstaked_deposits__single__alpha__staker:
     seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
+    - id: contract
+      type: unstaked_deposits__single__alpha__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: delegate
+      type: unstaked_deposits__single__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   unstaked_deposits__single__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -270,241 +483,28 @@ types:
     - id: unstaked_deposits__single__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  frozen_bonds__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: contract
-      type: frozen_bonds__alpha__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: bond_id
-      type: frozen_bonds__alpha__bond_id_
-    - id: alpha__operation_metadata__alpha__tez_balance_update
-      type: s8
-  frozen_bonds__alpha__bond_id_:
-    seq:
-    - id: alpha__bond_id_tag
-      type: u1
-      enum: alpha__bond_id_tag
-    - id: frozen_bonds__smart_rollup_bond_id__alpha__bond_id
-      size: 20
-      if: (alpha__bond_id_tag == alpha__bond_id_tag::smart_rollup_bond_id)
-  frozen_bonds__alpha__contract_id_:
-    seq:
-    - id: alpha__contract_id_tag
-      type: u1
-      enum: alpha__contract_id_tag
-    - id: frozen_bonds__implicit__alpha__contract_id
-      type: frozen_bonds__implicit__public_key_hash_
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: frozen_bonds__originated__alpha__contract_id
-      type: frozen_bonds__originated__alpha__contract_id
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  frozen_bonds__originated__alpha__contract_id:
+  unstaked_deposits__single__originated__alpha__contract_id:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  frozen_bonds__implicit__public_key_hash_:
+  unstaked_deposits__single__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: frozen_bonds__implicit__ed25519__public_key_hash
+    - id: unstaked_deposits__single__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: frozen_bonds__implicit__secp256k1__public_key_hash
+    - id: unstaked_deposits__single__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: frozen_bonds__implicit__p256__public_key_hash
+    - id: unstaked_deposits__single__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: frozen_bonds__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  commitments__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: committer
-      size: 20
-    - id: alpha__operation_metadata__alpha__tez_balance_update
-      type: s8
-  lost_attesting_rewards__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: delegate
-      type: lost_attesting_rewards__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: participation
-      type: u1
-      enum: bool
-    - id: revelation
-      type: u1
-      enum: bool
-    - id: alpha__operation_metadata__alpha__tez_balance_update
-      type: s8
-  lost_attesting_rewards__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: lost_attesting_rewards__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: lost_attesting_rewards__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: lost_attesting_rewards__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: lost_attesting_rewards__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  deposits__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: staker
-      type: deposits__alpha__staker_
-      doc: ! >-
-        staker: Abstract notion of staker used in operation receipts, either a single
-        staker or all the stakers delegating to some delegate.
-    - id: alpha__operation_metadata__alpha__tez_balance_update
-      type: s8
-  deposits__alpha__staker_:
-    seq:
-    - id: alpha__staker_tag
-      type: u1
-      enum: alpha__staker_tag
-    - id: deposits__single__alpha__staker
-      type: deposits__single__alpha__staker
-      if: (alpha__staker_tag == alpha__staker_tag::single)
-    - id: deposits__shared__alpha__staker
-      type: deposits__shared__public_key_hash_
-      if: (alpha__staker_tag == alpha__staker_tag::shared)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  deposits__shared__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: deposits__shared__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: deposits__shared__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: deposits__shared__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: deposits__shared__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  deposits__single__alpha__staker:
-    seq:
-    - id: contract
-      type: deposits__single__alpha__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: delegate
-      type: deposits__single__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  deposits__single__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: deposits__single__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: deposits__single__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: deposits__single__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: deposits__single__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  deposits__single__alpha__contract_id_:
-    seq:
-    - id: alpha__contract_id_tag
-      type: u1
-      enum: alpha__contract_id_tag
-    - id: deposits__single__implicit__alpha__contract_id
-      type: deposits__single__implicit__public_key_hash_
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: deposits__single__originated__alpha__contract_id
-      type: deposits__single__originated__alpha__contract_id
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  deposits__single__originated__alpha__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  deposits__single__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: deposits__single__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: deposits__single__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: deposits__single__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: deposits__single__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  contract__alpha__operation_metadata__alpha__balance_and_update:
-    seq:
-    - id: contract
-      type: contract__alpha__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: alpha__operation_metadata__alpha__tez_balance_update
-      type: s8
-  contract__alpha__contract_id_:
-    seq:
-    - id: alpha__contract_id_tag
-      type: u1
-      enum: alpha__contract_id_tag
-    - id: contract__implicit__alpha__contract_id
-      type: contract__implicit__public_key_hash_
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: contract__originated__alpha__contract_id
-      type: contract__originated__alpha__contract_id
-      if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
-  contract__originated__alpha__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  contract__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: contract__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: contract__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: contract__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: contract__implicit__bls__public_key_hash
+    - id: unstaked_deposits__single__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:

@@ -862,6 +862,7 @@ let from_data_encoding :
       extern;
     }
   in
+  let types state = state.types |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2) in
   match encoding.encoding with
   | Describe {encoding; description; id = descrid; _} ->
       let description = add_original_id_to_description ?description id in
@@ -870,7 +871,7 @@ let from_data_encoding :
         ~id:encoding_name
         ~description
         ~enums:state.enums
-        ~types:state.types
+        ~types:(types state)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
@@ -883,7 +884,7 @@ let from_data_encoding :
         ~id:encoding_name
         ~description
         ~enums:state.enums
-        ~types:state.types
+        ~types:(types state)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs

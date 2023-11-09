@@ -3,49 +3,39 @@ meta:
   endian: be
 doc: ! 'Encoding id: 011-PtHangz2.receipt.balance_updates'
 types:
-  id_011__pthangz2__operation_metadata__alpha__balance_updates_:
+  contract__id_011__pthangz2__contract_id_:
     seq:
-    - id: len_id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
-      type: id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
-      size: len_id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
-  id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn:
-    seq:
-    - id: id_011__pthangz2__operation_metadata__alpha__balance_updates_entries
-      type: id_011__pthangz2__operation_metadata__alpha__balance_updates_entries
-      repeat: eos
-  id_011__pthangz2__operation_metadata__alpha__balance_updates_entries:
-    seq:
-    - id: id_011__pthangz2__operation_metadata__alpha__balance_
-      type: id_011__pthangz2__operation_metadata__alpha__balance_
-    - id: id_011__pthangz2__operation_metadata__alpha__balance_update
-      type: s8
-    - id: id_011__pthangz2__operation_metadata__alpha__update_origin
+    - id: id_011__pthangz2__contract_id_tag
       type: u1
-      enum: origin_tag
-  id_011__pthangz2__operation_metadata__alpha__balance_:
+      enum: id_011__pthangz2__contract_id_tag
+    - id: contract__implicit__id_011__pthangz2__contract_id
+      type: contract__implicit__public_key_hash_
+      if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: contract__originated__id_011__pthangz2__contract_id
+      type: contract__originated__id_011__pthangz2__contract_id
+      if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::originated)
+  contract__implicit__public_key_hash_:
     seq:
-    - id: id_011__pthangz2__operation_metadata__alpha__balance_tag
+    - id: public_key_hash_tag
       type: u1
-      enum: id_011__pthangz2__operation_metadata__alpha__balance_tag
-    - id: contract__id_011__pthangz2__operation_metadata__alpha__balance
-      type: contract__id_011__pthangz2__contract_id_
-      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::contract)
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: rewards__id_011__pthangz2__operation_metadata__alpha__balance
-      type: rewards__id_011__pthangz2__operation_metadata__alpha__balance
-      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::rewards)
-    - id: fees__id_011__pthangz2__operation_metadata__alpha__balance
-      type: fees__id_011__pthangz2__operation_metadata__alpha__balance
-      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::fees)
-    - id: deposits__id_011__pthangz2__operation_metadata__alpha__balance
-      type: deposits__id_011__pthangz2__operation_metadata__alpha__balance
-      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::deposits)
+      enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  contract__originated__id_011__pthangz2__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
   deposits__id_011__pthangz2__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -88,6 +78,49 @@ types:
     - id: fees__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  id_011__pthangz2__operation_metadata__alpha__balance_:
+    seq:
+    - id: id_011__pthangz2__operation_metadata__alpha__balance_tag
+      type: u1
+      enum: id_011__pthangz2__operation_metadata__alpha__balance_tag
+    - id: contract__id_011__pthangz2__operation_metadata__alpha__balance
+      type: contract__id_011__pthangz2__contract_id_
+      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::contract)
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: rewards__id_011__pthangz2__operation_metadata__alpha__balance
+      type: rewards__id_011__pthangz2__operation_metadata__alpha__balance
+      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::rewards)
+    - id: fees__id_011__pthangz2__operation_metadata__alpha__balance
+      type: fees__id_011__pthangz2__operation_metadata__alpha__balance
+      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::fees)
+    - id: deposits__id_011__pthangz2__operation_metadata__alpha__balance
+      type: deposits__id_011__pthangz2__operation_metadata__alpha__balance
+      if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::deposits)
+  id_011__pthangz2__operation_metadata__alpha__balance_updates_:
+    seq:
+    - id: len_id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
+      type: id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
+      size: len_id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn
+  id_011__pthangz2__operation_metadata__alpha__balance_updates_dyn:
+    seq:
+    - id: id_011__pthangz2__operation_metadata__alpha__balance_updates_entries
+      type: id_011__pthangz2__operation_metadata__alpha__balance_updates_entries
+      repeat: eos
+  id_011__pthangz2__operation_metadata__alpha__balance_updates_entries:
+    seq:
+    - id: id_011__pthangz2__operation_metadata__alpha__balance_
+      type: id_011__pthangz2__operation_metadata__alpha__balance_
+    - id: id_011__pthangz2__operation_metadata__alpha__balance_update
+      type: s8
+    - id: id_011__pthangz2__operation_metadata__alpha__update_origin
+      type: u1
+      enum: origin_tag
   rewards__id_011__pthangz2__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -107,39 +140,6 @@ types:
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
     - id: rewards__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  contract__id_011__pthangz2__contract_id_:
-    seq:
-    - id: id_011__pthangz2__contract_id_tag
-      type: u1
-      enum: id_011__pthangz2__contract_id_tag
-    - id: contract__implicit__id_011__pthangz2__contract_id
-      type: contract__implicit__public_key_hash_
-      if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: contract__originated__id_011__pthangz2__contract_id
-      type: contract__originated__id_011__pthangz2__contract_id
-      if: (id_011__pthangz2__contract_id_tag == id_011__pthangz2__contract_id_tag::originated)
-  contract__originated__id_011__pthangz2__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  contract__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: contract__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: contract__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: contract__implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:

@@ -6,6 +6,374 @@ meta:
   - operation__shell_header
 doc: ! 'Encoding id: 018-Proxford.operation.contents_list'
 types:
+  activate_account__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: pkh
+      size: 20
+    - id: secret
+      size: 20
+  ballot__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: ballot__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: period
+      type: s4
+    - id: proposal
+      size: 32
+    - id: ballot
+      type: s1
+  ballot__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: ballot__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: ballot__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  dal_attestation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: attestor
+      type: dal_attestation__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: attestation
+      type: z
+    - id: level
+      type: s4
+  dal_attestation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: dal_attestation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: dal_attestation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: dal_attestation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: dal_attestation__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  dal_publish_slot_header__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: dal_publish_slot_header__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: dal_publish_slot_header__slot_header
+      type: dal_publish_slot_header__slot_header
+  dal_publish_slot_header__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: dal_publish_slot_header__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: dal_publish_slot_header__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: dal_publish_slot_header__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: dal_publish_slot_header__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  dal_publish_slot_header__slot_header:
+    seq:
+    - id: slot_index
+      type: u1
+    - id: commitment
+      size: 48
+    - id: commitment_proof
+      size: 48
+  delegation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: delegation__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: delegation__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  delegation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: delegation__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  double_baking_evidence__bh1:
+    seq:
+    - id: len_double_baking_evidence__bh1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_baking_evidence__bh1_dyn
+      type: double_baking_evidence__bh1_dyn
+      size: len_double_baking_evidence__bh1_dyn
+  double_baking_evidence__bh1_dyn:
+    seq:
+    - id: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
+      type: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
+  double_baking_evidence__bh2:
+    seq:
+    - id: len_double_baking_evidence__bh2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_baking_evidence__bh2_dyn
+      type: double_baking_evidence__bh2_dyn
+      size: len_double_baking_evidence__bh2_dyn
+  double_baking_evidence__bh2_dyn:
+    seq:
+    - id: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
+      type: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
+  double_baking_evidence__id_018__proxford__block_header__alpha__full_header_:
+    seq:
+    - id: id_018__proxford__block_header__alpha__full_header
+      type: block_header__shell
+    - id: double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_
+      type: double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_
+  double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_:
+    seq:
+    - id: double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_
+      type: double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_
+    - id: signature
+      size-eos: true
+  double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_:
+    seq:
+    - id: payload_hash
+      size: 32
+    - id: payload_round
+      type: s4
+    - id: proof_of_work_nonce
+      size: 8
+    - id: seed_nonce_hash_tag
+      type: u1
+      enum: bool
+    - id: seed_nonce_hash
+      size: 32
+      if: (seed_nonce_hash_tag == bool::true)
+    - id: per_block_votes
+      type: u1
+      enum: id_018__proxford__per_block_votes_tag
+  double_baking_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: double_baking_evidence__bh1
+      type: double_baking_evidence__bh1
+    - id: double_baking_evidence__bh2
+      type: double_baking_evidence__bh2
+  double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  double_endorsement_evidence__id_018__proxford__inlined__endorsement_:
+    seq:
+    - id: id_018__proxford__inlined__endorsement
+      type: operation__shell_header
+    - id: operations
+      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_mempool__contents_
+    - id: signature_tag
+      type: u1
+      enum: bool
+    - id: signature
+      size-eos: true
+      if: (signature_tag == bool::true)
+  double_endorsement_evidence__id_018__proxford__inlined__endorsement_mempool__contents_:
+    seq:
+    - id: id_018__proxford__inlined__endorsement_mempool__contents_tag
+      type: u1
+      enum: id_018__proxford__inlined__endorsement_mempool__contents_tag
+    - id: double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents
+      type: double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents
+      if: (id_018__proxford__inlined__endorsement_mempool__contents_tag == id_018__proxford__inlined__endorsement_mempool__contents_tag::endorsement)
+  double_endorsement_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: double_endorsement_evidence__op1
+      type: double_endorsement_evidence__op1
+    - id: double_endorsement_evidence__op2
+      type: double_endorsement_evidence__op2
+  double_endorsement_evidence__op1:
+    seq:
+    - id: len_double_endorsement_evidence__op1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_endorsement_evidence__op1_dyn
+      type: double_endorsement_evidence__op1_dyn
+      size: len_double_endorsement_evidence__op1_dyn
+  double_endorsement_evidence__op1_dyn:
+    seq:
+    - id: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
+      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
+  double_endorsement_evidence__op2:
+    seq:
+    - id: len_double_endorsement_evidence__op2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_endorsement_evidence__op2_dyn
+      type: double_endorsement_evidence__op2_dyn
+      size: len_double_endorsement_evidence__op2_dyn
+  double_endorsement_evidence__op2_dyn:
+    seq:
+    - id: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
+      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
+  double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_:
+    seq:
+    - id: id_018__proxford__inlined__preendorsement
+      type: operation__shell_header
+    - id: operations
+      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement__contents_
+    - id: signature_tag
+      type: u1
+      enum: bool
+    - id: signature
+      size-eos: true
+      if: (signature_tag == bool::true)
+  double_preendorsement_evidence__id_018__proxford__inlined__preendorsement__contents_:
+    seq:
+    - id: id_018__proxford__inlined__preendorsement__contents_tag
+      type: u1
+      enum: id_018__proxford__inlined__preendorsement__contents_tag
+    - id: double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents
+      type: double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents
+      if: (id_018__proxford__inlined__preendorsement__contents_tag == id_018__proxford__inlined__preendorsement__contents_tag::preendorsement)
+  double_preendorsement_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: double_preendorsement_evidence__op1
+      type: double_preendorsement_evidence__op1
+    - id: double_preendorsement_evidence__op2
+      type: double_preendorsement_evidence__op2
+  double_preendorsement_evidence__op1:
+    seq:
+    - id: len_double_preendorsement_evidence__op1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_preendorsement_evidence__op1_dyn
+      type: double_preendorsement_evidence__op1_dyn
+      size: len_double_preendorsement_evidence__op1_dyn
+  double_preendorsement_evidence__op1_dyn:
+    seq:
+    - id: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
+      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
+  double_preendorsement_evidence__op2:
+    seq:
+    - id: len_double_preendorsement_evidence__op2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_preendorsement_evidence__op2_dyn
+      type: double_preendorsement_evidence__op2_dyn
+      size: len_double_preendorsement_evidence__op2_dyn
+  double_preendorsement_evidence__op2_dyn:
+    seq:
+    - id: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
+      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
+  double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  drain_delegate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: consensus_key
+      type: drain_delegate__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: delegate
+      type: drain_delegate__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: destination
+      type: drain_delegate__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  drain_delegate__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: drain_delegate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: drain_delegate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: drain_delegate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: drain_delegate__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  endorsement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   id_018__proxford__operation__contents_list_entries:
     seq:
     - id: id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_
@@ -147,10 +515,18 @@ types:
       type: zk_rollup_update__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::zk_rollup_update)
-  zk_rollup_update__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+  increase_paid_storage__id_018__proxford__contract_id__originated_:
+    seq:
+    - id: id_018__proxford__contract_id__originated_tag
+      type: u1
+      enum: id_018__proxford__contract_id__originated_tag
+    - id: increase_paid_storage__originated__id_018__proxford__contract_id__originated
+      type: increase_paid_storage__originated__id_018__proxford__contract_id__originated
+      if: (id_018__proxford__contract_id__originated_tag == id_018__proxford__contract_id__originated_tag::originated)
+  increase_paid_storage__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
     - id: source
-      type: zk_rollup_update__public_key_hash_
+      type: increase_paid_storage__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -160,108 +536,1025 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: zk_rollup
+    - id: amount
+      type: z
+    - id: destination
+      type: increase_paid_storage__id_018__proxford__contract_id__originated_
+      doc: ! >-
+        A contract handle -- originated account: A contract notation as given to an
+        RPC or inside scripts. Can be a base58 originated contract hash.
+  increase_paid_storage__originated__id_018__proxford__contract_id__originated:
+    seq:
+    - id: contract_hash
       size: 20
-    - id: zk_rollup_update__update
-      type: zk_rollup_update__update
-  zk_rollup_update__update:
-    seq:
-    - id: zk_rollup_update__pending_pis
-      type: zk_rollup_update__pending_pis
-    - id: zk_rollup_update__private_pis
-      type: zk_rollup_update__private_pis
-    - id: fee_pi
-      type: zk_rollup_update__new_state
-    - id: proof
-      type: bytes_dyn_uint30
-  zk_rollup_update__private_pis:
-    seq:
-    - id: len_zk_rollup_update__private_pis_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__private_pis_dyn
-      type: zk_rollup_update__private_pis_dyn
-      size: len_zk_rollup_update__private_pis_dyn
-  zk_rollup_update__private_pis_dyn:
-    seq:
-    - id: zk_rollup_update__private_pis_entries
-      type: zk_rollup_update__private_pis_entries
-      repeat: eos
-  zk_rollup_update__private_pis_entries:
-    seq:
-    - id: private_pis_elt_field0
-      type: bytes_dyn_uint30
-    - id: zk_rollup_update__private_pis_elt_field1
-      type: zk_rollup_update__private_pis_elt_field1
-  zk_rollup_update__private_pis_elt_field1:
-    seq:
-    - id: zk_rollup_update__new_state
-      type: zk_rollup_update__new_state
-    - id: fee
-      size: 32
-  zk_rollup_update__pending_pis:
-    seq:
-    - id: len_zk_rollup_update__pending_pis_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__pending_pis_dyn
-      type: zk_rollup_update__pending_pis_dyn
-      size: len_zk_rollup_update__pending_pis_dyn
-  zk_rollup_update__pending_pis_dyn:
-    seq:
-    - id: zk_rollup_update__pending_pis_entries
-      type: zk_rollup_update__pending_pis_entries
-      repeat: eos
-  zk_rollup_update__pending_pis_entries:
-    seq:
-    - id: pending_pis_elt_field0
-      type: bytes_dyn_uint30
-    - id: zk_rollup_update__pending_pis_elt_field1
-      type: zk_rollup_update__pending_pis_elt_field1
-  zk_rollup_update__pending_pis_elt_field1:
-    seq:
-    - id: zk_rollup_update__new_state
-      type: zk_rollup_update__new_state
-    - id: fee
-      size: 32
-    - id: exit_validity
-      type: u1
-      enum: bool
-  zk_rollup_update__new_state:
-    seq:
-    - id: len_zk_rollup_update__new_state_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__new_state_dyn
-      type: zk_rollup_update__new_state_dyn
-      size: len_zk_rollup_update__new_state_dyn
-  zk_rollup_update__new_state_dyn:
-    seq:
-    - id: zk_rollup_update__new_state_entries
-      type: zk_rollup_update__new_state_entries
-      repeat: eos
-  zk_rollup_update__new_state_entries:
-    seq:
-    - id: new_state_elt
-      size: 32
-  zk_rollup_update__public_key_hash_:
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  increase_paid_storage__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: zk_rollup_update__ed25519__public_key_hash
+    - id: increase_paid_storage__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_update__secp256k1__public_key_hash
+    - id: increase_paid_storage__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_update__p256__public_key_hash
+    - id: increase_paid_storage__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_update__bls__public_key_hash
+    - id: increase_paid_storage__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: origination__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: balance
+      type: n
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: origination__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: script
+      type: origination__id_018__proxford__scripted__contracts_
+  origination__id_018__proxford__scripted__contracts_:
+    seq:
+    - id: code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
+  origination__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: origination__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: origination__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  preendorsement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  proposals__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: proposals__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: period
+      type: s4
+    - id: proposals__proposals
+      type: proposals__proposals
+  proposals__proposals:
+    seq:
+    - id: len_proposals__proposals_dyn
+      type: u4
+      valid:
+        max: 640
+    - id: proposals__proposals_dyn
+      type: proposals__proposals_dyn
+      size: len_proposals__proposals_dyn
+  proposals__proposals_dyn:
+    seq:
+    - id: proposals__proposals_entries
+      type: proposals__proposals_entries
+      repeat: eos
+  proposals__proposals_entries:
+    seq:
+    - id: protocol_hash
+      size: 32
+  proposals__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: proposals__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: proposals__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: proposals__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: proposals__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: register_global_constant__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: value
+      type: bytes_dyn_uint30
+  register_global_constant__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: register_global_constant__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: register_global_constant__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  reveal__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: reveal__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: public_key
+      type: reveal__public_key_
+      doc: A Ed25519, Secp256k1, or P256 public key
+  reveal__public_key_:
+    seq:
+    - id: public_key_tag
+      type: u1
+      enum: public_key_tag
+    - id: reveal__ed25519__public_key
+      size: 32
+      if: (public_key_tag == public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::secp256k1)
+    - id: reveal__p256__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::p256)
+    - id: reveal__bls__public_key
+      size: 48
+      if: (public_key_tag == public_key_tag::bls)
+  reveal__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: reveal__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: reveal__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  seed_nonce_revelation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: level
+      type: s4
+    - id: nonce
+      size: 32
+  smart_rollup_add_messages__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_add_messages__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: smart_rollup_add_messages__message
+      type: smart_rollup_add_messages__message
+  smart_rollup_add_messages__message:
+    seq:
+    - id: len_smart_rollup_add_messages__message_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: smart_rollup_add_messages__message_dyn
+      type: smart_rollup_add_messages__message_dyn
+      size: len_smart_rollup_add_messages__message_dyn
+  smart_rollup_add_messages__message_dyn:
+    seq:
+    - id: smart_rollup_add_messages__message_entries
+      type: smart_rollup_add_messages__message_entries
+      repeat: eos
+  smart_rollup_add_messages__message_entries:
+    seq:
+    - id: message_elt
+      type: bytes_dyn_uint30
+  smart_rollup_add_messages__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_add_messages__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_add_messages__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_add_messages__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_add_messages__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_cement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_cement__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+  smart_rollup_cement__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_cement__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_cement__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_cement__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_cement__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_execute_outbox_message__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_execute_outbox_message__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+    - id: cemented_commitment
+      size: 32
+    - id: output_proof
+      type: bytes_dyn_uint30
+  smart_rollup_execute_outbox_message__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_execute_outbox_message__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_execute_outbox_message__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_execute_outbox_message__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_execute_outbox_message__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_originate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_originate__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: pvm_kind
+      type: u1
+      enum: smart_rollup_originate__pvm_kind
+    - id: kernel
+      type: bytes_dyn_uint30
+    - id: parameters_ty
+      type: bytes_dyn_uint30
+  smart_rollup_originate__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_originate__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_originate__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_originate__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_originate__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_publish__commitment:
+    seq:
+    - id: compressed_state
+      size: 32
+    - id: inbox_level
+      type: s4
+    - id: predecessor
+      size: 32
+    - id: number_of_ticks
+      type: s8
+  smart_rollup_publish__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_publish__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+    - id: smart_rollup_publish__commitment
+      type: smart_rollup_publish__commitment
+  smart_rollup_publish__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_publish__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_publish__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_recover_bond__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_recover_bond__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+    - id: staker
+      type: smart_rollup_recover_bond__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  smart_rollup_recover_bond__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_recover_bond__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_recover_bond__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_recover_bond__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_recover_bond__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_refute__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_refute__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+    - id: opponent
+      type: smart_rollup_refute__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: smart_rollup_refute__refutation
+      type: smart_rollup_refute__refutation
+  smart_rollup_refute__move__dissection__dissection_dyn:
+    seq:
+    - id: smart_rollup_refute__move__dissection__dissection_entries
+      type: smart_rollup_refute__move__dissection__dissection_entries
+      repeat: eos
+  smart_rollup_refute__move__dissection__dissection_entries:
+    seq:
+    - id: state_tag
+      type: u1
+      enum: bool
+    - id: state
+      size: 32
+      if: (state_tag == bool::true)
+    - id: tick
+      type: n
+  smart_rollup_refute__move__dissection__step:
+    seq:
+    - id: len_smart_rollup_refute__move__dissection__dissection_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: smart_rollup_refute__move__dissection__dissection_dyn
+      type: smart_rollup_refute__move__dissection__dissection_dyn
+      size: len_smart_rollup_refute__move__dissection__dissection_dyn
+  smart_rollup_refute__move__proof__inbox__proof__input_proof:
+    seq:
+    - id: level
+      type: s4
+    - id: message_counter
+      type: n
+    - id: serialized_proof
+      type: bytes_dyn_uint30
+  smart_rollup_refute__move__proof__input_proof_:
+    seq:
+    - id: input_proof_tag
+      type: u1
+      enum: input_proof_tag
+    - id: smart_rollup_refute__move__proof__inbox__proof__input_proof
+      type: smart_rollup_refute__move__proof__inbox__proof__input_proof
+      if: (input_proof_tag == input_proof_tag::inbox__proof)
+    - id: smart_rollup_refute__move__proof__reveal__proof__input_proof
+      type: smart_rollup_refute__move__proof__reveal__proof__reveal_proof
+      if: (input_proof_tag == input_proof_tag::reveal__proof)
+  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id:
+    seq:
+    - id: published_level
+      type: s4
+    - id: slot_index
+      type: u1
+    - id: page_index
+      type: s2
+  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof:
+    seq:
+    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
+      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
+    - id: dal_proof
+      type: bytes_dyn_uint30
+  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data:
+    seq:
+    - id: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
+      type: u2
+      valid:
+        max: 4096
+    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
+      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
+      size: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
+  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn:
+    seq:
+    - id: raw_data
+      size-eos: true
+  smart_rollup_refute__move__proof__reveal__proof__reveal_proof:
+    seq:
+    - id: reveal_proof_tag
+      type: u1
+      enum: reveal_proof_tag
+    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__reveal_proof
+      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data
+      if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
+    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
+      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
+      if: (reveal_proof_tag == reveal_proof_tag::dal__page__proof)
+  smart_rollup_refute__move__proof__step:
+    seq:
+    - id: pvm_step
+      type: bytes_dyn_uint30
+    - id: input_proof_tag
+      type: u1
+      enum: bool
+    - id: smart_rollup_refute__move__proof__input_proof_
+      type: smart_rollup_refute__move__proof__input_proof_
+      if: (input_proof_tag == bool::true)
+  smart_rollup_refute__move__refutation:
+    seq:
+    - id: choice
+      type: n
+    - id: smart_rollup_refute__move__step
+      type: smart_rollup_refute__move__step
+  smart_rollup_refute__move__step:
+    seq:
+    - id: step_tag
+      type: u1
+      enum: step_tag
+    - id: smart_rollup_refute__move__dissection__step
+      type: smart_rollup_refute__move__dissection__step
+      if: (step_tag == step_tag::dissection)
+    - id: smart_rollup_refute__move__proof__step
+      type: smart_rollup_refute__move__proof__step
+      if: (step_tag == step_tag::proof)
+  smart_rollup_refute__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_refute__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_refute__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_refute__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_refute__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_refute__refutation:
+    seq:
+    - id: refutation_tag
+      type: u1
+      enum: refutation_tag
+    - id: smart_rollup_refute__start__refutation
+      type: smart_rollup_refute__start__refutation
+      if: (refutation_tag == refutation_tag::start)
+    - id: smart_rollup_refute__move__refutation
+      type: smart_rollup_refute__move__refutation
+      if: (refutation_tag == refutation_tag::move)
+  smart_rollup_refute__start__refutation:
+    seq:
+    - id: player_commitment_hash
+      size: 32
+    - id: opponent_commitment_hash
+      size: 32
+  smart_rollup_timeout__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: smart_rollup_timeout__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      size: 20
+    - id: smart_rollup_timeout__stakers
+      type: smart_rollup_timeout__stakers
+  smart_rollup_timeout__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: smart_rollup_timeout__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: smart_rollup_timeout__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: smart_rollup_timeout__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: smart_rollup_timeout__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup_timeout__stakers:
+    seq:
+    - id: alice
+      type: smart_rollup_timeout__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: bob
+      type: smart_rollup_timeout__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  transaction__id_018__proxford__contract_id_:
+    seq:
+    - id: id_018__proxford__contract_id_tag
+      type: u1
+      enum: id_018__proxford__contract_id_tag
+    - id: transaction__implicit__id_018__proxford__contract_id
+      type: transaction__implicit__public_key_hash_
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: transaction__originated__id_018__proxford__contract_id
+      type: transaction__originated__id_018__proxford__contract_id
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
+  transaction__id_018__proxford__entrypoint_:
+    seq:
+    - id: id_018__proxford__entrypoint_tag
+      type: u1
+      enum: id_018__proxford__entrypoint_tag
+    - id: transaction__named__id_018__proxford__entrypoint
+      type: transaction__named__id_018__proxford__entrypoint
+      if: (id_018__proxford__entrypoint_tag == id_018__proxford__entrypoint_tag::named)
+  transaction__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: transaction__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: amount
+      type: n
+    - id: destination
+      type: transaction__id_018__proxford__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: parameters_tag
+      type: u1
+      enum: bool
+    - id: transaction__parameters_
+      type: transaction__parameters_
+      if: (parameters_tag == bool::true)
+  transaction__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transaction__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: transaction__implicit__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  transaction__named__id_018__proxford__entrypoint:
+    seq:
+    - id: len_transaction__named__named_dyn
+      type: u1
+      valid:
+        max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  transaction__originated__id_018__proxford__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__parameters_:
+    seq:
+    - id: entrypoint
+      type: transaction__id_018__proxford__entrypoint_
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
+      type: bytes_dyn_uint30
+  transaction__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transaction__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: transaction__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  transfer_ticket__id_018__proxford__contract_id_:
+    seq:
+    - id: id_018__proxford__contract_id_tag
+      type: u1
+      enum: id_018__proxford__contract_id_tag
+    - id: transfer_ticket__implicit__id_018__proxford__contract_id
+      type: transfer_ticket__implicit__public_key_hash_
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: transfer_ticket__originated__id_018__proxford__contract_id
+      type: transfer_ticket__originated__id_018__proxford__contract_id
+      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
+  transfer_ticket__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: transfer_ticket__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: ticket_contents
+      type: bytes_dyn_uint30
+    - id: ticket_ty
+      type: bytes_dyn_uint30
+    - id: ticket_ticketer
+      type: transfer_ticket__id_018__proxford__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: ticket_amount
+      type: n
+    - id: destination
+      type: transfer_ticket__id_018__proxford__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: entrypoint
+      type: bytes_dyn_uint30
+  transfer_ticket__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transfer_ticket__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transfer_ticket__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transfer_ticket__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: transfer_ticket__implicit__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  transfer_ticket__originated__id_018__proxford__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transfer_ticket__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transfer_ticket__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transfer_ticket__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transfer_ticket__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: transfer_ticket__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
+  update_consensus_key__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: update_consensus_key__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: pk
+      type: update_consensus_key__public_key_
+      doc: A Ed25519, Secp256k1, or P256 public key
+  update_consensus_key__public_key_:
+    seq:
+    - id: public_key_tag
+      type: u1
+      enum: public_key_tag
+    - id: update_consensus_key__ed25519__public_key
+      size: 32
+      if: (public_key_tag == public_key_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::secp256k1)
+    - id: update_consensus_key__p256__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::p256)
+    - id: update_consensus_key__bls__public_key
+      size: 48
+      if: (public_key_tag == public_key_tag::bls)
+  update_consensus_key__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: update_consensus_key__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: update_consensus_key__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: update_consensus_key__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: update_consensus_key__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
+  vdf_revelation__solution:
+    seq:
+    - id: solution_field0
+      size: 100
+    - id: solution_field1
+      size: 100
+  z:
+    seq:
+    - id: has_tail
+      type: b1be
+    - id: sign
+      type: b1be
+    - id: payload
+      type: b6be
+    - id: tail
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+      if: has_tail.as<bool>
+  zk_rollup_origination__circuits_info:
+    seq:
+    - id: len_zk_rollup_origination__circuits_info_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: zk_rollup_origination__circuits_info_dyn
+      type: zk_rollup_origination__circuits_info_dyn
+      size: len_zk_rollup_origination__circuits_info_dyn
+  zk_rollup_origination__circuits_info_dyn:
+    seq:
+    - id: zk_rollup_origination__circuits_info_entries
+      type: zk_rollup_origination__circuits_info_entries
+      repeat: eos
+  zk_rollup_origination__circuits_info_entries:
+    seq:
+    - id: circuits_info_elt_field0
+      type: bytes_dyn_uint30
+    - id: circuits_info_elt_field1
+      type: u1
+      enum: circuits_info_elt_field1_tag
+      doc: circuits_info_elt_field1_tag
+  zk_rollup_origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: source
+      type: zk_rollup_origination__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: public_parameters
+      type: bytes_dyn_uint30
+    - id: zk_rollup_origination__circuits_info
+      type: zk_rollup_origination__circuits_info
+    - id: zk_rollup_origination__init_state
+      type: zk_rollup_origination__init_state
+    - id: nb_ops
+      type: int31
+  zk_rollup_origination__init_state:
+    seq:
+    - id: len_zk_rollup_origination__init_state_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: zk_rollup_origination__init_state_dyn
+      type: zk_rollup_origination__init_state_dyn
+      size: len_zk_rollup_origination__init_state_dyn
+  zk_rollup_origination__init_state_dyn:
+    seq:
+    - id: zk_rollup_origination__init_state_entries
+      type: zk_rollup_origination__init_state_entries
+      repeat: eos
+  zk_rollup_origination__init_state_entries:
+    seq:
+    - id: init_state_elt
+      size: 32
+  zk_rollup_origination__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: zk_rollup_origination__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: zk_rollup_origination__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: zk_rollup_origination__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: zk_rollup_origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
   zk_rollup_publish__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
@@ -295,12 +1588,19 @@ types:
     - id: zk_rollup_publish__op_entries
       type: zk_rollup_publish__op_entries
       repeat: eos
-  zk_rollup_publish__op_entries:
+  zk_rollup_publish__op_elt_field0:
     seq:
-    - id: zk_rollup_publish__op_elt_field0
-      type: zk_rollup_publish__op_elt_field0
-    - id: zk_rollup_publish__op_elt_field1
-      type: zk_rollup_publish__op_elt_field1
+    - id: op_code
+      type: int31
+    - id: zk_rollup_publish__price
+      type: zk_rollup_publish__price
+    - id: l1_dst
+      type: zk_rollup_publish__public_key_hash_
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: rollup_id
+      size: 20
+    - id: zk_rollup_publish__payload
+      type: zk_rollup_publish__payload
   zk_rollup_publish__op_elt_field1:
     seq:
     - id: op_elt_field1_tag
@@ -309,17 +1609,53 @@ types:
     - id: zk_rollup_publish__some__op_elt_field1
       type: zk_rollup_publish__some__op_elt_field1
       if: (op_elt_field1_tag == op_elt_field1_tag::some)
-  zk_rollup_publish__some__op_elt_field1:
+  zk_rollup_publish__op_entries:
     seq:
-    - id: contents
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: ty
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: ticketer
-      type: zk_rollup_publish__some__id_018__proxford__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: zk_rollup_publish__op_elt_field0
+      type: zk_rollup_publish__op_elt_field0
+    - id: zk_rollup_publish__op_elt_field1
+      type: zk_rollup_publish__op_elt_field1
+  zk_rollup_publish__payload:
+    seq:
+    - id: len_zk_rollup_publish__payload_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: zk_rollup_publish__payload_dyn
+      type: zk_rollup_publish__payload_dyn
+      size: len_zk_rollup_publish__payload_dyn
+  zk_rollup_publish__payload_dyn:
+    seq:
+    - id: zk_rollup_publish__payload_entries
+      type: zk_rollup_publish__payload_entries
+      repeat: eos
+  zk_rollup_publish__payload_entries:
+    seq:
+    - id: payload_elt
+      size: 32
+  zk_rollup_publish__price:
+    seq:
+    - id: id
+      size: 32
+    - id: amount
+      type: z
+  zk_rollup_publish__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: zk_rollup_publish__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: zk_rollup_publish__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: zk_rollup_publish__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: zk_rollup_publish__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   zk_rollup_publish__some__id_018__proxford__contract_id_:
     seq:
     - id: id_018__proxford__contract_id_tag
@@ -332,13 +1668,6 @@ types:
     - id: zk_rollup_publish__some__originated__id_018__proxford__contract_id
       type: zk_rollup_publish__some__originated__id_018__proxford__contract_id
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
-  zk_rollup_publish__some__originated__id_018__proxford__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   zk_rollup_publish__some__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -395,13 +1724,58 @@ types:
     - id: zk_rollup_publish__some__bytes__micheline__018__proxford__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::bytes)
-  zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression:
+  zk_rollup_publish__some__op_elt_field1:
+    seq:
+    - id: contents
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+    - id: ty
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+    - id: ticketer
+      type: zk_rollup_publish__some__id_018__proxford__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+  zk_rollup_publish__some__originated__id_018__proxford__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  zk_rollup_publish__some__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: zk_rollup_publish__some__prim__generic__id_018__proxford__michelson__v1__primitives
-    - id: zk_rollup_publish__some__prim__generic__args
-      type: zk_rollup_publish__some__prim__generic__args
+      enum: zk_rollup_publish__some__prim__1_arg__no_annots__id_018__proxford__michelson__v1__primitives
+    - id: arg
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+  zk_rollup_publish__some__prim__1_arg__some_annots__micheline__018__proxford__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_018__proxford__michelson__v1__primitives
+    - id: arg
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  zk_rollup_publish__some__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: zk_rollup_publish__some__prim__2_args__no_annots__id_018__proxford__michelson__v1__primitives
+    - id: arg1
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+    - id: arg2
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+  zk_rollup_publish__some__prim__2_args__some_annots__micheline__018__proxford__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: zk_rollup_publish__some__prim__2_args__some_annots__id_018__proxford__michelson__v1__primitives
+    - id: arg1
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+    - id: arg2
+      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   zk_rollup_publish__some__prim__generic__args:
@@ -422,42 +1796,15 @@ types:
     seq:
     - id: args_elt
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-  zk_rollup_publish__some__prim__2_args__some_annots__micheline__018__proxford__michelson_v1__expression:
+  zk_rollup_publish__some__prim__generic__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: zk_rollup_publish__some__prim__2_args__some_annots__id_018__proxford__michelson__v1__primitives
-    - id: arg1
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: arg2
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
+      enum: zk_rollup_publish__some__prim__generic__id_018__proxford__michelson__v1__primitives
+    - id: zk_rollup_publish__some__prim__generic__args
+      type: zk_rollup_publish__some__prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  zk_rollup_publish__some__prim__2_args__no_annots__micheline__018__proxford__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__2_args__no_annots__id_018__proxford__michelson__v1__primitives
-    - id: arg1
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: arg2
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-  zk_rollup_publish__some__prim__1_arg__some_annots__micheline__018__proxford__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_018__proxford__michelson__v1__primitives
-    - id: arg
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  zk_rollup_publish__some__prim__1_arg__no_annots__micheline__018__proxford__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__1_arg__no_annots__id_018__proxford__michelson__v1__primitives
-    - id: arg
-      type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
   zk_rollup_publish__some__prim__no_args__some_annots__micheline__018__proxford__michelson_v1__expression:
     seq:
     - id: prim
@@ -483,1470 +1830,123 @@ types:
     seq:
     - id: sequence_elt
       type: zk_rollup_publish__some__micheline__018__proxford__michelson_v1__expression
-  zk_rollup_publish__op_elt_field0:
+  zk_rollup_update__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
     seq:
-    - id: op_code
-      type: int31
-    - id: zk_rollup_publish__price
-      type: zk_rollup_publish__price
-    - id: l1_dst
-      type: zk_rollup_publish__public_key_hash_
+    - id: source
+      type: zk_rollup_update__public_key_hash_
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: rollup_id
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: zk_rollup
       size: 20
-    - id: zk_rollup_publish__payload
-      type: zk_rollup_publish__payload
-  zk_rollup_publish__payload:
+    - id: zk_rollup_update__update
+      type: zk_rollup_update__update
+  zk_rollup_update__new_state:
     seq:
-    - id: len_zk_rollup_publish__payload_dyn
+    - id: len_zk_rollup_update__new_state_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: zk_rollup_publish__payload_dyn
-      type: zk_rollup_publish__payload_dyn
-      size: len_zk_rollup_publish__payload_dyn
-  zk_rollup_publish__payload_dyn:
+    - id: zk_rollup_update__new_state_dyn
+      type: zk_rollup_update__new_state_dyn
+      size: len_zk_rollup_update__new_state_dyn
+  zk_rollup_update__new_state_dyn:
     seq:
-    - id: zk_rollup_publish__payload_entries
-      type: zk_rollup_publish__payload_entries
+    - id: zk_rollup_update__new_state_entries
+      type: zk_rollup_update__new_state_entries
       repeat: eos
-  zk_rollup_publish__payload_entries:
+  zk_rollup_update__new_state_entries:
     seq:
-    - id: payload_elt
+    - id: new_state_elt
       size: 32
-  zk_rollup_publish__price:
+  zk_rollup_update__pending_pis:
     seq:
-    - id: id
-      size: 32
-    - id: amount
-      type: z
-  zk_rollup_publish__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: zk_rollup_publish__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_publish__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_publish__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_publish__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  zk_rollup_origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: zk_rollup_origination__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: public_parameters
-      type: bytes_dyn_uint30
-    - id: zk_rollup_origination__circuits_info
-      type: zk_rollup_origination__circuits_info
-    - id: zk_rollup_origination__init_state
-      type: zk_rollup_origination__init_state
-    - id: nb_ops
-      type: int31
-  int31:
-    seq:
-    - id: int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
-  zk_rollup_origination__init_state:
-    seq:
-    - id: len_zk_rollup_origination__init_state_dyn
+    - id: len_zk_rollup_update__pending_pis_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: zk_rollup_origination__init_state_dyn
-      type: zk_rollup_origination__init_state_dyn
-      size: len_zk_rollup_origination__init_state_dyn
-  zk_rollup_origination__init_state_dyn:
+    - id: zk_rollup_update__pending_pis_dyn
+      type: zk_rollup_update__pending_pis_dyn
+      size: len_zk_rollup_update__pending_pis_dyn
+  zk_rollup_update__pending_pis_dyn:
     seq:
-    - id: zk_rollup_origination__init_state_entries
-      type: zk_rollup_origination__init_state_entries
+    - id: zk_rollup_update__pending_pis_entries
+      type: zk_rollup_update__pending_pis_entries
       repeat: eos
-  zk_rollup_origination__init_state_entries:
+  zk_rollup_update__pending_pis_elt_field1:
     seq:
-    - id: init_state_elt
+    - id: zk_rollup_update__new_state
+      type: zk_rollup_update__new_state
+    - id: fee
       size: 32
-  zk_rollup_origination__circuits_info:
+    - id: exit_validity
+      type: u1
+      enum: bool
+  zk_rollup_update__pending_pis_entries:
     seq:
-    - id: len_zk_rollup_origination__circuits_info_dyn
+    - id: pending_pis_elt_field0
+      type: bytes_dyn_uint30
+    - id: zk_rollup_update__pending_pis_elt_field1
+      type: zk_rollup_update__pending_pis_elt_field1
+  zk_rollup_update__private_pis:
+    seq:
+    - id: len_zk_rollup_update__private_pis_dyn
       type: u4
       valid:
         max: 1073741823
-    - id: zk_rollup_origination__circuits_info_dyn
-      type: zk_rollup_origination__circuits_info_dyn
-      size: len_zk_rollup_origination__circuits_info_dyn
-  zk_rollup_origination__circuits_info_dyn:
+    - id: zk_rollup_update__private_pis_dyn
+      type: zk_rollup_update__private_pis_dyn
+      size: len_zk_rollup_update__private_pis_dyn
+  zk_rollup_update__private_pis_dyn:
     seq:
-    - id: zk_rollup_origination__circuits_info_entries
-      type: zk_rollup_origination__circuits_info_entries
+    - id: zk_rollup_update__private_pis_entries
+      type: zk_rollup_update__private_pis_entries
       repeat: eos
-  zk_rollup_origination__circuits_info_entries:
+  zk_rollup_update__private_pis_elt_field1:
     seq:
-    - id: circuits_info_elt_field0
+    - id: zk_rollup_update__new_state
+      type: zk_rollup_update__new_state
+    - id: fee
+      size: 32
+  zk_rollup_update__private_pis_entries:
+    seq:
+    - id: private_pis_elt_field0
       type: bytes_dyn_uint30
-    - id: circuits_info_elt_field1
-      type: u1
-      enum: circuits_info_elt_field1_tag
-      doc: circuits_info_elt_field1_tag
-  zk_rollup_origination__public_key_hash_:
+    - id: zk_rollup_update__private_pis_elt_field1
+      type: zk_rollup_update__private_pis_elt_field1
+  zk_rollup_update__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: zk_rollup_origination__ed25519__public_key_hash
+    - id: zk_rollup_update__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_origination__secp256k1__public_key_hash
+    - id: zk_rollup_update__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_origination__p256__public_key_hash
+    - id: zk_rollup_update__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_origination__bls__public_key_hash
+    - id: zk_rollup_update__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_recover_bond__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
+  zk_rollup_update__update:
     seq:
-    - id: source
-      type: smart_rollup_recover_bond__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-    - id: staker
-      type: smart_rollup_recover_bond__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  smart_rollup_recover_bond__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_recover_bond__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_recover_bond__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_recover_bond__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_recover_bond__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_execute_outbox_message__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_execute_outbox_message__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-    - id: cemented_commitment
-      size: 32
-    - id: output_proof
+    - id: zk_rollup_update__pending_pis
+      type: zk_rollup_update__pending_pis
+    - id: zk_rollup_update__private_pis
+      type: zk_rollup_update__private_pis
+    - id: fee_pi
+      type: zk_rollup_update__new_state
+    - id: proof
       type: bytes_dyn_uint30
-  smart_rollup_execute_outbox_message__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_execute_outbox_message__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_execute_outbox_message__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_execute_outbox_message__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_execute_outbox_message__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_timeout__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_timeout__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-    - id: smart_rollup_timeout__stakers
-      type: smart_rollup_timeout__stakers
-  smart_rollup_timeout__stakers:
-    seq:
-    - id: alice
-      type: smart_rollup_timeout__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: bob
-      type: smart_rollup_timeout__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  smart_rollup_timeout__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_timeout__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_timeout__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_timeout__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_timeout__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_refute__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_refute__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-    - id: opponent
-      type: smart_rollup_refute__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: smart_rollup_refute__refutation
-      type: smart_rollup_refute__refutation
-  smart_rollup_refute__refutation:
-    seq:
-    - id: refutation_tag
-      type: u1
-      enum: refutation_tag
-    - id: smart_rollup_refute__start__refutation
-      type: smart_rollup_refute__start__refutation
-      if: (refutation_tag == refutation_tag::start)
-    - id: smart_rollup_refute__move__refutation
-      type: smart_rollup_refute__move__refutation
-      if: (refutation_tag == refutation_tag::move)
-  smart_rollup_refute__move__refutation:
-    seq:
-    - id: choice
-      type: n
-    - id: smart_rollup_refute__move__step
-      type: smart_rollup_refute__move__step
-  smart_rollup_refute__move__step:
-    seq:
-    - id: step_tag
-      type: u1
-      enum: step_tag
-    - id: smart_rollup_refute__move__dissection__step
-      type: smart_rollup_refute__move__dissection__step
-      if: (step_tag == step_tag::dissection)
-    - id: smart_rollup_refute__move__proof__step
-      type: smart_rollup_refute__move__proof__step
-      if: (step_tag == step_tag::proof)
-  smart_rollup_refute__move__proof__step:
-    seq:
-    - id: pvm_step
-      type: bytes_dyn_uint30
-    - id: input_proof_tag
-      type: u1
-      enum: bool
-    - id: smart_rollup_refute__move__proof__input_proof_
-      type: smart_rollup_refute__move__proof__input_proof_
-      if: (input_proof_tag == bool::true)
-  smart_rollup_refute__move__proof__input_proof_:
-    seq:
-    - id: input_proof_tag
-      type: u1
-      enum: input_proof_tag
-    - id: smart_rollup_refute__move__proof__inbox__proof__input_proof
-      type: smart_rollup_refute__move__proof__inbox__proof__input_proof
-      if: (input_proof_tag == input_proof_tag::inbox__proof)
-    - id: smart_rollup_refute__move__proof__reveal__proof__input_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__reveal_proof
-      if: (input_proof_tag == input_proof_tag::reveal__proof)
-  smart_rollup_refute__move__proof__reveal__proof__reveal_proof:
-    seq:
-    - id: reveal_proof_tag
-      type: u1
-      enum: reveal_proof_tag
-    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__reveal_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data
-      if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
-    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
-      if: (reveal_proof_tag == reveal_proof_tag::dal__page__proof)
-  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof:
-    seq:
-    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
-      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
-    - id: dal_proof
-      type: bytes_dyn_uint30
-  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id:
-    seq:
-    - id: published_level
-      type: s4
-    - id: slot_index
-      type: u1
-    - id: page_index
-      type: s2
-  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data:
-    seq:
-    - id: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      type: u2
-      valid:
-        max: 4096
-    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      size: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn:
-    seq:
-    - id: raw_data
-      size-eos: true
-  smart_rollup_refute__move__proof__inbox__proof__input_proof:
-    seq:
-    - id: level
-      type: s4
-    - id: message_counter
-      type: n
-    - id: serialized_proof
-      type: bytes_dyn_uint30
-  smart_rollup_refute__move__dissection__step:
-    seq:
-    - id: len_smart_rollup_refute__move__dissection__dissection_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: smart_rollup_refute__move__dissection__dissection_dyn
-      type: smart_rollup_refute__move__dissection__dissection_dyn
-      size: len_smart_rollup_refute__move__dissection__dissection_dyn
-  smart_rollup_refute__move__dissection__dissection_dyn:
-    seq:
-    - id: smart_rollup_refute__move__dissection__dissection_entries
-      type: smart_rollup_refute__move__dissection__dissection_entries
-      repeat: eos
-  smart_rollup_refute__move__dissection__dissection_entries:
-    seq:
-    - id: state_tag
-      type: u1
-      enum: bool
-    - id: state
-      size: 32
-      if: (state_tag == bool::true)
-    - id: tick
-      type: n
-  smart_rollup_refute__start__refutation:
-    seq:
-    - id: player_commitment_hash
-      size: 32
-    - id: opponent_commitment_hash
-      size: 32
-  smart_rollup_refute__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_refute__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_refute__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_refute__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_refute__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_publish__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_publish__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-    - id: smart_rollup_publish__commitment
-      type: smart_rollup_publish__commitment
-  smart_rollup_publish__commitment:
-    seq:
-    - id: compressed_state
-      size: 32
-    - id: inbox_level
-      type: s4
-    - id: predecessor
-      size: 32
-    - id: number_of_ticks
-      type: s8
-  smart_rollup_publish__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_publish__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_publish__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_publish__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_publish__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_cement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_cement__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-  smart_rollup_cement__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_cement__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_cement__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_cement__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_cement__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_add_messages__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_add_messages__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: smart_rollup_add_messages__message
-      type: smart_rollup_add_messages__message
-  smart_rollup_add_messages__message:
-    seq:
-    - id: len_smart_rollup_add_messages__message_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: smart_rollup_add_messages__message_dyn
-      type: smart_rollup_add_messages__message_dyn
-      size: len_smart_rollup_add_messages__message_dyn
-  smart_rollup_add_messages__message_dyn:
-    seq:
-    - id: smart_rollup_add_messages__message_entries
-      type: smart_rollup_add_messages__message_entries
-      repeat: eos
-  smart_rollup_add_messages__message_entries:
-    seq:
-    - id: message_elt
-      type: bytes_dyn_uint30
-  smart_rollup_add_messages__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_add_messages__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_add_messages__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_add_messages__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_add_messages__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_originate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: smart_rollup_originate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: pvm_kind
-      type: u1
-      enum: smart_rollup_originate__pvm_kind
-    - id: kernel
-      type: bytes_dyn_uint30
-    - id: parameters_ty
-      type: bytes_dyn_uint30
-  smart_rollup_originate__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_originate__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_originate__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_originate__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_originate__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  dal_publish_slot_header__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: dal_publish_slot_header__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: dal_publish_slot_header__slot_header
-      type: dal_publish_slot_header__slot_header
-  dal_publish_slot_header__slot_header:
-    seq:
-    - id: slot_index
-      type: u1
-    - id: commitment
-      size: 48
-    - id: commitment_proof
-      size: 48
-  dal_publish_slot_header__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: dal_publish_slot_header__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_publish_slot_header__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_publish_slot_header__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: dal_publish_slot_header__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transfer_ticket__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: transfer_ticket__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: ticket_contents
-      type: bytes_dyn_uint30
-    - id: ticket_ty
-      type: bytes_dyn_uint30
-    - id: ticket_ticketer
-      type: transfer_ticket__id_018__proxford__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: ticket_amount
-      type: n
-    - id: destination
-      type: transfer_ticket__id_018__proxford__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: entrypoint
-      type: bytes_dyn_uint30
-  transfer_ticket__id_018__proxford__contract_id_:
-    seq:
-    - id: id_018__proxford__contract_id_tag
-      type: u1
-      enum: id_018__proxford__contract_id_tag
-    - id: transfer_ticket__implicit__id_018__proxford__contract_id
-      type: transfer_ticket__implicit__public_key_hash_
-      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: transfer_ticket__originated__id_018__proxford__contract_id
-      type: transfer_ticket__originated__id_018__proxford__contract_id
-      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
-  transfer_ticket__originated__id_018__proxford__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transfer_ticket__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transfer_ticket__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transfer_ticket__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transfer_ticket__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  register_global_constant__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: register_global_constant__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: value
-      type: bytes_dyn_uint30
-  register_global_constant__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: register_global_constant__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: register_global_constant__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: register_global_constant__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: register_global_constant__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  drain_delegate__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: consensus_key
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: delegate
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: destination
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  drain_delegate__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: drain_delegate__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: drain_delegate__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: drain_delegate__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: drain_delegate__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  update_consensus_key__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: update_consensus_key__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: pk
-      type: update_consensus_key__public_key_
-      doc: A Ed25519, Secp256k1, or P256 public key
-  update_consensus_key__public_key_:
-    seq:
-    - id: public_key_tag
-      type: u1
-      enum: public_key_tag
-    - id: update_consensus_key__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: update_consensus_key__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: update_consensus_key__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-    - id: update_consensus_key__bls__public_key
-      size: 48
-      if: (public_key_tag == public_key_tag::bls)
-  update_consensus_key__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: update_consensus_key__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: update_consensus_key__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: update_consensus_key__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: update_consensus_key__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  increase_paid_storage__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: increase_paid_storage__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: amount
-      type: z
-    - id: destination
-      type: increase_paid_storage__id_018__proxford__contract_id__originated_
-      doc: ! >-
-        A contract handle -- originated account: A contract notation as given to an
-        RPC or inside scripts. Can be a base58 originated contract hash.
-  increase_paid_storage__id_018__proxford__contract_id__originated_:
-    seq:
-    - id: id_018__proxford__contract_id__originated_tag
-      type: u1
-      enum: id_018__proxford__contract_id__originated_tag
-    - id: increase_paid_storage__originated__id_018__proxford__contract_id__originated
-      type: increase_paid_storage__originated__id_018__proxford__contract_id__originated
-      if: (id_018__proxford__contract_id__originated_tag == id_018__proxford__contract_id__originated_tag::originated)
-  increase_paid_storage__originated__id_018__proxford__contract_id__originated:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  increase_paid_storage__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: increase_paid_storage__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: increase_paid_storage__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: increase_paid_storage__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: increase_paid_storage__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  delegation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: delegation__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: delegation__public_key_hash_
-      if: (delegate_tag == bool::true)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  delegation__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: delegation__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  origination__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: origination__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: balance
-      type: n
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: origination__public_key_hash_
-      if: (delegate_tag == bool::true)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: script
-      type: origination__id_018__proxford__scripted__contracts_
-  origination__id_018__proxford__scripted__contracts_:
-    seq:
-    - id: code
-      type: bytes_dyn_uint30
-    - id: storage
-      type: bytes_dyn_uint30
-  origination__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: origination__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transaction__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: transaction__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: amount
-      type: n
-    - id: destination
-      type: transaction__id_018__proxford__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: parameters_tag
-      type: u1
-      enum: bool
-    - id: transaction__parameters_
-      type: transaction__parameters_
-      if: (parameters_tag == bool::true)
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_018__proxford__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
-  transaction__id_018__proxford__entrypoint_:
-    seq:
-    - id: id_018__proxford__entrypoint_tag
-      type: u1
-      enum: id_018__proxford__entrypoint_tag
-    - id: transaction__named__id_018__proxford__entrypoint
-      type: transaction__named__id_018__proxford__entrypoint
-      if: (id_018__proxford__entrypoint_tag == id_018__proxford__entrypoint_tag::named)
-  transaction__named__id_018__proxford__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
-  transaction__id_018__proxford__contract_id_:
-    seq:
-    - id: id_018__proxford__contract_id_tag
-      type: u1
-      enum: id_018__proxford__contract_id_tag
-    - id: transaction__implicit__id_018__proxford__contract_id
-      type: transaction__implicit__public_key_hash_
-      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: transaction__originated__id_018__proxford__contract_id
-      type: transaction__originated__id_018__proxford__contract_id
-      if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
-  transaction__originated__id_018__proxford__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transaction__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transaction__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transaction__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  reveal__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: reveal__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: public_key
-      type: reveal__public_key_
-      doc: A Ed25519, Secp256k1, or P256 public key
-  reveal__public_key_:
-    seq:
-    - id: public_key_tag
-      type: u1
-      enum: public_key_tag
-    - id: reveal__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: reveal__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: reveal__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-    - id: reveal__bls__public_key
-      size: 48
-      if: (public_key_tag == public_key_tag::bls)
-  n:
-    seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-  reveal__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: reveal__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: reveal__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: reveal__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: reveal__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  ballot__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: ballot__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: period
-      type: s4
-    - id: proposal
-      size: 32
-    - id: ballot
-      type: s1
-  ballot__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: ballot__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: ballot__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: ballot__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: ballot__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  proposals__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: source
-      type: proposals__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: period
-      type: s4
-    - id: proposals__proposals
-      type: proposals__proposals
-  proposals__proposals:
-    seq:
-    - id: len_proposals__proposals_dyn
-      type: u4
-      valid:
-        max: 640
-    - id: proposals__proposals_dyn
-      type: proposals__proposals_dyn
-      size: len_proposals__proposals_dyn
-  proposals__proposals_dyn:
-    seq:
-    - id: proposals__proposals_entries
-      type: proposals__proposals_entries
-      repeat: eos
-  proposals__proposals_entries:
-    seq:
-    - id: protocol_hash
-      size: 32
-  proposals__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: proposals__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: proposals__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: proposals__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: proposals__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  activate_account__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: pkh
-      size: 20
-    - id: secret
-      size: 20
-  double_baking_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: double_baking_evidence__bh1
-      type: double_baking_evidence__bh1
-    - id: double_baking_evidence__bh2
-      type: double_baking_evidence__bh2
-  double_baking_evidence__bh2:
-    seq:
-    - id: len_double_baking_evidence__bh2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh2_dyn
-      type: double_baking_evidence__bh2_dyn
-      size: len_double_baking_evidence__bh2_dyn
-  double_baking_evidence__bh2_dyn:
-    seq:
-    - id: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
-      type: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
-  double_baking_evidence__bh1:
-    seq:
-    - id: len_double_baking_evidence__bh1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh1_dyn
-      type: double_baking_evidence__bh1_dyn
-      size: len_double_baking_evidence__bh1_dyn
-  double_baking_evidence__bh1_dyn:
-    seq:
-    - id: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
-      type: double_baking_evidence__id_018__proxford__block_header__alpha__full_header_
-  double_baking_evidence__id_018__proxford__block_header__alpha__full_header_:
-    seq:
-    - id: id_018__proxford__block_header__alpha__full_header
-      type: block_header__shell
-    - id: double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_
-      type: double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_
-  double_baking_evidence__id_018__proxford__block_header__alpha__signed_contents_:
-    seq:
-    - id: double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_
-      type: double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_
-    - id: signature
-      size-eos: true
-  double_baking_evidence__id_018__proxford__block_header__alpha__unsigned_contents_:
-    seq:
-    - id: payload_hash
-      size: 32
-    - id: payload_round
-      type: s4
-    - id: proof_of_work_nonce
-      size: 8
-    - id: seed_nonce_hash_tag
-      type: u1
-      enum: bool
-    - id: seed_nonce_hash
-      size: 32
-      if: (seed_nonce_hash_tag == bool::true)
-    - id: per_block_votes
-      type: u1
-      enum: id_018__proxford__per_block_votes_tag
-  vdf_revelation__solution:
-    seq:
-    - id: solution_field0
-      size: 100
-    - id: solution_field1
-      size: 100
-  seed_nonce_revelation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: level
-      type: s4
-    - id: nonce
-      size: 32
-  dal_attestation__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: attestor
-      type: dal_attestation__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: attestation
-      type: z
-    - id: level
-      type: s4
-  z:
-    seq:
-    - id: has_tail
-      type: b1be
-    - id: sign
-      type: b1be
-    - id: payload
-      type: b6be
-    - id: tail
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-      if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  dal_attestation__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: dal_attestation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_attestation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_attestation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: dal_attestation__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  double_endorsement_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: double_endorsement_evidence__op1
-      type: double_endorsement_evidence__op1
-    - id: double_endorsement_evidence__op2
-      type: double_endorsement_evidence__op2
-  double_endorsement_evidence__op2:
-    seq:
-    - id: len_double_endorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op2_dyn
-      type: double_endorsement_evidence__op2_dyn
-      size: len_double_endorsement_evidence__op2_dyn
-  double_endorsement_evidence__op2_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
-      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
-  double_endorsement_evidence__op1:
-    seq:
-    - id: len_double_endorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op1_dyn
-      type: double_endorsement_evidence__op1_dyn
-      size: len_double_endorsement_evidence__op1_dyn
-  double_endorsement_evidence__op1_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
-      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_
-  double_endorsement_evidence__id_018__proxford__inlined__endorsement_:
-    seq:
-    - id: id_018__proxford__inlined__endorsement
-      type: operation__shell_header
-    - id: operations
-      type: double_endorsement_evidence__id_018__proxford__inlined__endorsement_mempool__contents_
-    - id: signature_tag
-      type: u1
-      enum: bool
-    - id: signature
-      size-eos: true
-      if: (signature_tag == bool::true)
-  double_endorsement_evidence__id_018__proxford__inlined__endorsement_mempool__contents_:
-    seq:
-    - id: id_018__proxford__inlined__endorsement_mempool__contents_tag
-      type: u1
-      enum: id_018__proxford__inlined__endorsement_mempool__contents_tag
-    - id: double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents
-      type: double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents
-      if: (id_018__proxford__inlined__endorsement_mempool__contents_tag == id_018__proxford__inlined__endorsement_mempool__contents_tag::endorsement)
-  double_endorsement_evidence__endorsement__id_018__proxford__inlined__endorsement_mempool__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  double_preendorsement_evidence__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: double_preendorsement_evidence__op1
-      type: double_preendorsement_evidence__op1
-    - id: double_preendorsement_evidence__op2
-      type: double_preendorsement_evidence__op2
-  double_preendorsement_evidence__op2:
-    seq:
-    - id: len_double_preendorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op2_dyn
-      type: double_preendorsement_evidence__op2_dyn
-      size: len_double_preendorsement_evidence__op2_dyn
-  double_preendorsement_evidence__op2_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
-  double_preendorsement_evidence__op1:
-    seq:
-    - id: len_double_preendorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op1_dyn
-      type: double_preendorsement_evidence__op1_dyn
-      size: len_double_preendorsement_evidence__op1_dyn
-  double_preendorsement_evidence__op1_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_
-  double_preendorsement_evidence__id_018__proxford__inlined__preendorsement_:
-    seq:
-    - id: id_018__proxford__inlined__preendorsement
-      type: operation__shell_header
-    - id: operations
-      type: double_preendorsement_evidence__id_018__proxford__inlined__preendorsement__contents_
-    - id: signature_tag
-      type: u1
-      enum: bool
-    - id: signature
-      size-eos: true
-      if: (signature_tag == bool::true)
-  double_preendorsement_evidence__id_018__proxford__inlined__preendorsement__contents_:
-    seq:
-    - id: id_018__proxford__inlined__preendorsement__contents_tag
-      type: u1
-      enum: id_018__proxford__inlined__preendorsement__contents_tag
-    - id: double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents
-      type: double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents
-      if: (id_018__proxford__inlined__preendorsement__contents_tag == id_018__proxford__inlined__preendorsement__contents_tag::preendorsement)
-  double_preendorsement_evidence__preendorsement__id_018__proxford__inlined__preendorsement__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  endorsement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  preendorsement__id_018__proxford__operation_with_legacy_attestation_name__alpha__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
 enums:
   zk_rollup_publish__some__prim__generic__id_018__proxford__michelson__v1__primitives:
     0: parameter

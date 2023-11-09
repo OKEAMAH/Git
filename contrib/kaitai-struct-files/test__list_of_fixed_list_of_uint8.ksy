@@ -11,16 +11,16 @@ types:
     - id: test__list_of_fixed_list_of_uint8_entries
       type: test__list_of_fixed_list_of_uint8_entries
       repeat: eos
+  test__list_of_fixed_list_of_uint8_elt_entries:
+    seq:
+    - id: test__list_of_fixed_list_of_uint8_elt_elt
+      type: u1
   test__list_of_fixed_list_of_uint8_entries:
     seq:
     - id: test__list_of_fixed_list_of_uint8_elt_entries
       type: test__list_of_fixed_list_of_uint8_elt_entries
       repeat: expr
       repeat-expr: 5
-  test__list_of_fixed_list_of_uint8_elt_entries:
-    seq:
-    - id: test__list_of_fixed_list_of_uint8_elt_elt
-      type: u1
 seq:
 - id: len_test__list_of_fixed_list_of_uint8_dyn
   type: u4

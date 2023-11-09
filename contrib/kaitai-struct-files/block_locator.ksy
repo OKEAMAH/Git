@@ -5,10 +5,6 @@ meta:
   - block_header
 doc: ! "Encoding id: block_locator\nDescription: A sparse block locator \xE0 la Bitcoin"
 types:
-  history_entries:
-    seq:
-    - id: block_hash
-      size: 32
   current_head:
     seq:
     - id: len_current_head_dyn
@@ -22,6 +18,10 @@ types:
     seq:
     - id: current_head
       type: block_header
+  history_entries:
+    seq:
+    - id: block_hash
+      size: 32
 seq:
 - id: current_head
   type: current_head

@@ -3,6 +3,28 @@ meta:
   endian: be
 doc: ! 'Encoding id: 010-PtGRANAD.contract.big_map_diff'
 types:
+  alloc__id_010__ptgranad__contract__big_map_diff_elt:
+    seq:
+    - id: big_map
+      type: z
+    - id: key_type
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+    - id: value_type
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  copy__id_010__ptgranad__contract__big_map_diff_elt:
+    seq:
+    - id: source_big_map
+      type: z
+    - id: destination_big_map
+      type: z
   id_010__ptgranad__contract__big_map_diff_dyn:
     seq:
     - id: id_010__ptgranad__contract__big_map_diff_entries
@@ -25,20 +47,18 @@ types:
     - id: alloc__id_010__ptgranad__contract__big_map_diff_elt
       type: alloc__id_010__ptgranad__contract__big_map_diff_elt
       if: (id_010__ptgranad__contract__big_map_diff_elt_tag == id_010__ptgranad__contract__big_map_diff_elt_tag::alloc)
-  alloc__id_010__ptgranad__contract__big_map_diff_elt:
+  n_chunk:
     seq:
-    - id: big_map
-      type: z
-    - id: key_type
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-    - id: value_type
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-  copy__id_010__ptgranad__contract__big_map_diff_elt:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  uint30:
     seq:
-    - id: source_big_map
-      type: z
-    - id: destination_big_map
-      type: z
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   update__id_010__ptgranad__contract__big_map_diff_elt:
     seq:
     - id: big_map
@@ -92,13 +112,40 @@ types:
     - id: update__bytes__micheline__010__ptgranad__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__010__ptgranad__michelson_v1__expression_tag == micheline__010__ptgranad__michelson_v1__expression_tag::bytes)
-  update__prim__generic__micheline__010__ptgranad__michelson_v1__expression:
+  update__prim__1_arg__no_annots__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: update__prim__generic__id_010__ptgranad__michelson__v1__primitives
-    - id: update__prim__generic__args
-      type: update__prim__generic__args
+      enum: update__prim__1_arg__no_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+  update__prim__1_arg__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: update__prim__1_arg__some_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  update__prim__2_args__no_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: update__prim__2_args__no_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg1
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+    - id: arg2
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+  update__prim__2_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: update__prim__2_args__some_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg1
+      type: update__micheline__010__ptgranad__michelson_v1__expression
+    - id: arg2
+      type: update__micheline__010__ptgranad__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   update__prim__generic__args:
@@ -119,42 +166,15 @@ types:
     seq:
     - id: args_elt
       type: update__micheline__010__ptgranad__michelson_v1__expression
-  update__prim__2_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+  update__prim__generic__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: update__prim__2_args__some_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg1
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-    - id: arg2
-      type: update__micheline__010__ptgranad__michelson_v1__expression
+      enum: update__prim__generic__id_010__ptgranad__michelson__v1__primitives
+    - id: update__prim__generic__args
+      type: update__prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  update__prim__2_args__no_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: update__prim__2_args__no_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg1
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-    - id: arg2
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-  update__prim__1_arg__some_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: update__prim__1_arg__some_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg
-      type: update__micheline__010__ptgranad__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  update__prim__1_arg__no_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: update__prim__1_arg__no_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg
-      type: update__micheline__010__ptgranad__michelson_v1__expression
   update__prim__no_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
@@ -180,20 +200,6 @@ types:
     seq:
     - id: sequence_elt
       type: update__micheline__010__ptgranad__michelson_v1__expression
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   z:
     seq:
     - id: has_tail
@@ -207,12 +213,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
 enums:
   bool:
     0: false

@@ -3,29 +3,53 @@ meta:
   endian: be
 doc: ! 'Encoding id: 012-Psithaca.receipt.balance_updates'
 types:
-  id_012__psithaca__operation_metadata__alpha__balance_updates_:
+  contract__id_012__psithaca__contract_id_:
     seq:
-    - id: len_id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
-      type: id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
-      size: len_id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
-  id_012__psithaca__operation_metadata__alpha__balance_updates_dyn:
-    seq:
-    - id: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
-      type: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
-      repeat: eos
-  id_012__psithaca__operation_metadata__alpha__balance_updates_entries:
-    seq:
-    - id: id_012__psithaca__operation_metadata__alpha__balance_
-      type: id_012__psithaca__operation_metadata__alpha__balance_
-    - id: id_012__psithaca__operation_metadata__alpha__balance_update
-      type: s8
-    - id: id_012__psithaca__operation_metadata__alpha__update_origin
+    - id: id_012__psithaca__contract_id_tag
       type: u1
-      enum: origin_tag
+      enum: id_012__psithaca__contract_id_tag
+    - id: contract__implicit__id_012__psithaca__contract_id
+      type: contract__implicit__public_key_hash_
+      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: contract__originated__id_012__psithaca__contract_id
+      type: contract__originated__id_012__psithaca__contract_id
+      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::originated)
+  contract__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: contract__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: contract__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: contract__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  contract__originated__id_012__psithaca__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  deposits__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: deposits__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: deposits__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: deposits__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   id_012__psithaca__operation_metadata__alpha__balance_:
     seq:
     - id: id_012__psithaca__operation_metadata__alpha__balance_tag
@@ -56,29 +80,48 @@ types:
     - id: commitments__id_012__psithaca__operation_metadata__alpha__balance
       size: 20
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::commitments)
-  lost_endorsing_rewards__id_012__psithaca__operation_metadata__alpha__balance:
+  id_012__psithaca__operation_metadata__alpha__balance_updates_:
+    seq:
+    - id: len_id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
+      type: id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
+      size: len_id_012__psithaca__operation_metadata__alpha__balance_updates_dyn
+  id_012__psithaca__operation_metadata__alpha__balance_updates_dyn:
+    seq:
+    - id: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
+      type: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
+      repeat: eos
+  id_012__psithaca__operation_metadata__alpha__balance_updates_entries:
+    seq:
+    - id: id_012__psithaca__operation_metadata__alpha__balance_
+      type: id_012__psithaca__operation_metadata__alpha__balance_
+    - id: id_012__psithaca__operation_metadata__alpha__balance_update
+      type: s8
+    - id: id_012__psithaca__operation_metadata__alpha__update_origin
+      type: u1
+      enum: origin_tag
+  legacy_deposits__id_012__psithaca__operation_metadata__alpha__balance:
     seq:
     - id: delegate
-      type: lost_endorsing_rewards__public_key_hash_
+      type: legacy_deposits__public_key_hash_
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: participation
-      type: u1
-      enum: bool
-    - id: revelation
-      type: u1
-      enum: bool
-  lost_endorsing_rewards__public_key_hash_:
+    - id: cycle
+      type: s4
+  legacy_deposits__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: lost_endorsing_rewards__ed25519__public_key_hash
+    - id: legacy_deposits__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: lost_endorsing_rewards__secp256k1__public_key_hash
+    - id: legacy_deposits__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: lost_endorsing_rewards__p256__public_key_hash
+    - id: legacy_deposits__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
   legacy_fees__id_012__psithaca__operation_metadata__alpha__balance:
@@ -102,41 +145,6 @@ types:
     - id: legacy_fees__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  deposits__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: deposits__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: deposits__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: deposits__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  legacy_deposits__id_012__psithaca__operation_metadata__alpha__balance:
-    seq:
-    - id: delegate
-      type: legacy_deposits__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: cycle
-      type: s4
-  legacy_deposits__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: legacy_deposits__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: legacy_deposits__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: legacy_deposits__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
   legacy_rewards__id_012__psithaca__operation_metadata__alpha__balance:
     seq:
     - id: delegate
@@ -158,37 +166,29 @@ types:
     - id: legacy_rewards__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  contract__id_012__psithaca__contract_id_:
+  lost_endorsing_rewards__id_012__psithaca__operation_metadata__alpha__balance:
     seq:
-    - id: id_012__psithaca__contract_id_tag
-      type: u1
-      enum: id_012__psithaca__contract_id_tag
-    - id: contract__implicit__id_012__psithaca__contract_id
-      type: contract__implicit__public_key_hash_
-      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::implicit)
+    - id: delegate
+      type: lost_endorsing_rewards__public_key_hash_
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: contract__originated__id_012__psithaca__contract_id
-      type: contract__originated__id_012__psithaca__contract_id
-      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::originated)
-  contract__originated__id_012__psithaca__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  contract__implicit__public_key_hash_:
+    - id: participation
+      type: u1
+      enum: bool
+    - id: revelation
+      type: u1
+      enum: bool
+  lost_endorsing_rewards__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: contract__implicit__ed25519__public_key_hash
+    - id: lost_endorsing_rewards__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: contract__implicit__secp256k1__public_key_hash
+    - id: lost_endorsing_rewards__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: contract__implicit__p256__public_key_hash
+    - id: lost_endorsing_rewards__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:

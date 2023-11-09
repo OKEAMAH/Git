@@ -3,24 +3,6 @@ meta:
   endian: be
 doc: ! 'Encoding id: 006-PsCARTHA.constants.parametric'
 types:
-  endorsement_reward:
-    seq:
-    - id: len_endorsement_reward_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: endorsement_reward_dyn
-      type: endorsement_reward_dyn
-      size: len_endorsement_reward_dyn
-  endorsement_reward_dyn:
-    seq:
-    - id: endorsement_reward_entries
-      type: endorsement_reward_entries
-      repeat: eos
-  endorsement_reward_entries:
-    seq:
-    - id: id_006__pscartha__mutez
-      type: n
   baking_reward_per_endorsement:
     seq:
     - id: len_baking_reward_per_endorsement_dyn
@@ -39,6 +21,24 @@ types:
     seq:
     - id: id_006__pscartha__mutez
       type: n
+  endorsement_reward:
+    seq:
+    - id: len_endorsement_reward_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: endorsement_reward_dyn
+      type: endorsement_reward_dyn
+      size: len_endorsement_reward_dyn
+  endorsement_reward_dyn:
+    seq:
+    - id: endorsement_reward_entries
+      type: endorsement_reward_entries
+      repeat: eos
+  endorsement_reward_entries:
+    seq:
+    - id: id_006__pscartha__mutez
+      type: n
   int31:
     seq:
     - id: int31
@@ -52,19 +52,6 @@ types:
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-  z:
-    seq:
-    - id: has_tail
-      type: b1be
-    - id: sign
-      type: b1be
-    - id: payload
-      type: b6be
-    - id: tail
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-      if: has_tail.as<bool>
   n_chunk:
     seq:
     - id: has_more
@@ -89,6 +76,19 @@ types:
     seq:
     - id: time_between_blocks_elt
       type: s8
+  z:
+    seq:
+    - id: has_tail
+      type: b1be
+    - id: sign
+      type: b1be
+    - id: payload
+      type: b6be
+    - id: tail
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+      if: has_tail.as<bool>
 seq:
 - id: preserved_cycles
   type: u1

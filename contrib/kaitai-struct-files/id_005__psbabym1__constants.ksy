@@ -3,25 +3,19 @@ meta:
   endian: be
 doc: ! 'Encoding id: 005-PsBabyM1.constants'
 types:
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   n:
     seq:
     - id: n
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-  z:
-    seq:
-    - id: has_tail
-      type: b1be
-    - id: sign
-      type: b1be
-    - id: payload
-      type: b6be
-    - id: tail
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-      if: has_tail.as<bool>
   n_chunk:
     seq:
     - id: has_more
@@ -46,13 +40,19 @@ types:
     seq:
     - id: time_between_blocks_elt
       type: s8
-  int31:
+  z:
     seq:
-    - id: int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
+    - id: has_tail
+      type: b1be
+    - id: sign
+      type: b1be
+    - id: payload
+      type: b6be
+    - id: tail
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+      if: has_tail.as<bool>
 seq:
 - id: proof_of_work_nonce_size
   type: u1

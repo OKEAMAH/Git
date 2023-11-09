@@ -3,6 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 017-PtNairob.constants.fixed'
 types:
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   n:
     seq:
     - id: n
@@ -15,13 +22,6 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  int31:
-    seq:
-    - id: int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
 seq:
 - id: proof_of_work_nonce_size
   type: u1

@@ -10,13 +10,6 @@ doc: ! >-
   Description: Information about a peer point. Includes flags, state, and records
   about past events.
 types:
-  last_seen_:
-    seq:
-    - id: last_seen_field0
-      size: 16
-      doc: crypto_box__public_key_hash
-    - id: last_seen_field1
-      type: timestamp__system
   last_disconnection_:
     seq:
     - id: last_disconnection_field0
@@ -37,6 +30,13 @@ types:
       size: 16
       doc: crypto_box__public_key_hash
     - id: last_rejected_connection_field1
+      type: timestamp__system
+  last_seen_:
+    seq:
+    - id: last_seen_field0
+      size: 16
+      doc: crypto_box__public_key_hash
+    - id: last_seen_field1
       type: timestamp__system
 enums:
   bool:

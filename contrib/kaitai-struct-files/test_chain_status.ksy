@@ -10,18 +10,18 @@ doc: ! >-
   the moment), forking (the test chain is being setup), running (the test chain is
   running).
 types:
+  forking__test_chain_status:
+    seq:
+    - id: protocol
+      size: 32
+    - id: expiration
+      type: timestamp__protocol
   running__test_chain_status:
     seq:
     - id: chain_id
       size: 4
     - id: genesis
       size: 32
-    - id: protocol
-      size: 32
-    - id: expiration
-      type: timestamp__protocol
-  forking__test_chain_status:
-    seq:
     - id: protocol
       size: 32
     - id: expiration

@@ -15,13 +15,6 @@ types:
     - id: originated__id_005__psbabym1__contract_id
       type: originated__id_005__psbabym1__contract_id
       if: (id_005__psbabym1__contract_id_tag == id_005__psbabym1__contract_id_tag::originated)
-  originated__id_005__psbabym1__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -36,6 +29,13 @@ types:
     - id: implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  originated__id_005__psbabym1__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
 enums:
   public_key_hash_tag:
     0: ed25519

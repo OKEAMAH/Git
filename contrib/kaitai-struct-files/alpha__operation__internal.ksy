@@ -29,6 +29,58 @@ types:
     - id: event__alpha__apply_internal_results__alpha__operation_result
       type: event__alpha__apply_internal_results__alpha__operation_result
       if: (alpha__apply_internal_results__alpha__operation_result_tag == alpha__apply_internal_results__alpha__operation_result_tag::event)
+  alpha__transaction_destination_:
+    seq:
+    - id: alpha__transaction_destination_tag
+      type: u1
+      enum: alpha__transaction_destination_tag
+    - id: implicit__alpha__transaction_destination
+      type: implicit__public_key_hash_
+      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: originated__alpha__transaction_destination
+      type: originated__alpha__transaction_destination
+      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::originated)
+    - id: smart_rollup__alpha__transaction_destination
+      type: smart_rollup__alpha__transaction_destination
+      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::smart_rollup)
+    - id: zk_rollup__alpha__transaction_destination
+      type: zk_rollup__alpha__transaction_destination
+      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::zk_rollup)
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  delegation__alpha__apply_internal_results__alpha__operation_result:
+    seq:
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: delegation__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  delegation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: delegation__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   event__alpha__apply_internal_results__alpha__operation_result:
     seq:
     - id: type
@@ -54,19 +106,6 @@ types:
     - id: event__named__alpha__entrypoint
       type: event__named__alpha__entrypoint
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
-  event__named__alpha__entrypoint:
-    seq:
-    - id: len_event__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: event__named__named_dyn
-      type: event__named__named_dyn
-      size: len_event__named__named_dyn
-  event__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
   event__micheline__alpha__michelson_v1__expression:
     seq:
     - id: micheline__alpha__michelson_v1__expression_tag
@@ -106,13 +145,53 @@ types:
     - id: event__bytes__micheline__alpha__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::bytes)
-  event__prim__generic__micheline__alpha__michelson_v1__expression:
+  event__named__alpha__entrypoint:
+    seq:
+    - id: len_event__named__named_dyn
+      type: u1
+      valid:
+        max: 31
+    - id: event__named__named_dyn
+      type: event__named__named_dyn
+      size: len_event__named__named_dyn
+  event__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  event__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: event__prim__generic__alpha__michelson__v1__primitives
-    - id: event__prim__generic__args
-      type: event__prim__generic__args
+      enum: event__prim__1_arg__no_annots__alpha__michelson__v1__primitives
+    - id: arg
+      type: event__micheline__alpha__michelson_v1__expression
+  event__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__1_arg__some_annots__alpha__michelson__v1__primitives
+    - id: arg
+      type: event__micheline__alpha__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  event__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__2_args__no_annots__alpha__michelson__v1__primitives
+    - id: arg1
+      type: event__micheline__alpha__michelson_v1__expression
+    - id: arg2
+      type: event__micheline__alpha__michelson_v1__expression
+  event__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__2_args__some_annots__alpha__michelson__v1__primitives
+    - id: arg1
+      type: event__micheline__alpha__michelson_v1__expression
+    - id: arg2
+      type: event__micheline__alpha__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   event__prim__generic__args:
@@ -133,42 +212,15 @@ types:
     seq:
     - id: args_elt
       type: event__micheline__alpha__michelson_v1__expression
-  event__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression:
+  event__prim__generic__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: event__prim__2_args__some_annots__alpha__michelson__v1__primitives
-    - id: arg1
-      type: event__micheline__alpha__michelson_v1__expression
-    - id: arg2
-      type: event__micheline__alpha__michelson_v1__expression
+      enum: event__prim__generic__alpha__michelson__v1__primitives
+    - id: event__prim__generic__args
+      type: event__prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  event__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__2_args__no_annots__alpha__michelson__v1__primitives
-    - id: arg1
-      type: event__micheline__alpha__michelson_v1__expression
-    - id: arg2
-      type: event__micheline__alpha__michelson_v1__expression
-  event__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__1_arg__some_annots__alpha__michelson__v1__primitives
-    - id: arg
-      type: event__micheline__alpha__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  event__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__1_arg__no_annots__alpha__michelson__v1__primitives
-    - id: arg
-      type: event__micheline__alpha__michelson_v1__expression
   event__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression:
     seq:
     - id: prim
@@ -194,45 +246,42 @@ types:
     seq:
     - id: sequence_elt
       type: event__micheline__alpha__michelson_v1__expression
-  z:
-    seq:
-    - id: has_tail
-      type: b1be
-    - id: sign
-      type: b1be
-    - id: payload
-      type: b6be
-    - id: tail
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-      if: has_tail.as<bool>
-  delegation__alpha__apply_internal_results__alpha__operation_result:
-    seq:
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: delegation__public_key_hash_
-      if: (delegate_tag == bool::true)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  delegation__public_key_hash_:
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
+    - id: implicit__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
+    - id: implicit__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
+    - id: implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: delegation__bls__public_key_hash
+    - id: implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  originated__alpha__transaction_destination:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
   origination__alpha__apply_internal_results__alpha__operation_result:
     seq:
     - id: balance
@@ -269,6 +318,13 @@ types:
     - id: origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup__alpha__transaction_destination:
+    seq:
+    - id: smart_rollup_address
+      size: 20
+    - id: smart_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
   transaction__alpha__apply_internal_results__alpha__operation_result:
     seq:
     - id: amount
@@ -286,27 +342,6 @@ types:
     - id: transaction__parameters_
       type: transaction__parameters_
       if: (parameters_tag == bool::true)
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__alpha__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   transaction__alpha__entrypoint_:
     seq:
     - id: alpha__entrypoint_tag
@@ -315,19 +350,6 @@ types:
     - id: transaction__named__alpha__entrypoint
       type: transaction__named__alpha__entrypoint
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
-  transaction__named__alpha__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
   transaction__alpha__transaction_destination_:
     seq:
     - id: alpha__transaction_destination_tag
@@ -346,27 +368,6 @@ types:
     - id: transaction__zk_rollup__alpha__transaction_destination
       type: transaction__zk_rollup__alpha__transaction_destination
       if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::zk_rollup)
-  transaction__zk_rollup__alpha__transaction_destination:
-    seq:
-    - id: zk_rollup_hash
-      size: 20
-    - id: zk_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__smart_rollup__alpha__transaction_destination:
-    seq:
-    - id: smart_rollup_address
-      size: 20
-    - id: smart_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__originated__alpha__transaction_destination:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   transaction__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -384,36 +385,66 @@ types:
     - id: transaction__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  n:
+  transaction__named__alpha__entrypoint:
     seq:
-    - id: n
+    - id: len_transaction__named__named_dyn
+      type: u1
+      valid:
+        max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  transaction__originated__alpha__transaction_destination:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__parameters_:
+    seq:
+    - id: entrypoint
+      type: transaction__alpha__entrypoint_
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
+      type: bytes_dyn_uint30
+  transaction__smart_rollup__alpha__transaction_destination:
+    seq:
+    - id: smart_rollup_address
+      size: 20
+    - id: smart_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__zk_rollup__alpha__transaction_destination:
+    seq:
+    - id: zk_rollup_hash
+      size: 20
+    - id: zk_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
+  z:
+    seq:
+    - id: has_tail
+      type: b1be
+    - id: sign
+      type: b1be
+    - id: payload
+      type: b6be
+    - id: tail
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  alpha__transaction_destination_:
-    seq:
-    - id: alpha__transaction_destination_tag
-      type: u1
-      enum: alpha__transaction_destination_tag
-    - id: implicit__alpha__transaction_destination
-      type: implicit__public_key_hash_
-      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: originated__alpha__transaction_destination
-      type: originated__alpha__transaction_destination
-      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::originated)
-    - id: smart_rollup__alpha__transaction_destination
-      type: smart_rollup__alpha__transaction_destination
-      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::smart_rollup)
-    - id: zk_rollup__alpha__transaction_destination
-      type: zk_rollup__alpha__transaction_destination
-      if: (alpha__transaction_destination_tag == alpha__transaction_destination_tag::zk_rollup)
+      if: has_tail.as<bool>
   zk_rollup__alpha__transaction_destination:
     seq:
     - id: zk_rollup_hash
@@ -421,37 +452,6 @@ types:
     - id: zk_rollup_padding
       size: 1
       doc: This field is for padding, ignore
-  smart_rollup__alpha__transaction_destination:
-    seq:
-    - id: smart_rollup_address
-      size: 20
-    - id: smart_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  originated__alpha__transaction_destination:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   event__prim__generic__alpha__michelson__v1__primitives:
     0: parameter

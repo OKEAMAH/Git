@@ -11,6 +11,37 @@ types:
     - id: round_robin_over_delegates__delegate_selection
       type: round_robin_over_delegates__delegate_selection
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
+  minimal_participation_ratio:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   round_robin_over_delegates__delegate_selection:
     seq:
     - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
@@ -20,30 +51,6 @@ types:
     - id: round_robin_over_delegates__round_robin_over_delegates_dyn
       type: round_robin_over_delegates__round_robin_over_delegates_dyn
       size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-  round_robin_over_delegates__round_robin_over_delegates_dyn:
-    seq:
-    - id: round_robin_over_delegates__round_robin_over_delegates_entries
-      type: round_robin_over_delegates__round_robin_over_delegates_entries
-      repeat: eos
-  round_robin_over_delegates__round_robin_over_delegates_entries:
-    seq:
-    - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-  round_robin_over_delegates__round_robin_over_delegates_elt_dyn:
-    seq:
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
-      repeat: eos
-  round_robin_over_delegates__round_robin_over_delegates_elt_entries:
-    seq:
-    - id: signature__v0__public_key
-      type: round_robin_over_delegates__public_key_
-      doc: A Ed25519, Secp256k1, or P256 public key
   round_robin_over_delegates__public_key_:
     seq:
     - id: public_key_tag
@@ -58,31 +65,30 @@ types:
     - id: round_robin_over_delegates__p256__public_key
       size: 33
       if: (public_key_tag == public_key_tag::p256)
-  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+  round_robin_over_delegates__round_robin_over_delegates_dyn:
     seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
-  minimal_participation_ratio:
+    - id: round_robin_over_delegates__round_robin_over_delegates_entries
+      type: round_robin_over_delegates__round_robin_over_delegates_entries
+      repeat: eos
+  round_robin_over_delegates__round_robin_over_delegates_elt_dyn:
     seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
-  int31:
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
+      repeat: eos
+  round_robin_over_delegates__round_robin_over_delegates_elt_entries:
     seq:
-    - id: int31
-      type: s4
+    - id: signature__v0__public_key
+      type: round_robin_over_delegates__public_key_
+      doc: A Ed25519, Secp256k1, or P256 public key
+  round_robin_over_delegates__round_robin_over_delegates_entries:
+    seq:
+    - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      type: u4
       valid:
-        min: -1073741824
         max: 1073741823
-  n:
-    seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
+    - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+      size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
   z:
     seq:
     - id: has_tail
@@ -96,12 +102,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
 enums:
   public_key_tag:
     0: ed25519

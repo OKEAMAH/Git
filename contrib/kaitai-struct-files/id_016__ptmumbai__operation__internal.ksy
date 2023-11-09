@@ -3,36 +3,40 @@ meta:
   endian: be
 doc: ! 'Encoding id: 016-PtMumbai.operation.internal'
 types:
-  id_016__ptmumbai__apply_internal_results__alpha__operation_result_:
+  bytes_dyn_uint30:
     seq:
-    - id: source
-      type: id_016__ptmumbai__transaction_destination_
-      doc: ! >-
-        A destination of a transaction: A destination notation compatible with the
-        contract notation as given to an RPC or inside scripts. Can be a base58 implicit
-        contract hash, a base58 originated contract hash, a base58 originated transaction
-        rollup, or a base58 originated smart rollup.
-    - id: nonce
-      type: u2
-    - id: id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result:
+    seq:
+    - id: delegate_tag
       type: u1
-      enum: id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag
-    - id: transaction__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      type: transaction__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
-        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::transaction)
-    - id: origination__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      type: origination__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
-        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::origination)
-    - id: delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      type: delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
-        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::delegation)
-    - id: event__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      type: event__id_016__ptmumbai__apply_internal_results__alpha__operation_result
-      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
-        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::event)
+      enum: bool
+    - id: delegate
+      type: delegation__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  delegation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: delegation__bls__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::bls)
   event__id_016__ptmumbai__apply_internal_results__alpha__operation_result:
     seq:
     - id: type
@@ -58,19 +62,6 @@ types:
     - id: event__named__id_016__ptmumbai__entrypoint
       type: event__named__id_016__ptmumbai__entrypoint
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
-  event__named__id_016__ptmumbai__entrypoint:
-    seq:
-    - id: len_event__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: event__named__named_dyn
-      type: event__named__named_dyn
-      size: len_event__named__named_dyn
-  event__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
   event__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: micheline__016__ptmumbai__michelson_v1__expression_tag
@@ -110,13 +101,53 @@ types:
     - id: event__bytes__micheline__016__ptmumbai__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
-  event__prim__generic__micheline__016__ptmumbai__michelson_v1__expression:
+  event__named__id_016__ptmumbai__entrypoint:
+    seq:
+    - id: len_event__named__named_dyn
+      type: u1
+      valid:
+        max: 31
+    - id: event__named__named_dyn
+      type: event__named__named_dyn
+      size: len_event__named__named_dyn
+  event__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  event__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: event__prim__generic__id_016__ptmumbai__michelson__v1__primitives
-    - id: event__prim__generic__args
-      type: event__prim__generic__args
+      enum: event__prim__1_arg__no_annots__id_016__ptmumbai__michelson__v1__primitives
+    - id: arg
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
+  event__prim__1_arg__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__1_arg__some_annots__id_016__ptmumbai__michelson__v1__primitives
+    - id: arg
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  event__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__2_args__no_annots__id_016__ptmumbai__michelson__v1__primitives
+    - id: arg1
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
+    - id: arg2
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
+  event__prim__2_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: event__prim__2_args__some_annots__id_016__ptmumbai__michelson__v1__primitives
+    - id: arg1
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
+    - id: arg2
+      type: event__micheline__016__ptmumbai__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   event__prim__generic__args:
@@ -137,42 +168,15 @@ types:
     seq:
     - id: args_elt
       type: event__micheline__016__ptmumbai__michelson_v1__expression
-  event__prim__2_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
+  event__prim__generic__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: event__prim__2_args__some_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg1
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
-    - id: arg2
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
+      enum: event__prim__generic__id_016__ptmumbai__michelson__v1__primitives
+    - id: event__prim__generic__args
+      type: event__prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  event__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__2_args__no_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg1
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
-    - id: arg2
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
-  event__prim__1_arg__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__1_arg__some_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  event__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: event__prim__1_arg__no_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg
-      type: event__micheline__016__ptmumbai__michelson_v1__expression
   event__prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
     seq:
     - id: prim
@@ -198,45 +202,93 @@ types:
     seq:
     - id: sequence_elt
       type: event__micheline__016__ptmumbai__michelson_v1__expression
-  z:
+  id_016__ptmumbai__apply_internal_results__alpha__operation_result_:
     seq:
-    - id: has_tail
-      type: b1be
-    - id: sign
-      type: b1be
-    - id: payload
-      type: b6be
-    - id: tail
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-      if: has_tail.as<bool>
-  delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result:
-    seq:
-    - id: delegate_tag
+    - id: source
+      type: id_016__ptmumbai__transaction_destination_
+      doc: ! >-
+        A destination of a transaction: A destination notation compatible with the
+        contract notation as given to an RPC or inside scripts. Can be a base58 implicit
+        contract hash, a base58 originated contract hash, a base58 originated transaction
+        rollup, or a base58 originated smart rollup.
+    - id: nonce
+      type: u2
+    - id: id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag
       type: u1
-      enum: bool
-    - id: delegate
-      type: delegation__public_key_hash_
-      if: (delegate_tag == bool::true)
+      enum: id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag
+    - id: transaction__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      type: transaction__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
+        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::transaction)
+    - id: origination__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      type: origination__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
+        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::origination)
+    - id: delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      type: delegation__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
+        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::delegation)
+    - id: event__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      type: event__id_016__ptmumbai__apply_internal_results__alpha__operation_result
+      if: (id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag ==
+        id_016__ptmumbai__apply_internal_results__alpha__operation_result_tag::event)
+  id_016__ptmumbai__transaction_destination_:
+    seq:
+    - id: id_016__ptmumbai__transaction_destination_tag
+      type: u1
+      enum: id_016__ptmumbai__transaction_destination_tag
+    - id: implicit__id_016__ptmumbai__transaction_destination
+      type: implicit__public_key_hash_
+      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::implicit)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  delegation__public_key_hash_:
+    - id: originated__id_016__ptmumbai__transaction_destination
+      type: originated__id_016__ptmumbai__transaction_destination
+      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::originated)
+    - id: tx_rollup__id_016__ptmumbai__transaction_destination
+      type: tx_rollup__id_016__ptmumbai__transaction_destination
+      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::tx_rollup)
+    - id: smart_rollup__id_016__ptmumbai__transaction_destination
+      type: smart_rollup__id_016__ptmumbai__transaction_destination
+      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::smart_rollup)
+    - id: zk_rollup__id_016__ptmumbai__transaction_destination
+      type: zk_rollup__id_016__ptmumbai__transaction_destination
+      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::zk_rollup)
+  implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
+    - id: implicit__ed25519__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
+    - id: implicit__secp256k1__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
+    - id: implicit__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: delegation__bls__public_key_hash
+    - id: implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  originated__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
   origination__id_016__ptmumbai__apply_internal_results__alpha__operation_result:
     seq:
     - id: balance
@@ -273,6 +325,13 @@ types:
     - id: origination__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  smart_rollup__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: smart_rollup_hash
+      size: 20
+    - id: smart_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
   transaction__id_016__ptmumbai__apply_internal_results__alpha__operation_result:
     seq:
     - id: amount
@@ -290,27 +349,6 @@ types:
     - id: transaction__parameters_
       type: transaction__parameters_
       if: (parameters_tag == bool::true)
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_016__ptmumbai__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   transaction__id_016__ptmumbai__entrypoint_:
     seq:
     - id: id_016__ptmumbai__entrypoint_tag
@@ -319,19 +357,6 @@ types:
     - id: transaction__named__id_016__ptmumbai__entrypoint
       type: transaction__named__id_016__ptmumbai__entrypoint
       if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
-  transaction__named__id_016__ptmumbai__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
   transaction__id_016__ptmumbai__transaction_destination_:
     seq:
     - id: id_016__ptmumbai__transaction_destination_tag
@@ -353,37 +378,6 @@ types:
     - id: transaction__zk_rollup__id_016__ptmumbai__transaction_destination
       type: transaction__zk_rollup__id_016__ptmumbai__transaction_destination
       if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::zk_rollup)
-  transaction__zk_rollup__id_016__ptmumbai__transaction_destination:
-    seq:
-    - id: zk_rollup_hash
-      size: 20
-    - id: zk_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__smart_rollup__id_016__ptmumbai__transaction_destination:
-    seq:
-    - id: smart_rollup_hash
-      size: 20
-    - id: smart_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__tx_rollup__id_016__ptmumbai__transaction_destination:
-    seq:
-    - id: id_016__ptmumbai__tx_rollup_id
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-    - id: tx_rollup_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__originated__id_016__ptmumbai__transaction_destination:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   transaction__implicit__public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -401,51 +395,55 @@ types:
     - id: transaction__implicit__bls__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  n:
+  transaction__named__id_016__ptmumbai__entrypoint:
     seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  id_016__ptmumbai__transaction_destination_:
-    seq:
-    - id: id_016__ptmumbai__transaction_destination_tag
+    - id: len_transaction__named__named_dyn
       type: u1
-      enum: id_016__ptmumbai__transaction_destination_tag
-    - id: implicit__id_016__ptmumbai__transaction_destination
-      type: implicit__public_key_hash_
-      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: originated__id_016__ptmumbai__transaction_destination
-      type: originated__id_016__ptmumbai__transaction_destination
-      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::originated)
-    - id: tx_rollup__id_016__ptmumbai__transaction_destination
-      type: tx_rollup__id_016__ptmumbai__transaction_destination
-      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::tx_rollup)
-    - id: smart_rollup__id_016__ptmumbai__transaction_destination
-      type: smart_rollup__id_016__ptmumbai__transaction_destination
-      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::smart_rollup)
-    - id: zk_rollup__id_016__ptmumbai__transaction_destination
-      type: zk_rollup__id_016__ptmumbai__transaction_destination
-      if: (id_016__ptmumbai__transaction_destination_tag == id_016__ptmumbai__transaction_destination_tag::zk_rollup)
-  zk_rollup__id_016__ptmumbai__transaction_destination:
+      valid:
+        max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
     seq:
-    - id: zk_rollup_hash
+    - id: named
+      size-eos: true
+  transaction__originated__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: contract_hash
       size: 20
-    - id: zk_rollup_padding
+    - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  smart_rollup__id_016__ptmumbai__transaction_destination:
+  transaction__parameters_:
+    seq:
+    - id: entrypoint
+      type: transaction__id_016__ptmumbai__entrypoint_
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
+      type: bytes_dyn_uint30
+  transaction__smart_rollup__id_016__ptmumbai__transaction_destination:
     seq:
     - id: smart_rollup_hash
       size: 20
     - id: smart_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__tx_rollup__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: id_016__ptmumbai__tx_rollup_id
+      size: 20
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
+    - id: tx_rollup_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__zk_rollup__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: zk_rollup_hash
+      size: 20
+    - id: zk_rollup_padding
       size: 1
       doc: This field is for padding, ignore
   tx_rollup__id_016__ptmumbai__transaction_destination:
@@ -458,30 +456,32 @@ types:
     - id: tx_rollup_padding
       size: 1
       doc: This field is for padding, ignore
-  originated__id_016__ptmumbai__transaction_destination:
+  uint30:
     seq:
-    - id: contract_hash
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
+  z:
+    seq:
+    - id: has_tail
+      type: b1be
+    - id: sign
+      type: b1be
+    - id: payload
+      type: b6be
+    - id: tail
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+      if: has_tail.as<bool>
+  zk_rollup__id_016__ptmumbai__transaction_destination:
+    seq:
+    - id: zk_rollup_hash
       size: 20
-    - id: originated_padding
+    - id: zk_rollup_padding
       size: 1
       doc: This field is for padding, ignore
-  implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
   event__prim__generic__id_016__ptmumbai__michelson__v1__primitives:
     0: parameter

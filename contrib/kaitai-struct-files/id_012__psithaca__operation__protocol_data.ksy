@@ -6,17 +6,278 @@ meta:
   - operation__shell_header
 doc: ! 'Encoding id: 012-Psithaca.operation.protocol_data'
 types:
-  id_012__psithaca__operation__alpha__contents_and_signature_:
+  activate_account__id_012__psithaca__operation__alpha__contents:
     seq:
-    - id: contents
-      type: contents_entries
-      repeat: eos
-    - id: signature
-      size: 64
+    - id: pkh
+      size: 20
+    - id: secret
+      size: 20
+  ballot__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: source
+      type: ballot__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: period
+      type: s4
+    - id: proposal
+      size: 32
+    - id: ballot
+      type: s1
+  ballot__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: ballot__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: ballot__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: ballot__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   contents_entries:
     seq:
     - id: id_012__psithaca__operation__alpha__contents_
       type: id_012__psithaca__operation__alpha__contents_
+  delegation__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: source
+      type: delegation__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: delegation__public_key_hash_
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+  delegation__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: delegation__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: delegation__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: delegation__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  double_baking_evidence__bh1:
+    seq:
+    - id: len_double_baking_evidence__bh1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_baking_evidence__bh1_dyn
+      type: double_baking_evidence__bh1_dyn
+      size: len_double_baking_evidence__bh1_dyn
+  double_baking_evidence__bh1_dyn:
+    seq:
+    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
+      type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
+  double_baking_evidence__bh2:
+    seq:
+    - id: len_double_baking_evidence__bh2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_baking_evidence__bh2_dyn
+      type: double_baking_evidence__bh2_dyn
+      size: len_double_baking_evidence__bh2_dyn
+  double_baking_evidence__bh2_dyn:
+    seq:
+    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
+      type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
+  double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_:
+    seq:
+    - id: id_012__psithaca__block_header__alpha__full_header
+      type: block_header__shell
+    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_
+      type: double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_
+  double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_:
+    seq:
+    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_
+      type: double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_
+    - id: signature
+      size: 64
+  double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_:
+    seq:
+    - id: payload_hash
+      size: 32
+    - id: payload_round
+      type: s4
+    - id: proof_of_work_nonce
+      size: 8
+    - id: seed_nonce_hash_tag
+      type: u1
+      enum: bool
+    - id: seed_nonce_hash
+      size: 32
+      if: (seed_nonce_hash_tag == bool::true)
+    - id: liquidity_baking_escape_vote
+      type: u1
+      enum: bool
+  double_baking_evidence__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: double_baking_evidence__bh1
+      type: double_baking_evidence__bh1
+    - id: double_baking_evidence__bh2
+      type: double_baking_evidence__bh2
+  double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  double_endorsement_evidence__id_012__psithaca__inlined__endorsement_:
+    seq:
+    - id: id_012__psithaca__inlined__endorsement
+      type: operation__shell_header
+    - id: operations
+      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_mempool__contents_
+    - id: signature_tag
+      type: u1
+      enum: bool
+    - id: signature
+      size: 64
+      if: (signature_tag == bool::true)
+  double_endorsement_evidence__id_012__psithaca__inlined__endorsement_mempool__contents_:
+    seq:
+    - id: id_012__psithaca__inlined__endorsement_mempool__contents_tag
+      type: u1
+      enum: id_012__psithaca__inlined__endorsement_mempool__contents_tag
+    - id: double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents
+      type: double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents
+      if: (id_012__psithaca__inlined__endorsement_mempool__contents_tag == id_012__psithaca__inlined__endorsement_mempool__contents_tag::endorsement)
+  double_endorsement_evidence__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: double_endorsement_evidence__op1
+      type: double_endorsement_evidence__op1
+    - id: double_endorsement_evidence__op2
+      type: double_endorsement_evidence__op2
+  double_endorsement_evidence__op1:
+    seq:
+    - id: len_double_endorsement_evidence__op1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_endorsement_evidence__op1_dyn
+      type: double_endorsement_evidence__op1_dyn
+      size: len_double_endorsement_evidence__op1_dyn
+  double_endorsement_evidence__op1_dyn:
+    seq:
+    - id: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
+      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
+  double_endorsement_evidence__op2:
+    seq:
+    - id: len_double_endorsement_evidence__op2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_endorsement_evidence__op2_dyn
+      type: double_endorsement_evidence__op2_dyn
+      size: len_double_endorsement_evidence__op2_dyn
+  double_endorsement_evidence__op2_dyn:
+    seq:
+    - id: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
+      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
+  double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_:
+    seq:
+    - id: id_012__psithaca__inlined__preendorsement
+      type: operation__shell_header
+    - id: operations
+      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement__contents_
+    - id: signature_tag
+      type: u1
+      enum: bool
+    - id: signature
+      size: 64
+      if: (signature_tag == bool::true)
+  double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement__contents_:
+    seq:
+    - id: id_012__psithaca__inlined__preendorsement__contents_tag
+      type: u1
+      enum: id_012__psithaca__inlined__preendorsement__contents_tag
+    - id: double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents
+      type: double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents
+      if: (id_012__psithaca__inlined__preendorsement__contents_tag == id_012__psithaca__inlined__preendorsement__contents_tag::preendorsement)
+  double_preendorsement_evidence__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: double_preendorsement_evidence__op1
+      type: double_preendorsement_evidence__op1
+    - id: double_preendorsement_evidence__op2
+      type: double_preendorsement_evidence__op2
+  double_preendorsement_evidence__op1:
+    seq:
+    - id: len_double_preendorsement_evidence__op1_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_preendorsement_evidence__op1_dyn
+      type: double_preendorsement_evidence__op1_dyn
+      size: len_double_preendorsement_evidence__op1_dyn
+  double_preendorsement_evidence__op1_dyn:
+    seq:
+    - id: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
+      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
+  double_preendorsement_evidence__op2:
+    seq:
+    - id: len_double_preendorsement_evidence__op2_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: double_preendorsement_evidence__op2_dyn
+      type: double_preendorsement_evidence__op2_dyn
+      size: len_double_preendorsement_evidence__op2_dyn
+  double_preendorsement_evidence__op2_dyn:
+    seq:
+    - id: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
+      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
+  double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   id_012__psithaca__operation__alpha__contents_:
     seq:
     - id: id_012__psithaca__operation__alpha__contents_tag
@@ -70,102 +331,25 @@ types:
     - id: register_global_constant__id_012__psithaca__operation__alpha__contents
       type: register_global_constant__id_012__psithaca__operation__alpha__contents
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::register_global_constant)
-  register_global_constant__id_012__psithaca__operation__alpha__contents:
+  id_012__psithaca__operation__alpha__contents_and_signature_:
     seq:
-    - id: source
-      type: register_global_constant__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: value
-      type: bytes_dyn_uint30
-  register_global_constant__public_key_hash_:
+    - id: contents
+      type: contents_entries
+      repeat: eos
+    - id: signature
+      size: 64
+  n:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: register_global_constant__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: register_global_constant__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: register_global_constant__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  set_deposits_limit__id_012__psithaca__operation__alpha__contents:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
     seq:
-    - id: source
-      type: set_deposits_limit__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: limit_tag
-      type: u1
-      enum: bool
-    - id: limit
-      type: n
-      if: (limit_tag == bool::true)
-  set_deposits_limit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: set_deposits_limit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: set_deposits_limit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: set_deposits_limit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  delegation__id_012__psithaca__operation__alpha__contents:
-    seq:
-    - id: source
-      type: delegation__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: delegation__public_key_hash_
-      if: (delegate_tag == bool::true)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-  delegation__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
   origination__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: source
@@ -210,202 +394,16 @@ types:
     - id: origination__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transaction__id_012__psithaca__operation__alpha__contents:
+  preendorsement__id_012__psithaca__operation__alpha__contents:
     seq:
-    - id: source
-      type: transaction__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: amount
-      type: n
-    - id: destination
-      type: transaction__id_012__psithaca__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: parameters_tag
-      type: u1
-      enum: bool
-    - id: transaction__parameters_
-      type: transaction__parameters_
-      if: (parameters_tag == bool::true)
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_012__psithaca__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
-  transaction__id_012__psithaca__entrypoint_:
-    seq:
-    - id: id_012__psithaca__entrypoint_tag
-      type: u1
-      enum: id_012__psithaca__entrypoint_tag
-    - id: transaction__named__id_012__psithaca__entrypoint
-      type: transaction__named__id_012__psithaca__entrypoint
-      if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
-  transaction__named__id_012__psithaca__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
-  transaction__id_012__psithaca__contract_id_:
-    seq:
-    - id: id_012__psithaca__contract_id_tag
-      type: u1
-      enum: id_012__psithaca__contract_id_tag
-    - id: transaction__implicit__id_012__psithaca__contract_id
-      type: transaction__implicit__public_key_hash_
-      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: transaction__originated__id_012__psithaca__contract_id
-      type: transaction__originated__id_012__psithaca__contract_id
-      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::originated)
-  transaction__originated__id_012__psithaca__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transaction__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  reveal__id_012__psithaca__operation__alpha__contents:
-    seq:
-    - id: source
-      type: reveal__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: public_key
-      type: reveal__public_key_
-      doc: A Ed25519, Secp256k1, or P256 public key
-  reveal__public_key_:
-    seq:
-    - id: public_key_tag
-      type: u1
-      enum: public_key_tag
-    - id: reveal__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: reveal__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: reveal__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-  n:
-    seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  reveal__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: reveal__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: reveal__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: reveal__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  ballot__id_012__psithaca__operation__alpha__contents:
-    seq:
-    - id: source
-      type: ballot__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: period
+    - id: slot
+      type: u2
+    - id: level
       type: s4
-    - id: proposal
+    - id: round
+      type: s4
+    - id: block_payload_hash
       size: 32
-    - id: ballot
-      type: s1
-  ballot__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: ballot__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: ballot__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: ballot__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
   proposals__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: source
@@ -447,223 +445,225 @@ types:
     - id: proposals__p256__public_key_hash
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  activate_account__id_012__psithaca__operation__alpha__contents:
+  register_global_constant__id_012__psithaca__operation__alpha__contents:
     seq:
-    - id: pkh
+    - id: source
+      type: register_global_constant__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: value
+      type: bytes_dyn_uint30
+  register_global_constant__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: register_global_constant__ed25519__public_key_hash
       size: 20
-    - id: secret
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: register_global_constant__secp256k1__public_key_hash
       size: 20
-  double_baking_evidence__id_012__psithaca__operation__alpha__contents:
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: register_global_constant__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  reveal__id_012__psithaca__operation__alpha__contents:
     seq:
-    - id: double_baking_evidence__bh1
-      type: double_baking_evidence__bh1
-    - id: double_baking_evidence__bh2
-      type: double_baking_evidence__bh2
-  double_baking_evidence__bh2:
+    - id: source
+      type: reveal__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: public_key
+      type: reveal__public_key_
+      doc: A Ed25519, Secp256k1, or P256 public key
+  reveal__public_key_:
     seq:
-    - id: len_double_baking_evidence__bh2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh2_dyn
-      type: double_baking_evidence__bh2_dyn
-      size: len_double_baking_evidence__bh2_dyn
-  double_baking_evidence__bh2_dyn:
-    seq:
-    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
-      type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
-  double_baking_evidence__bh1:
-    seq:
-    - id: len_double_baking_evidence__bh1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh1_dyn
-      type: double_baking_evidence__bh1_dyn
-      size: len_double_baking_evidence__bh1_dyn
-  double_baking_evidence__bh1_dyn:
-    seq:
-    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
-      type: double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_
-  double_baking_evidence__id_012__psithaca__block_header__alpha__full_header_:
-    seq:
-    - id: id_012__psithaca__block_header__alpha__full_header
-      type: block_header__shell
-    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_
-      type: double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_
-  double_baking_evidence__id_012__psithaca__block_header__alpha__signed_contents_:
-    seq:
-    - id: double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_
-      type: double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_
-    - id: signature
-      size: 64
-  double_baking_evidence__id_012__psithaca__block_header__alpha__unsigned_contents_:
-    seq:
-    - id: payload_hash
+    - id: public_key_tag
+      type: u1
+      enum: public_key_tag
+    - id: reveal__ed25519__public_key
       size: 32
-    - id: payload_round
-      type: s4
-    - id: proof_of_work_nonce
-      size: 8
-    - id: seed_nonce_hash_tag
+      if: (public_key_tag == public_key_tag::ed25519)
+    - id: reveal__secp256k1__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::secp256k1)
+    - id: reveal__p256__public_key
+      size: 33
+      if: (public_key_tag == public_key_tag::p256)
+  reveal__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
       type: u1
-      enum: bool
-    - id: seed_nonce_hash
-      size: 32
-      if: (seed_nonce_hash_tag == bool::true)
-    - id: liquidity_baking_escape_vote
-      type: u1
-      enum: bool
-  double_preendorsement_evidence__id_012__psithaca__operation__alpha__contents:
-    seq:
-    - id: double_preendorsement_evidence__op1
-      type: double_preendorsement_evidence__op1
-    - id: double_preendorsement_evidence__op2
-      type: double_preendorsement_evidence__op2
-  double_preendorsement_evidence__op2:
-    seq:
-    - id: len_double_preendorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op2_dyn
-      type: double_preendorsement_evidence__op2_dyn
-      size: len_double_preendorsement_evidence__op2_dyn
-  double_preendorsement_evidence__op2_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
-  double_preendorsement_evidence__op1:
-    seq:
-    - id: len_double_preendorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op1_dyn
-      type: double_preendorsement_evidence__op1_dyn
-      size: len_double_preendorsement_evidence__op1_dyn
-  double_preendorsement_evidence__op1_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_
-  double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement_:
-    seq:
-    - id: id_012__psithaca__inlined__preendorsement
-      type: operation__shell_header
-    - id: operations
-      type: double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement__contents_
-    - id: signature_tag
-      type: u1
-      enum: bool
-    - id: signature
-      size: 64
-      if: (signature_tag == bool::true)
-  double_preendorsement_evidence__id_012__psithaca__inlined__preendorsement__contents_:
-    seq:
-    - id: id_012__psithaca__inlined__preendorsement__contents_tag
-      type: u1
-      enum: id_012__psithaca__inlined__preendorsement__contents_tag
-    - id: double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents
-      type: double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents
-      if: (id_012__psithaca__inlined__preendorsement__contents_tag == id_012__psithaca__inlined__preendorsement__contents_tag::preendorsement)
-  double_preendorsement_evidence__preendorsement__id_012__psithaca__inlined__preendorsement__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  double_endorsement_evidence__id_012__psithaca__operation__alpha__contents:
-    seq:
-    - id: double_endorsement_evidence__op1
-      type: double_endorsement_evidence__op1
-    - id: double_endorsement_evidence__op2
-      type: double_endorsement_evidence__op2
-  double_endorsement_evidence__op2:
-    seq:
-    - id: len_double_endorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op2_dyn
-      type: double_endorsement_evidence__op2_dyn
-      size: len_double_endorsement_evidence__op2_dyn
-  double_endorsement_evidence__op2_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
-      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
-  double_endorsement_evidence__op1:
-    seq:
-    - id: len_double_endorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op1_dyn
-      type: double_endorsement_evidence__op1_dyn
-      size: len_double_endorsement_evidence__op1_dyn
-  double_endorsement_evidence__op1_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
-      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_
-  double_endorsement_evidence__id_012__psithaca__inlined__endorsement_:
-    seq:
-    - id: id_012__psithaca__inlined__endorsement
-      type: operation__shell_header
-    - id: operations
-      type: double_endorsement_evidence__id_012__psithaca__inlined__endorsement_mempool__contents_
-    - id: signature_tag
-      type: u1
-      enum: bool
-    - id: signature
-      size: 64
-      if: (signature_tag == bool::true)
-  double_endorsement_evidence__id_012__psithaca__inlined__endorsement_mempool__contents_:
-    seq:
-    - id: id_012__psithaca__inlined__endorsement_mempool__contents_tag
-      type: u1
-      enum: id_012__psithaca__inlined__endorsement_mempool__contents_tag
-    - id: double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents
-      type: double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents
-      if: (id_012__psithaca__inlined__endorsement_mempool__contents_tag == id_012__psithaca__inlined__endorsement_mempool__contents_tag::endorsement)
-  double_endorsement_evidence__endorsement__id_012__psithaca__inlined__endorsement_mempool__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
+      enum: public_key_hash_tag
+    - id: reveal__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: reveal__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: reveal__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
   seed_nonce_revelation__id_012__psithaca__operation__alpha__contents:
     seq:
     - id: level
       type: s4
     - id: nonce
       size: 32
-  preendorsement__id_012__psithaca__operation__alpha__contents:
+  set_deposits_limit__id_012__psithaca__operation__alpha__contents:
     seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  endorsement__id_012__psithaca__operation__alpha__contents:
+    - id: source
+      type: set_deposits_limit__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: limit_tag
+      type: u1
+      enum: bool
+    - id: limit
+      type: n
+      if: (limit_tag == bool::true)
+  set_deposits_limit__public_key_hash_:
     seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: set_deposits_limit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: set_deposits_limit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: set_deposits_limit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  transaction__id_012__psithaca__contract_id_:
+    seq:
+    - id: id_012__psithaca__contract_id_tag
+      type: u1
+      enum: id_012__psithaca__contract_id_tag
+    - id: transaction__implicit__id_012__psithaca__contract_id
+      type: transaction__implicit__public_key_hash_
+      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: transaction__originated__id_012__psithaca__contract_id
+      type: transaction__originated__id_012__psithaca__contract_id
+      if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::originated)
+  transaction__id_012__psithaca__entrypoint_:
+    seq:
+    - id: id_012__psithaca__entrypoint_tag
+      type: u1
+      enum: id_012__psithaca__entrypoint_tag
+    - id: transaction__named__id_012__psithaca__entrypoint
+      type: transaction__named__id_012__psithaca__entrypoint
+      if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
+  transaction__id_012__psithaca__operation__alpha__contents:
+    seq:
+    - id: source
+      type: transaction__public_key_hash_
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: n
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: amount
+      type: n
+    - id: destination
+      type: transaction__id_012__psithaca__contract_id_
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: parameters_tag
+      type: u1
+      enum: bool
+    - id: transaction__parameters_
+      type: transaction__parameters_
+      if: (parameters_tag == bool::true)
+  transaction__implicit__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transaction__implicit__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transaction__implicit__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transaction__implicit__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  transaction__named__id_012__psithaca__entrypoint:
+    seq:
+    - id: len_transaction__named__named_dyn
+      type: u1
+      valid:
+        max: 31
+    - id: transaction__named__named_dyn
+      type: transaction__named__named_dyn
+      size: len_transaction__named__named_dyn
+  transaction__named__named_dyn:
+    seq:
+    - id: named
+      size-eos: true
+  transaction__originated__id_012__psithaca__contract_id:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  transaction__parameters_:
+    seq:
+    - id: entrypoint
+      type: transaction__id_012__psithaca__entrypoint_
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
+      type: bytes_dyn_uint30
+  transaction__public_key_hash_:
+    seq:
+    - id: public_key_hash_tag
+      type: u1
+      enum: public_key_hash_tag
+    - id: transaction__ed25519__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: transaction__secp256k1__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: transaction__p256__public_key_hash
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 enums:
   id_012__psithaca__entrypoint_tag:
     0: default

@@ -3,12 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 013-PtJakart.constants'
 types:
-  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+  int31:
     seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   minimal_participation_ratio:
     seq:
     - id: numerator
@@ -21,6 +22,18 @@ types:
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   z:
     seq:
     - id: has_tail
@@ -34,19 +47,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  int31:
-    seq:
-    - id: int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
 enums:
   bool:
     0: false

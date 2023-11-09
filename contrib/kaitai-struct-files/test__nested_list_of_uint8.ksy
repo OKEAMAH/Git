@@ -10,15 +10,6 @@ types:
     - id: test__nested_list_of_uint8_entries
       type: test__nested_list_of_uint8_entries
       repeat: eos
-  test__nested_list_of_uint8_entries:
-    seq:
-    - id: len_test__nested_list_of_uint8_elt_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: test__nested_list_of_uint8_elt_dyn
-      type: test__nested_list_of_uint8_elt_dyn
-      size: len_test__nested_list_of_uint8_elt_dyn
   test__nested_list_of_uint8_elt_dyn:
     seq:
     - id: test__nested_list_of_uint8_elt_entries
@@ -28,6 +19,15 @@ types:
     seq:
     - id: test__nested_list_of_uint8_elt_elt
       type: u1
+  test__nested_list_of_uint8_entries:
+    seq:
+    - id: len_test__nested_list_of_uint8_elt_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: test__nested_list_of_uint8_elt_dyn
+      type: test__nested_list_of_uint8_elt_dyn
+      size: len_test__nested_list_of_uint8_elt_dyn
 seq:
 - id: len_test__nested_list_of_uint8_dyn
   type: u4

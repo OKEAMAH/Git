@@ -9,6 +9,14 @@ doc: ! >-
   Description: Block header's shell-related content. It contains information such
   as the block level, its predecessor and timestamp.
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   fitness_:
     seq:
     - id: len_fitness_dyn
@@ -27,14 +35,6 @@ types:
     seq:
     - id: fitness__elem
       type: bytes_dyn_uint30
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30

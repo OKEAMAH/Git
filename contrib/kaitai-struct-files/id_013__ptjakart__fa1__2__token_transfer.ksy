@@ -3,12 +3,32 @@ meta:
   endian: be
 doc: ! 'Encoding id: 013-PtJakart.fa1.2.token_transfer'
 types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   n:
     seq:
     - id: n
       type: n_chunk
       repeat: until
       repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   z:
     seq:
     - id: has_tail
@@ -22,26 +42,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  bytes_dyn_uint30:
-    seq:
-    - id: len_bytes_dyn_uint30
-      type: u4
-      valid:
-        max: 1073741823
-    - id: bytes_dyn_uint30
-      size: len_bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

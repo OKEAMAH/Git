@@ -11,12 +11,35 @@ doc: ! >-
   on the p2p connection pool. Typically, it includes connection errors, peer swaps,
   etc.
 types:
+  accepting_request__p2p_connection__pool_event:
+    seq:
+    - id: point
+      type: p2p_point__id
+    - id: id_point
+      type: p2p_connection__id
+    - id: peer_id
+      size: 16
   connection_established__p2p_connection__pool_event:
     seq:
     - id: id_point
       type: p2p_connection__id
     - id: peer_id
       size: 16
+  rejecting_request__p2p_connection__pool_event:
+    seq:
+    - id: point
+      type: p2p_point__id
+    - id: id_point
+      type: p2p_connection__id
+    - id: peer_id
+      size: 16
+  request_rejected__identity_:
+    seq:
+    - id: identity_field0
+      type: p2p_connection__id
+    - id: identity_field1
+      size: 16
+      doc: crypto_box__public_key_hash
   request_rejected__p2p_connection__pool_event:
     seq:
     - id: point
@@ -27,29 +50,6 @@ types:
     - id: request_rejected__identity_
       type: request_rejected__identity_
       if: (identity_tag == bool::true)
-  request_rejected__identity_:
-    seq:
-    - id: identity_field0
-      type: p2p_connection__id
-    - id: identity_field1
-      size: 16
-      doc: crypto_box__public_key_hash
-  rejecting_request__p2p_connection__pool_event:
-    seq:
-    - id: point
-      type: p2p_point__id
-    - id: id_point
-      type: p2p_connection__id
-    - id: peer_id
-      size: 16
-  accepting_request__p2p_connection__pool_event:
-    seq:
-    - id: point
-      type: p2p_point__id
-    - id: id_point
-      type: p2p_connection__id
-    - id: peer_id
-      size: 16
 enums:
   bool:
     0: false

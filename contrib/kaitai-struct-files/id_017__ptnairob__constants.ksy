@@ -24,6 +24,31 @@ types:
       type: int31
     - id: number_of_shards
       type: u2
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
+  minimal_participation_ratio:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
+  n:
+    seq:
+    - id: n
+      type: n_chunk
+      repeat: until
+      repeat-until: not (_.has_more).as<bool>
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
   public_key_hash_:
     seq:
     - id: public_key_hash_tag
@@ -47,12 +72,6 @@ types:
       type: u2
     - id: denominator
       type: u2
-  minimal_participation_ratio:
-    seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
   z:
     seq:
     - id: has_tail
@@ -66,25 +85,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n:
-    seq:
-    - id: n
-      type: n_chunk
-      repeat: until
-      repeat-until: not (_.has_more).as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
-  int31:
-    seq:
-    - id: int31
-      type: s4
-      valid:
-        min: -1073741824
-        max: 1073741823
 enums:
   public_key_hash_tag:
     0: ed25519

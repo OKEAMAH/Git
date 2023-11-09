@@ -7,209 +7,6 @@ meta:
   - sapling__transaction__nullifier
 doc: ! 'Encoding id: 010-PtGRANAD.lazy_storage_diff'
 types:
-  id_010__ptgranad__lazy_storage_diff_dyn:
-    seq:
-    - id: id_010__ptgranad__lazy_storage_diff_entries
-      type: id_010__ptgranad__lazy_storage_diff_entries
-      repeat: eos
-  id_010__ptgranad__lazy_storage_diff_entries:
-    seq:
-    - id: id_010__ptgranad__lazy_storage_diff_elt_tag
-      type: u1
-      enum: id_010__ptgranad__lazy_storage_diff_elt_tag
-    - id: big_map__id_010__ptgranad__lazy_storage_diff_elt
-      type: big_map__id_010__ptgranad__lazy_storage_diff_elt
-      if: (id_010__ptgranad__lazy_storage_diff_elt_tag == id_010__ptgranad__lazy_storage_diff_elt_tag::big_map)
-    - id: sapling_state__id_010__ptgranad__lazy_storage_diff_elt
-      type: sapling_state__id_010__ptgranad__lazy_storage_diff_elt
-      if: (id_010__ptgranad__lazy_storage_diff_elt_tag == id_010__ptgranad__lazy_storage_diff_elt_tag::sapling_state)
-  sapling_state__id_010__ptgranad__lazy_storage_diff_elt:
-    seq:
-    - id: id
-      type: z
-      doc: ! 'Sapling state identifier: A sapling state identifier'
-    - id: sapling_state__diff
-      type: sapling_state__diff
-  sapling_state__diff:
-    seq:
-    - id: diff_tag
-      type: u1
-      enum: diff_tag
-    - id: sapling_state__update__diff
-      type: sapling_state__update__updates
-      if: (diff_tag == diff_tag::update)
-    - id: sapling_state__copy__diff
-      type: sapling_state__copy__diff
-      if: (diff_tag == diff_tag::copy)
-    - id: sapling_state__alloc__diff
-      type: sapling_state__alloc__diff
-      if: (diff_tag == diff_tag::alloc)
-  sapling_state__alloc__diff:
-    seq:
-    - id: sapling_state__alloc__updates
-      type: sapling_state__alloc__updates
-    - id: memo_size
-      type: u2
-  sapling_state__alloc__updates:
-    seq:
-    - id: sapling_state__alloc__commitments_and_ciphertexts
-      type: sapling_state__alloc__commitments_and_ciphertexts
-    - id: sapling_state__alloc__nullifiers
-      type: sapling_state__alloc__nullifiers
-  sapling_state__alloc__nullifiers:
-    seq:
-    - id: len_sapling_state__alloc__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__alloc__nullifiers_dyn
-      type: sapling_state__alloc__nullifiers_dyn
-      size: len_sapling_state__alloc__nullifiers_dyn
-  sapling_state__alloc__nullifiers_dyn:
-    seq:
-    - id: sapling_state__alloc__nullifiers_entries
-      type: sapling_state__alloc__nullifiers_entries
-      repeat: eos
-  sapling_state__alloc__nullifiers_entries:
-    seq:
-    - id: nullifiers_elt
-      type: sapling__transaction__nullifier
-  sapling_state__alloc__commitments_and_ciphertexts:
-    seq:
-    - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
-      type: sapling_state__alloc__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
-  sapling_state__alloc__commitments_and_ciphertexts_dyn:
-    seq:
-    - id: sapling_state__alloc__commitments_and_ciphertexts_entries
-      type: sapling_state__alloc__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__alloc__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  sapling_state__copy__diff:
-    seq:
-    - id: source
-      type: z
-      doc: ! 'Sapling state identifier: A sapling state identifier'
-    - id: sapling_state__copy__updates
-      type: sapling_state__copy__updates
-  sapling_state__copy__updates:
-    seq:
-    - id: sapling_state__copy__commitments_and_ciphertexts
-      type: sapling_state__copy__commitments_and_ciphertexts
-    - id: sapling_state__copy__nullifiers
-      type: sapling_state__copy__nullifiers
-  sapling_state__copy__nullifiers:
-    seq:
-    - id: len_sapling_state__copy__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__copy__nullifiers_dyn
-      type: sapling_state__copy__nullifiers_dyn
-      size: len_sapling_state__copy__nullifiers_dyn
-  sapling_state__copy__nullifiers_dyn:
-    seq:
-    - id: sapling_state__copy__nullifiers_entries
-      type: sapling_state__copy__nullifiers_entries
-      repeat: eos
-  sapling_state__copy__nullifiers_entries:
-    seq:
-    - id: nullifiers_elt
-      type: sapling__transaction__nullifier
-  sapling_state__copy__commitments_and_ciphertexts:
-    seq:
-    - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__copy__commitments_and_ciphertexts_dyn
-      type: sapling_state__copy__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
-  sapling_state__copy__commitments_and_ciphertexts_dyn:
-    seq:
-    - id: sapling_state__copy__commitments_and_ciphertexts_entries
-      type: sapling_state__copy__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__copy__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  sapling_state__update__updates:
-    seq:
-    - id: sapling_state__update__commitments_and_ciphertexts
-      type: sapling_state__update__commitments_and_ciphertexts
-    - id: sapling_state__update__nullifiers
-      type: sapling_state__update__nullifiers
-  sapling_state__update__nullifiers:
-    seq:
-    - id: len_sapling_state__update__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__update__nullifiers_dyn
-      type: sapling_state__update__nullifiers_dyn
-      size: len_sapling_state__update__nullifiers_dyn
-  sapling_state__update__nullifiers_dyn:
-    seq:
-    - id: sapling_state__update__nullifiers_entries
-      type: sapling_state__update__nullifiers_entries
-      repeat: eos
-  sapling_state__update__nullifiers_entries:
-    seq:
-    - id: nullifiers_elt
-      type: sapling__transaction__nullifier
-  sapling_state__update__commitments_and_ciphertexts:
-    seq:
-    - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__update__commitments_and_ciphertexts_dyn
-      type: sapling_state__update__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__update__commitments_and_ciphertexts_dyn
-  sapling_state__update__commitments_and_ciphertexts_dyn:
-    seq:
-    - id: sapling_state__update__commitments_and_ciphertexts_entries
-      type: sapling_state__update__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__update__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  big_map__id_010__ptgranad__lazy_storage_diff_elt:
-    seq:
-    - id: id
-      type: z
-      doc: ! 'Big map identifier: A big map identifier'
-    - id: big_map__diff
-      type: big_map__diff
-  big_map__diff:
-    seq:
-    - id: diff_tag
-      type: u1
-      enum: diff_tag
-    - id: big_map__update__diff
-      type: big_map__update__updates
-      if: (diff_tag == diff_tag::update)
-    - id: big_map__copy__diff
-      type: big_map__copy__diff
-      if: (diff_tag == diff_tag::copy)
-    - id: big_map__alloc__diff
-      type: big_map__alloc__diff
-      if: (diff_tag == diff_tag::alloc)
   big_map__alloc__diff:
     seq:
     - id: big_map__alloc__updates
@@ -277,32 +74,27 @@ types:
     - id: value
       type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
       if: (value_tag == bool::true)
-  big_map__update__updates:
+  big_map__diff:
     seq:
-    - id: len_big_map__update__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: big_map__update__updates_dyn
-      type: big_map__update__updates_dyn
-      size: len_big_map__update__updates_dyn
-  big_map__update__updates_dyn:
-    seq:
-    - id: big_map__update__updates_entries
-      type: big_map__update__updates_entries
-      repeat: eos
-  big_map__update__updates_entries:
-    seq:
-    - id: key_hash
-      size: 32
-    - id: key
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-    - id: value_tag
+    - id: diff_tag
       type: u1
-      enum: bool
-    - id: value
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-      if: (value_tag == bool::true)
+      enum: diff_tag
+    - id: big_map__update__diff
+      type: big_map__update__updates
+      if: (diff_tag == diff_tag::update)
+    - id: big_map__copy__diff
+      type: big_map__copy__diff
+      if: (diff_tag == diff_tag::copy)
+    - id: big_map__alloc__diff
+      type: big_map__alloc__diff
+      if: (diff_tag == diff_tag::alloc)
+  big_map__id_010__ptgranad__lazy_storage_diff_elt:
+    seq:
+    - id: id
+      type: z
+      doc: ! 'Big map identifier: A big map identifier'
+    - id: big_map__diff
+      type: big_map__diff
   big_map__update__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: micheline__010__ptgranad__michelson_v1__expression_tag
@@ -342,13 +134,40 @@ types:
     - id: big_map__update__bytes__micheline__010__ptgranad__michelson_v1__expression
       type: bytes_dyn_uint30
       if: (micheline__010__ptgranad__michelson_v1__expression_tag == micheline__010__ptgranad__michelson_v1__expression_tag::bytes)
-  big_map__update__prim__generic__micheline__010__ptgranad__michelson_v1__expression:
+  big_map__update__prim__1_arg__no_annots__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: big_map__update__prim__generic__id_010__ptgranad__michelson__v1__primitives
-    - id: big_map__update__prim__generic__args
-      type: big_map__update__prim__generic__args
+      enum: big_map__update__prim__1_arg__no_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+  big_map__update__prim__1_arg__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: big_map__update__prim__1_arg__some_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  big_map__update__prim__2_args__no_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: big_map__update__prim__2_args__no_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg1
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+    - id: arg2
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+  big_map__update__prim__2_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+    seq:
+    - id: prim
+      type: u1
+      enum: big_map__update__prim__2_args__some_annots__id_010__ptgranad__michelson__v1__primitives
+    - id: arg1
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+    - id: arg2
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
     - id: annots
       type: bytes_dyn_uint30
   big_map__update__prim__generic__args:
@@ -369,42 +188,15 @@ types:
     seq:
     - id: args_elt
       type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-  big_map__update__prim__2_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
+  big_map__update__prim__generic__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
       type: u1
-      enum: big_map__update__prim__2_args__some_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg1
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-    - id: arg2
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+      enum: big_map__update__prim__generic__id_010__ptgranad__michelson__v1__primitives
+    - id: big_map__update__prim__generic__args
+      type: big_map__update__prim__generic__args
     - id: annots
       type: bytes_dyn_uint30
-  big_map__update__prim__2_args__no_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__2_args__no_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg1
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-    - id: arg2
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-  big_map__update__prim__1_arg__some_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__1_arg__some_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  big_map__update__prim__1_arg__no_annots__micheline__010__ptgranad__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__1_arg__no_annots__id_010__ptgranad__michelson__v1__primitives
-    - id: arg
-      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
   big_map__update__prim__no_args__some_annots__micheline__010__ptgranad__michelson_v1__expression:
     seq:
     - id: prim
@@ -430,6 +222,32 @@ types:
     seq:
     - id: sequence_elt
       type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+  big_map__update__updates:
+    seq:
+    - id: len_big_map__update__updates_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: big_map__update__updates_dyn
+      type: big_map__update__updates_dyn
+      size: len_big_map__update__updates_dyn
+  big_map__update__updates_dyn:
+    seq:
+    - id: big_map__update__updates_entries
+      type: big_map__update__updates_entries
+      repeat: eos
+  big_map__update__updates_entries:
+    seq:
+    - id: key_hash
+      size: 32
+    - id: key
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+    - id: value_tag
+      type: u1
+      enum: bool
+    - id: value
+      type: big_map__update__micheline__010__ptgranad__michelson_v1__expression
+      if: (value_tag == bool::true)
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
@@ -438,6 +256,194 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  id_010__ptgranad__lazy_storage_diff_dyn:
+    seq:
+    - id: id_010__ptgranad__lazy_storage_diff_entries
+      type: id_010__ptgranad__lazy_storage_diff_entries
+      repeat: eos
+  id_010__ptgranad__lazy_storage_diff_entries:
+    seq:
+    - id: id_010__ptgranad__lazy_storage_diff_elt_tag
+      type: u1
+      enum: id_010__ptgranad__lazy_storage_diff_elt_tag
+    - id: big_map__id_010__ptgranad__lazy_storage_diff_elt
+      type: big_map__id_010__ptgranad__lazy_storage_diff_elt
+      if: (id_010__ptgranad__lazy_storage_diff_elt_tag == id_010__ptgranad__lazy_storage_diff_elt_tag::big_map)
+    - id: sapling_state__id_010__ptgranad__lazy_storage_diff_elt
+      type: sapling_state__id_010__ptgranad__lazy_storage_diff_elt
+      if: (id_010__ptgranad__lazy_storage_diff_elt_tag == id_010__ptgranad__lazy_storage_diff_elt_tag::sapling_state)
+  n_chunk:
+    seq:
+    - id: has_more
+      type: b1be
+    - id: payload
+      type: b7be
+  sapling_state__alloc__commitments_and_ciphertexts:
+    seq:
+    - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
+      type: sapling_state__alloc__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
+  sapling_state__alloc__commitments_and_ciphertexts_dyn:
+    seq:
+    - id: sapling_state__alloc__commitments_and_ciphertexts_entries
+      type: sapling_state__alloc__commitments_and_ciphertexts_entries
+      repeat: eos
+  sapling_state__alloc__commitments_and_ciphertexts_entries:
+    seq:
+    - id: commitments_and_ciphertexts_elt_field0
+      type: sapling__transaction__commitment
+    - id: commitments_and_ciphertexts_elt_field1
+      type: sapling__transaction__ciphertext
+  sapling_state__alloc__diff:
+    seq:
+    - id: sapling_state__alloc__updates
+      type: sapling_state__alloc__updates
+    - id: memo_size
+      type: u2
+  sapling_state__alloc__nullifiers:
+    seq:
+    - id: len_sapling_state__alloc__nullifiers_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__alloc__nullifiers_dyn
+      type: sapling_state__alloc__nullifiers_dyn
+      size: len_sapling_state__alloc__nullifiers_dyn
+  sapling_state__alloc__nullifiers_dyn:
+    seq:
+    - id: sapling_state__alloc__nullifiers_entries
+      type: sapling_state__alloc__nullifiers_entries
+      repeat: eos
+  sapling_state__alloc__nullifiers_entries:
+    seq:
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
+  sapling_state__alloc__updates:
+    seq:
+    - id: sapling_state__alloc__commitments_and_ciphertexts
+      type: sapling_state__alloc__commitments_and_ciphertexts
+    - id: sapling_state__alloc__nullifiers
+      type: sapling_state__alloc__nullifiers
+  sapling_state__copy__commitments_and_ciphertexts:
+    seq:
+    - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__copy__commitments_and_ciphertexts_dyn
+      type: sapling_state__copy__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
+  sapling_state__copy__commitments_and_ciphertexts_dyn:
+    seq:
+    - id: sapling_state__copy__commitments_and_ciphertexts_entries
+      type: sapling_state__copy__commitments_and_ciphertexts_entries
+      repeat: eos
+  sapling_state__copy__commitments_and_ciphertexts_entries:
+    seq:
+    - id: commitments_and_ciphertexts_elt_field0
+      type: sapling__transaction__commitment
+    - id: commitments_and_ciphertexts_elt_field1
+      type: sapling__transaction__ciphertext
+  sapling_state__copy__diff:
+    seq:
+    - id: source
+      type: z
+      doc: ! 'Sapling state identifier: A sapling state identifier'
+    - id: sapling_state__copy__updates
+      type: sapling_state__copy__updates
+  sapling_state__copy__nullifiers:
+    seq:
+    - id: len_sapling_state__copy__nullifiers_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__copy__nullifiers_dyn
+      type: sapling_state__copy__nullifiers_dyn
+      size: len_sapling_state__copy__nullifiers_dyn
+  sapling_state__copy__nullifiers_dyn:
+    seq:
+    - id: sapling_state__copy__nullifiers_entries
+      type: sapling_state__copy__nullifiers_entries
+      repeat: eos
+  sapling_state__copy__nullifiers_entries:
+    seq:
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
+  sapling_state__copy__updates:
+    seq:
+    - id: sapling_state__copy__commitments_and_ciphertexts
+      type: sapling_state__copy__commitments_and_ciphertexts
+    - id: sapling_state__copy__nullifiers
+      type: sapling_state__copy__nullifiers
+  sapling_state__diff:
+    seq:
+    - id: diff_tag
+      type: u1
+      enum: diff_tag
+    - id: sapling_state__update__diff
+      type: sapling_state__update__updates
+      if: (diff_tag == diff_tag::update)
+    - id: sapling_state__copy__diff
+      type: sapling_state__copy__diff
+      if: (diff_tag == diff_tag::copy)
+    - id: sapling_state__alloc__diff
+      type: sapling_state__alloc__diff
+      if: (diff_tag == diff_tag::alloc)
+  sapling_state__id_010__ptgranad__lazy_storage_diff_elt:
+    seq:
+    - id: id
+      type: z
+      doc: ! 'Sapling state identifier: A sapling state identifier'
+    - id: sapling_state__diff
+      type: sapling_state__diff
+  sapling_state__update__commitments_and_ciphertexts:
+    seq:
+    - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__update__commitments_and_ciphertexts_dyn
+      type: sapling_state__update__commitments_and_ciphertexts_dyn
+      size: len_sapling_state__update__commitments_and_ciphertexts_dyn
+  sapling_state__update__commitments_and_ciphertexts_dyn:
+    seq:
+    - id: sapling_state__update__commitments_and_ciphertexts_entries
+      type: sapling_state__update__commitments_and_ciphertexts_entries
+      repeat: eos
+  sapling_state__update__commitments_and_ciphertexts_entries:
+    seq:
+    - id: commitments_and_ciphertexts_elt_field0
+      type: sapling__transaction__commitment
+    - id: commitments_and_ciphertexts_elt_field1
+      type: sapling__transaction__ciphertext
+  sapling_state__update__nullifiers:
+    seq:
+    - id: len_sapling_state__update__nullifiers_dyn
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sapling_state__update__nullifiers_dyn
+      type: sapling_state__update__nullifiers_dyn
+      size: len_sapling_state__update__nullifiers_dyn
+  sapling_state__update__nullifiers_dyn:
+    seq:
+    - id: sapling_state__update__nullifiers_entries
+      type: sapling_state__update__nullifiers_entries
+      repeat: eos
+  sapling_state__update__nullifiers_entries:
+    seq:
+    - id: nullifiers_elt
+      type: sapling__transaction__nullifier
+  sapling_state__update__updates:
+    seq:
+    - id: sapling_state__update__commitments_and_ciphertexts
+      type: sapling_state__update__commitments_and_ciphertexts
+    - id: sapling_state__update__nullifiers
+      type: sapling_state__update__nullifiers
   uint30:
     seq:
     - id: uint30
@@ -457,12 +463,6 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  n_chunk:
-    seq:
-    - id: has_more
-      type: b1be
-    - id: payload
-      type: b7be
 enums:
   bool:
     0: false
