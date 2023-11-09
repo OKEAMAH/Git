@@ -8,6 +8,8 @@ mod kaitai_struct;
 pub use kaitai_stream::KaitaiStream;
 pub use kaitai_struct::KaitaiStruct;
 
+// pub use kaitai_struct::GroundN;
+
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
