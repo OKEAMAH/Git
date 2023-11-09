@@ -24,9 +24,11 @@ module Parameters = struct
 
   let cell_size = Scalar.size_in_bytes
 
+  let fst_lvl_cell_size = G1.size_in_bytes
+
   let vector_size = arity * cell_size
 
-  let fst_lvl_size = vector_size
+  let fst_lvl_size = arity * fst_lvl_cell_size
 
   let snd_lvl_size = nb_cells * cell_size
 
@@ -62,7 +64,7 @@ let hash_ec_to_fr ec =
   Z.of_bits (Bytes.to_string hash) |> Scalar.of_z
 
 (* Get the i-th element of the first level *)
-let get_offset_fst_lvl i = fst_lvl_offset + (i * cell_size)
+let get_offset_fst_lvl i = fst_lvl_offset + (i * fst_lvl_cell_size)
 
 (* Get the j-th element from the second level of the i-th element of the first level *)
 let get_offset_snd_lvl i j = snd_lvl_offset + (i * vector_size) + (j * cell_size)
@@ -94,11 +96,14 @@ let commit snd_lvl =
     Array.map
       (fun eval ->
         let poly = Evaluations.interpolation_fft2 domain eval in
-        Commitment.commit_single srs poly |> hash_ec_to_fr)
+        Commitment.commit_single srs poly)
       snd_lvl
   in
+  let fst_lvl_cmt = Array.map hash_ec_to_fr fst_lvl in
   let root =
-    Commitment.commit_single srs (Evaluations.interpolation_fft2 domain fst_lvl)
+    Commitment.commit_single
+      srs
+      (Evaluations.interpolation_fft2 domain fst_lvl_cmt)
   in
   (root, fst_lvl)
 
@@ -108,9 +113,7 @@ let serialize_snd_lvl snd_lvl =
   Bytes.concat Bytes.empty (List.flatten list_list)
 
 let serialize_fst_lvl fst_lvl =
-  Bytes.concat
-    Bytes.empty
-    (Array.to_list (fst_lvl |> Array.map Scalar.to_bytes))
+  Bytes.concat Bytes.empty (Array.to_list (fst_lvl |> Array.map G1.to_bytes))
 
 let serialize_root root = G1.to_bytes root
 
@@ -151,8 +154,10 @@ let read_storage file_name =
   let root = G1.of_bytes_exn buffer_root in
   let fst_lvl =
     Array.init arity (fun i ->
-        let bytes_i = Bytes.sub buffer_fst_lvl (i * cell_size) cell_size in
-        Scalar.of_bytes_exn bytes_i)
+        let bytes_i =
+          Bytes.sub buffer_fst_lvl (i * fst_lvl_cell_size) fst_lvl_cell_size
+        in
+        G1.of_bytes_exn bytes_i)
   in
   let snd_lvl =
     Array.init arity (fun fst ->
@@ -194,81 +199,101 @@ let map_to_array map =
 let update_storage file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
 
-  (* this function computes the EC diff to apply to the fst lvl from a snd lvl diff *)
-  let update_i_fst_lvl snd_lvl_diff =
+  let ec_of_diff diff =
     let filtered_list =
-      List.filteri (fun i _ -> IntMap.mem i snd_lvl_diff) srs_lagrange
+      List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
     in
     let to_pippinger_ec = filtered_list |> Array.of_list in
-    let to_pippinger_fr = map_to_array snd_lvl_diff in
+    let to_pippinger_fr = map_to_array diff in
     G1.pippenger to_pippinger_ec to_pippinger_fr
   in
-  (* diff to apply to the fst lvl *)
-  let fst_lvl_diff_ec = IntMap.map update_i_fst_lvl diff in
 
-  let to_pippinger_fr_root =
+  (* Compute the EC diff for the fst lvl *)
+  let fst_lvl_diff_ec = IntMap.map ec_of_diff diff in
+
+  (* Compute the Fr diff for the root *)
+  let root_diff_fr =
     IntMap.mapi
       (fun i _ ->
-        let buffer = Bytes.create cell_size in
+        let buffer = Bytes.create fst_lvl_cell_size in
         read_file
           file_descr
           buffer
           ~offset:(get_offset_fst_lvl i)
-          ~len:cell_size ;
-        let old_hash = buffer |> Scalar.of_bytes_exn in
-        let new_hash = IntMap.find i fst_lvl_diff_ec |> hash_ec_to_fr in
-        Scalar.(sub new_hash old_hash))
+          ~len:fst_lvl_cell_size ;
+        let old_ec = G1.of_bytes_exn buffer in
+        let old_hash = hash_ec_to_fr old_ec in
+        let new_hash =
+          G1.add (IntMap.find i fst_lvl_diff_ec) old_ec |> hash_ec_to_fr
+        in
+        Scalar.sub new_hash old_hash)
       diff
   in
+  (* Compute the EC diff for the root *)
+  let root_diff = ec_of_diff root_diff_fr in
 
-  let filtered_list =
-    List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
+  (* Compute the new root *)
+  let new_root =
+    let old_root = Bytes.create root_size in
+    read_file file_descr old_root ~offset:0 ~len:root_size ;
+    G1.(add (of_bytes_exn old_root) root_diff) |> G1.to_bytes
   in
-  let to_pippinger_ec_root = filtered_list |> Array.of_list in
-  (* the diff to apply to the root *)
-  let update_root =
-    G1.pippenger to_pippinger_ec_root (map_to_array to_pippinger_fr_root)
-  in
-  let old_root = Bytes.create root_size in
-  let () = read_file file_descr old_root ~offset:0 ~len:root_size in
-  let root_to_write =
-    G1.(add (of_bytes_exn old_root) update_root) |> G1.to_bytes
-  in
-  (* update sndlvl *)
-  let fr_buffer = Bytes.create cell_size in
-  let snd_lvl_map fst snd_lvl_diff =
+
+  (* Compute the new first level *)
+  let new_fst_lvl =
+    let ec_buffer = Bytes.create fst_lvl_cell_size in
     IntMap.mapi
-      (fun snd diff ->
-        let () =
-          read_file
-            file_descr
-            fr_buffer
-            ~offset:(get_offset_snd_lvl fst snd)
-            ~len:cell_size
-        in
-        Scalar.(of_bytes_exn fr_buffer + diff))
-      snd_lvl_diff
+      (fun i ec_point ->
+        read_file
+          file_descr
+          ec_buffer
+          ~offset:(get_offset_fst_lvl i)
+          ~len:fst_lvl_cell_size ;
+        G1.(to_bytes (add (of_bytes_exn ec_buffer) ec_point)))
+      fst_lvl_diff_ec
   in
-  let to_write = IntMap.mapi snd_lvl_map diff in
+
+  (* Compute the new second level *)
+  let new_snd_lvl =
+    let fr_buffer = Bytes.create cell_size in
+    let snd_lvl_map fst snd_lvl_diff =
+      IntMap.mapi
+        (fun snd diff ->
+          let () =
+            read_file
+              file_descr
+              fr_buffer
+              ~offset:(get_offset_snd_lvl fst snd)
+              ~len:cell_size
+          in
+          Scalar.(to_bytes (of_bytes_exn fr_buffer + diff)))
+        snd_lvl_diff
+    in
+    IntMap.mapi snd_lvl_map diff
+  in
+
+  (* Write the new root *)
+  write_file file_descr new_root ~offset:0 ~len:root_size ;
+
+  (* Write the new first level into file *)
+  let to_iter i bytes =
+    write_file
+      file_descr
+      bytes
+      ~offset:(get_offset_fst_lvl i)
+      ~len:fst_lvl_cell_size
+  in
+  IntMap.iter to_iter new_fst_lvl ;
+
+  (* Write the new second level into file *)
   let snd_lvl_iter fst snd_lvl_to_write =
     IntMap.iter
       (fun snd to_write ->
         write_file
           file_descr
-          (Scalar.to_bytes to_write)
+          to_write
           ~offset:(get_offset_snd_lvl fst snd)
           ~len:cell_size)
       snd_lvl_to_write
   in
-  let () = IntMap.iter snd_lvl_iter to_write in
-  (* update fst lvl *)
-  let update_fst_lvl (to_pippinger_fr_root : Scalar.t IntMap.t) =
-    let to_iter i scalar =
-      let bytes = Scalar.to_bytes scalar in
-      write_file file_descr bytes ~offset:(get_offset_fst_lvl i) ~len:cell_size
-    in
-    IntMap.iter to_iter to_pippinger_fr_root
-  in
-  let () = update_fst_lvl to_pippinger_fr_root in
-  (* update_root *)
-  write_file file_descr root_to_write ~offset:0 ~len:root_size
+  IntMap.iter snd_lvl_iter new_snd_lvl
