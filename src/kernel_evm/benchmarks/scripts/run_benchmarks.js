@@ -162,6 +162,7 @@ function run_profiler(path) {
                 queue_read,
                 receipt_size,
                 opcodes,
+                bloom_size
             });
         });
     })
