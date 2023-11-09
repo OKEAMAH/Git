@@ -9,22 +9,49 @@
 (* This test suite is meant to test translation of ground encodings
    to [Kaitai.Types.ClassSpec.t] *)
 
-let%expect_test "test uint8 translation" =
-  let s =
+let read_expected_ksy example_filename =
+  let read_file file = In_channel.with_open_text file In_channel.input_all in
+  read_file
+  @@ "../../../../../../../contrib/lib_kaitai_of_data_encoding/test/expected/"
+  ^ example_filename ^ ".ksy"
+
+(** [assert_encoding_translation_to_valid_ksy_spec ~encoding_id encoding expect_test]
+    asserts that translation of [encoding] using [lib_kaitai_of_data_encoding]
+    library, produces a kaitai struct specification (.ksy file) that is equal to
+    the one that can be found under `test/expected/encoding_id.ksy`.
+
+    As from the `test/README.md` you can see, that prior to running this test
+    suite, we assume that `.ksy` files located in `test/expected/*` were
+    tested for the semantic correctness. Overall this means we are asserting
+    translation against semantically valid kaitai spec file. *)
+let assert_encoding_translation_to_valid_ksy_spec ~encoding_id encoding
+    expect_test =
+  let kaitai_spec =
     Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~id:"ground_uint8"
-      Data_encoding.uint8
+      ~id:encoding_id
+      encoding
   in
-  print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: ground_uint8
-      endian: be
-    seq:
-    - id: ground_uint8
-      type: u1
-  |}]
+  let expected_ksy = read_expected_ksy encoding_id in
+  expect_test (fun () -> print_endline (Kaitai.Print.print kaitai_spec)) ;
+  expect_test (fun () -> print_endline expected_ksy)
+
+let%expect_test "test uint8 translation" =
+  let expect_test f =
+    f () ;
+    [%expect
+      {|
+      meta:
+        id: ground_uint8
+        endian: be
+      seq:
+      - id: ground_uint8
+        type: u1
+    |}]
+  in
+  assert_encoding_translation_to_valid_ksy_spec
+    ~encoding_id:"ground_uint8"
+    Data_encoding.uint8
+    expect_test
 
 let%expect_test "test int8 translation" =
   let s =
@@ -44,21 +71,22 @@ let%expect_test "test int8 translation" =
   |}]
 
 let%expect_test "test uint16 translation" =
-  let s =
-    Kaitai_of_data_encoding.Translate.from_data_encoding
-      ~id:"ground_uint16"
-      Data_encoding.uint16
+  let expect_test f =
+    f () ;
+    [%expect
+      {|
+      meta:
+        id: ground_uint16
+        endian: be
+      seq:
+      - id: ground_uint16
+        type: u2
+    |}]
   in
-  print_endline (Kaitai.Print.print s) ;
-  [%expect
-    {|
-    meta:
-      id: ground_uint16
-      endian: be
-    seq:
-    - id: ground_uint16
-      type: u2
-  |}]
+  assert_encoding_translation_to_valid_ksy_spec
+    ~encoding_id:"ground_uint16"
+    Data_encoding.uint16
+    expect_test
 
 let%expect_test "test int16 translation" =
   let s =
