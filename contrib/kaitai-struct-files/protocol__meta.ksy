@@ -17,18 +17,18 @@ types:
       size: len_bytes_dyn_uint30
   modules:
     seq:
-    - id: len_modules_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: modules_dyn
-      type: modules_dyn
-      size: len_modules_dyn
-  modules_dyn:
-    seq:
     - id: modules_entries
       type: modules_entries
       repeat: eos
+  modules_:
+    seq:
+    - id: len_modules
+      type: u4
+      valid:
+        max: 1073741823
+    - id: modules
+      type: modules
+      size: len_modules
   modules_entries:
     seq:
     - id: modules_elt
@@ -58,5 +58,5 @@ seq:
   type: u2
   if: (expected_env_version_tag == bool::true)
 - id: modules
-  type: modules
+  type: modules_
   doc: Modules comprising the protocol

@@ -5,58 +5,54 @@ doc: ! 'Encoding id: 011-PtHangz2.constants'
 types:
   baking_reward_per_endorsement:
     seq:
-    - id: len_baking_reward_per_endorsement_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: baking_reward_per_endorsement_dyn
-      type: baking_reward_per_endorsement_dyn
-      size: len_baking_reward_per_endorsement_dyn
-  baking_reward_per_endorsement_dyn:
-    seq:
     - id: baking_reward_per_endorsement_entries
       type: baking_reward_per_endorsement_entries
       repeat: eos
+  baking_reward_per_endorsement_:
+    seq:
+    - id: len_baking_reward_per_endorsement
+      type: u4
+      valid:
+        max: 1073741823
+    - id: baking_reward_per_endorsement
+      type: baking_reward_per_endorsement
+      size: len_baking_reward_per_endorsement
   baking_reward_per_endorsement_entries:
     seq:
     - id: id_011__pthangz2__mutez
       type: n
   cache_layout:
     seq:
-    - id: len_cache_layout_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: cache_layout_dyn
-      type: cache_layout_dyn
-      size: len_cache_layout_dyn
-  cache_layout_dyn:
-    seq:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
+  cache_layout_:
+    seq:
+    - id: len_cache_layout
+      type: u4
+      valid:
+        max: 1073741823
+    - id: cache_layout
+      type: cache_layout
+      size: len_cache_layout
   cache_layout_entries:
     seq:
     - id: cache_layout_elt
       type: s8
   endorsement_reward:
     seq:
-    - id: len_endorsement_reward_dyn
+    - id: endorsement_reward_entries
+      type: baking_reward_per_endorsement_entries
+      repeat: eos
+  endorsement_reward_:
+    seq:
+    - id: len_endorsement_reward
       type: u4
       valid:
         max: 1073741823
-    - id: endorsement_reward_dyn
-      type: endorsement_reward_dyn
-      size: len_endorsement_reward_dyn
-  endorsement_reward_dyn:
-    seq:
-    - id: endorsement_reward_entries
-      type: endorsement_reward_entries
-      repeat: eos
-  endorsement_reward_entries:
-    seq:
-    - id: id_011__pthangz2__mutez
-      type: n
+    - id: endorsement_reward
+      type: endorsement_reward
+      size: len_endorsement_reward
   int31:
     seq:
     - id: int31
@@ -78,18 +74,18 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: time_between_blocks_dyn
-      type: time_between_blocks_dyn
-      size: len_time_between_blocks_dyn
-  time_between_blocks_dyn:
-    seq:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
       repeat: eos
+  time_between_blocks_:
+    seq:
+    - id: len_time_between_blocks
+      type: u4
+      valid:
+        max: 1073741823
+    - id: time_between_blocks
+      type: time_between_blocks
+      size: len_time_between_blocks
   time_between_blocks_entries:
     seq:
     - id: time_between_blocks_elt
@@ -125,7 +121,7 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout
+  type: cache_layout_
 - id: michelson_maximum_type_size
   type: u2
 - id: preserved_cycles
@@ -139,7 +135,7 @@ seq:
 - id: blocks_per_voting_period
   type: s4
 - id: time_between_blocks
-  type: time_between_blocks
+  type: time_between_blocks_
 - id: endorsers_per_block
   type: u2
 - id: hard_gas_limit_per_operation
@@ -159,9 +155,9 @@ seq:
 - id: endorsement_security_deposit
   type: n
 - id: baking_reward_per_endorsement
-  type: baking_reward_per_endorsement
+  type: baking_reward_per_endorsement_
 - id: endorsement_reward
-  type: endorsement_reward
+  type: endorsement_reward_
 - id: cost_per_byte
   type: n
 - id: hard_storage_limit_per_operation

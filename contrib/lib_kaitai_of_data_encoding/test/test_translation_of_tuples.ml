@@ -223,32 +223,6 @@ let%expect_test "test tuples descr inside" =
       endian: be
     doc: ! 'Encoding id: tupdef'
     types:
-      tupdef_field3:
-        seq:
-        - id: foo_tag
-          type: u1
-          enum: bool
-        - id: foo
-          type: u1
-          if: (foo_tag == bool::true)
-          enum: bool
-      tupdef_field2:
-        seq:
-        - id: foo_tag
-          type: u1
-          enum: bool
-        - id: foo
-          type: u1
-          if: (foo_tag == bool::true)
-          enum: bool
-      tupdef_field1:
-        seq:
-        - id: foo_tag
-          type: u1
-          enum: bool
-        - id: foo
-          type: n
-          if: (foo_tag == bool::true)
       n:
         seq:
         - id: n
@@ -270,6 +244,14 @@ let%expect_test "test tuples descr inside" =
           type: u1
           if: (foo_tag == bool::true)
           enum: bool
+      tupdef_field1:
+        seq:
+        - id: foo_tag
+          type: u1
+          enum: bool
+        - id: foo
+          type: n
+          if: (foo_tag == bool::true)
     enums:
       bool:
         0: false
@@ -280,6 +262,6 @@ let%expect_test "test tuples descr inside" =
     - id: tupdef_field1
       type: tupdef_field1
     - id: tupdef_field2
-      type: tupdef_field2
+      type: tupdef_field0
     - id: tupdef_field3
-      type: tupdef_field3 |}]
+      type: tupdef_field0 |}]

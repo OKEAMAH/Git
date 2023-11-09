@@ -6,16 +6,70 @@ meta:
   - operation__shell_header
 doc: ! 'Encoding id: 014-PtKathma.operation.protocol_data'
 types:
-  activate_account__id_014__ptkathma__operation__alpha__contents:
+  activate_account:
     seq:
     - id: pkh
       size: 20
     - id: secret
       size: 20
-  ballot__id_014__ptkathma__operation__alpha__contents:
+  after:
+    seq:
+    - id: after_tag
+      type: u1
+      enum: after_tag
+    - id: value
+      size: 32
+      if: (after_tag == after_tag::value)
+    - id: node
+      size: 32
+      if: (after_tag == after_tag::node)
+  amount:
+    seq:
+    - id: amount_tag
+      type: u1
+      enum: amount_tag
+    - id: case__0
+      type: u1
+      if: (amount_tag == amount_tag::case__0)
+    - id: case__1
+      type: u2
+      if: (amount_tag == amount_tag::case__1)
+    - id: case__2
+      type: s4
+      if: (amount_tag == amount_tag::case__2)
+    - id: case__3
+      type: s8
+      if: (amount_tag == amount_tag::case__3)
+  arithmetic__pvm__with__proof:
+    seq:
+    - id: tree_proof
+      type: tree_proof
+    - id: given
+      type: given
+    - id: requested
+      type: requested
+  back_pointers:
+    seq:
+    - id: back_pointers_entries
+      type: back_pointers_entries
+      repeat: eos
+  back_pointers_:
+    seq:
+    - id: len_back_pointers
+      type: u4
+      valid:
+        max: 1073741823
+    - id: back_pointers
+      type: back_pointers
+      size: len_back_pointers
+  back_pointers_entries:
+    seq:
+    - id: inbox_hash
+      size: 32
+  ballot:
     seq:
     - id: source
-      type: ballot__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
@@ -23,20 +77,39 @@ types:
       size: 32
     - id: ballot
       type: s1
-  ballot__public_key_hash_:
+  before:
     seq:
-    - id: public_key_hash_tag
+    - id: before_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: ballot__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: ballot__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: ballot__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
+      enum: before_tag
+    - id: value
+      size: 32
+      if: (before_tag == before_tag::value)
+    - id: node
+      size: 32
+      if: (before_tag == before_tag::node)
+  bh1:
+    seq:
+    - id: id_014__ptkathma__block_header__alpha__full_header
+      type: id_014__ptkathma__block_header__alpha__full_header
+  bh1_:
+    seq:
+    - id: len_bh1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bh1
+      type: bh1
+      size: len_bh1
+  bh2:
+    seq:
+    - id: len_bh2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bh2
+      type: bh1
+      size: len_bh2
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
@@ -45,14 +118,826 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  case__0:
+    seq:
+    - id: case__0_field0
+      type: s2
+    - id: case__0_field1
+      size: 32
+      doc: context_hash
+    - id: case__0_field2
+      size: 32
+      doc: context_hash
+    - id: case__0_field3
+      type: case__0_field3_
+  case__0_field3:
+    seq:
+    - id: case__0_field3_entries
+      type: case__0_field3_entries
+      repeat: eos
+  case__0_field3_:
+    seq:
+    - id: len_case__0_field3
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__0_field3
+      type: case__0_field3
+      size: len_case__0_field3
+  case__0_field3_entries:
+    seq:
+    - id: case__0_field3_elt_tag
+      type: u1
+      enum: case__0_field3_elt_tag
+    - id: case__0
+      type: u1
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__0)
+    - id: case__8
+      type: case__8
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__8)
+    - id: case__4
+      type: case__4
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__4)
+    - id: case__12
+      type: case__12
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__12)
+    - id: case__1
+      type: u2
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__1)
+    - id: case__9
+      type: case__9
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__9)
+    - id: case__5
+      type: case__5
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__5)
+    - id: case__13
+      type: case__13
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__13)
+    - id: case__2
+      type: s4
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__2)
+    - id: case__10
+      type: case__10
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__10)
+    - id: case__6
+      type: case__6
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__6)
+    - id: case__14
+      type: case__14
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__14)
+    - id: case__3
+      type: s8
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__3)
+    - id: case__11
+      type: case__11
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__11)
+    - id: case__7
+      type: case__7
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__7)
+    - id: case__15
+      type: case__15
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__15)
+    - id: case__129
+      type: case__129_entries
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__129)
+    - id: case__130
+      type: case__130_entries
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__130)
+    - id: case__131
+      type: case__131_
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__131)
+    - id: case__192
+      type: case__192_
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__192)
+    - id: case__193
+      type: case__193_
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
+    - id: case__195
+      type: bytes_dyn_uint30
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__195)
+    - id: case__224
+      type: case__224
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__224)
+    - id: case__225
+      type: case__225
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__225)
+    - id: case__226
+      type: case__226
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__226)
+    - id: case__227
+      type: case__227
+      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__227)
+  case__1:
+    seq:
+    - id: case__1_field0
+      type: s2
+    - id: case__1_field1
+      size: 32
+      doc: context_hash
+    - id: case__1_field2
+      size: 32
+      doc: context_hash
+    - id: case__1_field3
+      type: case__1_field3_
+  case__10:
+    seq:
+    - id: case__10_field0
+      type: s4
+    - id: case__10_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__10_field1_field1'
+  case__11:
+    seq:
+    - id: case__11_field0
+      type: s8
+    - id: case__11_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__11_field1_field1'
+  case__12:
+    seq:
+    - id: case__12_field0
+      type: u1
+    - id: case__12_field1
+      type: case__12_field1
+  case__129_elt_field0:
+    seq:
+    - id: case__129_elt_field0
+      size-eos: true
+  case__129_elt_field0_:
+    seq:
+    - id: len_case__129_elt_field0
+      type: u1
+      valid:
+        max: 255
+    - id: case__129_elt_field0
+      type: case__129_elt_field0
+      size: len_case__129_elt_field0
+  case__129_elt_field1:
+    seq:
+    - id: case__129_elt_field1_tag
+      type: u1
+      enum: case__129_elt_field1_tag
+    - id: case__0
+      size: 32
+      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__0)
+    - id: case__1
+      size: 32
+      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__1)
+  case__129_entries:
+    seq:
+    - id: case__129_elt_field0
+      type: case__129_elt_field0_
+    - id: case__129_elt_field1
+      type: case__129_elt_field1
+  case__12_field1:
+    seq:
+    - id: case__12_field1_field0
+      size: 32
+      doc: context_hash
+    - id: case__12_field1_field1
+      size: 32
+      doc: context_hash
+  case__13:
+    seq:
+    - id: case__13_field0
+      type: u2
+    - id: case__13_field1
+      type: case__13_field1
+  case__130_elt_field0:
+    seq:
+    - id: case__130_elt_field0
+      size-eos: true
+  case__130_elt_field0_:
+    seq:
+    - id: len_case__130_elt_field0
+      type: u1
+      valid:
+        max: 255
+    - id: case__130_elt_field0
+      type: case__130_elt_field0
+      size: len_case__130_elt_field0
+  case__130_elt_field1:
+    seq:
+    - id: case__130_elt_field1_tag
+      type: u1
+      enum: case__130_elt_field1_tag
+    - id: case__0
+      size: 32
+      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__0)
+    - id: case__1
+      size: 32
+      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__1)
+  case__130_entries:
+    seq:
+    - id: case__130_elt_field0
+      type: case__130_elt_field0_
+    - id: case__130_elt_field1
+      type: case__130_elt_field1
+  case__131:
+    seq:
+    - id: case__131_entries
+      type: case__131_entries
+      repeat: eos
+  case__131_:
+    seq:
+    - id: len_case__131
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__131
+      type: case__131
+      size: len_case__131
+  case__131_elt_field0:
+    seq:
+    - id: case__131_elt_field0
+      size-eos: true
+  case__131_elt_field0_:
+    seq:
+    - id: len_case__131_elt_field0
+      type: u1
+      valid:
+        max: 255
+    - id: case__131_elt_field0
+      type: case__131_elt_field0
+      size: len_case__131_elt_field0
+  case__131_elt_field1:
+    seq:
+    - id: case__131_elt_field1_tag
+      type: u1
+      enum: case__131_elt_field1_tag
+    - id: case__0
+      size: 32
+      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__0)
+    - id: case__1
+      size: 32
+      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__1)
+  case__131_entries:
+    seq:
+    - id: case__131_elt_field0
+      type: case__131_elt_field0_
+    - id: case__131_elt_field1
+      type: case__131_elt_field1
+  case__13_field1:
+    seq:
+    - id: case__13_field1_field0
+      size: 32
+      doc: context_hash
+    - id: case__13_field1_field1
+      size: 32
+      doc: context_hash
+  case__14:
+    seq:
+    - id: case__14_field0
+      type: s4
+    - id: case__14_field1
+      type: case__14_field1
+  case__14_field1:
+    seq:
+    - id: case__14_field1_field0
+      size: 32
+      doc: context_hash
+    - id: case__14_field1_field1
+      size: 32
+      doc: context_hash
+  case__15:
+    seq:
+    - id: case__15_field0
+      type: s8
+    - id: case__15_field1
+      type: case__15_field1
+  case__15_field1:
+    seq:
+    - id: case__15_field1_field0
+      size: 32
+      doc: context_hash
+    - id: case__15_field1_field1
+      size: 32
+      doc: context_hash
+  case__192:
+    seq:
+    - id: case__192
+      size-eos: true
+  case__192_:
+    seq:
+    - id: len_case__192
+      type: u1
+      valid:
+        max: 255
+    - id: case__192
+      type: case__192
+      size: len_case__192
+  case__193:
+    seq:
+    - id: case__193
+      size-eos: true
+  case__193_:
+    seq:
+    - id: len_case__193
+      type: u2
+      valid:
+        max: 65535
+    - id: case__193
+      type: case__193
+      size: len_case__193
+  case__1_field3:
+    seq:
+    - id: case__1_field3_entries
+      type: case__1_field3_entries
+      repeat: eos
+  case__1_field3_:
+    seq:
+    - id: len_case__1_field3
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__1_field3
+      type: case__1_field3
+      size: len_case__1_field3
+  case__1_field3_entries:
+    seq:
+    - id: case__1_field3_elt_tag
+      type: u1
+      enum: case__1_field3_elt_tag
+    - id: case__0
+      type: u1
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__0)
+    - id: case__8
+      type: case__8
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__8)
+    - id: case__4
+      type: case__4
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__4)
+    - id: case__12
+      type: case__12
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__12)
+    - id: case__1
+      type: u2
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__1)
+    - id: case__9
+      type: case__9
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__9)
+    - id: case__5
+      type: case__5
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__5)
+    - id: case__13
+      type: case__13
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__13)
+    - id: case__2
+      type: s4
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__2)
+    - id: case__10
+      type: case__10
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__10)
+    - id: case__6
+      type: case__6
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__6)
+    - id: case__14
+      type: case__14
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__14)
+    - id: case__3
+      type: s8
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__3)
+    - id: case__11
+      type: case__11
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__11)
+    - id: case__7
+      type: case__7
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__7)
+    - id: case__15
+      type: case__15
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__15)
+    - id: case__129
+      type: case__129_entries
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__129)
+    - id: case__130
+      type: case__130_entries
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
+    - id: case__131
+      type: case__131_
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
+    - id: case__192
+      type: case__192_
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
+    - id: case__193
+      type: case__193_
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
+    - id: case__195
+      type: bytes_dyn_uint30
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__195)
+    - id: case__224
+      type: case__224
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__224)
+    - id: case__225
+      type: case__225
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__225)
+    - id: case__226
+      type: case__226
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__226)
+    - id: case__227
+      type: case__227
+      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__227)
+  case__2:
+    seq:
+    - id: case__2_field0
+      type: s2
+    - id: case__2_field1
+      size: 32
+      doc: context_hash
+    - id: case__2_field2
+      size: 32
+      doc: context_hash
+    - id: case__2_field3
+      type: case__2_field3_
+  case__224:
+    seq:
+    - id: case__224_field0
+      type: u1
+    - id: case__224_field1
+      type: case__224_field1_
+    - id: case__224_field2
+      size: 32
+      doc: context_hash
+  case__224_field1:
+    seq:
+    - id: case__224_field1
+      size-eos: true
+  case__224_field1_:
+    seq:
+    - id: len_case__224_field1
+      type: u1
+      valid:
+        max: 255
+    - id: case__224_field1
+      type: case__224_field1
+      size: len_case__224_field1
+  case__225:
+    seq:
+    - id: case__225_field0
+      type: u2
+    - id: case__225_field1
+      type: case__225_field1_
+    - id: case__225_field2
+      size: 32
+      doc: context_hash
+  case__225_field1:
+    seq:
+    - id: case__225_field1
+      size-eos: true
+  case__225_field1_:
+    seq:
+    - id: len_case__225_field1
+      type: u1
+      valid:
+        max: 255
+    - id: case__225_field1
+      type: case__225_field1
+      size: len_case__225_field1
+  case__226:
+    seq:
+    - id: case__226_field0
+      type: s4
+    - id: case__226_field1
+      type: case__226_field1_
+    - id: case__226_field2
+      size: 32
+      doc: context_hash
+  case__226_field1:
+    seq:
+    - id: case__226_field1
+      size-eos: true
+  case__226_field1_:
+    seq:
+    - id: len_case__226_field1
+      type: u1
+      valid:
+        max: 255
+    - id: case__226_field1
+      type: case__226_field1
+      size: len_case__226_field1
+  case__227:
+    seq:
+    - id: case__227_field0
+      type: s8
+    - id: case__227_field1
+      type: case__227_field1_
+    - id: case__227_field2
+      size: 32
+      doc: context_hash
+  case__227_field1:
+    seq:
+    - id: case__227_field1
+      size-eos: true
+  case__227_field1_:
+    seq:
+    - id: len_case__227_field1
+      type: u1
+      valid:
+        max: 255
+    - id: case__227_field1
+      type: case__227_field1
+      size: len_case__227_field1
+  case__2_field3:
+    seq:
+    - id: case__2_field3_entries
+      type: case__2_field3_entries
+      repeat: eos
+  case__2_field3_:
+    seq:
+    - id: len_case__2_field3
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__2_field3
+      type: case__2_field3
+      size: len_case__2_field3
+  case__2_field3_entries:
+    seq:
+    - id: case__2_field3_elt_tag
+      type: u1
+      enum: case__2_field3_elt_tag
+    - id: case__0
+      type: u1
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__0)
+    - id: case__8
+      type: case__8
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__8)
+    - id: case__4
+      type: case__4
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__4)
+    - id: case__12
+      type: case__12
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__12)
+    - id: case__1
+      type: u2
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__1)
+    - id: case__9
+      type: case__9
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__9)
+    - id: case__5
+      type: case__5
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__5)
+    - id: case__13
+      type: case__13
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__13)
+    - id: case__2
+      type: s4
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__2)
+    - id: case__10
+      type: case__10
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__10)
+    - id: case__6
+      type: case__6
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__6)
+    - id: case__14
+      type: case__14
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__14)
+    - id: case__3
+      type: s8
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__3)
+    - id: case__11
+      type: case__11
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__11)
+    - id: case__7
+      type: case__7
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__7)
+    - id: case__15
+      type: case__15
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__15)
+    - id: case__129
+      type: case__129_entries
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__129)
+    - id: case__130
+      type: case__130_entries
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
+    - id: case__131
+      type: case__131_
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
+    - id: case__192
+      type: case__192_
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
+    - id: case__193
+      type: case__193_
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
+    - id: case__195
+      type: bytes_dyn_uint30
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__195)
+    - id: case__224
+      type: case__224
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__224)
+    - id: case__225
+      type: case__225
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__225)
+    - id: case__226
+      type: case__226
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__226)
+    - id: case__227
+      type: case__227
+      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__227)
+  case__3:
+    seq:
+    - id: case__3_field0
+      type: s2
+    - id: case__3_field1
+      size: 32
+      doc: context_hash
+    - id: case__3_field2
+      size: 32
+      doc: context_hash
+    - id: case__3_field3
+      type: case__3_field3_
+  case__3_field3:
+    seq:
+    - id: case__3_field3_entries
+      type: case__3_field3_entries
+      repeat: eos
+  case__3_field3_:
+    seq:
+    - id: len_case__3_field3
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__3_field3
+      type: case__3_field3
+      size: len_case__3_field3
+  case__3_field3_entries:
+    seq:
+    - id: case__3_field3_elt_tag
+      type: u1
+      enum: case__3_field3_elt_tag
+    - id: case__0
+      type: u1
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__0)
+    - id: case__8
+      type: case__8
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__8)
+    - id: case__4
+      type: case__4
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__4)
+    - id: case__12
+      type: case__12
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__12)
+    - id: case__1
+      type: u2
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__1)
+    - id: case__9
+      type: case__9
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__9)
+    - id: case__5
+      type: case__5
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__5)
+    - id: case__13
+      type: case__13
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__13)
+    - id: case__2
+      type: s4
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__2)
+    - id: case__10
+      type: case__10
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__10)
+    - id: case__6
+      type: case__6
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__6)
+    - id: case__14
+      type: case__14
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__14)
+    - id: case__3
+      type: s8
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__3)
+    - id: case__11
+      type: case__11
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__11)
+    - id: case__7
+      type: case__7
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__7)
+    - id: case__15
+      type: case__15
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__15)
+    - id: case__129
+      type: case__129_entries
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__129)
+    - id: case__130
+      type: case__130_entries
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
+    - id: case__131
+      type: case__131_
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
+    - id: case__192
+      type: case__192_
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
+    - id: case__193
+      type: case__193_
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
+    - id: case__195
+      type: bytes_dyn_uint30
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__195)
+    - id: case__224
+      type: case__224
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__224)
+    - id: case__225
+      type: case__225
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__225)
+    - id: case__226
+      type: case__226
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__226)
+    - id: case__227
+      type: case__227
+      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__227)
+  case__4:
+    seq:
+    - id: case__4_field0
+      type: u1
+    - id: case__4_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__4_field1_field0'
+  case__5:
+    seq:
+    - id: case__5_field0
+      type: u2
+    - id: case__5_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__5_field1_field0'
+  case__6:
+    seq:
+    - id: case__6_field0
+      type: s4
+    - id: case__6_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__6_field1_field0'
+  case__7:
+    seq:
+    - id: case__7_field0
+      type: s8
+    - id: case__7_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__7_field1_field0'
+  case__8:
+    seq:
+    - id: case__8_field0
+      type: u1
+    - id: case__8_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__8_field1_field1'
+  case__9:
+    seq:
+    - id: case__9_field0
+      type: u2
+    - id: case__9_field1
+      size: 32
+      doc: ! 'context_hash
+
+
+        case__9_field1_field1'
+  commitment:
+    seq:
+    - id: level
+      type: s4
+    - id: messages
+      type: messages_
+    - id: predecessor
+      type: predecessor
+    - id: inbox_merkle_root
+      size: 32
+  commitment_:
+    seq:
+    - id: compressed_state
+      size: 32
+    - id: inbox_level
+      type: s4
+    - id: predecessor
+      size: 32
+    - id: number_of_messages
+      type: s4
+    - id: number_of_ticks
+      type: s4
   contents_entries:
     seq:
-    - id: id_014__ptkathma__operation__alpha__contents_
-      type: id_014__ptkathma__operation__alpha__contents_
-  dal_publish_slot_header__id_014__ptkathma__operation__alpha__contents:
+    - id: id_014__ptkathma__operation__alpha__contents
+      type: id_014__ptkathma__operation__alpha__contents
+  dal_publish_slot_header:
     seq:
     - id: source
-      type: dal_publish_slot_header__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -62,55 +947,19 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: dal_publish_slot_header__slot
-      type: dal_publish_slot_header__slot
-  dal_publish_slot_header__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: dal_publish_slot_header__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_publish_slot_header__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_publish_slot_header__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  dal_publish_slot_header__slot:
-    seq:
-    - id: level
-      type: s4
-    - id: index
-      type: u1
-    - id: header
-      type: int31
-  dal_slot_availability__id_014__ptkathma__operation__alpha__contents:
+    - id: slot
+      type: slot
+  dal_slot_availability:
     seq:
     - id: endorser
-      type: dal_slot_availability__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: endorsement
       type: z
-  dal_slot_availability__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: dal_slot_availability__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_slot_availability__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_slot_availability__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  delegation__id_014__ptkathma__operation__alpha__contents:
+  delegation:
     seq:
     - id: source
-      type: delegation__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -124,62 +973,107 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: delegation__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-  delegation__public_key_hash_:
+  dense_proof_entries:
     seq:
-    - id: public_key_hash_tag
+    - id: dense_proof_elt
+      type: inode_tree
+  deposit:
+    seq:
+    - id: sender
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: destination
+      size: 20
+    - id: ticket_hash
+      size: 32
+    - id: amount
+      type: amount
+  dissection:
+    seq:
+    - id: dissection_entries
+      type: dissection_entries
+      repeat: eos
+  dissection_:
+    seq:
+    - id: len_dissection
+      type: u4
+      valid:
+        max: 1073741823
+    - id: dissection
+      type: dissection
+      size: len_dissection
+  dissection_elt_field0:
+    seq:
+    - id: dissection_elt_field0_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  double_baking_evidence__bh1:
+      enum: dissection_elt_field0_tag
+    - id: some
+      size: 32
+      if: (dissection_elt_field0_tag == dissection_elt_field0_tag::some)
+  dissection_entries:
     seq:
-    - id: len_double_baking_evidence__bh1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh1_dyn
-      type: double_baking_evidence__bh1_dyn
-      size: len_double_baking_evidence__bh1_dyn
-  double_baking_evidence__bh1_dyn:
+    - id: dissection_elt_field0
+      type: dissection_elt_field0
+    - id: dissection_elt_field1
+      type: n
+  double_baking_evidence:
     seq:
-    - id: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_
-      type: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_
-  double_baking_evidence__bh2:
+    - id: bh1
+      type: bh1_
+    - id: bh2
+      type: bh2
+  double_endorsement_evidence:
     seq:
-    - id: len_double_baking_evidence__bh2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh2_dyn
-      type: double_baking_evidence__bh2_dyn
-      size: len_double_baking_evidence__bh2_dyn
-  double_baking_evidence__bh2_dyn:
+    - id: op1
+      type: op1_
+    - id: op2
+      type: op2
+  double_preendorsement_evidence:
     seq:
-    - id: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_
-      type: double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_
-  double_baking_evidence__id_014__ptkathma__block_header__alpha__full_header_:
+    - id: op1
+      type: op1___
+    - id: op2
+      type: op2_
+  endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  first_after:
+    seq:
+    - id: first_after_field0
+      type: s4
+    - id: first_after_field1
+      type: n
+  given:
+    seq:
+    - id: given_tag
+      type: u1
+      enum: given_tag
+    - id: some
+      type: some
+      if: (given_tag == given_tag::some)
+  id_014__ptkathma__block_header__alpha__full_header:
     seq:
     - id: id_014__ptkathma__block_header__alpha__full_header
       type: block_header__shell
-    - id: double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_
-      type: double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_
-  double_baking_evidence__id_014__ptkathma__block_header__alpha__signed_contents_:
+    - id: id_014__ptkathma__block_header__alpha__signed_contents
+      type: id_014__ptkathma__block_header__alpha__signed_contents
+  id_014__ptkathma__block_header__alpha__signed_contents:
     seq:
-    - id: double_baking_evidence__id_014__ptkathma__block_header__alpha__unsigned_contents_
-      type: double_baking_evidence__id_014__ptkathma__block_header__alpha__unsigned_contents_
+    - id: id_014__ptkathma__block_header__alpha__unsigned_contents
+      type: id_014__ptkathma__block_header__alpha__unsigned_contents
     - id: signature
       size: 64
-  double_baking_evidence__id_014__ptkathma__block_header__alpha__unsigned_contents_:
+  id_014__ptkathma__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -195,284 +1089,232 @@ types:
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
       type: s1
-  double_baking_evidence__id_014__ptkathma__operation__alpha__contents:
+  id_014__ptkathma__contract_id:
     seq:
-    - id: double_baking_evidence__bh1
-      type: double_baking_evidence__bh1
-    - id: double_baking_evidence__bh2
-      type: double_baking_evidence__bh2
-  double_endorsement_evidence__endorsement__id_014__ptkathma__inlined__endorsement_mempool__contents:
+    - id: id_014__ptkathma__contract_id_tag
+      type: u1
+      enum: id_014__ptkathma__contract_id_tag
+    - id: implicit
+      type: public_key_hash
+      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: originated
+      type: originated
+      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::originated)
+  id_014__ptkathma__contract_id__originated:
     seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_:
+    - id: id_014__ptkathma__contract_id__originated_tag
+      type: u1
+      enum: id_014__ptkathma__contract_id__originated_tag
+    - id: originated
+      type: originated
+      if: (id_014__ptkathma__contract_id__originated_tag == id_014__ptkathma__contract_id__originated_tag::originated)
+  id_014__ptkathma__entrypoint:
+    seq:
+    - id: id_014__ptkathma__entrypoint_tag
+      type: u1
+      enum: id_014__ptkathma__entrypoint_tag
+    - id: named
+      type: named_
+      if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
+  id_014__ptkathma__inlined__endorsement:
     seq:
     - id: id_014__ptkathma__inlined__endorsement
       type: operation__shell_header
     - id: operations
-      type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_mempool__contents_
+      type: id_014__ptkathma__inlined__endorsement_mempool__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size: 64
       if: (signature_tag == bool::true)
-  double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_mempool__contents_:
+  id_014__ptkathma__inlined__endorsement_mempool__contents:
     seq:
     - id: id_014__ptkathma__inlined__endorsement_mempool__contents_tag
       type: u1
       enum: id_014__ptkathma__inlined__endorsement_mempool__contents_tag
-    - id: double_endorsement_evidence__endorsement__id_014__ptkathma__inlined__endorsement_mempool__contents
-      type: double_endorsement_evidence__endorsement__id_014__ptkathma__inlined__endorsement_mempool__contents
+    - id: endorsement
+      type: endorsement
       if: (id_014__ptkathma__inlined__endorsement_mempool__contents_tag == id_014__ptkathma__inlined__endorsement_mempool__contents_tag::endorsement)
-  double_endorsement_evidence__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: double_endorsement_evidence__op1
-      type: double_endorsement_evidence__op1
-    - id: double_endorsement_evidence__op2
-      type: double_endorsement_evidence__op2
-  double_endorsement_evidence__op1:
-    seq:
-    - id: len_double_endorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op1_dyn
-      type: double_endorsement_evidence__op1_dyn
-      size: len_double_endorsement_evidence__op1_dyn
-  double_endorsement_evidence__op1_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_
-      type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_
-  double_endorsement_evidence__op2:
-    seq:
-    - id: len_double_endorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op2_dyn
-      type: double_endorsement_evidence__op2_dyn
-      size: len_double_endorsement_evidence__op2_dyn
-  double_endorsement_evidence__op2_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_
-      type: double_endorsement_evidence__id_014__ptkathma__inlined__endorsement_
-  double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_:
+  id_014__ptkathma__inlined__preendorsement:
     seq:
     - id: id_014__ptkathma__inlined__preendorsement
       type: operation__shell_header
     - id: operations
-      type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement__contents_
+      type: id_014__ptkathma__inlined__preendorsement__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size: 64
       if: (signature_tag == bool::true)
-  double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement__contents_:
+  id_014__ptkathma__inlined__preendorsement__contents:
     seq:
     - id: id_014__ptkathma__inlined__preendorsement__contents_tag
       type: u1
       enum: id_014__ptkathma__inlined__preendorsement__contents_tag
-    - id: double_preendorsement_evidence__preendorsement__id_014__ptkathma__inlined__preendorsement__contents
-      type: double_preendorsement_evidence__preendorsement__id_014__ptkathma__inlined__preendorsement__contents
+    - id: preendorsement
+      type: endorsement
       if: (id_014__ptkathma__inlined__preendorsement__contents_tag == id_014__ptkathma__inlined__preendorsement__contents_tag::preendorsement)
-  double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: double_preendorsement_evidence__op1
-      type: double_preendorsement_evidence__op1
-    - id: double_preendorsement_evidence__op2
-      type: double_preendorsement_evidence__op2
-  double_preendorsement_evidence__op1:
-    seq:
-    - id: len_double_preendorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op1_dyn
-      type: double_preendorsement_evidence__op1_dyn
-      size: len_double_preendorsement_evidence__op1_dyn
-  double_preendorsement_evidence__op1_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_
-  double_preendorsement_evidence__op2:
-    seq:
-    - id: len_double_preendorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op2_dyn
-      type: double_preendorsement_evidence__op2_dyn
-      size: len_double_preendorsement_evidence__op2_dyn
-  double_preendorsement_evidence__op2_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_014__ptkathma__inlined__preendorsement_
-  double_preendorsement_evidence__preendorsement__id_014__ptkathma__inlined__preendorsement__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  endorsement__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  id_014__ptkathma__operation__alpha__contents_:
+  id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: id_014__ptkathma__operation__alpha__contents_tag
       type: u1
       enum: id_014__ptkathma__operation__alpha__contents_tag
-    - id: endorsement__id_014__ptkathma__operation__alpha__contents
-      type: endorsement__id_014__ptkathma__operation__alpha__contents
+    - id: endorsement
+      type: endorsement
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::endorsement)
-    - id: preendorsement__id_014__ptkathma__operation__alpha__contents
-      type: preendorsement__id_014__ptkathma__operation__alpha__contents
+    - id: preendorsement
+      type: endorsement
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::preendorsement)
-    - id: dal_slot_availability__id_014__ptkathma__operation__alpha__contents
-      type: dal_slot_availability__id_014__ptkathma__operation__alpha__contents
+    - id: dal_slot_availability
+      type: dal_slot_availability
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::dal_slot_availability)
-    - id: seed_nonce_revelation__id_014__ptkathma__operation__alpha__contents
-      type: seed_nonce_revelation__id_014__ptkathma__operation__alpha__contents
+    - id: seed_nonce_revelation
+      type: seed_nonce_revelation
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::seed_nonce_revelation)
-    - id: vdf_revelation__id_014__ptkathma__operation__alpha__contents
-      type: vdf_revelation__solution
+    - id: vdf_revelation
+      type: solution
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::vdf_revelation)
-    - id: double_endorsement_evidence__id_014__ptkathma__operation__alpha__contents
-      type: double_endorsement_evidence__id_014__ptkathma__operation__alpha__contents
+    - id: double_endorsement_evidence
+      type: double_endorsement_evidence
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_endorsement_evidence)
-    - id: double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents
-      type: double_preendorsement_evidence__id_014__ptkathma__operation__alpha__contents
+    - id: double_preendorsement_evidence
+      type: double_preendorsement_evidence
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_preendorsement_evidence)
-    - id: double_baking_evidence__id_014__ptkathma__operation__alpha__contents
-      type: double_baking_evidence__id_014__ptkathma__operation__alpha__contents
+    - id: double_baking_evidence
+      type: double_baking_evidence
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::double_baking_evidence)
-    - id: activate_account__id_014__ptkathma__operation__alpha__contents
-      type: activate_account__id_014__ptkathma__operation__alpha__contents
+    - id: activate_account
+      type: activate_account
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::activate_account)
-    - id: proposals__id_014__ptkathma__operation__alpha__contents
-      type: proposals__id_014__ptkathma__operation__alpha__contents
+    - id: proposals
+      type: proposals__
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::proposals)
-    - id: ballot__id_014__ptkathma__operation__alpha__contents
-      type: ballot__id_014__ptkathma__operation__alpha__contents
+    - id: ballot
+      type: ballot
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::ballot)
-    - id: reveal__id_014__ptkathma__operation__alpha__contents
-      type: reveal__id_014__ptkathma__operation__alpha__contents
+    - id: reveal
+      type: reveal
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::reveal)
-    - id: transaction__id_014__ptkathma__operation__alpha__contents
-      type: transaction__id_014__ptkathma__operation__alpha__contents
+    - id: transaction
+      type: transaction
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::transaction)
-    - id: origination__id_014__ptkathma__operation__alpha__contents
-      type: origination__id_014__ptkathma__operation__alpha__contents
+    - id: origination
+      type: origination
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::origination)
-    - id: delegation__id_014__ptkathma__operation__alpha__contents
-      type: delegation__id_014__ptkathma__operation__alpha__contents
+    - id: delegation
+      type: delegation
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::delegation)
-    - id: set_deposits_limit__id_014__ptkathma__operation__alpha__contents
-      type: set_deposits_limit__id_014__ptkathma__operation__alpha__contents
+    - id: set_deposits_limit
+      type: set_deposits_limit
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::set_deposits_limit)
-    - id: increase_paid_storage__id_014__ptkathma__operation__alpha__contents
-      type: increase_paid_storage__id_014__ptkathma__operation__alpha__contents
+    - id: increase_paid_storage
+      type: increase_paid_storage
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::increase_paid_storage)
-    - id: failing_noop__id_014__ptkathma__operation__alpha__contents
+    - id: failing_noop
       type: bytes_dyn_uint30
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::failing_noop)
-    - id: register_global_constant__id_014__ptkathma__operation__alpha__contents
-      type: register_global_constant__id_014__ptkathma__operation__alpha__contents
+    - id: register_global_constant
+      type: register_global_constant
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::register_global_constant)
-    - id: tx_rollup_origination__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_origination__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_origination
+      type: tx_rollup_origination
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_origination)
-    - id: tx_rollup_submit_batch__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_submit_batch__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_submit_batch
+      type: tx_rollup_submit_batch
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_submit_batch)
-    - id: tx_rollup_commit__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_commit__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_commit
+      type: tx_rollup_commit
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_commit)
-    - id: tx_rollup_return_bond__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_return_bond__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_return_bond
+      type: tx_rollup_return_bond
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_return_bond)
-    - id: tx_rollup_finalize_commitment__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_finalize_commitment__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_finalize_commitment
+      type: tx_rollup_return_bond
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
-    - id: tx_rollup_remove_commitment__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_remove_commitment__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_remove_commitment
+      type: tx_rollup_return_bond
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_remove_commitment)
-    - id: tx_rollup_rejection__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_rejection__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_rejection
+      type: tx_rollup_rejection
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_rejection)
-    - id: tx_rollup_dispatch_tickets__id_014__ptkathma__operation__alpha__contents
-      type: tx_rollup_dispatch_tickets__id_014__ptkathma__operation__alpha__contents
+    - id: tx_rollup_dispatch_tickets
+      type: tx_rollup_dispatch_tickets
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_dispatch_tickets)
-    - id: transfer_ticket__id_014__ptkathma__operation__alpha__contents
-      type: transfer_ticket__id_014__ptkathma__operation__alpha__contents
+    - id: transfer_ticket
+      type: transfer_ticket
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::transfer_ticket)
-    - id: dal_publish_slot_header__id_014__ptkathma__operation__alpha__contents
-      type: dal_publish_slot_header__id_014__ptkathma__operation__alpha__contents
+    - id: dal_publish_slot_header
+      type: dal_publish_slot_header
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::dal_publish_slot_header)
-    - id: sc_rollup_originate__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_originate__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_originate
+      type: sc_rollup_originate
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_originate)
-    - id: sc_rollup_add_messages__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_add_messages__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_add_messages
+      type: sc_rollup_add_messages
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_add_messages)
-    - id: sc_rollup_cement__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_cement__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_cement
+      type: sc_rollup_cement
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_cement)
-    - id: sc_rollup_publish__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_publish__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_publish
+      type: sc_rollup_publish
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_publish)
-    - id: sc_rollup_refute__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_refute__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_refute
+      type: sc_rollup_refute
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_refute)
-    - id: sc_rollup_timeout__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_timeout__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_timeout
+      type: sc_rollup_timeout
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_timeout)
-    - id: sc_rollup_execute_outbox_message__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_execute_outbox_message__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_execute_outbox_message
+      type: sc_rollup_execute_outbox_message
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_execute_outbox_message)
-    - id: sc_rollup_recover_bond__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_recover_bond__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_recover_bond
+      type: sc_rollup_recover_bond
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_recover_bond)
-    - id: sc_rollup_dal_slot_subscribe__id_014__ptkathma__operation__alpha__contents
-      type: sc_rollup_dal_slot_subscribe__id_014__ptkathma__operation__alpha__contents
+    - id: sc_rollup_dal_slot_subscribe
+      type: sc_rollup_dal_slot_subscribe
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_dal_slot_subscribe)
-  id_014__ptkathma__operation__alpha__contents_and_signature_:
+  id_014__ptkathma__operation__alpha__contents_and_signature:
     seq:
     - id: contents
       type: contents_entries
       repeat: eos
     - id: signature
       size: 64
-  increase_paid_storage__id_014__ptkathma__contract_id__originated_:
+  id_014__ptkathma__scripted__contracts:
     seq:
-    - id: id_014__ptkathma__contract_id__originated_tag
+    - id: code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
+  inbox:
+    seq:
+    - id: inbox_tag
       type: u1
-      enum: id_014__ptkathma__contract_id__originated_tag
-    - id: increase_paid_storage__originated__id_014__ptkathma__contract_id__originated
-      type: increase_paid_storage__originated__id_014__ptkathma__contract_id__originated
-      if: (id_014__ptkathma__contract_id__originated_tag == id_014__ptkathma__contract_id__originated_tag::originated)
-  increase_paid_storage__id_014__ptkathma__operation__alpha__contents:
+      enum: inbox_tag
+    - id: some
+      type: some_
+      if: (inbox_tag == inbox_tag::some)
+  inc:
+    seq:
+    - id: inc_entries
+      type: old_levels_messages
+      repeat: eos
+  inc_:
+    seq:
+    - id: len_inc
+      type: u4
+      valid:
+        max: 1073741823
+    - id: inc
+      type: inc
+      size: len_inc
+  increase_paid_storage:
     seq:
     - id: source
-      type: increase_paid_storage__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -485,31 +1327,80 @@ types:
     - id: amount
       type: z
     - id: destination
-      type: increase_paid_storage__id_014__ptkathma__contract_id__originated_
+      type: id_014__ptkathma__contract_id__originated
       doc: ! >-
         A contract handle -- originated account: A contract notation as given to an
         RPC or inside scripts. Can be a base58 originated contract hash.
-  increase_paid_storage__originated__id_014__ptkathma__contract_id__originated:
+  inode:
     seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  increase_paid_storage__public_key_hash_:
+    - id: length
+      type: s8
+    - id: proofs
+      type: proofs_
+  inode_extender:
     seq:
-    - id: public_key_hash_tag
+    - id: length
+      type: s8
+    - id: segment
+      type: segment_
+    - id: proof
+      type: inode_tree
+  inode_tree:
+    seq:
+    - id: length
+      type: s8
+    - id: proofs
+      type: proofs
+  inode_tree_:
+    seq:
+    - id: inode_tree_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: increase_paid_storage__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: increase_paid_storage__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: increase_paid_storage__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
+      enum: inode_tree_tag
+    - id: blinded_inode
+      size: 32
+      if: (inode_tree_tag == inode_tree_tag::blinded_inode)
+    - id: inode_values
+      type: inode_values_
+      if: (inode_tree_tag == inode_tree_tag::inode_values)
+    - id: inode_tree
+      type: inode_tree
+      if: (inode_tree_tag == inode_tree_tag::inode_tree)
+    - id: inode_extender
+      type: inode_extender
+      if: (inode_tree_tag == inode_tree_tag::inode_extender)
+  inode_values:
+    seq:
+    - id: inode_values_entries
+      type: inode_values_entries
+      repeat: eos
+  inode_values_:
+    seq:
+    - id: len_inode_values
+      type: u4
+      valid:
+        max: 1073741823
+    - id: inode_values
+      type: inode_values
+      size: len_inode_values
+  inode_values_elt_field0:
+    seq:
+    - id: inode_values_elt_field0
+      size-eos: true
+  inode_values_elt_field0_:
+    seq:
+    - id: len_inode_values_elt_field0
+      type: u1
+      valid:
+        max: 255
+    - id: inode_values_elt_field0
+      type: inode_values_elt_field0
+      size: len_inode_values_elt_field0
+  inode_values_entries:
+    seq:
+    - id: inode_values_elt_field0
+      type: inode_values_elt_field0_
+    - id: inode_values_elt_field1
+      type: tree_encoding
   int31:
     seq:
     - id: int31
@@ -517,6 +1408,89 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
+  message:
+    seq:
+    - id: message_tag
+      type: u1
+      enum: message_tag
+    - id: batch
+      type: bytes_dyn_uint30
+      if: (message_tag == message_tag::batch)
+    - id: deposit
+      type: deposit
+      if: (message_tag == message_tag::deposit)
+  message_:
+    seq:
+    - id: message_entries
+      type: message_entries
+      repeat: eos
+  message__:
+    seq:
+    - id: len_message
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message
+      type: message_
+      size: len_message
+  message_entries:
+    seq:
+    - id: message_elt
+      type: bytes_dyn_uint30
+  message_path:
+    seq:
+    - id: message_path_entries
+      type: message_path_entries
+      repeat: eos
+  message_path_:
+    seq:
+    - id: len_message_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_path
+      type: message_path
+      size: len_message_path
+  message_path_entries:
+    seq:
+    - id: inbox_list_hash
+      size: 32
+  message_result_path:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  message_result_path_:
+    seq:
+    - id: len_message_result_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_result_path
+      type: message_result_path
+      size: len_message_result_path
+  message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  messages:
+    seq:
+    - id: messages_entries
+      type: messages_entries
+      repeat: eos
+  messages_:
+    seq:
+    - id: len_messages
+      type: u4
+      valid:
+        max: 1073741823
+    - id: messages
+      type: messages
+      size: len_messages
+  messages_entries:
+    seq:
+    - id: message_result_hash
+      size: 32
   n:
     seq:
     - id: n
@@ -529,10 +1503,115 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  origination__id_014__ptkathma__operation__alpha__contents:
+  named:
+    seq:
+    - id: named
+      size-eos: true
+  named_:
+    seq:
+    - id: len_named
+      type: u1
+      valid:
+        max: 31
+    - id: named
+      type: named
+      size: len_named
+  node:
+    seq:
+    - id: node_entries
+      type: node_entries
+      repeat: eos
+  node_:
+    seq:
+    - id: len_node
+      type: u4
+      valid:
+        max: 1073741823
+    - id: node
+      type: node
+      size: len_node
+  node_elt_field0:
+    seq:
+    - id: node_elt_field0
+      size-eos: true
+  node_elt_field0_:
+    seq:
+    - id: len_node_elt_field0
+      type: u1
+      valid:
+        max: 255
+    - id: node_elt_field0
+      type: node_elt_field0
+      size: len_node_elt_field0
+  node_entries:
+    seq:
+    - id: node_elt_field0
+      type: node_elt_field0_
+    - id: node_elt_field1
+      type: tree_encoding
+  old_levels_messages:
+    seq:
+    - id: index
+      type: int31
+    - id: content
+      size: 32
+    - id: back_pointers
+      type: back_pointers_
+  op1:
+    seq:
+    - id: id_014__ptkathma__inlined__endorsement
+      type: id_014__ptkathma__inlined__endorsement
+  op1_:
+    seq:
+    - id: len_op1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op1
+      type: op1
+      size: len_op1
+  op1__:
+    seq:
+    - id: id_014__ptkathma__inlined__preendorsement
+      type: id_014__ptkathma__inlined__preendorsement
+  op1___:
+    seq:
+    - id: len_op1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op1
+      type: op1__
+      size: len_op1
+  op2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op1
+      size: len_op2
+  op2_:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op1__
+      size: len_op2
+  originated:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  origination:
     seq:
     - id: source
-      type: origination__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -548,86 +1627,167 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: origination__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
-      type: origination__id_014__ptkathma__scripted__contracts_
-  origination__id_014__ptkathma__scripted__contracts_:
+      type: id_014__ptkathma__scripted__contracts
+  parameters:
     seq:
-    - id: code
+    - id: entrypoint
+      type: id_014__ptkathma__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
       type: bytes_dyn_uint30
-    - id: storage
-      type: bytes_dyn_uint30
-  origination__public_key_hash_:
+  predecessor:
     seq:
-    - id: public_key_hash_tag
+    - id: predecessor_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  preendorsement__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
+      enum: predecessor_tag
+    - id: some
       size: 32
-  proposals__id_014__ptkathma__operation__alpha__contents:
+      if: (predecessor_tag == predecessor_tag::some)
+  previous_message_result:
     seq:
-    - id: source
-      type: proposals__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: period
-      type: s4
-    - id: proposals__proposals
-      type: proposals__proposals
-  proposals__proposals:
+    - id: context_hash
+      size: 32
+    - id: withdraw_list_hash
+      size: 32
+  previous_message_result_path:
     seq:
-    - id: len_proposals__proposals_dyn
+    - id: previous_message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  previous_message_result_path_:
+    seq:
+    - id: len_previous_message_result_path
       type: u4
       valid:
         max: 1073741823
-    - id: proposals__proposals_dyn
-      type: proposals__proposals_dyn
-      size: len_proposals__proposals_dyn
-  proposals__proposals_dyn:
+    - id: previous_message_result_path
+      type: previous_message_result_path
+      size: len_previous_message_result_path
+  proof:
     seq:
-    - id: proposals__proposals_entries
-      type: proposals__proposals_entries
+    - id: proof_tag
+      type: u1
+      enum: proof_tag
+    - id: case__0
+      type: case__0
+      if: (proof_tag == proof_tag::case__0)
+    - id: case__2
+      type: case__2
+      if: (proof_tag == proof_tag::case__2)
+    - id: case__1
+      type: case__1
+      if: (proof_tag == proof_tag::case__1)
+    - id: case__3
+      type: case__3
+      if: (proof_tag == proof_tag::case__3)
+  proof_:
+    seq:
+    - id: pvm_step
+      type: pvm_step
+    - id: inbox
+      type: inbox
+  proofs:
+    seq:
+    - id: proofs_tag
+      type: u1
+      enum: proofs_tag
+    - id: sparse_proof
+      type: sparse_proof_
+      if: (proofs_tag == proofs_tag::sparse_proof)
+    - id: dense_proof
+      type: dense_proof_entries
+      if: (proofs_tag == proofs_tag::dense_proof)
+  proofs_:
+    seq:
+    - id: proofs_tag
+      type: u1
+      enum: proofs_tag
+    - id: sparse_proof
+      type: sparse_proof___
+      if: (proofs_tag == proofs_tag::sparse_proof)
+    - id: dense_proof
+      type: dense_proof_entries
+      if: (proofs_tag == proofs_tag::dense_proof)
+  proposals:
+    seq:
+    - id: proposals_entries
+      type: proposals_entries
       repeat: eos
-  proposals__proposals_entries:
+  proposals_:
+    seq:
+    - id: len_proposals
+      type: u4
+      valid:
+        max: 1073741823
+    - id: proposals
+      type: proposals
+      size: len_proposals
+  proposals__:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: period
+      type: s4
+    - id: proposals
+      type: proposals_
+  proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
-  proposals__public_key_hash_:
+  public_key:
+    seq:
+    - id: public_key_tag
+      type: u1
+      enum: public_key_tag
+    - id: ed25519
+      size: 32
+      if: (public_key_tag == public_key_tag::ed25519)
+    - id: secp256k1
+      size: 33
+      if: (public_key_tag == public_key_tag::secp256k1)
+    - id: p256
+      size: 33
+      if: (public_key_tag == public_key_tag::p256)
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: proposals__ed25519__public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: proposals__secp256k1__public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: proposals__p256__public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  register_global_constant__id_014__ptkathma__operation__alpha__contents:
+  pvm_step:
+    seq:
+    - id: pvm_step_tag
+      type: u1
+      enum: pvm_step_tag
+    - id: arithmetic__pvm__with__proof
+      type: arithmetic__pvm__with__proof
+      if: (pvm_step_tag == pvm_step_tag::arithmetic__pvm__with__proof)
+    - id: wasm__2__0__0__pvm__with__proof
+      type: arithmetic__pvm__with__proof
+      if: (pvm_step_tag == pvm_step_tag::wasm__2__0__0__pvm__with__proof)
+  refutation:
+    seq:
+    - id: choice
+      type: n
+    - id: step
+      type: step
+  register_global_constant:
     seq:
     - id: source
-      type: register_global_constant__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -639,24 +1799,18 @@ types:
       type: n
     - id: value
       type: bytes_dyn_uint30
-  register_global_constant__public_key_hash_:
+  requested:
     seq:
-    - id: public_key_hash_tag
+    - id: requested_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: register_global_constant__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: register_global_constant__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: register_global_constant__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  reveal__id_014__ptkathma__operation__alpha__contents:
+      enum: requested_tag
+    - id: first_after
+      type: first_after
+      if: (requested_tag == requested_tag::first_after)
+  reveal:
     seq:
     - id: source
-      type: reveal__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -667,40 +1821,12 @@ types:
     - id: storage_limit
       type: n
     - id: public_key
-      type: reveal__public_key_
+      type: public_key
       doc: A Ed25519, Secp256k1, or P256 public key
-  reveal__public_key_:
-    seq:
-    - id: public_key_tag
-      type: u1
-      enum: public_key_tag
-    - id: reveal__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: reveal__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: reveal__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-  reveal__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: reveal__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: reveal__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: reveal__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_add_messages__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_add_messages:
     seq:
     - id: source
-      type: sc_rollup_add_messages__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -715,44 +1841,12 @@ types:
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
-    - id: sc_rollup_add_messages__message
-      type: sc_rollup_add_messages__message
-  sc_rollup_add_messages__message:
-    seq:
-    - id: len_sc_rollup_add_messages__message_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_add_messages__message_dyn
-      type: sc_rollup_add_messages__message_dyn
-      size: len_sc_rollup_add_messages__message_dyn
-  sc_rollup_add_messages__message_dyn:
-    seq:
-    - id: sc_rollup_add_messages__message_entries
-      type: sc_rollup_add_messages__message_entries
-      repeat: eos
-  sc_rollup_add_messages__message_entries:
-    seq:
-    - id: message_elt
-      type: bytes_dyn_uint30
-  sc_rollup_add_messages__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_add_messages__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_add_messages__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_add_messages__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_cement__id_014__ptkathma__operation__alpha__contents:
+    - id: message
+      type: message__
+  sc_rollup_cement:
     seq:
     - id: source
-      type: sc_rollup_cement__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -769,24 +1863,10 @@ types:
         a base58 address starting with scr1
     - id: commitment
       size: 32
-  sc_rollup_cement__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_cement__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_cement__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_cement__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_dal_slot_subscribe__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_dal_slot_subscribe:
     seq:
     - id: source
-      type: sc_rollup_dal_slot_subscribe__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -803,24 +1883,10 @@ types:
         a base58 address starting with scr1
     - id: slot_index
       type: u1
-  sc_rollup_dal_slot_subscribe__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_dal_slot_subscribe__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_dal_slot_subscribe__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_dal_slot_subscribe__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_execute_outbox_message__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_execute_outbox_message:
     seq:
     - id: source
-      type: sc_rollup_execute_outbox_message__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -845,24 +1911,10 @@ types:
       type: bytes_dyn_uint30
     - id: message
       type: bytes_dyn_uint30
-  sc_rollup_execute_outbox_message__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_execute_outbox_message__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_execute_outbox_message__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_execute_outbox_message__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_originate__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_originate:
     seq:
     - id: source
-      type: sc_rollup_originate__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -879,36 +1931,10 @@ types:
       type: bytes_dyn_uint30
     - id: parameters_ty
       type: bytes_dyn_uint30
-  sc_rollup_originate__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_originate__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_originate__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_originate__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_publish__commitment:
-    seq:
-    - id: compressed_state
-      size: 32
-    - id: inbox_level
-      type: s4
-    - id: predecessor
-      size: 32
-    - id: number_of_messages
-      type: s4
-    - id: number_of_ticks
-      type: s4
-  sc_rollup_publish__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_publish:
     seq:
     - id: source
-      type: sc_rollup_publish__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -923,26 +1949,12 @@ types:
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
-    - id: sc_rollup_publish__commitment
-      type: sc_rollup_publish__commitment
-  sc_rollup_publish__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_publish__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_publish__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_publish__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_recover_bond__id_014__ptkathma__operation__alpha__contents:
+    - id: commitment
+      type: commitment_
+  sc_rollup_recover_bond:
     seq:
     - id: source
-      type: sc_rollup_recover_bond__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -954,52 +1966,10 @@ types:
       type: n
     - id: rollup
       size: 20
-  sc_rollup_recover_bond__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_recover_bond__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_recover_bond__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_recover_bond__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_refute__dissection__dissection_dyn:
-    seq:
-    - id: sc_rollup_refute__dissection__dissection_entries
-      type: sc_rollup_refute__dissection__dissection_entries
-      repeat: eos
-  sc_rollup_refute__dissection__dissection_elt_field0:
-    seq:
-    - id: dissection_elt_field0_tag
-      type: u1
-      enum: dissection_elt_field0_tag
-    - id: sc_rollup_refute__dissection__some__dissection_elt_field0
-      size: 32
-      if: (dissection_elt_field0_tag == dissection_elt_field0_tag::some)
-  sc_rollup_refute__dissection__dissection_entries:
-    seq:
-    - id: sc_rollup_refute__dissection__dissection_elt_field0
-      type: sc_rollup_refute__dissection__dissection_elt_field0
-    - id: dissection_elt_field1
-      type: n
-  sc_rollup_refute__dissection__step:
-    seq:
-    - id: len_sc_rollup_refute__dissection__dissection_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__dissection__dissection_dyn
-      type: sc_rollup_refute__dissection__dissection_dyn
-      size: len_sc_rollup_refute__dissection__dissection_dyn
-  sc_rollup_refute__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_refute:
     seq:
     - id: source
-      type: sc_rollup_refute__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1015,619 +1985,17 @@ types:
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: opponent
-      type: sc_rollup_refute__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: sc_rollup_refute__refutation
-      type: sc_rollup_refute__refutation
+    - id: refutation
+      type: refutation
     - id: is_opening_move
       type: u1
       enum: bool
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__after:
-    seq:
-    - id: after_tag
-      type: u1
-      enum: after_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__after
-      size: 32
-      if: (after_tag == after_tag::value)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__after
-      size: 32
-      if: (after_tag == after_tag::node)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__before:
-    seq:
-    - id: before_tag
-      type: u1
-      enum: before_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__before
-      size: 32
-      if: (before_tag == before_tag::value)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__before
-      size: 32
-      if: (before_tag == before_tag::node)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__extender:
-    seq:
-    - id: length
-      type: s8
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment
-    - id: proof
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__segment_dyn:
-    seq:
-    - id: segment
-      size-eos: true
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__first_after__requested:
-    seq:
-    - id: first_after_field0
-      type: s4
-    - id: first_after_field1
-      type: n
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__given:
-    seq:
-    - id: given_tag
-      type: u1
-      enum: given_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__given
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__given
-      if: (given_tag == given_tag::some)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__dense_proof_entries:
-    seq:
-    - id: dense_proof_elt
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__inode:
-    seq:
-    - id: length
-      type: s8
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__proofs
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__proofs:
-    seq:
-    - id: proofs_tag
-      type: u1
-      enum: proofs_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof
-      if: (proofs_tag == proofs_tag::sparse_proof)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__dense_proof__dense_proof_entries
-      if: (proofs_tag == proofs_tag::dense_proof)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__inode_extender:
-    seq:
-    - id: length
-      type: s8
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment
-    - id: proof
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__segment_dyn:
-    seq:
-    - id: segment
-      size-eos: true
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree:
-    seq:
-    - id: inode_tree_tag
-      type: u1
-      enum: inode_tree_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__blinded_inode__inode_tree
-      size: 32
-      if: (inode_tree_tag == inode_tree_tag::blinded_inode)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_tree
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values
-      if: (inode_tree_tag == inode_tree_tag::inode_values)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__inode_tree
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__inode_tree
-      if: (inode_tree_tag == inode_tree_tag::inode_tree)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__inode_tree
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_extender__inode_extender
-      if: (inode_tree_tag == inode_tree_tag::inode_extender)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__dense_proof_entries:
-    seq:
-    - id: dense_proof_elt
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__inode_tree:
-    seq:
-    - id: length
-      type: s8
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__proofs
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__proofs:
-    seq:
-    - id: proofs_tag
-      type: u1
-      enum: proofs_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof
-      if: (proofs_tag == proofs_tag::sparse_proof)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__proofs
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__dense_proof__dense_proof_entries
-      if: (proofs_tag == proofs_tag::dense_proof)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_entries
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_entries
-      repeat: eos
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree__sparse_proof__sparse_proof_entries:
-    seq:
-    - id: sparse_proof_elt_field0
-      type: u1
-    - id: sparse_proof_elt_field1
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_entries
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_entries
-      repeat: eos
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0_dyn:
-    seq:
-    - id: inode_values_elt_field0
-      size-eos: true
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_entries:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_values__inode_values_elt_field0
-    - id: inode_values_elt_field1
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_entries
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_entries
-      repeat: eos
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__sparse_proof_entries:
-    seq:
-    - id: sparse_proof_elt_field0
-      type: u1
-    - id: sparse_proof_elt_field1
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-      doc: ! >-
-        sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__sparse_proof__inode_tree
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_entries
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_entries
-      repeat: eos
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0:
-    seq:
-    - id: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn
-      size: len_sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0_dyn:
-    seq:
-    - id: node_elt_field0
-      size-eos: true
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_entries:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node_elt_field0
-    - id: node_elt_field1
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__pvm_step:
-    seq:
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_proof
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_proof
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__given
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__given
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__requested
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__requested
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__requested:
-    seq:
-    - id: requested_tag
-      type: u1
-      enum: requested_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__first_after__requested
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__first_after__requested
-      if: (requested_tag == requested_tag::first_after)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__some__given:
-    seq:
-    - id: inbox_level
-      type: s4
-    - id: message_counter
-      type: n
-    - id: payload
-      type: bytes_dyn_uint30
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding:
-    seq:
-    - id: tree_encoding_tag
-      type: u1
-      enum: tree_encoding_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__value__tree_encoding
-      type: bytes_dyn_uint30
-      if: (tree_encoding_tag == tree_encoding_tag::value)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__blinded_value__tree_encoding
-      size: 32
-      if: (tree_encoding_tag == tree_encoding_tag::blinded_value)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__tree_encoding
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__node__node
-      if: (tree_encoding_tag == tree_encoding_tag::node)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__blinded_node__tree_encoding
-      size: 32
-      if: (tree_encoding_tag == tree_encoding_tag::blinded_node)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__tree_encoding
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__inode__inode
-      if: (tree_encoding_tag == tree_encoding_tag::inode)
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__tree_encoding
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__extender__extender
-      if: (tree_encoding_tag == tree_encoding_tag::extender)
-  sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_proof:
-    seq:
-    - id: version
-      type: s2
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__before
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__before
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__after
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__after
-    - id: state
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
-  sc_rollup_refute__proof__inbox:
-    seq:
-    - id: inbox_tag
-      type: u1
-      enum: inbox_tag
-    - id: sc_rollup_refute__proof__some__inbox
-      type: sc_rollup_refute__proof__some__inbox
-      if: (inbox_tag == inbox_tag::some)
-  sc_rollup_refute__proof__pvm_step:
-    seq:
-    - id: pvm_step_tag
-      type: u1
-      enum: pvm_step_tag
-    - id: sc_rollup_refute__proof__arithmetic__pvm__with__proof__pvm_step
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__pvm_step
-      if: (pvm_step_tag == pvm_step_tag::arithmetic__pvm__with__proof)
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__pvm_step
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__pvm_step
-      if: (pvm_step_tag == pvm_step_tag::wasm__2__0__0__pvm__with__proof)
-  sc_rollup_refute__proof__some__after:
-    seq:
-    - id: after_tag
-      type: u1
-      enum: after_tag
-    - id: sc_rollup_refute__proof__some__value__after
-      size: 32
-      if: (after_tag == after_tag::value)
-    - id: sc_rollup_refute__proof__some__node__after
-      size: 32
-      if: (after_tag == after_tag::node)
-  sc_rollup_refute__proof__some__back_pointers:
-    seq:
-    - id: len_sc_rollup_refute__proof__some__back_pointers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__some__back_pointers_dyn
-      type: sc_rollup_refute__proof__some__back_pointers_dyn
-      size: len_sc_rollup_refute__proof__some__back_pointers_dyn
-  sc_rollup_refute__proof__some__back_pointers_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__some__back_pointers_entries
-      type: sc_rollup_refute__proof__some__back_pointers_entries
-      repeat: eos
-  sc_rollup_refute__proof__some__back_pointers_entries:
-    seq:
-    - id: inbox_hash
-      size: 32
-  sc_rollup_refute__proof__some__before:
-    seq:
-    - id: before_tag
-      type: u1
-      enum: before_tag
-    - id: sc_rollup_refute__proof__some__value__before
-      size: 32
-      if: (before_tag == before_tag::value)
-    - id: sc_rollup_refute__proof__some__node__before
-      size: 32
-      if: (before_tag == before_tag::node)
-  sc_rollup_refute__proof__some__inbox:
-    seq:
-    - id: sc_rollup_refute__proof__some__skips
-      type: sc_rollup_refute__proof__some__skips
-    - id: sc_rollup_refute__proof__some__level
-      type: sc_rollup_refute__proof__some__level
-    - id: sc_rollup_refute__proof__some__inc
-      type: sc_rollup_refute__proof__some__inc
-    - id: sc_rollup_refute__proof__some__message_proof
-      type: sc_rollup_refute__proof__some__message_proof
-  sc_rollup_refute__proof__some__inc:
-    seq:
-    - id: len_sc_rollup_refute__proof__some__inc_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__some__inc_dyn
-      type: sc_rollup_refute__proof__some__inc_dyn
-      size: len_sc_rollup_refute__proof__some__inc_dyn
-  sc_rollup_refute__proof__some__inc_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__some__inc_entries
-      type: sc_rollup_refute__proof__some__inc_entries
-      repeat: eos
-  sc_rollup_refute__proof__some__inc_entries:
-    seq:
-    - id: index
-      type: int31
-    - id: content
-      size: 32
-    - id: sc_rollup_refute__proof__some__back_pointers
-      type: sc_rollup_refute__proof__some__back_pointers
-  sc_rollup_refute__proof__some__level:
-    seq:
-    - id: rollup
-      type: bytes_dyn_uint30
-      doc: ! >-
-        A smart contract rollup address: A smart contract rollup is identified by
-        a base58 address starting with scr1
-    - id: message_counter
-      type: n
-    - id: nb_available_messages
-      type: s8
-    - id: nb_messages_in_commitment_period
-      type: s8
-    - id: starting_level_of_current_commitment_period
-      type: s4
-    - id: level
-      type: s4
-    - id: current_messages_hash
-      size: 32
-    - id: sc_rollup_refute__proof__some__old_levels_messages
-      type: sc_rollup_refute__proof__some__old_levels_messages
-  sc_rollup_refute__proof__some__message_proof:
-    seq:
-    - id: version
-      type: s2
-    - id: sc_rollup_refute__proof__some__before
-      type: sc_rollup_refute__proof__some__before
-    - id: sc_rollup_refute__proof__some__after
-      type: sc_rollup_refute__proof__some__after
-    - id: state
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
-  sc_rollup_refute__proof__some__old_levels_messages:
-    seq:
-    - id: index
-      type: int31
-    - id: content
-      size: 32
-    - id: sc_rollup_refute__proof__some__back_pointers
-      type: sc_rollup_refute__proof__some__back_pointers
-  sc_rollup_refute__proof__some__skips:
-    seq:
-    - id: len_sc_rollup_refute__proof__some__skips_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__some__skips_dyn
-      type: sc_rollup_refute__proof__some__skips_dyn
-      size: len_sc_rollup_refute__proof__some__skips_dyn
-  sc_rollup_refute__proof__some__skips_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__some__skips_entries
-      type: sc_rollup_refute__proof__some__skips_entries
-      repeat: eos
-  sc_rollup_refute__proof__some__skips_elt_field0:
-    seq:
-    - id: rollup
-      type: bytes_dyn_uint30
-      doc: ! >-
-        A smart contract rollup address: A smart contract rollup is identified by
-        a base58 address starting with scr1
-    - id: message_counter
-      type: n
-    - id: nb_available_messages
-      type: s8
-    - id: nb_messages_in_commitment_period
-      type: s8
-    - id: starting_level_of_current_commitment_period
-      type: s4
-    - id: level
-      type: s4
-    - id: current_messages_hash
-      size: 32
-    - id: sc_rollup_refute__proof__some__old_levels_messages
-      type: sc_rollup_refute__proof__some__old_levels_messages
-  sc_rollup_refute__proof__some__skips_elt_field1:
-    seq:
-    - id: len_sc_rollup_refute__proof__some__skips_elt_field1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sc_rollup_refute__proof__some__skips_elt_field1_dyn
-      type: sc_rollup_refute__proof__some__skips_elt_field1_dyn
-      size: len_sc_rollup_refute__proof__some__skips_elt_field1_dyn
-  sc_rollup_refute__proof__some__skips_elt_field1_dyn:
-    seq:
-    - id: sc_rollup_refute__proof__some__skips_elt_field1_entries
-      type: sc_rollup_refute__proof__some__skips_elt_field1_entries
-      repeat: eos
-  sc_rollup_refute__proof__some__skips_elt_field1_entries:
-    seq:
-    - id: index
-      type: int31
-    - id: content
-      size: 32
-    - id: sc_rollup_refute__proof__some__back_pointers
-      type: sc_rollup_refute__proof__some__back_pointers
-  sc_rollup_refute__proof__some__skips_entries:
-    seq:
-    - id: sc_rollup_refute__proof__some__skips_elt_field0
-      type: sc_rollup_refute__proof__some__skips_elt_field0
-    - id: sc_rollup_refute__proof__some__skips_elt_field1
-      type: sc_rollup_refute__proof__some__skips_elt_field1
-  sc_rollup_refute__proof__step:
-    seq:
-    - id: sc_rollup_refute__proof__pvm_step
-      type: sc_rollup_refute__proof__pvm_step
-    - id: sc_rollup_refute__proof__inbox
-      type: sc_rollup_refute__proof__inbox
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after:
-    seq:
-    - id: after_tag
-      type: u1
-      enum: after_tag
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__value__after
-      size: 32
-      if: (after_tag == after_tag::value)
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__node__after
-      size: 32
-      if: (after_tag == after_tag::node)
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__before:
-    seq:
-    - id: before_tag
-      type: u1
-      enum: before_tag
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__value__before
-      size: 32
-      if: (before_tag == before_tag::value)
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__node__before
-      size: 32
-      if: (before_tag == before_tag::node)
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__first_after__requested:
-    seq:
-    - id: first_after_field0
-      type: s4
-    - id: first_after_field1
-      type: n
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__given:
-    seq:
-    - id: given_tag
-      type: u1
-      enum: given_tag
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__given
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__given
-      if: (given_tag == given_tag::some)
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__pvm_step:
-    seq:
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__tree_proof
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__tree_proof
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__given
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__given
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__requested
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__requested
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__requested:
-    seq:
-    - id: requested_tag
-      type: u1
-      enum: requested_tag
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__first_after__requested
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__first_after__requested
-      if: (requested_tag == requested_tag::first_after)
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__some__given:
-    seq:
-    - id: inbox_level
-      type: s4
-    - id: message_counter
-      type: n
-    - id: payload
-      type: bytes_dyn_uint30
-  sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__tree_proof:
-    seq:
-    - id: version
-      type: s2
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__before
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__before
-    - id: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after
-      type: sc_rollup_refute__proof__wasm__2__0__0__pvm__with__proof__after
-    - id: state
-      type: sc_rollup_refute__proof__arithmetic__pvm__with__proof__tree_encoding
-  sc_rollup_refute__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_refute__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_refute__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_refute__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_refute__refutation:
-    seq:
-    - id: choice
-      type: n
-    - id: sc_rollup_refute__step
-      type: sc_rollup_refute__step
-  sc_rollup_refute__step:
-    seq:
-    - id: step_tag
-      type: u1
-      enum: step_tag
-    - id: sc_rollup_refute__dissection__step
-      type: sc_rollup_refute__dissection__step
-      if: (step_tag == step_tag::dissection)
-    - id: sc_rollup_refute__proof__step
-      type: sc_rollup_refute__proof__step
-      if: (step_tag == step_tag::proof)
-  sc_rollup_timeout__id_014__ptkathma__operation__alpha__contents:
+  sc_rollup_timeout:
     seq:
     - id: source
-      type: sc_rollup_timeout__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1642,40 +2010,31 @@ types:
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
-    - id: sc_rollup_timeout__stakers
-      type: sc_rollup_timeout__stakers
-  sc_rollup_timeout__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: sc_rollup_timeout__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: sc_rollup_timeout__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: sc_rollup_timeout__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  sc_rollup_timeout__stakers:
-    seq:
-    - id: alice
-      type: sc_rollup_timeout__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: bob
-      type: sc_rollup_timeout__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-  seed_nonce_revelation__id_014__ptkathma__operation__alpha__contents:
+    - id: stakers
+      type: stakers
+  seed_nonce_revelation:
     seq:
     - id: level
       type: s4
     - id: nonce
       size: 32
-  set_deposits_limit__id_014__ptkathma__operation__alpha__contents:
+  segment:
+    seq:
+    - id: segment
+      size-eos: true
+  segment_:
+    seq:
+    - id: len_segment
+      type: u1
+      valid:
+        max: 255
+    - id: segment
+      type: segment
+      size: len_segment
+  set_deposits_limit:
     seq:
     - id: source
-      type: set_deposits_limit__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1691,44 +2050,187 @@ types:
     - id: limit
       type: n
       if: (limit_tag == bool::true)
-  set_deposits_limit__public_key_hash_:
+  skips:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: set_deposits_limit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: set_deposits_limit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: set_deposits_limit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transaction__id_014__ptkathma__contract_id_:
+    - id: skips_entries
+      type: skips_entries
+      repeat: eos
+  skips_:
     seq:
-    - id: id_014__ptkathma__contract_id_tag
+    - id: len_skips
+      type: u4
+      valid:
+        max: 1073741823
+    - id: skips
+      type: skips
+      size: len_skips
+  skips_elt_field0:
+    seq:
+    - id: rollup
+      type: bytes_dyn_uint30
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
+    - id: message_counter
+      type: n
+    - id: nb_available_messages
+      type: s8
+    - id: nb_messages_in_commitment_period
+      type: s8
+    - id: starting_level_of_current_commitment_period
+      type: s4
+    - id: level
+      type: s4
+    - id: current_messages_hash
+      size: 32
+    - id: old_levels_messages
+      type: old_levels_messages
+  skips_elt_field1:
+    seq:
+    - id: skips_elt_field1_entries
+      type: old_levels_messages
+      repeat: eos
+  skips_elt_field1_:
+    seq:
+    - id: len_skips_elt_field1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: skips_elt_field1
+      type: skips_elt_field1
+      size: len_skips_elt_field1
+  skips_entries:
+    seq:
+    - id: skips_elt_field0
+      type: skips_elt_field0
+    - id: skips_elt_field1
+      type: skips_elt_field1_
+  slot:
+    seq:
+    - id: level
+      type: s4
+    - id: index
       type: u1
-      enum: id_014__ptkathma__contract_id_tag
-    - id: transaction__implicit__id_014__ptkathma__contract_id
-      type: transaction__implicit__public_key_hash_
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
+    - id: header
+      type: int31
+  solution:
+    seq:
+    - id: solution_field0
+      size: 100
+    - id: solution_field1
+      size: 100
+  some:
+    seq:
+    - id: inbox_level
+      type: s4
+    - id: message_counter
+      type: n
+    - id: payload
+      type: bytes_dyn_uint30
+  some_:
+    seq:
+    - id: skips
+      type: skips_
+    - id: level
+      type: skips_elt_field0
+    - id: inc
+      type: inc_
+    - id: message_proof
+      type: tree_proof
+  sparse_proof:
+    seq:
+    - id: sparse_proof_entries
+      type: sparse_proof_entries
+      repeat: eos
+  sparse_proof_:
+    seq:
+    - id: len_sparse_proof
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sparse_proof
+      type: sparse_proof
+      size: len_sparse_proof
+  sparse_proof__:
+    seq:
+    - id: sparse_proof_entries
+      type: sparse_proof_entries_
+      repeat: eos
+  sparse_proof___:
+    seq:
+    - id: len_sparse_proof
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sparse_proof
+      type: sparse_proof__
+      size: len_sparse_proof
+  sparse_proof_entries:
+    seq:
+    - id: sparse_proof_elt_field0
+      type: u1
+    - id: sparse_proof_elt_field1
+      type: inode_tree
+  sparse_proof_entries_:
+    seq:
+    - id: sparse_proof_elt_field0
+      type: u1
+    - id: sparse_proof_elt_field1
+      type: inode_tree_
+      doc: inode_tree
+  stakers:
+    seq:
+    - id: alice
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: transaction__originated__id_014__ptkathma__contract_id
-      type: transaction__originated__id_014__ptkathma__contract_id
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::originated)
-  transaction__id_014__ptkathma__entrypoint_:
+    - id: bob
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+  step:
     seq:
-    - id: id_014__ptkathma__entrypoint_tag
+    - id: step_tag
       type: u1
-      enum: id_014__ptkathma__entrypoint_tag
-    - id: transaction__named__id_014__ptkathma__entrypoint
-      type: transaction__named__id_014__ptkathma__entrypoint
-      if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
-  transaction__id_014__ptkathma__operation__alpha__contents:
+      enum: step_tag
+    - id: dissection
+      type: dissection_
+      if: (step_tag == step_tag::dissection)
+    - id: proof
+      type: proof_
+      if: (step_tag == step_tag::proof)
+  tickets_info:
+    seq:
+    - id: tickets_info_entries
+      type: tickets_info_entries
+      repeat: eos
+  tickets_info_:
+    seq:
+    - id: len_tickets_info
+      type: u4
+      valid:
+        max: 1073741823
+    - id: tickets_info
+      type: tickets_info
+      size: len_tickets_info
+  tickets_info_entries:
+    seq:
+    - id: contents
+      type: bytes_dyn_uint30
+    - id: ty
+      type: bytes_dyn_uint30
+    - id: ticketer
+      type: id_014__ptkathma__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: amount
+      type: amount
+    - id: claimer
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+  transaction:
     seq:
     - id: source
-      type: transaction__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1741,87 +2243,20 @@ types:
     - id: amount
       type: n
     - id: destination
-      type: transaction__id_014__ptkathma__contract_id_
+      type: id_014__ptkathma__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool
-    - id: transaction__parameters_
-      type: transaction__parameters_
+    - id: parameters
+      type: parameters
       if: (parameters_tag == bool::true)
-  transaction__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transaction__named__id_014__ptkathma__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
-  transaction__originated__id_014__ptkathma__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_014__ptkathma__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  transaction__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transfer_ticket__id_014__ptkathma__contract_id_:
-    seq:
-    - id: id_014__ptkathma__contract_id_tag
-      type: u1
-      enum: id_014__ptkathma__contract_id_tag
-    - id: transfer_ticket__implicit__id_014__ptkathma__contract_id
-      type: transfer_ticket__implicit__public_key_hash_
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: transfer_ticket__originated__id_014__ptkathma__contract_id
-      type: transfer_ticket__originated__id_014__ptkathma__contract_id
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::originated)
-  transfer_ticket__id_014__ptkathma__operation__alpha__contents:
+  transfer_ticket:
     seq:
     - id: source
-      type: transfer_ticket__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1836,68 +2271,56 @@ types:
     - id: ticket_ty
       type: bytes_dyn_uint30
     - id: ticket_ticketer
-      type: transfer_ticket__id_014__ptkathma__contract_id_
+      type: id_014__ptkathma__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: ticket_amount
       type: n
     - id: destination
-      type: transfer_ticket__id_014__ptkathma__contract_id_
+      type: id_014__ptkathma__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: bytes_dyn_uint30
-  transfer_ticket__implicit__public_key_hash_:
+  tree_encoding:
     seq:
-    - id: public_key_hash_tag
+    - id: tree_encoding_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transfer_ticket__originated__id_014__ptkathma__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transfer_ticket__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_commit__commitment:
-    seq:
-    - id: level
-      type: s4
-    - id: tx_rollup_commit__messages
-      type: tx_rollup_commit__messages
-    - id: tx_rollup_commit__predecessor
-      type: tx_rollup_commit__predecessor
-    - id: inbox_merkle_root
+      enum: tree_encoding_tag
+    - id: value
+      type: bytes_dyn_uint30
+      if: (tree_encoding_tag == tree_encoding_tag::value)
+    - id: blinded_value
       size: 32
-  tx_rollup_commit__id_014__ptkathma__operation__alpha__contents:
+      if: (tree_encoding_tag == tree_encoding_tag::blinded_value)
+    - id: node
+      type: node_
+      if: (tree_encoding_tag == tree_encoding_tag::node)
+    - id: blinded_node
+      size: 32
+      if: (tree_encoding_tag == tree_encoding_tag::blinded_node)
+    - id: inode
+      type: inode
+      if: (tree_encoding_tag == tree_encoding_tag::inode)
+    - id: extender
+      type: inode_extender
+      if: (tree_encoding_tag == tree_encoding_tag::extender)
+  tree_proof:
+    seq:
+    - id: version
+      type: s2
+    - id: before
+      type: before
+    - id: after
+      type: after
+    - id: state
+      type: tree_encoding
+  tx_rollup_commit:
     seq:
     - id: source
-      type: tx_rollup_commit__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -1912,81 +2335,12 @@ types:
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
-    - id: tx_rollup_commit__commitment
-      type: tx_rollup_commit__commitment
-  tx_rollup_commit__messages:
-    seq:
-    - id: len_tx_rollup_commit__messages_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_commit__messages_dyn
-      type: tx_rollup_commit__messages_dyn
-      size: len_tx_rollup_commit__messages_dyn
-  tx_rollup_commit__messages_dyn:
-    seq:
-    - id: tx_rollup_commit__messages_entries
-      type: tx_rollup_commit__messages_entries
-      repeat: eos
-  tx_rollup_commit__messages_entries:
-    seq:
-    - id: message_result_hash
-      size: 32
-  tx_rollup_commit__predecessor:
-    seq:
-    - id: predecessor_tag
-      type: u1
-      enum: predecessor_tag
-    - id: tx_rollup_commit__some__predecessor
-      size: 32
-      if: (predecessor_tag == predecessor_tag::some)
-  tx_rollup_commit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_commit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_commit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_commit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_dispatch_tickets__amount:
-    seq:
-    - id: amount_tag
-      type: u1
-      enum: amount_tag
-    - id: tx_rollup_dispatch_tickets__case__0__amount
-      type: u1
-      if: (amount_tag == amount_tag::case__0)
-    - id: tx_rollup_dispatch_tickets__case__1__amount
-      type: u2
-      if: (amount_tag == amount_tag::case__1)
-    - id: tx_rollup_dispatch_tickets__case__2__amount
-      type: s4
-      if: (amount_tag == amount_tag::case__2)
-    - id: tx_rollup_dispatch_tickets__case__3__amount
-      type: s8
-      if: (amount_tag == amount_tag::case__3)
-  tx_rollup_dispatch_tickets__id_014__ptkathma__contract_id_:
-    seq:
-    - id: id_014__ptkathma__contract_id_tag
-      type: u1
-      enum: id_014__ptkathma__contract_id_tag
-    - id: tx_rollup_dispatch_tickets__implicit__id_014__ptkathma__contract_id
-      type: tx_rollup_dispatch_tickets__implicit__public_key_hash_
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: tx_rollup_dispatch_tickets__originated__id_014__ptkathma__contract_id
-      type: tx_rollup_dispatch_tickets__originated__id_014__ptkathma__contract_id
-      if: (id_014__ptkathma__contract_id_tag == id_014__ptkathma__contract_id_tag::originated)
-  tx_rollup_dispatch_tickets__id_014__ptkathma__operation__alpha__contents:
+    - id: commitment
+      type: commitment
+  tx_rollup_dispatch_tickets:
     seq:
     - id: source
-      type: tx_rollup_dispatch_tickets__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -2007,97 +2361,14 @@ types:
       size: 32
     - id: message_index
       type: int31
-    - id: tx_rollup_dispatch_tickets__message_result_path
-      type: tx_rollup_dispatch_tickets__message_result_path
-    - id: tx_rollup_dispatch_tickets__tickets_info
-      type: tx_rollup_dispatch_tickets__tickets_info
-  tx_rollup_dispatch_tickets__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_dispatch_tickets__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_dispatch_tickets__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_dispatch_tickets__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_dispatch_tickets__message_result_path:
-    seq:
-    - id: len_tx_rollup_dispatch_tickets__message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_dispatch_tickets__message_result_path_dyn
-      type: tx_rollup_dispatch_tickets__message_result_path_dyn
-      size: len_tx_rollup_dispatch_tickets__message_result_path_dyn
-  tx_rollup_dispatch_tickets__message_result_path_dyn:
-    seq:
-    - id: tx_rollup_dispatch_tickets__message_result_path_entries
-      type: tx_rollup_dispatch_tickets__message_result_path_entries
-      repeat: eos
-  tx_rollup_dispatch_tickets__message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_dispatch_tickets__originated__id_014__ptkathma__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  tx_rollup_dispatch_tickets__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_dispatch_tickets__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_dispatch_tickets__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_dispatch_tickets__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_dispatch_tickets__tickets_info:
-    seq:
-    - id: len_tx_rollup_dispatch_tickets__tickets_info_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_dispatch_tickets__tickets_info_dyn
-      type: tx_rollup_dispatch_tickets__tickets_info_dyn
-      size: len_tx_rollup_dispatch_tickets__tickets_info_dyn
-  tx_rollup_dispatch_tickets__tickets_info_dyn:
-    seq:
-    - id: tx_rollup_dispatch_tickets__tickets_info_entries
-      type: tx_rollup_dispatch_tickets__tickets_info_entries
-      repeat: eos
-  tx_rollup_dispatch_tickets__tickets_info_entries:
-    seq:
-    - id: contents
-      type: bytes_dyn_uint30
-    - id: ty
-      type: bytes_dyn_uint30
-    - id: ticketer
-      type: tx_rollup_dispatch_tickets__id_014__ptkathma__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: tx_rollup_dispatch_tickets__amount
-      type: tx_rollup_dispatch_tickets__amount
-    - id: claimer
-      type: tx_rollup_dispatch_tickets__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-  tx_rollup_finalize_commitment__id_014__ptkathma__operation__alpha__contents:
+    - id: message_result_path
+      type: message_result_path_
+    - id: tickets_info
+      type: tickets_info_
+  tx_rollup_origination:
     seq:
     - id: source
-      type: tx_rollup_finalize_commitment__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -2107,1950 +2378,10 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: rollup
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-  tx_rollup_finalize_commitment__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_finalize_commitment__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_finalize_commitment__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_finalize_commitment__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_origination__id_014__ptkathma__operation__alpha__contents:
+  tx_rollup_rejection:
     seq:
     - id: source
-      type: tx_rollup_origination__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-  tx_rollup_origination__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_rejection__case__0__case__0_field3:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__0_field3_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__0__case__0_field3_dyn
-      type: tx_rollup_rejection__case__0__case__0_field3_dyn
-      size: len_tx_rollup_rejection__case__0__case__0_field3_dyn
-  tx_rollup_rejection__case__0__case__0_field3_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__0__case__0_field3_entries
-      type: tx_rollup_rejection__case__0__case__0_field3_entries
-      repeat: eos
-  tx_rollup_rejection__case__0__case__0_field3_entries:
-    seq:
-    - id: case__0_field3_elt_tag
-      type: u1
-      enum: case__0_field3_elt_tag
-    - id: tx_rollup_rejection__case__0__case__0__case__0_field3_elt
-      type: u1
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__0)
-    - id: tx_rollup_rejection__case__0__case__8__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__8__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__8)
-    - id: tx_rollup_rejection__case__0__case__4__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__4__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__4)
-    - id: tx_rollup_rejection__case__0__case__12__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__12__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__12)
-    - id: tx_rollup_rejection__case__0__case__1__case__0_field3_elt
-      type: u2
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__1)
-    - id: tx_rollup_rejection__case__0__case__9__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__9__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__9)
-    - id: tx_rollup_rejection__case__0__case__5__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__5__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__5)
-    - id: tx_rollup_rejection__case__0__case__13__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__13__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__13)
-    - id: tx_rollup_rejection__case__0__case__2__case__0_field3_elt
-      type: s4
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__2)
-    - id: tx_rollup_rejection__case__0__case__10__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__10__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__10)
-    - id: tx_rollup_rejection__case__0__case__6__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__6__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__6)
-    - id: tx_rollup_rejection__case__0__case__14__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__14__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__14)
-    - id: tx_rollup_rejection__case__0__case__3__case__0_field3_elt
-      type: s8
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__3)
-    - id: tx_rollup_rejection__case__0__case__11__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__11__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__11)
-    - id: tx_rollup_rejection__case__0__case__7__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__7__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__7)
-    - id: tx_rollup_rejection__case__0__case__15__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__15__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__15)
-    - id: tx_rollup_rejection__case__0__case__129__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__129__case__129_entries
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__129)
-    - id: tx_rollup_rejection__case__0__case__130__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__130__case__130_entries
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__130)
-    - id: tx_rollup_rejection__case__0__case__131__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__131__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__131)
-    - id: tx_rollup_rejection__case__0__case__192__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__192__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__192)
-    - id: tx_rollup_rejection__case__0__case__193__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__193__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
-    - id: tx_rollup_rejection__case__0__case__195__case__0_field3_elt
-      type: bytes_dyn_uint30
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__195)
-    - id: tx_rollup_rejection__case__0__case__224__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__224__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__224)
-    - id: tx_rollup_rejection__case__0__case__225__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__225__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__225)
-    - id: tx_rollup_rejection__case__0__case__226__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__226__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__226)
-    - id: tx_rollup_rejection__case__0__case__227__case__0_field3_elt
-      type: tx_rollup_rejection__case__0__case__227__case__0_field3_elt
-      if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__227)
-  tx_rollup_rejection__case__0__case__10__case__0_field3_elt:
-    seq:
-    - id: case__10_field0
-      type: s4
-    - id: case__10_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__10_field1_field1'
-  tx_rollup_rejection__case__0__case__11__case__0_field3_elt:
-    seq:
-    - id: case__11_field0
-      type: s8
-    - id: case__11_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__11_field1_field1'
-  tx_rollup_rejection__case__0__case__129__case__129_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__129__case__129_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__129__case__129_elt_field0_dyn
-      type: tx_rollup_rejection__case__0__case__129__case__129_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__0__case__129__case__129_elt_field0_dyn
-  tx_rollup_rejection__case__0__case__129__case__129_elt_field0_dyn:
-    seq:
-    - id: case__129_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__0__case__129__case__129_elt_field1:
-    seq:
-    - id: case__129_elt_field1_tag
-      type: u1
-      enum: case__129_elt_field1_tag
-    - id: tx_rollup_rejection__case__0__case__129__case__0__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__0__case__129__case__1__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__0__case__129__case__129_entries:
-    seq:
-    - id: tx_rollup_rejection__case__0__case__129__case__129_elt_field0
-      type: tx_rollup_rejection__case__0__case__129__case__129_elt_field0
-    - id: tx_rollup_rejection__case__0__case__129__case__129_elt_field1
-      type: tx_rollup_rejection__case__0__case__129__case__129_elt_field1
-  tx_rollup_rejection__case__0__case__12__case__0_field3_elt:
-    seq:
-    - id: case__12_field0
-      type: u1
-    - id: tx_rollup_rejection__case__0__case__12__case__12_field1
-      type: tx_rollup_rejection__case__0__case__12__case__12_field1
-  tx_rollup_rejection__case__0__case__12__case__12_field1:
-    seq:
-    - id: case__12_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__12_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__130__case__130_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__130__case__130_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__130__case__130_elt_field0_dyn
-      type: tx_rollup_rejection__case__0__case__130__case__130_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__0__case__130__case__130_elt_field0_dyn
-  tx_rollup_rejection__case__0__case__130__case__130_elt_field0_dyn:
-    seq:
-    - id: case__130_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__0__case__130__case__130_elt_field1:
-    seq:
-    - id: case__130_elt_field1_tag
-      type: u1
-      enum: case__130_elt_field1_tag
-    - id: tx_rollup_rejection__case__0__case__130__case__0__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__0__case__130__case__1__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__0__case__130__case__130_entries:
-    seq:
-    - id: tx_rollup_rejection__case__0__case__130__case__130_elt_field0
-      type: tx_rollup_rejection__case__0__case__130__case__130_elt_field0
-    - id: tx_rollup_rejection__case__0__case__130__case__130_elt_field1
-      type: tx_rollup_rejection__case__0__case__130__case__130_elt_field1
-  tx_rollup_rejection__case__0__case__131__case__0_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__131__case__131_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__0__case__131__case__131_dyn
-      type: tx_rollup_rejection__case__0__case__131__case__131_dyn
-      size: len_tx_rollup_rejection__case__0__case__131__case__131_dyn
-  tx_rollup_rejection__case__0__case__131__case__131_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__0__case__131__case__131_entries
-      type: tx_rollup_rejection__case__0__case__131__case__131_entries
-      repeat: eos
-  tx_rollup_rejection__case__0__case__131__case__131_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__131__case__131_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__131__case__131_elt_field0_dyn
-      type: tx_rollup_rejection__case__0__case__131__case__131_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__0__case__131__case__131_elt_field0_dyn
-  tx_rollup_rejection__case__0__case__131__case__131_elt_field0_dyn:
-    seq:
-    - id: case__131_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__0__case__131__case__131_elt_field1:
-    seq:
-    - id: case__131_elt_field1_tag
-      type: u1
-      enum: case__131_elt_field1_tag
-    - id: tx_rollup_rejection__case__0__case__131__case__0__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__0__case__131__case__1__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__0__case__131__case__131_entries:
-    seq:
-    - id: tx_rollup_rejection__case__0__case__131__case__131_elt_field0
-      type: tx_rollup_rejection__case__0__case__131__case__131_elt_field0
-    - id: tx_rollup_rejection__case__0__case__131__case__131_elt_field1
-      type: tx_rollup_rejection__case__0__case__131__case__131_elt_field1
-  tx_rollup_rejection__case__0__case__13__case__0_field3_elt:
-    seq:
-    - id: case__13_field0
-      type: u2
-    - id: tx_rollup_rejection__case__0__case__13__case__13_field1
-      type: tx_rollup_rejection__case__0__case__13__case__13_field1
-  tx_rollup_rejection__case__0__case__13__case__13_field1:
-    seq:
-    - id: case__13_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__13_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__14__case__0_field3_elt:
-    seq:
-    - id: case__14_field0
-      type: s4
-    - id: tx_rollup_rejection__case__0__case__14__case__14_field1
-      type: tx_rollup_rejection__case__0__case__14__case__14_field1
-  tx_rollup_rejection__case__0__case__14__case__14_field1:
-    seq:
-    - id: case__14_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__14_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__15__case__0_field3_elt:
-    seq:
-    - id: case__15_field0
-      type: s8
-    - id: tx_rollup_rejection__case__0__case__15__case__15_field1
-      type: tx_rollup_rejection__case__0__case__15__case__15_field1
-  tx_rollup_rejection__case__0__case__15__case__15_field1:
-    seq:
-    - id: case__15_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__15_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__192__case__0_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__192__case__192_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__192__case__192_dyn
-      type: tx_rollup_rejection__case__0__case__192__case__192_dyn
-      size: len_tx_rollup_rejection__case__0__case__192__case__192_dyn
-  tx_rollup_rejection__case__0__case__192__case__192_dyn:
-    seq:
-    - id: case__192
-      size-eos: true
-  tx_rollup_rejection__case__0__case__193__case__0_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__193__case__193_dyn
-      type: u2
-      valid:
-        max: 65535
-    - id: tx_rollup_rejection__case__0__case__193__case__193_dyn
-      type: tx_rollup_rejection__case__0__case__193__case__193_dyn
-      size: len_tx_rollup_rejection__case__0__case__193__case__193_dyn
-  tx_rollup_rejection__case__0__case__193__case__193_dyn:
-    seq:
-    - id: case__193
-      size-eos: true
-  tx_rollup_rejection__case__0__case__224__case__0_field3_elt:
-    seq:
-    - id: case__224_field0
-      type: u1
-    - id: tx_rollup_rejection__case__0__case__224__case__224_field1
-      type: tx_rollup_rejection__case__0__case__224__case__224_field1
-    - id: case__224_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__224__case__224_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__224__case__224_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__224__case__224_field1_dyn
-      type: tx_rollup_rejection__case__0__case__224__case__224_field1_dyn
-      size: len_tx_rollup_rejection__case__0__case__224__case__224_field1_dyn
-  tx_rollup_rejection__case__0__case__224__case__224_field1_dyn:
-    seq:
-    - id: case__224_field1
-      size-eos: true
-  tx_rollup_rejection__case__0__case__225__case__0_field3_elt:
-    seq:
-    - id: case__225_field0
-      type: u2
-    - id: tx_rollup_rejection__case__0__case__225__case__225_field1
-      type: tx_rollup_rejection__case__0__case__225__case__225_field1
-    - id: case__225_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__225__case__225_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__225__case__225_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__225__case__225_field1_dyn
-      type: tx_rollup_rejection__case__0__case__225__case__225_field1_dyn
-      size: len_tx_rollup_rejection__case__0__case__225__case__225_field1_dyn
-  tx_rollup_rejection__case__0__case__225__case__225_field1_dyn:
-    seq:
-    - id: case__225_field1
-      size-eos: true
-  tx_rollup_rejection__case__0__case__226__case__0_field3_elt:
-    seq:
-    - id: case__226_field0
-      type: s4
-    - id: tx_rollup_rejection__case__0__case__226__case__226_field1
-      type: tx_rollup_rejection__case__0__case__226__case__226_field1
-    - id: case__226_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__226__case__226_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__226__case__226_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__226__case__226_field1_dyn
-      type: tx_rollup_rejection__case__0__case__226__case__226_field1_dyn
-      size: len_tx_rollup_rejection__case__0__case__226__case__226_field1_dyn
-  tx_rollup_rejection__case__0__case__226__case__226_field1_dyn:
-    seq:
-    - id: case__226_field1
-      size-eos: true
-  tx_rollup_rejection__case__0__case__227__case__0_field3_elt:
-    seq:
-    - id: case__227_field0
-      type: s8
-    - id: tx_rollup_rejection__case__0__case__227__case__227_field1
-      type: tx_rollup_rejection__case__0__case__227__case__227_field1
-    - id: case__227_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__0__case__227__case__227_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__0__case__227__case__227_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__0__case__227__case__227_field1_dyn
-      type: tx_rollup_rejection__case__0__case__227__case__227_field1_dyn
-      size: len_tx_rollup_rejection__case__0__case__227__case__227_field1_dyn
-  tx_rollup_rejection__case__0__case__227__case__227_field1_dyn:
-    seq:
-    - id: case__227_field1
-      size-eos: true
-  tx_rollup_rejection__case__0__case__4__case__0_field3_elt:
-    seq:
-    - id: case__4_field0
-      type: u1
-    - id: case__4_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__4_field1_field0'
-  tx_rollup_rejection__case__0__case__5__case__0_field3_elt:
-    seq:
-    - id: case__5_field0
-      type: u2
-    - id: case__5_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__5_field1_field0'
-  tx_rollup_rejection__case__0__case__6__case__0_field3_elt:
-    seq:
-    - id: case__6_field0
-      type: s4
-    - id: case__6_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__6_field1_field0'
-  tx_rollup_rejection__case__0__case__7__case__0_field3_elt:
-    seq:
-    - id: case__7_field0
-      type: s8
-    - id: case__7_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__7_field1_field0'
-  tx_rollup_rejection__case__0__case__8__case__0_field3_elt:
-    seq:
-    - id: case__8_field0
-      type: u1
-    - id: case__8_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__8_field1_field1'
-  tx_rollup_rejection__case__0__case__9__case__0_field3_elt:
-    seq:
-    - id: case__9_field0
-      type: u2
-    - id: case__9_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__9_field1_field1'
-  tx_rollup_rejection__case__0__proof:
-    seq:
-    - id: case__0_field0
-      type: s2
-    - id: case__0_field1
-      size: 32
-      doc: context_hash
-    - id: case__0_field2
-      size: 32
-      doc: context_hash
-    - id: tx_rollup_rejection__case__0__case__0_field3
-      type: tx_rollup_rejection__case__0__case__0_field3
-  tx_rollup_rejection__case__1__case__10__case__1_field3_elt:
-    seq:
-    - id: case__10_field0
-      type: s4
-    - id: case__10_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__10_field1_field1'
-  tx_rollup_rejection__case__1__case__11__case__1_field3_elt:
-    seq:
-    - id: case__11_field0
-      type: s8
-    - id: case__11_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__11_field1_field1'
-  tx_rollup_rejection__case__1__case__129__case__129_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__129__case__129_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__129__case__129_elt_field0_dyn
-      type: tx_rollup_rejection__case__1__case__129__case__129_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__1__case__129__case__129_elt_field0_dyn
-  tx_rollup_rejection__case__1__case__129__case__129_elt_field0_dyn:
-    seq:
-    - id: case__129_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__1__case__129__case__129_elt_field1:
-    seq:
-    - id: case__129_elt_field1_tag
-      type: u1
-      enum: case__129_elt_field1_tag
-    - id: tx_rollup_rejection__case__1__case__129__case__0__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__1__case__129__case__1__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__1__case__129__case__129_entries:
-    seq:
-    - id: tx_rollup_rejection__case__1__case__129__case__129_elt_field0
-      type: tx_rollup_rejection__case__1__case__129__case__129_elt_field0
-    - id: tx_rollup_rejection__case__1__case__129__case__129_elt_field1
-      type: tx_rollup_rejection__case__1__case__129__case__129_elt_field1
-  tx_rollup_rejection__case__1__case__12__case__12_field1:
-    seq:
-    - id: case__12_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__12_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__12__case__1_field3_elt:
-    seq:
-    - id: case__12_field0
-      type: u1
-    - id: tx_rollup_rejection__case__1__case__12__case__12_field1
-      type: tx_rollup_rejection__case__1__case__12__case__12_field1
-  tx_rollup_rejection__case__1__case__130__case__130_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__130__case__130_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__130__case__130_elt_field0_dyn
-      type: tx_rollup_rejection__case__1__case__130__case__130_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__1__case__130__case__130_elt_field0_dyn
-  tx_rollup_rejection__case__1__case__130__case__130_elt_field0_dyn:
-    seq:
-    - id: case__130_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__1__case__130__case__130_elt_field1:
-    seq:
-    - id: case__130_elt_field1_tag
-      type: u1
-      enum: case__130_elt_field1_tag
-    - id: tx_rollup_rejection__case__1__case__130__case__0__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__1__case__130__case__1__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__1__case__130__case__130_entries:
-    seq:
-    - id: tx_rollup_rejection__case__1__case__130__case__130_elt_field0
-      type: tx_rollup_rejection__case__1__case__130__case__130_elt_field0
-    - id: tx_rollup_rejection__case__1__case__130__case__130_elt_field1
-      type: tx_rollup_rejection__case__1__case__130__case__130_elt_field1
-  tx_rollup_rejection__case__1__case__131__case__131_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__1__case__131__case__131_entries
-      type: tx_rollup_rejection__case__1__case__131__case__131_entries
-      repeat: eos
-  tx_rollup_rejection__case__1__case__131__case__131_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__131__case__131_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__131__case__131_elt_field0_dyn
-      type: tx_rollup_rejection__case__1__case__131__case__131_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__1__case__131__case__131_elt_field0_dyn
-  tx_rollup_rejection__case__1__case__131__case__131_elt_field0_dyn:
-    seq:
-    - id: case__131_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__1__case__131__case__131_elt_field1:
-    seq:
-    - id: case__131_elt_field1_tag
-      type: u1
-      enum: case__131_elt_field1_tag
-    - id: tx_rollup_rejection__case__1__case__131__case__0__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__1__case__131__case__1__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__1__case__131__case__131_entries:
-    seq:
-    - id: tx_rollup_rejection__case__1__case__131__case__131_elt_field0
-      type: tx_rollup_rejection__case__1__case__131__case__131_elt_field0
-    - id: tx_rollup_rejection__case__1__case__131__case__131_elt_field1
-      type: tx_rollup_rejection__case__1__case__131__case__131_elt_field1
-  tx_rollup_rejection__case__1__case__131__case__1_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__131__case__131_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__1__case__131__case__131_dyn
-      type: tx_rollup_rejection__case__1__case__131__case__131_dyn
-      size: len_tx_rollup_rejection__case__1__case__131__case__131_dyn
-  tx_rollup_rejection__case__1__case__13__case__13_field1:
-    seq:
-    - id: case__13_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__13_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__13__case__1_field3_elt:
-    seq:
-    - id: case__13_field0
-      type: u2
-    - id: tx_rollup_rejection__case__1__case__13__case__13_field1
-      type: tx_rollup_rejection__case__1__case__13__case__13_field1
-  tx_rollup_rejection__case__1__case__14__case__14_field1:
-    seq:
-    - id: case__14_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__14_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__14__case__1_field3_elt:
-    seq:
-    - id: case__14_field0
-      type: s4
-    - id: tx_rollup_rejection__case__1__case__14__case__14_field1
-      type: tx_rollup_rejection__case__1__case__14__case__14_field1
-  tx_rollup_rejection__case__1__case__15__case__15_field1:
-    seq:
-    - id: case__15_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__15_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__15__case__1_field3_elt:
-    seq:
-    - id: case__15_field0
-      type: s8
-    - id: tx_rollup_rejection__case__1__case__15__case__15_field1
-      type: tx_rollup_rejection__case__1__case__15__case__15_field1
-  tx_rollup_rejection__case__1__case__192__case__192_dyn:
-    seq:
-    - id: case__192
-      size-eos: true
-  tx_rollup_rejection__case__1__case__192__case__1_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__192__case__192_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__192__case__192_dyn
-      type: tx_rollup_rejection__case__1__case__192__case__192_dyn
-      size: len_tx_rollup_rejection__case__1__case__192__case__192_dyn
-  tx_rollup_rejection__case__1__case__193__case__193_dyn:
-    seq:
-    - id: case__193
-      size-eos: true
-  tx_rollup_rejection__case__1__case__193__case__1_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__193__case__193_dyn
-      type: u2
-      valid:
-        max: 65535
-    - id: tx_rollup_rejection__case__1__case__193__case__193_dyn
-      type: tx_rollup_rejection__case__1__case__193__case__193_dyn
-      size: len_tx_rollup_rejection__case__1__case__193__case__193_dyn
-  tx_rollup_rejection__case__1__case__1_field3:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__1_field3_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__1__case__1_field3_dyn
-      type: tx_rollup_rejection__case__1__case__1_field3_dyn
-      size: len_tx_rollup_rejection__case__1__case__1_field3_dyn
-  tx_rollup_rejection__case__1__case__1_field3_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__1__case__1_field3_entries
-      type: tx_rollup_rejection__case__1__case__1_field3_entries
-      repeat: eos
-  tx_rollup_rejection__case__1__case__1_field3_entries:
-    seq:
-    - id: case__1_field3_elt_tag
-      type: u1
-      enum: case__1_field3_elt_tag
-    - id: tx_rollup_rejection__case__1__case__0__case__1_field3_elt
-      type: u1
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__0)
-    - id: tx_rollup_rejection__case__1__case__8__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__8__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__8)
-    - id: tx_rollup_rejection__case__1__case__4__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__4__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__4)
-    - id: tx_rollup_rejection__case__1__case__12__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__12__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__12)
-    - id: tx_rollup_rejection__case__1__case__1__case__1_field3_elt
-      type: u2
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__1)
-    - id: tx_rollup_rejection__case__1__case__9__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__9__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__9)
-    - id: tx_rollup_rejection__case__1__case__5__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__5__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__5)
-    - id: tx_rollup_rejection__case__1__case__13__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__13__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__13)
-    - id: tx_rollup_rejection__case__1__case__2__case__1_field3_elt
-      type: s4
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__2)
-    - id: tx_rollup_rejection__case__1__case__10__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__10__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__10)
-    - id: tx_rollup_rejection__case__1__case__6__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__6__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__6)
-    - id: tx_rollup_rejection__case__1__case__14__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__14__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__14)
-    - id: tx_rollup_rejection__case__1__case__3__case__1_field3_elt
-      type: s8
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__3)
-    - id: tx_rollup_rejection__case__1__case__11__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__11__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__11)
-    - id: tx_rollup_rejection__case__1__case__7__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__7__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__7)
-    - id: tx_rollup_rejection__case__1__case__15__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__15__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__15)
-    - id: tx_rollup_rejection__case__1__case__129__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__129__case__129_entries
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__129)
-    - id: tx_rollup_rejection__case__1__case__130__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__130__case__130_entries
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
-    - id: tx_rollup_rejection__case__1__case__131__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__131__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
-    - id: tx_rollup_rejection__case__1__case__192__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__192__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
-    - id: tx_rollup_rejection__case__1__case__193__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__193__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
-    - id: tx_rollup_rejection__case__1__case__195__case__1_field3_elt
-      type: bytes_dyn_uint30
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__195)
-    - id: tx_rollup_rejection__case__1__case__224__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__224__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__224)
-    - id: tx_rollup_rejection__case__1__case__225__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__225__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__225)
-    - id: tx_rollup_rejection__case__1__case__226__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__226__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__226)
-    - id: tx_rollup_rejection__case__1__case__227__case__1_field3_elt
-      type: tx_rollup_rejection__case__1__case__227__case__1_field3_elt
-      if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__227)
-  tx_rollup_rejection__case__1__case__224__case__1_field3_elt:
-    seq:
-    - id: case__224_field0
-      type: u1
-    - id: tx_rollup_rejection__case__1__case__224__case__224_field1
-      type: tx_rollup_rejection__case__1__case__224__case__224_field1
-    - id: case__224_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__224__case__224_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__224__case__224_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__224__case__224_field1_dyn
-      type: tx_rollup_rejection__case__1__case__224__case__224_field1_dyn
-      size: len_tx_rollup_rejection__case__1__case__224__case__224_field1_dyn
-  tx_rollup_rejection__case__1__case__224__case__224_field1_dyn:
-    seq:
-    - id: case__224_field1
-      size-eos: true
-  tx_rollup_rejection__case__1__case__225__case__1_field3_elt:
-    seq:
-    - id: case__225_field0
-      type: u2
-    - id: tx_rollup_rejection__case__1__case__225__case__225_field1
-      type: tx_rollup_rejection__case__1__case__225__case__225_field1
-    - id: case__225_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__225__case__225_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__225__case__225_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__225__case__225_field1_dyn
-      type: tx_rollup_rejection__case__1__case__225__case__225_field1_dyn
-      size: len_tx_rollup_rejection__case__1__case__225__case__225_field1_dyn
-  tx_rollup_rejection__case__1__case__225__case__225_field1_dyn:
-    seq:
-    - id: case__225_field1
-      size-eos: true
-  tx_rollup_rejection__case__1__case__226__case__1_field3_elt:
-    seq:
-    - id: case__226_field0
-      type: s4
-    - id: tx_rollup_rejection__case__1__case__226__case__226_field1
-      type: tx_rollup_rejection__case__1__case__226__case__226_field1
-    - id: case__226_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__226__case__226_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__226__case__226_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__226__case__226_field1_dyn
-      type: tx_rollup_rejection__case__1__case__226__case__226_field1_dyn
-      size: len_tx_rollup_rejection__case__1__case__226__case__226_field1_dyn
-  tx_rollup_rejection__case__1__case__226__case__226_field1_dyn:
-    seq:
-    - id: case__226_field1
-      size-eos: true
-  tx_rollup_rejection__case__1__case__227__case__1_field3_elt:
-    seq:
-    - id: case__227_field0
-      type: s8
-    - id: tx_rollup_rejection__case__1__case__227__case__227_field1
-      type: tx_rollup_rejection__case__1__case__227__case__227_field1
-    - id: case__227_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__1__case__227__case__227_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__1__case__227__case__227_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__1__case__227__case__227_field1_dyn
-      type: tx_rollup_rejection__case__1__case__227__case__227_field1_dyn
-      size: len_tx_rollup_rejection__case__1__case__227__case__227_field1_dyn
-  tx_rollup_rejection__case__1__case__227__case__227_field1_dyn:
-    seq:
-    - id: case__227_field1
-      size-eos: true
-  tx_rollup_rejection__case__1__case__4__case__1_field3_elt:
-    seq:
-    - id: case__4_field0
-      type: u1
-    - id: case__4_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__4_field1_field0'
-  tx_rollup_rejection__case__1__case__5__case__1_field3_elt:
-    seq:
-    - id: case__5_field0
-      type: u2
-    - id: case__5_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__5_field1_field0'
-  tx_rollup_rejection__case__1__case__6__case__1_field3_elt:
-    seq:
-    - id: case__6_field0
-      type: s4
-    - id: case__6_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__6_field1_field0'
-  tx_rollup_rejection__case__1__case__7__case__1_field3_elt:
-    seq:
-    - id: case__7_field0
-      type: s8
-    - id: case__7_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__7_field1_field0'
-  tx_rollup_rejection__case__1__case__8__case__1_field3_elt:
-    seq:
-    - id: case__8_field0
-      type: u1
-    - id: case__8_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__8_field1_field1'
-  tx_rollup_rejection__case__1__case__9__case__1_field3_elt:
-    seq:
-    - id: case__9_field0
-      type: u2
-    - id: case__9_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__9_field1_field1'
-  tx_rollup_rejection__case__1__proof:
-    seq:
-    - id: case__1_field0
-      type: s2
-    - id: case__1_field1
-      size: 32
-      doc: context_hash
-    - id: case__1_field2
-      size: 32
-      doc: context_hash
-    - id: tx_rollup_rejection__case__1__case__1_field3
-      type: tx_rollup_rejection__case__1__case__1_field3
-  tx_rollup_rejection__case__2__case__10__case__2_field3_elt:
-    seq:
-    - id: case__10_field0
-      type: s4
-    - id: case__10_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__10_field1_field1'
-  tx_rollup_rejection__case__2__case__11__case__2_field3_elt:
-    seq:
-    - id: case__11_field0
-      type: s8
-    - id: case__11_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__11_field1_field1'
-  tx_rollup_rejection__case__2__case__129__case__129_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__129__case__129_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__129__case__129_elt_field0_dyn
-      type: tx_rollup_rejection__case__2__case__129__case__129_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__2__case__129__case__129_elt_field0_dyn
-  tx_rollup_rejection__case__2__case__129__case__129_elt_field0_dyn:
-    seq:
-    - id: case__129_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__2__case__129__case__129_elt_field1:
-    seq:
-    - id: case__129_elt_field1_tag
-      type: u1
-      enum: case__129_elt_field1_tag
-    - id: tx_rollup_rejection__case__2__case__129__case__0__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__2__case__129__case__1__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__2__case__129__case__129_entries:
-    seq:
-    - id: tx_rollup_rejection__case__2__case__129__case__129_elt_field0
-      type: tx_rollup_rejection__case__2__case__129__case__129_elt_field0
-    - id: tx_rollup_rejection__case__2__case__129__case__129_elt_field1
-      type: tx_rollup_rejection__case__2__case__129__case__129_elt_field1
-  tx_rollup_rejection__case__2__case__12__case__12_field1:
-    seq:
-    - id: case__12_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__12_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__12__case__2_field3_elt:
-    seq:
-    - id: case__12_field0
-      type: u1
-    - id: tx_rollup_rejection__case__2__case__12__case__12_field1
-      type: tx_rollup_rejection__case__2__case__12__case__12_field1
-  tx_rollup_rejection__case__2__case__130__case__130_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__130__case__130_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__130__case__130_elt_field0_dyn
-      type: tx_rollup_rejection__case__2__case__130__case__130_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__2__case__130__case__130_elt_field0_dyn
-  tx_rollup_rejection__case__2__case__130__case__130_elt_field0_dyn:
-    seq:
-    - id: case__130_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__2__case__130__case__130_elt_field1:
-    seq:
-    - id: case__130_elt_field1_tag
-      type: u1
-      enum: case__130_elt_field1_tag
-    - id: tx_rollup_rejection__case__2__case__130__case__0__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__2__case__130__case__1__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__2__case__130__case__130_entries:
-    seq:
-    - id: tx_rollup_rejection__case__2__case__130__case__130_elt_field0
-      type: tx_rollup_rejection__case__2__case__130__case__130_elt_field0
-    - id: tx_rollup_rejection__case__2__case__130__case__130_elt_field1
-      type: tx_rollup_rejection__case__2__case__130__case__130_elt_field1
-  tx_rollup_rejection__case__2__case__131__case__131_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__2__case__131__case__131_entries
-      type: tx_rollup_rejection__case__2__case__131__case__131_entries
-      repeat: eos
-  tx_rollup_rejection__case__2__case__131__case__131_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__131__case__131_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__131__case__131_elt_field0_dyn
-      type: tx_rollup_rejection__case__2__case__131__case__131_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__2__case__131__case__131_elt_field0_dyn
-  tx_rollup_rejection__case__2__case__131__case__131_elt_field0_dyn:
-    seq:
-    - id: case__131_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__2__case__131__case__131_elt_field1:
-    seq:
-    - id: case__131_elt_field1_tag
-      type: u1
-      enum: case__131_elt_field1_tag
-    - id: tx_rollup_rejection__case__2__case__131__case__0__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__2__case__131__case__1__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__2__case__131__case__131_entries:
-    seq:
-    - id: tx_rollup_rejection__case__2__case__131__case__131_elt_field0
-      type: tx_rollup_rejection__case__2__case__131__case__131_elt_field0
-    - id: tx_rollup_rejection__case__2__case__131__case__131_elt_field1
-      type: tx_rollup_rejection__case__2__case__131__case__131_elt_field1
-  tx_rollup_rejection__case__2__case__131__case__2_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__131__case__131_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__2__case__131__case__131_dyn
-      type: tx_rollup_rejection__case__2__case__131__case__131_dyn
-      size: len_tx_rollup_rejection__case__2__case__131__case__131_dyn
-  tx_rollup_rejection__case__2__case__13__case__13_field1:
-    seq:
-    - id: case__13_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__13_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__13__case__2_field3_elt:
-    seq:
-    - id: case__13_field0
-      type: u2
-    - id: tx_rollup_rejection__case__2__case__13__case__13_field1
-      type: tx_rollup_rejection__case__2__case__13__case__13_field1
-  tx_rollup_rejection__case__2__case__14__case__14_field1:
-    seq:
-    - id: case__14_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__14_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__14__case__2_field3_elt:
-    seq:
-    - id: case__14_field0
-      type: s4
-    - id: tx_rollup_rejection__case__2__case__14__case__14_field1
-      type: tx_rollup_rejection__case__2__case__14__case__14_field1
-  tx_rollup_rejection__case__2__case__15__case__15_field1:
-    seq:
-    - id: case__15_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__15_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__15__case__2_field3_elt:
-    seq:
-    - id: case__15_field0
-      type: s8
-    - id: tx_rollup_rejection__case__2__case__15__case__15_field1
-      type: tx_rollup_rejection__case__2__case__15__case__15_field1
-  tx_rollup_rejection__case__2__case__192__case__192_dyn:
-    seq:
-    - id: case__192
-      size-eos: true
-  tx_rollup_rejection__case__2__case__192__case__2_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__192__case__192_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__192__case__192_dyn
-      type: tx_rollup_rejection__case__2__case__192__case__192_dyn
-      size: len_tx_rollup_rejection__case__2__case__192__case__192_dyn
-  tx_rollup_rejection__case__2__case__193__case__193_dyn:
-    seq:
-    - id: case__193
-      size-eos: true
-  tx_rollup_rejection__case__2__case__193__case__2_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__193__case__193_dyn
-      type: u2
-      valid:
-        max: 65535
-    - id: tx_rollup_rejection__case__2__case__193__case__193_dyn
-      type: tx_rollup_rejection__case__2__case__193__case__193_dyn
-      size: len_tx_rollup_rejection__case__2__case__193__case__193_dyn
-  tx_rollup_rejection__case__2__case__224__case__224_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__224__case__224_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__224__case__224_field1_dyn
-      type: tx_rollup_rejection__case__2__case__224__case__224_field1_dyn
-      size: len_tx_rollup_rejection__case__2__case__224__case__224_field1_dyn
-  tx_rollup_rejection__case__2__case__224__case__224_field1_dyn:
-    seq:
-    - id: case__224_field1
-      size-eos: true
-  tx_rollup_rejection__case__2__case__224__case__2_field3_elt:
-    seq:
-    - id: case__224_field0
-      type: u1
-    - id: tx_rollup_rejection__case__2__case__224__case__224_field1
-      type: tx_rollup_rejection__case__2__case__224__case__224_field1
-    - id: case__224_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__225__case__225_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__225__case__225_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__225__case__225_field1_dyn
-      type: tx_rollup_rejection__case__2__case__225__case__225_field1_dyn
-      size: len_tx_rollup_rejection__case__2__case__225__case__225_field1_dyn
-  tx_rollup_rejection__case__2__case__225__case__225_field1_dyn:
-    seq:
-    - id: case__225_field1
-      size-eos: true
-  tx_rollup_rejection__case__2__case__225__case__2_field3_elt:
-    seq:
-    - id: case__225_field0
-      type: u2
-    - id: tx_rollup_rejection__case__2__case__225__case__225_field1
-      type: tx_rollup_rejection__case__2__case__225__case__225_field1
-    - id: case__225_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__226__case__226_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__226__case__226_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__226__case__226_field1_dyn
-      type: tx_rollup_rejection__case__2__case__226__case__226_field1_dyn
-      size: len_tx_rollup_rejection__case__2__case__226__case__226_field1_dyn
-  tx_rollup_rejection__case__2__case__226__case__226_field1_dyn:
-    seq:
-    - id: case__226_field1
-      size-eos: true
-  tx_rollup_rejection__case__2__case__226__case__2_field3_elt:
-    seq:
-    - id: case__226_field0
-      type: s4
-    - id: tx_rollup_rejection__case__2__case__226__case__226_field1
-      type: tx_rollup_rejection__case__2__case__226__case__226_field1
-    - id: case__226_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__227__case__227_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__227__case__227_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__2__case__227__case__227_field1_dyn
-      type: tx_rollup_rejection__case__2__case__227__case__227_field1_dyn
-      size: len_tx_rollup_rejection__case__2__case__227__case__227_field1_dyn
-  tx_rollup_rejection__case__2__case__227__case__227_field1_dyn:
-    seq:
-    - id: case__227_field1
-      size-eos: true
-  tx_rollup_rejection__case__2__case__227__case__2_field3_elt:
-    seq:
-    - id: case__227_field0
-      type: s8
-    - id: tx_rollup_rejection__case__2__case__227__case__227_field1
-      type: tx_rollup_rejection__case__2__case__227__case__227_field1
-    - id: case__227_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__2__case__2_field3:
-    seq:
-    - id: len_tx_rollup_rejection__case__2__case__2_field3_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__2__case__2_field3_dyn
-      type: tx_rollup_rejection__case__2__case__2_field3_dyn
-      size: len_tx_rollup_rejection__case__2__case__2_field3_dyn
-  tx_rollup_rejection__case__2__case__2_field3_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__2__case__2_field3_entries
-      type: tx_rollup_rejection__case__2__case__2_field3_entries
-      repeat: eos
-  tx_rollup_rejection__case__2__case__2_field3_entries:
-    seq:
-    - id: case__2_field3_elt_tag
-      type: u1
-      enum: case__2_field3_elt_tag
-    - id: tx_rollup_rejection__case__2__case__0__case__2_field3_elt
-      type: u1
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__0)
-    - id: tx_rollup_rejection__case__2__case__8__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__8__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__8)
-    - id: tx_rollup_rejection__case__2__case__4__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__4__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__4)
-    - id: tx_rollup_rejection__case__2__case__12__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__12__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__12)
-    - id: tx_rollup_rejection__case__2__case__1__case__2_field3_elt
-      type: u2
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__1)
-    - id: tx_rollup_rejection__case__2__case__9__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__9__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__9)
-    - id: tx_rollup_rejection__case__2__case__5__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__5__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__5)
-    - id: tx_rollup_rejection__case__2__case__13__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__13__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__13)
-    - id: tx_rollup_rejection__case__2__case__2__case__2_field3_elt
-      type: s4
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__2)
-    - id: tx_rollup_rejection__case__2__case__10__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__10__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__10)
-    - id: tx_rollup_rejection__case__2__case__6__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__6__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__6)
-    - id: tx_rollup_rejection__case__2__case__14__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__14__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__14)
-    - id: tx_rollup_rejection__case__2__case__3__case__2_field3_elt
-      type: s8
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__3)
-    - id: tx_rollup_rejection__case__2__case__11__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__11__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__11)
-    - id: tx_rollup_rejection__case__2__case__7__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__7__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__7)
-    - id: tx_rollup_rejection__case__2__case__15__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__15__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__15)
-    - id: tx_rollup_rejection__case__2__case__129__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__129__case__129_entries
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__129)
-    - id: tx_rollup_rejection__case__2__case__130__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__130__case__130_entries
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
-    - id: tx_rollup_rejection__case__2__case__131__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__131__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
-    - id: tx_rollup_rejection__case__2__case__192__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__192__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
-    - id: tx_rollup_rejection__case__2__case__193__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__193__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
-    - id: tx_rollup_rejection__case__2__case__195__case__2_field3_elt
-      type: bytes_dyn_uint30
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__195)
-    - id: tx_rollup_rejection__case__2__case__224__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__224__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__224)
-    - id: tx_rollup_rejection__case__2__case__225__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__225__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__225)
-    - id: tx_rollup_rejection__case__2__case__226__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__226__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__226)
-    - id: tx_rollup_rejection__case__2__case__227__case__2_field3_elt
-      type: tx_rollup_rejection__case__2__case__227__case__2_field3_elt
-      if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__227)
-  tx_rollup_rejection__case__2__case__4__case__2_field3_elt:
-    seq:
-    - id: case__4_field0
-      type: u1
-    - id: case__4_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__4_field1_field0'
-  tx_rollup_rejection__case__2__case__5__case__2_field3_elt:
-    seq:
-    - id: case__5_field0
-      type: u2
-    - id: case__5_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__5_field1_field0'
-  tx_rollup_rejection__case__2__case__6__case__2_field3_elt:
-    seq:
-    - id: case__6_field0
-      type: s4
-    - id: case__6_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__6_field1_field0'
-  tx_rollup_rejection__case__2__case__7__case__2_field3_elt:
-    seq:
-    - id: case__7_field0
-      type: s8
-    - id: case__7_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__7_field1_field0'
-  tx_rollup_rejection__case__2__case__8__case__2_field3_elt:
-    seq:
-    - id: case__8_field0
-      type: u1
-    - id: case__8_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__8_field1_field1'
-  tx_rollup_rejection__case__2__case__9__case__2_field3_elt:
-    seq:
-    - id: case__9_field0
-      type: u2
-    - id: case__9_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__9_field1_field1'
-  tx_rollup_rejection__case__2__proof:
-    seq:
-    - id: case__2_field0
-      type: s2
-    - id: case__2_field1
-      size: 32
-      doc: context_hash
-    - id: case__2_field2
-      size: 32
-      doc: context_hash
-    - id: tx_rollup_rejection__case__2__case__2_field3
-      type: tx_rollup_rejection__case__2__case__2_field3
-  tx_rollup_rejection__case__3__case__10__case__3_field3_elt:
-    seq:
-    - id: case__10_field0
-      type: s4
-    - id: case__10_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__10_field1_field1'
-  tx_rollup_rejection__case__3__case__11__case__3_field3_elt:
-    seq:
-    - id: case__11_field0
-      type: s8
-    - id: case__11_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__11_field1_field1'
-  tx_rollup_rejection__case__3__case__129__case__129_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__129__case__129_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__129__case__129_elt_field0_dyn
-      type: tx_rollup_rejection__case__3__case__129__case__129_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__3__case__129__case__129_elt_field0_dyn
-  tx_rollup_rejection__case__3__case__129__case__129_elt_field0_dyn:
-    seq:
-    - id: case__129_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__3__case__129__case__129_elt_field1:
-    seq:
-    - id: case__129_elt_field1_tag
-      type: u1
-      enum: case__129_elt_field1_tag
-    - id: tx_rollup_rejection__case__3__case__129__case__0__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__3__case__129__case__1__case__129_elt_field1
-      size: 32
-      if: (case__129_elt_field1_tag == case__129_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__3__case__129__case__129_entries:
-    seq:
-    - id: tx_rollup_rejection__case__3__case__129__case__129_elt_field0
-      type: tx_rollup_rejection__case__3__case__129__case__129_elt_field0
-    - id: tx_rollup_rejection__case__3__case__129__case__129_elt_field1
-      type: tx_rollup_rejection__case__3__case__129__case__129_elt_field1
-  tx_rollup_rejection__case__3__case__12__case__12_field1:
-    seq:
-    - id: case__12_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__12_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__12__case__3_field3_elt:
-    seq:
-    - id: case__12_field0
-      type: u1
-    - id: tx_rollup_rejection__case__3__case__12__case__12_field1
-      type: tx_rollup_rejection__case__3__case__12__case__12_field1
-  tx_rollup_rejection__case__3__case__130__case__130_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__130__case__130_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__130__case__130_elt_field0_dyn
-      type: tx_rollup_rejection__case__3__case__130__case__130_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__3__case__130__case__130_elt_field0_dyn
-  tx_rollup_rejection__case__3__case__130__case__130_elt_field0_dyn:
-    seq:
-    - id: case__130_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__3__case__130__case__130_elt_field1:
-    seq:
-    - id: case__130_elt_field1_tag
-      type: u1
-      enum: case__130_elt_field1_tag
-    - id: tx_rollup_rejection__case__3__case__130__case__0__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__3__case__130__case__1__case__130_elt_field1
-      size: 32
-      if: (case__130_elt_field1_tag == case__130_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__3__case__130__case__130_entries:
-    seq:
-    - id: tx_rollup_rejection__case__3__case__130__case__130_elt_field0
-      type: tx_rollup_rejection__case__3__case__130__case__130_elt_field0
-    - id: tx_rollup_rejection__case__3__case__130__case__130_elt_field1
-      type: tx_rollup_rejection__case__3__case__130__case__130_elt_field1
-  tx_rollup_rejection__case__3__case__131__case__131_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__3__case__131__case__131_entries
-      type: tx_rollup_rejection__case__3__case__131__case__131_entries
-      repeat: eos
-  tx_rollup_rejection__case__3__case__131__case__131_elt_field0:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__131__case__131_elt_field0_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__131__case__131_elt_field0_dyn
-      type: tx_rollup_rejection__case__3__case__131__case__131_elt_field0_dyn
-      size: len_tx_rollup_rejection__case__3__case__131__case__131_elt_field0_dyn
-  tx_rollup_rejection__case__3__case__131__case__131_elt_field0_dyn:
-    seq:
-    - id: case__131_elt_field0
-      size-eos: true
-  tx_rollup_rejection__case__3__case__131__case__131_elt_field1:
-    seq:
-    - id: case__131_elt_field1_tag
-      type: u1
-      enum: case__131_elt_field1_tag
-    - id: tx_rollup_rejection__case__3__case__131__case__0__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__0)
-    - id: tx_rollup_rejection__case__3__case__131__case__1__case__131_elt_field1
-      size: 32
-      if: (case__131_elt_field1_tag == case__131_elt_field1_tag::case__1)
-  tx_rollup_rejection__case__3__case__131__case__131_entries:
-    seq:
-    - id: tx_rollup_rejection__case__3__case__131__case__131_elt_field0
-      type: tx_rollup_rejection__case__3__case__131__case__131_elt_field0
-    - id: tx_rollup_rejection__case__3__case__131__case__131_elt_field1
-      type: tx_rollup_rejection__case__3__case__131__case__131_elt_field1
-  tx_rollup_rejection__case__3__case__131__case__3_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__131__case__131_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__3__case__131__case__131_dyn
-      type: tx_rollup_rejection__case__3__case__131__case__131_dyn
-      size: len_tx_rollup_rejection__case__3__case__131__case__131_dyn
-  tx_rollup_rejection__case__3__case__13__case__13_field1:
-    seq:
-    - id: case__13_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__13_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__13__case__3_field3_elt:
-    seq:
-    - id: case__13_field0
-      type: u2
-    - id: tx_rollup_rejection__case__3__case__13__case__13_field1
-      type: tx_rollup_rejection__case__3__case__13__case__13_field1
-  tx_rollup_rejection__case__3__case__14__case__14_field1:
-    seq:
-    - id: case__14_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__14_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__14__case__3_field3_elt:
-    seq:
-    - id: case__14_field0
-      type: s4
-    - id: tx_rollup_rejection__case__3__case__14__case__14_field1
-      type: tx_rollup_rejection__case__3__case__14__case__14_field1
-  tx_rollup_rejection__case__3__case__15__case__15_field1:
-    seq:
-    - id: case__15_field1_field0
-      size: 32
-      doc: context_hash
-    - id: case__15_field1_field1
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__15__case__3_field3_elt:
-    seq:
-    - id: case__15_field0
-      type: s8
-    - id: tx_rollup_rejection__case__3__case__15__case__15_field1
-      type: tx_rollup_rejection__case__3__case__15__case__15_field1
-  tx_rollup_rejection__case__3__case__192__case__192_dyn:
-    seq:
-    - id: case__192
-      size-eos: true
-  tx_rollup_rejection__case__3__case__192__case__3_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__192__case__192_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__192__case__192_dyn
-      type: tx_rollup_rejection__case__3__case__192__case__192_dyn
-      size: len_tx_rollup_rejection__case__3__case__192__case__192_dyn
-  tx_rollup_rejection__case__3__case__193__case__193_dyn:
-    seq:
-    - id: case__193
-      size-eos: true
-  tx_rollup_rejection__case__3__case__193__case__3_field3_elt:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__193__case__193_dyn
-      type: u2
-      valid:
-        max: 65535
-    - id: tx_rollup_rejection__case__3__case__193__case__193_dyn
-      type: tx_rollup_rejection__case__3__case__193__case__193_dyn
-      size: len_tx_rollup_rejection__case__3__case__193__case__193_dyn
-  tx_rollup_rejection__case__3__case__224__case__224_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__224__case__224_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__224__case__224_field1_dyn
-      type: tx_rollup_rejection__case__3__case__224__case__224_field1_dyn
-      size: len_tx_rollup_rejection__case__3__case__224__case__224_field1_dyn
-  tx_rollup_rejection__case__3__case__224__case__224_field1_dyn:
-    seq:
-    - id: case__224_field1
-      size-eos: true
-  tx_rollup_rejection__case__3__case__224__case__3_field3_elt:
-    seq:
-    - id: case__224_field0
-      type: u1
-    - id: tx_rollup_rejection__case__3__case__224__case__224_field1
-      type: tx_rollup_rejection__case__3__case__224__case__224_field1
-    - id: case__224_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__225__case__225_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__225__case__225_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__225__case__225_field1_dyn
-      type: tx_rollup_rejection__case__3__case__225__case__225_field1_dyn
-      size: len_tx_rollup_rejection__case__3__case__225__case__225_field1_dyn
-  tx_rollup_rejection__case__3__case__225__case__225_field1_dyn:
-    seq:
-    - id: case__225_field1
-      size-eos: true
-  tx_rollup_rejection__case__3__case__225__case__3_field3_elt:
-    seq:
-    - id: case__225_field0
-      type: u2
-    - id: tx_rollup_rejection__case__3__case__225__case__225_field1
-      type: tx_rollup_rejection__case__3__case__225__case__225_field1
-    - id: case__225_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__226__case__226_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__226__case__226_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__226__case__226_field1_dyn
-      type: tx_rollup_rejection__case__3__case__226__case__226_field1_dyn
-      size: len_tx_rollup_rejection__case__3__case__226__case__226_field1_dyn
-  tx_rollup_rejection__case__3__case__226__case__226_field1_dyn:
-    seq:
-    - id: case__226_field1
-      size-eos: true
-  tx_rollup_rejection__case__3__case__226__case__3_field3_elt:
-    seq:
-    - id: case__226_field0
-      type: s4
-    - id: tx_rollup_rejection__case__3__case__226__case__226_field1
-      type: tx_rollup_rejection__case__3__case__226__case__226_field1
-    - id: case__226_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__227__case__227_field1:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__227__case__227_field1_dyn
-      type: u1
-      valid:
-        max: 255
-    - id: tx_rollup_rejection__case__3__case__227__case__227_field1_dyn
-      type: tx_rollup_rejection__case__3__case__227__case__227_field1_dyn
-      size: len_tx_rollup_rejection__case__3__case__227__case__227_field1_dyn
-  tx_rollup_rejection__case__3__case__227__case__227_field1_dyn:
-    seq:
-    - id: case__227_field1
-      size-eos: true
-  tx_rollup_rejection__case__3__case__227__case__3_field3_elt:
-    seq:
-    - id: case__227_field0
-      type: s8
-    - id: tx_rollup_rejection__case__3__case__227__case__227_field1
-      type: tx_rollup_rejection__case__3__case__227__case__227_field1
-    - id: case__227_field2
-      size: 32
-      doc: context_hash
-  tx_rollup_rejection__case__3__case__3_field3:
-    seq:
-    - id: len_tx_rollup_rejection__case__3__case__3_field3_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__case__3__case__3_field3_dyn
-      type: tx_rollup_rejection__case__3__case__3_field3_dyn
-      size: len_tx_rollup_rejection__case__3__case__3_field3_dyn
-  tx_rollup_rejection__case__3__case__3_field3_dyn:
-    seq:
-    - id: tx_rollup_rejection__case__3__case__3_field3_entries
-      type: tx_rollup_rejection__case__3__case__3_field3_entries
-      repeat: eos
-  tx_rollup_rejection__case__3__case__3_field3_entries:
-    seq:
-    - id: case__3_field3_elt_tag
-      type: u1
-      enum: case__3_field3_elt_tag
-    - id: tx_rollup_rejection__case__3__case__0__case__3_field3_elt
-      type: u1
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__0)
-    - id: tx_rollup_rejection__case__3__case__8__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__8__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__8)
-    - id: tx_rollup_rejection__case__3__case__4__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__4__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__4)
-    - id: tx_rollup_rejection__case__3__case__12__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__12__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__12)
-    - id: tx_rollup_rejection__case__3__case__1__case__3_field3_elt
-      type: u2
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__1)
-    - id: tx_rollup_rejection__case__3__case__9__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__9__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__9)
-    - id: tx_rollup_rejection__case__3__case__5__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__5__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__5)
-    - id: tx_rollup_rejection__case__3__case__13__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__13__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__13)
-    - id: tx_rollup_rejection__case__3__case__2__case__3_field3_elt
-      type: s4
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__2)
-    - id: tx_rollup_rejection__case__3__case__10__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__10__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__10)
-    - id: tx_rollup_rejection__case__3__case__6__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__6__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__6)
-    - id: tx_rollup_rejection__case__3__case__14__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__14__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__14)
-    - id: tx_rollup_rejection__case__3__case__3__case__3_field3_elt
-      type: s8
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__3)
-    - id: tx_rollup_rejection__case__3__case__11__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__11__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__11)
-    - id: tx_rollup_rejection__case__3__case__7__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__7__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__7)
-    - id: tx_rollup_rejection__case__3__case__15__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__15__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__15)
-    - id: tx_rollup_rejection__case__3__case__129__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__129__case__129_entries
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__129)
-    - id: tx_rollup_rejection__case__3__case__130__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__130__case__130_entries
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
-    - id: tx_rollup_rejection__case__3__case__131__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__131__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
-    - id: tx_rollup_rejection__case__3__case__192__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__192__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
-    - id: tx_rollup_rejection__case__3__case__193__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__193__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
-    - id: tx_rollup_rejection__case__3__case__195__case__3_field3_elt
-      type: bytes_dyn_uint30
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__195)
-    - id: tx_rollup_rejection__case__3__case__224__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__224__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__224)
-    - id: tx_rollup_rejection__case__3__case__225__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__225__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__225)
-    - id: tx_rollup_rejection__case__3__case__226__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__226__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__226)
-    - id: tx_rollup_rejection__case__3__case__227__case__3_field3_elt
-      type: tx_rollup_rejection__case__3__case__227__case__3_field3_elt
-      if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__227)
-  tx_rollup_rejection__case__3__case__4__case__3_field3_elt:
-    seq:
-    - id: case__4_field0
-      type: u1
-    - id: case__4_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__4_field1_field0'
-  tx_rollup_rejection__case__3__case__5__case__3_field3_elt:
-    seq:
-    - id: case__5_field0
-      type: u2
-    - id: case__5_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__5_field1_field0'
-  tx_rollup_rejection__case__3__case__6__case__3_field3_elt:
-    seq:
-    - id: case__6_field0
-      type: s4
-    - id: case__6_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__6_field1_field0'
-  tx_rollup_rejection__case__3__case__7__case__3_field3_elt:
-    seq:
-    - id: case__7_field0
-      type: s8
-    - id: case__7_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__7_field1_field0'
-  tx_rollup_rejection__case__3__case__8__case__3_field3_elt:
-    seq:
-    - id: case__8_field0
-      type: u1
-    - id: case__8_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__8_field1_field1'
-  tx_rollup_rejection__case__3__case__9__case__3_field3_elt:
-    seq:
-    - id: case__9_field0
-      type: u2
-    - id: case__9_field1
-      size: 32
-      doc: ! 'context_hash
-
-
-        case__9_field1_field1'
-  tx_rollup_rejection__case__3__proof:
-    seq:
-    - id: case__3_field0
-      type: s2
-    - id: case__3_field1
-      size: 32
-      doc: context_hash
-    - id: case__3_field2
-      size: 32
-      doc: context_hash
-    - id: tx_rollup_rejection__case__3__case__3_field3
-      type: tx_rollup_rejection__case__3__case__3_field3
-  tx_rollup_rejection__deposit__amount:
-    seq:
-    - id: amount_tag
-      type: u1
-      enum: amount_tag
-    - id: tx_rollup_rejection__deposit__case__0__amount
-      type: u1
-      if: (amount_tag == amount_tag::case__0)
-    - id: tx_rollup_rejection__deposit__case__1__amount
-      type: u2
-      if: (amount_tag == amount_tag::case__1)
-    - id: tx_rollup_rejection__deposit__case__2__amount
-      type: s4
-      if: (amount_tag == amount_tag::case__2)
-    - id: tx_rollup_rejection__deposit__case__3__amount
-      type: s8
-      if: (amount_tag == amount_tag::case__3)
-  tx_rollup_rejection__deposit__deposit:
-    seq:
-    - id: sender
-      type: tx_rollup_rejection__deposit__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: destination
-      size: 20
-    - id: ticket_hash
-      size: 32
-    - id: tx_rollup_rejection__deposit__amount
-      type: tx_rollup_rejection__deposit__amount
-  tx_rollup_rejection__deposit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_rejection__deposit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_rejection__deposit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_rejection__deposit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_rejection__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: source
-      type: tx_rollup_rejection__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -4067,128 +2398,26 @@ types:
         is a base58 tx rollup hash
     - id: level
       type: s4
-    - id: tx_rollup_rejection__message
-      type: tx_rollup_rejection__message
+    - id: message
+      type: message
     - id: message_position
       type: n
-    - id: tx_rollup_rejection__message_path
-      type: tx_rollup_rejection__message_path
+    - id: message_path
+      type: message_path_
     - id: message_result_hash
       size: 32
-    - id: tx_rollup_rejection__message_result_path
-      type: tx_rollup_rejection__message_result_path
-    - id: tx_rollup_rejection__previous_message_result
-      type: tx_rollup_rejection__previous_message_result
-    - id: tx_rollup_rejection__previous_message_result_path
-      type: tx_rollup_rejection__previous_message_result_path
-    - id: tx_rollup_rejection__proof
-      type: tx_rollup_rejection__proof
-  tx_rollup_rejection__message:
-    seq:
-    - id: message_tag
-      type: u1
-      enum: message_tag
-    - id: tx_rollup_rejection__batch__message
-      type: bytes_dyn_uint30
-      if: (message_tag == message_tag::batch)
-    - id: tx_rollup_rejection__deposit__message
-      type: tx_rollup_rejection__deposit__deposit
-      if: (message_tag == message_tag::deposit)
-  tx_rollup_rejection__message_path:
-    seq:
-    - id: len_tx_rollup_rejection__message_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__message_path_dyn
-      type: tx_rollup_rejection__message_path_dyn
-      size: len_tx_rollup_rejection__message_path_dyn
-  tx_rollup_rejection__message_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__message_path_entries
-      type: tx_rollup_rejection__message_path_entries
-      repeat: eos
-  tx_rollup_rejection__message_path_entries:
-    seq:
-    - id: inbox_list_hash
-      size: 32
-  tx_rollup_rejection__message_result_path:
-    seq:
-    - id: len_tx_rollup_rejection__message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__message_result_path_dyn
-      type: tx_rollup_rejection__message_result_path_dyn
-      size: len_tx_rollup_rejection__message_result_path_dyn
-  tx_rollup_rejection__message_result_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__message_result_path_entries
-      type: tx_rollup_rejection__message_result_path_entries
-      repeat: eos
-  tx_rollup_rejection__message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_rejection__previous_message_result:
-    seq:
-    - id: context_hash
-      size: 32
-    - id: withdraw_list_hash
-      size: 32
-  tx_rollup_rejection__previous_message_result_path:
-    seq:
-    - id: len_tx_rollup_rejection__previous_message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__previous_message_result_path_dyn
-      type: tx_rollup_rejection__previous_message_result_path_dyn
-      size: len_tx_rollup_rejection__previous_message_result_path_dyn
-  tx_rollup_rejection__previous_message_result_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__previous_message_result_path_entries
-      type: tx_rollup_rejection__previous_message_result_path_entries
-      repeat: eos
-  tx_rollup_rejection__previous_message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_rejection__proof:
-    seq:
-    - id: proof_tag
-      type: u1
-      enum: proof_tag
-    - id: tx_rollup_rejection__case__0__proof
-      type: tx_rollup_rejection__case__0__proof
-      if: (proof_tag == proof_tag::case__0)
-    - id: tx_rollup_rejection__case__2__proof
-      type: tx_rollup_rejection__case__2__proof
-      if: (proof_tag == proof_tag::case__2)
-    - id: tx_rollup_rejection__case__1__proof
-      type: tx_rollup_rejection__case__1__proof
-      if: (proof_tag == proof_tag::case__1)
-    - id: tx_rollup_rejection__case__3__proof
-      type: tx_rollup_rejection__case__3__proof
-      if: (proof_tag == proof_tag::case__3)
-  tx_rollup_rejection__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_rejection__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_rejection__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_rejection__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_remove_commitment__id_014__ptkathma__operation__alpha__contents:
+    - id: message_result_path
+      type: message_result_path_
+    - id: previous_message_result
+      type: previous_message_result
+    - id: previous_message_result_path
+      type: previous_message_result_path_
+    - id: proof
+      type: proof
+  tx_rollup_return_bond:
     seq:
     - id: source
-      type: tx_rollup_remove_commitment__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -4203,56 +2432,10 @@ types:
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
-  tx_rollup_remove_commitment__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_remove_commitment__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_remove_commitment__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_remove_commitment__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_return_bond__id_014__ptkathma__operation__alpha__contents:
+  tx_rollup_submit_batch:
     seq:
     - id: source
-      type: tx_rollup_return_bond__public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-  tx_rollup_return_bond__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_return_bond__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_return_bond__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_return_bond__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  tx_rollup_submit_batch__id_014__ptkathma__operation__alpha__contents:
-    seq:
-    - id: source
-      type: tx_rollup_submit_batch__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
       type: n
@@ -4275,32 +2458,12 @@ types:
     - id: burn_limit
       type: n
       if: (burn_limit_tag == bool::true)
-  tx_rollup_submit_batch__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_submit_batch__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_submit_batch__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_submit_batch__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
   uint30:
     seq:
     - id: uint30
       type: u4
       valid:
         max: 1073741823
-  vdf_revelation__solution:
-    seq:
-    - id: solution_field0
-      size: 100
-    - id: solution_field1
-      size: 100
   z:
     seq:
     - id: has_tail
@@ -4564,5 +2727,5 @@ enums:
     208: sc_rollup_dal_slot_subscribe
     230: dal_publish_slot_header
 seq:
-- id: id_014__ptkathma__operation__alpha__contents_and_signature_
-  type: id_014__ptkathma__operation__alpha__contents_and_signature_
+- id: id_014__ptkathma__operation__alpha__contents_and_signature
+  type: id_014__ptkathma__operation__alpha__contents_and_signature

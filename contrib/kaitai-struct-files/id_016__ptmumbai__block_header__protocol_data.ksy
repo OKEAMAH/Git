@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 016-PtMumbai.block_header.protocol_data'
 types:
-  id_016__ptmumbai__block_header__alpha__signed_contents_:
+  id_016__ptmumbai__block_header__alpha__signed_contents:
     seq:
-    - id: id_016__ptmumbai__block_header__alpha__unsigned_contents_
-      type: id_016__ptmumbai__block_header__alpha__unsigned_contents_
+    - id: id_016__ptmumbai__block_header__alpha__unsigned_contents
+      type: id_016__ptmumbai__block_header__alpha__unsigned_contents
     - id: signature
       size-eos: true
-  id_016__ptmumbai__block_header__alpha__unsigned_contents_:
+  id_016__ptmumbai__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -30,5 +30,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_016__ptmumbai__block_header__alpha__signed_contents_
-  type: id_016__ptmumbai__block_header__alpha__signed_contents_
+- id: id_016__ptmumbai__block_header__alpha__signed_contents
+  type: id_016__ptmumbai__block_header__alpha__signed_contents

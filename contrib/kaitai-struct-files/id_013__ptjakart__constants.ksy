@@ -28,12 +28,6 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  ratio_of_frozen_deposits_slashed_per_double_endorsement:
-    seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
   z:
     seq:
     - id: has_tail
@@ -135,7 +129,7 @@ seq:
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
+  type: minimal_participation_ratio
 - id: initial_seed_tag
   type: u1
   enum: bool

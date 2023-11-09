@@ -6,16 +6,51 @@ meta:
   - operation__shell_header
 doc: ! 'Encoding id: 016-PtMumbai.operation.unsigned'
 types:
-  activate_account__id_016__ptmumbai__operation__alpha__contents:
+  activate_account:
     seq:
     - id: pkh
       size: 20
     - id: secret
       size: 20
-  ballot__id_016__ptmumbai__operation__alpha__contents:
+  amount:
+    seq:
+    - id: amount_tag
+      type: u1
+      enum: amount_tag
+    - id: case__0
+      type: u1
+      if: (amount_tag == amount_tag::case__0)
+    - id: case__1
+      type: u2
+      if: (amount_tag == amount_tag::case__1)
+    - id: case__2
+      type: s4
+      if: (amount_tag == amount_tag::case__2)
+    - id: case__3
+      type: s8
+      if: (amount_tag == amount_tag::case__3)
+  args:
+    seq:
+    - id: args_entries
+      type: args_entries
+      repeat: eos
+  args_:
+    seq:
+    - id: len_args
+      type: u4
+      valid:
+        max: 1073741823
+    - id: args
+      type: args
+      size: len_args
+  args_entries:
+    seq:
+    - id: args_elt
+      type: micheline__016__ptmumbai__michelson_v1__expression
+  ballot:
     seq:
     - id: source
-      type: ballot__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: period
       type: s4
@@ -23,23 +58,28 @@ types:
       size: 32
     - id: ballot
       type: s1
-  ballot__public_key_hash_:
+  bh1:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: ballot__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: ballot__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: ballot__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: ballot__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
+    - id: id_016__ptmumbai__block_header__alpha__full_header
+      type: id_016__ptmumbai__block_header__alpha__full_header
+  bh1_:
+    seq:
+    - id: len_bh1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bh1
+      type: bh1
+      size: len_bh1
+  bh2:
+    seq:
+    - id: len_bh2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bh2
+      type: bh1
+      size: len_bh2
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
@@ -48,40 +88,79 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  circuits_info:
+    seq:
+    - id: circuits_info_entries
+      type: circuits_info_entries
+      repeat: eos
+  circuits_info_:
+    seq:
+    - id: len_circuits_info
+      type: u4
+      valid:
+        max: 1073741823
+    - id: circuits_info
+      type: circuits_info
+      size: len_circuits_info
+  circuits_info_entries:
+    seq:
+    - id: circuits_info_elt_field0
+      type: bytes_dyn_uint30
+    - id: circuits_info_elt_field1
+      type: u1
+      enum: circuits_info_elt_field1_tag
+      doc: circuits_info_elt_field1_tag
+  commitment:
+    seq:
+    - id: level
+      type: s4
+    - id: messages
+      type: messages_
+    - id: predecessor
+      type: predecessor
+    - id: inbox_merkle_root
+      size: 32
+  commitment_:
+    seq:
+    - id: compressed_state
+      size: 32
+    - id: inbox_level
+      type: s4
+    - id: predecessor
+      size: 32
+    - id: number_of_ticks
+      type: s8
   contents_entries:
     seq:
-    - id: id_016__ptmumbai__operation__alpha__contents_
-      type: id_016__ptmumbai__operation__alpha__contents_
-  dal_attestation__id_016__ptmumbai__operation__alpha__contents:
+    - id: id_016__ptmumbai__operation__alpha__contents
+      type: id_016__ptmumbai__operation__alpha__contents
+  dal__page__proof:
+    seq:
+    - id: dal_page_id
+      type: dal_page_id
+    - id: dal_proof
+      type: bytes_dyn_uint30
+  dal_attestation:
     seq:
     - id: attestor
-      type: dal_attestation__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: attestation
       type: z
     - id: level
       type: s4
-  dal_attestation__public_key_hash_:
+  dal_page_id:
     seq:
-    - id: public_key_hash_tag
+    - id: published_level
+      type: s4
+    - id: slot_index
       type: u1
-      enum: public_key_hash_tag
-    - id: dal_attestation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_attestation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_attestation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: dal_attestation__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  dal_publish_slot_header__id_016__ptmumbai__operation__alpha__contents:
+    - id: page_index
+      type: s2
+  dal_publish_slot_header:
     seq:
     - id: source
-      type: dal_publish_slot_header__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -91,39 +170,12 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: dal_publish_slot_header__slot_header
-      type: dal_publish_slot_header__slot_header
-  dal_publish_slot_header__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: dal_publish_slot_header__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: dal_publish_slot_header__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: dal_publish_slot_header__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: dal_publish_slot_header__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  dal_publish_slot_header__slot_header:
-    seq:
-    - id: level
-      type: s4
-    - id: index
-      type: u1
-    - id: commitment
-      size: 48
-    - id: commitment_proof
-      size: 48
-  delegation__id_016__ptmumbai__operation__alpha__contents:
+    - id: slot_header
+      type: slot_header
+  delegation:
     seq:
     - id: source
-      type: delegation__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -137,65 +189,96 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: delegation__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  delegation__public_key_hash_:
+  deposit:
     seq:
-    - id: public_key_hash_tag
+    - id: sender
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: destination
+      size: 20
+    - id: ticket_hash
+      size: 32
+    - id: amount
+      type: amount
+  dissection:
+    seq:
+    - id: dissection_entries
+      type: dissection_entries
+      repeat: eos
+  dissection_:
+    seq:
+    - id: len_dissection
+      type: u4
+      valid:
+        max: 1073741823
+    - id: dissection
+      type: dissection
+      size: len_dissection
+  dissection_entries:
+    seq:
+    - id: state_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: delegation__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  double_baking_evidence__bh1:
+      enum: bool
+    - id: state
+      size: 32
+      if: (state_tag == bool::true)
+    - id: tick
+      type: n
+  double_baking_evidence:
     seq:
-    - id: len_double_baking_evidence__bh1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh1_dyn
-      type: double_baking_evidence__bh1_dyn
-      size: len_double_baking_evidence__bh1_dyn
-  double_baking_evidence__bh1_dyn:
+    - id: bh1
+      type: bh1_
+    - id: bh2
+      type: bh2
+  double_endorsement_evidence:
     seq:
-    - id: double_baking_evidence__id_016__ptmumbai__block_header__alpha__full_header_
-      type: double_baking_evidence__id_016__ptmumbai__block_header__alpha__full_header_
-  double_baking_evidence__bh2:
+    - id: op1
+      type: op1_
+    - id: op2
+      type: op2
+  double_preendorsement_evidence:
     seq:
-    - id: len_double_baking_evidence__bh2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_baking_evidence__bh2_dyn
-      type: double_baking_evidence__bh2_dyn
-      size: len_double_baking_evidence__bh2_dyn
-  double_baking_evidence__bh2_dyn:
+    - id: op1
+      type: op1___
+    - id: op2
+      type: op2_
+  drain_delegate:
     seq:
-    - id: double_baking_evidence__id_016__ptmumbai__block_header__alpha__full_header_
-      type: double_baking_evidence__id_016__ptmumbai__block_header__alpha__full_header_
-  double_baking_evidence__id_016__ptmumbai__block_header__alpha__full_header_:
+    - id: consensus_key
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: destination
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  id_016__ptmumbai__block_header__alpha__full_header:
     seq:
     - id: id_016__ptmumbai__block_header__alpha__full_header
       type: block_header__shell
-    - id: double_baking_evidence__id_016__ptmumbai__block_header__alpha__signed_contents_
-      type: double_baking_evidence__id_016__ptmumbai__block_header__alpha__signed_contents_
-  double_baking_evidence__id_016__ptmumbai__block_header__alpha__signed_contents_:
+    - id: id_016__ptmumbai__block_header__alpha__signed_contents
+      type: id_016__ptmumbai__block_header__alpha__signed_contents
+  id_016__ptmumbai__block_header__alpha__signed_contents:
     seq:
-    - id: double_baking_evidence__id_016__ptmumbai__block_header__alpha__unsigned_contents_
-      type: double_baking_evidence__id_016__ptmumbai__block_header__alpha__unsigned_contents_
+    - id: id_016__ptmumbai__block_header__alpha__unsigned_contents
+      type: id_016__ptmumbai__block_header__alpha__unsigned_contents
     - id: signature
       size-eos: true
-  double_baking_evidence__id_016__ptmumbai__block_header__alpha__unsigned_contents_:
+  id_016__ptmumbai__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -211,324 +294,230 @@ types:
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
       type: s1
-  double_baking_evidence__id_016__ptmumbai__operation__alpha__contents:
+  id_016__ptmumbai__contract_id:
     seq:
-    - id: double_baking_evidence__bh1
-      type: double_baking_evidence__bh1
-    - id: double_baking_evidence__bh2
-      type: double_baking_evidence__bh2
-  double_endorsement_evidence__endorsement__id_016__ptmumbai__inlined__endorsement_mempool__contents:
+    - id: id_016__ptmumbai__contract_id_tag
+      type: u1
+      enum: id_016__ptmumbai__contract_id_tag
+    - id: implicit
+      type: public_key_hash
+      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: originated
+      type: originated
+      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::originated)
+  id_016__ptmumbai__contract_id__originated:
     seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_:
+    - id: id_016__ptmumbai__contract_id__originated_tag
+      type: u1
+      enum: id_016__ptmumbai__contract_id__originated_tag
+    - id: originated
+      type: originated
+      if: (id_016__ptmumbai__contract_id__originated_tag == id_016__ptmumbai__contract_id__originated_tag::originated)
+  id_016__ptmumbai__entrypoint:
+    seq:
+    - id: id_016__ptmumbai__entrypoint_tag
+      type: u1
+      enum: id_016__ptmumbai__entrypoint_tag
+    - id: named
+      type: named_
+      if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
+  id_016__ptmumbai__inlined__endorsement:
     seq:
     - id: id_016__ptmumbai__inlined__endorsement
       type: operation__shell_header
     - id: operations
-      type: double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_mempool__contents_
+      type: id_016__ptmumbai__inlined__endorsement_mempool__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_mempool__contents_:
+  id_016__ptmumbai__inlined__endorsement_mempool__contents:
     seq:
     - id: id_016__ptmumbai__inlined__endorsement_mempool__contents_tag
       type: u1
       enum: id_016__ptmumbai__inlined__endorsement_mempool__contents_tag
-    - id: double_endorsement_evidence__endorsement__id_016__ptmumbai__inlined__endorsement_mempool__contents
-      type: double_endorsement_evidence__endorsement__id_016__ptmumbai__inlined__endorsement_mempool__contents
+    - id: endorsement
+      type: endorsement
       if: (id_016__ptmumbai__inlined__endorsement_mempool__contents_tag == id_016__ptmumbai__inlined__endorsement_mempool__contents_tag::endorsement)
-  double_endorsement_evidence__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: double_endorsement_evidence__op1
-      type: double_endorsement_evidence__op1
-    - id: double_endorsement_evidence__op2
-      type: double_endorsement_evidence__op2
-  double_endorsement_evidence__op1:
-    seq:
-    - id: len_double_endorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op1_dyn
-      type: double_endorsement_evidence__op1_dyn
-      size: len_double_endorsement_evidence__op1_dyn
-  double_endorsement_evidence__op1_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_
-      type: double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_
-  double_endorsement_evidence__op2:
-    seq:
-    - id: len_double_endorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_endorsement_evidence__op2_dyn
-      type: double_endorsement_evidence__op2_dyn
-      size: len_double_endorsement_evidence__op2_dyn
-  double_endorsement_evidence__op2_dyn:
-    seq:
-    - id: double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_
-      type: double_endorsement_evidence__id_016__ptmumbai__inlined__endorsement_
-  double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement_:
+  id_016__ptmumbai__inlined__preendorsement:
     seq:
     - id: id_016__ptmumbai__inlined__preendorsement
       type: operation__shell_header
     - id: operations
-      type: double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement__contents_
+      type: id_016__ptmumbai__inlined__preendorsement__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement__contents_:
+  id_016__ptmumbai__inlined__preendorsement__contents:
     seq:
     - id: id_016__ptmumbai__inlined__preendorsement__contents_tag
       type: u1
       enum: id_016__ptmumbai__inlined__preendorsement__contents_tag
-    - id: double_preendorsement_evidence__preendorsement__id_016__ptmumbai__inlined__preendorsement__contents
-      type: double_preendorsement_evidence__preendorsement__id_016__ptmumbai__inlined__preendorsement__contents
+    - id: preendorsement
+      type: endorsement
       if: (id_016__ptmumbai__inlined__preendorsement__contents_tag == id_016__ptmumbai__inlined__preendorsement__contents_tag::preendorsement)
-  double_preendorsement_evidence__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: double_preendorsement_evidence__op1
-      type: double_preendorsement_evidence__op1
-    - id: double_preendorsement_evidence__op2
-      type: double_preendorsement_evidence__op2
-  double_preendorsement_evidence__op1:
-    seq:
-    - id: len_double_preendorsement_evidence__op1_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op1_dyn
-      type: double_preendorsement_evidence__op1_dyn
-      size: len_double_preendorsement_evidence__op1_dyn
-  double_preendorsement_evidence__op1_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement_
-  double_preendorsement_evidence__op2:
-    seq:
-    - id: len_double_preendorsement_evidence__op2_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: double_preendorsement_evidence__op2_dyn
-      type: double_preendorsement_evidence__op2_dyn
-      size: len_double_preendorsement_evidence__op2_dyn
-  double_preendorsement_evidence__op2_dyn:
-    seq:
-    - id: double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement_
-      type: double_preendorsement_evidence__id_016__ptmumbai__inlined__preendorsement_
-  double_preendorsement_evidence__preendorsement__id_016__ptmumbai__inlined__preendorsement__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  drain_delegate__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: consensus_key
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: delegate
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: destination
-      type: drain_delegate__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  drain_delegate__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: drain_delegate__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: drain_delegate__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: drain_delegate__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: drain_delegate__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  endorsement__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  id_016__ptmumbai__operation__alpha__contents_:
+  id_016__ptmumbai__operation__alpha__contents:
     seq:
     - id: id_016__ptmumbai__operation__alpha__contents_tag
       type: u1
       enum: id_016__ptmumbai__operation__alpha__contents_tag
-    - id: endorsement__id_016__ptmumbai__operation__alpha__contents
-      type: endorsement__id_016__ptmumbai__operation__alpha__contents
+    - id: endorsement
+      type: endorsement
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::endorsement)
-    - id: preendorsement__id_016__ptmumbai__operation__alpha__contents
-      type: preendorsement__id_016__ptmumbai__operation__alpha__contents
+    - id: preendorsement
+      type: endorsement
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::preendorsement)
-    - id: dal_attestation__id_016__ptmumbai__operation__alpha__contents
-      type: dal_attestation__id_016__ptmumbai__operation__alpha__contents
+    - id: dal_attestation
+      type: dal_attestation
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::dal_attestation)
-    - id: seed_nonce_revelation__id_016__ptmumbai__operation__alpha__contents
-      type: seed_nonce_revelation__id_016__ptmumbai__operation__alpha__contents
+    - id: seed_nonce_revelation
+      type: seed_nonce_revelation
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::seed_nonce_revelation)
-    - id: vdf_revelation__id_016__ptmumbai__operation__alpha__contents
-      type: vdf_revelation__solution
+    - id: vdf_revelation
+      type: solution
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::vdf_revelation)
-    - id: double_endorsement_evidence__id_016__ptmumbai__operation__alpha__contents
-      type: double_endorsement_evidence__id_016__ptmumbai__operation__alpha__contents
+    - id: double_endorsement_evidence
+      type: double_endorsement_evidence
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::double_endorsement_evidence)
-    - id: double_preendorsement_evidence__id_016__ptmumbai__operation__alpha__contents
-      type: double_preendorsement_evidence__id_016__ptmumbai__operation__alpha__contents
+    - id: double_preendorsement_evidence
+      type: double_preendorsement_evidence
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::double_preendorsement_evidence)
-    - id: double_baking_evidence__id_016__ptmumbai__operation__alpha__contents
-      type: double_baking_evidence__id_016__ptmumbai__operation__alpha__contents
+    - id: double_baking_evidence
+      type: double_baking_evidence
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::double_baking_evidence)
-    - id: activate_account__id_016__ptmumbai__operation__alpha__contents
-      type: activate_account__id_016__ptmumbai__operation__alpha__contents
+    - id: activate_account
+      type: activate_account
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::activate_account)
-    - id: proposals__id_016__ptmumbai__operation__alpha__contents
-      type: proposals__id_016__ptmumbai__operation__alpha__contents
+    - id: proposals
+      type: proposals__
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::proposals)
-    - id: ballot__id_016__ptmumbai__operation__alpha__contents
-      type: ballot__id_016__ptmumbai__operation__alpha__contents
+    - id: ballot
+      type: ballot
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::ballot)
-    - id: reveal__id_016__ptmumbai__operation__alpha__contents
-      type: reveal__id_016__ptmumbai__operation__alpha__contents
+    - id: reveal
+      type: reveal
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::reveal)
-    - id: transaction__id_016__ptmumbai__operation__alpha__contents
-      type: transaction__id_016__ptmumbai__operation__alpha__contents
+    - id: transaction
+      type: transaction
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::transaction)
-    - id: origination__id_016__ptmumbai__operation__alpha__contents
-      type: origination__id_016__ptmumbai__operation__alpha__contents
+    - id: origination
+      type: origination
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::origination)
-    - id: delegation__id_016__ptmumbai__operation__alpha__contents
-      type: delegation__id_016__ptmumbai__operation__alpha__contents
+    - id: delegation
+      type: delegation
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::delegation)
-    - id: set_deposits_limit__id_016__ptmumbai__operation__alpha__contents
-      type: set_deposits_limit__id_016__ptmumbai__operation__alpha__contents
+    - id: set_deposits_limit
+      type: set_deposits_limit
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::set_deposits_limit)
-    - id: increase_paid_storage__id_016__ptmumbai__operation__alpha__contents
-      type: increase_paid_storage__id_016__ptmumbai__operation__alpha__contents
+    - id: increase_paid_storage
+      type: increase_paid_storage
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::increase_paid_storage)
-    - id: update_consensus_key__id_016__ptmumbai__operation__alpha__contents
-      type: update_consensus_key__id_016__ptmumbai__operation__alpha__contents
+    - id: update_consensus_key
+      type: update_consensus_key
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::update_consensus_key)
-    - id: drain_delegate__id_016__ptmumbai__operation__alpha__contents
-      type: drain_delegate__id_016__ptmumbai__operation__alpha__contents
+    - id: drain_delegate
+      type: drain_delegate
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::drain_delegate)
-    - id: failing_noop__id_016__ptmumbai__operation__alpha__contents
+    - id: failing_noop
       type: bytes_dyn_uint30
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::failing_noop)
-    - id: register_global_constant__id_016__ptmumbai__operation__alpha__contents
-      type: register_global_constant__id_016__ptmumbai__operation__alpha__contents
+    - id: register_global_constant
+      type: register_global_constant
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::register_global_constant)
-    - id: tx_rollup_origination__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_origination__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_origination
+      type: tx_rollup_origination
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_origination)
-    - id: tx_rollup_submit_batch__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_submit_batch__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_submit_batch
+      type: tx_rollup_submit_batch
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_submit_batch)
-    - id: tx_rollup_commit__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_commit__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_commit
+      type: tx_rollup_commit
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_commit)
-    - id: tx_rollup_return_bond__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_return_bond__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_return_bond
+      type: tx_rollup_return_bond
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_return_bond)
-    - id: tx_rollup_finalize_commitment__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_finalize_commitment__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_finalize_commitment
+      type: tx_rollup_return_bond
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
-    - id: tx_rollup_remove_commitment__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_remove_commitment__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_remove_commitment
+      type: tx_rollup_return_bond
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_remove_commitment)
-    - id: tx_rollup_rejection__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_rejection__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_rejection
+      type: tx_rollup_rejection
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_rejection)
-    - id: tx_rollup_dispatch_tickets__id_016__ptmumbai__operation__alpha__contents
-      type: tx_rollup_dispatch_tickets__id_016__ptmumbai__operation__alpha__contents
+    - id: tx_rollup_dispatch_tickets
+      type: tx_rollup_dispatch_tickets
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::tx_rollup_dispatch_tickets)
-    - id: transfer_ticket__id_016__ptmumbai__operation__alpha__contents
-      type: transfer_ticket__id_016__ptmumbai__operation__alpha__contents
+    - id: transfer_ticket
+      type: transfer_ticket
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::transfer_ticket)
-    - id: dal_publish_slot_header__id_016__ptmumbai__operation__alpha__contents
-      type: dal_publish_slot_header__id_016__ptmumbai__operation__alpha__contents
+    - id: dal_publish_slot_header
+      type: dal_publish_slot_header
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::dal_publish_slot_header)
-    - id: smart_rollup_originate__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_originate__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_originate
+      type: smart_rollup_originate
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_originate)
-    - id: smart_rollup_add_messages__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_add_messages__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_add_messages
+      type: smart_rollup_add_messages
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_add_messages)
-    - id: smart_rollup_cement__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_cement__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_cement
+      type: smart_rollup_cement
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_cement)
-    - id: smart_rollup_publish__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_publish__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_publish
+      type: smart_rollup_publish
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_publish)
-    - id: smart_rollup_refute__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_refute__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_refute
+      type: smart_rollup_refute
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_refute)
-    - id: smart_rollup_timeout__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_timeout__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_timeout
+      type: smart_rollup_timeout
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_timeout)
-    - id: smart_rollup_execute_outbox_message__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_execute_outbox_message__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_execute_outbox_message
+      type: smart_rollup_execute_outbox_message
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_execute_outbox_message)
-    - id: smart_rollup_recover_bond__id_016__ptmumbai__operation__alpha__contents
-      type: smart_rollup_recover_bond__id_016__ptmumbai__operation__alpha__contents
+    - id: smart_rollup_recover_bond
+      type: smart_rollup_recover_bond
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::smart_rollup_recover_bond)
-    - id: zk_rollup_origination__id_016__ptmumbai__operation__alpha__contents
-      type: zk_rollup_origination__id_016__ptmumbai__operation__alpha__contents
+    - id: zk_rollup_origination
+      type: zk_rollup_origination
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::zk_rollup_origination)
-    - id: zk_rollup_publish__id_016__ptmumbai__operation__alpha__contents
-      type: zk_rollup_publish__id_016__ptmumbai__operation__alpha__contents
+    - id: zk_rollup_publish
+      type: zk_rollup_publish
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::zk_rollup_publish)
-    - id: zk_rollup_update__id_016__ptmumbai__operation__alpha__contents
-      type: zk_rollup_update__id_016__ptmumbai__operation__alpha__contents
+    - id: zk_rollup_update
+      type: zk_rollup_update
       if: (id_016__ptmumbai__operation__alpha__contents_tag == id_016__ptmumbai__operation__alpha__contents_tag::zk_rollup_update)
-  id_016__ptmumbai__operation__alpha__unsigned_operation_:
+  id_016__ptmumbai__operation__alpha__unsigned_operation:
     seq:
     - id: id_016__ptmumbai__operation__alpha__unsigned_operation
       type: operation__shell_header
     - id: contents
       type: contents_entries
       repeat: eos
-  increase_paid_storage__id_016__ptmumbai__contract_id__originated_:
+  id_016__ptmumbai__scripted__contracts:
     seq:
-    - id: id_016__ptmumbai__contract_id__originated_tag
-      type: u1
-      enum: id_016__ptmumbai__contract_id__originated_tag
-    - id: increase_paid_storage__originated__id_016__ptmumbai__contract_id__originated
-      type: increase_paid_storage__originated__id_016__ptmumbai__contract_id__originated
-      if: (id_016__ptmumbai__contract_id__originated_tag == id_016__ptmumbai__contract_id__originated_tag::originated)
-  increase_paid_storage__id_016__ptmumbai__operation__alpha__contents:
+    - id: code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
+  inbox__proof:
+    seq:
+    - id: level
+      type: s4
+    - id: message_counter
+      type: n
+    - id: serialized_proof
+      type: bytes_dyn_uint30
+  increase_paid_storage:
     seq:
     - id: source
-      type: increase_paid_storage__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -541,34 +530,39 @@ types:
     - id: amount
       type: z
     - id: destination
-      type: increase_paid_storage__id_016__ptmumbai__contract_id__originated_
+      type: id_016__ptmumbai__contract_id__originated
       doc: ! >-
         A contract handle -- originated account: A contract notation as given to an
         RPC or inside scripts. Can be a base58 originated contract hash.
-  increase_paid_storage__originated__id_016__ptmumbai__contract_id__originated:
+  init_state:
     seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  increase_paid_storage__public_key_hash_:
+    - id: init_state_entries
+      type: init_state_entries
+      repeat: eos
+  init_state_:
     seq:
-    - id: public_key_hash_tag
+    - id: len_init_state
+      type: u4
+      valid:
+        max: 1073741823
+    - id: init_state
+      type: init_state
+      size: len_init_state
+  init_state_entries:
+    seq:
+    - id: init_state_elt
+      size: 32
+  input_proof:
+    seq:
+    - id: input_proof_tag
       type: u1
-      enum: public_key_hash_tag
-    - id: increase_paid_storage__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: increase_paid_storage__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: increase_paid_storage__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: increase_paid_storage__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
+      enum: input_proof_tag
+    - id: inbox__proof
+      type: inbox__proof
+      if: (input_proof_tag == input_proof_tag::inbox__proof)
+    - id: reveal__proof
+      type: reveal_proof
+      if: (input_proof_tag == input_proof_tag::reveal__proof)
   int31:
     seq:
     - id: int31
@@ -576,6 +570,134 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
+  message:
+    seq:
+    - id: message_tag
+      type: u1
+      enum: message_tag
+    - id: batch
+      type: bytes_dyn_uint30
+      if: (message_tag == message_tag::batch)
+    - id: deposit
+      type: deposit
+      if: (message_tag == message_tag::deposit)
+  message_:
+    seq:
+    - id: message_entries
+      type: message_entries
+      repeat: eos
+  message__:
+    seq:
+    - id: len_message
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message
+      type: message_
+      size: len_message
+  message_entries:
+    seq:
+    - id: message_elt
+      type: bytes_dyn_uint30
+  message_path:
+    seq:
+    - id: message_path_entries
+      type: message_path_entries
+      repeat: eos
+  message_path_:
+    seq:
+    - id: len_message_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_path
+      type: message_path
+      size: len_message_path
+  message_path_entries:
+    seq:
+    - id: inbox_list_hash
+      size: 32
+  message_result_path:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  message_result_path_:
+    seq:
+    - id: len_message_result_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_result_path
+      type: message_result_path
+      size: len_message_result_path
+  message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  messages:
+    seq:
+    - id: messages_entries
+      type: messages_entries
+      repeat: eos
+  messages_:
+    seq:
+    - id: len_messages
+      type: u4
+      valid:
+        max: 1073741823
+    - id: messages
+      type: messages
+      size: len_messages
+  messages_entries:
+    seq:
+    - id: message_result_hash
+      size: 32
+  micheline__016__ptmumbai__michelson_v1__expression:
+    seq:
+    - id: micheline__016__ptmumbai__michelson_v1__expression_tag
+      type: u1
+      enum: micheline__016__ptmumbai__michelson_v1__expression_tag
+    - id: int
+      type: z
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::int)
+    - id: string
+      type: bytes_dyn_uint30
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::string)
+    - id: sequence
+      type: sequence_
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::sequence)
+    - id: prim__no_args__no_annots
+      type: u1
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: prim__no_args__some_annots
+      type: prim__no_args__some_annots
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: prim__1_arg__no_annots
+      type: prim__1_arg__no_annots
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: prim__1_arg__some_annots
+      type: prim__1_arg__some_annots
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: prim__2_args__no_annots
+      type: prim__2_args__no_annots
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: prim__2_args__some_annots
+      type: prim__2_args__some_annots
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: prim__generic
+      type: prim__generic
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__generic)
+    - id: bytes
+      type: bytes_dyn_uint30
+      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
+  move:
+    seq:
+    - id: choice
+      type: n
+    - id: step
+      type: step
   n:
     seq:
     - id: n
@@ -588,10 +710,133 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  origination__id_016__ptmumbai__operation__alpha__contents:
+  named:
+    seq:
+    - id: named
+      size-eos: true
+  named_:
+    seq:
+    - id: len_named
+      type: u1
+      valid:
+        max: 31
+    - id: named
+      type: named
+      size: len_named
+  new_state:
+    seq:
+    - id: new_state_entries
+      type: new_state_entries
+      repeat: eos
+  new_state_:
+    seq:
+    - id: len_new_state
+      type: u4
+      valid:
+        max: 1073741823
+    - id: new_state
+      type: new_state
+      size: len_new_state
+  new_state_entries:
+    seq:
+    - id: new_state_elt
+      size: 32
+  op:
+    seq:
+    - id: op_entries
+      type: op_entries
+      repeat: eos
+  op1:
+    seq:
+    - id: id_016__ptmumbai__inlined__endorsement
+      type: id_016__ptmumbai__inlined__endorsement
+  op1_:
+    seq:
+    - id: len_op1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op1
+      type: op1
+      size: len_op1
+  op1__:
+    seq:
+    - id: id_016__ptmumbai__inlined__preendorsement
+      type: id_016__ptmumbai__inlined__preendorsement
+  op1___:
+    seq:
+    - id: len_op1
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op1
+      type: op1__
+      size: len_op1
+  op2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op1
+      size: len_op2
+  op2_:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op1__
+      size: len_op2
+  op_:
+    seq:
+    - id: len_op
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op
+      type: op
+      size: len_op
+  op_elt_field0:
+    seq:
+    - id: op_code
+      type: int31
+    - id: price
+      type: price
+    - id: l1_dst
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: rollup_id
+      size: 20
+    - id: payload
+      type: payload_
+  op_elt_field1:
+    seq:
+    - id: op_elt_field1_tag
+      type: u1
+      enum: op_elt_field1_tag
+    - id: some
+      type: some
+      if: (op_elt_field1_tag == op_elt_field1_tag::some)
+  op_entries:
+    seq:
+    - id: op_elt_field0
+      type: op_elt_field0
+    - id: op_elt_field1
+      type: op_elt_field1
+  originated:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  origination:
     seq:
     - id: source
-      type: origination__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -607,92 +852,276 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: origination__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: script
-      type: origination__id_016__ptmumbai__scripted__contracts_
-  origination__id_016__ptmumbai__scripted__contracts_:
+      type: id_016__ptmumbai__scripted__contracts
+  parameters:
     seq:
-    - id: code
+    - id: entrypoint
+      type: id_016__ptmumbai__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
       type: bytes_dyn_uint30
-    - id: storage
-      type: bytes_dyn_uint30
-  origination__public_key_hash_:
+  payload:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: origination__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  preendorsement__id_016__ptmumbai__operation__alpha__contents:
+    - id: payload_entries
+      type: payload_entries
+      repeat: eos
+  payload_:
     seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
+    - id: len_payload
+      type: u4
+      valid:
+        max: 1073741823
+    - id: payload
+      type: payload
+      size: len_payload
+  payload_entries:
+    seq:
+    - id: payload_elt
       size: 32
-  proposals__id_016__ptmumbai__operation__alpha__contents:
+  pending_pis:
     seq:
-    - id: source
-      type: proposals__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: period
-      type: s4
-    - id: proposals__proposals
-      type: proposals__proposals
-  proposals__proposals:
+    - id: pending_pis_entries
+      type: pending_pis_entries
+      repeat: eos
+  pending_pis_:
     seq:
-    - id: len_proposals__proposals_dyn
+    - id: len_pending_pis
+      type: u4
+      valid:
+        max: 1073741823
+    - id: pending_pis
+      type: pending_pis
+      size: len_pending_pis
+  pending_pis_elt_field1:
+    seq:
+    - id: new_state
+      type: new_state_
+    - id: fee
+      size: 32
+    - id: exit_validity
+      type: u1
+      enum: bool
+  pending_pis_entries:
+    seq:
+    - id: pending_pis_elt_field0
+      type: bytes_dyn_uint30
+    - id: pending_pis_elt_field1
+      type: pending_pis_elt_field1
+  predecessor:
+    seq:
+    - id: predecessor_tag
+      type: u1
+      enum: predecessor_tag
+    - id: some
+      size: 32
+      if: (predecessor_tag == predecessor_tag::some)
+  previous_message_result:
+    seq:
+    - id: context_hash
+      size: 32
+    - id: withdraw_list_hash
+      size: 32
+  previous_message_result_path:
+    seq:
+    - id: previous_message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  previous_message_result_path_:
+    seq:
+    - id: len_previous_message_result_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: previous_message_result_path
+      type: previous_message_result_path
+      size: len_previous_message_result_path
+  price:
+    seq:
+    - id: id
+      size: 32
+    - id: amount
+      type: z
+  prim__1_arg__no_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: arg
+      type: micheline__016__ptmumbai__michelson_v1__expression
+  prim__1_arg__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: arg
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__2_args__no_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: arg1
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: arg2
+      type: micheline__016__ptmumbai__michelson_v1__expression
+  prim__2_args__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: arg1
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: arg2
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__generic:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: args
+      type: args_
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__no_args__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+    - id: annots
+      type: bytes_dyn_uint30
+  private_pis:
+    seq:
+    - id: private_pis_entries
+      type: private_pis_entries
+      repeat: eos
+  private_pis_:
+    seq:
+    - id: len_private_pis
+      type: u4
+      valid:
+        max: 1073741823
+    - id: private_pis
+      type: private_pis
+      size: len_private_pis
+  private_pis_elt_field1:
+    seq:
+    - id: new_state
+      type: new_state_
+    - id: fee
+      size: 32
+  private_pis_entries:
+    seq:
+    - id: private_pis_elt_field0
+      type: bytes_dyn_uint30
+    - id: private_pis_elt_field1
+      type: private_pis_elt_field1
+  proof:
+    seq:
+    - id: pvm_step
+      type: bytes_dyn_uint30
+    - id: input_proof_tag
+      type: u1
+      enum: bool
+    - id: input_proof
+      type: input_proof
+      if: (input_proof_tag == bool::true)
+  proposals:
+    seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_:
+    seq:
+    - id: len_proposals
       type: u4
       valid:
         max: 640
-    - id: proposals__proposals_dyn
-      type: proposals__proposals_dyn
-      size: len_proposals__proposals_dyn
-  proposals__proposals_dyn:
+    - id: proposals
+      type: proposals
+      size: len_proposals
+  proposals__:
     seq:
-    - id: proposals__proposals_entries
-      type: proposals__proposals_entries
-      repeat: eos
-  proposals__proposals_entries:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: period
+      type: s4
+    - id: proposals
+      type: proposals_
+  proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
-  proposals__public_key_hash_:
+  public_key:
+    seq:
+    - id: public_key_tag
+      type: u1
+      enum: public_key_tag
+    - id: ed25519
+      size: 32
+      if: (public_key_tag == public_key_tag::ed25519)
+    - id: secp256k1
+      size: 33
+      if: (public_key_tag == public_key_tag::secp256k1)
+    - id: p256
+      size: 33
+      if: (public_key_tag == public_key_tag::p256)
+    - id: bls
+      size: 48
+      if: (public_key_tag == public_key_tag::bls)
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: proposals__ed25519__public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: proposals__secp256k1__public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: proposals__p256__public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: proposals__bls__public_key_hash
+    - id: bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  register_global_constant__id_016__ptmumbai__operation__alpha__contents:
+  raw_data:
+    seq:
+    - id: raw_data
+      size-eos: true
+  raw_data_:
+    seq:
+    - id: len_raw_data
+      type: u2
+      valid:
+        max: 4096
+    - id: raw_data
+      type: raw_data
+      size: len_raw_data
+  refutation:
+    seq:
+    - id: refutation_tag
+      type: u1
+      enum: refutation_tag
+    - id: start
+      type: start
+      if: (refutation_tag == refutation_tag::start)
+    - id: move
+      type: move
+      if: (refutation_tag == refutation_tag::move)
+  register_global_constant:
     seq:
     - id: source
-      type: register_global_constant__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -704,27 +1133,10 @@ types:
       type: n
     - id: value
       type: bytes_dyn_uint30
-  register_global_constant__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: register_global_constant__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: register_global_constant__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: register_global_constant__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: register_global_constant__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  reveal__id_016__ptmumbai__operation__alpha__contents:
+  reveal:
     seq:
     - id: source
-      type: reveal__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -735,52 +1147,47 @@ types:
     - id: storage_limit
       type: n
     - id: public_key
-      type: reveal__public_key_
+      type: public_key
       doc: A Ed25519, Secp256k1, or P256 public key
-  reveal__public_key_:
+  reveal_proof:
     seq:
-    - id: public_key_tag
+    - id: reveal_proof_tag
       type: u1
-      enum: public_key_tag
-    - id: reveal__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: reveal__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: reveal__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-    - id: reveal__bls__public_key
-      size: 48
-      if: (public_key_tag == public_key_tag::bls)
-  reveal__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: reveal__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: reveal__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: reveal__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: reveal__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  seed_nonce_revelation__id_016__ptmumbai__operation__alpha__contents:
+      enum: reveal_proof_tag
+    - id: raw__data__proof
+      type: raw_data_
+      if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
+    - id: dal__page__proof
+      type: dal__page__proof
+      if: (reveal_proof_tag == reveal_proof_tag::dal__page__proof)
+  seed_nonce_revelation:
     seq:
     - id: level
       type: s4
     - id: nonce
       size: 32
-  set_deposits_limit__id_016__ptmumbai__operation__alpha__contents:
+  sequence:
+    seq:
+    - id: sequence_entries
+      type: sequence_entries
+      repeat: eos
+  sequence_:
+    seq:
+    - id: len_sequence
+      type: u4
+      valid:
+        max: 1073741823
+    - id: sequence
+      type: sequence
+      size: len_sequence
+  sequence_entries:
+    seq:
+    - id: sequence_elt
+      type: micheline__016__ptmumbai__michelson_v1__expression
+  set_deposits_limit:
     seq:
     - id: source
-      type: set_deposits_limit__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -796,27 +1203,20 @@ types:
     - id: limit
       type: n
       if: (limit_tag == bool::true)
-  set_deposits_limit__public_key_hash_:
+  slot_header:
     seq:
-    - id: public_key_hash_tag
+    - id: level
+      type: s4
+    - id: index
       type: u1
-      enum: public_key_hash_tag
-    - id: set_deposits_limit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: set_deposits_limit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: set_deposits_limit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: set_deposits_limit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_add_messages__id_016__ptmumbai__operation__alpha__contents:
+    - id: commitment
+      size: 48
+    - id: commitment_proof
+      size: 48
+  smart_rollup_add_messages:
     seq:
     - id: source
-      type: smart_rollup_add_messages__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -826,47 +1226,12 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: smart_rollup_add_messages__message
-      type: smart_rollup_add_messages__message
-  smart_rollup_add_messages__message:
-    seq:
-    - id: len_smart_rollup_add_messages__message_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: smart_rollup_add_messages__message_dyn
-      type: smart_rollup_add_messages__message_dyn
-      size: len_smart_rollup_add_messages__message_dyn
-  smart_rollup_add_messages__message_dyn:
-    seq:
-    - id: smart_rollup_add_messages__message_entries
-      type: smart_rollup_add_messages__message_entries
-      repeat: eos
-  smart_rollup_add_messages__message_entries:
-    seq:
-    - id: message_elt
-      type: bytes_dyn_uint30
-  smart_rollup_add_messages__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_add_messages__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_add_messages__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_add_messages__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_add_messages__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_cement__id_016__ptmumbai__operation__alpha__contents:
+    - id: message
+      type: message__
+  smart_rollup_cement:
     seq:
     - id: source
-      type: smart_rollup_cement__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -883,27 +1248,10 @@ types:
         with sr1
     - id: commitment
       size: 32
-  smart_rollup_cement__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_cement__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_cement__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_cement__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_cement__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_execute_outbox_message__id_016__ptmumbai__operation__alpha__contents:
+  smart_rollup_execute_outbox_message:
     seq:
     - id: source
-      type: smart_rollup_execute_outbox_message__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -922,27 +1270,10 @@ types:
       size: 32
     - id: output_proof
       type: bytes_dyn_uint30
-  smart_rollup_execute_outbox_message__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_execute_outbox_message__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_execute_outbox_message__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_execute_outbox_message__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_execute_outbox_message__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_originate__id_016__ptmumbai__operation__alpha__contents:
+  smart_rollup_originate:
     seq:
     - id: source
-      type: smart_rollup_originate__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -954,44 +1285,17 @@ types:
       type: n
     - id: pvm_kind
       type: u1
-      enum: smart_rollup_originate__pvm_kind
+      enum: pvm_kind
     - id: kernel
       type: bytes_dyn_uint30
     - id: origination_proof
       type: bytes_dyn_uint30
     - id: parameters_ty
       type: bytes_dyn_uint30
-  smart_rollup_originate__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_originate__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_originate__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_originate__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_originate__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_publish__commitment:
-    seq:
-    - id: compressed_state
-      size: 32
-    - id: inbox_level
-      type: s4
-    - id: predecessor
-      size: 32
-    - id: number_of_ticks
-      type: s8
-  smart_rollup_publish__id_016__ptmumbai__operation__alpha__contents:
+  smart_rollup_publish:
     seq:
     - id: source
-      type: smart_rollup_publish__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1006,29 +1310,12 @@ types:
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
-    - id: smart_rollup_publish__commitment
-      type: smart_rollup_publish__commitment
-  smart_rollup_publish__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_publish__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_publish__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_publish__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_publish__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_recover_bond__id_016__ptmumbai__operation__alpha__contents:
+    - id: commitment
+      type: commitment_
+  smart_rollup_recover_bond:
     seq:
     - id: source
-      type: smart_rollup_recover_bond__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1041,29 +1328,12 @@ types:
     - id: rollup
       size: 20
     - id: staker
-      type: smart_rollup_recover_bond__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  smart_rollup_recover_bond__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_recover_bond__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_recover_bond__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_recover_bond__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_recover_bond__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_refute__id_016__ptmumbai__operation__alpha__contents:
+  smart_rollup_refute:
     seq:
     - id: source
-      type: smart_rollup_refute__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1079,156 +1349,14 @@ types:
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
     - id: opponent
-      type: smart_rollup_refute__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: smart_rollup_refute__refutation
-      type: smart_rollup_refute__refutation
-  smart_rollup_refute__move__dissection__dissection_dyn:
-    seq:
-    - id: smart_rollup_refute__move__dissection__dissection_entries
-      type: smart_rollup_refute__move__dissection__dissection_entries
-      repeat: eos
-  smart_rollup_refute__move__dissection__dissection_entries:
-    seq:
-    - id: state_tag
-      type: u1
-      enum: bool
-    - id: state
-      size: 32
-      if: (state_tag == bool::true)
-    - id: tick
-      type: n
-  smart_rollup_refute__move__dissection__step:
-    seq:
-    - id: len_smart_rollup_refute__move__dissection__dissection_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: smart_rollup_refute__move__dissection__dissection_dyn
-      type: smart_rollup_refute__move__dissection__dissection_dyn
-      size: len_smart_rollup_refute__move__dissection__dissection_dyn
-  smart_rollup_refute__move__proof__inbox__proof__input_proof:
-    seq:
-    - id: level
-      type: s4
-    - id: message_counter
-      type: n
-    - id: serialized_proof
-      type: bytes_dyn_uint30
-  smart_rollup_refute__move__proof__input_proof_:
-    seq:
-    - id: input_proof_tag
-      type: u1
-      enum: input_proof_tag
-    - id: smart_rollup_refute__move__proof__inbox__proof__input_proof
-      type: smart_rollup_refute__move__proof__inbox__proof__input_proof
-      if: (input_proof_tag == input_proof_tag::inbox__proof)
-    - id: smart_rollup_refute__move__proof__reveal__proof__input_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__reveal_proof
-      if: (input_proof_tag == input_proof_tag::reveal__proof)
-  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id:
-    seq:
-    - id: published_level
-      type: s4
-    - id: slot_index
-      type: u1
-    - id: page_index
-      type: s2
-  smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof:
-    seq:
-    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
-      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__dal_page_id
-    - id: dal_proof
-      type: bytes_dyn_uint30
-  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data:
-    seq:
-    - id: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      type: u2
-      valid:
-        max: 4096
-    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-      size: len_smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn
-  smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data_dyn:
-    seq:
-    - id: raw_data
-      size-eos: true
-  smart_rollup_refute__move__proof__reveal__proof__reveal_proof:
-    seq:
-    - id: reveal_proof_tag
-      type: u1
-      enum: reveal_proof_tag
-    - id: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__reveal_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__raw__data__proof__raw_data
-      if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
-    - id: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
-      type: smart_rollup_refute__move__proof__reveal__proof__dal__page__proof__reveal_proof
-      if: (reveal_proof_tag == reveal_proof_tag::dal__page__proof)
-  smart_rollup_refute__move__proof__step:
-    seq:
-    - id: pvm_step
-      type: bytes_dyn_uint30
-    - id: input_proof_tag
-      type: u1
-      enum: bool
-    - id: smart_rollup_refute__move__proof__input_proof_
-      type: smart_rollup_refute__move__proof__input_proof_
-      if: (input_proof_tag == bool::true)
-  smart_rollup_refute__move__refutation:
-    seq:
-    - id: choice
-      type: n
-    - id: smart_rollup_refute__move__step
-      type: smart_rollup_refute__move__step
-  smart_rollup_refute__move__step:
-    seq:
-    - id: step_tag
-      type: u1
-      enum: step_tag
-    - id: smart_rollup_refute__move__dissection__step
-      type: smart_rollup_refute__move__dissection__step
-      if: (step_tag == step_tag::dissection)
-    - id: smart_rollup_refute__move__proof__step
-      type: smart_rollup_refute__move__proof__step
-      if: (step_tag == step_tag::proof)
-  smart_rollup_refute__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_refute__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_refute__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_refute__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_refute__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_refute__refutation:
-    seq:
-    - id: refutation_tag
-      type: u1
-      enum: refutation_tag
-    - id: smart_rollup_refute__start__refutation
-      type: smart_rollup_refute__start__refutation
-      if: (refutation_tag == refutation_tag::start)
-    - id: smart_rollup_refute__move__refutation
-      type: smart_rollup_refute__move__refutation
-      if: (refutation_tag == refutation_tag::move)
-  smart_rollup_refute__start__refutation:
-    seq:
-    - id: player_commitment_hash
-      size: 32
-    - id: opponent_commitment_hash
-      size: 32
-  smart_rollup_timeout__id_016__ptmumbai__operation__alpha__contents:
+    - id: refutation
+      type: refutation
+  smart_rollup_timeout:
     seq:
     - id: source
-      type: smart_rollup_timeout__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1243,57 +1371,84 @@ types:
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
-    - id: smart_rollup_timeout__stakers
-      type: smart_rollup_timeout__stakers
-  smart_rollup_timeout__public_key_hash_:
+    - id: stakers
+      type: stakers
+  solution:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: smart_rollup_timeout__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: smart_rollup_timeout__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: smart_rollup_timeout__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: smart_rollup_timeout__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  smart_rollup_timeout__stakers:
+    - id: solution_field0
+      size: 100
+    - id: solution_field1
+      size: 100
+  some:
+    seq:
+    - id: contents
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: ty
+      type: micheline__016__ptmumbai__michelson_v1__expression
+    - id: ticketer
+      type: id_016__ptmumbai__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+  stakers:
     seq:
     - id: alice
-      type: smart_rollup_timeout__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: bob
-      type: smart_rollup_timeout__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  transaction__id_016__ptmumbai__contract_id_:
+  start:
     seq:
-    - id: id_016__ptmumbai__contract_id_tag
+    - id: player_commitment_hash
+      size: 32
+    - id: opponent_commitment_hash
+      size: 32
+  step:
+    seq:
+    - id: step_tag
       type: u1
-      enum: id_016__ptmumbai__contract_id_tag
-    - id: transaction__implicit__id_016__ptmumbai__contract_id
-      type: transaction__implicit__public_key_hash_
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
+      enum: step_tag
+    - id: dissection
+      type: dissection_
+      if: (step_tag == step_tag::dissection)
+    - id: proof
+      type: proof
+      if: (step_tag == step_tag::proof)
+  tickets_info:
+    seq:
+    - id: tickets_info_entries
+      type: tickets_info_entries
+      repeat: eos
+  tickets_info_:
+    seq:
+    - id: len_tickets_info
+      type: u4
+      valid:
+        max: 1073741823
+    - id: tickets_info
+      type: tickets_info
+      size: len_tickets_info
+  tickets_info_entries:
+    seq:
+    - id: contents
+      type: bytes_dyn_uint30
+    - id: ty
+      type: bytes_dyn_uint30
+    - id: ticketer
+      type: id_016__ptmumbai__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: amount
+      type: amount
+    - id: claimer
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: transaction__originated__id_016__ptmumbai__contract_id
-      type: transaction__originated__id_016__ptmumbai__contract_id
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::originated)
-  transaction__id_016__ptmumbai__entrypoint_:
-    seq:
-    - id: id_016__ptmumbai__entrypoint_tag
-      type: u1
-      enum: id_016__ptmumbai__entrypoint_tag
-    - id: transaction__named__id_016__ptmumbai__entrypoint
-      type: transaction__named__id_016__ptmumbai__entrypoint
-      if: (id_016__ptmumbai__entrypoint_tag == id_016__ptmumbai__entrypoint_tag::named)
-  transaction__id_016__ptmumbai__operation__alpha__contents:
+  transaction:
     seq:
     - id: source
-      type: transaction__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1306,93 +1461,20 @@ types:
     - id: amount
       type: n
     - id: destination
-      type: transaction__id_016__ptmumbai__contract_id_
+      type: id_016__ptmumbai__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool
-    - id: transaction__parameters_
-      type: transaction__parameters_
+    - id: parameters
+      type: parameters
       if: (parameters_tag == bool::true)
-  transaction__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transaction__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transaction__named__id_016__ptmumbai__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
-  transaction__originated__id_016__ptmumbai__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_016__ptmumbai__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
-  transaction__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transaction__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transfer_ticket__id_016__ptmumbai__contract_id_:
-    seq:
-    - id: id_016__ptmumbai__contract_id_tag
-      type: u1
-      enum: id_016__ptmumbai__contract_id_tag
-    - id: transfer_ticket__implicit__id_016__ptmumbai__contract_id
-      type: transfer_ticket__implicit__public_key_hash_
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: transfer_ticket__originated__id_016__ptmumbai__contract_id
-      type: transfer_ticket__originated__id_016__ptmumbai__contract_id
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::originated)
-  transfer_ticket__id_016__ptmumbai__operation__alpha__contents:
+  transfer_ticket:
     seq:
     - id: source
-      type: transfer_ticket__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1407,74 +1489,23 @@ types:
     - id: ticket_ty
       type: bytes_dyn_uint30
     - id: ticket_ticketer
-      type: transfer_ticket__id_016__ptmumbai__contract_id_
+      type: id_016__ptmumbai__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: ticket_amount
       type: n
     - id: destination
-      type: transfer_ticket__id_016__ptmumbai__contract_id_
+      type: id_016__ptmumbai__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: bytes_dyn_uint30
-  transfer_ticket__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transfer_ticket__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  transfer_ticket__originated__id_016__ptmumbai__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transfer_ticket__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transfer_ticket__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transfer_ticket__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transfer_ticket__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: transfer_ticket__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_commit__commitment:
-    seq:
-    - id: level
-      type: s4
-    - id: tx_rollup_commit__messages
-      type: tx_rollup_commit__messages
-    - id: tx_rollup_commit__predecessor
-      type: tx_rollup_commit__predecessor
-    - id: inbox_merkle_root
-      size: 32
-  tx_rollup_commit__id_016__ptmumbai__operation__alpha__contents:
+  tx_rollup_commit:
     seq:
     - id: source
-      type: tx_rollup_commit__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1489,84 +1520,12 @@ types:
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
-    - id: tx_rollup_commit__commitment
-      type: tx_rollup_commit__commitment
-  tx_rollup_commit__messages:
-    seq:
-    - id: len_tx_rollup_commit__messages_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_commit__messages_dyn
-      type: tx_rollup_commit__messages_dyn
-      size: len_tx_rollup_commit__messages_dyn
-  tx_rollup_commit__messages_dyn:
-    seq:
-    - id: tx_rollup_commit__messages_entries
-      type: tx_rollup_commit__messages_entries
-      repeat: eos
-  tx_rollup_commit__messages_entries:
-    seq:
-    - id: message_result_hash
-      size: 32
-  tx_rollup_commit__predecessor:
-    seq:
-    - id: predecessor_tag
-      type: u1
-      enum: predecessor_tag
-    - id: tx_rollup_commit__some__predecessor
-      size: 32
-      if: (predecessor_tag == predecessor_tag::some)
-  tx_rollup_commit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_commit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_commit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_commit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_commit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_dispatch_tickets__amount:
-    seq:
-    - id: amount_tag
-      type: u1
-      enum: amount_tag
-    - id: tx_rollup_dispatch_tickets__case__0__amount
-      type: u1
-      if: (amount_tag == amount_tag::case__0)
-    - id: tx_rollup_dispatch_tickets__case__1__amount
-      type: u2
-      if: (amount_tag == amount_tag::case__1)
-    - id: tx_rollup_dispatch_tickets__case__2__amount
-      type: s4
-      if: (amount_tag == amount_tag::case__2)
-    - id: tx_rollup_dispatch_tickets__case__3__amount
-      type: s8
-      if: (amount_tag == amount_tag::case__3)
-  tx_rollup_dispatch_tickets__id_016__ptmumbai__contract_id_:
-    seq:
-    - id: id_016__ptmumbai__contract_id_tag
-      type: u1
-      enum: id_016__ptmumbai__contract_id_tag
-    - id: tx_rollup_dispatch_tickets__implicit__id_016__ptmumbai__contract_id
-      type: tx_rollup_dispatch_tickets__implicit__public_key_hash_
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: tx_rollup_dispatch_tickets__originated__id_016__ptmumbai__contract_id
-      type: tx_rollup_dispatch_tickets__originated__id_016__ptmumbai__contract_id
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::originated)
-  tx_rollup_dispatch_tickets__id_016__ptmumbai__operation__alpha__contents:
+    - id: commitment
+      type: commitment
+  tx_rollup_dispatch_tickets:
     seq:
     - id: source
-      type: tx_rollup_dispatch_tickets__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1587,103 +1546,14 @@ types:
       size: 32
     - id: message_index
       type: int31
-    - id: tx_rollup_dispatch_tickets__message_result_path
-      type: tx_rollup_dispatch_tickets__message_result_path
-    - id: tx_rollup_dispatch_tickets__tickets_info
-      type: tx_rollup_dispatch_tickets__tickets_info
-  tx_rollup_dispatch_tickets__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_dispatch_tickets__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_dispatch_tickets__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_dispatch_tickets__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_dispatch_tickets__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_dispatch_tickets__message_result_path:
-    seq:
-    - id: len_tx_rollup_dispatch_tickets__message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_dispatch_tickets__message_result_path_dyn
-      type: tx_rollup_dispatch_tickets__message_result_path_dyn
-      size: len_tx_rollup_dispatch_tickets__message_result_path_dyn
-  tx_rollup_dispatch_tickets__message_result_path_dyn:
-    seq:
-    - id: tx_rollup_dispatch_tickets__message_result_path_entries
-      type: tx_rollup_dispatch_tickets__message_result_path_entries
-      repeat: eos
-  tx_rollup_dispatch_tickets__message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_dispatch_tickets__originated__id_016__ptmumbai__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  tx_rollup_dispatch_tickets__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_dispatch_tickets__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_dispatch_tickets__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_dispatch_tickets__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_dispatch_tickets__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_dispatch_tickets__tickets_info:
-    seq:
-    - id: len_tx_rollup_dispatch_tickets__tickets_info_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_dispatch_tickets__tickets_info_dyn
-      type: tx_rollup_dispatch_tickets__tickets_info_dyn
-      size: len_tx_rollup_dispatch_tickets__tickets_info_dyn
-  tx_rollup_dispatch_tickets__tickets_info_dyn:
-    seq:
-    - id: tx_rollup_dispatch_tickets__tickets_info_entries
-      type: tx_rollup_dispatch_tickets__tickets_info_entries
-      repeat: eos
-  tx_rollup_dispatch_tickets__tickets_info_entries:
-    seq:
-    - id: contents
-      type: bytes_dyn_uint30
-    - id: ty
-      type: bytes_dyn_uint30
-    - id: ticketer
-      type: tx_rollup_dispatch_tickets__id_016__ptmumbai__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: tx_rollup_dispatch_tickets__amount
-      type: tx_rollup_dispatch_tickets__amount
-    - id: claimer
-      type: tx_rollup_dispatch_tickets__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-  tx_rollup_finalize_commitment__id_016__ptmumbai__operation__alpha__contents:
+    - id: message_result_path
+      type: message_result_path_
+    - id: tickets_info
+      type: tickets_info_
+  tx_rollup_origination:
     seq:
     - id: source
-      type: tx_rollup_finalize_commitment__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1693,107 +1563,10 @@ types:
       type: n
     - id: storage_limit
       type: n
-    - id: rollup
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-  tx_rollup_finalize_commitment__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_finalize_commitment__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_finalize_commitment__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_finalize_commitment__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_finalize_commitment__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_origination__id_016__ptmumbai__operation__alpha__contents:
+  tx_rollup_rejection:
     seq:
     - id: source
-      type: tx_rollup_origination__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-  tx_rollup_origination__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_origination__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_rejection__deposit__amount:
-    seq:
-    - id: amount_tag
-      type: u1
-      enum: amount_tag
-    - id: tx_rollup_rejection__deposit__case__0__amount
-      type: u1
-      if: (amount_tag == amount_tag::case__0)
-    - id: tx_rollup_rejection__deposit__case__1__amount
-      type: u2
-      if: (amount_tag == amount_tag::case__1)
-    - id: tx_rollup_rejection__deposit__case__2__amount
-      type: s4
-      if: (amount_tag == amount_tag::case__2)
-    - id: tx_rollup_rejection__deposit__case__3__amount
-      type: s8
-      if: (amount_tag == amount_tag::case__3)
-  tx_rollup_rejection__deposit__deposit:
-    seq:
-    - id: sender
-      type: tx_rollup_rejection__deposit__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: destination
-      size: 20
-    - id: ticket_hash
-      size: 32
-    - id: tx_rollup_rejection__deposit__amount
-      type: tx_rollup_rejection__deposit__amount
-  tx_rollup_rejection__deposit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_rejection__deposit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_rejection__deposit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_rejection__deposit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_rejection__deposit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_rejection__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: source
-      type: tx_rollup_rejection__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1810,114 +1583,26 @@ types:
         is a base58 tx rollup hash
     - id: level
       type: s4
-    - id: tx_rollup_rejection__message
-      type: tx_rollup_rejection__message
+    - id: message
+      type: message
     - id: message_position
       type: n
-    - id: tx_rollup_rejection__message_path
-      type: tx_rollup_rejection__message_path
+    - id: message_path
+      type: message_path_
     - id: message_result_hash
       size: 32
-    - id: tx_rollup_rejection__message_result_path
-      type: tx_rollup_rejection__message_result_path
-    - id: tx_rollup_rejection__previous_message_result
-      type: tx_rollup_rejection__previous_message_result
-    - id: tx_rollup_rejection__previous_message_result_path
-      type: tx_rollup_rejection__previous_message_result_path
+    - id: message_result_path
+      type: message_result_path_
+    - id: previous_message_result
+      type: previous_message_result
+    - id: previous_message_result_path
+      type: previous_message_result_path_
     - id: proof
       type: bytes_dyn_uint30
-  tx_rollup_rejection__message:
-    seq:
-    - id: message_tag
-      type: u1
-      enum: message_tag
-    - id: tx_rollup_rejection__batch__message
-      type: bytes_dyn_uint30
-      if: (message_tag == message_tag::batch)
-    - id: tx_rollup_rejection__deposit__message
-      type: tx_rollup_rejection__deposit__deposit
-      if: (message_tag == message_tag::deposit)
-  tx_rollup_rejection__message_path:
-    seq:
-    - id: len_tx_rollup_rejection__message_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__message_path_dyn
-      type: tx_rollup_rejection__message_path_dyn
-      size: len_tx_rollup_rejection__message_path_dyn
-  tx_rollup_rejection__message_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__message_path_entries
-      type: tx_rollup_rejection__message_path_entries
-      repeat: eos
-  tx_rollup_rejection__message_path_entries:
-    seq:
-    - id: inbox_list_hash
-      size: 32
-  tx_rollup_rejection__message_result_path:
-    seq:
-    - id: len_tx_rollup_rejection__message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__message_result_path_dyn
-      type: tx_rollup_rejection__message_result_path_dyn
-      size: len_tx_rollup_rejection__message_result_path_dyn
-  tx_rollup_rejection__message_result_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__message_result_path_entries
-      type: tx_rollup_rejection__message_result_path_entries
-      repeat: eos
-  tx_rollup_rejection__message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_rejection__previous_message_result:
-    seq:
-    - id: context_hash
-      size: 32
-    - id: withdraw_list_hash
-      size: 32
-  tx_rollup_rejection__previous_message_result_path:
-    seq:
-    - id: len_tx_rollup_rejection__previous_message_result_path_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: tx_rollup_rejection__previous_message_result_path_dyn
-      type: tx_rollup_rejection__previous_message_result_path_dyn
-      size: len_tx_rollup_rejection__previous_message_result_path_dyn
-  tx_rollup_rejection__previous_message_result_path_dyn:
-    seq:
-    - id: tx_rollup_rejection__previous_message_result_path_entries
-      type: tx_rollup_rejection__previous_message_result_path_entries
-      repeat: eos
-  tx_rollup_rejection__previous_message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  tx_rollup_rejection__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_rejection__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_rejection__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_rejection__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_rejection__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_remove_commitment__id_016__ptmumbai__operation__alpha__contents:
+  tx_rollup_return_bond:
     seq:
     - id: source
-      type: tx_rollup_remove_commitment__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -1932,62 +1617,10 @@ types:
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
-  tx_rollup_remove_commitment__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_remove_commitment__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_remove_commitment__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_remove_commitment__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_remove_commitment__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_return_bond__id_016__ptmumbai__operation__alpha__contents:
+  tx_rollup_submit_batch:
     seq:
     - id: source
-      type: tx_rollup_return_bond__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: rollup
-      size: 20
-      doc: ! >-
-        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
-        is a base58 tx rollup hash
-  tx_rollup_return_bond__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_return_bond__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_return_bond__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_return_bond__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_return_bond__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  tx_rollup_submit_batch__id_016__ptmumbai__operation__alpha__contents:
-    seq:
-    - id: source
-      type: tx_rollup_submit_batch__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -2010,33 +1643,26 @@ types:
     - id: burn_limit
       type: n
       if: (burn_limit_tag == bool::true)
-  tx_rollup_submit_batch__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: tx_rollup_submit_batch__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: tx_rollup_submit_batch__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: tx_rollup_submit_batch__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: tx_rollup_submit_batch__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
   uint30:
     seq:
     - id: uint30
       type: u4
       valid:
         max: 1073741823
-  update_consensus_key__id_016__ptmumbai__operation__alpha__contents:
+  update:
+    seq:
+    - id: pending_pis
+      type: pending_pis_
+    - id: private_pis
+      type: private_pis_
+    - id: fee_pi
+      type: new_state_
+    - id: proof
+      type: bytes_dyn_uint30
+  update_consensus_key:
     seq:
     - id: source
-      type: update_consensus_key__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -2047,48 +1673,8 @@ types:
     - id: storage_limit
       type: n
     - id: pk
-      type: update_consensus_key__public_key_
+      type: public_key
       doc: A Ed25519, Secp256k1, or P256 public key
-  update_consensus_key__public_key_:
-    seq:
-    - id: public_key_tag
-      type: u1
-      enum: public_key_tag
-    - id: update_consensus_key__ed25519__public_key
-      size: 32
-      if: (public_key_tag == public_key_tag::ed25519)
-    - id: update_consensus_key__secp256k1__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::secp256k1)
-    - id: update_consensus_key__p256__public_key
-      size: 33
-      if: (public_key_tag == public_key_tag::p256)
-    - id: update_consensus_key__bls__public_key
-      size: 48
-      if: (public_key_tag == public_key_tag::bls)
-  update_consensus_key__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: update_consensus_key__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: update_consensus_key__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: update_consensus_key__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: update_consensus_key__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  vdf_revelation__solution:
-    seq:
-    - id: solution_field0
-      size: 100
-    - id: solution_field1
-      size: 100
   z:
     seq:
     - id: has_tail
@@ -2102,32 +1688,10 @@ types:
       repeat: until
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
-  zk_rollup_origination__circuits_info:
-    seq:
-    - id: len_zk_rollup_origination__circuits_info_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_origination__circuits_info_dyn
-      type: zk_rollup_origination__circuits_info_dyn
-      size: len_zk_rollup_origination__circuits_info_dyn
-  zk_rollup_origination__circuits_info_dyn:
-    seq:
-    - id: zk_rollup_origination__circuits_info_entries
-      type: zk_rollup_origination__circuits_info_entries
-      repeat: eos
-  zk_rollup_origination__circuits_info_entries:
-    seq:
-    - id: circuits_info_elt_field0
-      type: bytes_dyn_uint30
-    - id: circuits_info_elt_field1
-      type: u1
-      enum: circuits_info_elt_field1_tag
-      doc: circuits_info_elt_field1_tag
-  zk_rollup_origination__id_016__ptmumbai__operation__alpha__contents:
+  zk_rollup_origination:
     seq:
     - id: source
-      type: zk_rollup_origination__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -2139,51 +1703,16 @@ types:
       type: n
     - id: public_parameters
       type: bytes_dyn_uint30
-    - id: zk_rollup_origination__circuits_info
-      type: zk_rollup_origination__circuits_info
-    - id: zk_rollup_origination__init_state
-      type: zk_rollup_origination__init_state
+    - id: circuits_info
+      type: circuits_info_
+    - id: init_state
+      type: init_state_
     - id: nb_ops
       type: int31
-  zk_rollup_origination__init_state:
-    seq:
-    - id: len_zk_rollup_origination__init_state_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_origination__init_state_dyn
-      type: zk_rollup_origination__init_state_dyn
-      size: len_zk_rollup_origination__init_state_dyn
-  zk_rollup_origination__init_state_dyn:
-    seq:
-    - id: zk_rollup_origination__init_state_entries
-      type: zk_rollup_origination__init_state_entries
-      repeat: eos
-  zk_rollup_origination__init_state_entries:
-    seq:
-    - id: init_state_elt
-      size: 32
-  zk_rollup_origination__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: zk_rollup_origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_origination__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  zk_rollup_publish__id_016__ptmumbai__operation__alpha__contents:
+  zk_rollup_publish:
     seq:
     - id: source
-      type: zk_rollup_publish__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -2195,268 +1724,12 @@ types:
       type: n
     - id: zk_rollup
       size: 20
-    - id: zk_rollup_publish__op
-      type: zk_rollup_publish__op
-  zk_rollup_publish__op:
-    seq:
-    - id: len_zk_rollup_publish__op_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_publish__op_dyn
-      type: zk_rollup_publish__op_dyn
-      size: len_zk_rollup_publish__op_dyn
-  zk_rollup_publish__op_dyn:
-    seq:
-    - id: zk_rollup_publish__op_entries
-      type: zk_rollup_publish__op_entries
-      repeat: eos
-  zk_rollup_publish__op_elt_field0:
-    seq:
-    - id: op_code
-      type: int31
-    - id: zk_rollup_publish__price
-      type: zk_rollup_publish__price
-    - id: l1_dst
-      type: zk_rollup_publish__public_key_hash_
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: rollup_id
-      size: 20
-    - id: zk_rollup_publish__payload
-      type: zk_rollup_publish__payload
-  zk_rollup_publish__op_elt_field1:
-    seq:
-    - id: op_elt_field1_tag
-      type: u1
-      enum: op_elt_field1_tag
-    - id: zk_rollup_publish__some__op_elt_field1
-      type: zk_rollup_publish__some__op_elt_field1
-      if: (op_elt_field1_tag == op_elt_field1_tag::some)
-  zk_rollup_publish__op_entries:
-    seq:
-    - id: zk_rollup_publish__op_elt_field0
-      type: zk_rollup_publish__op_elt_field0
-    - id: zk_rollup_publish__op_elt_field1
-      type: zk_rollup_publish__op_elt_field1
-  zk_rollup_publish__payload:
-    seq:
-    - id: len_zk_rollup_publish__payload_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_publish__payload_dyn
-      type: zk_rollup_publish__payload_dyn
-      size: len_zk_rollup_publish__payload_dyn
-  zk_rollup_publish__payload_dyn:
-    seq:
-    - id: zk_rollup_publish__payload_entries
-      type: zk_rollup_publish__payload_entries
-      repeat: eos
-  zk_rollup_publish__payload_entries:
-    seq:
-    - id: payload_elt
-      size: 32
-  zk_rollup_publish__price:
-    seq:
-    - id: id
-      size: 32
-    - id: amount
-      type: z
-  zk_rollup_publish__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: zk_rollup_publish__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_publish__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_publish__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_publish__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  zk_rollup_publish__some__id_016__ptmumbai__contract_id_:
-    seq:
-    - id: id_016__ptmumbai__contract_id_tag
-      type: u1
-      enum: id_016__ptmumbai__contract_id_tag
-    - id: zk_rollup_publish__some__implicit__id_016__ptmumbai__contract_id
-      type: zk_rollup_publish__some__implicit__public_key_hash_
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-    - id: zk_rollup_publish__some__originated__id_016__ptmumbai__contract_id
-      type: zk_rollup_publish__some__originated__id_016__ptmumbai__contract_id
-      if: (id_016__ptmumbai__contract_id_tag == id_016__ptmumbai__contract_id_tag::originated)
-  zk_rollup_publish__some__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: zk_rollup_publish__some__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_publish__some__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_publish__some__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_publish__some__implicit__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: micheline__016__ptmumbai__michelson_v1__expression_tag
-      type: u1
-      enum: micheline__016__ptmumbai__michelson_v1__expression_tag
-    - id: zk_rollup_publish__some__int__micheline__016__ptmumbai__michelson_v1__expression
-      type: z
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::int)
-    - id: zk_rollup_publish__some__string__micheline__016__ptmumbai__michelson_v1__expression
-      type: bytes_dyn_uint30
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::string)
-    - id: zk_rollup_publish__some__sequence__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__sequence__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::sequence)
-    - id: zk_rollup_publish__some__prim__no_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: u1
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: zk_rollup_publish__some__prim__no_args__no_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: zk_rollup_publish__some__prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__some_annots)
-    - id: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__1_arg__no_annots)
-    - id: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__1_arg__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__1_arg__some_annots)
-    - id: zk_rollup_publish__some__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__2_args__no_annots)
-    - id: zk_rollup_publish__some__prim__2_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__2_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__2_args__some_annots)
-    - id: zk_rollup_publish__some__prim__generic__micheline__016__ptmumbai__michelson_v1__expression
-      type: zk_rollup_publish__some__prim__generic__micheline__016__ptmumbai__michelson_v1__expression
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__generic)
-    - id: zk_rollup_publish__some__bytes__micheline__016__ptmumbai__michelson_v1__expression
-      type: bytes_dyn_uint30
-      if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::bytes)
-  zk_rollup_publish__some__op_elt_field1:
-    seq:
-    - id: contents
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: ty
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: ticketer
-      type: zk_rollup_publish__some__id_016__ptmumbai__contract_id_
-      doc: ! >-
-        A contract handle: A contract notation as given to an RPC or inside scripts.
-        Can be a base58 implicit contract hash or a base58 originated contract hash.
-  zk_rollup_publish__some__originated__id_016__ptmumbai__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  zk_rollup_publish__some__prim__1_arg__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__1_arg__no_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-  zk_rollup_publish__some__prim__1_arg__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__1_arg__some_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  zk_rollup_publish__some__prim__2_args__no_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__2_args__no_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg1
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: arg2
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-  zk_rollup_publish__some__prim__2_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__2_args__some_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: arg1
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: arg2
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  zk_rollup_publish__some__prim__generic__args:
-    seq:
-    - id: len_zk_rollup_publish__some__prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_publish__some__prim__generic__args_dyn
-      type: zk_rollup_publish__some__prim__generic__args_dyn
-      size: len_zk_rollup_publish__some__prim__generic__args_dyn
-  zk_rollup_publish__some__prim__generic__args_dyn:
-    seq:
-    - id: zk_rollup_publish__some__prim__generic__args_entries
-      type: zk_rollup_publish__some__prim__generic__args_entries
-      repeat: eos
-  zk_rollup_publish__some__prim__generic__args_entries:
-    seq:
-    - id: args_elt
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-  zk_rollup_publish__some__prim__generic__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__generic__id_016__ptmumbai__michelson__v1__primitives
-    - id: zk_rollup_publish__some__prim__generic__args
-      type: zk_rollup_publish__some__prim__generic__args
-    - id: annots
-      type: bytes_dyn_uint30
-  zk_rollup_publish__some__prim__no_args__some_annots__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: zk_rollup_publish__some__prim__no_args__some_annots__id_016__ptmumbai__michelson__v1__primitives
-    - id: annots
-      type: bytes_dyn_uint30
-  zk_rollup_publish__some__sequence__micheline__016__ptmumbai__michelson_v1__expression:
-    seq:
-    - id: len_zk_rollup_publish__some__sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_publish__some__sequence__sequence_dyn
-      type: zk_rollup_publish__some__sequence__sequence_dyn
-      size: len_zk_rollup_publish__some__sequence__sequence_dyn
-  zk_rollup_publish__some__sequence__sequence_dyn:
-    seq:
-    - id: zk_rollup_publish__some__sequence__sequence_entries
-      type: zk_rollup_publish__some__sequence__sequence_entries
-      repeat: eos
-  zk_rollup_publish__some__sequence__sequence_entries:
-    seq:
-    - id: sequence_elt
-      type: zk_rollup_publish__some__micheline__016__ptmumbai__michelson_v1__expression
-  zk_rollup_update__id_016__ptmumbai__operation__alpha__contents:
+    - id: op
+      type: op_
+  zk_rollup_update:
     seq:
     - id: source
-      type: zk_rollup_update__public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
       type: n
@@ -2468,2474 +1741,10 @@ types:
       type: n
     - id: zk_rollup
       size: 20
-    - id: zk_rollup_update__update
-      type: zk_rollup_update__update
-  zk_rollup_update__new_state:
-    seq:
-    - id: len_zk_rollup_update__new_state_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__new_state_dyn
-      type: zk_rollup_update__new_state_dyn
-      size: len_zk_rollup_update__new_state_dyn
-  zk_rollup_update__new_state_dyn:
-    seq:
-    - id: zk_rollup_update__new_state_entries
-      type: zk_rollup_update__new_state_entries
-      repeat: eos
-  zk_rollup_update__new_state_entries:
-    seq:
-    - id: new_state_elt
-      size: 32
-  zk_rollup_update__pending_pis:
-    seq:
-    - id: len_zk_rollup_update__pending_pis_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__pending_pis_dyn
-      type: zk_rollup_update__pending_pis_dyn
-      size: len_zk_rollup_update__pending_pis_dyn
-  zk_rollup_update__pending_pis_dyn:
-    seq:
-    - id: zk_rollup_update__pending_pis_entries
-      type: zk_rollup_update__pending_pis_entries
-      repeat: eos
-  zk_rollup_update__pending_pis_elt_field1:
-    seq:
-    - id: zk_rollup_update__new_state
-      type: zk_rollup_update__new_state
-    - id: fee
-      size: 32
-    - id: exit_validity
-      type: u1
-      enum: bool
-  zk_rollup_update__pending_pis_entries:
-    seq:
-    - id: pending_pis_elt_field0
-      type: bytes_dyn_uint30
-    - id: zk_rollup_update__pending_pis_elt_field1
-      type: zk_rollup_update__pending_pis_elt_field1
-  zk_rollup_update__private_pis:
-    seq:
-    - id: len_zk_rollup_update__private_pis_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: zk_rollup_update__private_pis_dyn
-      type: zk_rollup_update__private_pis_dyn
-      size: len_zk_rollup_update__private_pis_dyn
-  zk_rollup_update__private_pis_dyn:
-    seq:
-    - id: zk_rollup_update__private_pis_entries
-      type: zk_rollup_update__private_pis_entries
-      repeat: eos
-  zk_rollup_update__private_pis_elt_field1:
-    seq:
-    - id: zk_rollup_update__new_state
-      type: zk_rollup_update__new_state
-    - id: fee
-      size: 32
-  zk_rollup_update__private_pis_entries:
-    seq:
-    - id: private_pis_elt_field0
-      type: bytes_dyn_uint30
-    - id: zk_rollup_update__private_pis_elt_field1
-      type: zk_rollup_update__private_pis_elt_field1
-  zk_rollup_update__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: zk_rollup_update__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: zk_rollup_update__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: zk_rollup_update__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: zk_rollup_update__bls__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::bls)
-  zk_rollup_update__update:
-    seq:
-    - id: zk_rollup_update__pending_pis
-      type: zk_rollup_update__pending_pis
-    - id: zk_rollup_update__private_pis
-      type: zk_rollup_update__private_pis
-    - id: fee_pi
-      type: zk_rollup_update__new_state
-    - id: proof
-      type: bytes_dyn_uint30
+    - id: update
+      type: update
 enums:
-  zk_rollup_publish__some__prim__generic__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__2_args__some_annots__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__2_args__no_annots__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__1_arg__some_annots__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__1_arg__no_annots__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__no_args__some_annots__id_016__ptmumbai__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  zk_rollup_publish__some__prim__no_args__no_annots__id_016__ptmumbai__michelson__v1__primitives:
+  id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
     1: storage
     2: code
@@ -5376,7 +2185,7 @@ enums:
   refutation_tag:
     0: start
     1: move
-  smart_rollup_originate__pvm_kind:
+  pvm_kind:
     0: arith
     1: wasm_2_0_0
   amount_tag:
@@ -5464,5 +2273,5 @@ enums:
     251: zk_rollup_publish
     252: zk_rollup_update
 seq:
-- id: id_016__ptmumbai__operation__alpha__unsigned_operation_
-  type: id_016__ptmumbai__operation__alpha__unsigned_operation_
+- id: id_016__ptmumbai__operation__alpha__unsigned_operation
+  type: id_016__ptmumbai__operation__alpha__unsigned_operation

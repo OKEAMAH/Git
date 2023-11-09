@@ -8,21 +8,15 @@ types:
     - id: issuance_ratio_min
       type: issuance_ratio_min
     - id: issuance_ratio_max
-      type: issuance_ratio_max
+      type: issuance_ratio_min
     - id: max_bonus
       type: s8
     - id: growth_rate
       type: s8
     - id: center_dz
-      type: center_dz
+      type: issuance_ratio_min
     - id: radius_dz
-      type: radius_dz
-  center_dz:
-    seq:
-    - id: numerator
-      type: z
-    - id: denominator
-      type: z
+      type: issuance_ratio_min
   dal_parametric:
     seq:
     - id: feature_enable
@@ -51,12 +45,6 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
-  issuance_ratio_max:
-    seq:
-    - id: numerator
-      type: z
-    - id: denominator
-      type: z
   issuance_ratio_min:
     seq:
     - id: numerator
@@ -97,29 +85,23 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  public_key_hash_:
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: public_key_hash
+    - id: bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  radius_dz:
-    seq:
-    - id: numerator
-      type: z
-    - id: denominator
-      type: z
   smart_rollup_reveal_activation_level:
     seq:
     - id: raw_data
@@ -215,7 +197,7 @@ seq:
   type: u1
   enum: bool
 - id: testnet_dictator
-  type: public_key_hash_
+  type: public_key_hash
   if: (testnet_dictator_tag == bool::true)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash
 - id: initial_seed_tag

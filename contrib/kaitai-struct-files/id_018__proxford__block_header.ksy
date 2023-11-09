@@ -5,19 +5,19 @@ meta:
   - block_header__shell
 doc: ! 'Encoding id: 018-Proxford.block_header'
 types:
-  id_018__proxford__block_header__alpha__full_header_:
+  id_018__proxford__block_header__alpha__full_header:
     seq:
     - id: id_018__proxford__block_header__alpha__full_header
       type: block_header__shell
-    - id: id_018__proxford__block_header__alpha__signed_contents_
-      type: id_018__proxford__block_header__alpha__signed_contents_
-  id_018__proxford__block_header__alpha__signed_contents_:
+    - id: id_018__proxford__block_header__alpha__signed_contents
+      type: id_018__proxford__block_header__alpha__signed_contents
+  id_018__proxford__block_header__alpha__signed_contents:
     seq:
-    - id: id_018__proxford__block_header__alpha__unsigned_contents_
-      type: id_018__proxford__block_header__alpha__unsigned_contents_
+    - id: id_018__proxford__block_header__alpha__unsigned_contents
+      type: id_018__proxford__block_header__alpha__unsigned_contents
     - id: signature
       size-eos: true
-  id_018__proxford__block_header__alpha__unsigned_contents_:
+  id_018__proxford__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -49,5 +49,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_018__proxford__block_header__alpha__full_header_
-  type: id_018__proxford__block_header__alpha__full_header_
+- id: id_018__proxford__block_header__alpha__full_header
+  type: id_018__proxford__block_header__alpha__full_header

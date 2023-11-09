@@ -6,7 +6,7 @@ doc: ! >-
 
   Description: User activated protocol overrides: activate a protocol instead of another.
 types:
-  user_activated__protocol_overrides_dyn:
+  user_activated__protocol_overrides:
     seq:
     - id: user_activated__protocol_overrides_entries
       type: user_activated__protocol_overrides_entries
@@ -18,10 +18,10 @@ types:
     - id: replacement_protocol
       size: 32
 seq:
-- id: len_user_activated__protocol_overrides_dyn
+- id: len_user_activated__protocol_overrides
   type: u4
   valid:
     max: 1073741823
-- id: user_activated__protocol_overrides_dyn
-  type: user_activated__protocol_overrides_dyn
-  size: len_user_activated__protocol_overrides_dyn
+- id: user_activated__protocol_overrides
+  type: user_activated__protocol_overrides
+  size: len_user_activated__protocol_overrides

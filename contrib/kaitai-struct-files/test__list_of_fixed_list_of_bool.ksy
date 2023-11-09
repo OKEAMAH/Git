@@ -6,7 +6,7 @@ doc: ! >-
 
   Description: List of fixed sized list of boolean values
 types:
-  test__list_of_fixed_list_of_bool_dyn:
+  test__list_of_fixed_list_of_bool:
     seq:
     - id: test__list_of_fixed_list_of_bool_entries
       type: test__list_of_fixed_list_of_bool_entries
@@ -27,10 +27,10 @@ enums:
     0: false
     255: true
 seq:
-- id: len_test__list_of_fixed_list_of_bool_dyn
+- id: len_test__list_of_fixed_list_of_bool
   type: u4
   valid:
     max: 1073741823
-- id: test__list_of_fixed_list_of_bool_dyn
-  type: test__list_of_fixed_list_of_bool_dyn
-  size: len_test__list_of_fixed_list_of_bool_dyn
+- id: test__list_of_fixed_list_of_bool
+  type: test__list_of_fixed_list_of_bool
+  size: len_test__list_of_fixed_list_of_bool

@@ -41,26 +41,20 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  public_key_hash_:
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  ratio_of_frozen_deposits_slashed_per_double_endorsement:
-    seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
   z:
     seq:
     - id: has_tail
@@ -172,12 +166,12 @@ seq:
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
+  type: minimal_participation_ratio
 - id: testnet_dictator_tag
   type: u1
   enum: bool
 - id: testnet_dictator
-  type: public_key_hash_
+  type: public_key_hash
   if: (testnet_dictator_tag == bool::true)
   doc: A Ed25519, Secp256k1, or P256 public key hash
 - id: initial_seed_tag

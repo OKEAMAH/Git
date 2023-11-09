@@ -8,7 +8,7 @@ types:
     - id: locked_round_tag
       type: u1
       enum: locked_round_tag
-    - id: locked_round
+    - id: some
       type: s4
       if: (locked_round_tag == locked_round_tag::some)
 enums:

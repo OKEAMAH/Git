@@ -5,7 +5,7 @@ meta:
   - block_header__shell
 doc: ! 'Encoding id: 016-PtMumbai.block_header.unsigned'
 types:
-  id_016__ptmumbai__block_header__alpha__unsigned_contents_:
+  id_016__ptmumbai__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -28,5 +28,5 @@ enums:
 seq:
 - id: id_016__ptmumbai__block_header__unsigned
   type: block_header__shell
-- id: id_016__ptmumbai__block_header__alpha__unsigned_contents_
-  type: id_016__ptmumbai__block_header__alpha__unsigned_contents_
+- id: id_016__ptmumbai__block_header__alpha__unsigned_contents
+  type: id_016__ptmumbai__block_header__alpha__unsigned_contents

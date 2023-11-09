@@ -11,7 +11,7 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
-  id_013__ptjakart__scripted__contracts_:
+  id_013__ptjakart__scripted__contracts:
     seq:
     - id: code
       type: bytes_dyn_uint30
@@ -24,5 +24,5 @@ types:
       valid:
         max: 1073741823
 seq:
-- id: id_013__ptjakart__scripted__contracts_
-  type: id_013__ptjakart__scripted__contracts_
+- id: id_013__ptjakart__scripted__contracts
+  type: id_013__ptjakart__scripted__contracts

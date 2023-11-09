@@ -174,7 +174,6 @@ let uint30_attr ~id =
     valid = Some (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
   }
 
-
 module Type = struct
   type assoc = (string * Kaitai.Types.ClassSpec.t) list
 
@@ -190,11 +189,8 @@ module Type = struct
          the binary reader *)
       {
         (Helpers.default_class_spec ~id:"uint30" ()) with
-        seq =
-          [
-            uint30_attr ~id:"uint30"            
-          ];
-      })
+        seq = [uint30_attr ~id:"uint30"];
+      } )
 
   let int31 =
     ( "int31",

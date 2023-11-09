@@ -5,7 +5,7 @@ meta:
   - block_header__shell
 doc: ! 'Encoding id: 007-PsDELPH1.block_header.unsigned'
 types:
-  id_007__psdelph1__block_header__alpha__unsigned_contents_:
+  id_007__psdelph1__block_header__alpha__unsigned_contents:
     seq:
     - id: priority
       type: u2
@@ -24,5 +24,5 @@ enums:
 seq:
 - id: id_007__psdelph1__block_header__unsigned
   type: block_header__shell
-- id: id_007__psdelph1__block_header__alpha__unsigned_contents_
-  type: id_007__psdelph1__block_header__alpha__unsigned_contents_
+- id: id_007__psdelph1__block_header__alpha__unsigned_contents
+  type: id_007__psdelph1__block_header__alpha__unsigned_contents

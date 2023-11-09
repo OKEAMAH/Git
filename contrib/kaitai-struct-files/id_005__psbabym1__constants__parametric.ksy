@@ -24,18 +24,18 @@ types:
       type: b7be
   time_between_blocks:
     seq:
-    - id: len_time_between_blocks_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: time_between_blocks_dyn
-      type: time_between_blocks_dyn
-      size: len_time_between_blocks_dyn
-  time_between_blocks_dyn:
-    seq:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
       repeat: eos
+  time_between_blocks_:
+    seq:
+    - id: len_time_between_blocks
+      type: u4
+      valid:
+        max: 1073741823
+    - id: time_between_blocks
+      type: time_between_blocks
+      size: len_time_between_blocks
   time_between_blocks_entries:
     seq:
     - id: time_between_blocks_elt
@@ -65,7 +65,7 @@ seq:
 - id: blocks_per_voting_period
   type: s4
 - id: time_between_blocks
-  type: time_between_blocks
+  type: time_between_blocks_
 - id: endorsers_per_block
   type: u2
 - id: hard_gas_limit_per_operation

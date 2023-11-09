@@ -6,6 +6,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+let debug = false
+
+open Kaitai.Types
 module MuSet = Set.Make (String)
 module StringSet = Set.Make (String)
 
@@ -20,10 +23,12 @@ type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding [@@unboxed]
 
 type state = {
   enums : Ground.Enum.assoc;
-  types : Ground.Type.assoc;
+  types_rev : (string, ClassSpec.t) Hashtbl.t;
+  types : (ClassSpec.t, string * StringSet.t) Hashtbl.t;
   mus : MuSet.t;
   imports : StringSet.t;
   extern : (anyEncoding, string) Hashtbl.t;
+  seen : (anyEncoding, string) Hashtbl.t;
 }
 
 (* Identifiers have a strict pattern to follow, this function removes the
@@ -52,10 +57,31 @@ let escape_id id =
     id ;
   Buffer.contents b
 
-open Kaitai.Types
+let new_types state id attrs =
+  let name, typ = (id, Helpers.class_spec_of_attrs ~id attrs) in
+  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
+  match Hashtbl.find_opt state.types typ with
+  | None ->
+      let rec find_name name =
+        if Hashtbl.mem state.types_rev name then find_name (name ^ "_")
+        else (name, typ)
+      in
+      find_name name
+  | Some (id_prev, set) ->
+      let set = StringSet.add id set in
+      Hashtbl.replace state.types typ (id_prev, set) ;
+      (id_prev, typ)
 
-let add_type state typ =
-  {state with types = Helpers.add_uniq_assoc state.types typ}
+let add_type state (name, typ) =
+  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
+  match Hashtbl.find_opt state.types_rev name with
+  | None ->
+      Hashtbl.add state.types_rev name typ ;
+      Hashtbl.add state.types typ (name, StringSet.empty) ;
+      state
+  | Some cl ->
+      if typ = cl then state
+      else invalid_arg (Printf.sprintf "Duplicated types %s" name)
 
 let add_enum state enum =
   {state with enums = Helpers.add_uniq_assoc state.enums enum}
@@ -75,16 +101,14 @@ let size_id_of_id id = "len_" ^ id
    group of them. When we want to attach a field to a group of attributes, we
    need to create an indirection to a named type. [redirect] is a function for
    adding a field to an indirection. *)
-let redirect state attrs fattr id =
-  let ((_, user_type_classpec) as type_) =
-    (id, Helpers.class_spec_of_attrs ~id attrs)
-  in
+let redirect state attrs fattr id_orig =
+  let ((id, _) as type_) = new_types state id_orig attrs in
   let state = add_type state type_ in
   let attr =
     fattr
       {
-        (Helpers.default_attr_spec ~id) with
-        dataType = Helpers.usertype user_type_classpec;
+        (Helpers.default_attr_spec ~id:id_orig) with
+        dataType = DataType.(ComplexDataType (UserType id));
       }
   in
   (state, attr)
@@ -113,12 +137,11 @@ let redirect_if_many :
     string ->
     state * AttrSpec.t =
  fun ?(or_if = fun _ -> false) state attrs fattr id ->
-  let redirected_id = id ^ "_" in
   match attrs with
   | [] -> failwith "Not supported (empty redirect)"
-  | [attr] when or_if attr -> redirect state attrs fattr redirected_id
+  | [attr] when or_if attr -> redirect state attrs fattr id
   | [attr] -> (state, {(fattr attr) with id})
-  | _ :: _ :: _ as attrs -> redirect state attrs fattr redirected_id
+  | _ :: _ :: _ as attrs -> redirect state attrs fattr id
 
 let rec seq_field_of_data_encoding :
     type a. state -> a DataEncoding.t -> string -> state * AttrSpec.t list =
@@ -136,362 +159,385 @@ let rec seq_field_of_data_encoding :
           };
         ] )
   | None -> (
-      let id = escape_id id in
-      match encoding with
-      | Null -> (state, [])
-      | Empty -> (state, [])
-      | Ignore -> (state, [])
-      | Constant _ -> (state, [])
-      | Bool ->
-          let state = add_enum state Ground.Enum.bool in
-          (state, [Ground.Attr.bool ~id])
-      | Uint8 -> (state, [Ground.Attr.uint8 ~id])
-      | Int8 -> (state, [Ground.Attr.int8 ~id])
-      | Uint16 -> (state, [Ground.Attr.uint16 ~id])
-      | Int16 -> (state, [Ground.Attr.int16 ~id])
-      | Int32 -> (state, [Ground.Attr.int32 ~id])
-      | Int64 -> (state, [Ground.Attr.int64 ~id])
-      | Int31 ->
-          let state = add_type state Ground.Type.int31 in
-          (state, [Ground.Attr.int31 ~id])
-      | RangedInt {minimum; maximum} ->
-          let size =
-            Data_encoding__Binary_size.range_to_size ~minimum ~maximum
-          in
-          if minimum <= 0 then
-            let valid =
-              Some
-                (ValidationSpec.ValidationRange
-                   {min = Ast.IntNum minimum; max = Ast.IntNum maximum})
-            in
-            let uvalid =
-              if minimum = 0 then
-                Some (ValidationSpec.ValidationMax (Ast.IntNum maximum))
-              else valid
-            in
-            match size with
-            | `Uint8 -> (state, [{(Ground.Attr.uint8 ~id) with valid = uvalid}])
-            | `Uint16 ->
-                (state, [{(Ground.Attr.uint16 ~id) with valid = uvalid}])
-            | `Uint30 ->
-                (state, [{(Ground.Attr.uint30 ~id) with valid = uvalid}])
-            | `Int8 -> (state, [{(Ground.Attr.int8 ~id) with valid}])
-            | `Int16 -> (state, [{(Ground.Attr.int16 ~id) with valid}])
-            | `Int31 ->
-                let state = add_type state Ground.Type.int31 in
-                (state, [{(Ground.Attr.int31 ~id) with valid}])
-          else
-            (* when [minimum > 0] (as is the case in this branch), data-encoding
-               shifts the value of the binary representation so that the minimum is at
-               [0]. E.g., the interval [200]–[300] is represented on the wire as the
-               interval [0]-[100] and the de/serialisation function is responsible for
-               shifting to/from the actual range. *)
-            let shift = minimum in
-            let shifted_id = id ^ "_shifted_to_zero" in
-            let shifted_encoding : a DataEncoding.t =
-              {
-                encoding =
-                  RangedInt
-                    {minimum = minimum - shift; maximum = maximum - shift};
-                json_encoding = None;
-              }
-            in
-            let state, represented_interval_attrs =
-              seq_field_of_data_encoding state shifted_encoding shifted_id
-            in
-            let instance_type : Kaitai.Types.DataType.int_type =
-              match size with
-              | `Uint8 -> Int1Type {signed = false}
-              | `Uint16 ->
-                  IntMultiType {signed = false; width = W2; endian = None}
-              | `Uint30 ->
-                  IntMultiType {signed = false; width = W4; endian = None}
-              | `Int8 -> Int1Type {signed = true}
-              | `Int16 ->
-                  IntMultiType {signed = true; width = W2; endian = None}
-              | `Int31 ->
-                  IntMultiType {signed = true; width = W4; endian = None}
-            in
-            let represented_interval_class =
-              Helpers.class_spec_of_attrs
-                ~id:shifted_id
-                ~instances:
-                  [
-                    ( "value",
-                      {
-                        doc =
-                          {
-                            summary =
-                              Some
-                                "The interval is represented shifted towards 0 \
-                                 for compactness, this instance corrects the \
-                                 shift.";
-                            refs = [];
-                          };
-                        descr =
-                          ValueInstanceSpec
-                            {
-                              id = "value";
-                              value =
-                                BinOp
-                                  {
-                                    left = Name shifted_id;
-                                    op = Add;
-                                    right = IntNum shift;
-                                  };
-                              ifExpr = None;
-                              dataTypeOpt =
-                                (* FIXME: This is disabled as it break roundtripping.
-                                   It seems it's not used in the ksy file *)
-                                (if true then None
-                                else Some (NumericType (Int_type instance_type)));
-                            };
-                      } );
-                  ]
-                represented_interval_attrs
-            in
-            let state =
-              add_type state (shifted_id, represented_interval_class)
-            in
-            ( state,
-              [
-                {
-                  (Helpers.default_attr_spec ~id) with
-                  dataType = Helpers.usertype represented_interval_class;
-                };
-              ] )
-      | Float -> (state, [Ground.Attr.float ~id])
-      | RangedFloat {minimum; maximum} ->
-          let valid =
-            Some
-              (ValidationSpec.ValidationRange
-                 {min = Ast.FloatNum minimum; max = Ast.FloatNum maximum})
-          in
-          (state, [{(Ground.Attr.float ~id) with valid}])
-      | Bytes (`Fixed n, _) -> (state, [Ground.Attr.bytes ~id (Fixed n)])
-      | Bytes (`Variable, _) -> (state, [Ground.Attr.bytes ~id Variable])
-      | Dynamic_size
-          {kind = `Uint8; encoding = {encoding = Bytes (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.bytes_dyn_uint8 in
-          (state, [Ground.Attr.bytes ~id Dynamic8])
-      | Dynamic_size
-          {kind = `Uint16; encoding = {encoding = Bytes (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.bytes_dyn_uint16 in
-          (state, [Ground.Attr.bytes ~id Dynamic16])
-      | Dynamic_size
-          {kind = `Uint30; encoding = {encoding = Bytes (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.uint30 in
-          let state = add_type state Ground.Type.bytes_dyn_uint30 in
-          (state, [Ground.Attr.bytes ~id Dynamic30])
-      | String (`Fixed n, _) -> (state, [Ground.Attr.string ~id (Fixed n)])
-      | String (`Variable, _) -> (state, [Ground.Attr.string ~id Variable])
-      | Dynamic_size
-          {kind = `Uint8; encoding = {encoding = String (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.bytes_dyn_uint8 in
-          (state, [Ground.Attr.bytes ~id Dynamic8])
-      | Dynamic_size
-          {kind = `Uint16; encoding = {encoding = String (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.bytes_dyn_uint16 in
-          (state, [Ground.Attr.bytes ~id Dynamic16])
-      | Dynamic_size
-          {kind = `Uint30; encoding = {encoding = String (`Variable, _); _}} ->
-          let state = add_type state Ground.Type.uint30 in
-          let state = add_type state Ground.Type.bytes_dyn_uint30 in
-          (state, [Ground.Attr.bytes ~id Dynamic30])
-      | Dynamic_size
-          {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
-          let size_id = size_id_of_id (id ^ "_dyn") in
-          let size_attr =
-            Helpers.merge_valid
-              (Ground.Attr.binary_length_kind ~id:size_id kind)
-              (ValidationMax (Ast.IntNum limit))
-          in
-          let state, attrs = seq_field_of_data_encoding state encoding id in
-          let state, attr =
-            redirect
-              state
-              attrs
-              (fun attr ->
-                {attr with size = Some (Ast.Name size_id)})
-              (id ^ "_dyn")
-          in
-          (state, [size_attr; attr])
-      | Padded (encoding, pad) ->
-          let state, attrs = seq_field_of_data_encoding state encoding id in
-          let pad_attr =
-            let id = id ^ "_padding" in
-            let doc =
-              {
-                Helpers.default_doc_spec with
-                summary = Some "This field is for padding, ignore";
-              }
-            in
-            {(Ground.Attr.bytes ~id (Fixed pad)) with doc}
-          in
-          (state, attrs @ [pad_attr])
-      | N ->
-          let state = add_type state Ground.Type.n_chunk in
-          let state = add_type state Ground.Type.n in
-          (state, [Ground.Attr.n ~id])
-      | Z ->
-          let state = add_type state Ground.Type.n_chunk in
-          let state = add_type state Ground.Type.z in
-          (state, [Ground.Attr.z ~id])
-      | Conv {encoding; _} -> seq_field_of_data_encoding state encoding id
-      | Tup _ ->
-          (* single-field tup *)
-          let tid_gen =
-            let already_called = ref false in
-            fun () ->
-              if !already_called then
-                raise
-                  (Invalid_argument "multiple fields inside a single-field tup") ;
-              already_called := true ;
-              id
-          in
-          seq_field_of_tups state tid_gen encoding
-      | Tups _ ->
-          (* multi-field tup *)
-          let tid_gen = Helpers.mk_tid_gen id in
-          seq_field_of_tups state tid_gen encoding
-      | List {length_limit; length_encoding; elts} ->
-          seq_field_of_collection state length_limit length_encoding elts id
-      | Array {length_limit; length_encoding; elts} ->
-          seq_field_of_collection state length_limit length_encoding elts id
-      | Obj f -> seq_field_of_field state f
-      | Objs {kind = _; left; right} ->
-          let state, left = seq_field_of_data_encoding state left id in
-          let state, right = seq_field_of_data_encoding state right id in
-          let seq = left @ right in
-          (state, seq)
-      | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
-          seq_field_of_union state tag_size cases id
-      | Dynamic_size {kind; encoding} ->
-          let dyn_id =
-            (* Avoid duplicated id when translating mempool *)
-            if List.mem_assoc (id ^ "_dyn") state.types then id ^ "_outer"
-            else id
-          in
-          let size_id = size_id_of_id (dyn_id ^ "_dyn") in
-          let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
-          let state, attrs =
-            seq_field_of_data_encoding state encoding id
-          in
-          let state, attr =
-            redirect
-              state
-              attrs
-              (fun attr -> {attr with size = Some (Ast.Name size_id)})
-              (id ^ "_dyn")
-          in
-          (state, [size_attr; attr])
-      | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
-          seq_field_of_data_encoding state encoding id
-      | Describe {encoding; id; description; title} ->
-          let id = escape_id id in
-          let summary = summary ~title ~description in
-          let state, attrs = seq_field_of_data_encoding state encoding id in
-          let state, attr =
-            redirect_if_many
-              state
-              attrs
-              (fun attr -> Helpers.merge_summaries attr summary)
-              id
-          in
-          (state, [attr])
-      | Check_size {limit = _; encoding} ->
-          (* TODO: Add a guard for check size.*)
-          seq_field_of_data_encoding state encoding id
-      | Delayed mk ->
-          (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
-          let e = mk () in
-          seq_field_of_data_encoding state e id
-      | Mu {name; title; description; fix; kind = _} -> (
-          let summary = summary ~title ~description in
+      match Hashtbl.find_opt state.seen (AnyEncoding whole_encoding) with
+      | Some name ->
           let name = escape_id name in
-          match MuSet.mem name state.mus with
-          | true ->
-              (* This node was already visited, we just put a pointer. *)
-              ( state,
-                [
+          let state = {state with imports = StringSet.add name state.imports} in
+          ( state,
+            [
+              {
+                (Helpers.default_attr_spec ~id:(escape_id id)) with
+                dataType = DataType.(ComplexDataType (UserType name));
+              };
+            ] )
+      | None -> (
+          let id = escape_id id in
+          match encoding with
+          | Null -> (state, [])
+          | Empty -> (state, [])
+          | Ignore -> (state, [])
+          | Constant _ -> (state, [])
+          | Bool ->
+              let state = add_enum state Ground.Enum.bool in
+              (state, [Ground.Attr.bool ~id])
+          | Uint8 -> (state, [Ground.Attr.uint8 ~id])
+          | Int8 -> (state, [Ground.Attr.int8 ~id])
+          | Uint16 -> (state, [Ground.Attr.uint16 ~id])
+          | Int16 -> (state, [Ground.Attr.int16 ~id])
+          | Int32 -> (state, [Ground.Attr.int32 ~id])
+          | Int64 -> (state, [Ground.Attr.int64 ~id])
+          | Int31 ->
+              let state = add_type state Ground.Type.int31 in
+              (state, [Ground.Attr.int31 ~id])
+          | RangedInt {minimum; maximum} ->
+              let size =
+                Data_encoding__Binary_size.range_to_size ~minimum ~maximum
+              in
+              if minimum <= 0 then
+                let valid =
+                  Some
+                    (ValidationSpec.ValidationRange
+                       {min = Ast.IntNum minimum; max = Ast.IntNum maximum})
+                in
+                let uvalid =
+                  if minimum = 0 then
+                    Some (ValidationSpec.ValidationMax (Ast.IntNum maximum))
+                  else valid
+                in
+                match size with
+                | `Uint8 ->
+                    (state, [{(Ground.Attr.uint8 ~id) with valid = uvalid}])
+                | `Uint16 ->
+                    (state, [{(Ground.Attr.uint16 ~id) with valid = uvalid}])
+                | `Uint30 ->
+                    (state, [{(Ground.Attr.uint30 ~id) with valid = uvalid}])
+                | `Int8 -> (state, [{(Ground.Attr.int8 ~id) with valid}])
+                | `Int16 -> (state, [{(Ground.Attr.int16 ~id) with valid}])
+                | `Int31 ->
+                    let state = add_type state Ground.Type.int31 in
+                    (state, [{(Ground.Attr.int31 ~id) with valid}])
+              else
+                (* when [minimum > 0] (as is the case in this branch), data-encoding
+                   shifts the value of the binary representation so that the minimum is at
+                   [0]. E.g., the interval [200]–[300] is represented on the wire as the
+                   interval [0]-[100] and the de/serialisation function is responsible for
+                   shifting to/from the actual range. *)
+                let shift = minimum in
+                let shifted_id = id ^ "_shifted_to_zero" in
+                let shifted_encoding : a DataEncoding.t =
                   {
-                    (Helpers.default_attr_spec ~id) with
-                    dataType =
-                      (* We don't have the full type, we just put a dummy with the correct
-                         [id] which is all that gets printed *)
-                      ComplexDataType (UserType name);
-                  };
-                ] )
-          | false ->
-              let state = {state with mus = MuSet.add name state.mus} in
-              let fixed = fix whole_encoding in
-              let state, attrs = seq_field_of_data_encoding state fixed name in
+                    encoding =
+                      RangedInt
+                        {minimum = minimum - shift; maximum = maximum - shift};
+                    json_encoding = None;
+                  }
+                in
+                let state, represented_interval_attrs =
+                  seq_field_of_data_encoding state shifted_encoding shifted_id
+                in
+                let instance_type : Kaitai.Types.DataType.int_type =
+                  match size with
+                  | `Uint8 -> Int1Type {signed = false}
+                  | `Uint16 ->
+                      IntMultiType {signed = false; width = W2; endian = None}
+                  | `Uint30 ->
+                      IntMultiType {signed = false; width = W4; endian = None}
+                  | `Int8 -> Int1Type {signed = true}
+                  | `Int16 ->
+                      IntMultiType {signed = true; width = W2; endian = None}
+                  | `Int31 ->
+                      IntMultiType {signed = true; width = W4; endian = None}
+                in
+                let represented_interval_class =
+                  Helpers.class_spec_of_attrs
+                    ~id:shifted_id
+                    ~instances:
+                      [
+                        ( "value",
+                          {
+                            doc =
+                              {
+                                summary =
+                                  Some
+                                    "The interval is represented shifted \
+                                     towards 0 for compactness, this instance \
+                                     corrects the shift.";
+                                refs = [];
+                              };
+                            descr =
+                              ValueInstanceSpec
+                                {
+                                  id = "value";
+                                  value =
+                                    BinOp
+                                      {
+                                        left = Name shifted_id;
+                                        op = Add;
+                                        right = IntNum shift;
+                                      };
+                                  ifExpr = None;
+                                  dataTypeOpt =
+                                    (* FIXME: This is disabled as it break roundtripping.
+                                       It seems it's not used in the ksy file *)
+                                    (if true then None
+                                    else
+                                      Some
+                                        (NumericType (Int_type instance_type)));
+                                };
+                          } );
+                      ]
+                    represented_interval_attrs
+                in
+                let state =
+                  add_type state (shifted_id, represented_interval_class)
+                in
+                ( state,
+                  [
+                    {
+                      (Helpers.default_attr_spec ~id) with
+                      dataType = Helpers.usertype represented_interval_class;
+                    };
+                  ] )
+          | Float -> (state, [Ground.Attr.float ~id])
+          | RangedFloat {minimum; maximum} ->
+              let valid =
+                Some
+                  (ValidationSpec.ValidationRange
+                     {min = Ast.FloatNum minimum; max = Ast.FloatNum maximum})
+              in
+              (state, [{(Ground.Attr.float ~id) with valid}])
+          | Bytes (`Fixed n, _) -> (state, [Ground.Attr.bytes ~id (Fixed n)])
+          | Bytes (`Variable, _) -> (state, [Ground.Attr.bytes ~id Variable])
+          | Dynamic_size
+              {kind = `Uint8; encoding = {encoding = Bytes (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.bytes_dyn_uint8 in
+              (state, [Ground.Attr.bytes ~id Dynamic8])
+          | Dynamic_size
+              {kind = `Uint16; encoding = {encoding = Bytes (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.bytes_dyn_uint16 in
+              (state, [Ground.Attr.bytes ~id Dynamic16])
+          | Dynamic_size
+              {kind = `Uint30; encoding = {encoding = Bytes (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.uint30 in
+              let state = add_type state Ground.Type.bytes_dyn_uint30 in
+              (state, [Ground.Attr.bytes ~id Dynamic30])
+          | String (`Fixed n, _) -> (state, [Ground.Attr.string ~id (Fixed n)])
+          | String (`Variable, _) -> (state, [Ground.Attr.string ~id Variable])
+          | Dynamic_size
+              {kind = `Uint8; encoding = {encoding = String (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.bytes_dyn_uint8 in
+              (state, [Ground.Attr.bytes ~id Dynamic8])
+          | Dynamic_size
+              {kind = `Uint16; encoding = {encoding = String (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.bytes_dyn_uint16 in
+              (state, [Ground.Attr.bytes ~id Dynamic16])
+          | Dynamic_size
+              {kind = `Uint30; encoding = {encoding = String (`Variable, _); _}}
+            ->
+              let state = add_type state Ground.Type.uint30 in
+              let state = add_type state Ground.Type.bytes_dyn_uint30 in
+              (state, [Ground.Attr.bytes ~id Dynamic30])
+          | Dynamic_size
+              {kind; encoding = {encoding = Check_size {limit; encoding}; _}} ->
+              let size_id = size_id_of_id id in
+              let size_attr =
+                Helpers.merge_valid
+                  (Ground.Attr.binary_length_kind ~id:size_id kind)
+                  (ValidationMax (Ast.IntNum limit))
+              in
+              let state, attrs = seq_field_of_data_encoding state encoding id in
               let state, attr =
                 redirect
                   state
                   attrs
-                  (fun attr -> Helpers.merge_summaries attr summary)
-                  name
+                  (fun attr -> {attr with size = Some (Ast.Name size_id)})
+                  id
               in
-              (state, [attr]))
-      | String_enum (h, a) ->
-          let names =
-            let t = Hashtbl.create 17 in
-            Hashtbl.iter
-              (fun _ (name, _i) ->
-                let name' = escape_id name in
-                if String.equal name' name then Hashtbl.add t name' ())
-              h ;
-            t
-          in
-          let map =
-            Hashtbl.to_seq_values h
-            |> Seq.map (fun (m, i) ->
-                   let name = escape_id m in
-                   let name =
-                     if String.equal name m || not (Hashtbl.mem names name) then (
-                       Hashtbl.add names name () ;
-                       name)
-                     else
-                       let rec find name =
-                         let name' = name ^ "_" in
-                         if Hashtbl.mem names name' then find name' else name'
+              (state, [size_attr; attr])
+          | Padded (encoding, pad) ->
+              let state, attrs = seq_field_of_data_encoding state encoding id in
+              let pad_attr =
+                let id = id ^ "_padding" in
+                let doc =
+                  {
+                    Helpers.default_doc_spec with
+                    summary = Some "This field is for padding, ignore";
+                  }
+                in
+                {(Ground.Attr.bytes ~id (Fixed pad)) with doc}
+              in
+              (state, attrs @ [pad_attr])
+          | N ->
+              let state = add_type state Ground.Type.n_chunk in
+              let state = add_type state Ground.Type.n in
+              (state, [Ground.Attr.n ~id])
+          | Z ->
+              let state = add_type state Ground.Type.n_chunk in
+              let state = add_type state Ground.Type.z in
+              (state, [Ground.Attr.z ~id])
+          | Conv {encoding; _} -> seq_field_of_data_encoding state encoding id
+          | Tup _ ->
+              (* single-field tup *)
+              let tid_gen =
+                let already_called = ref false in
+                fun () ->
+                  if !already_called then
+                    raise
+                      (Invalid_argument
+                         "multiple fields inside a single-field tup") ;
+                  already_called := true ;
+                  id
+              in
+              seq_field_of_tups state tid_gen encoding
+          | Tups _ ->
+              (* multi-field tup *)
+              let tid_gen = Helpers.mk_tid_gen id in
+              seq_field_of_tups state tid_gen encoding
+          | List {length_limit; length_encoding; elts} ->
+              seq_field_of_collection state length_limit length_encoding elts id
+          | Array {length_limit; length_encoding; elts} ->
+              seq_field_of_collection state length_limit length_encoding elts id
+          | Obj f -> seq_field_of_field state id f
+          | Objs {kind = _; left; right} ->
+              let state, left = seq_field_of_data_encoding state left id in
+              let state, right = seq_field_of_data_encoding state right id in
+              let seq = left @ right in
+              (state, seq)
+          | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases}
+            ->
+              seq_field_of_union state tag_size cases id
+          | Dynamic_size {kind; encoding} ->
+              let size_id = size_id_of_id id in
+              let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+
+              let state, attrs = seq_field_of_data_encoding state encoding id in
+              let state, attr =
+                redirect
+                  state
+                  attrs
+                  (fun attr -> {attr with size = Some (Ast.Name size_id)})
+                  id
+              in
+              (state, [size_attr; attr])
+          | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
+              seq_field_of_data_encoding state encoding id
+          | Describe {encoding; id; description; title} ->
+              let id = escape_id id in
+              let summary = summary ~title ~description in
+              let state, attrs = seq_field_of_data_encoding state encoding id in
+              let state, attr =
+                redirect_if_many
+                  state
+                  attrs
+                  (fun attr -> Helpers.merge_summaries attr summary)
+                  id
+              in
+              (state, [attr])
+          | Check_size {limit = _; encoding} ->
+              (* TODO: Add a guard for check size.*)
+              seq_field_of_data_encoding state encoding id
+          | Delayed mk ->
+              (* TODO: once data-encoding is monorepoed: remove delayed and have "cached" *)
+              let e = mk () in
+              seq_field_of_data_encoding state e id
+          | Mu {name; title; description; fix; kind = _} -> (
+              let summary = summary ~title ~description in
+              let name = escape_id name in
+              match MuSet.mem name state.mus with
+              | true ->
+                  (* This node was already visited, we just put a pointer. *)
+                  ( state,
+                    [
+                      {
+                        (Helpers.default_attr_spec ~id) with
+                        dataType =
+                          (* We don't have the full type, we just put a dummy with the correct
+                             [id] which is all that gets printed *)
+                          ComplexDataType (UserType name);
+                      };
+                    ] )
+              | false ->
+                  let state = {state with mus = MuSet.add name state.mus} in
+                  let fixed = fix whole_encoding in
+                  let state, attrs =
+                    seq_field_of_data_encoding state fixed name
+                  in
+                  let state, attr =
+                    redirect
+                      state
+                      attrs
+                      (fun attr -> Helpers.merge_summaries attr summary)
+                      name
+                  in
+                  (state, [attr]))
+          | String_enum (h, a) ->
+              let names =
+                let t = Hashtbl.create 17 in
+                Hashtbl.iter
+                  (fun _ (name, _i) ->
+                    let name' = escape_id name in
+                    if String.equal name' name then Hashtbl.add t name' ())
+                  h ;
+                t
+              in
+              let map =
+                Hashtbl.to_seq_values h
+                |> Seq.map (fun (m, i) ->
+                       let name = escape_id m in
+                       let name =
+                         if String.equal name m || not (Hashtbl.mem names name)
+                         then (
+                           Hashtbl.add names name () ;
+                           name)
+                         else
+                           let rec find name =
+                             let name' = name ^ "_" in
+                             if Hashtbl.mem names name' then find name'
+                             else name'
+                           in
+                           let name' = find name in
+                           Hashtbl.add names name' () ;
+                           name'
                        in
-                       let name' = find name in
-                       Hashtbl.add names name' () ;
-                       name'
-                   in
-                   ( i,
-                     EnumValueSpec.
-                       {
-                         name;
-                         doc =
-                           DocSpec.
-                             {
-                               refs = [];
-                               summary =
-                                 (if String.equal m name then None else Some m);
-                             };
-                       } ))
-            |> List.of_seq
-            |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
-          in
-          let enumspec = EnumSpec.{map} in
-          let state = add_enum state (id, enumspec) in
-          let dataType =
-            DataType.NumericType
-              (Int_type
-                 (match Data_encoding__Binary_size.enum_size a with
-                 | `Uint8 -> Int1Type {signed = false}
-                 | `Uint16 ->
-                     IntMultiType {signed = false; width = W2; endian = None}
-                 | `Uint30 ->
-                     IntMultiType {signed = false; width = W4; endian = None}))
-          in
-          let attr =
-            {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
-          in
-          (state, [attr]))
+                       ( i,
+                         EnumValueSpec.
+                           {
+                             name;
+                             doc =
+                               DocSpec.
+                                 {
+                                   refs = [];
+                                   summary =
+                                     (if String.equal m name then None
+                                     else Some m);
+                                 };
+                           } ))
+                |> List.of_seq
+                |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
+              in
+              let enumspec = EnumSpec.{map} in
+              let state = add_enum state (id, enumspec) in
+              let dataType =
+                DataType.NumericType
+                  (Int_type
+                     (match Data_encoding__Binary_size.enum_size a with
+                     | `Uint8 -> Int1Type {signed = false}
+                     | `Uint16 ->
+                         IntMultiType
+                           {signed = false; width = W2; endian = None}
+                     | `Uint30 ->
+                         IntMultiType
+                           {signed = false; width = W4; endian = None}))
+              in
+              let attr =
+                {(Helpers.default_attr_spec ~id) with dataType; enum = Some id}
+              in
+              (state, [attr])))
 
 and seq_field_of_tups :
     type a.
@@ -528,8 +574,8 @@ and seq_field_of_tups :
   | _ -> failwith "Non-tup(s) inside a tups"
 
 and seq_field_of_field :
-    type a. state -> a DataEncoding.field -> state * AttrSpec.t list =
- fun state f ->
+    type a. state -> string -> a DataEncoding.field -> state * AttrSpec.t list =
+ fun state _id_parent f ->
   match f with
   | Req {name; encoding; title; description} ->
       let id = escape_id name in
@@ -648,7 +694,7 @@ and seq_field_of_union :
             ( state,
               {
                 attr with
-                id;
+                id = case_id;
                 cond =
                   {
                     Helpers.cond_no_cond with
@@ -696,7 +742,7 @@ and seq_field_of_union :
                                });
                       };
                   })
-                id
+                case_id
             in
             (state, attr :: payload_attrs))
       (state, [])
@@ -803,13 +849,31 @@ let from_data_encoding :
   let state =
     {
       enums = [];
-      types = [];
+      types = Hashtbl.create 17;
+      types_rev = Hashtbl.create 17;
       mus = MuSet.empty;
       imports = StringSet.empty;
       extern;
+      seen = Hashtbl.create 17;
     }
   in
-  let types state = state.types |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2) in
+  let types state =
+    Hashtbl.to_seq state.types_rev
+    |> Seq.map (fun (name, (typ : ClassSpec.t)) ->
+           (if debug then
+            match Hashtbl.find_opt state.types typ with
+            | None -> ()
+            | Some (name, set) ->
+                if StringSet.cardinal set > 0 then
+                  Printf.eprintf
+                    "Type %s shared with: %s\n"
+                    name
+                    (String.concat ", " (StringSet.elements set))) ;
+           let typ = {typ with meta = {typ.meta with id = Some name}} in
+           (name, typ))
+    |> List.of_seq
+    |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
+  in
   match encoding.encoding with
   | Describe {encoding; description; id = descrid; _} ->
       let description = add_original_id_to_description ?description id in

@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 009-PsFLoren.block_header.contents'
 types:
-  id_009__psfloren__block_header__alpha__unsigned_contents_:
+  id_009__psfloren__block_header__alpha__unsigned_contents:
     seq:
     - id: priority
       type: u2
@@ -20,5 +20,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_009__psfloren__block_header__alpha__unsigned_contents_
-  type: id_009__psfloren__block_header__alpha__unsigned_contents_
+- id: id_009__psfloren__block_header__alpha__unsigned_contents
+  type: id_009__psfloren__block_header__alpha__unsigned_contents

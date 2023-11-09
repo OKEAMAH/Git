@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 010-PtGRANAD.block_header.contents'
 types:
-  id_010__ptgranad__block_header__alpha__unsigned_contents_:
+  id_010__ptgranad__block_header__alpha__unsigned_contents:
     seq:
     - id: priority
       type: u2
@@ -23,5 +23,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_010__ptgranad__block_header__alpha__unsigned_contents_
-  type: id_010__ptgranad__block_header__alpha__unsigned_contents_
+- id: id_010__ptgranad__block_header__alpha__unsigned_contents
+  type: id_010__ptgranad__block_header__alpha__unsigned_contents

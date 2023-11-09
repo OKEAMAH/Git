@@ -10,13 +10,13 @@ doc: ! >-
   the moment), forking (the test chain is being setup), running (the test chain is
   running).
 types:
-  forking__test_chain_status:
+  forking:
     seq:
     - id: protocol
       size: 32
     - id: expiration
       type: timestamp__protocol
-  running__test_chain_status:
+  running:
     seq:
     - id: chain_id
       size: 4
@@ -35,9 +35,9 @@ seq:
 - id: test_chain_status_tag
   type: u1
   enum: test_chain_status_tag
-- id: forking__test_chain_status
-  type: forking__test_chain_status
+- id: forking
+  type: forking
   if: (test_chain_status_tag == test_chain_status_tag::forking)
-- id: running__test_chain_status
-  type: running__test_chain_status
+- id: running
+  type: running
   if: (test_chain_status_tag == test_chain_status_tag::running)

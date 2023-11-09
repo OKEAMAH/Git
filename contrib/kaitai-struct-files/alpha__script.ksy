@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.script'
 types:
-  alpha__scripted__contracts_:
+  alpha__scripted__contracts:
     seq:
     - id: code
       type: bytes_dyn_uint30
@@ -24,5 +24,5 @@ types:
       valid:
         max: 1073741823
 seq:
-- id: alpha__scripted__contracts_
-  type: alpha__scripted__contracts_
+- id: alpha__scripted__contracts
+  type: alpha__scripted__contracts

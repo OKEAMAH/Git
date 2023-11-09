@@ -170,8 +170,7 @@ let%expect_test "test int31 translation" =
             max: 1073741823
     seq:
     - id: ground_int31
-      type: int31
-  |}]
+      type: int31 |}]
 
 let%expect_test "test float translation" =
   let s =
@@ -340,8 +339,7 @@ let%expect_test "test big numbers translation" =
           type: b7be
     seq:
     - id: ground_n
-      type: n
-  |}]
+      type: n |}]
 
 let%expect_test "test big numbers translation" =
   let s =
@@ -357,6 +355,12 @@ let%expect_test "test big numbers translation" =
       endian: be
     doc: ! 'Encoding id: ground_z'
     types:
+      n_chunk:
+        seq:
+        - id: has_more
+          type: b1be
+        - id: payload
+          type: b7be
       z:
         seq:
         - id: has_tail
@@ -370,13 +374,6 @@ let%expect_test "test big numbers translation" =
           repeat: until
           repeat-until: not (_.has_more).as<bool>
           if: has_tail.as<bool>
-      n_chunk:
-        seq:
-        - id: has_more
-          type: b1be
-        - id: payload
-          type: b7be
     seq:
     - id: ground_z
-      type: z
-  |}]
+      type: z |}]

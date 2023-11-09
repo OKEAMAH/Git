@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 011-PtHangz2.delegate.frozen_balance_by_cycles'
 types:
-  id_011__pthangz2__delegate__frozen_balance_by_cycles_dyn:
+  id_011__pthangz2__delegate__frozen_balance_by_cycles:
     seq:
     - id: id_011__pthangz2__delegate__frozen_balance_by_cycles_entries
       type: id_011__pthangz2__delegate__frozen_balance_by_cycles_entries
@@ -31,10 +31,10 @@ types:
     - id: payload
       type: b7be
 seq:
-- id: len_id_011__pthangz2__delegate__frozen_balance_by_cycles_dyn
+- id: len_id_011__pthangz2__delegate__frozen_balance_by_cycles
   type: u4
   valid:
     max: 1073741823
-- id: id_011__pthangz2__delegate__frozen_balance_by_cycles_dyn
-  type: id_011__pthangz2__delegate__frozen_balance_by_cycles_dyn
-  size: len_id_011__pthangz2__delegate__frozen_balance_by_cycles_dyn
+- id: id_011__pthangz2__delegate__frozen_balance_by_cycles
+  type: id_011__pthangz2__delegate__frozen_balance_by_cycles
+  size: len_id_011__pthangz2__delegate__frozen_balance_by_cycles

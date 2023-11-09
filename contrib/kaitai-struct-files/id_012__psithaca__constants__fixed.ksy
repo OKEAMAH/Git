@@ -5,18 +5,18 @@ doc: ! 'Encoding id: 012-Psithaca.constants.fixed'
 types:
   cache_layout:
     seq:
-    - id: len_cache_layout_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: cache_layout_dyn
-      type: cache_layout_dyn
-      size: len_cache_layout_dyn
-  cache_layout_dyn:
-    seq:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
+  cache_layout_:
+    seq:
+    - id: len_cache_layout
+      type: u4
+      valid:
+        max: 1073741823
+    - id: cache_layout
+      type: cache_layout
+      size: len_cache_layout
   cache_layout_entries:
     seq:
     - id: cache_layout_elt
@@ -46,6 +46,6 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout
+  type: cache_layout_
 - id: michelson_maximum_type_size
   type: u2

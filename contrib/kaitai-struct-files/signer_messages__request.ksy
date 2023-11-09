@@ -11,27 +11,27 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
-  public_key_hash_:
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-    - id: public_key_hash
+    - id: bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
-  signer_messages__request:
+  sign:
     seq:
     - id: pkh
-      type: public_key_hash_
+      type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: data
       type: bytes_dyn_uint30
@@ -67,20 +67,20 @@ seq:
 - id: signer_messages__request_tag
   type: u1
   enum: signer_messages__request_tag
-- id: signer_messages__request
-  type: signer_messages__request
+- id: sign
+  type: sign
   if: (signer_messages__request_tag == signer_messages__request_tag::sign)
-- id: signer_messages__request
-  type: public_key_hash_
+- id: public_key
+  type: public_key_hash
   if: (signer_messages__request_tag == signer_messages__request_tag::public_key)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash
-- id: signer_messages__request
-  type: signer_messages__request
+- id: deterministic_nonce
+  type: sign
   if: (signer_messages__request_tag == signer_messages__request_tag::deterministic_nonce)
-- id: signer_messages__request
-  type: signer_messages__request
+- id: deterministic_nonce_hash
+  type: sign
   if: (signer_messages__request_tag == signer_messages__request_tag::deterministic_nonce_hash)
-- id: signer_messages__request
-  type: public_key_hash_
+- id: supports_deterministic_nonces
+  type: public_key_hash
   if: (signer_messages__request_tag == signer_messages__request_tag::supports_deterministic_nonces)
   doc: A Ed25519, Secp256k1, P256, or BLS public key hash

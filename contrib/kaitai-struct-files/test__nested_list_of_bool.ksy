@@ -5,12 +5,12 @@ doc: ! 'Encoding id: test.nested_list_of_bool
 
   Description: Nested list of boolean values'
 types:
-  test__nested_list_of_bool_dyn:
+  test__nested_list_of_bool:
     seq:
     - id: test__nested_list_of_bool_entries
       type: test__nested_list_of_bool_entries
       repeat: eos
-  test__nested_list_of_bool_elt_dyn:
+  test__nested_list_of_bool_elt:
     seq:
     - id: test__nested_list_of_bool_elt_entries
       type: test__nested_list_of_bool_elt_entries
@@ -22,22 +22,22 @@ types:
       enum: bool
   test__nested_list_of_bool_entries:
     seq:
-    - id: len_test__nested_list_of_bool_elt_dyn
+    - id: len_test__nested_list_of_bool_elt
       type: u4
       valid:
         max: 1073741823
-    - id: test__nested_list_of_bool_elt_dyn
-      type: test__nested_list_of_bool_elt_dyn
-      size: len_test__nested_list_of_bool_elt_dyn
+    - id: test__nested_list_of_bool_elt
+      type: test__nested_list_of_bool_elt
+      size: len_test__nested_list_of_bool_elt
 enums:
   bool:
     0: false
     255: true
 seq:
-- id: len_test__nested_list_of_bool_dyn
+- id: len_test__nested_list_of_bool
   type: u4
   valid:
     max: 1073741823
-- id: test__nested_list_of_bool_dyn
-  type: test__nested_list_of_bool_dyn
-  size: len_test__nested_list_of_bool_dyn
+- id: test__nested_list_of_bool
+  type: test__nested_list_of_bool
+  size: len_test__nested_list_of_bool

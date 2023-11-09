@@ -11,7 +11,7 @@ doc: ! >-
   on the p2p connection pool. Typically, it includes connection errors, peer swaps,
   etc.
 types:
-  accepting_request__p2p_connection__pool_event:
+  accepting_request:
     seq:
     - id: point
       type: p2p_point__id
@@ -19,36 +19,28 @@ types:
       type: p2p_connection__id
     - id: peer_id
       size: 16
-  connection_established__p2p_connection__pool_event:
+  connection_established:
     seq:
     - id: id_point
       type: p2p_connection__id
     - id: peer_id
       size: 16
-  rejecting_request__p2p_connection__pool_event:
-    seq:
-    - id: point
-      type: p2p_point__id
-    - id: id_point
-      type: p2p_connection__id
-    - id: peer_id
-      size: 16
-  request_rejected__identity_:
+  identity:
     seq:
     - id: identity_field0
       type: p2p_connection__id
     - id: identity_field1
       size: 16
       doc: crypto_box__public_key_hash
-  request_rejected__p2p_connection__pool_event:
+  request_rejected:
     seq:
     - id: point
       type: p2p_point__id
     - id: identity_tag
       type: u1
       enum: bool
-    - id: request_rejected__identity_
-      type: request_rejected__identity_
+    - id: identity
+      type: identity
       if: (identity_tag == bool::true)
 enums:
   bool:
@@ -85,69 +77,69 @@ seq:
 - id: p2p_connection__pool_event_tag
   type: u1
   enum: p2p_connection__pool_event_tag
-- id: new_point__p2p_connection__pool_event
+- id: new_point
   type: p2p_point__id
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::new_point)
-- id: new_peer__p2p_connection__pool_event
+- id: new_peer
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::new_peer)
-- id: incoming_connection__p2p_connection__pool_event
+- id: incoming_connection
   type: p2p_point__id
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::incoming_connection)
-- id: outgoing_connection__p2p_connection__pool_event
+- id: outgoing_connection
   type: p2p_point__id
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::outgoing_connection)
-- id: authentication_failed__p2p_connection__pool_event
+- id: authentication_failed
   type: p2p_point__id
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::authentication_failed)
-- id: accepting_request__p2p_connection__pool_event
-  type: accepting_request__p2p_connection__pool_event
+- id: accepting_request
+  type: accepting_request
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::accepting_request)
-- id: rejecting_request__p2p_connection__pool_event
-  type: rejecting_request__p2p_connection__pool_event
+- id: rejecting_request
+  type: accepting_request
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::rejecting_request)
-- id: request_rejected__p2p_connection__pool_event
-  type: request_rejected__p2p_connection__pool_event
+- id: request_rejected
+  type: request_rejected
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::request_rejected)
-- id: connection_established__p2p_connection__pool_event
-  type: connection_established__p2p_connection__pool_event
+- id: connection_established
+  type: connection_established
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::connection_established)
-- id: disconnection__p2p_connection__pool_event
+- id: disconnection
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::disconnection)
-- id: external_disconnection__p2p_connection__pool_event
+- id: external_disconnection
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::external_disconnection)
-- id: swap_request_received__p2p_connection__pool_event
+- id: swap_request_received
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_request_received)
-- id: swap_ack_received__p2p_connection__pool_event
+- id: swap_ack_received
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_ack_received)
-- id: swap_request_sent__p2p_connection__pool_event
+- id: swap_request_sent
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_request_sent)
-- id: swap_ack_sent__p2p_connection__pool_event
+- id: swap_ack_sent
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_ack_sent)
-- id: swap_request_ignored__p2p_connection__pool_event
+- id: swap_request_ignored
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_request_ignored)
-- id: swap_success__p2p_connection__pool_event
+- id: swap_success
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_success)
-- id: swap_failure__p2p_connection__pool_event
+- id: swap_failure
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::swap_failure)
-- id: bootstrap_sent__p2p_connection__pool_event
+- id: bootstrap_sent
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::bootstrap_sent)
-- id: bootstrap_received__p2p_connection__pool_event
+- id: bootstrap_received
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::bootstrap_received)
-- id: advertise_sent__p2p_connection__pool_event
+- id: advertise_sent
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::advertise_sent)
-- id: advertise_received__p2p_connection__pool_event
+- id: advertise_received
   size: 16
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::advertise_received)

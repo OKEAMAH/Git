@@ -5,7 +5,7 @@ meta:
   - block_header__shell
 doc: ! 'Encoding id: 013-PtJakart.block_header.unsigned'
 types:
-  id_013__ptjakart__block_header__alpha__unsigned_contents_:
+  id_013__ptjakart__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -28,5 +28,5 @@ enums:
 seq:
 - id: id_013__ptjakart__block_header__unsigned
   type: block_header__shell
-- id: id_013__ptjakart__block_header__alpha__unsigned_contents_
-  type: id_013__ptjakart__block_header__alpha__unsigned_contents_
+- id: id_013__ptjakart__block_header__alpha__unsigned_contents
+  type: id_013__ptjakart__block_header__alpha__unsigned_contents

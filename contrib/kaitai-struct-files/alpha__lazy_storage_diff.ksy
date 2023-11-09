@@ -7,7 +7,21 @@ meta:
   - sapling__transaction__nullifier
 doc: ! 'Encoding id: alpha.lazy_storage_diff'
 types:
-  alpha__lazy_storage_diff_dyn:
+  alloc:
+    seq:
+    - id: updates
+      type: updates_
+    - id: key_type
+      type: micheline__alpha__michelson_v1__expression
+    - id: value_type
+      type: micheline__alpha__michelson_v1__expression
+  alloc_:
+    seq:
+    - id: updates
+      type: updates__
+    - id: memo_size
+      type: u2
+  alpha__lazy_storage_diff:
     seq:
     - id: alpha__lazy_storage_diff_entries
       type: alpha__lazy_storage_diff_entries
@@ -17,253 +31,37 @@ types:
     - id: alpha__lazy_storage_diff_elt_tag
       type: u1
       enum: alpha__lazy_storage_diff_elt_tag
-    - id: big_map__alpha__lazy_storage_diff_elt
-      type: big_map__alpha__lazy_storage_diff_elt
+    - id: big_map
+      type: big_map
       if: (alpha__lazy_storage_diff_elt_tag == alpha__lazy_storage_diff_elt_tag::big_map)
-    - id: sapling_state__alpha__lazy_storage_diff_elt
-      type: sapling_state__alpha__lazy_storage_diff_elt
+    - id: sapling_state
+      type: sapling_state
       if: (alpha__lazy_storage_diff_elt_tag == alpha__lazy_storage_diff_elt_tag::sapling_state)
-  big_map__alloc__diff:
+  args:
     seq:
-    - id: big_map__alloc__updates
-      type: big_map__alloc__updates
-    - id: key_type
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: value_type
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-  big_map__alloc__updates:
+    - id: args_entries
+      type: args_entries
+      repeat: eos
+  args_:
     seq:
-    - id: len_big_map__alloc__updates_dyn
+    - id: len_args
       type: u4
       valid:
         max: 1073741823
-    - id: big_map__alloc__updates_dyn
-      type: big_map__alloc__updates_dyn
-      size: len_big_map__alloc__updates_dyn
-  big_map__alloc__updates_dyn:
+    - id: args
+      type: args
+      size: len_args
+  args_entries:
     seq:
-    - id: big_map__alloc__updates_entries
-      type: big_map__alloc__updates_entries
-      repeat: eos
-  big_map__alloc__updates_entries:
-    seq:
-    - id: key_hash
-      size: 32
-    - id: key
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: value_tag
-      type: u1
-      enum: bool
-    - id: value
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-      if: (value_tag == bool::true)
-  big_map__alpha__lazy_storage_diff_elt:
+    - id: args_elt
+      type: micheline__alpha__michelson_v1__expression
+  big_map:
     seq:
     - id: id
       type: z
       doc: ! 'Big map identifier: A big map identifier'
-    - id: big_map__diff
-      type: big_map__diff
-  big_map__copy__diff:
-    seq:
-    - id: source
-      type: z
-      doc: ! 'Big map identifier: A big map identifier'
-    - id: big_map__copy__updates
-      type: big_map__copy__updates
-  big_map__copy__updates:
-    seq:
-    - id: len_big_map__copy__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: big_map__copy__updates_dyn
-      type: big_map__copy__updates_dyn
-      size: len_big_map__copy__updates_dyn
-  big_map__copy__updates_dyn:
-    seq:
-    - id: big_map__copy__updates_entries
-      type: big_map__copy__updates_entries
-      repeat: eos
-  big_map__copy__updates_entries:
-    seq:
-    - id: key_hash
-      size: 32
-    - id: key
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: value_tag
-      type: u1
-      enum: bool
-    - id: value
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-      if: (value_tag == bool::true)
-  big_map__diff:
-    seq:
-    - id: diff_tag
-      type: u1
-      enum: diff_tag
-    - id: big_map__update__diff
-      type: big_map__update__updates
-      if: (diff_tag == diff_tag::update)
-    - id: big_map__copy__diff
-      type: big_map__copy__diff
-      if: (diff_tag == diff_tag::copy)
-    - id: big_map__alloc__diff
-      type: big_map__alloc__diff
-      if: (diff_tag == diff_tag::alloc)
-  big_map__update__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: micheline__alpha__michelson_v1__expression_tag
-      type: u1
-      enum: micheline__alpha__michelson_v1__expression_tag
-    - id: big_map__update__int__micheline__alpha__michelson_v1__expression
-      type: z
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::int)
-    - id: big_map__update__string__micheline__alpha__michelson_v1__expression
-      type: bytes_dyn_uint30
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::string)
-    - id: big_map__update__sequence__micheline__alpha__michelson_v1__expression
-      type: big_map__update__sequence__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
-    - id: big_map__update__prim__no_args__no_annots__micheline__alpha__michelson_v1__expression
-      type: u1
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: big_map__update__prim__no_args__no_annots__alpha__michelson__v1__primitives
-    - id: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
-    - id: big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__no_annots)
-    - id: big_map__update__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__some_annots)
-    - id: big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__no_annots)
-    - id: big_map__update__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__some_annots)
-    - id: big_map__update__prim__generic__micheline__alpha__michelson_v1__expression
-      type: big_map__update__prim__generic__micheline__alpha__michelson_v1__expression
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
-    - id: big_map__update__bytes__micheline__alpha__michelson_v1__expression
-      type: bytes_dyn_uint30
-      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::bytes)
-  big_map__update__prim__1_arg__no_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__1_arg__no_annots__alpha__michelson__v1__primitives
-    - id: arg
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-  big_map__update__prim__1_arg__some_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__1_arg__some_annots__alpha__michelson__v1__primitives
-    - id: arg
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  big_map__update__prim__2_args__no_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__2_args__no_annots__alpha__michelson__v1__primitives
-    - id: arg1
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: arg2
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-  big_map__update__prim__2_args__some_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__2_args__some_annots__alpha__michelson__v1__primitives
-    - id: arg1
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: arg2
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: annots
-      type: bytes_dyn_uint30
-  big_map__update__prim__generic__args:
-    seq:
-    - id: len_big_map__update__prim__generic__args_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: big_map__update__prim__generic__args_dyn
-      type: big_map__update__prim__generic__args_dyn
-      size: len_big_map__update__prim__generic__args_dyn
-  big_map__update__prim__generic__args_dyn:
-    seq:
-    - id: big_map__update__prim__generic__args_entries
-      type: big_map__update__prim__generic__args_entries
-      repeat: eos
-  big_map__update__prim__generic__args_entries:
-    seq:
-    - id: args_elt
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-  big_map__update__prim__generic__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__generic__alpha__michelson__v1__primitives
-    - id: big_map__update__prim__generic__args
-      type: big_map__update__prim__generic__args
-    - id: annots
-      type: bytes_dyn_uint30
-  big_map__update__prim__no_args__some_annots__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: prim
-      type: u1
-      enum: big_map__update__prim__no_args__some_annots__alpha__michelson__v1__primitives
-    - id: annots
-      type: bytes_dyn_uint30
-  big_map__update__sequence__micheline__alpha__michelson_v1__expression:
-    seq:
-    - id: len_big_map__update__sequence__sequence_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: big_map__update__sequence__sequence_dyn
-      type: big_map__update__sequence__sequence_dyn
-      size: len_big_map__update__sequence__sequence_dyn
-  big_map__update__sequence__sequence_dyn:
-    seq:
-    - id: big_map__update__sequence__sequence_entries
-      type: big_map__update__sequence__sequence_entries
-      repeat: eos
-  big_map__update__sequence__sequence_entries:
-    seq:
-    - id: sequence_elt
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-  big_map__update__updates:
-    seq:
-    - id: len_big_map__update__updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: big_map__update__updates_dyn
-      type: big_map__update__updates_dyn
-      size: len_big_map__update__updates_dyn
-  big_map__update__updates_dyn:
-    seq:
-    - id: big_map__update__updates_entries
-      type: big_map__update__updates_entries
-      repeat: eos
-  big_map__update__updates_entries:
-    seq:
-    - id: key_hash
-      size: 32
-    - id: key
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-    - id: value_tag
-      type: u1
-      enum: bool
-    - id: value
-      type: big_map__update__micheline__alpha__michelson_v1__expression
-      if: (value_tag == bool::true)
+    - id: diff
+      type: diff
   bytes_dyn_uint30:
     seq:
     - id: len_bytes_dyn_uint30
@@ -272,184 +70,246 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  commitments_and_ciphertexts:
+    seq:
+    - id: commitments_and_ciphertexts_entries
+      type: commitments_and_ciphertexts_entries
+      repeat: eos
+  commitments_and_ciphertexts_:
+    seq:
+    - id: len_commitments_and_ciphertexts
+      type: u4
+      valid:
+        max: 1073741823
+    - id: commitments_and_ciphertexts
+      type: commitments_and_ciphertexts
+      size: len_commitments_and_ciphertexts
+  commitments_and_ciphertexts_entries:
+    seq:
+    - id: commitments_and_ciphertexts_elt_field0
+      type: sapling__transaction__commitment
+    - id: commitments_and_ciphertexts_elt_field1
+      type: sapling__transaction__ciphertext
+  copy:
+    seq:
+    - id: source
+      type: z
+      doc: ! 'Big map identifier: A big map identifier'
+    - id: updates
+      type: updates_
+  copy_:
+    seq:
+    - id: source
+      type: z
+      doc: ! 'Sapling state identifier: A sapling state identifier'
+    - id: updates
+      type: updates__
+  diff:
+    seq:
+    - id: diff_tag
+      type: u1
+      enum: diff_tag
+    - id: update
+      type: updates_
+      if: (diff_tag == diff_tag::update)
+    - id: copy
+      type: copy
+      if: (diff_tag == diff_tag::copy)
+    - id: alloc
+      type: alloc
+      if: (diff_tag == diff_tag::alloc)
+  diff_:
+    seq:
+    - id: diff_tag
+      type: u1
+      enum: diff_tag
+    - id: update
+      type: updates__
+      if: (diff_tag == diff_tag::update)
+    - id: copy
+      type: copy_
+      if: (diff_tag == diff_tag::copy)
+    - id: alloc
+      type: alloc_
+      if: (diff_tag == diff_tag::alloc)
+  micheline__alpha__michelson_v1__expression:
+    seq:
+    - id: micheline__alpha__michelson_v1__expression_tag
+      type: u1
+      enum: micheline__alpha__michelson_v1__expression_tag
+    - id: int
+      type: z
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::int)
+    - id: string
+      type: bytes_dyn_uint30
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::string)
+    - id: sequence
+      type: sequence_
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
+    - id: prim__no_args__no_annots
+      type: u1
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
+      enum: alpha__michelson__v1__primitives
+    - id: prim__no_args__some_annots
+      type: prim__no_args__some_annots
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
+    - id: prim__1_arg__no_annots
+      type: prim__1_arg__no_annots
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__no_annots)
+    - id: prim__1_arg__some_annots
+      type: prim__1_arg__some_annots
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__1_arg__some_annots)
+    - id: prim__2_args__no_annots
+      type: prim__2_args__no_annots
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__no_annots)
+    - id: prim__2_args__some_annots
+      type: prim__2_args__some_annots
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__2_args__some_annots)
+    - id: prim__generic
+      type: prim__generic
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__generic)
+    - id: bytes
+      type: bytes_dyn_uint30
+      if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::bytes)
   n_chunk:
     seq:
     - id: has_more
       type: b1be
     - id: payload
       type: b7be
-  sapling_state__alloc__commitments_and_ciphertexts:
+  nullifiers:
     seq:
-    - id: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
+    - id: nullifiers_entries
+      type: nullifiers_entries
+      repeat: eos
+  nullifiers_:
+    seq:
+    - id: len_nullifiers
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__alloc__commitments_and_ciphertexts_dyn
-      type: sapling_state__alloc__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__alloc__commitments_and_ciphertexts_dyn
-  sapling_state__alloc__commitments_and_ciphertexts_dyn:
-    seq:
-    - id: sapling_state__alloc__commitments_and_ciphertexts_entries
-      type: sapling_state__alloc__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__alloc__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  sapling_state__alloc__diff:
-    seq:
-    - id: sapling_state__alloc__updates
-      type: sapling_state__alloc__updates
-    - id: memo_size
-      type: u2
-  sapling_state__alloc__nullifiers:
-    seq:
-    - id: len_sapling_state__alloc__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__alloc__nullifiers_dyn
-      type: sapling_state__alloc__nullifiers_dyn
-      size: len_sapling_state__alloc__nullifiers_dyn
-  sapling_state__alloc__nullifiers_dyn:
-    seq:
-    - id: sapling_state__alloc__nullifiers_entries
-      type: sapling_state__alloc__nullifiers_entries
-      repeat: eos
-  sapling_state__alloc__nullifiers_entries:
+    - id: nullifiers
+      type: nullifiers
+      size: len_nullifiers
+  nullifiers_entries:
     seq:
     - id: nullifiers_elt
       type: sapling__transaction__nullifier
-  sapling_state__alloc__updates:
+  prim__1_arg__no_annots:
     seq:
-    - id: sapling_state__alloc__commitments_and_ciphertexts
-      type: sapling_state__alloc__commitments_and_ciphertexts
-    - id: sapling_state__alloc__nullifiers
-      type: sapling_state__alloc__nullifiers
-  sapling_state__alpha__lazy_storage_diff_elt:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: arg
+      type: micheline__alpha__michelson_v1__expression
+  prim__1_arg__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: arg
+      type: micheline__alpha__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__2_args__no_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: arg1
+      type: micheline__alpha__michelson_v1__expression
+    - id: arg2
+      type: micheline__alpha__michelson_v1__expression
+  prim__2_args__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: arg1
+      type: micheline__alpha__michelson_v1__expression
+    - id: arg2
+      type: micheline__alpha__michelson_v1__expression
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__generic:
+    seq:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: args
+      type: args_
+    - id: annots
+      type: bytes_dyn_uint30
+  prim__no_args__some_annots:
+    seq:
+    - id: prim
+      type: u1
+      enum: alpha__michelson__v1__primitives
+    - id: annots
+      type: bytes_dyn_uint30
+  sapling_state:
     seq:
     - id: id
       type: z
       doc: ! 'Sapling state identifier: A sapling state identifier'
-    - id: sapling_state__diff
-      type: sapling_state__diff
-  sapling_state__copy__commitments_and_ciphertexts:
+    - id: diff
+      type: diff_
+  sequence:
     seq:
-    - id: len_sapling_state__copy__commitments_and_ciphertexts_dyn
+    - id: sequence_entries
+      type: sequence_entries
+      repeat: eos
+  sequence_:
+    seq:
+    - id: len_sequence
       type: u4
       valid:
         max: 1073741823
-    - id: sapling_state__copy__commitments_and_ciphertexts_dyn
-      type: sapling_state__copy__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__copy__commitments_and_ciphertexts_dyn
-  sapling_state__copy__commitments_and_ciphertexts_dyn:
+    - id: sequence
+      type: sequence
+      size: len_sequence
+  sequence_entries:
     seq:
-    - id: sapling_state__copy__commitments_and_ciphertexts_entries
-      type: sapling_state__copy__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__copy__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  sapling_state__copy__diff:
-    seq:
-    - id: source
-      type: z
-      doc: ! 'Sapling state identifier: A sapling state identifier'
-    - id: sapling_state__copy__updates
-      type: sapling_state__copy__updates
-  sapling_state__copy__nullifiers:
-    seq:
-    - id: len_sapling_state__copy__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__copy__nullifiers_dyn
-      type: sapling_state__copy__nullifiers_dyn
-      size: len_sapling_state__copy__nullifiers_dyn
-  sapling_state__copy__nullifiers_dyn:
-    seq:
-    - id: sapling_state__copy__nullifiers_entries
-      type: sapling_state__copy__nullifiers_entries
-      repeat: eos
-  sapling_state__copy__nullifiers_entries:
-    seq:
-    - id: nullifiers_elt
-      type: sapling__transaction__nullifier
-  sapling_state__copy__updates:
-    seq:
-    - id: sapling_state__copy__commitments_and_ciphertexts
-      type: sapling_state__copy__commitments_and_ciphertexts
-    - id: sapling_state__copy__nullifiers
-      type: sapling_state__copy__nullifiers
-  sapling_state__diff:
-    seq:
-    - id: diff_tag
-      type: u1
-      enum: diff_tag
-    - id: sapling_state__update__diff
-      type: sapling_state__update__updates
-      if: (diff_tag == diff_tag::update)
-    - id: sapling_state__copy__diff
-      type: sapling_state__copy__diff
-      if: (diff_tag == diff_tag::copy)
-    - id: sapling_state__alloc__diff
-      type: sapling_state__alloc__diff
-      if: (diff_tag == diff_tag::alloc)
-  sapling_state__update__commitments_and_ciphertexts:
-    seq:
-    - id: len_sapling_state__update__commitments_and_ciphertexts_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__update__commitments_and_ciphertexts_dyn
-      type: sapling_state__update__commitments_and_ciphertexts_dyn
-      size: len_sapling_state__update__commitments_and_ciphertexts_dyn
-  sapling_state__update__commitments_and_ciphertexts_dyn:
-    seq:
-    - id: sapling_state__update__commitments_and_ciphertexts_entries
-      type: sapling_state__update__commitments_and_ciphertexts_entries
-      repeat: eos
-  sapling_state__update__commitments_and_ciphertexts_entries:
-    seq:
-    - id: commitments_and_ciphertexts_elt_field0
-      type: sapling__transaction__commitment
-    - id: commitments_and_ciphertexts_elt_field1
-      type: sapling__transaction__ciphertext
-  sapling_state__update__nullifiers:
-    seq:
-    - id: len_sapling_state__update__nullifiers_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: sapling_state__update__nullifiers_dyn
-      type: sapling_state__update__nullifiers_dyn
-      size: len_sapling_state__update__nullifiers_dyn
-  sapling_state__update__nullifiers_dyn:
-    seq:
-    - id: sapling_state__update__nullifiers_entries
-      type: sapling_state__update__nullifiers_entries
-      repeat: eos
-  sapling_state__update__nullifiers_entries:
-    seq:
-    - id: nullifiers_elt
-      type: sapling__transaction__nullifier
-  sapling_state__update__updates:
-    seq:
-    - id: sapling_state__update__commitments_and_ciphertexts
-      type: sapling_state__update__commitments_and_ciphertexts
-    - id: sapling_state__update__nullifiers
-      type: sapling_state__update__nullifiers
+    - id: sequence_elt
+      type: micheline__alpha__michelson_v1__expression
   uint30:
     seq:
     - id: uint30
       type: u4
       valid:
         max: 1073741823
+  updates:
+    seq:
+    - id: updates_entries
+      type: updates_entries
+      repeat: eos
+  updates_:
+    seq:
+    - id: len_updates
+      type: u4
+      valid:
+        max: 1073741823
+    - id: updates
+      type: updates
+      size: len_updates
+  updates__:
+    seq:
+    - id: commitments_and_ciphertexts
+      type: commitments_and_ciphertexts_
+    - id: nullifiers
+      type: nullifiers_
+  updates_entries:
+    seq:
+    - id: key_hash
+      size: 32
+    - id: key
+      type: micheline__alpha__michelson_v1__expression
+    - id: value_tag
+      type: u1
+      enum: bool
+    - id: value
+      type: micheline__alpha__michelson_v1__expression
+      if: (value_tag == bool::true)
   z:
     seq:
     - id: has_tail
@@ -467,2371 +327,7 @@ enums:
   bool:
     0: false
     255: true
-  big_map__update__prim__generic__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__2_args__some_annots__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__2_args__no_annots__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__1_arg__some_annots__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__1_arg__no_annots__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__no_args__some_annots__alpha__michelson__v1__primitives:
-    0: parameter
-    1: storage
-    2: code
-    3:
-      id: false
-      doc: False
-    4:
-      id: elt
-      doc: Elt
-    5:
-      id: left
-      doc: Left
-    6:
-      id: none_
-      doc: None
-    7:
-      id: pair__
-      doc: Pair
-    8:
-      id: right
-      doc: Right
-    9:
-      id: some_
-      doc: Some
-    10:
-      id: true
-      doc: True
-    11:
-      id: unit_
-      doc: Unit
-    12:
-      id: pack
-      doc: PACK
-    13:
-      id: unpack
-      doc: UNPACK
-    14:
-      id: blake2b
-      doc: BLAKE2B
-    15:
-      id: sha256
-      doc: SHA256
-    16:
-      id: sha512
-      doc: SHA512
-    17:
-      id: abs
-      doc: ABS
-    18:
-      id: add
-      doc: ADD
-    19:
-      id: amount
-      doc: AMOUNT
-    20:
-      id: and
-      doc: AND
-    21:
-      id: balance
-      doc: BALANCE
-    22:
-      id: car
-      doc: CAR
-    23:
-      id: cdr
-      doc: CDR
-    24:
-      id: check_signature
-      doc: CHECK_SIGNATURE
-    25:
-      id: compare
-      doc: COMPARE
-    26:
-      id: concat
-      doc: CONCAT
-    27:
-      id: cons
-      doc: CONS
-    28:
-      id: create_account
-      doc: CREATE_ACCOUNT
-    29:
-      id: create_contract
-      doc: CREATE_CONTRACT
-    30:
-      id: implicit_account
-      doc: IMPLICIT_ACCOUNT
-    31:
-      id: dip
-      doc: DIP
-    32:
-      id: drop
-      doc: DROP
-    33:
-      id: dup
-      doc: DUP
-    34:
-      id: ediv
-      doc: EDIV
-    35:
-      id: empty_map
-      doc: EMPTY_MAP
-    36:
-      id: empty_set
-      doc: EMPTY_SET
-    37:
-      id: eq
-      doc: EQ
-    38:
-      id: exec
-      doc: EXEC
-    39:
-      id: failwith
-      doc: FAILWITH
-    40:
-      id: ge
-      doc: GE
-    41:
-      id: get
-      doc: GET
-    42:
-      id: gt
-      doc: GT
-    43:
-      id: hash_key
-      doc: HASH_KEY
-    44:
-      id: if
-      doc: IF
-    45:
-      id: if_cons
-      doc: IF_CONS
-    46:
-      id: if_left
-      doc: IF_LEFT
-    47:
-      id: if_none
-      doc: IF_NONE
-    48:
-      id: int_
-      doc: INT
-    49:
-      id: lambda_
-      doc: LAMBDA
-    50:
-      id: le
-      doc: LE
-    51:
-      id: left_
-      doc: LEFT
-    52:
-      id: loop
-      doc: LOOP
-    53:
-      id: lsl
-      doc: LSL
-    54:
-      id: lsr
-      doc: LSR
-    55:
-      id: lt
-      doc: LT
-    56:
-      id: map_
-      doc: MAP
-    57:
-      id: mem
-      doc: MEM
-    58:
-      id: mul
-      doc: MUL
-    59:
-      id: neg
-      doc: NEG
-    60:
-      id: neq
-      doc: NEQ
-    61:
-      id: nil
-      doc: NIL
-    62:
-      id: none
-      doc: NONE
-    63:
-      id: not
-      doc: NOT
-    64:
-      id: now
-      doc: NOW
-    65:
-      id: or_
-      doc: OR
-    66:
-      id: pair_
-      doc: PAIR
-    67:
-      id: push
-      doc: PUSH
-    68:
-      id: right_
-      doc: RIGHT
-    69:
-      id: size
-      doc: SIZE
-    70:
-      id: some
-      doc: SOME
-    71:
-      id: source
-      doc: SOURCE
-    72:
-      id: sender
-      doc: SENDER
-    73:
-      id: self
-      doc: SELF
-    74:
-      id: steps_to_quota
-      doc: STEPS_TO_QUOTA
-    75:
-      id: sub
-      doc: SUB
-    76:
-      id: swap
-      doc: SWAP
-    77:
-      id: transfer_tokens
-      doc: TRANSFER_TOKENS
-    78:
-      id: set_delegate
-      doc: SET_DELEGATE
-    79:
-      id: unit__
-      doc: UNIT
-    80:
-      id: update
-      doc: UPDATE
-    81:
-      id: xor
-      doc: XOR
-    82:
-      id: iter
-      doc: ITER
-    83:
-      id: loop_left
-      doc: LOOP_LEFT
-    84:
-      id: address_
-      doc: ADDRESS
-    85:
-      id: contract_
-      doc: CONTRACT
-    86:
-      id: isnat
-      doc: ISNAT
-    87:
-      id: cast
-      doc: CAST
-    88:
-      id: rename
-      doc: RENAME
-    89: bool
-    90: contract
-    91: int
-    92: key
-    93: key_hash
-    94: lambda
-    95: list
-    96: map
-    97: big_map
-    98: nat
-    99: option
-    100: or
-    101: pair
-    102: set
-    103: signature
-    104: string
-    105: bytes
-    106: mutez
-    107: timestamp
-    108: unit
-    109: operation
-    110: address
-    111:
-      id: slice
-      doc: SLICE
-    112:
-      id: dig
-      doc: DIG
-    113:
-      id: dug
-      doc: DUG
-    114:
-      id: empty_big_map
-      doc: EMPTY_BIG_MAP
-    115:
-      id: apply
-      doc: APPLY
-    116: chain_id
-    117:
-      id: chain_id_
-      doc: CHAIN_ID
-    118:
-      id: level
-      doc: LEVEL
-    119:
-      id: self_address
-      doc: SELF_ADDRESS
-    120: never
-    121:
-      id: never_
-      doc: NEVER
-    122:
-      id: unpair
-      doc: UNPAIR
-    123:
-      id: voting_power
-      doc: VOTING_POWER
-    124:
-      id: total_voting_power
-      doc: TOTAL_VOTING_POWER
-    125:
-      id: keccak
-      doc: KECCAK
-    126:
-      id: sha3
-      doc: SHA3
-    127:
-      id: pairing_check
-      doc: PAIRING_CHECK
-    128: bls12_381_g1
-    129: bls12_381_g2
-    130: bls12_381_fr
-    131: sapling_state
-    132: sapling_transaction_deprecated
-    133:
-      id: sapling_empty_state
-      doc: SAPLING_EMPTY_STATE
-    134:
-      id: sapling_verify_update
-      doc: SAPLING_VERIFY_UPDATE
-    135: ticket
-    136:
-      id: ticket_deprecated
-      doc: TICKET_DEPRECATED
-    137:
-      id: read_ticket
-      doc: READ_TICKET
-    138:
-      id: split_ticket
-      doc: SPLIT_TICKET
-    139:
-      id: join_tickets
-      doc: JOIN_TICKETS
-    140:
-      id: get_and_update
-      doc: GET_AND_UPDATE
-    141: chest
-    142: chest_key
-    143:
-      id: open_chest
-      doc: OPEN_CHEST
-    144:
-      id: view_
-      doc: VIEW
-    145: view
-    146: constant
-    147:
-      id: sub_mutez
-      doc: SUB_MUTEZ
-    148: tx_rollup_l2_address
-    149:
-      id: min_block_time
-      doc: MIN_BLOCK_TIME
-    150: sapling_transaction
-    151:
-      id: emit
-      doc: EMIT
-    152:
-      id: lambda_rec
-      doc: Lambda_rec
-    153:
-      id: lambda_rec_
-      doc: LAMBDA_REC
-    154:
-      id: ticket_
-      doc: TICKET
-    155:
-      id: bytes_
-      doc: BYTES
-    156:
-      id: nat_
-      doc: NAT
-  big_map__update__prim__no_args__no_annots__alpha__michelson__v1__primitives:
+  alpha__michelson__v1__primitives:
     0: parameter
     1: storage
     2: code
@@ -3260,10 +756,10 @@ enums:
     0: big_map
     1: sapling_state
 seq:
-- id: len_alpha__lazy_storage_diff_dyn
+- id: len_alpha__lazy_storage_diff
   type: u4
   valid:
     max: 1073741823
-- id: alpha__lazy_storage_diff_dyn
-  type: alpha__lazy_storage_diff_dyn
-  size: len_alpha__lazy_storage_diff_dyn
+- id: alpha__lazy_storage_diff
+  type: alpha__lazy_storage_diff
+  size: len_alpha__lazy_storage_diff

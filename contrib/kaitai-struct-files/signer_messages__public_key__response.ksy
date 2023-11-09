@@ -3,21 +3,21 @@ meta:
   endian: be
 doc: ! 'Encoding id: signer_messages.public_key.response'
 types:
-  public_key_:
+  public_key:
     seq:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: public_key
+    - id: ed25519
       size: 32
       if: (public_key_tag == public_key_tag::ed25519)
-    - id: public_key
+    - id: secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::secp256k1)
-    - id: public_key
+    - id: p256
       size: 33
       if: (public_key_tag == public_key_tag::p256)
-    - id: public_key
+    - id: bls
       size: 48
       if: (public_key_tag == public_key_tag::bls)
 enums:
@@ -28,5 +28,5 @@ enums:
     3: bls
 seq:
 - id: pubkey
-  type: public_key_
+  type: public_key
   doc: A Ed25519, Secp256k1, or P256 public key

@@ -11,45 +11,39 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
-  delegation__id_009__psfloren__operation__alpha__internal_operation:
+  delegation:
     seq:
     - id: delegate_tag
       type: u1
       enum: bool
     - id: delegate
-      type: delegation__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-  delegation__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: delegation__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: delegation__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: delegation__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  id_009__psfloren__contract_id_:
+  id_009__psfloren__contract_id:
     seq:
     - id: id_009__psfloren__contract_id_tag
       type: u1
       enum: id_009__psfloren__contract_id_tag
-    - id: implicit__id_009__psfloren__contract_id
-      type: implicit__public_key_hash_
+    - id: implicit
+      type: public_key_hash
       if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: originated__id_009__psfloren__contract_id
-      type: originated__id_009__psfloren__contract_id
+    - id: originated
+      type: originated
       if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::originated)
-  id_009__psfloren__operation__alpha__internal_operation_:
+  id_009__psfloren__entrypoint:
+    seq:
+    - id: id_009__psfloren__entrypoint_tag
+      type: u1
+      enum: id_009__psfloren__entrypoint_tag
+    - id: named
+      type: named_
+      if: (id_009__psfloren__entrypoint_tag == id_009__psfloren__entrypoint_tag::named)
+  id_009__psfloren__operation__alpha__internal_operation:
     seq:
     - id: source
-      type: id_009__psfloren__contract_id_
+      type: id_009__psfloren__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
@@ -58,33 +52,25 @@ types:
     - id: id_009__psfloren__operation__alpha__internal_operation_tag
       type: u1
       enum: id_009__psfloren__operation__alpha__internal_operation_tag
-    - id: reveal__id_009__psfloren__operation__alpha__internal_operation
-      type: reveal__public_key_
+    - id: reveal
+      type: public_key
       if: (id_009__psfloren__operation__alpha__internal_operation_tag == id_009__psfloren__operation__alpha__internal_operation_tag::reveal)
       doc: A Ed25519, Secp256k1, or P256 public key
-    - id: transaction__id_009__psfloren__operation__alpha__internal_operation
-      type: transaction__id_009__psfloren__operation__alpha__internal_operation
+    - id: transaction
+      type: transaction
       if: (id_009__psfloren__operation__alpha__internal_operation_tag == id_009__psfloren__operation__alpha__internal_operation_tag::transaction)
-    - id: origination__id_009__psfloren__operation__alpha__internal_operation
-      type: origination__id_009__psfloren__operation__alpha__internal_operation
+    - id: origination
+      type: origination
       if: (id_009__psfloren__operation__alpha__internal_operation_tag == id_009__psfloren__operation__alpha__internal_operation_tag::origination)
-    - id: delegation__id_009__psfloren__operation__alpha__internal_operation
-      type: delegation__id_009__psfloren__operation__alpha__internal_operation
+    - id: delegation
+      type: delegation
       if: (id_009__psfloren__operation__alpha__internal_operation_tag == id_009__psfloren__operation__alpha__internal_operation_tag::delegation)
-  implicit__public_key_hash_:
+  id_009__psfloren__scripted__contracts:
     seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
+    - id: code
+      type: bytes_dyn_uint30
+    - id: storage
+      type: bytes_dyn_uint30
   n:
     seq:
     - id: n
@@ -97,14 +83,27 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  originated__id_009__psfloren__contract_id:
+  named:
+    seq:
+    - id: named
+      size-eos: true
+  named_:
+    seq:
+    - id: len_named
+      type: u1
+      valid:
+        max: 31
+    - id: named
+      type: named
+      size: len_named
+  originated:
     seq:
     - id: contract_hash
       size: 20
     - id: originated_padding
       size: 1
       doc: This field is for padding, ignore
-  origination__id_009__psfloren__operation__alpha__internal_operation:
+  origination:
     seq:
     - id: balance
       type: n
@@ -112,121 +111,61 @@ types:
       type: u1
       enum: bool
     - id: delegate
-      type: origination__public_key_hash_
+      type: public_key_hash
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
-      type: origination__id_009__psfloren__scripted__contracts_
-  origination__id_009__psfloren__scripted__contracts_:
+      type: id_009__psfloren__scripted__contracts
+  parameters:
     seq:
-    - id: code
+    - id: entrypoint
+      type: id_009__psfloren__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
+    - id: value
       type: bytes_dyn_uint30
-    - id: storage
-      type: bytes_dyn_uint30
-  origination__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: origination__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: origination__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: origination__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  reveal__public_key_:
+  public_key:
     seq:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: reveal__ed25519__public_key
+    - id: ed25519
       size: 32
       if: (public_key_tag == public_key_tag::ed25519)
-    - id: reveal__secp256k1__public_key
+    - id: secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::secp256k1)
-    - id: reveal__p256__public_key
+    - id: p256
       size: 33
       if: (public_key_tag == public_key_tag::p256)
-  transaction__id_009__psfloren__contract_id_:
+  public_key_hash:
     seq:
-    - id: id_009__psfloren__contract_id_tag
+    - id: public_key_hash_tag
       type: u1
-      enum: id_009__psfloren__contract_id_tag
-    - id: transaction__implicit__id_009__psfloren__contract_id
-      type: transaction__implicit__public_key_hash_
-      if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::implicit)
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: transaction__originated__id_009__psfloren__contract_id
-      type: transaction__originated__id_009__psfloren__contract_id
-      if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::originated)
-  transaction__id_009__psfloren__entrypoint_:
-    seq:
-    - id: id_009__psfloren__entrypoint_tag
-      type: u1
-      enum: id_009__psfloren__entrypoint_tag
-    - id: transaction__named__id_009__psfloren__entrypoint
-      type: transaction__named__id_009__psfloren__entrypoint
-      if: (id_009__psfloren__entrypoint_tag == id_009__psfloren__entrypoint_tag::named)
-  transaction__id_009__psfloren__operation__alpha__internal_operation:
+      enum: public_key_hash_tag
+    - id: ed25519
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
+    - id: secp256k1
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
+    - id: p256
+      size: 20
+      if: (public_key_hash_tag == public_key_hash_tag::p256)
+  transaction:
     seq:
     - id: amount
       type: n
     - id: destination
-      type: transaction__id_009__psfloren__contract_id_
+      type: id_009__psfloren__contract_id
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool
-    - id: transaction__parameters_
-      type: transaction__parameters_
+    - id: parameters
+      type: parameters
       if: (parameters_tag == bool::true)
-  transaction__implicit__public_key_hash_:
-    seq:
-    - id: public_key_hash_tag
-      type: u1
-      enum: public_key_hash_tag
-    - id: transaction__implicit__ed25519__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: transaction__implicit__secp256k1__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: transaction__implicit__p256__public_key_hash
-      size: 20
-      if: (public_key_hash_tag == public_key_hash_tag::p256)
-  transaction__named__id_009__psfloren__entrypoint:
-    seq:
-    - id: len_transaction__named__named_dyn
-      type: u1
-      valid:
-        max: 31
-    - id: transaction__named__named_dyn
-      type: transaction__named__named_dyn
-      size: len_transaction__named__named_dyn
-  transaction__named__named_dyn:
-    seq:
-    - id: named
-      size-eos: true
-  transaction__originated__id_009__psfloren__contract_id:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  transaction__parameters_:
-    seq:
-    - id: entrypoint
-      type: transaction__id_009__psfloren__entrypoint_
-      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
-    - id: value
-      type: bytes_dyn_uint30
   uint30:
     seq:
     - id: uint30
@@ -261,5 +200,5 @@ enums:
     0: implicit
     1: originated
 seq:
-- id: id_009__psfloren__operation__alpha__internal_operation_
-  type: id_009__psfloren__operation__alpha__internal_operation_
+- id: id_009__psfloren__operation__alpha__internal_operation
+  type: id_009__psfloren__operation__alpha__internal_operation

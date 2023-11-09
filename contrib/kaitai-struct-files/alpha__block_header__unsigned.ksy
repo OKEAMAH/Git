@@ -5,7 +5,7 @@ meta:
   - block_header__shell
 doc: ! 'Encoding id: alpha.block_header.unsigned'
 types:
-  alpha__block_header__alpha__unsigned_contents_:
+  alpha__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -39,5 +39,5 @@ enums:
 seq:
 - id: alpha__block_header__unsigned
   type: block_header__shell
-- id: alpha__block_header__alpha__unsigned_contents_
-  type: alpha__block_header__alpha__unsigned_contents_
+- id: alpha__block_header__alpha__unsigned_contents
+  type: alpha__block_header__alpha__unsigned_contents

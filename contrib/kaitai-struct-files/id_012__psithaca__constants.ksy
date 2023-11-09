@@ -5,18 +5,18 @@ doc: ! 'Encoding id: 012-Psithaca.constants'
 types:
   cache_layout:
     seq:
-    - id: len_cache_layout_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: cache_layout_dyn
-      type: cache_layout_dyn
-      size: len_cache_layout_dyn
-  cache_layout_dyn:
-    seq:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
+  cache_layout_:
+    seq:
+    - id: len_cache_layout
+      type: u4
+      valid:
+        max: 1073741823
+    - id: cache_layout
+      type: cache_layout
+      size: len_cache_layout
   cache_layout_entries:
     seq:
     - id: cache_layout_elt
@@ -26,8 +26,8 @@ types:
     - id: delegate_selection_tag
       type: u1
       enum: delegate_selection_tag
-    - id: round_robin_over_delegates__delegate_selection
-      type: round_robin_over_delegates__delegate_selection
+    - id: round_robin_over_delegates
+      type: round_robin_over_delegates_
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   int31:
     seq:
@@ -54,59 +54,53 @@ types:
       type: b1be
     - id: payload
       type: b7be
-  ratio_of_frozen_deposits_slashed_per_double_endorsement:
-    seq:
-    - id: numerator
-      type: u2
-    - id: denominator
-      type: u2
-  round_robin_over_delegates__delegate_selection:
-    seq:
-    - id: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_dyn
-      type: round_robin_over_delegates__round_robin_over_delegates_dyn
-      size: len_round_robin_over_delegates__round_robin_over_delegates_dyn
-  round_robin_over_delegates__public_key_:
+  public_key:
     seq:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: round_robin_over_delegates__ed25519__public_key
+    - id: ed25519
       size: 32
       if: (public_key_tag == public_key_tag::ed25519)
-    - id: round_robin_over_delegates__secp256k1__public_key
+    - id: secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::secp256k1)
-    - id: round_robin_over_delegates__p256__public_key
+    - id: p256
       size: 33
       if: (public_key_tag == public_key_tag::p256)
-  round_robin_over_delegates__round_robin_over_delegates_dyn:
+  round_robin_over_delegates:
     seq:
-    - id: round_robin_over_delegates__round_robin_over_delegates_entries
-      type: round_robin_over_delegates__round_robin_over_delegates_entries
+    - id: round_robin_over_delegates_entries
+      type: round_robin_over_delegates_entries
       repeat: eos
-  round_robin_over_delegates__round_robin_over_delegates_elt_dyn:
+  round_robin_over_delegates_:
     seq:
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_entries
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_entries
-      repeat: eos
-  round_robin_over_delegates__round_robin_over_delegates_elt_entries:
-    seq:
-    - id: signature__v0__public_key
-      type: round_robin_over_delegates__public_key_
-      doc: A Ed25519, Secp256k1, or P256 public key
-  round_robin_over_delegates__round_robin_over_delegates_entries:
-    seq:
-    - id: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+    - id: len_round_robin_over_delegates
       type: u4
       valid:
         max: 1073741823
-    - id: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      type: round_robin_over_delegates__round_robin_over_delegates_elt_dyn
-      size: len_round_robin_over_delegates__round_robin_over_delegates_elt_dyn
+    - id: round_robin_over_delegates
+      type: round_robin_over_delegates
+      size: len_round_robin_over_delegates
+  round_robin_over_delegates_elt:
+    seq:
+    - id: round_robin_over_delegates_elt_entries
+      type: round_robin_over_delegates_elt_entries
+      repeat: eos
+  round_robin_over_delegates_elt_entries:
+    seq:
+    - id: signature__v0__public_key
+      type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
+  round_robin_over_delegates_entries:
+    seq:
+    - id: len_round_robin_over_delegates_elt
+      type: u4
+      valid:
+        max: 1073741823
+    - id: round_robin_over_delegates_elt
+      type: round_robin_over_delegates_elt
+      size: len_round_robin_over_delegates_elt
   z:
     seq:
     - id: has_tail
@@ -146,7 +140,7 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout
+  type: cache_layout_
 - id: michelson_maximum_type_size
   type: u2
 - id: preserved_cycles
@@ -212,6 +206,6 @@ seq:
 - id: double_baking_punishment
   type: n
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
+  type: minimal_participation_ratio
 - id: delegate_selection
   type: delegate_selection

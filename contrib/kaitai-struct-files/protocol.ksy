@@ -17,18 +17,18 @@ types:
       size: len_bytes_dyn_uint30
   components:
     seq:
-    - id: len_components_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: components_dyn
-      type: components_dyn
-      size: len_components_dyn
-  components_dyn:
-    seq:
     - id: components_entries
       type: components_entries
       repeat: eos
+  components_:
+    seq:
+    - id: len_components
+      type: u4
+      valid:
+        max: 1073741823
+    - id: components
+      type: components
+      size: len_components
   components_entries:
     seq:
     - id: name
@@ -55,4 +55,4 @@ seq:
 - id: expected_env_version
   type: u2
 - id: components
-  type: components
+  type: components_

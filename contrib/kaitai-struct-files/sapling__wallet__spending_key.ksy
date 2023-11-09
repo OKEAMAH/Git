@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: sapling.wallet.spending_key'
 types:
-  sapling__wallet__expanded_spending_key_:
+  sapling__wallet__expanded_spending_key:
     seq:
     - id: ask
       size: 32
@@ -21,6 +21,6 @@ seq:
 - id: chain_code
   size: 32
 - id: expsk
-  type: sapling__wallet__expanded_spending_key_
+  type: sapling__wallet__expanded_spending_key
 - id: dk
   size: 32

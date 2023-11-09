@@ -10,28 +10,28 @@ doc: ! >-
   Description: Information about a peer point. Includes flags, state, and records
   about past events.
 types:
-  last_disconnection_:
+  last_disconnection:
     seq:
     - id: last_disconnection_field0
       size: 16
       doc: crypto_box__public_key_hash
     - id: last_disconnection_field1
       type: timestamp__system
-  last_established_connection_:
+  last_established_connection:
     seq:
     - id: last_established_connection_field0
       size: 16
       doc: crypto_box__public_key_hash
     - id: last_established_connection_field1
       type: timestamp__system
-  last_rejected_connection_:
+  last_rejected_connection:
     seq:
     - id: last_rejected_connection_field0
       size: 16
       doc: crypto_box__public_key_hash
     - id: last_rejected_connection_field1
       type: timestamp__system
-  last_seen_:
+  last_seen:
     seq:
     - id: last_seen_field0
       size: 16
@@ -69,26 +69,26 @@ seq:
 - id: last_rejected_connection_tag
   type: u1
   enum: bool
-- id: last_rejected_connection_
-  type: last_rejected_connection_
+- id: last_rejected_connection
+  type: last_rejected_connection
   if: (last_rejected_connection_tag == bool::true)
 - id: last_established_connection_tag
   type: u1
   enum: bool
-- id: last_established_connection_
-  type: last_established_connection_
+- id: last_established_connection
+  type: last_established_connection
   if: (last_established_connection_tag == bool::true)
 - id: last_disconnection_tag
   type: u1
   enum: bool
-- id: last_disconnection_
-  type: last_disconnection_
+- id: last_disconnection
+  type: last_disconnection
   if: (last_disconnection_tag == bool::true)
 - id: last_seen_tag
   type: u1
   enum: bool
-- id: last_seen_
-  type: last_seen_
+- id: last_seen
+  type: last_seen
   if: (last_seen_tag == bool::true)
 - id: last_miss_tag
   type: u1

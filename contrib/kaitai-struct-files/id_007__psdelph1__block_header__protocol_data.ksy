@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: 007-PsDELPH1.block_header.protocol_data'
 types:
-  id_007__psdelph1__block_header__alpha__signed_contents_:
+  id_007__psdelph1__block_header__alpha__signed_contents:
     seq:
-    - id: id_007__psdelph1__block_header__alpha__unsigned_contents_
-      type: id_007__psdelph1__block_header__alpha__unsigned_contents_
+    - id: id_007__psdelph1__block_header__alpha__unsigned_contents
+      type: id_007__psdelph1__block_header__alpha__unsigned_contents
     - id: signature
       size: 64
-  id_007__psdelph1__block_header__alpha__unsigned_contents_:
+  id_007__psdelph1__block_header__alpha__unsigned_contents:
     seq:
     - id: priority
       type: u2
@@ -26,5 +26,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_007__psdelph1__block_header__alpha__signed_contents_
-  type: id_007__psdelph1__block_header__alpha__signed_contents_
+- id: id_007__psdelph1__block_header__alpha__signed_contents
+  type: id_007__psdelph1__block_header__alpha__signed_contents

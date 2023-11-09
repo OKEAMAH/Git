@@ -3,13 +3,13 @@ meta:
   endian: be
 doc: ! 'Encoding id: alpha.block_header.protocol_data'
 types:
-  alpha__block_header__alpha__signed_contents_:
+  alpha__block_header__alpha__signed_contents:
     seq:
-    - id: alpha__block_header__alpha__unsigned_contents_
-      type: alpha__block_header__alpha__unsigned_contents_
+    - id: alpha__block_header__alpha__unsigned_contents
+      type: alpha__block_header__alpha__unsigned_contents
     - id: signature
       size-eos: true
-  alpha__block_header__alpha__unsigned_contents_:
+  alpha__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -41,5 +41,5 @@ enums:
     0: false
     255: true
 seq:
-- id: alpha__block_header__alpha__signed_contents_
-  type: alpha__block_header__alpha__signed_contents_
+- id: alpha__block_header__alpha__signed_contents
+  type: alpha__block_header__alpha__signed_contents

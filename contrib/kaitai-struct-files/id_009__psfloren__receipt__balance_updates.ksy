@@ -5,87 +5,87 @@ doc: ! 'Encoding id: 009-PsFLoren.receipt.balance_updates'
 types:
   id_009__psfloren__contract_id:
     seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
-  id_009__psfloren__contract_id_:
-    seq:
     - id: id_009__psfloren__contract_id_tag
       type: u1
       enum: id_009__psfloren__contract_id_tag
-    - id: id_009__psfloren__contract_id
-      type: public_key_hash_
+    - id: implicit
+      type: public_key_hash
       if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::implicit)
       doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: id_009__psfloren__contract_id
-      type: id_009__psfloren__contract_id
+    - id: originated
+      type: originated
       if: (id_009__psfloren__contract_id_tag == id_009__psfloren__contract_id_tag::originated)
   id_009__psfloren__operation_metadata__alpha__balance:
-    seq:
-    - id: delegate
-      type: public_key_hash_
-      doc: A Ed25519, Secp256k1, or P256 public key hash
-    - id: cycle
-      type: s4
-  id_009__psfloren__operation_metadata__alpha__balance_:
     seq:
     - id: id_009__psfloren__operation_metadata__alpha__balance_tag
       type: u1
       enum: id_009__psfloren__operation_metadata__alpha__balance_tag
-    - id: id_009__psfloren__operation_metadata__alpha__balance
-      type: id_009__psfloren__contract_id_
+    - id: contract
+      type: id_009__psfloren__contract_id
       if: (id_009__psfloren__operation_metadata__alpha__balance_tag == id_009__psfloren__operation_metadata__alpha__balance_tag::contract)
       doc: ! >-
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
-    - id: id_009__psfloren__operation_metadata__alpha__balance
-      type: id_009__psfloren__operation_metadata__alpha__balance
+    - id: rewards
+      type: rewards
       if: (id_009__psfloren__operation_metadata__alpha__balance_tag == id_009__psfloren__operation_metadata__alpha__balance_tag::rewards)
-    - id: id_009__psfloren__operation_metadata__alpha__balance
-      type: id_009__psfloren__operation_metadata__alpha__balance
+    - id: fees
+      type: rewards
       if: (id_009__psfloren__operation_metadata__alpha__balance_tag == id_009__psfloren__operation_metadata__alpha__balance_tag::fees)
-    - id: id_009__psfloren__operation_metadata__alpha__balance
-      type: id_009__psfloren__operation_metadata__alpha__balance
+    - id: deposits
+      type: rewards
       if: (id_009__psfloren__operation_metadata__alpha__balance_tag == id_009__psfloren__operation_metadata__alpha__balance_tag::deposits)
-  id_009__psfloren__operation_metadata__alpha__balance_updates_:
-    seq:
-    - id: len_id_009__psfloren__operation_metadata__alpha__balance_updates_dyn
-      type: u4
-      valid:
-        max: 1073741823
-    - id: id_009__psfloren__operation_metadata__alpha__balance_updates_dyn
-      type: id_009__psfloren__operation_metadata__alpha__balance_updates_dyn
-      size: len_id_009__psfloren__operation_metadata__alpha__balance_updates_dyn
-  id_009__psfloren__operation_metadata__alpha__balance_updates_dyn:
+  id_009__psfloren__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_009__psfloren__operation_metadata__alpha__balance_updates_entries
       type: id_009__psfloren__operation_metadata__alpha__balance_updates_entries
       repeat: eos
+  id_009__psfloren__operation_metadata__alpha__balance_updates_:
+    seq:
+    - id: len_id_009__psfloren__operation_metadata__alpha__balance_updates
+      type: u4
+      valid:
+        max: 1073741823
+    - id: id_009__psfloren__operation_metadata__alpha__balance_updates
+      type: id_009__psfloren__operation_metadata__alpha__balance_updates
+      size: len_id_009__psfloren__operation_metadata__alpha__balance_updates
   id_009__psfloren__operation_metadata__alpha__balance_updates_entries:
     seq:
-    - id: id_009__psfloren__operation_metadata__alpha__balance_
-      type: id_009__psfloren__operation_metadata__alpha__balance_
+    - id: id_009__psfloren__operation_metadata__alpha__balance
+      type: id_009__psfloren__operation_metadata__alpha__balance
     - id: id_009__psfloren__operation_metadata__alpha__balance_update
       type: s8
     - id: id_009__psfloren__operation_metadata__alpha__update_origin
       type: u1
       enum: origin_tag
-  public_key_hash_:
+  originated:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  public_key_hash:
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  rewards:
+    seq:
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: cycle
+      type: s4
 enums:
   origin_tag:
     0: block_application
@@ -103,5 +103,5 @@ enums:
     2: fees
     3: deposits
 seq:
-- id: id_009__psfloren__operation_metadata__alpha__balance_updates_
+- id: id_009__psfloren__operation_metadata__alpha__balance_updates
   type: id_009__psfloren__operation_metadata__alpha__balance_updates_

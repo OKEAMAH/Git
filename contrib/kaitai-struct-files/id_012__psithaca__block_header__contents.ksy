@@ -3,7 +3,7 @@ meta:
   endian: be
 doc: ! 'Encoding id: 012-Psithaca.block_header.contents'
 types:
-  id_012__psithaca__block_header__alpha__unsigned_contents_:
+  id_012__psithaca__block_header__alpha__unsigned_contents:
     seq:
     - id: payload_hash
       size: 32
@@ -25,5 +25,5 @@ enums:
     0: false
     255: true
 seq:
-- id: id_012__psithaca__block_header__alpha__unsigned_contents_
-  type: id_012__psithaca__block_header__alpha__unsigned_contents_
+- id: id_012__psithaca__block_header__alpha__unsigned_contents
+  type: id_012__psithaca__block_header__alpha__unsigned_contents
