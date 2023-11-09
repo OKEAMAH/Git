@@ -404,6 +404,13 @@ let snapshot_dir_param next =
     string_parameter
     next
 
+let snapshot_file_param next =
+  Tezos_clic.param
+    ~name:"snapshot_<addr>_<level>.<full|archive>"
+    ~desc:"Snapshot archive file"
+    string_parameter
+    next
+
 let string_list =
   Tezos_clic.parameter (fun (_cctxt : Client_context.full) s ->
       let list = String.split ',' s in

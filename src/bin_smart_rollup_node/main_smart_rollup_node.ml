@@ -387,6 +387,19 @@ let export_snapshot =
       let*! () = cctxt#message "Snapshot exported to %s@." snapshot_file in
       return_unit)
 
+let import_snapshot =
+  let open Tezos_clic in
+  command
+    ~group
+    ~desc:"Export a snapshot of the rollup node state."
+    (args1 data_dir_arg)
+    (prefixes ["import"; "snapshot"] @@ Cli.snapshot_file_param @@ stop)
+    (fun data_dir snapshot_file cctxt ->
+      let open Lwt_result_syntax in
+      let* () = Snapshots.import cctxt ~data_dir ~snapshot_file in
+      let*! () = cctxt#message "Snapshot successfully imported@." in
+      return_unit)
+
 let sc_rollup_commands () =
   [
     config_init_command;
@@ -396,6 +409,7 @@ let sc_rollup_commands () =
     dump_metrics;
     dump_durable_storage;
     export_snapshot;
+    import_snapshot;
   ]
 
 let select_commands _ctxt _ = Lwt_result_syntax.return (sc_rollup_commands ())
