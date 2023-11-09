@@ -6,6 +6,28 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Kaitai.Types
+module MuSet = Set.Make (String)
+module StringSet = Set.Make (String)
+
+(* We need to access the definition of data-encoding's [descr] type. For this
+   reason we alias the private/internal module [Data_encoding__Encoding] (rather
+   than the public module [Data_encoding.Encoding]. *)
+module DataEncoding = Data_encoding__Encoding
+
+(* We need an existential type for encodings because the type of encodings in
+   cases is not related to the type of encodings in unions. *)
+type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding [@@unboxed]
+
+type state = {
+  toplevel_encoding : anyEncoding;
+  enums : Ground.Enum.assoc;
+  types : Ground.Type.assoc;
+  mus : MuSet.t;
+  imports : StringSet.t;
+  extern : (anyEncoding, string) Hashtbl.t;
+}
+
 (* Identifiers have a strict pattern to follow, this function removes the
    irregularities.
 
@@ -32,29 +54,11 @@ let escape_id id =
     id ;
   Buffer.contents b
 
-open Kaitai.Types
-module MuSet = Set.Make (String)
-
-type state = {
-  enums : Ground.Enum.assoc;
-  types : Ground.Type.assoc;
-  mus : MuSet.t;
-}
-
 let add_enum state enum =
   {state with enums = Helpers.add_uniq_assoc state.enums enum}
 
 let add_type state typ =
   {state with types = Helpers.add_uniq_assoc state.types typ}
-
-(* We need to access the definition of data-encoding's [descr] type. For this
-   reason we alias the private/internal module [Data_encoding__Encoding] (rather
-   than the public module [Data_encoding.Encoding]. *)
-module DataEncoding = Data_encoding__Encoding
-
-(* We need an existential type for encodings because the type of encodings in
-   cases is not related to the type of encodings in unions. *)
-type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding
 
 let summary ~title ~description =
   match (title, description) with
@@ -106,7 +110,7 @@ let redirect_if_many :
   | [attr] -> (state, {(fattr attr) with id})
   | _ :: _ :: _ as attrs -> redirect state attrs fattr id
 
-let rec seq_field_of_data_encoding :
+let rec seq_field_of_data_encoding0 :
     type a. state -> a DataEncoding.t -> string -> state * AttrSpec.t list =
  fun state ({encoding; _} as whole_encoding) id ->
   let id = escape_id id in
@@ -418,6 +422,26 @@ let rec seq_field_of_data_encoding :
       in
       (state, [attr])
 
+and seq_field_of_data_encoding :
+    type a. state -> a DataEncoding.t -> string -> state * AttrSpec.t list =
+ fun state whole_encoding id ->
+  (* We rely on [AnyEncoding] to be unboxed so that we can preserve physical equality *)
+  match Hashtbl.find_opt state.extern (AnyEncoding whole_encoding) with
+  | Some name ->
+      if AnyEncoding whole_encoding == state.toplevel_encoding then
+        seq_field_of_data_encoding0 state whole_encoding id
+      else
+        let name = escape_id name in
+        let state = {state with imports = StringSet.add name state.imports} in
+        ( state,
+          [
+            {
+              (Helpers.default_attr_spec ~id:(escape_id id)) with
+              dataType = DataType.(ComplexDataType (UserType name));
+            };
+          ] )
+  | None -> seq_field_of_data_encoding0 state whole_encoding id
+
 and seq_field_of_tups :
     type a.
     state -> Helpers.tid_gen -> a DataEncoding.desc -> state * AttrSpec.t list =
@@ -693,10 +717,24 @@ let add_original_id_to_description ?description id =
   | None -> "Encoding id: " ^ id
   | Some description -> "Encoding id: " ^ id ^ "\nDescription: " ^ description
 
-let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
- fun ~id encoding ->
+let from_data_encoding :
+    type a.
+    id:string ->
+    ?extern:(anyEncoding, string) Hashtbl.t ->
+    a DataEncoding.t ->
+    ClassSpec.t =
+ fun ~id ?(extern = Hashtbl.create 0) encoding ->
   let encoding_name = escape_id id in
-  let state = {types = []; enums = []; mus = MuSet.empty} in
+  let state =
+    {
+      toplevel_encoding = AnyEncoding encoding;
+      enums = [];
+      types = [];
+      mus = MuSet.empty;
+      imports = StringSet.empty;
+      extern;
+    }
+  in
   let sort l = List.sort (fun (t1, _) (t2, _) -> compare t1 t2) l in
   match encoding.encoding with
   | Describe {encoding; description; id = descrid; _} ->
@@ -707,6 +745,7 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
         ~description
         ~enums:(sort state.enums)
         ~types:(sort state.types)
+        ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
   | _ ->
@@ -719,5 +758,6 @@ let from_data_encoding : type a. id:string -> a DataEncoding.t -> ClassSpec.t =
         ~description
         ~enums:(sort state.enums)
         ~types:(sort state.types)
+        ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs

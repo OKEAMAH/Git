@@ -6,6 +6,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type anyEncoding = AnyEncoding : _ Data_encoding.Encoding.t -> anyEncoding
+[@@ocaml.unboxed]
+
 (** [escape_id id] replaces special characters in [id] to obtain a string which
     is valid to use in kaitai-struct files' [id] fields. *)
 val escape_id : string -> string
@@ -17,4 +20,7 @@ val escape_id : string -> string
     section of the class-spec.
 *)
 val from_data_encoding :
-  id:string -> 'a Data_encoding.t -> Kaitai.Types.ClassSpec.t
+  id:string ->
+  ?extern:(anyEncoding, string) Hashtbl.t ->
+  'a Data_encoding.t ->
+  Kaitai.Types.ClassSpec.t

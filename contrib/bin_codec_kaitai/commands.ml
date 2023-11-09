@@ -472,15 +472,27 @@ let commands () =
               | None ->
                   (* [id] is from iterating over the list of registered encodings *)
                   assert false
-              | Some e -> (id, e))
+              | Some (Any e) ->
+                  (id, Kaitai_of_data_encoding.Translate.AnyEncoding e))
             all
         in
         let name_of_id id = Kaitai_of_data_encoding.Translate.escape_id id in
+        let extern =
+          let t = Stdlib.Hashtbl.create 200 in
+          List.iter
+            (fun (id, encoding) ->
+              Stdlib.Hashtbl.add t encoding (name_of_id id))
+            all ;
+          t
+        in
         let* () =
           List.iter_s
-            (fun (id, Data_encoding.Registration.Any e) ->
+            (fun (id, Kaitai_of_data_encoding.Translate.AnyEncoding e) ->
               match
-                Kaitai_of_data_encoding.Translate.from_data_encoding ~id e
+                Kaitai_of_data_encoding.Translate.from_data_encoding
+                  ~id
+                  ~extern
+                  e
               with
               | exception e ->
                   (* TODO: offer a [result] variant of conversion function *)
