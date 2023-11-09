@@ -169,23 +169,23 @@ let read_storage file_name =
 
 (** Generates a random diff for [nb] elements *)
 let create_diff nb =
-  let init = IntMap.empty in
-  let rec repeat f diff n = if n = 0 then diff else repeat f (f diff) (n - 1) in
-  let rec my_update map_opt =
-    let snd = Random.int arity in
-    match map_opt with
-    | None -> Some (IntMap.singleton snd (Scalar.random ()))
-    | Some map ->
-        if IntMap.mem snd map then my_update map_opt
-        else if IntMap.cardinal map = arity then failwith "fix that function"
-        else Some (IntMap.add snd (Scalar.random ()) map)
+  (*Gets a random index that does not belong to the diff*)
+  let rec random_index diff =
+    let i, j = (Random.int arity, Random.int arity) in
+    if IntMap.mem i diff && IntMap.mem j (IntMap.find i diff) then
+      random_index diff
+    else (i, j)
   in
 
-  let f diff =
-    let fst = Random.int arity in
-    IntMap.update fst my_update diff
+  let rec repeat f diff n = if n = 0 then diff else repeat f (f diff) (n - 1) in
+  let add diff =
+    let i, j = random_index diff in
+    if IntMap.mem i diff then
+      let new_i = IntMap.add j (Scalar.random ()) (IntMap.find i diff) in
+      IntMap.add i new_i diff
+    else IntMap.add i (IntMap.singleton j (Scalar.random ())) diff
   in
-  repeat f init nb
+  repeat add IntMap.empty nb
 
 let map_to_array map =
   List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
