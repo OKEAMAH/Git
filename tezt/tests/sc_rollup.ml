@@ -964,9 +964,20 @@ let test_snapshots ~challenge_window ~commitment_period ~history_mode =
   (* We want to build an L2 chain that goes beyond the snapshots (and has
      additional commitments). *)
   let total_blocks = level_snapshot + (4 * commitment_period) in
+  let stop_rollup_node_2_level = challenge_window + 2 in
   let* () = Sc_rollup_node.run ~history_mode sc_rollup_node sc_rollup [] in
+  let rollup_node_2 =
+    Sc_rollup_node.create Observer node ~base_dir:(Client.base_dir client)
+  in
+  let rollup_node_3 =
+    Sc_rollup_node.create Observer node ~base_dir:(Client.base_dir client)
+  in
+  let* () = Sc_rollup_node.run rollup_node_2 sc_rollup [] in
   let rollup_node_processing =
-    let* () = bake_levels total_blocks client in
+    let* () = bake_levels 20 client in
+    Log.info "Stopping rollup node 2 before snapshot is made." ;
+    let* () = Sc_rollup_node.terminate rollup_node_2 in
+    let* () = bake_levels (total_blocks - stop_rollup_node_2_level) client in
     let* (_ : int) = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
     unit
   in
@@ -979,6 +990,15 @@ let test_snapshots ~challenge_window ~commitment_period ~history_mode =
   if not exists then
     Test.fail ~__LOC__ "Snapshot file %s does not exist" snapshot_path ;
   let* () = rollup_node_processing in
+  Log.info "Importing snapshot in empty rollup node." ;
+  let*! () = Sc_rollup_node.import_snapshot rollup_node_3 snapshot_path in
+  Log.info "Importing snapshot in late rollup node." ;
+  let*! () = Sc_rollup_node.import_snapshot rollup_node_2 snapshot_path in
+  Log.info "Running rollup nodes with snapshots until they catch up." ;
+  let* () = Sc_rollup_node.run rollup_node_2 sc_rollup []
+  and* () = Sc_rollup_node.run rollup_node_3 sc_rollup [] in
+  let* _ = Sc_rollup_node.wait_sync ~timeout:60. rollup_node_2
+  and* _ = Sc_rollup_node.wait_sync ~timeout:60. rollup_node_3 in
   unit
 
 (* One can retrieve the list of originated SCORUs.
