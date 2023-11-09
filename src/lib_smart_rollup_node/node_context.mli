@@ -171,6 +171,9 @@ val init :
 (** Closes the store, context and Layer 1 monitor. *)
 val close : _ t -> unit tzresult Lwt.t
 
+(** The path for the lockfile used when starting and running the node. *)
+val global_lockfile_path : data_dir:string -> string
+
 (** The path for the lockfile used in block processing. *)
 val processing_lockfile_path : data_dir:string -> string
 

@@ -105,8 +105,10 @@ let get_fee_parameter node_ctxt operation_kind =
   Operation_kind.Map.find operation_kind node_ctxt.config.fee_parameters
   |> Option.value ~default:(Configuration.default_fee_parameter operation_kind)
 
+let global_lockfile_path ~data_dir = Filename.concat data_dir "lock"
+
 let lock ~data_dir =
-  let lockfile_path = Filename.concat data_dir "lock" in
+  let lockfile_path = global_lockfile_path ~data_dir in
   let lock_aux ~data_dir =
     let open Lwt_result_syntax in
     let*! () = Event.acquiring_lock () in
