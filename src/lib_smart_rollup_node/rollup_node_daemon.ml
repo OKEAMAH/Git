@@ -662,6 +662,7 @@ let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
       current_protocol
       configuration
   in
+  let* () = Node_context.set_lcc node_ctxt lcc in
   let* () = Plugin.L1_processing.check_pvm_initial_state_hash node_ctxt in
   let* rpc_server =
     Rpc_server.start configuration (Rpc_directory.directory node_ctxt)
